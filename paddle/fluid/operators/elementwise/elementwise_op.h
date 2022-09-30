@@ -36,7 +36,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ElementwiseOp");
@@ -170,7 +170,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
@@ -216,47 +216,12 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInputX();
     AddInputY();
     AddOpOutput();
-
     AddAttr<int>("axis",
                  "(int, default -1). If X.dimension != Y.dimension,"
                  "Y.dimension must be a subsequence of x.dimension. And axis "
                  "is the start dimension index "
                  "for broadcasting Y onto X. ")
         .SetDefault(-1);
-    AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>("x_data_format", "This parameter is no longer used.")
-        .SetDefault("")
-        .AsExtra();
-    AddAttr<std::string>("y_data_format", "This parameter is no longer used.")
-        .SetDefault("")
-        .AsExtra();
-    AddAttr<bool>(
-        "use_quantizer",
-        "(bool, default false) "
-        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
-    /* int8 parameters */
-    AddAttr<float>("Scale_x",
-                   "(float, default 1.0f), The quantize scale of X tensor")
-        .SetDefault(1.0f)
-        .AsExtra();
-    AddAttr<float>("Scale_y",
-                   "(float, default 1.0f), The quantize scale of Y tensor")
-        .SetDefault(1.0f)
-        .AsExtra();
-    AddAttr<float>("Scale_out",
-                   "(float, default 1.0f), The quantize scale of output data")
-        .SetDefault(1.0f)
-        .AsExtra();
     AddOpComment();
   }
 
@@ -327,7 +292,7 @@ For example:
 class ElementwiseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
@@ -366,7 +331,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
@@ -384,7 +349,7 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
@@ -420,7 +385,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
@@ -439,7 +404,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
     : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("DDOut")) {
@@ -481,7 +446,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
@@ -499,7 +464,7 @@ class ElementwiseOpDoubleGradWithoutDXDY
 class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("D_DDX")) {
@@ -542,7 +507,7 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input

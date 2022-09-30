@@ -19,8 +19,9 @@ typedef SSIZE_T ssize_t;
 
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/jit/base_function.h"
+#include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -63,7 +64,7 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
 std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj, ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
-framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
+phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<framework::LoDTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                                ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
@@ -75,8 +76,8 @@ framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
 std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
                                                       ssize_t arg_pos);
 std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos);
-std::shared_ptr<jit::BaseFunction> CastPyArg2BaseFunction(PyObject* obj,
-                                                          ssize_t arg_pos);
+std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
+                                                     ssize_t arg_pos);
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
@@ -254,6 +255,13 @@ paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
                                                 PyObject* args,
                                                 ssize_t arg_idx,
                                                 bool dispensable = false);
+
+paddle::optional<std::vector<paddle::experimental::Tensor>>
+GetOptionalTensorListFromArgs(const std::string& op_type,
+                              const std::string& arg_name,
+                              PyObject* args,
+                              ssize_t arg_idx,
+                              bool dispensable = false);
 
 std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     const std::string& op_type,

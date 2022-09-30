@@ -24,8 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class TileOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -40,7 +38,7 @@ class TileOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
       return expected_kernel_type;
@@ -74,7 +72,8 @@ class TileOpMaker : public framework::OpProtoAndCheckerMaker {
               "the corresponding value given by Attr(repeat_times).");
     AddAttr<std::vector<int>>("repeat_times",
                               "The number of repeat times for each dimension.")
-        .SetDefault({});
+        .SetDefault({})
+        .SupportTensor();
     AddComment(R"DOC(
 Tile operator repeats the input by given times number. You should set times
 number for each dimension by providing attribute 'repeat_times'. The rank of X
@@ -114,42 +113,6 @@ class TileGradOp : public framework::OperatorWithKernel {
                    "TileGrad");
 
     auto x_dims = ctx->GetInputDim("X");
-
-    std::vector<int> repeat_times =
-        ctx->Attrs().Get<std::vector<int>>("repeat_times");
-    if (repeat_times.size() == 0) {
-      repeat_times = std::vector<int>(x_dims.size(), -1);
-    }
-
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto x_dim_vec = phi::vectorize<int>(x_dims);
-    if (x_dim_vec.size() > repeat_times.size()) {
-      auto diff = x_dim_vec.size() - repeat_times.size();
-      repeat_times.insert(repeat_times.begin(), diff, -1);
-    } else {
-      auto diff = repeat_times.size() - x_dim_vec.size();
-      x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
-    }
-
-    for (size_t i = 0; i < repeat_times.size(); ++i) {
-      if (repeat_times[i] == -1 || x_dim_vec[i] == -1) {
-        continue;
-      } else {
-        if (ctx->IsRuntime()) {
-          PADDLE_ENFORCE_EQ(
-              x_dim_vec[i] * repeat_times[i],
-              out_dims[i],
-              platform::errors::InvalidArgument(
-                  "The size (%d) of the dimension %d of Input(Out@GRAD) should "
-                  "be equal to the multiplication of the crroresponding "
-                  "dimension size of Input(X) (%d) and repeat_times (%d).",
-                  out_dims[i],
-                  i,
-                  x_dim_vec[i],
-                  repeat_times[i]));
-        }
-      }
-    }
     auto x_grad_name = framework::GradVarName("X");
 
     if (ctx->HasOutput(x_grad_name)) {
@@ -167,7 +130,7 @@ class TileGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
       return expected_kernel_type;

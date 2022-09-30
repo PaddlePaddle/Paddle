@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest, OpTestTool
@@ -22,6 +20,10 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
+from test_sum_op import TestReduceOPTensorAxisBase
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 np.random.seed(10)
 
@@ -100,7 +102,7 @@ class TestFP16MeanOp(TestMeanOp):
                 dx = paddle.grad(y, x)[0].numpy()
                 dx_expected = self.dtype(1.0 / np.prod(x_np.shape)) * np.ones(
                     x_np.shape).astype(self.dtype)
-                self.assertTrue(np.array_equal(dx, dx_expected))
+                np.testing.assert_array_equal(dx, dx_expected)
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -193,7 +195,7 @@ class TestReduceMeanOp(OpTest):
                 dx_expected = ref_reduce_mean_grad(self.inputs['X'],
                                                    self.attrs['dim'],
                                                    self.dtype)
-                self.assertTrue(np.array_equal(dx, dx_expected))
+                np.testing.assert_array_equal(dx, dx_expected)
 
 
 class TestReduceMeanOpDefaultAttrs(TestReduceMeanOp):
@@ -353,7 +355,7 @@ class TestMeanAPI(unittest.TestCase):
                           fetch_list=[out1, out2, out3, out4, out5])
         out_ref = np.mean(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-04), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.0001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
@@ -366,8 +368,7 @@ class TestMeanAPI(unittest.TestCase):
                 if len(axis) == 0:
                     axis = None
             out_ref = np.mean(x, axis, keepdims=keepdim)
-            self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-04),
-                             True)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
 
         test_case(self.x)
         test_case(self.x, [])
@@ -387,13 +388,15 @@ class TestMeanAPI(unittest.TestCase):
             exe = fluid.Executor(place)
             x_np = np.random.rand(10, 10).astype(np.float32)
             res = exe.run(feed={"x": x_np}, fetch_list=[out])
-        self.assertEqual(np.allclose(res[0], np.mean(x_np, axis=1)), True)
+        np.testing.assert_allclose(res[0], np.mean(x_np, axis=1), rtol=1e-05)
 
         with fluid.dygraph.guard():
             x_np = np.random.rand(10, 10).astype(np.float32)
             x = fluid.dygraph.to_variable(x_np)
             out = fluid.layers.reduce_mean(input=x, dim=1)
-        self.assertEqual(np.allclose(out.numpy(), np.mean(x_np, axis=1)), True)
+        np.testing.assert_allclose(out.numpy(),
+                                   np.mean(x_np, axis=1),
+                                   rtol=1e-05)
 
     def test_errors(self):
         paddle.disable_static()
@@ -405,6 +408,104 @@ class TestMeanAPI(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [10, 12], 'int32')
             self.assertRaises(TypeError, paddle.mean, x)
+
+
+class TestMeanWithTensorAxis1(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.mean
+        self.np_api = np.mean
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
+        self.np_axis = np.array([1, 2], dtype='int64')
+        self.tensor_axis = paddle.to_tensor([1, 2], dtype='int64')
+
+
+class TestMeanWithTensorAxis2(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.mean
+        self.np_api = np.mean
+        self.x = paddle.randn([10, 10, 9, 9], dtype='float64')
+        self.np_axis = np.array([0, 1, 2], dtype='int64')
+        self.tensor_axis = [
+            0,
+            paddle.to_tensor([1], 'int64'),
+            paddle.to_tensor([2], 'int64')
+        ]
+
+
+class TestMeanDoubleGradCheck(unittest.TestCase):
+
+    def mean_wrapper(self, x):
+        return paddle.mean(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [3, 4, 5], False, dtype)
+        data.persistable = True
+        out = paddle.mean(data)
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(self.mean_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestMeanTripleGradCheck(unittest.TestCase):
+
+    def mean_wrapper(self, x):
+        return paddle.mean(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [3, 4, 5], False, dtype)
+        data.persistable = True
+        out = paddle.mean(data)
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(self.mean_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == "__main__":

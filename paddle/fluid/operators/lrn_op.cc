@@ -27,15 +27,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
 struct LRNFunctor<phi::CPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor& input,
-                  framework::Tensor* out,
-                  framework::Tensor* mid,
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* out,
+                  phi::DenseTensor* mid,
                   int N,
                   int C,
                   int H,
@@ -49,7 +48,7 @@ struct LRNFunctor<phi::CPUContext, T> {
     auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
     phi::funcs::Transpose<phi::CPUContext, T, 4> transpose;
     auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
-    Tensor in_transpose, mid_transpose, out_transpose;
+    phi::DenseTensor in_transpose, mid_transpose, out_transpose;
     // if channel_last, transpose to channel_first
     if (data_layout == DataLayout::kNHWC) {
       auto in_dims = input.dims();
@@ -72,7 +71,7 @@ struct LRNFunctor<phi::CPUContext, T> {
     T* odata = out_transpose.data<T>();
     T* mdata = mid_transpose.data<T>();
 
-    Tensor squared;
+    phi::DenseTensor squared;
     T* sdata = squared.mutable_data<T>({1, C + n - 1, H, W}, place);
     std::memset(sdata, 0, sizeof(T) * squared.numel());
     for (int i = 0; i < mid->numel(); ++i) {
@@ -122,11 +121,11 @@ template struct LRNFunctor<phi::CPUContext, double>;
 template <typename T>
 struct LRNGradFunctor<phi::CPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor& x,
-                  const framework::Tensor& out,
-                  const framework::Tensor& mid,
-                  framework::Tensor* x_g,
-                  const framework::Tensor& out_g,
+                  const phi::DenseTensor& x,
+                  const phi::DenseTensor& out,
+                  const phi::DenseTensor& mid,
+                  phi::DenseTensor* x_g,
+                  const phi::DenseTensor& out_g,
                   int N,
                   int C,
                   int H,
@@ -225,24 +224,23 @@ class LRNOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -302,10 +300,6 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
                "beta is the power number.")
         .SetDefault(0.75)
         .GreaterThan(0.0);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<std::string>(
         "data_format",
         "(string, default NCHW) Only used in "
@@ -313,12 +307,6 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false)
-        .AsExtra();
-
     AddComment(R"DOC(
 Local Response Normalization Operator.
 
@@ -370,24 +358,23 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&

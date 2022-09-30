@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import op_test
-import numpy
+import numpy as np
 import unittest
 
 
 class TestFetchVar(unittest.TestCase):
 
     def set_input(self):
-        self.val = numpy.array([1, 3, 5]).astype(numpy.int32)
+        self.val = np.array([1, 3, 5]).astype(np.int32)
 
     def test_fetch_var(self):
         self.set_input()
@@ -33,15 +31,14 @@ class TestFetchVar(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
         fetched_x = fluid.executor._fetch_var("x")
-        self.assertTrue(numpy.array_equal(fetched_x, self.val),
-                        "fetch_x=%s val=%s" % (fetched_x, self.val))
+        np.testing.assert_array_equal(fetched_x, self.val)
         self.assertEqual(fetched_x.dtype, self.val.dtype)
 
 
 class TestFetchNullVar(TestFetchVar):
 
     def set_input(self):
-        self.val = numpy.array([]).astype(numpy.int32)
+        self.val = np.array([]).astype(np.int32)
 
 
 if __name__ == '__main__':

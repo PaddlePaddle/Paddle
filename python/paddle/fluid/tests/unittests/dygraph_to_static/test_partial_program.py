@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -89,7 +88,7 @@ class TestWithNestedInput(unittest.TestCase):
     def test_nest(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
-        self.assertTrue(np.allclose(dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestWithNestedOutput(unittest.TestCase):
@@ -123,7 +122,9 @@ class TestWithNestedOutput(unittest.TestCase):
         for dy_var, st_var in zip(dygraph_res, static_res):
             if isinstance(dy_var,
                           (fluid.core.VarBase, fluid.core.eager.Tensor)):
-                self.assertTrue(np.allclose(dy_var.numpy(), st_var.numpy()))
+                np.testing.assert_allclose(dy_var.numpy(),
+                                           st_var.numpy(),
+                                           rtol=1e-05)
             else:
                 self.assertTrue(dy_var, st_var)
 
@@ -201,7 +202,7 @@ class TestPruneUnusedParamInProgram(unittest.TestCase):
             model.eval()
             input_ids = paddle.to_tensor(input_ids)
             out = model(input_ids)
-            self.assertTrue(np.array_equal(out.numpy(), [[15, 11]]))
+            np.testing.assert_array_equal(out.numpy(), [[15, 11]])
 
 
 if __name__ == '__main__':

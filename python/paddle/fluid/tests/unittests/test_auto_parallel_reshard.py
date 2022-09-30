@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -21,14 +19,14 @@ import paddle.nn as nn
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.process_group import _g_process_group_map
+from paddle.distributed.auto_parallel.process_group import _g_process_group_map, ProcessGroup
 from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
@@ -63,27 +61,13 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         if _global_parallel_strategy == "pp":
-            auto.shard_tensor(self.linear0.weight,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_0,
-                                  "dims_mapping": [-1, -1]
-                              })
-            auto.shard_tensor(self.linear1.weight,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_1,
-                                  "dims_mapping": [-1, -1]
-                              })
+            auto.shard_tensor(self.linear0.weight, PP_MESH_0, [None, None])
+            auto.shard_tensor(self.linear1.weight, PP_MESH_1, [None, None])
         else:
-            auto.shard_tensor(self.linear0.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh,
-                                  "dims_mapping": [-1, -1]
-                              })
-            auto.shard_tensor(self.linear1.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh,
-                                  "dims_mapping": [-1, -1]
-                              })
+            auto.shard_tensor(self.linear0.weight, _global_process_mesh,
+                              [None, None])
+            auto.shard_tensor(self.linear1.weight, _global_process_mesh,
+                              [None, None])
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -107,28 +91,12 @@ def mlp_forward(train_program, start_program):
                             dtype='float32')
 
         if _global_parallel_strategy == "pp":
-            auto.shard_tensor(input,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_0,
-                                  "dims_mapping": [-1, -1]
-                              })
-            auto.shard_tensor(label,
-                              dist_attr={
-                                  "process_mesh": PP_MESH_1,
-                                  "dims_mapping": [-1, -1]
-                              })
+            auto.shard_tensor(input, PP_MESH_0, [None, None])
+            auto.shard_tensor(label, PP_MESH_1, [None, None])
         elif _global_parallel_strategy == "dp":
-            auto.shard_tensor(input,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh,
-                                  "dims_mapping": [0, -1]
-                              })
+            auto.shard_tensor(input, _global_process_mesh, ["x", None])
         else:
-            auto.shard_tensor(input,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh,
-                                  "dims_mapping": [-1, -1]
-                              })
+            auto.shard_tensor(input, _global_process_mesh, [None, None])
 
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
@@ -282,22 +250,25 @@ class TestMLPReshard(unittest.TestCase):
             if op.type == "gelu_grad":
                 op_need_check = op
                 break
-        # print_program_with_dist_attr(dist_main_prog, dist_context)
 
         # grad op should have dist attr
         self.assertTrue(
             check_backward_dist_attr(dist_context, dist_main_prog,
                                      op_need_check))
 
+        # clear _g_process_group_map
+        _g_process_group_map.clear()
+        _g_process_group_map[0] = ProcessGroup(0, [])
+
     def test_mlp_pp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "pp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
         global PP_MESH_0
-        PP_MESH_0 = auto.ProcessMesh(mesh=[0])
+        PP_MESH_0 = auto.ProcessMesh(mesh=[0], dim_names=["x"])
         global PP_MESH_1
-        PP_MESH_1 = auto.ProcessMesh(mesh=[1])
+        PP_MESH_1 = auto.ProcessMesh(mesh=[1], dim_names=["x"])
 
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -305,40 +276,51 @@ class TestMLPReshard(unittest.TestCase):
         rank_id = 1
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
-        for key in list(_g_process_group_map.keys()):
-            del _g_process_group_map[key]
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
 
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
-
         # parameter initialization of every rank should be different in the pipeline scene
         self.assertTrue(check_initialization(dist_startup_prog, rank_id))
 
+        # clear _g_process_group_map
+        _g_process_group_map.clear()
+        _g_process_group_map[0] = ProcessGroup(0, [])
+
     def test_mlp_pp_diff_process_mesh(self):
+        global _global_parallel_strategy
+        _global_parallel_strategy = "pp"
+        global _global_process_mesh
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
+        global PP_MESH_0
+        PP_MESH_0 = auto.ProcessMesh(mesh=[0], dim_names=["x"])
+        global PP_MESH_1
+        PP_MESH_1 = auto.ProcessMesh(mesh=[1], dim_names=["x"])
+
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
         rank_id = 1
         dist_main_prog, dist_startup_prog, dist_params_grads = get_dist_prog(
             train_program, startup_program, dist_context, rank_id, True)
-        for key in list(_g_process_group_map.keys()):
-            del _g_process_group_map[key]
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
-
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
         self.assertTrue(check_initialization(dist_startup_prog, rank_id))
+
+        # clear _g_process_group_map
+        _g_process_group_map.clear()
+        _g_process_group_map[0] = ProcessGroup(0, [])
 
     def test_mlp_dp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
+        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
 
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -349,11 +331,15 @@ class TestMLPReshard(unittest.TestCase):
         resharder = Resharder(dist_main_prog, dist_startup_prog, rank_id,
                               dist_context, dist_params_grads)
         resharder.reshard()
+
         # send and recv should not exist in dp scene.
         self.assertFalse(check_send_recv_result(dist_main_prog, rank_id))
-
         # all parameters should be initialized in dp scene
         self.assertTrue(check_initialization_for_dp(dist_startup_prog))
+
+        # clear _g_process_group_map
+        _g_process_group_map.clear()
+        _g_process_group_map[0] = ProcessGroup(0, [])
 
 
 if __name__ == "__main__":

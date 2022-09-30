@@ -86,7 +86,10 @@ void SyncBatchNormKernel(const Context &ctx,
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from platform::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-    alloc_ptr = paddle::memory::Alloc(ctx, bytes);
+    alloc_ptr = paddle::memory::Alloc(
+        ctx.GetPlace(),
+        bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
     const int threads = 256;
@@ -100,7 +103,19 @@ void SyncBatchNormKernel(const Context &ctx,
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto *comm = ctx.nccl_comm();
+    int global_gid = 0;
+    ncclComm_t comm = nullptr;
+
+    if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
+            global_gid)) {
+      auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
+          paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
+              global_gid));
+      comm = nccl_pg->NCCLComm(x.place());
+    } else {
+      comm = ctx.nccl_comm();
+    }
+
     if (comm) {
       int dtype = paddle::platform::ToNCCLDataType(
           paddle::framework::TransToProtoVarType(mean_out->dtype()));
@@ -113,6 +128,7 @@ void SyncBatchNormKernel(const Context &ctx,
           ncclSum,
           comm,
           stream));
+      VLOG(3) << "Sync result using all reduce";
     }
 #endif
 
@@ -178,7 +194,18 @@ PD_REGISTER_KERNEL(sync_batch_norm,
                    ALL_LAYOUT,
                    phi::SyncBatchNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 #else
 PD_REGISTER_KERNEL(sync_batch_norm,
                    GPU,
@@ -186,5 +213,16 @@ PD_REGISTER_KERNEL(sync_batch_norm,
                    phi::SyncBatchNormKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 #endif

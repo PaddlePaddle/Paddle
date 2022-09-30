@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -53,7 +51,7 @@ class TestNNSigmoidAPI(unittest.TestCase):
             fluid.backward.append_backward(paddle.mean(y))
         exe = paddle.static.Executor(place)
         out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
-        self.assertTrue(np.allclose(out[0], self.y))
+        np.testing.assert_allclose(out[0], self.y, rtol=1e-05)
         self.assertTrue(y.name.startswith("api_sigmoid"))
 
     def check_dynamic_api(self, place):
@@ -61,7 +59,7 @@ class TestNNSigmoidAPI(unittest.TestCase):
         x = paddle.to_tensor(self.x)
         mysigmoid = nn.Sigmoid()
         y = mysigmoid(x)
-        self.assertTrue(np.allclose(y.numpy(), self.y))
+        np.testing.assert_allclose(y.numpy(), self.y, rtol=1e-05)
 
     def test_check_api(self):
         places = [fluid.CPUPlace()]
@@ -93,13 +91,13 @@ class TestNNFunctionalSigmoidAPI(unittest.TestCase):
             y = functional.sigmoid(x, name="api_sigmoid")
         exe = paddle.static.Executor(fluid.CPUPlace())
         out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
-        self.assertTrue(np.allclose(out[0], self.y))
+        np.testing.assert_allclose(out[0], self.y, rtol=1e-05)
 
     def check_dynamic_api(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = functional.sigmoid(x)
-        self.assertTrue(np.allclose(y.numpy(), self.y))
+        np.testing.assert_allclose(y.numpy(), self.y, rtol=1e-05)
 
     def test_check_api(self):
         places = [fluid.CPUPlace()]

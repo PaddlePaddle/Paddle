@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -263,7 +264,7 @@ inline std::string TensorDTypeToPyDTypeStr(
 }  // namespace details
 
 template <typename T>
-T TensorGetElement(const framework::Tensor &self, size_t offset) {
+T TensorGetElement(const phi::DenseTensor &self, size_t offset) {
   PADDLE_ENFORCE_LT(offset,
                     self.numel(),
                     platform::errors::InvalidArgument(
@@ -313,7 +314,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
 }
 
 template <typename T>
-void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
+void TensorSetElement(phi::DenseTensor *self, size_t offset, T elem) {
   PADDLE_ENFORCE_LT(offset,
                     self->numel(),
                     platform::errors::InvalidArgument(
@@ -361,14 +362,14 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
 
 template <typename T, typename P>
 void SetTensorFromPyArrayT(
-    framework::Tensor *self,
+    phi::DenseTensor *self,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
     const P &place,
     bool zero_copy) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
+    dims.push_back(static_cast<int64_t>(array.shape()[i]));
   }
   self->Resize(phi::make_ddim(dims));
 
@@ -439,7 +440,11 @@ void SetTensorFromPyArrayT(
     platform::Place tmp_place = place;
     platform::MLUDeviceGuard guard(tmp_place.device);
     auto dst = self->mutable_data<T>(place);
-    paddle::platform::MLUMemcpyH2DSync(dst, array.data(), array.nbytes());
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto dev_ctx = static_cast<platform::MLUDeviceContext *>(pool.Get(place));
+    paddle::platform::MLUMemcpyH2DAsync(
+        dst, array.data(), array.nbytes(), dev_ctx->stream());
+    dev_ctx->Wait();
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use MLUPlace in CPU/GPU version, "
@@ -497,7 +502,7 @@ void SetTensorFromPyArrayT(
 }
 
 template <typename P>
-void SetTensorFromPyArray(framework::Tensor *self,
+void SetTensorFromPyArray(phi::DenseTensor *self,
                           const py::object &obj,
                           const P &place,
                           bool zero_copy) {
@@ -603,17 +608,18 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
 }
 
 template <typename T>
-void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
-                                 const py::array_t<T> &array,
-                                 int device_id) {
+void SetUVATensorFromPyArrayImpl(
+    framework::LoDTensor *self_tensor,
+    const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
+    int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArrayImpl.";
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   int64_t numel = 1;
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.emplace_back(static_cast<int>(array.shape()[i]));
-    numel *= static_cast<int>(array.shape()[i]);
+    dims.emplace_back(static_cast<int64_t>(array.shape()[i]));
+    numel *= static_cast<int64_t>(array.shape()[i]);
   }
   self_tensor->Resize(phi::make_ddim(dims));
 
@@ -642,7 +648,7 @@ void SetUVATensorFromPyArrayImpl(framework::LoDTensor *self_tensor,
 template <typename T>
 void SetUVATensorFromPyArray(
     const std::shared_ptr<paddle::imperative::VarBase> &self,
-    const py::array_t<T> &array,
+    const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
     int device_id) {
 #if defined(PADDLE_WITH_CUDA)
   VLOG(4) << "Running in SetUVATensorFromPyArray for VarBase.";
@@ -674,8 +680,8 @@ void SetUVATensorFromPyArray(
 }
 
 template <typename T, size_t D>
-void _sliceCompute(const framework::Tensor *in,
-                   framework::Tensor *out,
+void _sliceCompute(const phi::DenseTensor *in,
+                   phi::DenseTensor *out,
                    const phi::CPUContext &ctx,
                    const std::vector<int> &axes,
                    const std::vector<int> &starts) {
@@ -709,8 +715,8 @@ void _sliceCompute(const framework::Tensor *in,
 }
 
 template <typename T>
-void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
-                    paddle::framework::Tensor *out,
+void _concatCompute(const std::vector<phi::DenseTensor> &ins,
+                    phi::DenseTensor *out,
                     const phi::CPUContext &ctx,
                     int64_t axis) {
   if (axis == 0 && ins.size() < 10) {
@@ -734,7 +740,7 @@ void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
   }
 }
 
-inline void _getSliceinfo(const framework::Tensor &self,
+inline void _getSliceinfo(const phi::DenseTensor &self,
                           py::object obj,
                           const int64_t dim,
                           int64_t *pstart,
@@ -786,9 +792,9 @@ inline void _getSliceinfo(const framework::Tensor &self,
   }
 }
 
-inline framework::Tensor *_getTensor(const framework::Tensor &self,
-                                     const framework::DDim &ddim) {
-  framework::Tensor *output = new framework::Tensor();
+inline phi::DenseTensor *_getTensor(const phi::DenseTensor &self,
+                                    const framework::DDim &ddim) {
+  phi::DenseTensor *output = new phi::DenseTensor();
   output->Resize(ddim);
   auto place = self.place();
   if (platform::is_cpu_place(place)) {
@@ -814,8 +820,8 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
 }
 
 template <typename T>
-void _sliceDapper(const framework::Tensor *in,
-                  framework::Tensor *out,
+void _sliceDapper(const phi::DenseTensor *in,
+                  phi::DenseTensor *out,
                   const phi::CPUContext &ctx,
                   const std::vector<int> &axes,
                   const std::vector<int> &starts,
@@ -856,32 +862,32 @@ void _sliceDapper(const framework::Tensor *in,
 }
 
 template <typename T>
-inline framework::Tensor *_sliceWrapper(const framework::Tensor &self,
-                                        const phi::CPUContext &ctx,
-                                        py::object obj,
-                                        int dim,
-                                        int64_t start,
-                                        int64_t slicelength) {
+inline phi::DenseTensor *_sliceWrapper(const phi::DenseTensor &self,
+                                       const phi::CPUContext &ctx,
+                                       py::object obj,
+                                       int dim,
+                                       int64_t start,
+                                       int64_t slicelength) {
   framework::DDim dstDDim = self.dims();
   dstDDim[dim] = static_cast<int64_t>(slicelength);
   std::vector<int> axes({dim});
   std::vector<int> starts({static_cast<int>(start)});
-  framework::Tensor *output = _getTensor(self, dstDDim);
+  phi::DenseTensor *output = _getTensor(self, dstDDim);
   _sliceDapper<T>(&self, output, ctx, axes, starts, dstDDim.size());
   return output;
 }
 
 template <typename T>
-inline framework::Tensor *_sliceAndConcat(const framework::Tensor &self,
-                                          py::object obj,
-                                          int dim) {
+inline phi::DenseTensor *_sliceAndConcat(const phi::DenseTensor &self,
+                                         py::object obj,
+                                         int dim) {
   phi::CPUContext ctx;
   int64_t start, stop, step, slicelength;
   _getSliceinfo(self, obj, dim, &start, &stop, &step, &slicelength);
   if (step == 1 || slicelength == 1) {
     return _sliceWrapper<T>(self, ctx, obj, dim, start, slicelength);
   } else {
-    std::vector<framework::Tensor> ins;
+    std::vector<phi::DenseTensor> ins;
     for (auto i = 0; i < slicelength; ++i, start += step) {
       ins.emplace_back(*_sliceWrapper<T>(self, ctx, obj, dim, start, 1));
     }
@@ -889,15 +895,15 @@ inline framework::Tensor *_sliceAndConcat(const framework::Tensor &self,
     // do the concat operation
     framework::DDim dstDDim = self.dims();
     dstDDim[dim] = static_cast<int64_t>(slicelength);
-    framework::Tensor *output1 = _getTensor(self, dstDDim);
+    phi::DenseTensor *output1 = _getTensor(self, dstDDim);
     _concatCompute<T>(ins, output1, ctx, dim);
     return output1;
   }
 }
 
-inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
-                                       py::object obj,
-                                       int dim) {
+inline phi::DenseTensor *_sliceTensor(const phi::DenseTensor &self,
+                                      py::object obj,
+                                      int dim) {
   auto src_type = framework::TransToProtoVarType(self.dtype());
   switch (src_type) {
     case framework::proto::VarType::FP16:
@@ -931,12 +937,12 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
   }
 }
 
-inline framework::Tensor *_pySliceTensor(const framework::Tensor &self,
-                                         py::object obj) {
+inline phi::DenseTensor *_pySliceTensor(const phi::DenseTensor &self,
+                                        py::object obj) {
   if (py::isinstance<py::tuple>(obj)) {
     py::list l = static_cast<py::list>(obj);
-    std::unique_ptr<framework::Tensor> target;
-    framework::Tensor *src = const_cast<framework::Tensor *>(&self);
+    std::unique_ptr<phi::DenseTensor> target;
+    phi::DenseTensor *src = const_cast<phi::DenseTensor *>(&self);
     for (auto i = 0; i < static_cast<int>(l.size()); ++i) {
       src = _sliceTensor(*src, l[i], i);
       if (i + 1 == static_cast<int>(l.size())) {
@@ -951,15 +957,15 @@ inline framework::Tensor *_pySliceTensor(const framework::Tensor &self,
   }
 }
 
-inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
-                                        py::object obj) {
+inline phi::DenseTensor *PySliceTensor(const phi::DenseTensor &self,
+                                       py::object obj) {
   if (platform::is_gpu_place(self.place())) {
-    std::unique_ptr<framework::Tensor> holder;
-    framework::Tensor src;
+    std::unique_ptr<phi::DenseTensor> holder;
+    phi::DenseTensor src;
     framework::TensorCopySync(self, platform::CPUPlace(), &src);
-    framework::Tensor *output = _pySliceTensor(src, obj);
+    phi::DenseTensor *output = _pySliceTensor(src, obj);
     holder.reset(output);
-    framework::Tensor *dst = _getTensor(*output, output->dims());
+    phi::DenseTensor *dst = _getTensor(*output, output->dims());
     framework::TensorCopySync(*output, self.place(), dst);
     return dst;
   } else {
@@ -967,7 +973,7 @@ inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
   }
 }
 
-inline py::array TensorToPyArray(const framework::Tensor &tensor,
+inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
                                  bool need_deep_copy = false) {
   if (!tensor.IsInitialized()) {
     return py::array();

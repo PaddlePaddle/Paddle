@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -65,7 +64,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
                 add_out1 = np.array(add_out[0])
                 mul_out = self.calc_mul_out(place, parallel)
                 add_out2 = np.array(add_out[0])
-                self.assertTrue(np.array_equal(add_out1, add_out2))
+                np.testing.assert_array_equal(add_out1, add_out2)
 
 
 class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
@@ -108,7 +107,7 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
                 add_out1 = np.array(add_out[0])
                 sub_out = self.calc_sub_out(place, parallel)
                 add_out2 = np.array(add_out[0])
-                self.assertTrue(np.array_equal(add_out1, add_out2))
+                np.testing.assert_array_equal(add_out1, add_out2)
 
 
 if __name__ == '__main__':

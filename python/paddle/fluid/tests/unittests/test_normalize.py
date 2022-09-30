@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.nn.functional as F
@@ -43,17 +41,17 @@ class TestNNFunctionalNormalize(unittest.TestCase):
     def run_imperative(self):
         x = paddle.to_tensor(self.input_np)
         y = F.normalize(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected0))
+        np.testing.assert_allclose(y.numpy(), self.expected0, rtol=1e-05)
 
         y = F.normalize(x, p=1.5)
-        self.assertTrue(np.allclose(y.numpy(), self.expected1))
+        np.testing.assert_allclose(y.numpy(), self.expected1, rtol=1e-05)
 
         y = F.normalize(x, axis=0)
-        self.assertTrue(np.allclose(y.numpy(), self.expected2))
+        np.testing.assert_allclose(y.numpy(), self.expected2, rtol=1e-05)
 
         x = paddle.to_tensor(self.input_np2)
         y = F.normalize(x, axis=0)
-        self.assertTrue(np.allclose(y.numpy(), self.expected3))
+        np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
 
         self.assertRaises(BaseException, F.normalize, x)
 
@@ -75,11 +73,11 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         },
                                 fetch_list=[result0, result1, result2, result4])
 
-        self.assertTrue(np.allclose(static_result[0], self.expected0))
-        self.assertTrue(np.allclose(static_result[1], self.expected1))
-        self.assertTrue(np.allclose(static_result[2], self.expected2))
+        np.testing.assert_allclose(static_result[0], self.expected0, rtol=1e-05)
+        np.testing.assert_allclose(static_result[1], self.expected1, rtol=1e-05)
+        np.testing.assert_allclose(static_result[2], self.expected2, rtol=1e-05)
         self.assertTrue('aaa' in result3.name)
-        self.assertTrue(np.allclose(static_result[3], self.expected3))
+        np.testing.assert_allclose(static_result[3], self.expected3, rtol=1e-05)
         self.assertRaises(ValueError, F.normalize, x2)
 
     def test_cpu(self):

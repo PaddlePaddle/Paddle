@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import itertools
 import numpy as np
@@ -28,6 +26,7 @@ class TestQrOp(OpTest):
 
     def setUp(self):
         paddle.enable_static()
+        self.python_api = paddle.linalg.qr
         np.random.seed(7)
         self.op_type = "qr"
         a, q, r = self.get_input_and_output()
@@ -72,10 +71,11 @@ class TestQrOp(OpTest):
         return a, q, r
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], ['Q', 'R'],
+                        check_eager=True,
                         numeric_grad_delta=1e-5,
                         max_relative_error=1e-6)
 
@@ -166,16 +166,16 @@ class TestQrAPI(unittest.TestCase):
                 x = paddle.to_tensor(a, dtype=dtype)
                 if mode == "r":
                     r = paddle.linalg.qr(x, mode=mode)
-                    self.assertTrue(np.allclose(r, np_r, atol=1e-5))
+                    np.testing.assert_allclose(r, np_r, rtol=1e-05, atol=1e-05)
                 else:
                     q, r = paddle.linalg.qr(x, mode=mode)
-                    self.assertTrue(np.allclose(q, np_q, atol=1e-5))
-                    self.assertTrue(np.allclose(r, np_r, atol=1e-5))
+                    np.testing.assert_allclose(q, np_q, rtol=1e-05, atol=1e-05)
+                    np.testing.assert_allclose(r, np_r, rtol=1e-05, atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors
@@ -237,23 +237,29 @@ class TestQrAPI(unittest.TestCase):
                         fetches = exe.run(fluid.default_main_program(),
                                           feed={"input": a},
                                           fetch_list=[r])
-                        self.assertTrue(np.allclose(fetches[0], np_r,
-                                                    atol=1e-5))
+                        np.testing.assert_allclose(fetches[0],
+                                                   np_r,
+                                                   rtol=1e-05,
+                                                   atol=1e-05)
                     else:
                         q, r = paddle.linalg.qr(x, mode=mode)
                         exe = fluid.Executor(place)
                         fetches = exe.run(fluid.default_main_program(),
                                           feed={"input": a},
                                           fetch_list=[q, r])
-                        self.assertTrue(np.allclose(fetches[0], np_q,
-                                                    atol=1e-5))
-                        self.assertTrue(np.allclose(fetches[1], np_r,
-                                                    atol=1e-5))
+                        np.testing.assert_allclose(fetches[0],
+                                                   np_q,
+                                                   rtol=1e-05,
+                                                   atol=1e-05)
+                        np.testing.assert_allclose(fetches[1],
+                                                   np_r,
+                                                   rtol=1e-05,
+                                                   atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors

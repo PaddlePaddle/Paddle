@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import unittest
 import time
@@ -316,31 +315,41 @@ class TestDistBase(unittest.TestCase):
             need_result = np.vstack((input1, input2))
             tr_out0 = np.vstack((tr0_out[0], tr0_out[1]))
             tr_out1 = np.vstack((tr1_out[0], tr1_out[1]))
-            self.assertTrue(np.allclose(tr_out0, need_result))
-            self.assertTrue(np.allclose(tr_out1, need_result))
+            np.testing.assert_allclose(tr_out0, need_result, rtol=1e-05)
+            np.testing.assert_allclose(tr_out1, need_result, rtol=1e-05)
         if col_type == "allgather_object":
             need_result = [input1, input2]
             self.assertEqual(need_result, tr0_out)
             self.assertEqual(need_result, tr1_out)
         elif col_type == "broadcast":
             need_result = input2
-            self.assertTrue(np.allclose(tr0_out, need_result))
-            self.assertTrue(np.allclose(tr1_out, need_result))
+            np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
         elif col_type == "reduce":
             need_result = input1 + input2
-            self.assertTrue(np.allclose(tr0_out, need_result))
+            np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
         elif col_type == "scatter":
             need_result = input2
             need_result1 = need_result[0:need_result.shape[0] // 2]
             need_result2 = need_result[need_result.shape[0] // 2:]
-            self.assertTrue(np.allclose(tr0_out, need_result1))
-            self.assertTrue(np.allclose(tr1_out, need_result2))
+            np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
+        elif col_type == "reduce_scatter":
+            need_result = input1 + input2
+            need_result1 = need_result[0:need_result.shape[0] // 2]
+            need_result2 = need_result[need_result.shape[0] // 2:]
+            np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
+            np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
         elif col_type == "allreduce":
             need_result = input1 + input2
-            self.assertTrue(
-                np.allclose(tr0_out, need_result, rtol=1e-05, atol=1e-05))
-            self.assertTrue(
-                np.allclose(tr1_out, need_result, rtol=1e-05, atol=1e-05))
+            np.testing.assert_allclose(tr0_out[0],
+                                       need_result,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(tr1_out[0],
+                                       need_result,
+                                       rtol=1e-05,
+                                       atol=1e-05)
         elif col_type == "parallel_embedding":
             result_data = tr0_out[0]
             np.random.seed(2020)
@@ -356,15 +365,19 @@ class TestDistBase(unittest.TestCase):
             np.random.seed(2020)
             weight = np.random.rand(1000, 16)
             need_result = np.matmul(input1, weight)
-            self.assertTrue(
-                np.allclose(result_data, need_result, rtol=1e-05, atol=1e-05))
+            np.testing.assert_allclose(result_data,
+                                       need_result,
+                                       rtol=1e-05,
+                                       atol=1e-05)
         elif col_type == "column_parallel_linear":
             result_data = tr0_out[0]
             np.random.seed(2020)
             weight = np.random.rand(1000, 16)
             need_result = np.matmul(input1, weight)
-            self.assertTrue(
-                np.allclose(result_data, need_result, rtol=1e-05, atol=1e-05))
+            np.testing.assert_allclose(result_data,
+                                       need_result,
+                                       rtol=1e-05,
+                                       atol=1e-05)
         elif col_type == "alltoall":
             need_result1 = np.vstack((input1[0:input1.shape[0] // 2, :],
                                       input2[0:input2.shape[0] // 2, :]))
@@ -372,14 +385,20 @@ class TestDistBase(unittest.TestCase):
                                       input2[input2.shape[0] // 2:, :]))
             tr0_out = np.vstack(tr0_out)
             tr1_out = np.vstack(tr1_out)
-            self.assertTrue(
-                np.allclose(tr0_out, need_result1, rtol=1e-05, atol=1e-05))
-            self.assertTrue(
-                np.allclose(tr1_out, need_result2, rtol=1e-05, atol=1e-05))
+            np.testing.assert_allclose(tr0_out,
+                                       need_result1,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(tr1_out,
+                                       need_result2,
+                                       rtol=1e-05,
+                                       atol=1e-05)
         elif col_type == "sendrecv":
             result_data = tr1_out[0]
-            self.assertTrue(
-                np.allclose(input1, result_data, rtol=1e-05, atol=1e-05))
+            np.testing.assert_allclose(input1,
+                                       result_data,
+                                       rtol=1e-05,
+                                       atol=1e-05)
         elif col_type == "global_gather":
             in_feat = 2
             n_expert = 2
@@ -470,21 +489,23 @@ class TestDistBase(unittest.TestCase):
             if tr1_out[0] is None or tr1_out[0].shape[0] == 0:
                 tr1_out[0] = np.array([])
 
-            self.assertTrue(
-                np.allclose(tr0_out[0], output1, rtol=1e-05, atol=1e-05))
-            self.assertTrue(
-                np.allclose(tr1_out[0], output2, rtol=1e-05, atol=1e-05))
+            np.testing.assert_allclose(tr0_out[0],
+                                       output1,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(tr1_out[0],
+                                       output2,
+                                       rtol=1e-05,
+                                       atol=1e-05)
             if static_mode == 0:
-                self.assertTrue(
-                    np.allclose(tr0_out[1],
-                                2 * local_input_buf1,
-                                rtol=1e-05,
-                                atol=1e-05))
-                self.assertTrue(
-                    np.allclose(tr1_out[1],
-                                2 * local_input_buf2,
-                                rtol=1e-05,
-                                atol=1e-05))
+                np.testing.assert_allclose(tr0_out[1],
+                                           2 * local_input_buf1,
+                                           rtol=1e-05,
+                                           atol=1e-05)
+                np.testing.assert_allclose(tr1_out[1],
+                                           2 * local_input_buf2,
+                                           rtol=1e-05,
+                                           atol=1e-05)
 
         elif col_type == "global_scatter":
             np.random.seed(pid0)
@@ -537,20 +558,22 @@ class TestDistBase(unittest.TestCase):
             if tr1_out[0] is None or tr1_out[0].shape[0] == 0:
                 tr1_out[0] = np.array([])
 
-            self.assertTrue(
-                np.allclose(tr0_out[0], output1, rtol=1e-05, atol=1e-05))
-            self.assertTrue(
-                np.allclose(tr1_out[0], output2, rtol=1e-05, atol=1e-05))
+            np.testing.assert_allclose(tr0_out[0],
+                                       output1,
+                                       rtol=1e-05,
+                                       atol=1e-05)
+            np.testing.assert_allclose(tr1_out[0],
+                                       output2,
+                                       rtol=1e-05,
+                                       atol=1e-05)
             if static_mode == 0:
-                self.assertTrue(
-                    np.allclose(tr0_out[1],
-                                2 * local_input_buf1,
-                                rtol=1e-05,
-                                atol=1e-05))
-                self.assertTrue(
-                    np.allclose(tr1_out[1],
-                                2 * local_input_buf2,
-                                rtol=1e-05,
-                                atol=1e-05))
+                np.testing.assert_allclose(tr0_out[1],
+                                           2 * local_input_buf1,
+                                           rtol=1e-05,
+                                           atol=1e-05)
+                np.testing.assert_allclose(tr1_out[1],
+                                           2 * local_input_buf2,
+                                           rtol=1e-05,
+                                           atol=1e-05)
         else:
             pass

@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy
+import numpy as np
 import collections
 from functools import reduce
 import paddle
@@ -40,8 +38,8 @@ class TestDygraphWeightNorm(unittest.TestCase):
         for desc in self.data_desc:
             data_name = desc[0]
             data_shape = desc[1]
-            data_value = numpy.random.random(size=[self.batch_size] +
-                                             data_shape).astype('float32')
+            data_value = np.random.random(size=[self.batch_size] +
+                                          data_shape).astype('float32')
             self.data[data_name] = data_value
 
     def norm_except_dim(self, w, dim=None):
@@ -49,21 +47,21 @@ class TestDygraphWeightNorm(unittest.TestCase):
         ndims = len(shape)
         shape_numel = reduce(lambda x, y: x * y, shape)
         if dim == -1:
-            return numpy.linalg.norm(w, axis=None, keepdims=True)
+            return np.linalg.norm(w, axis=None, keepdims=True).flatten()
         elif dim == 0:
             tile_shape = list(w.shape)
             tile_shape[0] = 1
-            w_matrix = numpy.reshape(w, (shape[0], shape_numel // shape[0]))
-            return numpy.linalg.norm(w_matrix, axis=1, keepdims=True)
+            w_matrix = np.reshape(w, (shape[0], shape_numel // shape[0]))
+            return np.linalg.norm(w_matrix, axis=1, keepdims=True)
         elif dim == (ndims - 1):
-            w_matrix = numpy.reshape(w, (shape_numel // shape[-1], shape[-1]))
-            return numpy.linalg.norm(w_matrix, axis=0, keepdims=True)
+            w_matrix = np.reshape(w, (shape_numel // shape[-1], shape[-1]))
+            return np.linalg.norm(w_matrix, axis=0, keepdims=True)
         else:
             perm = list(range(ndims))
             perm_ori = list(range(ndims))
             perm[0] = dim
             perm[dim] = 0
-            p_transposed = numpy.transpose(w, perm)
+            p_transposed = np.transpose(w, perm)
             return self.norm_except_dim(p_transposed, 0)
 
     def weight_normalize(self, w, dim=None):
@@ -75,41 +73,40 @@ class TestDygraphWeightNorm(unittest.TestCase):
         g_mul = g
 
         if dim == -1:
-            v_norm = v / (numpy.linalg.norm(v, axis=None, keepdims=True))
+            v_norm = v / (np.linalg.norm(v, axis=None, keepdims=True))
         elif dim == 0:
-            w_matrix = numpy.reshape(w, (shape[0], shape_numel // shape[0]))
-            v_norm = v / numpy.linalg.norm(w_matrix, axis=1)
-            v_norm = numpy.reshape(v_norm, shape)
-            g = numpy.squeeze(g, axis=1)
+            w_matrix = np.reshape(w, (shape[0], shape_numel // shape[0]))
+            v_norm = v / np.linalg.norm(w_matrix, axis=1)
+            v_norm = np.reshape(v_norm, shape)
+            g = np.squeeze(g, axis=1)
         elif dim == (ndims - 1):
-            w_matrix = numpy.reshape(w, (shape_numel // shape[-1], shape[-1]))
-            v_norm = v / numpy.linalg.norm(w_matrix, axis=0, keepdims=True)
-            v_norm = numpy.reshape(v_norm, shape)
+            w_matrix = np.reshape(w, (shape_numel // shape[-1], shape[-1]))
+            v_norm = v / np.linalg.norm(w_matrix, axis=0, keepdims=True)
+            v_norm = np.reshape(v_norm, shape)
         else:
             perm = list(range(ndims))
             perm[0] = dim
             perm[dim] = 0
-            p_transposed = numpy.transpose(v, perm)
+            p_transposed = np.transpose(v, perm)
             transposed_shape = p_transposed.shape
             transposed_shape_numel = reduce(lambda x, y: x * y,
                                             transposed_shape)
-            p_matrix = numpy.reshape(
+            p_matrix = np.reshape(
                 p_transposed, (p_transposed.shape[0],
                                transposed_shape_numel // p_transposed.shape[0]))
-            v_norm = v / numpy.expand_dims(numpy.expand_dims(
-                numpy.linalg.norm(p_matrix, axis=1, keepdims=True), axis=0),
-                                           axis=(ndims - 1))
-            v_norm = numpy.reshape(v_norm, transposed_shape)
-            v_norm = numpy.transpose(v_norm, perm)
-            g = numpy.squeeze(g, axis=1)
+            v_norm = v / np.expand_dims(np.expand_dims(
+                np.linalg.norm(p_matrix, axis=1, keepdims=True), axis=0),
+                                        axis=(ndims - 1))
+            v_norm = np.reshape(v_norm, transposed_shape)
+            v_norm = np.transpose(v_norm, perm)
+            g = np.squeeze(g, axis=1)
             if dim == 1:
                 eaxis = 2
             elif dim == 2:
                 eaxis = 1
-            g_mul = numpy.expand_dims(numpy.expand_dims(numpy.expand_dims(
-                g, axis=0),
-                                                        axis=eaxis),
-                                      axis=(ndims - 1))
+            g_mul = np.expand_dims(np.expand_dims(np.expand_dims(g, axis=0),
+                                                  axis=eaxis),
+                                   axis=(ndims - 1))
         w = g_mul * v_norm
         return g, v
 
@@ -133,8 +130,10 @@ class TestDygraphWeightNorm(unittest.TestCase):
         expect_output = self.weight_normalize(before_weight, self.dim)
 
         for expect, actual in zip(expect_output, self.actual_outputs):
-            self.assertTrue(
-                numpy.allclose(numpy.array(actual), expect, atol=0.001))
+            np.testing.assert_allclose(np.array(actual),
+                                       expect,
+                                       rtol=1e-05,
+                                       atol=0.001)
 
 
 class TestDygraphWeightNormCase1(TestDygraphWeightNorm):
@@ -186,10 +185,10 @@ class TestDygraphRemoveWeightNorm(unittest.TestCase):
         wn = weight_norm(linear, dim=self.dim)
         rwn = remove_weight_norm(linear)
         after_weight = linear.weight
-        self.assertTrue(
-            numpy.allclose(before_weight.numpy(),
-                           after_weight.numpy(),
-                           atol=0.001))
+        np.testing.assert_allclose(before_weight.numpy(),
+                                   after_weight.numpy(),
+                                   rtol=1e-05,
+                                   atol=0.001)
 
 
 if __name__ == '__main__':

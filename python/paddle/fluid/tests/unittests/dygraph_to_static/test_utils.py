@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import types
 import unittest
 
@@ -55,15 +53,6 @@ class StaticCode():
         m, n = z
         x = m
         y = n
-
-
-class TestSplitAssignTransformer(unittest.TestCase):
-
-    def test_code(self):
-        answer = get_source_code(StaticCode.dyfunc_assign)
-        program_translator = ProgramTranslator()
-        code = program_translator.get_code(dyfunc_assign)
-        self.assertEqual(answer, code)
 
 
 class TestIsPaddle(unittest.TestCase):

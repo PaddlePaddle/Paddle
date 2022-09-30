@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -288,7 +286,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             result = paddle.where(cond, a, b)
             result = result.numpy()
             expect = np.where(cond, a, b)
-            self.assertTrue(np.array_equal(expect, result))
+            np.testing.assert_array_equal(expect, result)
 
     def test_dygraph_api_broadcast_1(self):
         cond_shape = [2, 4]
@@ -351,7 +349,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
                               fetch_list=[z.name],
                               return_numpy=False)
         expect_out = np.array([[0, 0], [1, 1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res))
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[(-1)])
@@ -364,7 +362,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
                               fetch_list=[z.name],
                               return_numpy=False)
         expect_out = np.array([[0], [1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res))
 
 
 class TestWhereOpError(unittest.TestCase):

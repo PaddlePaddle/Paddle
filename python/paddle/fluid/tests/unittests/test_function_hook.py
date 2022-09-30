@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import numpy as np
 
 import paddle.fluid.core as core
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -50,8 +48,8 @@ class TestBakcwardFunctionHookError(unittest.TestCase):
         x = paddle.to_tensor(input_data.astype(np.float32), stop_gradient=False)
         z = paddle.to_tensor(input_data.astype(np.float32), stop_gradient=False)
 
-        y = _C_ops.sigmoid(x)
-        out = _C_ops.matmul_v2(y, z, 'trans_x', False, 'trans_y', False)
+        y = _legacy_C_ops.sigmoid(x)
+        out = _legacy_C_ops.matmul_v2(y, z, 'trans_x', False, 'trans_y', False)
 
         out._register_void_function_post_hook(test_hook)
         y._register_void_function_post_hook(test_hook)

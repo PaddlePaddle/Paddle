@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
 import unittest
 import paddle
 from paddle.fluid import core, framework
-from paddle.fluid.core import StandaloneExecutor
-import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
 import paddle.fluid.layers as layers
 
@@ -97,9 +93,9 @@ class TestCompatibility(unittest.TestCase):
         for x, y in zip(gt, res):
             if isinstance(x, list):
                 for tx, ty in zip(x, y):
-                    self.assertTrue(np.array_equal(tx, ty))
+                    np.testing.assert_array_equal(tx, ty)
             elif isinstance(x, np.ndarray):
-                self.assertTrue(np.array_equal(tx, ty))
+                np.testing.assert_array_equal(tx, ty)
             else:
                 raise Exception("Not Implement!")
 

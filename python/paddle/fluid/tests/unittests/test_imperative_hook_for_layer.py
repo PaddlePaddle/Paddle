@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import contextlib
 import unittest
 import numpy as np
@@ -95,29 +93,27 @@ class Test_Forward_Hook(unittest.TestCase):
                 forward_pre_hook_handle1 = simplenet.register_forward_pre_hook(
                     forward_pre_hook1)
                 outs_pre_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_pre_hook.numpy(), outs_origin1.numpy()))
+                np.testing.assert_array_equal(outs_pre_hook.numpy(),
+                                              outs_origin1.numpy())
 
                 # remove forward_pre_hook
                 forward_pre_hook_handle1.remove()
                 outs_pre_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_pre_hook.numpy(), outs_origin.numpy()))
+                np.testing.assert_array_equal(outs_pre_hook.numpy(),
+                                              outs_origin.numpy())
 
                 # register forward_posst_hook
                 forward_post_hook_handle1 = simplenet.register_forward_post_hook(
                     forward_post_hook1)
                 outs_forward_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_forward_hook.numpy(),
-                                   outs_origin.numpy() * 2))
+                np.testing.assert_array_equal(outs_forward_hook.numpy(),
+                                              outs_origin.numpy() * 2)
 
                 # remove forward_post_hook
                 forward_post_hook_handle1.remove()
                 outs_forward_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_forward_hook.numpy(),
-                                   outs_origin.numpy()))
+                np.testing.assert_array_equal(outs_forward_hook.numpy(),
+                                              outs_origin.numpy())
 
     # test forward_pre_hook and forward_post_hook that don't have return value
     def func_forward_hook(self):

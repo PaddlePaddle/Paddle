@@ -20,14 +20,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 class GenerateProposalsOp : public framework::OperatorWithKernel {
@@ -77,17 +77,18 @@ template <typename T>
 class GenerateProposalsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *scores = context.Input<Tensor>("Scores");
-    auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
-    auto *im_info = context.Input<Tensor>("ImInfo");
-    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"),
+    auto *scores = context.Input<phi::DenseTensor>("Scores");
+    auto *bbox_deltas = context.Input<phi::DenseTensor>("BboxDeltas");
+    auto *im_info = context.Input<phi::DenseTensor>("ImInfo");
+    auto anchors = GET_DATA_SAFELY(context.Input<phi::DenseTensor>("Anchors"),
                                    "Input",
                                    "Anchors",
                                    "GenerateProposals");
-    auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
-                                     "Input",
-                                     "Variances",
-                                     "GenerateProposals");
+    auto variances =
+        GET_DATA_SAFELY(context.Input<phi::DenseTensor>("Variances"),
+                        "Input",
+                        "Variances",
+                        "GenerateProposals");
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
@@ -165,7 +166,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       tmp_num.push_back(proposals.dims()[0]);
     }
     if (context.HasOutput("RpnRoisNum")) {
-      auto *rpn_rois_num = context.Output<Tensor>("RpnRoisNum");
+      auto *rpn_rois_num = context.Output<phi::DenseTensor>("RpnRoisNum");
       rpn_rois_num->mutable_data<int>({num}, context.GetPlace());
       int *num_data = rpn_rois_num->data<int>();
       for (int i = 0; i < num; i++) {
@@ -251,7 +252,8 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       return std::make_pair(bbox_sel, scores_filter);
     }
 
-    Tensor keep_nms = NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
+    Tensor keep_nms =
+        phi::funcs::NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta);
 
     if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
       keep_nms.Resize({post_nms_top_n});

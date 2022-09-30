@@ -3,6 +3,7 @@ list(
   APPEND
   CONVERT_FILES
   matmul_op.cc
+  matmul_v2_op.cc
   conv2d_op.cc
   fc_op.cc
   pool2d_op.cc
@@ -23,12 +24,12 @@ list(
   multihead_matmul_op.cc
   shuffle_channel_op.cc
   swish_op.cc
+  silu_op.cc
   instance_norm_op.cc
   stack_op.cc
   transpose_op.cc
   flatten_op.cc
   flatten_contiguous_range_op.cc
-  emb_eltwise_layernorm.cc
   skip_layernorm.cc
   scale_op.cc
   slice_op.cc
@@ -55,7 +56,6 @@ list(
   bilinear_interp_v2_op.cc
   pool3d_op.cc
   deformable_conv_op.cc
-  preln_emb_eltwise_layernorm.cc
   strided_slice_op.cc
   preln_skip_layernorm.cc
   roll_op.cc
@@ -69,10 +69,19 @@ list(
   top_k_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc
+  rnn_op.cc
+  fill_constant_batch_size_like_op.cc
   sum_op.cc
   shape_op.cc
   fill_constant_op.cc
-  fused_token_prune_op.cc)
+  fused_token_prune_op.cc
+  layernorm_shift_partition_op.cc
+  generic_and_custom_plugin_creater.cc)
+
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+  list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
+       preln_emb_eltwise_layernorm.cc)
+endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
@@ -81,7 +90,12 @@ endif()
 nv_library(
   tensorrt_converter
   SRCS ${CONVERT_FILES}
-  DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto
+  DEPS tensorrt_engine
+       tensorrt_plugin
+       operator
+       scope
+       framework_proto
+       tensorrt_op_teller
        op_registry)
 
 nv_test(
@@ -89,6 +103,11 @@ nv_test(
   SRCS test_op_converter.cc
   DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine
        tensorrt_converter)
+
+nv_test(
+  test_custom_plugin_creater
+  SRCS test_custom_plugin_creater.cc
+  DEPS paddle_framework tensorrt_converter op_meta_info custom_operator)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

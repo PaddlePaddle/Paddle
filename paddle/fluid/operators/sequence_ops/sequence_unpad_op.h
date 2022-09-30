@@ -36,9 +36,10 @@ class SequenceUnpadOpKernel : public framework::OpKernel<T> {
     auto* out_t = ctx.Output<LoDTensor>("Out");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    framework::Tensor seq_len_cpu =
+    phi::DenseTensor seq_len_cpu =
         ctx.AllocateTmpTensor<T, DeviceContext>(len_t->dims(), dev_ctx);
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (platform::is_gpu_place(ctx.GetPlace()) ||
+        platform::is_xpu_place(ctx.GetPlace())) {
       seq_len_cpu.mutable_data<int64_t>(platform::CPUPlace());
       framework::TensorCopySync(*len_t, platform::CPUPlace(), &seq_len_cpu);
     } else {

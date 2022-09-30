@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -108,7 +106,7 @@ class TestInplaceAddto(unittest.TestCase):
         res1, w1 = run_program(True)
         res2, w2 = run_program(False)
 
-        self.assertTrue(np.array_equal(res1, res2))
+        np.testing.assert_array_equal(res1, res2)
 
     def test_nchw(self):
         self.check_result()

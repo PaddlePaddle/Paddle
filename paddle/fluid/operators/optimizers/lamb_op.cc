@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,11 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/lamb_op.h"
-
 #include <string>
-
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/kernels/lamb_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -24,125 +28,6 @@ namespace operators {
 class LambOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(Param) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(Grad) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Moment1"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(Moment1) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Moment2"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(Moment2) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(LearningRate) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Beta1Pow"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(Beta1Pow) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Beta2Pow"),
-                      true,
-                      platform::errors::NotFound(
-                          "Input(Beta2Pow) of LambOp should not be null."));
-
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"),
-                      true,
-                      platform::errors::NotFound(
-                          "Output(ParamOut) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment1Out"),
-                      true,
-                      platform::errors::NotFound(
-                          "Output(Moment1Out) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment2Out"),
-                      true,
-                      platform::errors::NotFound(
-                          "Output(Moment2Out) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Beta1PowOut"),
-                      true,
-                      platform::errors::NotFound(
-                          "Output(Beta1PowOut) of LambOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Beta2PowOut"),
-                      true,
-                      platform::errors::NotFound(
-                          "Output(Beta2PowOut) of LambOp should not be null."));
-
-    auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(
-        phi::product(lr_dims),
-        0,
-        platform::errors::InvalidArgument(
-            "The number of LearningRate shall not be 0, but received %d. Maybe "
-            "the Input variable LearningRate has not "
-            "been initialized. You may need to confirm "
-            "if you put exe.run(startup_program) "
-            "after optimizer.minimize function.",
-            phi::product(lr_dims)));
-    PADDLE_ENFORCE_EQ(
-        phi::product(lr_dims),
-        1,
-        platform::errors::InvalidArgument(
-            "Learning rate should have 1 dimension, but received %d.",
-            phi::product(lr_dims)));
-    auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
-    PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims),
-                      1,
-                      platform::errors::InvalidArgument(
-                          "The size of Beta1 power accumulator should be "
-                          "greater than 0, but received %d.",
-                          phi::product(beta1_pow_dims)));
-    auto beta2_pow_dims = ctx->GetInputDim("Beta2Pow");
-    PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims),
-                      1,
-                      platform::errors::InvalidArgument(
-                          "The size of Beta2 power accumulator should be "
-                          "greater than 0, but received %d.",
-                          phi::product(beta2_pow_dims)));
-
-    auto param_dims = ctx->GetInputDim("Param");
-    if (ctx->GetInputsVarType("Grad")[0] ==
-        framework::proto::VarType::LOD_TENSOR) {
-      PADDLE_ENFORCE_EQ(
-          param_dims,
-          ctx->GetInputDim("Grad"),
-          platform::errors::InvalidArgument(
-              "Param and Grad input of LambOp should have same dimension. But "
-              "received Param dims: [%s], Grad dims: [%s].",
-              param_dims,
-              ctx->GetInputDim("Grad")));
-    }
-    PADDLE_ENFORCE_EQ(
-        param_dims,
-        ctx->GetInputDim("Moment1"),
-        platform::errors::InvalidArgument(
-            "Param and Moment1 input of LambOp should have same dimension. But "
-            "received Param dims: [%s], Moment1 dims: [%s].",
-            param_dims,
-            ctx->GetInputDim("Moment1")));
-    PADDLE_ENFORCE_EQ(
-        param_dims,
-        ctx->GetInputDim("Moment2"),
-        platform::errors::InvalidArgument(
-            "Param and Moment2 input of LambOp should have same dimension. But "
-            "received Param dims: [%s], Moment2 dims: [%s].",
-            param_dims,
-            ctx->GetInputDim("Moment2")));
-
-    ctx->SetOutputDim("ParamOut", param_dims);
-    ctx->SetOutputDim("Moment1Out", param_dims);
-    ctx->SetOutputDim("Moment2Out", param_dims);
-    ctx->SetOutputDim("Beta1PowOut", beta1_pow_dims);
-    ctx->SetOutputDim("Beta2PowOut", beta2_pow_dims);
-  }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const {
@@ -152,7 +37,7 @@ class LambOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
       return expected_kernel_type;
@@ -216,8 +101,8 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
-LAMB Optimizer is designed to scale up the batch size of training without losing 
-accuracy, which supports adaptive element-wise updating and accurate layer-wise 
+LAMB Optimizer is designed to scale up the batch size of training without losing
+accuracy, which supports adaptive element-wise updating and accurate layer-wise
 correction. For more information, please refer to https://arxiv.org/abs/1904.00962.
 
 The updating of parameters follows:
@@ -236,7 +121,7 @@ r_t &= \frac{m_t}{\sqrt{v_t}+\epsilon} \\
 w_t &= w_{t-1} -\eta_t \frac{\left \| w_{t-1}\right \|}{\left \| r_t + \lambda w_{t-1}\right \|} (r_t + \lambda w_{t-1})
 $$
 
-where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the 
+where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the
 learning rate, $\lambda$ the weight decay rate.
 )DOC");
   }
@@ -246,10 +131,16 @@ learning rate, $\lambda$ the weight decay rate.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(lamb, ops::LambOp, ops::LambOpMaker);
-REGISTER_OP_CPU_KERNEL(lamb,
-                       ops::LambOpKernel<phi::CPUContext, float>,
-                       ops::LambOpKernel<phi::CPUContext, double>);
+DECLARE_INFER_SHAPE_FUNCTOR(lamb,
+                            LambInferMetaFunctor,
+                            PD_INFER_META(phi::LambInferMeta));
+REGISTER_OPERATOR(
+    lamb,
+    ops::LambOp,
+    ops::LambOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    LambInferMetaFunctor);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(lamb).AddCheckpoint(

@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 namespace plat = paddle::platform;
 
 #define FINAL_MASK 0xffffffff
@@ -173,7 +171,6 @@ void LaunchFusedSoftmaxMaskKernel(const T* src,
   dim3 block(warp_size, warps_per_block);
   dim3 grid(DIV_UP(seq_len, warps_per_block), batch_size, head_num);
 
-  // clang-format off
   int elements = ElementsCeil(seq_len);
   switch (elements) {
     case 1: {  // <=32
@@ -193,17 +190,16 @@ void LaunchFusedSoftmaxMaskKernel(const T* src,
       SELECT_SOFTMAX_MASK_KERNEL(4);
       break;
     }
-    CASE_SOFTMAX_MASK_KERNEL(8);    // <=256
-    CASE_SOFTMAX_MASK_KERNEL(16);   // <=512
-    CASE_SOFTMAX_MASK_KERNEL(32);   // <=1024
-    CASE_SOFTMAX_MASK_KERNEL(64);   // <=2048
-    CASE_SOFTMAX_MASK_KERNEL(128);  // <=4096
+      CASE_SOFTMAX_MASK_KERNEL(8);    // <=256
+      CASE_SOFTMAX_MASK_KERNEL(16);   // <=512
+      CASE_SOFTMAX_MASK_KERNEL(32);   // <=1024
+      CASE_SOFTMAX_MASK_KERNEL(64);   // <=2048
+      CASE_SOFTMAX_MASK_KERNEL(128);  // <=4096
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "seq_len must be between (0, 4096], received the seq_len is %d",
           seq_len));
   }
-  // clang-format on
 }
 
 }  // namespace operators

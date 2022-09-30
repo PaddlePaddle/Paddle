@@ -113,12 +113,13 @@ bool AllowTF32Cudnn();
 enum DeviceType {
   CPU = 0,
   CUDA = 1,
-  XPU = 2,
-  NPU = 3,
+  NPU = 2,
+  XPU = 3,
   IPU = 4,
   MLU = 5,
+  CUSTOM_DEVICE = 6,
 
-  MAX_DEVICE_TYPES = 6,
+  MAX_DEVICE_TYPES = 7,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -129,6 +130,7 @@ constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
+constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
 
 using DeviceContext = phi::DeviceContext;
 
@@ -268,58 +270,6 @@ struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-class CudnnWorkspaceHandle;
-class EigenCudaStreamDevice;
-
-class CudnnWorkspaceHandle {
- public:
-  inline CudnnWorkspaceHandle(const phi::GPUContext& dev_ctx, std::mutex* mtx)
-      : device_context_(dev_ctx), mtx_(mtx) {}
-
-  template <typename Callback>
-  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_bytes) {
-    if (required_workspace_bytes > WorkspaceSize()) {
-      ReallocWorkspace(required_workspace_bytes);
-    }
-    VLOG(2) << "Cudnn workspace size at RunFunc: "
-            << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
-    {
-      std::lock_guard<std::mutex> guard(*mtx_);
-      cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
-    }
-  }
-
-  /*! \brief Thread which call RunFuncSync() would release gpu memory after
-   *  running the function. Currently this function is only used when cudnn
-   *  exhaustive searching and callers have to guarantee that the input function
-   *  is host blocking */
-  template <typename Callback>
-  inline void RunFuncSync(Callback&& cudnn_func,
-                          size_t required_workspace_bytes) {
-    RunFunc(cudnn_func, required_workspace_bytes);
-    ResetWorkspace();
-  }
-
-  void ReallocWorkspace(size_t required_workspace_bytes);
-
-  inline void ResetWorkspace() { allocation_ = nullptr; }
-
-  inline size_t WorkspaceSize() {
-    if (allocation_ == nullptr) {
-      return 0;
-    }
-    return allocation_->size();
-  }
-
-  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
-  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
-
- private:
-  memory::allocation::AllocationPtr allocation_;
-  const phi::GPUContext& device_context_;
-  std::mutex* mtx_;
-};
-
 template <>
 struct DefaultDeviceContextType<platform::CUDAPlace> {
   using TYPE = phi::GPUContext;
@@ -389,24 +339,14 @@ void EmplaceDeviceContexts(
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  static DeviceContextPool& Instance() {
-    PADDLE_ENFORCE_NOT_NULL(pool,
-                            platform::errors::PreconditionNotMet(
-                                "Need to Create DeviceContextPool firstly!"));
-    return *pool;
-  }
+  static DeviceContextPool& Instance();
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
-    if (pool == nullptr) {
-      pool = new DeviceContextPool(places);
-    }
-    return *pool;
-  }
+  static DeviceContextPool& Init(const std::vector<platform::Place>& places);
 
-  static bool IsInitialized() { return pool != nullptr; }
+  static bool IsInitialized();
 
-  static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
+  static void SetPool(DeviceContextPool* dev_pool);
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
@@ -430,7 +370,6 @@ class DeviceContextPool {
  private:
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
-  static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
   static thread_local const std::

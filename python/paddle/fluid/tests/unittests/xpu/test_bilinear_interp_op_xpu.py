@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import unittest
 import numpy as np
@@ -512,7 +510,7 @@ class TestBilinearInterpOpAPI(unittest.TestCase):
         expect_res = bilinear_interp_np(
             x_data, out_h=12, out_w=12, align_corners=True)
         for res in results:
-            self.assertTrue(np.allclose(res, expect_res))
+            np.testing.assert_allclose(res, expect_res)
 '''
 
 if __name__ == "__main__":

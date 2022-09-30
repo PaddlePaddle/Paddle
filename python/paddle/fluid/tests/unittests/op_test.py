@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import sys
 import unittest
@@ -153,7 +151,7 @@ def get_numeric_gradient(place,
     elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX64:
         tensor_to_check_dtype = np.complex64
     elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX128:
-        tensor_tp_check_dtype = np.complex128
+        tensor_to_check_dtype = np.complex128
     else:
         raise ValueError("Not supported data type " +
                          str(tensor_to_check_dtype) + ", tensor name : " +
@@ -728,11 +726,14 @@ class OpTest(unittest.TestCase):
         for name in api_outs:
             np_api = np.array(api_outs[name])
             np_dyg = np.array(dygraph_outs[name])
-            self.assertTrue(
-                np.allclose(np_api, np_dyg, equal_nan=False),
-                "Output (" + name + ") has diff at " + str(place) +
-                "\nExpect " + str(np_dyg) + "\n" + "But Got" + str(np_api) +
-                " in class " + self.__class__.__name__)
+            np.testing.assert_allclose(
+                np_api,
+                np_dyg,
+                rtol=1e-05,
+                equal_nan=False,
+                err_msg='Output (' + name + ') has diff at ' + str(place) +
+                '\nExpect ' + str(np_dyg) + '\n' + 'But Got' + str(np_api) +
+                ' in class ' + self.__class__.__name__)
 
     def _calc_python_api_output(self, place, egr_inps=None, egr_oups=None):
         """ set egr_inps and egr_oups = None if you want to create it by yourself.
@@ -741,7 +742,7 @@ class OpTest(unittest.TestCase):
         def prepare_python_api_arguments(api, op_proto_ins, op_proto_attrs,
                                          kernel_sig):
             """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
-                
+
                 NOTE: the op_proto_attrs and op_proto_ins is a default dict. default value is []
             """
 
@@ -913,7 +914,7 @@ class OpTest(unittest.TestCase):
             args = prepare_python_api_arguments(self.python_api,
                                                 eager_tensor_inputs,
                                                 attrs_outputs, kernel_sig)
-            """ we directly return the cal_python_api value because the value is already tensor. 
+            """ we directly return the cal_python_api value because the value is already tensor.
             """
             return cal_python_api(self.python_api, args, kernel_sig)
 
@@ -1041,19 +1042,23 @@ class OpTest(unittest.TestCase):
             expect_out = np.array(expect_outs[i])
             actual_out = np.array(actual_outs[i])
             if inplace_atol is not None:
-                self.assertTrue(
-                    np.allclose(expect_out, actual_out, atol=inplace_atol),
-                    "Output (" + name + ") has diff at " + str(place) +
-                    " when using and not using inplace" + "\nExpect " +
-                    str(expect_out) + "\n" + "But Got" + str(actual_out) +
-                    " in class " + self.__class__.__name__)
+                np.testing.assert_allclose(
+                    expect_out,
+                    actual_out,
+                    rtol=1e-05,
+                    atol=inplace_atol,
+                    err_msg='Output (' + name + ') has diff at ' + str(place) +
+                    ' when using and not using inplace' + '\nExpect ' +
+                    str(expect_out) + '\n' + 'But Got' + str(actual_out) +
+                    ' in class ' + self.__class__.__name__)
             else:
-                self.assertTrue(
-                    np.array_equal(expect_out, actual_out),
-                    "Output (" + name + ") has diff at " + str(place) +
-                    " when using and not using inplace" + "\nExpect " +
-                    str(expect_out) + "\n" + "But Got" + str(actual_out) +
-                    " in class " + self.__class__.__name__ + '\n')
+                np.testing.assert_array_equal(
+                    expect_out,
+                    actual_out,
+                    err_msg='Output (' + name + ') has diff at ' + str(place) +
+                    ' when using and not using inplace' + '\nExpect ' +
+                    str(expect_out) + '\n' + 'But Got' + str(actual_out) +
+                    ' in class ' + self.__class__.__name__ + '\n')
 
     def _construct_grad_program_from_forward(self, fwd_program, grad_op_desc,
                                              op_grad_to_var):

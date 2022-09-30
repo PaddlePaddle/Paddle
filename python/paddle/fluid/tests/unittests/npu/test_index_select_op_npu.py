@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -133,7 +131,7 @@ class TestNPUIndexSelectAPI(unittest.TestCase):
                            return_numpy=False)
         expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
                                [9.0, 10.0, 10.0]]).astype('float32')
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res))
 
         # case 2:
         with program_guard(Program(), Program()):
@@ -149,7 +147,7 @@ class TestNPUIndexSelectAPI(unittest.TestCase):
                            return_numpy=False)
         expect_out = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
                                [5.0, 6.0, 7.0, 8.0]]).astype('float32')
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res))
 
     def test_dygraph_index_select_api(self):
         paddle.set_device("npu:0")
@@ -163,7 +161,7 @@ class TestNPUIndexSelectAPI(unittest.TestCase):
         np_z = z.numpy()
         expect_out = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
                                [5.0, 6.0, 7.0, 8.0]]).astype('float32')
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z)
 
         # case 2:
         x = paddle.to_tensor(self.data_x)
@@ -172,7 +170,7 @@ class TestNPUIndexSelectAPI(unittest.TestCase):
         np_z = z.numpy()
         expect_out = np.array([[1.0, 2.0, 2.0], [5.0, 6.0, 6.0],
                                [9.0, 10.0, 10.0]]).astype('float32')
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z)
 
 
 if __name__ == '__main__':

@@ -14,10 +14,12 @@ set(STANDALONE_EXECUTOR_SRCS
 set(STANDALONE_EXECUTOR_DEPS
     dependency_builder
     device_context
+    execution_config
     op_registry
     scope
     framework_proto
     data_feed_proto
+    ops_extra_info
     heter_service_proto
     trainer_desc_proto
     glog
@@ -39,14 +41,9 @@ set(STANDALONE_EXECUTOR_DEPS
     scope
     glog
     workqueue
-    interpretercore_event_garbage_collector
+    interpretercore_garbage_collector
     ${DEVICE_EVENT_LIBS}
     glog)
-
-if(WITH_GPU OR WITH_ROCM)
-  set(STANDALONE_EXECUTOR_DEPS ${STANDALONE_EXECUTOR_DEPS}
-                               interpretercore_fast_garbage_collector)
-endif()
 
 cc_library(
   standalone_executor
@@ -64,8 +61,9 @@ if(WITH_GPU
    AND NOT WIN32)
   add_custom_target(
     download_program
-    COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
-    COMMAND wget -nc
+    COMMAND wget -nc --no-check-certificate
+            https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
+    COMMAND wget -nc --no-check-certificate
             https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program)
 
   # all operators used in the program

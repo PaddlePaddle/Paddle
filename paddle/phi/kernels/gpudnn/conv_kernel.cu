@@ -213,7 +213,9 @@ void ConvCudnnKernel(const Context& ctx,
                                    strides,
                                    padding_common,
                                    dilations,
-                                   dtype};
+                                   dtype,
+                                   groups,
+                                   compute_format};
 
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -314,7 +316,7 @@ void ConvCudnnKernel(const Context& ctx,
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
   fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-  workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
+  workspace_size = fwd_result.workspace_size;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)

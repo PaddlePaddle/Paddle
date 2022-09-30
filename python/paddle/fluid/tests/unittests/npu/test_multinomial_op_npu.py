@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -77,9 +75,7 @@ class TestMultinomialOp(OpTest):
         # normalize the input to get the probability
         prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
         sample_prob = self.sample_output(np.array(outs[0]))
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob, prob, rtol=0, atol=0.01)
 
 
 class TestMultinomialOp2(TestMultinomialOp):
@@ -122,9 +118,7 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_one_dimension(out.numpy(), 4)
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob, prob, rtol=0, atol=0.01)
         paddle.enable_static()
 
     def test_dygraph2(self):
@@ -137,9 +131,7 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_two_dimension(out.numpy(), [3, 4])
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob, prob, rtol=0, atol=0.01)
         paddle.enable_static()
 
     def test_dygraph3(self):
@@ -182,9 +174,7 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_one_dimension(out, 4)
         prob = x_np / x_np.sum(axis=-1, keepdims=True)
-        self.assertTrue(
-            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
-            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+        np.testing.assert_allclose(sample_prob, prob, rtol=0, atol=0.01)
 
 
 class TestMultinomialAlias(unittest.TestCase):

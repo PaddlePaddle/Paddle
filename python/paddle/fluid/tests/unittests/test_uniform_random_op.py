@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import os
 import subprocess
@@ -27,6 +25,8 @@ from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
+
+from test_attribute_var import UnittestBase
 
 
 def output_hist(out):
@@ -73,8 +73,7 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestMaxMinAreInt(TestUniformRandomOp_attr_tensorlist):
@@ -107,8 +106,7 @@ class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOp_attr_tensor(OpTest):
@@ -129,8 +127,7 @@ class TestUniformRandomOp_attr_tensor(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOp_attr_tensor_int32(OpTest):
@@ -151,8 +148,7 @@ class TestUniformRandomOp_attr_tensor_int32(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOp(OpTest):
@@ -178,10 +174,9 @@ class TestUniformRandomOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
-    def test_check_api(self):
+    def func_test_check_api(self):
         places = self._get_places()
         for place in places:
             with fluid.dygraph.base.guard(place=place):
@@ -191,7 +186,8 @@ class TestUniformRandomOp(OpTest):
 
     def test_check_api_eager(self):
         with _test_eager_guard():
-            self.test_check_api()
+            self.func_test_check_api()
+        self.func_test_check_api()
 
 
 class TestUniformRandomOpError(unittest.TestCase):
@@ -269,8 +265,7 @@ class TestUniformRandomOpSelectedRows(unittest.TestCase):
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOpSelectedRowsWithDiagInit(
@@ -292,8 +287,7 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [500, 784])
         hist, prob = output_hist_diag(np.array(out.get_tensor()))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOpApi(unittest.TestCase):
@@ -429,8 +423,7 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
@@ -462,8 +455,7 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomDygraphMode(unittest.TestCase):
@@ -593,8 +585,17 @@ class TestUniformDtype(unittest.TestCase):
             out = paddle.tensor.random.uniform([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
+        def test_dygraph_fp16():
+            if not paddle.is_compiled_with_cuda():
+                paddle.enable_static()
+                return
+            paddle.set_device('gpu')
+            out = paddle.uniform([2, 3], dtype=paddle.float16)
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
+
         test_default_fp64()
         test_default_fp32()
+        test_dygraph_fp16()
 
         paddle.enable_static()
 
@@ -625,7 +626,9 @@ class TestRandomValue(unittest.TestCase):
         out = paddle.rand([32, 3, 1024, 1024], dtype='float64').numpy()
         self.assertEqual(np.mean(out), expect_mean)
         self.assertEqual(np.std(out), expect_std)
-        self.assertTrue(np.allclose(out[2, 1, 512, 1000:1010], expect))
+        np.testing.assert_allclose(out[2, 1, 512, 1000:1010],
+                                   expect,
+                                   rtol=1e-05)
 
         expect_mean = 0.50002604722976684570312500
         expect_std = 0.2886914908885955810546875
@@ -636,7 +639,9 @@ class TestRandomValue(unittest.TestCase):
         out = paddle.rand([32, 3, 1024, 1024], dtype='float32').numpy()
         self.assertEqual(np.mean(out), expect_mean)
         self.assertEqual(np.std(out), expect_std)
-        self.assertTrue(np.allclose(out[2, 1, 512, 1000:1010], expect))
+        np.testing.assert_allclose(out[2, 1, 512, 1000:1010],
+                                   expect,
+                                   rtol=1e-05)
 
         expect_mean = 25.11843109130859375
         expect_std = 43.370647430419921875
@@ -648,9 +653,53 @@ class TestRandomValue(unittest.TestCase):
                            dtype='float32').uniform_(-50, 100).numpy()
         self.assertEqual(np.mean(out), expect_mean)
         self.assertEqual(np.std(out), expect_std)
-        self.assertTrue(np.allclose(out[10, 10, 10, 0:10], expect))
+        np.testing.assert_allclose(out[10, 10, 10, 0:10], expect, rtol=1e-05)
 
         paddle.enable_static()
+
+
+class TestUniformMinMaxTensor(UnittestBase):
+
+    def init_info(self):
+        self.shapes = [[2, 3, 4]]
+        self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
+
+    def test_static(self):
+        main_prog = Program()
+        starup_prog = Program()
+        with program_guard(main_prog, starup_prog):
+            fc = paddle.nn.Linear(4, 10)
+            x = paddle.randn([2, 3, 4])
+            x.stop_gradient = False
+            feat = fc(x)  # [2,3,10]
+            min_v = paddle.to_tensor([0.1])
+            max_v = paddle.to_tensor([0.9])
+            y = paddle.uniform([2, 3, 10], min=min_v, max=max_v)
+            z = paddle.fluid.layers.uniform_random([2, 3, 10],
+                                                   min=min_v,
+                                                   max=max_v)
+
+            out = feat + y + z
+
+            sgd = paddle.optimizer.SGD()
+            sgd.minimize(paddle.mean(out))
+            self.assertTrue(self.var_prefix() in str(main_prog))
+
+            exe = paddle.static.Executor()
+            exe.run(starup_prog)
+            res = exe.run(fetch_list=[out])
+            np.testing.assert_array_equal(res[0].shape, [2, 3, 10])
+
+            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
+            # Test for Inference Predictor
+            infer_out = self.infer_prog()
+            np.testing.assert_array_equal(res[0].shape, [2, 3, 10])
+
+    def path_prefix(self):
+        return 'uniform_random'
+
+    def var_prefix(self):
+        return "Var["
 
 
 if __name__ == "__main__":

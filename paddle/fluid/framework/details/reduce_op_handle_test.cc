@@ -69,7 +69,7 @@ struct TestReduceOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CUDAPlace(i);
         gpu_list_.push_back(p);
-        ctxs_.emplace_back(new p::phi::GPUContext(p));
+        ctxs_.emplace_back(new phi::GPUContext(p));
       }
       nccl_ctxs_.reset(new platform::NCCLContextMap(gpu_list_));
 #else
@@ -228,7 +228,7 @@ struct TestReduceOpHandle {
               out_select_rows.rows()[k]));
     }
 
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 
@@ -279,7 +279,7 @@ struct TestReduceOpHandle {
 
     auto &rt = out_var->Get<f::LoDTensor>();
 
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 

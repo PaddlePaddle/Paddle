@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from io import BytesIO
@@ -120,7 +118,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                         var.name).get_tensor())
                     base_t = base_map[var.name]
 
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
             # test for io.save_vars/replace_load_vars
             path_vars2 = os.path.join(
                 self.temp_dir.name,
@@ -137,7 +135,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
                         var.name).get_tensor())
                     base_t = base_map[var.name]
 
-                    self.assertTrue(np.array_equal(new_t, base_t))
+                    np.testing.assert_array_equal(new_t, base_t)
 
     def test_save_load_lod_tensor(self):
         paddle.enable_static()
@@ -177,7 +175,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
             self.assertTrue(
                 list(loaded_tensor.shape()) == [IMAGE_SIZE, OUTPUT_NUM])
             to_array = np.array(loaded_tensor)
-            self.assertTrue(np.array_equal(origin, to_array))
+            np.testing.assert_array_equal(origin, to_array)
 
         with self.assertRaises(NotImplementedError):
             path = os.path.join(self.temp_dir.name, 'test_save_load_error/temp')
@@ -216,7 +214,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         # load from memory
         loaded_tensor_mem = paddle.load(byio)
         to_array_mem = np.array(loaded_tensor_mem)
-        self.assertTrue(np.array_equal(np.array(tensor), to_array_mem))
+        np.testing.assert_array_equal(np.array(tensor), to_array_mem)
 
         with self.assertRaises(NotImplementedError):
             paddle.framework.io._save_lod_tensor(tensor, 1)
@@ -247,8 +245,7 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         self.assertTrue(isinstance(load_sr, fluid.core.SelectedRows))
         self.assertTrue(list(load_sr.rows()) == rows)
         self.assertTrue(load_sr.height() == height)
-        self.assertTrue(np.array_equal(np.array(load_sr.get_tensor()),
-                                       np_array))
+        np.testing.assert_array_equal(np.array(load_sr.get_tensor()), np_array)
 
         with self.assertRaises(RuntimeError):
             fluid.core.save_selected_rows(
@@ -273,8 +270,8 @@ class TestSaveLoadBinaryFormat(unittest.TestCase):
         self.assertTrue(isinstance(selected_rows_mem, fluid.core.SelectedRows))
         self.assertTrue(list(selected_rows_mem.rows()) == rows)
         self.assertTrue(selected_rows_mem.height() == height)
-        self.assertTrue(
-            np.array_equal(np.array(selected_rows_mem.get_tensor()), np_array))
+        np.testing.assert_array_equal(np.array(selected_rows_mem.get_tensor()),
+                                      np_array)
 
         with self.assertRaises(NotImplementedError):
             paddle.framework.io._save_selected_rows(selected_rows, 1)

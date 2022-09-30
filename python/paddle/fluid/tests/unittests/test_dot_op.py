@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -131,16 +130,16 @@ class TestDygraph(unittest.TestCase):
         with fluid.dygraph.guard():
             x1 = fluid.dygraph.to_variable(np.array([1, 3]).astype(np.float32))
             y1 = fluid.dygraph.to_variable(np.array([2, 5]).astype(np.float32))
-            self.assertTrue(
-                np.allclose(paddle.dot(x1, y1).numpy(), np.array([17])))
+            np.testing.assert_allclose(paddle.dot(x1, y1).numpy(),
+                                       np.array([17]),
+                                       rtol=1e-05)
 
             x1 = fluid.dygraph.to_variable(
                 np.array([[1, 3], [3, 5]]).astype(np.float32))
             y1 = fluid.dygraph.to_variable(
                 np.array([[2, 5], [6, 8]]).astype(np.float32))
-            self.assertTrue(
-                np.array_equal(
-                    paddle.dot(x1, y1).numpy(), np.array([[17], [58]])))
+            np.testing.assert_array_equal(
+                paddle.dot(x1, y1).numpy(), np.array([[17], [58]]))
 
 
 class TestComplexDotOp(OpTest):

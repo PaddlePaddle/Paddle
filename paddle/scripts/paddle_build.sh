@@ -68,6 +68,9 @@ function cmake_base() {
     # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
+    # Delete previous built paddle cache
+    rm -rf python/paddle 2>/dev/null || true
+
     # Support build for all python3 versions
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
@@ -76,7 +79,7 @@ function cmake_base() {
         if [ "$1" == "cp36-cp36m" ] || [ "$1" == "" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.6/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m/
@@ -88,7 +91,7 @@ function cmake_base() {
         elif [ "$1" == "cp37-cp37m" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.7/include/python3.7m/
@@ -100,7 +103,7 @@ function cmake_base() {
         elif [ "$1" == "cp38-cp38" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
@@ -112,7 +115,7 @@ function cmake_base() {
         elif [ "$1" == "cp39-cp39" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
@@ -124,7 +127,7 @@ function cmake_base() {
         elif [ "$1" == "cp310-cp310" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
-                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
@@ -232,7 +235,7 @@ function cmake_base() {
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
         -DWITH_INFRT=${WITH_INFRT:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
-        -DPY_VERSION=${PY_VERSION:-2.7}
+        -DPY_VERSION=${PY_VERSION:-3.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_PSCORE=${distibuted_flag}
         -DWITH_PSLIB=${WITH_PSLIB:-OFF}
@@ -272,7 +275,6 @@ EOF
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
-        -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
         -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF} \
         -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF} \
@@ -288,7 +290,7 @@ EOF
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DWITH_INFRT=${WITH_INFRT:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
-        -DPY_VERSION=${PY_VERSION:-2.7} \
+        -DPY_VERSION=${PY_VERSION:-3.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
@@ -546,22 +548,25 @@ EOF
 }
 
 
-function combine_avx_noavx_build() {
-    mkdir -p ${PADDLE_ROOT}/build.noavx
-    cd ${PADDLE_ROOT}/build.noavx
-    WITH_AVX=OFF
-    cmake_base ${PYTHON_ABI:-""}
-    build_base
-
-    # build combined one
+function avx_build() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    NOAVX_CORE_FILE=`find ${PADDLE_ROOT}/build.noavx/python/paddle/fluid/ -name "core_noavx.*"`
     WITH_AVX=ON
 
     cmake_base ${PYTHON_ABI:-""}
     build_base
 }
+
+
+function noavx_build() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    WITH_AVX=OFF
+
+    cmake_base ${PYTHON_ABI:-""}
+    build_base
+}
+
 
 function mac_m1_arm_build() {
     mkdir -p ${PADDLE_ROOT}/build
@@ -673,6 +678,7 @@ EOF
             echo "========================================="
         fi
         bash $PADDLE_ROOT/tools/check_added_ut.sh
+        check_approvals_of_unittest 2
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
             ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
@@ -989,12 +995,13 @@ function generate_upstream_develop_api_spec() {
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
     echo "pr_whl_size: ${pr_whl_size}"
 
-    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/python
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
 
     cd ${PADDLE_ROOT}
-    git checkout .
-    git checkout -b develop_base_pr upstream/$BRANCH
+    git fetch upstream $BRANCH
+    git checkout -b develop_base_pr -t upstream/$BRANCH
+    git log --pretty=oneline -10
 
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
@@ -1040,6 +1047,10 @@ function generate_api_spec() {
     # used to log op_register data_type
     op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/check_op_register_type.py > $op_type_path
+
+    # used to log op_register data_type
+    op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_KERNEL_DTYPE_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/check_op_kernel_same_dtypes.py > $op_type_path
 
     # print all ops desc in dict to op_desc_path
     op_desc_path=${PADDLE_ROOT}/paddle/fluid/OP_DESC_${spec_kind}.spec
@@ -1106,9 +1117,8 @@ function check_approvals_of_unittest() {
         curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
         oriBuildSize=`cat fluidInference_so_size`
         curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
-        apt-get install -y bc
-        diffSize=$(printf "%.2f" `echo "$curBuildSize - $oriBuildSize" | bc`)
-        AllDiffSize=$(printf "%.2f" `echo "$diffSize * 4" | bc`)
+        diffSize=$(awk "BEGIN{print $curBuildSize-$oriBuildSize}")
+        AllDiffSize=$(awk "BEGIN{print $diffSize * 4}")
         cat <<EOF
         ========================================
         Original libpaddle_inference.so Size is ${oriBuildSize}M.
@@ -1118,8 +1128,7 @@ function check_approvals_of_unittest() {
         It means the release version library size growth is about ${AllDiffSize}M.
         ========================================
 EOF
-        if [ `echo "20 < $AllDiffSize"|bc` -eq 1 ] ; then
-            
+        if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 39303645 328693`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
@@ -1144,40 +1153,12 @@ function check_diff_file_for_coverage() {
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
 }
 
-function check_change_of_unittest() {
-    generate_unittest_spec "PR"
-    fetch_upstream_develop_if_not_exist
-    git reset --hard upstream/$BRANCH
-    cmake_gen $1
-    generate_unittest_spec "DEV"
-    check_approvals_of_unittest 2
-}
+
 
 function check_sequence_op_unittest(){
     /bin/bash ${PADDLE_ROOT}/tools/check_sequence_op.sh
 }
 
-function generate_unittest_spec() {
-    spec_kind=$1
-    if [ "$spec_kind" == "DEV" ]; then
-        cat <<EOF
-        ============================================
-        Generate unit tests.spec of develop.
-        ============================================
-EOF
-    elif [ "$spec_kind" == "PR" ]; then
-        cat <<EOF
-        ============================================
-        Generate unit tests.spec of this PR.
-        ============================================
-EOF
-    else
-        echo "Not supported $1"
-        exit 1
-    fi
-    spec_path=${PADDLE_ROOT}/paddle/fluid/UNITTEST_${spec_kind}.spec
-    ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' > ${spec_path}
-}
 
 
 function assert_api_spec_approvals() {
@@ -1228,7 +1209,7 @@ function bind_test() {
     NUM_PROC=6
 
     # calculate and set the memory usage for each process
-    MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
+    MEM_USAGE=$(awk "BEGIN{scale=5; print 1.0/$NUM_PROC}")
     export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
 
     # get the CUDA device count
@@ -2506,6 +2487,8 @@ set -x
         export TEST_NUM_PERCENT_CASES=0.15
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
+        #check change of pr_unnitests and dev_unnitests
+        check_approvals_of_unittest 2
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         fi
@@ -2885,12 +2868,12 @@ EOF
     local LIB_TYPE=$1
     case $LIB_TYPE in
       full)
-        # Build full Paddle Python module. Will timeout without caching 'copy_paddle_pybind' first
-        make -j `nproc` framework_py_proto copy_paddle_pybind paddle_python
+        # Build full Paddle Python module. Will timeout without caching 'copy_libpaddle' first
+        make -j `nproc` framework_py_proto copy_libpaddle paddle_python
         ;;
       pybind)
         # Build paddle pybind library. Takes 49 minutes to build. Might timeout
-        make -j `nproc` copy_paddle_pybind
+        make -j `nproc` copy_libpaddle
         ;;
       proto)
         # Even smaller library.
@@ -3483,16 +3466,25 @@ function main() {
         gen_dockerfile ${PYTHON_ABI:-""}
         assert_api_spec_approvals
         ;;
-      combine_avx_noavx)
-        combine_avx_noavx_build
+      avx_build)
+        avx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        ;;
+      noavx_build)
+        noavx_build
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
       mac_m1_arm)
         mac_m1_arm_build
         gen_dockerfile ${PYTHON_ABI:-""}
         ;;
-      combine_avx_noavx_build_and_test)
-        combine_avx_noavx_build
+      avx_build_and_test)
+        avx_build
+        gen_dockerfile ${PYTHON_ABI:-""}
+        parallel_test_base
+        ;;
+      noavx_build_and_test)
+        noavx_build
         gen_dockerfile ${PYTHON_ABI:-""}
         parallel_test_base
         ;;
@@ -3539,7 +3531,6 @@ function main() {
         enable_unused_var_check
         parallel_test
         check_coverage
-        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cpu_cicheck_coverage)
         check_diff_file_for_coverage
@@ -3550,7 +3541,6 @@ function main() {
       gpu_cicheck_coverage)
         parallel_test
         check_coverage
-        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       check_coverage_build)
         check_coverage_build
@@ -3613,7 +3603,6 @@ function main() {
       maccheck_py35)
         cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       macbuild)
         cmake_gen ${PYTHON_ABI:-""}

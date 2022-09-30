@@ -21,10 +21,11 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using framework::DataLayout;
 
-inline dnnl::memory::dims GetWeightsTz(const Tensor* filter, const int groups) {
+inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
+                                       const int groups) {
   auto weights_tz = phi::vectorize(filter->dims());
   int g = std::max(groups, 1);
   int g_dim = (g > 1) ? 1 : 0;
@@ -40,10 +41,10 @@ class ConvTransposeMKLDNNHandlerT
  public:
   ConvTransposeMKLDNNHandlerT(const framework::ExecutionContext& ctx,
                               const dnnl::engine mkldnn_engine,
-                              const Tensor* input,
-                              const Tensor* filter,
-                              const Tensor* bias,
-                              Tensor* output)
+                              const phi::DenseTensor* input,
+                              const phi::DenseTensor* filter,
+                              const phi::DenseTensor* bias,
+                              phi::DenseTensor* output)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>(
             mkldnn_engine, ctx.GetPlace()),
         is_test_(ctx.Attr<bool>("is_test")) {
@@ -59,11 +60,6 @@ class ConvTransposeMKLDNNHandlerT
         DataLayout::kMKLDNN,
         platform::errors::InvalidArgument(
             "Got wrong layout = %d for Input tensor.", input->layout()));
-    PADDLE_ENFORCE_NE(input->format(),
-                      MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Got wrong format for Input tensor. The input "
-                          "format is undefined."));
 
     PADDLE_ENFORCE_EQ(
         filter->layout(),
@@ -72,10 +68,6 @@ class ConvTransposeMKLDNNHandlerT
             "The filter tensor's layout should be %d, but got %d.",
             DataLayout::kMKLDNN,
             filter->layout()));
-    PADDLE_ENFORCE_NE(filter->format(),
-                      MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Got wrong formats for Filter tensor."));
 
     PADDLE_ENFORCE_EQ(
         input->dims().size(),
@@ -98,10 +90,6 @@ class ConvTransposeMKLDNNHandlerT
               "The bias tensor's laytout should be %d, but got %d.",
               DataLayout::kMKLDNN,
               bias->layout()));
-      PADDLE_ENFORCE_NE(bias->format(),
-                        MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Got wrong format for Bias tensor."));
 
       PADDLE_ENFORCE_EQ(
           bias->dims().size(),
@@ -231,13 +219,10 @@ class ConvTransposeMKLDNNHandlerT
   }
 
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
-      const framework::Tensor* input) {
+      const phi::DenseTensor* input) {
     const T* input_data = input->data<T>();
-    auto user_src_md = platform::MKLDNNMemDesc(phi::vectorize(input->dims()),
-                                               platform::MKLDNNGetDataType<T>(),
-                                               input->format());
     return platform::MKLDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>::
-        AcquireMemoryWithReorder(user_src_md,
+        AcquireMemoryWithReorder(input->mem_desc(),
                                  this->fwd_pd_->src_desc(),
                                  platform::to_void_cast<T>(input_data));
   }
@@ -245,7 +230,7 @@ class ConvTransposeMKLDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
       const platform::MKLDNNDeviceContext& dev_ctx,
       const std::string& key,
-      const framework::Tensor* filter,
+      const phi::DenseTensor* filter,
       const int& groups) {
     const K* filter_data = filter->data<K>();
     auto weights_tz = GetWeightsTz(filter, groups);
@@ -347,7 +332,7 @@ class ConvTransposeMKLDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
       const platform::MKLDNNDeviceContext& dev_ctx,
       const std::string& key,
-      const framework::Tensor* bias) {
+      const phi::DenseTensor* bias) {
     const K* bias_data = bias->data<K>();
     auto user_bias_md =
         platform::MKLDNNMemDesc(phi::vectorize(bias->dims()),
@@ -393,11 +378,11 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const auto* input = ctx.Input<Tensor>("Input");
-    const auto* filter = ctx.Input<Tensor>("Filter");
+    const auto* input = ctx.Input<phi::DenseTensor>("Input");
+    const auto* filter = ctx.Input<phi::DenseTensor>("Filter");
     const auto* bias =
-        ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
-    auto* output = ctx.Output<Tensor>("Output");
+        ctx.HasInput("Bias") ? ctx.Input<phi::DenseTensor>("Bias") : nullptr;
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
     ConvTransposeMKLDNNHandlerT<T, K, T_out> handler(
         ctx, mkldnn_engine, input, filter, bias, output);
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
@@ -427,8 +412,7 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     conv_p->execute(astream, args);
     astream.wait();
-    output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+    output->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 

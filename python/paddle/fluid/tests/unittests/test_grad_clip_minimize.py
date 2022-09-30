@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import contextlib
 import unittest
 import numpy as np
@@ -88,7 +86,7 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_global_norm_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
     def test_clip_by_global_norm_2(self):
         self.init_value()
@@ -100,7 +98,7 @@ class TestGradClipByGlobalNorm(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_global_norm_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
 
 class TestGradClipByNorm(unittest.TestCase):
@@ -159,7 +157,7 @@ class TestGradClipByNorm(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_norm_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
     def test_clip_by_norm_2(self):
         self.init_value()
@@ -171,7 +169,7 @@ class TestGradClipByNorm(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_norm_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
 
 class TestGradClipByValue(unittest.TestCase):
@@ -226,7 +224,7 @@ class TestGradClipByValue(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_clip_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
     def test_clip_by_value_2(self):
         self.init_value()
@@ -237,7 +235,7 @@ class TestGradClipByValue(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_clip_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
     def test_clip_by_value_3(self):
         self.init_value()
@@ -250,7 +248,7 @@ class TestGradClipByValue(unittest.TestCase):
         dy_out_p_g = self.get_dygrap_clip_result()
 
         for (p_np, g_np), (p_dy, g_dy) in zip(np_p_g, dy_out_p_g):
-            self.assertTrue(np.allclose(g_np, g_dy, rtol=1e-6, atol=1e-8))
+            np.testing.assert_allclose(g_np, g_dy, rtol=1e-06, atol=1e-08)
 
 
 if __name__ == '__main__':

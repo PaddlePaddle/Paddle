@@ -22,7 +22,7 @@ from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cluster import get_default_cluster
 
 cluster_json = """
-{ 
+{
     "alpha_latency": {"inter": {"ring": "NET", "tree": "NET"},
                     "intra": {"ring": "NVL", "tree": "PHB"},
                     "base": {"ring": 8.4, "tree": 0},

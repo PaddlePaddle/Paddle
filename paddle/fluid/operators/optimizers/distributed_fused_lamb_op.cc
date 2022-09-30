@@ -32,7 +32,7 @@ class DistributedFusedLambOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -152,6 +152,9 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("ring_id",
                               "The ring id of the NCCL communicator.")
         .SetDefault({0});
+    AddAttr<bool>("use_hierarchical_allreduce",
+                  "Whether to use hierarchical allreduce")
+        .SetDefault(false);
     AddComment("The DistributedFusedLamb optimizer.");
   }
 };

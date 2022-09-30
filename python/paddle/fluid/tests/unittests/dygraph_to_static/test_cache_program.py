@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from collections import Counter
@@ -54,9 +52,11 @@ class TestCacheProgram(unittest.TestCase):
                         prev_out, (tuple, list)) else prev_out.numpy()
                     cur_out_numpy = cur_out[0].numpy() if isinstance(
                         cur_out, (tuple, list)) else cur_out.numpy()
-                    self.assertTrue(
-                        np.allclose(prev_out_numpy, cur_out_numpy),
-                        msg=
+                    np.testing.assert_allclose(
+                        prev_out_numpy,
+                        cur_out_numpy,
+                        rtol=1e-05,
+                        err_msg=
                         'Output in previous batch is {}\n Output in current batch is \n{}'
                         .format(prev_out_numpy, cur_out_numpy))
                     self.assertEqual(prev_ops, cur_ops)
@@ -106,9 +106,12 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
     def test_with_optimizer(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
-        self.assertTrue(np.allclose(dygraph_loss, static_loss),
-                        msg='dygraph is {}\n static_res is \n{}'.format(
-                            dygraph_loss, static_loss))
+        np.testing.assert_allclose(
+            dygraph_loss,
+            static_loss,
+            rtol=1e-05,
+            err_msg='dygraph is {}\n static_res is \n{}'.format(
+                dygraph_loss, static_loss))
 
 
 def simple_func(x):

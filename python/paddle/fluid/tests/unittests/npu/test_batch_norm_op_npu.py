@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -40,7 +38,10 @@ class TestBatchNormOpInference(unittest.TestCase):
         self.data_formats = ["NCHW", "NHWC"]
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   atol=atol,
+                                   err_msg=msg)
 
     def check_with_place(self, place, data_layout, dtype, shape):
         epsilon = epsilon = 0.00001
@@ -475,7 +476,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute(x, False, False)
             y2 = compute(x, True, True)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-5)
 
     def test_static(self):
         places = [fluid.NPUPlace(0)]
@@ -498,7 +499,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute(x, False, False)
             y2 = compute(x, True, True)
-            self.assertTrue(np.allclose(y1, y2, atol=1e-5))
+            np.testing.assert_allclose(y1, y2, atol=1e-5)
 
 
 if __name__ == "__main__":

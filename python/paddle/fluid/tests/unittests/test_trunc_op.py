@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -82,14 +80,14 @@ class TestTruncAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
         out_ref = np.trunc(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-08), True)
+            np.testing.assert_allclose(out, out_ref, rtol=1e-08)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
         x_tensor = paddle.to_tensor(self.x)
         out = paddle.trunc(x_tensor)
         out_ref = np.trunc(self.x)
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
 
     def test_api_eager(self):
@@ -99,7 +97,7 @@ class TestTruncAPI(unittest.TestCase):
             x_tensor = paddle.to_tensor(self.x)
             out = paddle.trunc(x_tensor)
         out_ref = np.trunc(self.x)
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
 
     def test_api_eager_dygraph(self):

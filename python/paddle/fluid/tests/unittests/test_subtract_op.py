@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -53,7 +51,7 @@ class ApiSubtractTest(unittest.TestCase):
                 "y": self.input_y
             },
                            fetch_list=[result_max])
-        self.assertTrue(np.allclose(res, self.np_expected1))
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -66,7 +64,7 @@ class ApiSubtractTest(unittest.TestCase):
                 "z": self.input_z
             },
                            fetch_list=[result_max])
-        self.assertTrue(np.allclose(res, self.np_expected2))
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -79,7 +77,7 @@ class ApiSubtractTest(unittest.TestCase):
                 "c": self.input_c
             },
                            fetch_list=[result_max])
-        self.assertTrue(np.allclose(res, self.np_expected3))
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
@@ -92,7 +90,7 @@ class ApiSubtractTest(unittest.TestCase):
                 "c": self.input_c
             },
                            fetch_list=[result_max])
-        self.assertTrue(np.allclose(res, self.np_expected4))
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
     def test_dynamic_api(self):
         paddle.disable_static()
@@ -106,17 +104,17 @@ class ApiSubtractTest(unittest.TestCase):
 
         res = paddle.subtract(x, y)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected1))
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
 
         # test broadcast
         res = paddle.subtract(x, z)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected2))
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
 
         res = paddle.subtract(a, c)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected3))
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
 
         res = paddle.subtract(b, c)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected4))
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)

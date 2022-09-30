@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import os
+import paddle
 from paddle.fluid import framework, core, layers, unique_name
 from paddle.fluid.framework import Variable
 from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.fluid.initializer import Constant
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.optimizer import Optimizer
-from paddle.distributed import get_rank, get_world_size
 from paddle.distributed.collective import new_group
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import name_scope
@@ -101,6 +101,7 @@ class DistributedFusedLamb(Optimizer):
                  gradient_accumulation_steps=1,
                  use_master_acc_grad=True,
                  nproc_per_node=None,
+                 use_hierarchical_allreduce=False,
                  name=None):
         assert not framework._non_static_mode(
         ), "DistributedFusedLamb does not support dygraph mode"
@@ -129,6 +130,7 @@ class DistributedFusedLamb(Optimizer):
         self._gradient_accumulation_steps = gradient_accumulation_steps
         self._use_master_acc_grad = use_master_acc_grad
         self._nproc_per_node = nproc_per_node
+        self._use_hierarchical_allreduce = use_hierarchical_allreduce
         assert self._gradient_accumulation_steps >= 1
 
         self.helper = LayerHelper('distributed_fused_lamb')
@@ -286,8 +288,8 @@ class DistributedFusedLamb(Optimizer):
 
         step = self._get_or_create_step()
 
-        rank = get_rank()
-        nranks = get_world_size()
+        rank = paddle.distributed.get_rank()
+        nranks = paddle.distributed.get_world_size()
         if self._nproc_per_node is None:
             nproc_per_node = nranks
         else:
@@ -305,12 +307,21 @@ class DistributedFusedLamb(Optimizer):
                                         list(range(nranks)), 0)
             ring_ids.append(ring_id)
 
+        use_hierarchical_allreduce = False
         if node_num > 1 and len(ring_ids) <= 1 and shard_inside_node:
             local_group_ranks = list(
                 range(node_id * nproc_per_node, (node_id + 1) * nproc_per_node))
             ring_id = init_communicator(startup_block, rank, local_group_ranks,
                                         1)
             ring_ids.append(ring_id)
+
+            if self._use_hierarchical_allreduce and nranks > nproc_per_node:
+                use_hierarchical_allreduce = True
+                outer_group_ranks = list(
+                    range(rank % nproc_per_node, nranks, nproc_per_node))
+                ring_id = init_communicator(startup_block, rank,
+                                            outer_group_ranks, ring_ids[-1] + 1)
+                ring_ids.append(ring_id)
 
         scale = self._get_or_create_scale()
 
@@ -439,5 +450,6 @@ class DistributedFusedLamb(Optimizer):
                 'is_grad_scaled_by_nranks': self._is_grad_scaled_by_nranks,
                 'acc_steps': self._gradient_accumulation_steps,
                 'use_master_acc_grad': self._use_master_acc_grad,
+                'use_hierarchical_allreduce': use_hierarchical_allreduce,
             })
         return [lamb_op]

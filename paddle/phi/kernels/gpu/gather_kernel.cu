@@ -66,5 +66,8 @@ PD_REGISTER_KERNEL(gather,
                    int64_t,
                    int,
                    int16_t,
+                   bool,
+                   uint8_t,
+                   int8_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

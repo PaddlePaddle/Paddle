@@ -25,8 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class TransposeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -80,7 +78,7 @@ class TransposeOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     // Here we need to match dims to paddle layout
     // as we are producing non-oneDNN result
-    if ((x_dims.size() >= 3) &&
+    if (ctx->IsRunMKLDNNKernel() && (x_dims.size() >= 3) &&
         (paddle::platform::MKLDNNDeviceContext::tls()
              .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC)) {
       auto dims = phi::vectorize<int>(x_dims);
@@ -99,19 +97,18 @@ class TransposeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    auto &data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_);
+    auto &data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
   }
 };
 
@@ -203,20 +200,19 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_);
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
   }
 };
 
@@ -249,39 +245,73 @@ class Transpose2Op : public TransposeOp {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    int customized_type_value =
-        framework::OpKernelType::kDefaultCustomizedTypeValue;
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     framework::proto::VarType::Type data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       using framework::proto::VarType;
-      auto input_data_type =
-          framework::TransToProtoVarType(ctx.Input<Tensor>("X")->dtype());
-      customized_type_value = (input_data_type == VarType::INT8 ||
-                               input_data_type == VarType::UINT8)
-                                  ? kTransposeMKLDNNINT8
-                                  : kTransposeMKLDNNFP32;
+      auto input_data_type = framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("X")->dtype());
+      int customized_type_value = (input_data_type == VarType::INT8 ||
+                                   input_data_type == VarType::UINT8)
+                                      ? kTransposeMKLDNNINT8
+                                      : kTransposeMKLDNNFP32;
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN,
+                                     customized_type_value);
     }
 #endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_, customized_type_value);
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
   }
 };
 
-class Transpose2OpMaker : public TransposeOpMaker {
+class Transpose2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    TransposeOpMaker::Make();
+    AddInput(
+        "X",
+        "(Tensor) The input tensor, tensors with rank up to 6 are supported.");
+    AddOutput("Out", "(Tensor)The output tensor.");
+    AddAttr<std::vector<int>>(
+        "axis",
+        "(vector<int>) A list of values, and the size of the list should be "
+        "the same with the input tensor rank. This operator permutes the input "
+        "tensor's axes according to the values given.");
     AddOutput("XShape", "(Tensor)The output tensor.")
         .AsIntermediate()
         .AsExtra();
+    AddComment(R"DOC(
+Transpose Operator.
+
+The input tensor will be permuted according to the axes given.
+The behavior of this operator is similar to how `numpy.transpose` works.
+
+- suppose the input `X` is a 2-D tensor:
+    $$
+    X = \begin{pmatrix}
+    0 &1 &2 \\
+    3 &4 &5
+    \end{pmatrix}$$
+
+    the given `axes` is: $[1, 0]$, and $Y$ = transpose($X$, axis)
+
+    then the output $Y$ is:
+
+    $$
+    Y = \begin{pmatrix}
+         0 &3 \\
+         1 &4  \\
+         2 &5
+    \end{pmatrix}$$
+
+- Given a input tensor with shape $(N, C, H, W)$ and the `axes` is
+$[0, 2, 3, 1]$, then shape of the output tensor will be: $(N, H, W, C)$.
+
+)DOC");
   }
 };
 
@@ -335,21 +365,20 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library_{framework::LibraryType::kPlain};
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     framework::proto::VarType::Type data_type =
         OperatorWithKernel::IndicateVarDataType(ctx,
                                                 framework::GradVarName("Out"));
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
-    return framework::OpKernelType(
-        data_type, ctx.GetPlace(), layout_, library_);
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
   }
 };
 

@@ -29,10 +29,10 @@ void GraphSendRecvCpuGradLoop(const int& index_size,
                               const DenseTensor& src,
                               const DenseTensor& input,
                               DenseTensor* dst,
-                              const std::string& pool_type,
+                              const std::string& reduce_op,
                               const int* dst_count = nullptr,
                               const DenseTensor* output = nullptr) {
-  if (pool_type == "SUM") {
+  if (reduce_op == "SUM") {
     Functor functor;
     for (int i = 0; i < index_size; ++i) {
       const IndexT& src_idx = s_index[i];
@@ -40,7 +40,7 @@ void GraphSendRecvCpuGradLoop(const int& index_size,
       ElementwiseInnerOperation<T, IndexT, Functor>(
           src, dst, src_idx, dst_idx, false, functor);
     }
-  } else if (pool_type == "MEAN") {
+  } else if (reduce_op == "MEAN") {
     for (int i = 0; i < index_size; ++i) {
       const IndexT& src_idx = s_index[i];
       const IndexT& dst_idx = d_index[i];
@@ -50,7 +50,7 @@ void GraphSendRecvCpuGradLoop(const int& index_size,
       auto eigen_dst = phi::EigenVector<T>::Flatten(dst_slice);
       eigen_dst += (eigen_src / static_cast<T>(dst_count[src_idx]));
     }
-  } else if (pool_type == "MIN" || pool_type == "MAX") {
+  } else if (reduce_op == "MIN" || reduce_op == "MAX") {
     for (int i = 0; i < index_size; ++i) {
       const IndexT& forward_src_idx = d_index[i];
       const IndexT& forward_dst_idx = s_index[i];
@@ -75,7 +75,7 @@ void GraphSendRecvGradOpKernelLaunchHelper(
     const DenseTensor& x,
     const DenseTensor& src_index,
     const DenseTensor& dst_index,
-    const std::string& pool_type,
+    const std::string& reduce_op,
     DenseTensor* x_grad,
     const DenseTensor* dst_count = nullptr,
     const DenseTensor* out = nullptr) {
@@ -94,15 +94,15 @@ void GraphSendRecvGradOpKernelLaunchHelper(
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
 
-  if (pool_type == "SUM") {
+  if (reduce_op == "SUM") {
     GraphSendRecvCpuGradLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(
-        index_size, d_index, s_index, out_grad, x, x_grad, pool_type);
-  } else if (pool_type == "MEAN") {
+        index_size, d_index, s_index, out_grad, x, x_grad, reduce_op);
+  } else if (reduce_op == "MEAN") {
     const int* s_count = dst_count->data<int>();
     // Functor not used here.
     GraphSendRecvCpuGradLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(
-        index_size, d_index, s_index, out_grad, x, x_grad, pool_type, s_count);
-  } else if (pool_type == "MIN" || pool_type == "MAX") {
+        index_size, d_index, s_index, out_grad, x, x_grad, reduce_op, s_count);
+  } else if (reduce_op == "MIN" || reduce_op == "MAX") {
     // Functor not used here.
     GraphSendRecvCpuGradLoop<T, IndexT, GraphSendRecvMinFunctor<T>>(index_size,
                                                                     d_index,
@@ -110,7 +110,7 @@ void GraphSendRecvGradOpKernelLaunchHelper(
                                                                     out_grad,
                                                                     x,
                                                                     x_grad,
-                                                                    pool_type,
+                                                                    reduce_op,
                                                                     nullptr,
                                                                     out);
   }
@@ -124,7 +124,7 @@ void GraphSendRecvGradKernel(const Context& ctx,
                              const paddle::optional<DenseTensor>& out,
                              const paddle::optional<DenseTensor>& dst_count,
                              const DenseTensor& out_grad,
-                             const std::string& pool_type,
+                             const std::string& reduce_op,
                              DenseTensor* x_grad) {
   auto index_type = src_index.dtype();
   if (index_type == phi::DataType::INT32) {
@@ -134,7 +134,7 @@ void GraphSendRecvGradKernel(const Context& ctx,
         x,
         src_index,
         dst_index,
-        pool_type,
+        reduce_op,
         x_grad,
         dst_count.get_ptr(),
         out.get_ptr());
@@ -145,7 +145,7 @@ void GraphSendRecvGradKernel(const Context& ctx,
         x,
         src_index,
         dst_index,
-        pool_type,
+        reduce_op,
         x_grad,
         dst_count.get_ptr(),
         out.get_ptr());

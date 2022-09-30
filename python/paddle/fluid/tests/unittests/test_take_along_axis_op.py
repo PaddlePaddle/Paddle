@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -98,7 +96,7 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         out_ref = np.array(
             np.take_along_axis(self.x_np, self.index_np, self.axis))
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place[0])
@@ -107,7 +105,7 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         out = paddle.take_along_axis(x_tensor, self.index, self.axis)
         out_ref = np.array(
             np.take_along_axis(self.x_np, self.index_np, self.axis))
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
 

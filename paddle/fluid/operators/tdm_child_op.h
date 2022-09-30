@@ -28,7 +28,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 using LoD = framework::LoD;

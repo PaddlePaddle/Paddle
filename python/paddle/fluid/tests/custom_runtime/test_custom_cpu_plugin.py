@@ -17,6 +17,7 @@ import sys
 import site
 import unittest
 import numpy as np
+import tempfile
 
 
 class TestCustomCPUPlugin(unittest.TestCase):
@@ -24,13 +25,27 @@ class TestCustomCPUPlugin(unittest.TestCase):
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
-        cmd = 'rm -rf PaddleCustomDevice && git clone https://github.com/PaddlePaddle/PaddleCustomDevice.git && cd PaddleCustomDevice/backends/custom_cpu && mkdir build && cd build && cmake .. && make -j8'
+        self.temp_dir = tempfile.TemporaryDirectory()
+        cmd = 'cd {} \
+            && git clone {} \
+            && cd PaddleCustomDevice \
+            && git fetch origin \
+            && git checkout {} -b dev \
+            && cd backends/custom_cpu \
+            && mkdir build && cd build && cmake .. && make -j8'.format(
+            self.temp_dir.name, os.getenv('PLUGIN_URL'),
+            os.getenv('PLUGIN_TAG'))
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
-            cur_dir, 'PaddleCustomDevice/backends/custom_cpu/build')
+            cur_dir, '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
+                self.temp_dir.name))
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+        del os.environ['CUSTOM_DEVICE_ROOT']
 
     def test_custom_device(self):
         import paddle
@@ -41,6 +56,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
             self._test_eager_backward_api()
             self._test_eager_copy_to()
             self._test_fallback_kernel()
+            self._test_scalar()
         self._test_custom_device_dataloader()
         self._test_custom_device_mnist()
 
@@ -144,21 +160,21 @@ class TestCustomCPUPlugin(unittest.TestCase):
                                       place=paddle.CPUPlace())
         custom_cpu_tensor = cpu_tensor._copy_to(
             paddle.CustomPlace('custom_cpu', 0), True)
-        self.assertTrue(np.array_equal(custom_cpu_tensor, x))
+        np.testing.assert_array_equal(custom_cpu_tensor, x)
         self.assertTrue(custom_cpu_tensor.place.is_custom_place())
         # custom -> custom
         another_custom_cpu_tensor = custom_cpu_tensor._copy_to(
             paddle.CustomPlace('custom_cpu', 0), True)
-        self.assertTrue(np.array_equal(another_custom_cpu_tensor, x))
+        np.testing.assert_array_equal(another_custom_cpu_tensor, x)
         self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
         # custom -> cpu
         another_cpu_tensor = custom_cpu_tensor._copy_to(paddle.CPUPlace(), True)
-        self.assertTrue(np.array_equal(another_cpu_tensor, x))
+        np.testing.assert_array_equal(another_cpu_tensor, x)
         self.assertTrue(another_cpu_tensor.place.is_cpu_place())
         # custom -> custom self
         another_custom_cpu_tensor = another_custom_cpu_tensor._copy_to(
             paddle.CustomPlace('custom_cpu', 0), True)
-        self.assertTrue(np.array_equal(another_custom_cpu_tensor, x))
+        np.testing.assert_array_equal(another_custom_cpu_tensor, x)
         self.assertTrue(another_custom_cpu_tensor.place.is_custom_place())
 
     def _test_fallback_kernel(self):
@@ -168,10 +184,14 @@ class TestCustomCPUPlugin(unittest.TestCase):
         x = paddle.to_tensor([5, 4, 3], 'int16')
         y = paddle.to_tensor([1, 2, 3], 'int16')
         z = paddle.add(x, y)
-        self.assertTrue(np.array_equal(z, r))
+        np.testing.assert_array_equal(z, r)
 
-    def tearDown(self):
-        del os.environ['CUSTOM_DEVICE_ROOT']
+    def _test_scalar(self):
+        import paddle
+        data_1 = paddle.to_tensor([[[[1.0, 4.0, 5.0, 7.0], [3.0, 4.0, 5.0,
+                                                            6.0]]]])
+        k_t = paddle.to_tensor([3], dtype="int32")
+        value_1, indices_1 = paddle.topk(data_1, k=k_t)
 
 
 if __name__ == '__main__':

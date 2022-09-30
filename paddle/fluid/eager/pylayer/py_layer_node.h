@@ -31,9 +31,10 @@ class GradNodePyLayer : public GradNodeBase {
                   size_t bwd_out_slot_num)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
     ctx_ = ctx;
+    Py_INCREF(ctx_);
   }
 
-  ~GradNodePyLayer() override { Py_XDECREF(ctx_); };
+  ~GradNodePyLayer() override;
 
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>
@@ -44,7 +45,7 @@ class GradNodePyLayer : public GradNodeBase {
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
-  std::string name() {
+  std::string name() override {
     return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
   }
 

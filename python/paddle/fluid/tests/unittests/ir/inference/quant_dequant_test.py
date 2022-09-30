@@ -121,7 +121,7 @@ class QuantDequantTest(unittest.TestCase):
 
     def _get_paddle_outs(self, feed, fetch_list, executor, program, scope):
         '''
-        Return PaddlePaddle outputs. 
+        Return PaddlePaddle outputs.
         '''
         with fluid.scope_guard(scope):
             outs = executor.run(program=program,
@@ -132,7 +132,7 @@ class QuantDequantTest(unittest.TestCase):
 
     def _get_inference_outs(self, config):
         '''
-        Return AnalysisPredictor outputs. 
+        Return AnalysisPredictor outputs.
         '''
         predictor = create_paddle_predictor(config)
         tensor_shapes = predictor.get_input_tensor_shape()
@@ -160,7 +160,7 @@ class QuantDequantTest(unittest.TestCase):
                              use_trt=False,
                              use_mkldnn=False):
         '''
-        Return a new object of AnalysisConfig. 
+        Return a new object of AnalysisConfig.
         '''
         config = AnalysisConfig(self.path)
         config.disable_gpu()
@@ -201,9 +201,9 @@ class QuantDequantTest(unittest.TestCase):
                                  quant=False,
                                  rtol=1e-5):
         '''
-        Check whether calculating on CPU and GPU, enable TensorRT 
-        or disable TensorRT, enable MKLDNN or disable MKLDNN 
-        are all the same. 
+        Check whether calculating on CPU and GPU, enable TensorRT
+        or disable TensorRT, enable MKLDNN or disable MKLDNN
+        are all the same.
         '''
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         executor = fluid.Executor(place)
@@ -290,9 +290,13 @@ class QuantDequantTest(unittest.TestCase):
                 paddle_out = paddle_out.flatten()
                 inference_out = inference_out.flatten()
 
-            self.assertTrue(
-                np.allclose(paddle_out, inference_out, atol=atol),
-                "Output has diff between inference and training forward at {} ".
+            np.testing.assert_allclose(
+                paddle_out,
+                inference_out,
+                rtol=1e-05,
+                atol=atol,
+                err_msg=
+                'Output has diff between inference and training forward at {} '.
                 format(device))
 
         # Check whether the trt results and the GPU results are the same.
@@ -319,12 +323,12 @@ class QuantDequantTest(unittest.TestCase):
                     paddle_out = paddle_out.flatten()
                     tensorrt_output = tensorrt_output.flatten()
 
-                self.assertTrue(
-                    np.allclose(paddle_out,
-                                tensorrt_output,
-                                rtol=rtol,
-                                atol=atol),
-                    "Output has diff between GPU and TensorRT. ")
+                np.testing.assert_allclose(
+                    paddle_out,
+                    tensorrt_output,
+                    rtol=rtol,
+                    atol=atol,
+                    err_msg='Output has diff between GPU and TensorRT. ')
 
         # Check whether the mkldnn results and the CPU results are the same.
         if (not use_gpu) and self.enable_mkldnn:
@@ -339,13 +343,16 @@ class QuantDequantTest(unittest.TestCase):
             if self.enable_mkldnn_bfloat16:
                 atol = 0.01
             for paddle_out, mkldnn_output in zip(paddle_outs, mkldnn_outputs):
-                self.assertTrue(
-                    np.allclose(np.array(paddle_out), mkldnn_output, atol=atol),
-                    "Output has diff between CPU and MKLDNN. ")
+                np.testing.assert_allclose(
+                    np.array(paddle_out),
+                    mkldnn_output,
+                    rtol=1e-05,
+                    atol=atol,
+                    err_msg='Output has diff between CPU and MKLDNN. ')
 
     class TensorRTParam:
         '''
-        Prepare TensorRT subgraph engine parameters. 
+        Prepare TensorRT subgraph engine parameters.
         '''
 
         def __init__(self, workspace_size, max_batch_size, min_subgraph_size,
@@ -359,7 +366,7 @@ class QuantDequantTest(unittest.TestCase):
 
     class DynamicShapeParam:
         '''
-        Prepare TensorRT subgraph engine dynamic shape parameters. 
+        Prepare TensorRT subgraph engine dynamic shape parameters.
         '''
 
         def __init__(self, min_input_shape, max_input_shape, optim_input_shape,

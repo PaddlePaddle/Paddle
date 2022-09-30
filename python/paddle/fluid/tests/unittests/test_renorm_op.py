@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import numpy as np
@@ -50,7 +48,7 @@ class TestRenormAPI(unittest.TestCase):
                               [0.60891086, 0.04392857, 0.61500001]],
                              [[0.40594056, -1.17142856, 0.41000000],
                               [0.62920785, 0.54178572, 0.61500001]]])
-        self.assertTrue(np.allclose(expected, np.array(res)))
+        np.testing.assert_allclose(expected, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
         self.input_data()
@@ -63,15 +61,17 @@ class TestRenormAPI(unittest.TestCase):
                                   [0.60891086, 0.04392857, 0.61500001]],
                                  [[0.40594056, -1.17142856, 0.41000000],
                                   [0.62920785, 0.54178572, 0.61500001]]])
-            self.assertTrue(np.allclose(expected, np.array(y)))
+            np.testing.assert_allclose(expected, np.array(y), rtol=1e-05)
             z = paddle.mean(y)
             z.backward(retain_graph=True)
             expected_grad = np.array([[[0, 0.01394558, 0.02733333],
                                        [0, 0.01394558, 0.00683333]],
                                       [[0, 0.01045918, 0.00683333],
                                        [0, 0.01394558, 0.00683333]]])
-            self.assertTrue(np.allclose(expected_grad, np.array(x.grad)))
-        #test exception:
+            np.testing.assert_allclose(expected_grad,
+                                       np.array(x.grad),
+                                       rtol=1e-05)
+        # #test exception:
         with fluid.dygraph.guard():
             input = [[[2.0, 2, -2], [3, 0.3, 3]], [[2, -8, 2], [3.1, 3.7, 3]]]
             x = paddle.to_tensor(input, stop_gradient=False)
@@ -92,7 +92,7 @@ class TestRenormAPI(unittest.TestCase):
                                   [0.60891086, 0.04392857, 0.61500001]],
                                  [[0.40594056, -1.17142856, 0.41000000],
                                   [0.62920785, 0.54178572, 0.61500001]]])
-            self.assertTrue(np.allclose(expected, np.array(y)))
+            np.testing.assert_allclose(expected, np.array(y), rtol=1e-05)
 
 
 if __name__ == '__main__':

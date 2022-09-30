@@ -37,7 +37,7 @@ TEST(DataLayout, OStream) {
   oss << phi::DataLayout::NCHW;
   EXPECT_EQ(oss.str(), "NCHW");
   oss.str("");
-  oss << phi::DataLayout::MKLDNN;
+  oss << phi::DataLayout::ONEDNN;
   EXPECT_EQ(oss.str(), "MKLDNN");
   oss.str("");
   try {

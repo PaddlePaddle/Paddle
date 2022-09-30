@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 from paddle.fluid import metrics
 import paddle.fluid as fluid
+import paddle
 
 
 class TestAucOp(OpTest):
@@ -107,6 +106,38 @@ class TestGlobalAucOp(OpTest):
         self.check_output()
 
 
+class TestAucAPI(unittest.TestCase):
+
+    def test_static(self):
+        paddle.enable_static()
+        data = paddle.static.data(name="input", shape=[-1, 1], dtype="float32")
+        label = paddle.static.data(name="label", shape=[4], dtype="int64")
+        ins_tag_weight = paddle.static.data(name="ins_tag_weight",
+                                            shape=[4],
+                                            dtype="float32")
+        result = paddle.static.auc(input=data,
+                                   label=label,
+                                   ins_tag_weight=ins_tag_weight)
+
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+
+        exe.run(paddle.static.default_startup_program())
+
+        x = np.array([[0.0474], [0.5987], [0.7109], [0.9997]]).astype("float32")
+
+        y = np.array([0, 0, 1, 0]).astype('int64')
+        z = np.array([1, 1, 1, 1]).astype('float32')
+        output, = exe.run(feed={
+            "input": x,
+            "label": y,
+            "ins_tag_weight": z
+        },
+                          fetch_list=[result[0]])
+        auc_np = np.array([0.66666667]).astype("float32")
+        np.testing.assert_allclose(output, auc_np, rtol=1e-05)
+
+
 class TestAucOpError(unittest.TestCase):
 
     def test_errors(self):
@@ -115,7 +146,12 @@ class TestAucOpError(unittest.TestCase):
             def test_type1():
                 data1 = fluid.data(name="input1", shape=[-1, 2], dtype="int")
                 label1 = fluid.data(name="label1", shape=[-1], dtype="int")
-                result1 = fluid.layers.auc(input=data1, label=label1)
+                ins_tag_w1 = paddle.static.data(name="label1",
+                                                shape=[-1],
+                                                dtype="int")
+                result1 = paddle.static.auc(input=data1,
+                                            label=label1,
+                                            ins_tag_weight=ins_tag_w1)
 
             self.assertRaises(TypeError, test_type1)
 

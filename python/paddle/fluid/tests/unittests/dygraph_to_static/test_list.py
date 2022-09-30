@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -249,16 +247,18 @@ class TestListWithoutControlFlow(unittest.TestCase):
 
             self.assertEqual(len(static_res_list), len(dygraph_res_list))
             for stat_res, dy_res in zip(static_res_list, dygraph_res_list):
-                self.assertTrue(
-                    np.allclose(stat_res, dy_res),
-                    msg='dygraph_res is {}\nstatic_res is {}'.format(
-                        stat_res, dy_res))
+                np.testing.assert_allclose(
+                    stat_res,
+                    dy_res,
+                    rtol=1e-05,
+                    err_msg='dygraph_res is {}\nstatic_res is {}'.format(
+                        dy_res, stat_res))
 
 
 class TestListInIf(TestListWithoutControlFlow):
 
     def init_dygraph_func(self):
-        self.all_dygraph_funcs = [test_list_append_in_if, test_list_pop_in_if]
+        self.all_dygraph_funcs = [test_list_append_in_if]
 
 
 class TestListInWhileLoop(TestListWithoutControlFlow):

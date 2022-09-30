@@ -12,11 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_constant_op.h"
-
 #include <string>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace operators {
 
@@ -58,7 +58,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;
@@ -174,10 +174,6 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "3: XPUPlace. "
                  "4: NPUPlace. ")
         .SetDefault(-1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");

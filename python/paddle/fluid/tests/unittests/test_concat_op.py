@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
@@ -21,6 +19,9 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard, core
 from paddle.fluid.framework import _test_eager_guard
 import paddle
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 
 class TestConcatOp(OpTest):
@@ -447,10 +448,86 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
-        self.assertTrue(
-            np.array_equal(
-                res[0], np.concatenate([self.x] * self.iter_num,
-                                       axis=self.axis)))
+        np.testing.assert_array_equal(
+            res[0], np.concatenate([self.x] * self.iter_num, axis=self.axis))
+
+
+class TestConcatDoubleGradCheck(unittest.TestCase):
+
+    def concat_wrapper(self, x):
+        return paddle.concat(x)
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data1 = layers.data('data1', [2, 3], False, dtype)
+        data1.persistable = True
+        data2 = layers.data('data2', [2, 3], False, dtype)
+        data2.persistable = True
+        out = paddle.concat([data1, data2])
+        data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
+        data2_arr = np.random.uniform(-1, 1, data2.shape).astype(dtype)
+        gradient_checker.double_grad_check([data1, data2],
+                                           out,
+                                           x_init=[data1_arr, data2_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.concat_wrapper, [data1, data2],
+            out,
+            x_init=[data1_arr, data2_arr],
+            place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestConcatTripleGradCheck(unittest.TestCase):
+
+    def concat_wrapper(self, x):
+        return paddle.concat(x, 1)
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data1 = layers.data('data1', [2, 3, 4], False, dtype)
+        data1.persistable = True
+        data2 = layers.data('data2', [2, 3, 4], False, dtype)
+        data2.persistable = True
+        out = paddle.concat([data1, data2], 1)
+        data1_arr = np.random.uniform(-1, 1, data1.shape).astype(dtype)
+        data2_arr = np.random.uniform(-1, 1, data2.shape).astype(dtype)
+        gradient_checker.double_grad_check([data1, data2],
+                                           out,
+                                           x_init=[data1_arr, data2_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.concat_wrapper, [data1, data2],
+            out,
+            x_init=[data1_arr, data2_arr],
+            place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == '__main__':

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import paddle
 import paddle.fluid as fluid
 import numpy as np
@@ -60,7 +58,7 @@ def test_static_layer(place,
                                     "weight": weight_np
                                 },
                                 fetch_list=[res])
-    return static_result
+    return static_result[0]
 
 
 def test_static_functional(place,
@@ -100,7 +98,7 @@ def test_static_functional(place,
                                     "weight": weight_np
                                 },
                                 fetch_list=[res])
-    return static_result
+    return static_result[0]
 
 
 def test_dygraph_layer(place,
@@ -178,16 +176,18 @@ class TestBCELoss(unittest.TestCase):
                 dy_result = test_dygraph_layer(place, input_np, label_np,
                                                reduction)
                 expected = calc_bceloss(input_np, label_np, reduction)
-                self.assertTrue(np.allclose(static_result, expected))
-                self.assertTrue(np.allclose(static_result, dy_result))
-                self.assertTrue(np.allclose(dy_result, expected))
+                np.testing.assert_allclose(static_result, expected, rtol=1e-6)
+                np.testing.assert_allclose(static_result, dy_result)
+                np.testing.assert_allclose(dy_result, expected, rtol=1e-6)
                 static_functional = test_static_functional(
                     place, input_np, label_np, reduction)
                 dy_functional = test_dygraph_functional(place, input_np,
                                                         label_np, reduction)
-                self.assertTrue(np.allclose(static_functional, expected))
-                self.assertTrue(np.allclose(static_functional, dy_functional))
-                self.assertTrue(np.allclose(dy_functional, expected))
+                np.testing.assert_allclose(static_functional,
+                                           expected,
+                                           rtol=1e-6)
+                np.testing.assert_allclose(static_functional, dy_functional)
+                np.testing.assert_allclose(dy_functional, expected, rtol=1e-6)
 
     def test_BCELoss_weight(self):
         input_np = np.random.uniform(0.1, 0.8,
@@ -212,9 +212,9 @@ class TestBCELoss(unittest.TestCase):
                                     label_np,
                                     reduction,
                                     weight_np=weight_np)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-6)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-6)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-6)
             static_functional = test_static_functional(place,
                                                        input_np,
                                                        label_np,
@@ -225,9 +225,11 @@ class TestBCELoss(unittest.TestCase):
                                                     label_np,
                                                     reduction,
                                                     weight_np=weight_np)
-            self.assertTrue(np.allclose(static_functional, expected))
-            self.assertTrue(np.allclose(static_functional, dy_functional))
-            self.assertTrue(np.allclose(dy_functional, expected))
+            np.testing.assert_allclose(static_functional, expected, rtol=1e-6)
+            np.testing.assert_allclose(static_functional,
+                                       dy_functional,
+                                       rtol=1e-6)
+            np.testing.assert_allclose(dy_functional, expected, rtol=1e-6)
 
     def test_BCELoss_error(self):
         paddle.disable_static(paddle.NPUPlace(0))

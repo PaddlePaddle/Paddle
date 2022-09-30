@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -75,8 +73,7 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
             hist2, _ = np.histogram(data, range=(-3, 5))
             hist2 = hist2.astype("float32")
             hist2 /= float(outs[0].size)
-            self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
-                            "hist: " + str(hist) + " hist2: " + str(hist2))
+            np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
 
     class TestMeanStdAreInt(TestGaussianRandomOp):
 

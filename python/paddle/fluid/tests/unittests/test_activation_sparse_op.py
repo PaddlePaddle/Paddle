@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -51,7 +49,7 @@ class TestSparseSquareOp(unittest.TestCase):
         # get and compare result
         result_array = np.array(out_selected_rows.get_tensor())
 
-        self.assertTrue(np.array_equal(result_array, np.square(np_array)))
+        np.testing.assert_array_equal(result_array, np.square(np_array))
 
     def test_sparse_acti(self):
         places = [core.CPUPlace()]
@@ -88,7 +86,7 @@ class TestSparseSqrtOp(unittest.TestCase):
 
         # get and compare result
         result_array = np.array(out_selected_rows.get_tensor())
-        self.assertTrue(np.allclose(result_array, np.sqrt(np_array)))
+        np.testing.assert_allclose(result_array, np.sqrt(np_array), rtol=1e-05)
 
     def test_sparse_acti(self):
         places = [core.CPUPlace()]

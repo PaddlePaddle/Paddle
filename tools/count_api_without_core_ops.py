@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import importlib
 import inspect
 import collections
@@ -22,7 +20,7 @@ import pydoc
 import hashlib
 import functools
 import platform
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'get_apis_with_and_without_core_ops',
@@ -209,8 +207,8 @@ if __name__ == "__main__":
                 print(name, func_dict[name])
 
     else:
-        print("""Usage: 
-            1. Count and list all operator-raleated APIs that contains append_op but not _C_ops.xx. 
+        print("""Usage:
+            1. Count and list all operator-raleated APIs that contains append_op but not _legacy_C_ops.xx.
                 python ./count_api_without_core_ops.py -c paddle
             2. Print api and the md5 of source code of the api.
                 python ./count_api_without_core_ops.py -p paddle

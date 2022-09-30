@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
@@ -523,7 +521,7 @@ class TestMatMulV2API(unittest.TestCase):
                     result_np = np.matmul(input_x, input_y)
                     self.assertTrue(paddle.isfinite(result)[0, 0, 0])
                     self.assertTrue(np.isfinite(result_np)[0, 0, 0])
-                    self.assertTrue(np.array_equal(result_np, result.numpy()))
+                    np.testing.assert_array_equal(result_np, result.numpy())
                     paddle.set_flags(
                         {'FLAGS_gemm_use_half_precision_compute_type': True})
 

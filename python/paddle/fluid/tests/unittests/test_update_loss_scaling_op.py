@@ -19,11 +19,32 @@ import paddle.fluid as fluid
 import paddle.fluid.contrib.mixed_precision.amp_nn as amp_nn
 
 
+def update_loss_scaling_wrapper(x,
+                                found_inf,
+                                prev_loss_scaling,
+                                num_good_steps,
+                                num_bad_steps,
+                                incr_every_n_steps,
+                                decr_every_n_nan_or_inf,
+                                incr_ratio,
+                                decr_ratio,
+                                stop_update=False):
+    amp_nn.update_loss_scaling([x], found_inf, prev_loss_scaling,
+                               num_good_steps, num_bad_steps,
+                               incr_every_n_steps, decr_every_n_nan_or_inf,
+                               incr_ratio, decr_ratio, stop_update)
+    return x, prev_loss_scaling, num_good_steps, num_bad_steps
+
+
 class TestUpdateLossScalingOp(OpTest):
 
     def setUp(self):
         self.op_type = "update_loss_scaling"
         self.init()
+        self.python_api = update_loss_scaling_wrapper
+        self.python_out_sig = [
+            "out0", "LossScaling", "OutGoodSteps", "OutBadSteps"
+        ]
         found_inf = np.array([False], dtype=np.bool_)
         x = np.random.random((1024, 1024)).astype(self.dtype)
 
@@ -50,6 +71,7 @@ class TestUpdateLossScalingOp(OpTest):
         self.num_good_steps = np.array([999], dtype=np.int32)
         self.num_bad_steps = np.array([1], dtype=np.int32)
         self.zero_steps = np.array([0], dtype=np.int32)
+        self.stop_update = np.array([False], dtype=np.bool)
         self.attrs = {
             'incr_every_n_steps': 1000,
             'decr_every_n_nan_or_inf': 2,
@@ -58,7 +80,7 @@ class TestUpdateLossScalingOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=['Out'])
+        self.check_output(no_check_set=['Out'], check_eager=True)
 
 
 class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
@@ -66,6 +88,10 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
     def setUp(self):
         self.op_type = "update_loss_scaling"
         self.init()
+        self.python_api = update_loss_scaling_wrapper
+        self.python_out_sig = [
+            "out0", "LossScaling", "OutGoodSteps", "OutBadSteps"
+        ]
         found_inf = np.array([True], dtype=np.bool_)
         x = np.random.random((1024, 1024)).astype(self.dtype)
         i = np.random.randint(0, 1024, 1)
@@ -77,7 +103,8 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
             'FoundInfinite': found_inf,
             'PrevLossScaling': self.prev_loss_scaling,
             'InGoodSteps': self.num_good_steps,
-            'InBadSteps': self.num_bad_steps
+            'InBadSteps': self.num_bad_steps,
+            'StopUpdate': self.stop_update
         }
 
         self.outputs = {
@@ -88,7 +115,7 @@ class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 class TestUpdateLossScalingLayer(unittest.TestCase):

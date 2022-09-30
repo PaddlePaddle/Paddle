@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
@@ -48,7 +47,7 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
 
         var_numpy = var.numpy().reshape(self.output_shape)
         view_var_numpy = view_var.numpy()
-        self.assertTrue(np.array_equal(var_numpy, view_var_numpy))
+        np.testing.assert_array_equal(var_numpy, view_var_numpy)
 
     def test_view_api(self):
         with _test_eager_guard():

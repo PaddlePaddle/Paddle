@@ -72,6 +72,7 @@ class MemcpyD2HFunctor {
                      framework::LoDTensor &dst) const {  // NOLINT
     if (dst_place_type_ == 1) {
       framework::TensorCopy(src, platform::CUDAPinnedPlace(), dev_ctx_, &dst);
+      dev_ctx_.Wait();
     } else if (dst_place_type_ == 0) {
       framework::TensorCopy(src, platform::CPUPlace(), dev_ctx_, &dst);
     } else {

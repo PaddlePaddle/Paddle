@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
 
@@ -37,11 +38,6 @@ void AllValueCompareInferMeta(const MetaTensor& x,
                               MetaTensor* out,
                               MetaConfig config = MetaConfig());
 
-void EmbeddingInferMeta(const MetaTensor& input,
-                        const MetaTensor& weight,
-                        int64_t padding_idx,
-                        MetaTensor* out);
-
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
@@ -57,7 +53,7 @@ void BCELossInferMeta(const MetaTensor& input,
 
 void BincountInferMeta(const MetaTensor& x,
                        const MetaTensor& weights,
-                       int minlength,
+                       const Scalar& minlength,
                        MetaTensor* out);
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
@@ -118,6 +114,19 @@ void ConvTransposeInferMeta(const MetaTensor& x,
                             MetaTensor* out,
                             MetaConfig config = MetaConfig());
 
+void Conv2dTransposeInferMeta(const MetaTensor& x,
+                              const MetaTensor& filter,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings,
+                              const std::vector<int>& output_padding,
+                              const IntArray& output_size,
+                              const std::string& padding_algorithm,
+                              int groups,
+                              const std::vector<int>& dilations,
+                              const std::string& data_format,
+                              MetaTensor* out,
+                              MetaConfig config = MetaConfig());
+
 void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
@@ -139,11 +148,24 @@ void DistInferMeta(const MetaTensor& x,
                    float p,
                    MetaTensor* out);
 
+void DistributeFpnProposalsInferMeta(
+    const MetaTensor& fpn_rois,
+    const MetaTensor& rois_num,
+    int min_level,
+    int max_level,
+    int refer_level,
+    int refer_scale,
+    bool pixel_offset,
+    std::vector<MetaTensor*> multi_fpn_rois,
+    std::vector<MetaTensor*> multi_level_rois_num,
+    MetaTensor* restore_index,
+    MetaConfig config = MetaConfig());
+
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void DropoutInferMeta(const MetaTensor& x,
                       const MetaTensor& seed_tensor,
-                      float p,
+                      const Scalar& p,
                       bool is_test,
                       const std::string& mode,
                       int seed,
@@ -153,7 +175,7 @@ void DropoutInferMeta(const MetaTensor& x,
 
 void DropoutNdInferMeta(const MetaTensor& x,
                         const MetaTensor& seed_tensor,
-                        float p,
+                        const Scalar& p,
                         bool is_test,
                         const std::string& mode,
                         int seed,
@@ -174,13 +196,19 @@ void ElementwiseRawInferMeta(const MetaTensor& x_meta,
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
                         int64_t padding_idx,
-                        bool sparse,
                         MetaTensor* out);
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const std::vector<int>& target_shape,
                        MetaTensor* out);
+
+void FillDiagonalTensorInferMeta(const MetaTensor& x,
+                                 const MetaTensor& y,
+                                 int64_t offset,
+                                 int dim1,
+                                 int dim2,
+                                 MetaTensor* out);
 
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
@@ -217,6 +245,12 @@ void IndexSelectInferMeta(const MetaTensor& x,
                           int dim,
                           MetaTensor* output);
 
+void IndexAddInferMeta(const MetaTensor& x,
+                       const MetaTensor& index,
+                       const MetaTensor& add_value,
+                       int axis,
+                       MetaTensor* output);
+
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void LogLossInferMeta(const MetaTensor& input,
@@ -232,6 +266,20 @@ void LUUnpackInferMeta(const MetaTensor& x,
                        MetaTensor* pmat,
                        MetaTensor* l,
                        MetaTensor* u);
+
+void MarginCrossEntropyInferMeta(const MetaTensor& logits,
+                                 const MetaTensor& label,
+                                 bool return_softmax,
+                                 int ring_id,
+                                 int rank,
+                                 int nranks,
+                                 float margin1,
+                                 float margin2,
+                                 float margin3,
+                                 float scale,
+                                 MetaTensor* softmax,
+                                 MetaTensor* loss,
+                                 MetaConfig config = MetaConfig());
 
 void MaskedSelectInferMeta(const MetaTensor& x,
                            const MetaTensor& mask,
@@ -249,6 +297,21 @@ void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                 int y_num_col_dims,
                                 MetaTensor* out);
 
+void MatrixNMSInferMeta(const MetaTensor& bboxes,
+                        const MetaTensor& scores,
+                        float score_threshold,
+                        int nms_top_k,
+                        int keep_top_k,
+                        float post_threshold,
+                        bool use_gaussian,
+                        float gaussian_sigma,
+                        int background_label,
+                        bool normalized,
+                        MetaTensor* out,
+                        MetaTensor* index,
+                        MetaTensor* roisnum,
+                        MetaConfig config = MetaConfig());
+
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,
                             bool use_default_tol,
@@ -264,6 +327,10 @@ void PReluInferMeta(const MetaTensor& x,
                     MetaTensor* out,
                     MetaConfig config = MetaConfig());
 
+void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
+                                              const MetaTensor& repeats,
+                                              int dim,
+                                              MetaTensor* out);
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
@@ -284,6 +351,10 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            bool out_int32,
                            bool right,
                            MetaTensor* out);
+
+void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
+                              const MetaTensor& mask,
+                              MetaTensor* out);
 
 void SegmentPoolInferMeta(const MetaTensor& x,
                           const MetaTensor& segment_ids,
@@ -340,5 +411,25 @@ void ValueCompareInferMeta(const MetaTensor& x,
                            MetaConfig config = MetaConfig());
 
 void SolveInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void UnpoolInferMeta(const MetaTensor& x,
+                     const MetaTensor& indices,
+                     const std::vector<int>& ksize,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     const IntArray& output_size,
+                     const std::string& data_format,
+                     MetaTensor* out,
+                     MetaConfig config = MetaConfig());
+
+void Unpool3dInferMeta(const MetaTensor& x,
+                       const MetaTensor& indices,
+                       const std::vector<int>& ksize,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       const std::vector<int>& output_size,
+                       const std::string& data_format,
+                       MetaTensor* out,
+                       MetaConfig config = MetaConfig());
 
 }  // namespace phi

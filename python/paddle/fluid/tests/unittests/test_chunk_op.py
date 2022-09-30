@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
 import unittest
 import numpy as np
@@ -72,9 +71,9 @@ class API_TestChunk(unittest.TestCase):
             },
                                   fetch_list=[x0, x1, x2])
             ex_x0, ex_x1, ex_x2 = np.array_split(input1, 3, axis=2)
-            self.assertTrue(np.allclose(ex_x0, r0))
-            self.assertTrue(np.allclose(ex_x1, r1))
-            self.assertTrue(np.allclose(ex_x2, r2))
+            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
+            np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
 
 
 class API_TestChunk1(unittest.TestCase):
@@ -89,9 +88,9 @@ class API_TestChunk1(unittest.TestCase):
             r0, r1, r2, = exe.run(feed={"data1": input1},
                                   fetch_list=[x0, x1, x2])
             ex_x0, ex_x1, ex_x2 = np.array_split(input1, 3, axis=2)
-            self.assertTrue(np.allclose(ex_x0, r0))
-            self.assertTrue(np.allclose(ex_x1, r1))
-            self.assertTrue(np.allclose(ex_x2, r2))
+            np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
+            np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
+            np.testing.assert_allclose(ex_x2, r2, rtol=1e-05)
 
 
 class API_TestDygraphChunk(unittest.TestCase):
@@ -106,9 +105,9 @@ class API_TestDygraphChunk(unittest.TestCase):
             x1_out = x1.numpy()
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.array_split(input_1, 3, axis=1)
-        self.assertTrue(np.allclose(ex_x0, x0_out))
-        self.assertTrue(np.allclose(ex_x1, x1_out))
-        self.assertTrue(np.allclose(ex_x2, x2_out))
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_out2(self):
         with fluid.dygraph.guard():
@@ -120,9 +119,9 @@ class API_TestDygraphChunk(unittest.TestCase):
             x1_out = x1.numpy()
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.array_split(input_1, 3, axis=1)
-        self.assertTrue(np.allclose(ex_x0, x0_out))
-        self.assertTrue(np.allclose(ex_x1, x1_out))
-        self.assertTrue(np.allclose(ex_x2, x2_out))
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_axis_tensor_input(self):
         with fluid.dygraph.guard():
@@ -135,9 +134,9 @@ class API_TestDygraphChunk(unittest.TestCase):
             x1_out = x1.numpy()
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.array_split(input_1, 3, axis=1)
-        self.assertTrue(np.allclose(ex_x0, x0_out))
-        self.assertTrue(np.allclose(ex_x1, x1_out))
-        self.assertTrue(np.allclose(ex_x2, x2_out))
+        np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
+        np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

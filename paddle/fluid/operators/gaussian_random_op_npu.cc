@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -26,14 +25,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T>
 class NPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<phi::DenseTensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
     Tensor cpu_tensor(tensor->dtype());

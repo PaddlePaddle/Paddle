@@ -92,7 +92,9 @@ class BKCLOpHandleBase : public OpHandleBase {
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     auto flat_bkcl_ctxs = bkcl_ctxs_->GetFlatCtx(run_order_);
     int dev_id = place.device;
+    platform::SetXPUDeviceId(dev_id);
     auto& bkcl_ctx = flat_bkcl_ctxs->at(dev_id);
+    auto stream = bkcl_ctx.stream();
     auto comm = bkcl_ctx.comm_;
 
     VLOG(10) << "before all reduce buffer:" << sendbuff << ", numel:" << count
@@ -100,7 +102,7 @@ class BKCLOpHandleBase : public OpHandleBase {
              << ", place:" << place;
 
     PADDLE_ENFORCE_EQ(
-        bkcl_all_reduce(comm, sendbuff, recvbuff, count, datatype, op, NULL),
+        bkcl_all_reduce(comm, sendbuff, recvbuff, count, datatype, op, stream),
         BKCL_SUCCESS,
         platform::errors::PreconditionNotMet("bckl all reduce failed"));
   }

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import unittest
 import numpy as np
@@ -134,8 +132,9 @@ class TestLRNAPI(unittest.TestCase):
                           fetch_list=[out1, out2],
                           return_numpy=True)
 
-        self.assertTrue(
-            np.allclose(results[0], np.transpose(results[1], (0, 3, 1, 2))))
+        np.testing.assert_allclose(results[0],
+                                   np.transpose(results[1], (0, 3, 1, 2)),
+                                   rtol=1e-05)
 
     def test_exception(self):
         input1 = fluid.data(name="input1", shape=[2, 4, 5, 5], dtype="float32")
@@ -196,7 +195,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
                               fetch_list=[res1, res2])
 
             fetches1_tran = np.transpose(fetches[1], (0, 2, 1))
-            self.assertTrue(np.allclose(fetches[0], fetches1_tran))
+            np.testing.assert_allclose(fetches[0], fetches1_tran, rtol=1e-05)
 
     def check_static_4d_input(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -226,7 +225,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
                               fetch_list=[res1, res2])
 
             fetches1_tran = np.transpose(fetches[1], (0, 3, 1, 2))
-            self.assertTrue(np.allclose(fetches[0], fetches1_tran))
+            np.testing.assert_allclose(fetches[0], fetches1_tran, rtol=1e-05)
 
     def check_static_5d_input(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -255,7 +254,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
                               fetch_list=[res1, res2])
 
             fetches1_tran = np.transpose(fetches[1], (0, 4, 1, 2, 3))
-            self.assertTrue(np.allclose(fetches[0], fetches1_tran))
+            np.testing.assert_allclose(fetches[0], fetches1_tran, rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -279,7 +278,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
                                                             data_format='NLC')
 
             res2_tran = np.transpose(res2.numpy(), (0, 2, 1))
-            self.assertTrue(np.allclose(res1.numpy(), res2_tran))
+            np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
     def check_dygraph_4d_input(self, place):
         with fluid.dygraph.guard(place):
@@ -297,7 +296,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
                                                             data_format='NHWC')
 
             res2_tran = np.transpose(res2.numpy(), (0, 3, 1, 2))
-            self.assertTrue(np.allclose(res1.numpy(), res2_tran))
+            np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
     def check_dygraph_5d_input(self, place):
         with fluid.dygraph.guard(place):
@@ -315,7 +314,7 @@ class TestLocalResponseNormFAPI(unittest.TestCase):
                                                             data_format='NDHWC')
 
             res2_tran = np.transpose(res2.numpy(), (0, 4, 1, 2, 3))
-            self.assertTrue(np.allclose(res1.numpy(), res2_tran))
+            np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
     def test_dygraph(self):
         for place in self.places:
@@ -385,7 +384,7 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
                 res2 = m2(in2)
 
                 res2_tran = np.transpose(res2.numpy(), (0, 3, 1, 2))
-                self.assertTrue(np.allclose(res1.numpy(), res2_tran))
+                np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
 
 if __name__ == "__main__":

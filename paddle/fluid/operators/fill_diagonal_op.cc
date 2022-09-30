@@ -12,21 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_diagonal_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
-
-int64_t CalStride(framework::DDim dim) {
-  int rank = dim.size();
-  int64_t dimsum = 1;
-  int64_t strides = 0;
-  for (int i = rank - 1; i >= 0; i--) {
-    strides += dimsum;
-    dimsum *= dim[i];
-  }
-  return strides;
-}
 
 class FillIDiagonalOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -57,13 +49,6 @@ class FillIDiagonalOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "FillIDiagonal");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "FillIDiagonal");
-    auto x_dims = context->GetInputDim("X");
-    context->SetOutputDim("Out", x_dims);
-  }
-
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -82,66 +67,15 @@ class FillIDiagonalOpVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-template <typename T>
-class FillIDiagonalKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto fill_val = ctx.template Attr<float>("value");
-    auto *out = ctx.Output<framework::Tensor>("Out");
-    auto offset = ctx.Attr<int>("offset");
-    auto wrap = ctx.Attr<bool>("wrap");
-
-    auto *xin = ctx.Input<framework::Tensor>("X");
-
-    T temp_var = static_cast<T>(fill_val);
-
-    T *out_data = out->mutable_data<T>(ctx.GetPlace());
-    framework::TensorCopy(*xin, ctx.GetPlace(), out);
-
-    auto out_dims = out->dims();
-    auto strides = CalStride(out_dims);
-    auto size = out->numel();
-
-    // The wrap mode supported only the dims equels to 2; In wrap mode, the
-    // value will be filled in cycles
-    if (!wrap) {
-      size = std::min(size, out_dims[1] * out_dims[1]);
-    }
-
-    for (int64_t i = 0; i < size; i += strides) {
-      // to check if the new position with offset is still in the same line;
-      // this modify should not affect across lines.
-      // out_dims[1] is also work for tensor with dim>2, for which the dims must
-      // be the same number
-      if (i % out_dims[1] + offset >= 0 &&
-          i % out_dims[1] + offset < out_dims[1]) {
-        out_data[i + offset] = temp_var;
-      }
-    }
-  }
-};
-
 class FillIDiagonalGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   "Out@GRAD",
-                   "mul");
-    auto x_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    auto x_grad_name = framework::GradVarName("X");
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
-    }
-  }
-
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    // Note: don't get data type from ctx.Input<framework::Tensor>("Input");
+    // Note: don't get data type from ctx.Input<phi::DenseTensor>("Input");
     auto dtype = framework::TransToProtoVarType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type());
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"))->type());
     return framework::OpKernelType(dtype, ctx.GetPlace());
   }
 };
@@ -160,41 +94,6 @@ class FillIDiagonalGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T>
-class FillIDiagonalGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto *dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto *dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-
-    auto offset = ctx.Attr<int>("offset");
-    auto wrap = ctx.Attr<bool>("wrap");
-
-    if (dx) {
-      auto *data = dx->mutable_data<T>(ctx.GetPlace());
-      framework::TensorCopy(*dout, ctx.GetPlace(), dx);
-
-      auto dx_dims = dx->dims();
-      auto strides = CalStride(dx_dims);
-      auto size = dx->numel();
-      auto wrapsize = std::min(size, dx_dims[1] * dx_dims[1]);
-
-      // The wrap mode supported only the dims equels to 2; In wrap mode, the
-      // value will be filled in cycles
-      if (wrap) {
-        wrapsize = size;
-      }
-
-      for (int64_t i = 0; i < wrapsize; i += strides) {
-        if (i % dx_dims[1] + offset >= 0 &&
-            i % dx_dims[1] + offset < dx_dims[1]) {
-          data[i + offset] = T(0);
-        }
-      }
-    }
-  }
-};
-
 DECLARE_INPLACE_OP_INFERER(FillIDiagonalOpInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(FillIDiagonalGradOpInplaceInferer,
                            {framework::GradVarName("Out"),
@@ -204,30 +103,24 @@ DECLARE_INPLACE_OP_INFERER(FillIDiagonalGradOpInplaceInferer,
 }  // namespace paddle
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(fill_diagonal,
+                            FillDiagonalShapeFunctor,
+                            PD_INFER_META(phi::FillDiagonalInferMeta));
+
+DECLARE_INFER_SHAPE_FUNCTOR(fill_diagonal_grad,
+                            FillDiagonalGradShapeFunctor,
+                            PD_INFER_META(phi::FillDiagonalGradInferMeta));
+
 REGISTER_OPERATOR(fill_diagonal,
                   ops::FillIDiagonalOp,
-                  ops::FillIDiagonalOpMaker,
-                  ops::FillIDiagonalOpVarTypeInference,
                   ops::FillIDiagonalGradOpMaker<paddle::framework::OpDesc>,
                   ops::FillIDiagonalGradOpMaker<paddle::imperative::OpBase>,
-                  ops::FillIDiagonalOpInplaceInferer);
+                  ops::FillIDiagonalOpMaker,
+                  ops::FillIDiagonalOpInplaceInferer,
+                  ops::FillIDiagonalOpVarTypeInference,
+                  FillDiagonalShapeFunctor);
 
 REGISTER_OPERATOR(fill_diagonal_grad,
                   ops::FillIDiagonalGradOp,
-                  ops::FillIDiagonalGradOpInplaceInferer);
-
-REGISTER_OP_CPU_KERNEL(fill_diagonal,
-                       ops::FillIDiagonalKernel<float>,
-                       ops::FillIDiagonalKernel<double>,
-                       ops::FillIDiagonalKernel<int64_t>,
-                       ops::FillIDiagonalKernel<int>,
-                       ops::FillIDiagonalKernel<paddle::platform::float16>,
-                       ops::FillIDiagonalKernel<bool>);
-
-REGISTER_OP_CPU_KERNEL(fill_diagonal_grad,
-                       ops::FillIDiagonalGradKernel<float>,
-                       ops::FillIDiagonalGradKernel<double>,
-                       ops::FillIDiagonalGradKernel<int64_t>,
-                       ops::FillIDiagonalGradKernel<int>,
-                       ops::FillIDiagonalGradKernel<paddle::platform::float16>,
-                       ops::FillIDiagonalGradKernel<bool>);
+                  ops::FillIDiagonalGradOpInplaceInferer,
+                  FillDiagonalGradShapeFunctor);

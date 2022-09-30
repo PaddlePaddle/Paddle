@@ -22,7 +22,7 @@ from ..initializer import Constant
 from ...framework import ParamAttr
 from ...fluid import dygraph_utils
 import numbers
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.fluid.framework import core, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 
@@ -31,7 +31,7 @@ __all__ = []
 
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     r"""
-    This op normalizes ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
+    Normalize ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
 
     .. math::
 
@@ -45,7 +45,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     Parameters:
         x (Tensor): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
-        p (float|int, optional): The exponent value in the norm formulation. Default: 2
+        p (float|int, optional): The exponent value in the norm formulation. Default: 2.
         axis (int, optional): The axis on which to apply normalization. If `axis < 0`, the dimension to normalization is `x.ndim + axis`. -1 is the last dimension.
         epsilon (float, optional): Small float added to denominator to avoid dividing by zero. Default is 1e-12.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -81,14 +81,14 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
     if in_dygraph_mode():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = _C_ops.final_state_p_norm(x, float(p), axis, epsilon, True, False)
-        return x / _C_ops.elementwise_max(out, eps)
+        out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
+        return x / _C_ops.maximum(out, eps)
 
     if _in_legacy_dygraph():
         eps = fluid.dygraph.base.to_variable([epsilon], dtype=x.dtype)
-        out = _C_ops.p_norm(x, 'axis', axis, 'porder', float(p), 'keepdim',
-                            True, 'epsilon', epsilon)
-        return x / _C_ops.elementwise_max(out, eps)
+        out = _legacy_C_ops.p_norm(x, 'axis', axis, 'porder', float(p),
+                                   'keepdim', True, 'epsilon', epsilon)
+        return x / _legacy_C_ops.elementwise_max(out, eps)
 
     check_type(p, 'p', (float, int), 'normalize')
     check_type(axis, 'axis', (int), 'normalize')
@@ -140,8 +140,8 @@ def batch_norm(x,
         bias(Tensor): The bias tensor of batch_norm can not be None.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Defalut False.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Defalut "NCHW".
+        training(bool, optional): True means train mode which compute by batch data and track global mean and var during train period. False means inference mode which compute by global mean and var which calculated by train period. Default False.
+        data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default "NCHW".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -189,7 +189,7 @@ def batch_norm(x,
         trainable_statistics = not use_global_stats
 
     if in_dygraph_mode():
-        batch_norm_out, _, _, _, _, _ = _C_ops.final_state_batch_norm(
+        batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
             x, weight, bias, running_mean, running_var, momentum, epsilon,
             data_format, not training, use_global_stats, trainable_statistics,
             False)
@@ -204,7 +204,7 @@ def batch_norm(x,
                  "fuse_with_relu", False, "use_global_stats", use_global_stats,
                  "trainable_statistics", trainable_statistics)
 
-        batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+        batch_norm_out, _, _, _, _, _ = _legacy_C_ops.batch_norm(
             x, weight, bias, running_mean, running_var, None, mean_out,
             variance_out, *attrs)
 
@@ -294,11 +294,8 @@ def layer_norm(x,
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
+          x = paddle.rand((2, 2, 2, 3))
           layer_norm_out = paddle.nn.functional.layer_norm(x, x.shape[1:])
           print(layer_norm_out)
     """
@@ -323,14 +320,15 @@ def layer_norm(x,
                          str(input_shape))
 
     if in_dygraph_mode():
-        pre_act, _, _, = _C_ops.final_state_layer_norm(x, weight, bias, epsilon,
-                                                       begin_norm_axis, False)
+        pre_act, _, _, = _C_ops.layer_norm(x, weight, bias, epsilon,
+                                           begin_norm_axis, False)
 
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
     if _in_legacy_dygraph():
-        pre_act, _, _ = _C_ops.layer_norm(x, weight, bias, 'epsilon', epsilon,
-                                          'begin_norm_axis', begin_norm_axis)
+        pre_act, _, _ = _legacy_C_ops.layer_norm(x, weight, bias, 'epsilon',
+                                                 epsilon, 'begin_norm_axis',
+                                                 begin_norm_axis)
         return dygraph_utils._append_activation_in_dygraph(pre_act, act=None)
 
     check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
@@ -384,13 +382,13 @@ def instance_norm(x,
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
-        running_mean(Tensor): running mean. Default None.
-        running_var(Tensor): running variance. Default None.
+        running_mean(Tensor, optional): running mean. Default None.
+        running_var(Tensor, optional): running variance. Default None.
         weight(Tensor, optional): The weight tensor of instance_norm. Default: None.
         bias(Tensor, optional): The bias tensor of instance_norm. Default: None.
         eps(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        use_input_stats(bool): Default True.
+        use_input_stats(bool, optional): Default True.
         data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Defalut "NCHW".
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -402,23 +400,20 @@ def instance_norm(x,
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
-          np.random.seed(123)
-          x_data = np.random.random(size=(2, 2, 2, 3)).astype('float32')
-          x = paddle.to_tensor(x_data)
+          x = paddle.rand((2, 2, 2, 3))
           instance_norm_out = paddle.nn.functional.instance_norm(x)
 
           print(instance_norm_out)
 
     """
     if in_dygraph_mode():
-        out = _C_ops.final_state_instance_norm(x, weight, bias, eps)
+        out = _C_ops.instance_norm(x, weight, bias, eps)
         return out
     if _in_legacy_dygraph():
-        out, _, _ = _C_ops.instance_norm(x, weight, bias, "epsilon", eps,
-                                         "momentum", momentum, "data_format",
-                                         data_format)
+        out, _, _ = _legacy_C_ops.instance_norm(x, weight, bias, "epsilon", eps,
+                                                "momentum", momentum,
+                                                "data_format", data_format)
         return out
 
     check_variable_and_dtype(x, 'input', ['float32', 'float64'], "InstanceNorm")

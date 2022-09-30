@@ -18,13 +18,16 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/spectral_op.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/funcs/fft.h"
+#include "paddle/phi/kernels/funcs/fft_fill_conj.h"
 #include "paddle/phi/kernels/funcs/frame_functor.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class StftKernel : public framework::OpKernel<T> {
@@ -35,9 +38,9 @@ class StftKernel : public framework::OpKernel<T> {
   */
   void Compute(const framework::ExecutionContext& ctx) const override {
     using C = paddle::platform::complex<T>;
-    const Tensor* x = ctx.Input<Tensor>("X");
-    const Tensor* window = ctx.Input<Tensor>("Window");
-    Tensor* out = ctx.Output<Tensor>("Out");
+    const phi::DenseTensor* x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* window = ctx.Input<phi::DenseTensor>("Window");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<C>(ctx.GetPlace());
 
     const size_t x_rank = x->dims().size();
@@ -76,25 +79,25 @@ class StftKernel : public framework::OpKernel<T> {
         ctx, &frames, window, axes.back(), MulFunctor<T>(), &frames_w);
 
     // FFTR2C
-    FFTNormMode normalization;
+    phi::funcs::FFTNormMode normalization;
     if (normalized) {
-      normalization = get_norm_from_string("ortho", true);
+      normalization = phi::funcs::get_norm_from_string("ortho", true);
     } else {
-      normalization = get_norm_from_string("backward", true);
+      normalization = phi::funcs::get_norm_from_string("backward", true);
     }
-    FFTR2CFunctor<DeviceContext, T, C> fft_r2c_func;
+    phi::funcs::FFTR2CFunctor<DeviceContext, T, C> fft_r2c_func;
 
     if (onesided) {
-      fft_r2c_func(dev_ctx, &frames_w, out, axes, normalization, true);
+      fft_r2c_func(dev_ctx, frames_w, out, axes, normalization, true);
     } else {
       framework::DDim onesided_dims(out->dims());
       const int64_t onesided_axis_size = out->dims().at(axes.back()) / 2 + 1;
       onesided_dims.at(axes.back()) = onesided_axis_size;
       Tensor onesided_out;
       onesided_out.mutable_data<C>(onesided_dims, ctx.GetPlace());
-      fft_r2c_func(
-          dev_ctx, &frames_w, &onesided_out, axes, normalization, true);
-      fill_conj<DeviceContext, C>(dev_ctx, &onesided_out, out, axes);
+      fft_r2c_func(dev_ctx, frames_w, &onesided_out, axes, normalization, true);
+      phi::funcs::FFTFillConj<DeviceContext, C>(
+          dev_ctx, &onesided_out, out, axes);
     }
   }
 };
@@ -106,9 +109,9 @@ class StftGradKernel : public framework::OpKernel<T> {
     using C = paddle::platform::complex<T>;
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
-    const Tensor* window = ctx.Input<Tensor>("Window");
-    const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    const phi::DenseTensor* window = ctx.Input<phi::DenseTensor>("Window");
+    const auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(ctx.GetPlace());
 
     const size_t dy_rank = dy->dims().size();
@@ -131,17 +134,17 @@ class StftGradKernel : public framework::OpKernel<T> {
     complex_d_frames_w.mutable_data<C>(d_frames_dims, ctx.GetPlace());
 
     // dy -> d_frames_w
-    FFTNormMode normalization;
+    phi::funcs::FFTNormMode normalization;
     if (normalized) {
-      normalization = get_norm_from_string("ortho", true);
+      normalization = phi::funcs::get_norm_from_string("ortho", true);
     } else {
-      normalization = get_norm_from_string("backward", true);
+      normalization = phi::funcs::get_norm_from_string("backward", true);
     }
-    FFTC2CFunctor<DeviceContext, C, C> fft_c2c_func;
+    phi::funcs::FFTC2CFunctor<DeviceContext, C, C> fft_c2c_func;
 
     if (!onesided) {
       fft_c2c_func(
-          dev_ctx, dy, &complex_d_frames_w, axes, normalization, false);
+          dev_ctx, *dy, &complex_d_frames_w, axes, normalization, false);
     } else {
       Tensor full_dy;
       full_dy.mutable_data<C>(d_frames_dims, ctx.GetPlace());
@@ -153,20 +156,11 @@ class StftGradKernel : public framework::OpKernel<T> {
       pads[axes.back() * 2 + 1] = zero_length;
 
       phi::funcs::PaddingFunctor<DeviceContext, C>(
-          rank,
-          ctx.template device_context<DeviceContext>(),
-          pads,
-          static_cast<C>(0),
-          *dy,
-          &full_dy);
+          rank, dev_ctx, pads, static_cast<C>(0), *dy, &full_dy);
       fft_c2c_func(
-          dev_ctx, &full_dy, &complex_d_frames_w, axes, normalization, false);
+          dev_ctx, full_dy, &complex_d_frames_w, axes, normalization, false);
     }
-    framework::TransComplexToReal(
-        framework::TransToProtoVarType(d_frames_w.dtype()),
-        framework::TransToProtoVarType(complex_d_frames_w.dtype()),
-        complex_d_frames_w,
-        &d_frames_w);
+    phi::RealKernel<C>(dev_ctx, complex_d_frames_w, &d_frames_w);
 
     // d_frames_w -> d_frames
     Tensor d_frames;

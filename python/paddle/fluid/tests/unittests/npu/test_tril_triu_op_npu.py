@@ -11,8 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
@@ -135,7 +133,7 @@ for _op_type in ['tril', 'triu']:
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):
-    """ test case by using API and has -1 dimension 
+    """ test case by using API and has -1 dimension
     """
 
     def test_api(self):
@@ -157,8 +155,8 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                     feed={"x": data},
                     fetch_list=[tril_out, triu_out],
                 )
-                self.assertTrue(np.allclose(tril_out, np.tril(data)))
-                self.assertTrue(np.allclose(triu_out, np.triu(data)))
+                np.testing.assert_allclose(tril_out, np.tril(data))
+                np.testing.assert_allclose(triu_out, np.triu(data))
 
     def test_api_with_dygraph(self):
         paddle.disable_static(fluid.NPUPlace(0))
@@ -170,8 +168,8 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 x = fluid.dygraph.to_variable(data)
                 tril_out, triu_out = tensor.tril(x).numpy(), tensor.triu(
                     x).numpy()
-                self.assertTrue(np.allclose(tril_out, np.tril(data)))
-                self.assertTrue(np.allclose(triu_out, np.triu(data)))
+                np.testing.assert_allclose(tril_out, np.tril(data))
+                np.testing.assert_allclose(triu_out, np.triu(data))
 
     def test_fluid_api(self):
         paddle.enable_static()
