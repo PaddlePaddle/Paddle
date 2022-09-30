@@ -22,7 +22,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using StringPairMap = std::unordered_map<std::string, std::pair<bool, Tensor>>;
+using StringPairMap =
+    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 
 static void SaveInfoInTheFirstOp(
     ir::Graph* graph,
@@ -137,9 +138,9 @@ static void GetInfoFromTheFirstOp(ir::Graph* graph,
               fake_name.erase(unsigned_pos, unsigned_flag.length());
           auto scales_vector = PADDLE_GET_CONST(std::vector<float>,
                                                 op_desc->GetAttr(vector_name));
-          LoDTensor tensor;
+          phi::DenseTensor tensor;
           const int size = static_cast<int>(scales_vector.size());
-          auto* data = tensor.mutable_data<float>({size}, platform::CPUPlace());
+          auto data = tensor.mutable_data<double>({size}, platform::CPUPlace());
           std::copy(scales_vector.begin(), scales_vector.end(), data);
           auto pair = std::make_pair(is_unsigned, tensor);
           info_map->insert(std::make_pair(var_name, pair));

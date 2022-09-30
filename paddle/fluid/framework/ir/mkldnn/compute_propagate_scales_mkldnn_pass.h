@@ -23,7 +23,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-
 class ComputePropagateScalesMkldnnPass : public FusePassBase {
  public:
   ComputePropagateScalesMkldnnPass() = default;
