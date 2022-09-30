@@ -14,8 +14,9 @@
 
 import numpy as np
 import unittest
-from op_test import check_out_dtype
+from op_test import OpTest, check_out_dtype
 import paddle.fluid.core as core
+from paddle.fluid import compiler, Program, program_guard
 import paddle
 import paddle.nn.functional as F
 import paddle.fluid as fluid

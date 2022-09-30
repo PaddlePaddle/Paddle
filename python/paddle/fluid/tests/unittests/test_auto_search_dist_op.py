@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
+import copy
+
+import numpy as np
 
 import paddle
 import paddle.nn as nn
@@ -20,8 +23,11 @@ import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.fluid.core as core
 from paddle.fluid import layers
+from paddle.distributed.auto_parallel.operators.common import DistributedOperatorImplContainer
+from paddle.distributed.auto_parallel.operators.common import DistributedOperatorImpl
 from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
+from paddle.distributed.auto_parallel.dist_context import DistributedContext, DistributedOperatorContext
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
 from paddle.distributed.auto_parallel.dist_op import DistributedOperator
 
 paddle.enable_static()

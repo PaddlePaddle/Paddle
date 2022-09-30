@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import numpy as np
 import paddle
 
 from test_collective_base import TestDistBase

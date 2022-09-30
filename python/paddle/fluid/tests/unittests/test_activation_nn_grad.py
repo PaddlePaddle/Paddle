@@ -21,6 +21,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
 import paddle.nn.functional as F
+from paddle.fluid.framework import _test_eager_guard
 
 from decorator_helper import prog_scope
 

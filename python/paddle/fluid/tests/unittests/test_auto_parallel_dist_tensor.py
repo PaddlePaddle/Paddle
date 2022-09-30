@@ -16,6 +16,7 @@ import copy
 import unittest
 
 import paddle
+from paddle.fluid import core
 from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed import fleet
