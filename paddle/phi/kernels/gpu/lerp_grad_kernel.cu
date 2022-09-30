@@ -26,7 +26,7 @@
 namespace phi {
 
 template <typename T>
-__global__ void GetLerpGrad(const T* weight,
+__global__ void LerpGradKernelImpl(const T* weight,
                             const T* dout,
                             T* dx,
                             T* dy,
@@ -45,7 +45,7 @@ __global__ void GetLerpGrad(const T* weight,
 }
 
 template <typename T>
-__global__ void GetLerpGradRankZero(const T* weight,
+__global__ void LerpGradScalarKernelImpl(const T* weight,
                                     const T* dout,
                                     T* dx,
                                     T* dy,
@@ -154,7 +154,7 @@ void SwitchKernel(const Context& ctx,
     const int out_size = out_grad.numel();
     const int weight_size = weight.numel();
     auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
-    GetLerpGradRankZero<T><<<gpu_config.GetGridSize(),
+    LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
                              gpu_config.GetBlockSize(),
                              0,
                              ctx.stream()>>>(weight_data,
@@ -179,7 +179,7 @@ void SwitchKernel(const Context& ctx,
     const int weight_size = weight.numel();
 
     auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
-    GetLerpGrad<T><<<gpu_config.GetGridSize(),
+    LerpGradKernelImpl<T><<<gpu_config.GetGridSize(),
                      gpu_config.GetBlockSize(),
                      0,
                      ctx.stream()>>>(weight_data,
