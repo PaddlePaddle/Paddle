@@ -2171,7 +2171,7 @@ USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
-#ifdef _WIN32
+#if define(_WIN32) || IS_TRT_VERSION_LT(7000)
 #else
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
