@@ -270,8 +270,8 @@ class TestSingleProcessRpc(unittest.TestCase):
         out = dist.rpc.rpc_async(worker_name(0), paddle_add, args=args).wait()
         np.testing.assert_allclose(out, res, rtol=1e-05)
 
-    def test_get_service_info(self):
-        info = dist.rpc.get_service_info(worker_name(0))
+    def test_get_worker_info(self):
+        info = dist.rpc.get_worker_info(worker_name(0))
         self.assertEqual(info.name, worker_name(0))
         self.assertEqual(info.rank, 0)
         ip, port = self.server_endpoint.split(":")
@@ -279,8 +279,8 @@ class TestSingleProcessRpc(unittest.TestCase):
         self.assertEqual(info.ip, ip)
         self.assertEqual(info.port, port)
 
-    def test_get_all_service_infos(self):
-        infos = dist.rpc.get_all_service_infos()
+    def test_get_all_worker_infos(self):
+        infos = dist.rpc.get_all_worker_infos()
         info = infos[0]
         self.assertEqual(info.name, worker_name(0))
         self.assertEqual(info.rank, 0)
@@ -289,8 +289,8 @@ class TestSingleProcessRpc(unittest.TestCase):
         self.assertEqual(info.ip, ip)
         self.assertEqual(info.port, port)
 
-    def test_get_current_service_info(self):
-        info = dist.rpc.get_current_service_info()
+    def test_get_current_worker_info(self):
+        info = dist.rpc.get_current_worker_info()
         self.assertEqual(info.name, worker_name(0))
         self.assertEqual(info.rank, 0)
         ip, port = self.server_endpoint.split(":")

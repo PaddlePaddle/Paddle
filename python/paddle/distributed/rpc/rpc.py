@@ -25,34 +25,36 @@ from paddle.distributed.launch.context import Node
 
 ServiceInfo = namedtuple("ServiceInfo", ["name", "rank", "ip", "port"])
 
-_DEFAULT_TIMEOUT_MS = 500000
-_TIMEOUT_MAX_DAYS = 99999999
-_default_store = None
-# count the number of `_barrier_nver_timeout` is called and
+_DEFAULT_RPC_TIMEOUT = -1
+_MAX_RPC_TIMEOUT_MS = 0x7fffffff
+_BARRIER_TIMEOUT_MAX_DAYS = 99999999
+# tcp store for `_barrier_never_timeout`
+_barrier_store = None
+# count the number of `_barrier_never_timeout` is called and
 # ensure that the barrier key is unique
 _barrier_count = 0
 
 
-def _set_default_store(store):
-    global _default_store
-    _default_store = store
+def _set_barrier_store(store):
+    global _barrier_store
+    _barrier_store = store
 
 
-def _del_default_store():
-    global _default_store
-    del _default_store
+def _del_barrier_store():
+    global _barrier_store
+    del _barrier_store
 
 
 def _set_self_info(name, rank, ip, port):
     self_info = pickle.dumps(ServiceInfo(name, rank, ip, port))
-    _default_store.set(str(rank), self_info)
+    _barrier_store.set(str(rank), self_info)
 
 
 def _exchange_all_service_infos(world_size):
     all_infos = []
     s = set()
     for rank in range(world_size):
-        info = pickle.loads(_default_store.get(str(rank)))
+        info = pickle.loads(_barrier_store.get(str(rank)))
         assert (info.name not in s
                 ), "The Worker name must be unique, but name `{}` is repeated."
         s.add(info.name)
@@ -73,26 +75,27 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
 
     Args:
         name (str): worker name.
-        rank (int): worker id.
-        world_size (int): number of workers.
-        master_endpoint (str): id address of master, other nodes communicate with the master to
-            get the information of all service nodes.
+        rank (int, optional): worker id, default is None.
+        world_size (int, optional): number of workers, default is None.
+        master_endpoint (str, optional): id address of master, other nodes communicate with the master to
+            get the information of all service nodes, default is None.
 
     Returns:
         None.
 
     Examples:
         .. code-block:: python
+
             import paddle.distributed.rpc as rpc
 
             rpc.init_rpc("worker0", rank=0, world_size=1,
                         master_endpoint="127.0.0.1:8001")
             rpc.shutdown()
+
     """
-    if rank == None:
-        rank = int(os.environ["PADDLE_TRAINER_ID"])
-    if world_size == None:
-        world_size = int(os.environ["PADDLE_TRAINERS_NUM"])
+    rank = int(os.environ["PADDLE_TRAINER_ID"]) if rank is None else rank
+    world_size = int(
+        os.environ["PADDLE_TRAINERS_NUM"]) if world_size is None else world_size
     server_endpoint = os.getenv("PADDLE_SERVER_ENDPOINT", None)
     if server_endpoint is None:
         server_endpoint = _gen_endpoint()
@@ -102,12 +105,12 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     master_addr, master_port = master_endpoint.split(":")
     master_port = int(master_port)
     stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
-    default_store = core.TCPStore(master_addr,
-                                  master_port,
-                                  rank == 0,
-                                  world_size,
-                                  timeout=stop_check_timeout)
-    _set_default_store(default_store)
+    store = core.TCPStore(master_addr,
+                          master_port,
+                          rank == 0,
+                          world_size,
+                          timeout=stop_check_timeout)
+    _set_barrier_store(store)
     ip, port = server_endpoint.split(":")
     port = int(port)
     _set_self_info(name, rank, ip, port)
@@ -124,17 +127,22 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     logger.info("Trainer {}: Init RPC done!".format(rank))
 
 
-def rpc_sync(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
+def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     """
     Make a blocking RPC call to run function ``fn`` on server ``to``.
 
     Args:
         to (str): name of the destination server.
         fn (fn): a callable function, such as Python callables.
-        args (tuple): the argument tuple for the ``fn`` invocation.
-        kwargs (dict): is a dictionary of keyword arguments for the ``fn``
-                       invocation.
-        timeout_ms (float, optional): timeout in milliseconds to use for this RPC.
+        args (tuple, optional): the argument tuple for the ``fn`` invocation, default is None.
+        kwargs (dict, optional): is a dictionary of keyword arguments for the ``fn``
+                       invocation, default is None.
+        timeout (int, optional): timeout in seconds to use for this RPC. If
+                                   the RPC does not complete in this amount of
+                                   time, an exception indicating it has
+                                   timed out will be raised. A value of 0
+                                   indicates an infinite timeout, i.e. a timeout
+                                   error will never be raised. The default value is -1.
 
     Returns:
         Returns the result of running ``fn`` with ``args`` and ``kwargs``.
@@ -152,21 +160,26 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
             rpc.shutdown()
 
     """
-    fut = _invoke_rpc(to, fn, args, kwargs, timeout_ms)
+    fut = _invoke_rpc(to, fn, args, kwargs, timeout)
     return fut.wait()
 
 
-def rpc_async(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
+def rpc_async(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     """
     Make a non-blocking RPC call to run function ``fn`` on server ``to``.
 
     Args:
         to (str): name of the destination server.
         fn (fn): a callable function, such as Python callables.
-        args (tuple): the argument tuple for the ``fn`` invocation.
-        kwargs (dict): is a dictionary of keyword arguments for the ``fn``
-                       invocation.
-        timeout_ms (float, optional): timeout in milliseconds to use for this RPC.
+        args (tuple, optional): the argument tuple for the ``fn`` invocation, default is None.
+        kwargs (dict, optional): is a dictionary of keyword arguments for the ``fn``
+                       invocation, default is None.
+        timeout (int, optional): timeout in seconds to use for this RPC. If
+                                   the RPC does not complete in this amount of
+                                   time, an exception indicating it has
+                                   timed out will be raised. A value of 0
+                                   indicates an infinite timeout, i.e. a timeout
+                                   error will never be raised. The default value is -1.
 
     Returns:
         Returns a :class:`FutureWrapper` object that can be waited
@@ -175,6 +188,7 @@ def rpc_async(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
 
     Examples:
         .. code-block:: python
+
             import paddle.distributed.rpc as rpc
 
             def add(a, b):
@@ -185,21 +199,24 @@ def rpc_async(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
             fut = rpc.rpc_async("worker0", add, args=(2, 3))
             print(fut.wait())
             rpc.shutdown()
+
     """
-    return _invoke_rpc(to, fn, args, kwargs, timeout_ms)
+    return _invoke_rpc(to, fn, args, kwargs, timeout)
 
 
-def _invoke_rpc(to, fn, args, kwargs, timeout_ms):
+def _invoke_rpc(to, fn, args, kwargs, timeout):
     args = args if args else ()
     kwargs = kwargs if kwargs else {}
     serial_obj = _serialize(PythonFunc(fn, args, kwargs))
+    timeout_ms = timeout * 1000
+    timeout_ms = _MAX_RPC_TIMEOUT_MS if timeout_ms <= 0 else timeout_ms
     future = core.invoke_rpc(to, serial_obj, timeout_ms)
     return future
 
 
 def _barrier_never_timeout(global_rank, global_world_size):
     # max timeout
-    timeout = datetime.timedelta(days=_TIMEOUT_MAX_DAYS)
+    timeout = datetime.timedelta(days=_BARRIER_TIMEOUT_MAX_DAYS)
 
     if global_world_size < 2:
         return
@@ -219,7 +236,7 @@ def _barrier_never_timeout(global_rank, global_world_size):
                     "Keys {} are not ready sinck rank {} is waiting them.".
                     format(wait_keys, global_rank))
             wait_keys = list(
-                filter(lambda key: int(_default_store.get(key)) != 1,
+                filter(lambda key: int(_barrier_store.get(key)) != 1,
                        wait_keys))
 
     if is_master:
@@ -228,12 +245,12 @@ def _barrier_never_timeout(global_rank, global_world_size):
         wait_keys = [
             barrier_prefix + str(rank) for rank in range(1, global_world_size)
         ]
-        _default_store.add(barrier_prefix + str(0), 1)
+        _barrier_store.add(barrier_prefix + str(0), 1)
         _check_keys_ready(wait_keys)
     else:
         wait_keys = [barrier_prefix + str(0)]
         _check_keys_ready(wait_keys)
-        _default_store.add(barrier_prefix + str(global_rank), 1)
+        _barrier_store.add(barrier_prefix + str(global_rank), 1)
 
 
 def shutdown():
@@ -247,34 +264,37 @@ def shutdown():
 
     Examples:
         .. code-block:: python
+
             import paddle.distributed.rpc as rpc
 
             rpc.init_rpc("worker0", rank=0, world_size=1,
                         master_endpoint="127.0.0.1:8004")
             rpc.shutdown()
+
     """
-    info = get_current_service_info()
+    info = get_current_worker_info()
     rank = info.rank
-    world_size = len(get_all_service_infos())
+    world_size = len(get_all_worker_infos())
     # master will exit in the end
     _barrier_never_timeout(rank, world_size)
     core.rpc_stop_server()
-    _del_default_store()
+    _del_barrier_store()
     logger.info("Trainer {}: rpc shutdown!".format(rank))
 
 
-def get_service_info(name):
+def get_worker_info(name):
     """
-    Get service information by service name.
+    Get worker information by worker name.
 
     Args:
-        name (str): name of the server.
+        name (str): name of the worker.
 
     Returns:
         class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`.
 
     Examples:
         .. code-block:: python
+
             import paddle.distributed.rpc as rpc
             import os
 
@@ -282,23 +302,25 @@ def get_service_info(name):
             rpc.init_rpc("worker0", rank=0, world_size=1,
                         master_endpoint="127.0.0.1:8005")
 
-            print(rpc.get_service_info("worker0"))
+            print(rpc.get_worker_info("worker0"))
             # {name: worker0, rank: 0, ip: 127.0.0.1, port: 9002}
 
             rpc.shutdown()
+
     """
     return core.rpc_get_service_info(name)
 
 
-def get_all_service_infos():
+def get_all_worker_infos():
     """
-    Get all service informations.
+    Get all worker informations.
 
     Returns:
         List[ServiceInfo].
 
     Examples:
         .. code-block:: python
+
             import paddle.distributed.rpc as rpc
             import os
 
@@ -306,23 +328,25 @@ def get_all_service_infos():
             rpc.init_rpc("worker0", rank=0, world_size=1,
                     master_endpoint="127.0.0.1:8006")
 
-            print(rpc.get_all_service_infos())
+            print(rpc.get_all_worker_infos())
             # [{name: worker0, rank: 0, ip: 127.0.0.1, port: 9003}]
 
             rpc.shutdown()
+
     """
     return core.rpc_get_all_service_infos()
 
 
-def get_current_service_info():
+def get_current_worker_info():
     """
-    Get current service information.
+    Get current worker information.
 
     Returns:
         class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`.
 
     Examples:
         .. code-block:: python
+
             import paddle.distributed.rpc as rpc
             import os
 
@@ -330,9 +354,10 @@ def get_current_service_info():
             rpc.init_rpc("worker0", rank=0, world_size=1,
                         master_endpoint="127.0.0.1:8007")
 
-            print(rpc.get_current_service_info())
+            print(rpc.get_current_worker_info())
             # {name: worker0, rank: 0, ip: 127.0.0.1, port: 9004}
 
             rpc.shutdown()
+
     """
     return core.rpc_get_current_service_info()

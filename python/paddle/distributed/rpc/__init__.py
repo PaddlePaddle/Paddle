@@ -17,9 +17,9 @@ from paddle.distributed.rpc.rpc import (
     shutdown,
     rpc_async,
     rpc_sync,
-    get_service_info,
-    get_all_service_infos,
-    get_current_service_info,
+    get_worker_info,
+    get_all_worker_infos,
+    get_current_worker_info,
 )
 
 __all__ = [
@@ -27,7 +27,7 @@ __all__ = [
     "shutdown",
     "rpc_async",
     "rpc_sync",
-    "get_service_info",
-    "get_all_service_infos",
-    "get_current_service_info",
+    "get_worker_info",
+    "get_all_worker_infos",
+    "get_current_worker_info",
 ]
