@@ -384,10 +384,6 @@ if(WITH_MKLDNN)
     SRCS mkldnn/params_quantization_mkldnn_pass_tester.cc
     DEPS params_quantization_mkldnn_pass)
   cc_test(
-    test_fc_elementwise_add_mkldnn_fuse_pass
-    SRCS mkldnn/fc_elementwise_add_mkldnn_fuse_pass_tester.cc
-    DEPS fc_elementwise_add_mkldnn_fuse_pass pass_test_util)
-  cc_test(
     test_fc_act_mkldnn_fuse_pass
     SRCS mkldnn/fc_act_mkldnn_fuse_pass_tester.cc
     DEPS fc_act_mkldnn_fuse_pass pass_test_util)
