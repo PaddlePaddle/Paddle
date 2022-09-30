@@ -81,7 +81,6 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
-    out->set_layout(DataLayout::kMKLDNN);
     out->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(
         TransposeToPermuteAxis(transpose_axis)));
   }
@@ -163,7 +162,6 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
-    dx->set_layout(DataLayout::kMKLDNN);
     dx->set_mem_desc(
         reorder_dst_memory_p->get_desc().permute_axes(transpose_axis));
   }
