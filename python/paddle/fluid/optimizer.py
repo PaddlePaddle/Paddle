@@ -6239,7 +6239,7 @@ class RecomputeOptimizer(Optimizer):
     @framework.deprecate_stat_dict
     def load(self, state_dict):
         """
-	    :api_attr: Static Graph
+        :api_attr: Static Graph
 
         load function is not supported by Recompute Optimizer for now.
         :return: None
@@ -6250,8 +6250,10 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
-                import paddle.compat as cpt
+
+                paddle.enable_static()
 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
