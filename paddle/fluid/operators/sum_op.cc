@@ -92,7 +92,6 @@ class SumOp : public framework::OperatorWithKernel {
         }
       }
 #endif
-
       return framework::OpKernelType(data_type, ctx.GetPlace());
     } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
       for (auto& var : x_vars) {
