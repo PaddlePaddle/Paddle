@@ -385,6 +385,17 @@
   kernel :
     func : coo_to_dense { sparse_coo -> dense }
 
+- backward_op : transpose_grad
+  forward : transpose(Tensor x, int[] perm) -> Tensor(out)
+  args : (Tensor out_grad, int[] perm)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : TransposeGradInferMeta
+    param : [out_grad, perm]
+  kernel :
+    func : transpose_coo_grad {sparse_coo -> sparse_coo},
+           transpose_csr_grad {sparse_csr -> sparse_csr}
+
 - backward_op : values_grad
   forward : values_coo(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
