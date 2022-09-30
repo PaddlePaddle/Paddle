@@ -777,6 +777,7 @@ int ProductRuleBook(const Context& dev_ctx,
                                                             rulebook_ptr,
                                                             counter_ptr);
     }
+    if (hash) delete out_index_hash_table_ptr;
 
     out->SetMember(out_indices, out_values, out_dims, false);
 
@@ -802,7 +803,6 @@ int ProductRuleBook(const Context& dev_ctx,
                                              out_rulebook_ptr);
     *rulebook = out_rulebook;
 
-    if (hash) delete out_index_hash_table_ptr;
     return rulebook_len;
   } else {
     DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
