@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/helper.h"
@@ -208,6 +209,120 @@ void AnalysisConfig::SetIpuConfig(bool ipu_enable_fp16,
   Update();
 }
 
+void AnalysisConfig::SetIpuCustomInfo(
+    const std::vector<std::vector<std::string>> &ipu_custom_ops_info,
+    const std::map<std::string, bool> &ipu_custom_patterns) {
+  ipu_custom_ops_info_ = ipu_custom_ops_info;
+  for (auto iter = ipu_custom_patterns.begin();
+       iter != ipu_custom_patterns.end();
+       iter++) {
+    if (iter->second == true) {
+      ipu_custom_patterns_.push_back(
+          std::vector<std::string>{iter->first, "True"});
+    } else if (iter->second == false) {
+      ipu_custom_patterns_.push_back(
+          std::vector<std::string>{iter->first, "False"});
+    }
+  }
+
+  Update();
+}
+
+void AnalysisConfig::LoadIpuConfig(const std::string &config_path) {
+  std::ifstream fin(config_path, std::ios::in);
+  PADDLE_ENFORCE_EQ(
+      static_cast<bool>(fin.is_open()),
+      true,
+      platform::errors::NotFound(
+          "Cannot open file %s, please confirm whether the file is normal.",
+          config_path));
+  std::string line;
+  while (std::getline(fin, line)) {
+    // remove all space
+    line.erase(std::remove(line.begin(), line.end(), ' '), line.end());
+
+    std::string key;
+    std::string value;
+    std::istringstream stream(line);
+    // Split string to key and value based on the first `,`
+    std::getline(stream, key, ',');
+    std::getline(stream, value);
+
+    auto string2bool = [](std::string s) {
+      std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) {
+        return ::tolower(c);
+      });
+      return s == "true" || s == "1";
+    };
+
+    // ipu_custom_ops_info:
+    // [[paddle_op_name, popart_op_name, domain, version], [paddle_op_name,
+    // popart_op_name, domain, version]...]
+    // ipu_custom_patterns:
+    // [[paddle_op_name, enable_pattern], [paddle_op_name, enable_pattern]...]
+    auto string2vector = [](std::string s) {
+      std::vector<std::vector<std::string>> custom_info;
+      s.erase(0, 1);
+      s.pop_back();
+
+      std::string one;
+      std::istringstream s_stream(s);
+      while (std::getline(s_stream, one, ']')) {
+        if (!one.empty()) {
+          // remove `[`
+          one.erase(0, 1);
+          custom_info.push_back(paddle::string::Split(one, ','));
+        }
+      }
+      return custom_info;
+    };
+
+    if (ipu_config_mapper_.find(key) == ipu_config_mapper_.end()) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "invalid key {} in IPU config", key));
+    }
+    switch (ipu_config_mapper_.at(key)) {
+      case ipu_config_code::ipu_device_num:
+        ipu_device_num_ = std::stoi(value);
+        break;
+      case ipu_config_code::ipu_micro_batch_size:
+        ipu_micro_batch_size_ = std::stoi(value);
+        break;
+      case ipu_config_code::ipu_enable_pipelining:
+        ipu_enable_pipelining_ = string2bool(value);
+        break;
+      case ipu_config_code::ipu_batches_per_step:
+        ipu_batches_per_step_ = std::stoi(value);
+        break;
+      case ipu_config_code::ipu_enable_fp16:
+        ipu_enable_fp16_ = string2bool(value);
+        break;
+      case ipu_config_code::ipu_replica_num:
+        ipu_replica_num_ = std::stoi(value);
+        break;
+      case ipu_config_code::ipu_available_memory_proportion:
+        ipu_available_memory_proportion_ = std::stof(value);
+        break;
+      case ipu_config_code::ipu_enable_half_partial:
+        ipu_enable_half_partial_ = string2bool(value);
+        break;
+      case ipu_config_code::ipu_custom_ops_info:
+        ipu_custom_ops_info_ = string2vector(value);
+        break;
+      case ipu_config_code::ipu_custom_patterns:
+        ipu_custom_patterns_ = string2vector(value);
+        break;
+
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "invalid key {} in IPU config", key));
+        break;
+    }
+  }
+
+  Update();
+}
+
 void AnalysisConfig::EnableONNXRuntime() {
 #ifdef PADDLE_WITH_ONNXRUNTIME
   use_onnxruntime_ = true;
@@ -358,6 +473,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(ipu_replica_num_);
   CP_MEMBER(ipu_available_memory_proportion_);
   CP_MEMBER(ipu_enable_half_partial_);
+  CP_MEMBER(ipu_custom_ops_info_);
+  CP_MEMBER(ipu_custom_patterns_);
 
   // fleet exe related
   CP_MEMBER(dist_config_);
@@ -914,7 +1031,12 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_replica_num_;
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
-
+  for (auto custom_op : ipu_custom_ops_info_)
+    for (auto attr : custom_op) ss << attr;
+  ss << ";";
+  for (auto pattern : ipu_custom_patterns_)
+    for (auto attr : pattern) ss << attr;
+  ss << ";";
   for (auto &op : mixed_black_list_) ss << op.c_str();
   return ss.str();
 }
