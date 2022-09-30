@@ -80,11 +80,11 @@ void SplitWithNumKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    split, OneDNN, ALL_LAYOUT, phi::SplitKernel, float, phi::dtype::bfloat16) {}
+    split, OneDNN, ONEDNN, phi::SplitKernel, float, phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(split_with_num,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::SplitWithNumKernel,
                    float,
                    phi::dtype::bfloat16) {}

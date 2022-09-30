@@ -81,7 +81,7 @@ PD_REGISTER_KERNEL(sum, KPS, ALL_LAYOUT, phi::SumKernel, float) {
 
 #if defined(PADDLE_WITH_MKLDNN)
 PD_REGISTER_KERNEL(
-    sum, OneDNN, ALL_LAYOUT, phi::SumKernel, float, phi::dtype::bfloat16) {}
+    sum, OneDNN, ONEDNN, phi::SumKernel, float, phi::dtype::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)
