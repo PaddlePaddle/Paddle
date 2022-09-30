@@ -17,8 +17,6 @@ import math
 
 __all__ = []
 
-int_type = int
-
 
 #  str and bytes related functions
 def to_text(obj, encoding='utf-8', inplace=False):

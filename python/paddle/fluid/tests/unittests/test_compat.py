@@ -18,9 +18,6 @@ import paddle.compat as cpt
 
 class TestCompatible(unittest.TestCase):
 
-    def test_type(self):
-        self.assertEqual(cpt.int_type, int)
-
     def test_to_text(self):
         self.assertIsNone(cpt.to_text(None))
 
