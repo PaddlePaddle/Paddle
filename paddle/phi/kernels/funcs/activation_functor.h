@@ -2169,12 +2169,14 @@ struct CudaSeluFunctor : public BaseActivationFunctor<T> {
   }
 
   __device__ __forceinline__ T operator()(const T x) const {
-    T res = x;
-    if (res <= zero) {
+    using MT =
+        typename std::conditional<(sizeof(T) > sizeof(float)), T, float>::type;
+    MT res = static_cast<MT>(x);
+    if (x <= zero) {
       res = alpha * expf(res) - alpha;
     }
     res *= scale;
-    return res;
+    return static_cast<T>(res);
   }
 
  private:
