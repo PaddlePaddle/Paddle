@@ -190,6 +190,11 @@ void TensorFromArray(const T* src,
         reinterpret_cast<const platform::CustomDeviceContext&>(ctx).stream());
   }
 #endif
+#ifdef PADDLE_WITH_XPU
+  else if (platform::is_xpu_place(dst_place)) {  // NOLINT
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+#endif
   else {  // NOLINT
     PADDLE_THROW(platform::errors::Unimplemented(
         "TensorFromArray on %s is not supported.", dst_place));
