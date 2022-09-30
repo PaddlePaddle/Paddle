@@ -240,7 +240,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
     return framework::OpKernelType(input_data_type,
                                    ctx.GetPlace(),
                                    framework::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN);
+                                   framework::LibraryType::kMKLDNN,
+                                   customized_type_value);
   }
 #endif
 
