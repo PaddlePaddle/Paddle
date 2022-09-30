@@ -25,9 +25,6 @@ paddle::experimental::Tensor conv2d_ad_func(
     std::vector<int> strides,
     std::vector<int> paddings,
     std::string paddding_algorithm,
-    int groups,
     std::vector<int> dilations,
-    std::string data_format,
-    bool use_addto,
-    int workspace_size_MB,
-    bool exhaustive_search);
+    int groups,
+    std::string data_format);

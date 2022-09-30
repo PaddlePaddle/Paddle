@@ -424,8 +424,8 @@
     func : conj
 
 - backward_op : conv2d_grad
-  forward : conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(out)
-  args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  forward : conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str paddding_algorithm, int[] dilations, int groups, str data_format) -> Tensor(out)
+  args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str paddding_algorithm, int[] dilations, int groups, str data_format)
   output : Tensor(input_grad), Tensor(filter_grad)
   infer_meta :
     func : GeneralBinaryGradInferMeta
@@ -436,8 +436,8 @@
   backward : conv2d_grad_grad
 
 - backward_op : conv2d_grad_grad
-  forward : conv2d_grad (Tensor input, Tensor filter, Tensor grad_out,  int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search) -> Tensor(grad_input), Tensor(grad_filter)
-  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str paddding_algorithm, int groups, int[] dilations, str data_format, bool use_addto, int workspace_size_MB, bool exhaustive_search)
+  forward : conv2d_grad (Tensor input, Tensor filter, Tensor grad_out,  int[] strides, int[] paddings, str paddding_algorithm, int[] dilations, int groups, str data_format) -> Tensor(grad_input), Tensor(grad_filter)
+  args : (Tensor input, Tensor filter, Tensor grad_out, Tensor grad_input_grad, Tensor grad_filter_grad, int[] strides, int[] paddings, str paddding_algorithm, int[] dilations, int groups, str data_format)
   output : Tensor(input_grad), Tensor(filter_grad), Tensor(grad_out_grad)
   infer_meta :
     func : GeneralTernaryGradInferMeta

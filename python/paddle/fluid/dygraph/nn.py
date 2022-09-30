@@ -239,9 +239,9 @@ class Conv2D(layers.Layer):
     def forward(self, input):
         if in_dygraph_mode() and self._l_type == "conv2d":
             pre_bias = _C_ops.conv2d(input, self.weight, self._stride,
-                                     self._padding, "EXPLICIT",
+                                     self._padding, "EXPLICIT", self._dilation,
                                      self._groups if self._groups else 1,
-                                     self._dilation, "NCHW", False, -1, False)
+                                     "NCHW")
             if self.bias is not None:
                 pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
             else:

@@ -124,8 +124,7 @@ def _conv_nd(x,
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dygraph_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(x, weight, stride, padding, padding_algorithm,
-                                 groups, dilation, data_format, False, -1,
-                                 False)
+                                 dilation, groups, data_format)
         if bias is not None:
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
@@ -620,8 +619,8 @@ def conv2d(x,
     else:
         if in_dygraph_mode():
             pre_bias = _C_ops.conv2d(x, weight, stride, padding,
-                                     padding_algorithm, groups, dilation,
-                                     data_format, False, -1, False)
+                                     padding_algorithm, dilation, groups,
+                                     data_format)
             if bias is not None:
                 out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
                 return out

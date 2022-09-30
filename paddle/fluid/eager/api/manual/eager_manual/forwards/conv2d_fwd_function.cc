@@ -30,12 +30,9 @@ paddle::experimental::Tensor conv2d_ad_func(
     std::vector<int> strides,
     std::vector<int> paddings,
     std::string paddding_algorithm,
-    int groups,
     std::vector<int> dilations,
-    std::string data_format,
-    bool use_addto,
-    int workspace_size_MB,
-    bool exhaustive_search) {
+    int groups,
+    std::string data_format) {
   // Dygraph Record Event
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "conv2d dygraph", paddle::platform::TracerEventType::Operator, 1);
@@ -65,12 +62,9 @@ paddle::experimental::Tensor conv2d_ad_func(
                             strides,
                             paddings,
                             paddding_algorithm,
-                            groups,
                             dilations,
-                            data_format,
-                            use_addto,
-                            workspace_size_MB,
-                            exhaustive_search);
+                            groups,
+                            data_format);
     }
   }
 
@@ -93,12 +87,9 @@ paddle::experimental::Tensor conv2d_ad_func(
                               strides,
                               paddings,
                               paddding_algorithm,
-                              groups,
                               dilations,
-                              data_format,
-                              use_addto,
-                              workspace_size_MB,
-                              exhaustive_search);
+                              groups,
+                              data_format);
     transformer->SetOutTensorLayout(&out);
     if (need_tune) {
       egr::Controller::Instance().EnableLayoutAutoTune();
@@ -120,12 +111,9 @@ paddle::experimental::Tensor conv2d_ad_func(
                                                  strides,
                                                  paddings,
                                                  paddding_algorithm,
-                                                 groups,
                                                  dilations,
-                                                 data_format,
-                                                 use_addto,
-                                                 workspace_size_MB,
-                                                 exhaustive_search);
+                                                 groups,
+                                                 data_format);
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d", api_result);
@@ -161,9 +149,6 @@ paddle::experimental::Tensor conv2d_ad_func(
     grad_node->SetAttributegroups(groups);
     grad_node->SetAttributedilations(dilations);
     grad_node->SetAttributedata_format(data_format);
-    grad_node->SetAttributeuse_addto(use_addto);
-    grad_node->SetAttributeworkspace_size_MB(workspace_size_MB);
-    grad_node->SetAttributeexhaustive_search(exhaustive_search);
     // Set TensorWrappers for Forward Inputs if needed
     grad_node->SetTensorWrapperinput(input);
     grad_node->SetTensorWrapperfilter(filter);

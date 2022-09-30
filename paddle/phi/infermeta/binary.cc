@@ -409,12 +409,9 @@ void ConvInferMeta(const MetaTensor& input,
                    const std::vector<int>& strides,
                    const std::vector<int>& paddings_t,
                    const std::string& padding_algorithm,
-                   int groups,
                    const std::vector<int>& dilations_t,
+                   int groups,
                    const std::string& data_format,
-                   bool use_addto,
-                   int workspace_size_MB,
-                   bool exhaustive_search,
                    MetaTensor* out,
                    MetaConfig config) {
   std::vector<int> paddings = paddings_t;
@@ -559,27 +556,27 @@ void ConvInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
-void ConvInferInferMeta(const MetaTensor& input,
-                        const MetaTensor& filter,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
-                        const std::string& paddding_algorithm,
-                        int groups,
-                        const std::vector<int>& dilations,
-                        const std::string& data_format,
-                        MetaTensor* out,
-                        MetaConfig config) {
+void Conv3DInferMeta(const MetaTensor& input,
+                     const MetaTensor& filter,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     const std::string& paddding_algorithm,
+                     int groups,
+                     const std::vector<int>& dilations,
+                     const std::string& data_format,
+                     bool use_addto,
+                     int workspace_size_MB,
+                     bool exhaustive_search,
+                     MetaTensor* out,
+                     MetaConfig config) {
   ConvInferMeta(input,
                 filter,
                 strides,
                 paddings,
                 paddding_algorithm,
-                groups,
                 dilations,
+                groups,
                 data_format,
-                /*use_addto=*/false,
-                /*workspace_size_MB=*/512,  // useless in infermeta
-                /*exhaustive_search=*/false,
                 out,
                 config);
 }
@@ -921,6 +918,31 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
 
   softmax->share_lod(logits);
   loss->share_lod(logits);
+}
+
+void DepthwiseConvInferMeta(const MetaTensor& input,
+                            const MetaTensor& filter,
+                            const std::vector<int>& strides,
+                            const std::vector<int>& paddings,
+                            const std::string& paddding_algorithm,
+                            int groups,
+                            const std::vector<int>& dilations,
+                            const std::string& data_format,
+                            bool use_addto,
+                            int workspace_size_MB,
+                            bool exhaustive_search,
+                            MetaTensor* out,
+                            MetaConfig config) {
+  ConvInferMeta(input,
+                filter,
+                strides,
+                paddings,
+                paddding_algorithm,
+                dilations,
+                groups,
+                data_format,
+                out,
+                config);
 }
 
 void DistInferMeta(const MetaTensor& x,
@@ -2877,4 +2899,3 @@ void Unpool3dInferMeta(const MetaTensor& x,
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(add_raw, phi::ElementwiseRawInferMeta);
-PD_REGISTER_INFER_META_FN(conv2d_infer, phi::ConvInferInferMeta);

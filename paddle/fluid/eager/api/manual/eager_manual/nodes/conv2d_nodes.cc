@@ -50,9 +50,6 @@ Conv2dGradNodeFinal::operator()(
   auto& groups = this->groups_;
   auto& dilations = this->dilations_;
   auto& data_format = this->data_format_;
-  auto& use_addto = this->use_addto_;
-  auto& workspace_size_MB = this->workspace_size_MB_;
-  auto& exhaustive_search = this->exhaustive_search_;
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
@@ -88,12 +85,9 @@ Conv2dGradNodeFinal::operator()(
                                     strides,
                                     paddings,
                                     paddding_algorithm,
-                                    groups,
                                     dilations,
+                                    groups,
                                     data_format,
-                                    use_addto,
-                                    workspace_size_MB,
-                                    exhaustive_search,
                                     api_output_0,
                                     api_output_1);
   // Check NaN and Inf id needed
@@ -138,9 +132,6 @@ Conv2dGradNodeFinal::operator()(
     grad_node->SetAttributegroups(groups);
     grad_node->SetAttributedilations(dilations);
     grad_node->SetAttributedata_format(data_format);
-    grad_node->SetAttributeuse_addto(use_addto);
-    grad_node->SetAttributeworkspace_size_MB(workspace_size_MB);
-    grad_node->SetAttributeexhaustive_search(exhaustive_search);
     // Set TensorWrappers for Forward Inputs if needed
     grad_node->SetTensorWrapperinput(input);
     grad_node->SetTensorWrapperfilter(filter);
@@ -219,9 +210,6 @@ Conv2dDoubleGradNodeFinal::operator()(
   auto& groups = this->groups_;
   auto& dilations = this->dilations_;
   auto& data_format = this->data_format_;
-  auto& use_addto = this->use_addto_;
-  auto& workspace_size_MB = this->workspace_size_MB_;
-  auto& exhaustive_search = this->exhaustive_search_;
   // Prepare Grad function call
 
   const auto& out_metas = OutputMeta();
@@ -262,12 +250,9 @@ Conv2dDoubleGradNodeFinal::operator()(
                                          strides,
                                          paddings,
                                          paddding_algorithm,
-                                         groups,
                                          dilations,
+                                         groups,
                                          data_format,
-                                         use_addto,
-                                         workspace_size_MB,
-                                         exhaustive_search,
                                          api_output_0,
                                          api_output_1,
                                          api_output_2);
