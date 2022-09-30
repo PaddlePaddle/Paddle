@@ -147,7 +147,7 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
                 return a + b
 
             rpc.init_rpc("worker0", rank=0, world_size=1,
-                    master_endpoint="127.0.0.1:8001")
+                    master_endpoint="127.0.0.1:8002")
             ret = rpc.rpc_sync("worker0", add, args=(2, 3))
             rpc.shutdown()
 
@@ -181,7 +181,7 @@ def rpc_async(to, fn, args=None, kwargs=None, timeout_ms=_DEFAULT_TIMEOUT_MS):
                 return a + b
 
             rpc.init_rpc("worker0", rank=0, world_size=1,
-                    master_endpoint="127.0.0.1:8001")
+                    master_endpoint="127.0.0.1:8003")
             fut = rpc.rpc_async("worker0", add, args=(2, 3))
             print(fut.wait())
             rpc.shutdown()
@@ -250,7 +250,7 @@ def shutdown():
             import paddle.distributed.rpc as rpc
 
             rpc.init_rpc("worker0", rank=0, world_size=1,
-                        master_endpoint="127.0.0.1:8001")
+                        master_endpoint="127.0.0.1:8004")
             rpc.shutdown()
     """
     info = get_current_service_info()
@@ -278,12 +278,12 @@ def get_service_info(name):
             import paddle.distributed.rpc as rpc
             import os
 
-            os.environ["PADDLE_SERVER_ENDPOINT"] = "127.0.0.1:8002"
+            os.environ["PADDLE_SERVER_ENDPOINT"] = "127.0.0.1:9002"
             rpc.init_rpc("worker0", rank=0, world_size=1,
-                        master_endpoint="127.0.0.1:8001")
+                        master_endpoint="127.0.0.1:8005")
 
             print(rpc.get_service_info("worker0"))
-            # {name: worker0, rank: 0, ip: 127.0.0.1, port: 8002}
+            # {name: worker0, rank: 0, ip: 127.0.0.1, port: 9002}
 
             rpc.shutdown()
     """
@@ -302,12 +302,12 @@ def get_all_service_infos():
             import paddle.distributed.rpc as rpc
             import os
 
-            os.environ["PADDLE_SERVER_ENDPOINT"] = "127.0.0.1:8002"
+            os.environ["PADDLE_SERVER_ENDPOINT"] = "127.0.0.1:9003"
             rpc.init_rpc("worker0", rank=0, world_size=1,
-                    master_endpoint="127.0.0.1:8001")
+                    master_endpoint="127.0.0.1:8006")
 
             print(rpc.get_all_service_infos())
-            # [{name: worker0, rank: 0, ip: 127.0.0.1, port: 8002}]
+            # [{name: worker0, rank: 0, ip: 127.0.0.1, port: 9003}]
 
             rpc.shutdown()
     """
@@ -326,12 +326,12 @@ def get_current_service_info():
             import paddle.distributed.rpc as rpc
             import os
 
-            os.environ["PADDLE_SERVER_ENDPOINT"] = "127.0.0.1:8002"
+            os.environ["PADDLE_SERVER_ENDPOINT"] = "127.0.0.1:9004"
             rpc.init_rpc("worker0", rank=0, world_size=1,
-                        master_endpoint="127.0.0.1:8001")
+                        master_endpoint="127.0.0.1:8007")
 
             print(rpc.get_current_service_info())
-            # {name: worker0, rank: 0, ip: 127.0.0.1, port: 8002}
+            # {name: worker0, rank: 0, ip: 127.0.0.1, port: 9004}
 
             rpc.shutdown()
     """
