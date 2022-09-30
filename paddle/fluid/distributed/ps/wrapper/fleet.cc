@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
-#include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #if defined PADDLE_WITH_HETERPS && defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #endif
@@ -569,8 +568,8 @@ void FleetWrapper::PushSparseFromTensorAsync(
     size_t cur_batch_size =
         input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
-      batch_size = int(cur_batch_size);
-    } else if (batch_size != int(cur_batch_size)) {
+      batch_size = static_cast<int>(cur_batch_size);
+    } else if (batch_size != static_cast<int>(cur_batch_size)) {
       // CHECK(batch_size == cur_batch_size);  // NOLINT
       batch_size_consist = false;
       break;

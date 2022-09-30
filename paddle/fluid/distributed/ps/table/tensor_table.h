@@ -226,7 +226,7 @@ class GlobalStepTable : public DenseTensorTable {
                               const uint32_t trainer_id) {
     FLAGS_eager_delete_tensor_gb = -1;
     auto counter = decay_counters_.at(trainer_id);
-    counter += int(values[0]);
+    counter += static_cast<int>(values[0]);
     decay_counters_.at(trainer_id) = counter;
 
     auto *global_step_var = scope_->FindVar(feed_var_name_);

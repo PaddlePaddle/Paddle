@@ -11,10 +11,10 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
 
+#include <vector>
+
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
-
-#include <vector>
 
 namespace paddle {
 namespace framework {

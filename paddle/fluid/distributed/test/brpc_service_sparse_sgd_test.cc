@@ -162,7 +162,7 @@ void GetDownpourSparseTableProto(
 
 /*-------------------------------------------------------------------------*/
 
-std::string ip_ = "127.0.0.1";
+std::string ip_ = "127.0.0.1";  // NOLINT
 uint32_t port_ = 4209;
 
 std::vector<std::string> host_sign_list_;
