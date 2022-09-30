@@ -48,18 +48,6 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "squeeze_grad",
     "squeeze2",
     "squeeze2_grad",
-    // NOTE(jiahy0825): After fixing GetExpectedKernelType in InterpolateOp,
-    // interpolate series hard code can be deleted together.
-    "bilinear_interp",
-    "nearest_interp",
-    "trilinear_interp",
-    "bicubic_interp",
-    "linear_interp",
-    "bilinear_interp_v2",
-    "nearest_interp_v2",
-    "trilinear_interp_v2",
-    "bicubic_interp_v2",
-    "linear_interp_v2",
     // NOTE(jiahy0825): After fixing GetExpectedKernelType in ReduceOp, reduce
     // series hard code can be deleted together.
     "frobenius_norm",
