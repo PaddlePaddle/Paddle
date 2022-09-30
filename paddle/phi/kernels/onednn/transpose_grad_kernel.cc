@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/transpose_grad_kernel.h"
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -31,9 +32,8 @@ void TransposeGradKernel(const Context& dev_ctx,
 
   const auto& onednn_engine = dev_ctx.GetEngine();
   std::vector<int> reversed_axis(axis);
-  int ndims = axis.size();
-  if (ndims == 1) {
-    Copy(dev_ctx, out_grad, out_grad.place(), false, x_grad);
+  if (axis.size() == 1) {
+    paddle::framework::TensorCopy(out_grad, out_grad.place(), x_grad);
     x_grad->set_format(out_grad.format());
     return;
   }
