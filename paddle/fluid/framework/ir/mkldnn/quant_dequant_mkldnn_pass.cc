@@ -716,10 +716,6 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
   bool onnx_format_quantize_model = false;
   auto* scope = param_scope();
-  GetInfoFromTheFirstOp(
-      graph, "has_quant_info", "var_quant_scales", &var_quant_scales);
-  VLOG(1) << "The nums of scale info from slim txt is: "
-          << var_quant_scales.size();
   MarkSkipQuantizedOps(graph, skip_ops);
   CollectInfoFromFake(graph, scope, fake_dequantize_types, &weight_thresholds);
   CollectWeightScalesInfoFromONNXFormatDequantize(graph,

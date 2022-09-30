@@ -13,12 +13,10 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
 
 import paddle.fluid as fluid
 from test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunner
 
 flag_name = os.path.splitext(__file__)[0]
 

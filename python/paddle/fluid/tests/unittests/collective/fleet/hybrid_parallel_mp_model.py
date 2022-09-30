@@ -18,7 +18,6 @@ import random
 import paddle.distributed as dist
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-from paddle.io import DataLoader, Dataset
 import unittest
 
 
