@@ -24,20 +24,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 template <typename DeviceContext, typename T>
 class RankAttentionCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");
-    auto *rank_offset = ctx.Input<Tensor>("RankOffset");
-    auto *param = ctx.Input<Tensor>("RankParam");
-    auto *input_help = ctx.Output<Tensor>("InputHelp");
-    auto *ins_rank = ctx.Output<Tensor>("InsRank");
+    auto *X = ctx.Input<phi::DenseTensor>("X");
+    auto *rank_offset = ctx.Input<phi::DenseTensor>("RankOffset");
+    auto *param = ctx.Input<phi::DenseTensor>("RankParam");
+    auto *input_help = ctx.Output<phi::DenseTensor>("InputHelp");
+    auto *ins_rank = ctx.Output<phi::DenseTensor>("InsRank");
     int max_rank = ctx.Attr<int>("MaxRank");
     int64_t max_size = ctx.Attr<int>("MaxSize");
-    auto *Out = ctx.Output<Tensor>("Out");
+    auto *Out = ctx.Output<phi::DenseTensor>("Out");
 
     // check dims
     auto x_dims = X->dims();
@@ -66,7 +64,7 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
 
     int max_ins = std::max(ins_num, max_size);
 
-    Tensor param_help;
+    phi::DenseTensor param_help;
     param_help = ctx.AllocateTmpTensor<T, DeviceContext>(
         {max_ins * block_matrix_row, para_col}, dev_ctx);
     param_help.mutable_data<T>(ctx.GetPlace());
@@ -156,15 +154,17 @@ template <typename DeviceContext, typename T>
 class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");                     // not use data
-    auto *rank_offset = ctx.Input<Tensor>("RankOffset");  // not use data
-    auto *param = ctx.Input<Tensor>("RankParam");         // not use data
-    auto *input_help = ctx.Input<Tensor>("InputHelp");
-    auto *ins_rank = ctx.Input<Tensor>("InsRank");
-    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *X = ctx.Input<phi::DenseTensor>("X");  // not use data
+    auto *rank_offset =
+        ctx.Input<phi::DenseTensor>("RankOffset");           // not use data
+    auto *param = ctx.Input<phi::DenseTensor>("RankParam");  // not use data
+    auto *input_help = ctx.Input<phi::DenseTensor>("InputHelp");
+    auto *ins_rank = ctx.Input<phi::DenseTensor>("InsRank");
+    auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     int64_t max_size = ctx.Attr<int>("MaxSize");
 
-    auto *drank_para = ctx.Output<Tensor>(framework::GradVarName("RankParam"));
+    auto *drank_para =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("RankParam"));
 
     // get dim
     auto x_dims = X->dims();
@@ -188,7 +188,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
         drank_para_eigen.constant(static_cast<T>(0));
 
     // copy data
-    Tensor param_grad;
+    phi::DenseTensor param_grad;
     param_grad = ctx.AllocateTmpTensor<T, DeviceContext>(
         {max_ins * block_matrix_row, para_col}, dev_ctx);
     param_grad.mutable_data<T>(ctx.GetPlace());

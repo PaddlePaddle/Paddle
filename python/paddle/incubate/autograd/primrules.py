@@ -344,7 +344,7 @@ def p_norm_orig2prim(op, x):
     if abs(op.attr('porder') - 2.0) < 1e-5:
         return sqrt(reduce_sum(mul(x, x), axis=[0]))
     elif abs(op.attr('porder') - 1.0) < 1e-5:
-        return reduce_sum(sqrt(mul(x, x)), axis=[0])
+        return reduce_sum(primops.abs(x), axis=[0])
     else:
         raise RuntimeError('Only support lower l2/l1 norm currently')
 

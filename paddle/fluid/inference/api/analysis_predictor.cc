@@ -1161,6 +1161,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuAvailableMemoryProportion(
       config_.ipu_available_memory_proportion_);
   argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
+  argument_.SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
+  argument_.SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
 
   argument_.SetUseNpu(config_.use_npu_);
@@ -1189,7 +1191,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
     argument_.SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
     argument_.SetQuantVarScales({});
-    argument_.SetCalibrationFilePath(config_.calibration_file_path_);
   }
 #endif
 

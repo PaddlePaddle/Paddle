@@ -27,7 +27,7 @@ class GatherNdOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
     const auto& x_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(
         x_type,

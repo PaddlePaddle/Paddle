@@ -27,7 +27,7 @@ namespace framework {
 namespace ir {
 
 void ComputePropagateScalesMkldnnPass::GetTensorFromVector(
-    const std::vector<float>& data_v, Tensor* tensor) const {
+    const std::vector<float>& data_v, phi::DenseTensor* tensor) const {
   const int size = static_cast<int>(data_v.size());
   auto* data = tensor->mutable_data<float>({size}, platform::CPUPlace());
   for (int i = 0; i < size; i++) {
@@ -41,15 +41,15 @@ void ComputePropagateScalesMkldnnPass::GetQuantInfo(
   GetInfoFromTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
 
   for (auto iter = info_map.begin(); iter != info_map.end(); iter++) {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     GetTensorFromVector(iter->second, &tensor);
     auto pair = std::make_pair(false, tensor);
     var_quant_scales->insert(std::make_pair(iter->first, pair));
   }
 }
 
-std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(Tensor* tensor,
-                                                               int axis) const {
+std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(
+    phi::DenseTensor* tensor, int axis) const {
   PADDLE_ENFORCE_LT(axis,
                     2,
                     platform::errors::InvalidArgument(
@@ -120,7 +120,7 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
         volume *= dims[i];
       }
 
-      Tensor tmp_tensor;
+      phi::DenseTensor tmp_tensor;
       std::vector<int64_t> reshape_dims = {dims[0], volume};
       tmp_tensor.Resize(phi::make_ddim(reshape_dims));
       auto* weight_data = weight_tensor->data<float>();
@@ -130,7 +130,7 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
       }
 
       auto scales_v = GetScales(&tmp_tensor, axis);
-      Tensor tensor;
+      phi::DenseTensor tensor;
       GetTensorFromVector(scales_v, &tensor);
       auto pair = std::make_pair(false, tensor);
       var_quant_scales->insert(std::make_pair(var_name, pair));
@@ -142,7 +142,7 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleGruWeightScales(
     Scope* scope,
     const std::string& wx_var_name,
     const std::string& wh_var_name,
-    Tensor* tensor) const {
+    phi::DenseTensor* tensor) const {
   auto* wx_var = scope->FindVar(wx_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       wx_var,
@@ -228,7 +228,7 @@ void ComputePropagateScalesMkldnnPass::ComputeGruWeightScales(
       for (int i = 0; i < wx_names_size; i++) {
         auto wh_var_name = wh_var_names[i];
         auto wx_var_name = wx_var_names[i];
-        Tensor tensor;
+        phi::DenseTensor tensor;
         ComputeSingleGruWeightScales(scope, wx_var_name, wh_var_name, &tensor);
         auto pair = std::make_pair(false, tensor);
         var_quant_scales->insert(std::make_pair(wx_var_name, pair));
@@ -241,7 +241,7 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleLstmWeightScales(
     Scope* scope,
     const std::string& wx_var_name,
     const std::string& wh_var_name,
-    Tensor* tensor) const {
+    phi::DenseTensor* tensor) const {
   auto* wx_var = scope->FindVar(wx_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       wx_var,
@@ -307,7 +307,7 @@ void ComputePropagateScalesMkldnnPass::ComputeLstmWeightScales(
       for (int i = 0; i < wx_names_size; i++) {
         auto wh_var_name = wh_var_names[i];
         auto wx_var_name = wx_var_names[i];
-        Tensor tensor;
+        phi::DenseTensor tensor;
         ComputeSingleLstmWeightScales(scope, wx_var_name, wh_var_name, &tensor);
         auto pair = std::make_pair(false, tensor);
         var_quant_scales->insert(std::make_pair(wx_var_name, pair));
@@ -348,7 +348,7 @@ void ComputePropagateScalesMkldnnPass::UpdateScaleOpInScale(
     const auto tensor = pair.second;
 
     const auto scale = PADDLE_GET_CONST(float, op_node->Op()->GetAttr("scale"));
-    Tensor tmp_tensor;
+    phi::DenseTensor tmp_tensor;
     tmp_tensor.Resize(tensor.dims());
     auto* data = tmp_tensor.mutable_data<float>(platform::CPUPlace());
     for (int i = 0; i < tensor.numel(); i++) {

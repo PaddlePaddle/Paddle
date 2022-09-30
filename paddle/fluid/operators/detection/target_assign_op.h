@@ -97,10 +97,10 @@ class TargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* match_indices = ctx.Input<framework::Tensor>("MatchIndices");
+    auto* match_indices = ctx.Input<phi::DenseTensor>("MatchIndices");
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    auto* out_wt = ctx.Output<framework::Tensor>("OutWeight");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out_wt = ctx.Output<phi::DenseTensor>("OutWeight");
 
     PADDLE_ENFORCE_EQ(x->lod().size(),
                       1UL,

@@ -56,14 +56,14 @@ class Flatten2GradNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class FlattenContiguousRangeNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *X = ctx.Input<Tensor>("X");
-    auto *Out = ctx.Output<Tensor>("Out");
+    auto *X = ctx.Input<phi::DenseTensor>("X");
+    auto *Out = ctx.Output<phi::DenseTensor>("Out");
     int start_axis = ctx.Attr<int>("start_axis");
     int stop_axis = ctx.Attr<int>("stop_axis");
 
