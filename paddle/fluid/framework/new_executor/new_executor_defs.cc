@@ -720,16 +720,18 @@ OperatorBase* Instruction::OpBase() const {
   return op_base.get();
 }
 
-NextInstruction& Instruction::NextInstructions() { return next_instruction_; }
-
-const NextInstruction& Instruction::NextInstructions() const {
+NextInstructionList& Instruction::NextInstructions() {
   return next_instruction_;
 }
 
-void Instruction::AddGCCheckVar(size_t id) { gc_check_var_list_.push_back(id); }
+const NextInstructionList& Instruction::NextInstructions() const {
+  return next_instruction_;
+}
+
+void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }
 
 const std::vector<size_t>& Instruction::GCCheckVars() const {
-  return gc_check_var_list_;
+  return gc_check_vars_;
 }
 
 void Instruction::ResetContext(const VariableValueMap& in_vars,
