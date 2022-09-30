@@ -108,20 +108,6 @@ class TestLerpBroadWToXY(TestLerp):
         self.outputs = {'Out': x + w * (y - x)}
 
 
-# class TestLerpBroadXYToW(TestLerp):
-
-#     def setUp(self):
-#         self.op_type = "lerp"
-#         self.python_api = paddle.lerp
-#         self.init_dtype()
-#         self.init_shape()
-#         x = np.arange(1., 101.).astype(self.dtype).reshape([2, 50])
-#         y = np.full(200, 7.5).astype(self.dtype).reshape([2, 2, 50])
-#         w = np.full(400, 0.225).astype(self.dtype).reshape([2, 2, 2, 50])
-#         self.inputs = {'X': x, 'Y': y, 'Weight': w}
-#         self.outputs = {'Out': x + w * (y - x)}
-
-
 class TestLerpAPI(unittest.TestCase):
 
     def init_dtype(self):

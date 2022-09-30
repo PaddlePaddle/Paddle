@@ -112,10 +112,9 @@ void GetRduceResult(const Context& ctx,
                                .reshape(eigen_dy.dimensions());
 }
 
-int XYNeedReduce(const DenseTensor& x,
-                 const DenseTensor& y,
-                 const DenseTensor& out) {
-  // 不考虑不可broadcast的情况，在算子调用时已排除
+bool XYNeedReduce(const DenseTensor& x,
+                  const DenseTensor& y,
+                  const DenseTensor& out) {
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   auto out_dims = out.dims();
@@ -134,10 +133,10 @@ int XYNeedReduce(const DenseTensor& x,
       return 1;
     }
     if (x_dims[x_idx] == 1 && y_dims[y_idx] == 1 && out_dims[out_idx] != 1) {
-      return 1;
+      return true;
     }
   }
-  return 0;
+  return false;
 }
 
 template <typename T, typename Context>
@@ -149,6 +148,7 @@ void SwitchKernel(const Context& ctx,
                   T* x_grad_data,
                   T* y_grad_data) {
   if (weight.dims().size() == 1) {
+    //    condition when weight is a scalar
     const T* weight_data = weight.data<T>();
     const T* out_grad_data = out_grad.data<T>();
     const int out_size = out_grad.numel();
@@ -165,8 +165,7 @@ void SwitchKernel(const Context& ctx,
                                              x_grad_size,
                                              y_grad_size);
   } else {
-    // 首先对weight进行braodcast，使用
-    // phi::BroadcastTensorsKernel，使其维度和out_grad一致
+    //    broadcast weight with out_grad's dimensions
     const std::vector<const DenseTensor*> in_tensors = {&weight, &out_grad};
     DenseTensor b_weight = phi::EmptyLike<T>(ctx, out_grad);
     DenseTensor b_out = phi::EmptyLike<T>(ctx, out_grad);
@@ -218,17 +217,11 @@ void LerpGradKernel(const Context& ctx,
           "less than or equal to 6, but the value received is %d.",
           rank));
 
-  // 判断x_grad, y_grad
-  // 是否需要reduce，需要reduce的话就先进行broadcast用b_xgrad,
-  // b_ygrad。不需要的话就用x_grad, y_grad。
-  // 如果x,y在中间有某个维度不一致，或者和weight的中间某个维度不一致，就需要先broadcast再reduce。
-  //  例如 case1:  x:2*1*3, y:2*2*3  w:2*2*3 => out: 2*2*3
-  //      case2:  x:2*1:3, y: 2*1*3 w:2*2*3 => out: 2*2*3
-  // 如果x,y在初始维度不一致，就无所谓，只要控制kernel写入的idx大小不越界访问内存就可以。例如
-  // x:1*2*3, y:2*2*3，无需reduce。
-
-  int reduce_flag = XYNeedReduce(x, y, out);
-  if (reduce_flag == 0) {
+  //  check if x_grad and y_grad need to be reduced
+  //  if x has a different dimension with y or weight in the middle axis, then
+  //  they need to be broadcast and then reduced.
+  bool reduce_flag = XYNeedReduce(x, y, out);
+  if (reduce_flag) {
     T* x_grad_data = ctx.template Alloc<T>(x_grad);
     T* y_grad_data = ctx.template Alloc<T>(y_grad);
     int x_grad_size = x.numel();
