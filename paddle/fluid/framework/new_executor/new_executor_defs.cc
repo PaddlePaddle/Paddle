@@ -194,9 +194,9 @@ void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
     out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
     out_sele_rows->set_rows(in_sele_rows.rows());
     out_sele_rows->set_height(in_sele_rows.height());
-  } else if (in_var->IsType<framework::LoDTensor>()) {
-    auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-    auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+  } else if (in_var->IsType<phi::DenseTensor>()) {
+    auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
+    auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_lod_tensor->Resize(in_lod_tensor.dims());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(

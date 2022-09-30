@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using framework::ProgramDesc;
 using framework::VarDesc;
 using framework::Variable;
@@ -340,12 +340,12 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id,
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
-  framework::LoDTensor* output = nullptr;
+  phi::DenseTensor* output = nullptr;
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor* tensor = inputs->at(index);
+    const phi::DenseTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -602,7 +602,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   const float* clk_tensor = clks->data<float>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
-    framework::LoDTensor* g_tensor = outputs->at(index);
+    phi::DenseTensor* g_tensor = outputs->at(index);
     float* g = g_tensor->data<float>();
     // no cvm
     if (batch_size_consist) {  // TODO(zhaocaibei123): add config
@@ -617,7 +617,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
       }
     }
 
-    const framework::LoDTensor* tensor = inputs->at(index);
+    const phi::DenseTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     output_len = 0;

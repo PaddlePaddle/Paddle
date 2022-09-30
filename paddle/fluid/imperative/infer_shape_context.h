@@ -230,9 +230,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
                       platform::errors::PreconditionNotMet(
                           "The type of %s and %s is not the same.", in, out));
 
-    if (in_var->IsType<framework::LoDTensor>()) {
-      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+    if (in_var->IsType<phi::DenseTensor>()) {
+      auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
+      auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
       auto& in_sele_rows = in_var->Get<phi::SelectedRows>();
@@ -442,8 +442,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_NOT_NULL(var,
                             platform::errors::PreconditionNotMet(
                                 "Input variable should not be null"));
-    if (var->IsType<framework::LoDTensor>()) {
-      return var->Get<framework::LoDTensor>().dims();
+    if (var->IsType<phi::DenseTensor>()) {
+      return var->Get<phi::DenseTensor>().dims();
     } else if (var->IsType<phi::SelectedRows>()) {
       return var->Get<phi::SelectedRows>().GetCompleteDims();
     } else {
@@ -460,8 +460,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   void SetDim(framework::Variable* var, const DDim& dim) {
-    if (var->IsType<framework::LoDTensor>()) {
-      var->GetMutable<framework::LoDTensor>()->Resize(dim);
+    if (var->IsType<phi::DenseTensor>()) {
+      var->GetMutable<phi::DenseTensor>()->Resize(dim);
     } else if (var->IsType<phi::SelectedRows>()) {
       var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
     } else {

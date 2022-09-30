@@ -443,7 +443,7 @@ phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
 
 std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                            ssize_t arg_pos) {
-  std::vector<framework::LoDTensor> result;
+  std::vector<phi::DenseTensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
@@ -451,8 +451,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
       item = PyList_GetItem(obj, i);
       if (PyObject_IsInstance(
               item, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
-        result.emplace_back(
-            ::pybind11::handle(item).cast<framework::LoDTensor>());
+        result.emplace_back(::pybind11::handle(item).cast<phi::DenseTensor>());
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
@@ -469,8 +468,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
       item = PyTuple_GetItem(obj, i);
       if (PyObject_IsInstance(
               item, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
-        result.emplace_back(
-            ::pybind11::handle(item).cast<framework::LoDTensor>());
+        result.emplace_back(::pybind11::handle(item).cast<phi::DenseTensor>());
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
@@ -740,7 +738,7 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType& type) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const paddle::framework::LoDTensor* value) {
+PyObject* ToPyObject(const phi::DenseTensor* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();

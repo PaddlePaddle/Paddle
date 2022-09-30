@@ -49,9 +49,9 @@ namespace distributed = paddle::distributed;
 
 void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   auto x_var = scope->Var("x");
-  x_var->GetMutable<framework::LoDTensor>();
+  x_var->GetMutable<phi::DenseTensor>();
   auto x_g_var = scope->Var("x@GRAD");
-  x_g_var->GetMutable<framework::LoDTensor>();
+  x_g_var->GetMutable<phi::DenseTensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope,
@@ -59,14 +59,14 @@ void InitTensorsOnClient(framework::Scope* scope,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
 
-  auto x_var = scope->Var("x")->GetMutable<framework::LoDTensor>();
+  auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();
   float* x_ptr =
       x_var->mutable_data<float>(framework::DDim({1, rows_numel}), *place);
   for (int64_t i = 0; i < rows_numel; ++i) x_ptr[i] = 1.0;
 
   auto g_size = rows_numel +
                 30;  // hard code here: key_num * (fea_dim + 3), show/clk/slot
-  auto x_g_var = scope->Var("x@GRAD")->GetMutable<framework::LoDTensor>();
+  auto x_g_var = scope->Var("x@GRAD")->GetMutable<phi::DenseTensor>();
   float* x_g_ptr =
       x_g_var->mutable_data<float>(framework::DDim({1, g_size}), *place);
   for (int64_t i = 0; i < g_size; ++i) x_g_ptr[i] = 1.0;
@@ -216,7 +216,7 @@ void RunBrpcPushSparse() {
       std::pair<uint64_t, std::vector<paddle::distributed::Region>>(0, {}));
   auto regions = dense_regions[0];
   framework::Variable* var = client_scope.FindVar("x");
-  framework::LoDTensor* tensor = var->GetMutable<framework::LoDTensor>();
+  phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
 
   RunClient(dense_regions);
   std::vector<uint64_t> fea_keys(10);
@@ -254,7 +254,7 @@ void RunBrpcPushSparse() {
       });
 
   framework::Variable* g_var = client_scope.FindVar("x@GRAD");
-  framework::LoDTensor* g_tensor = g_var->GetMutable<framework::LoDTensor>();
+  phi::DenseTensor* g_tensor = g_var->GetMutable<phi::DenseTensor>();
 
   LOG(INFO) << "Run push_sparse_grad";
   std::vector<float*> push_g_vec;

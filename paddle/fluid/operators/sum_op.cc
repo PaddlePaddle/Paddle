@@ -52,7 +52,7 @@ class SumOp : public framework::OperatorWithKernel {
         platform::errors::NotFound("Input var[%s] should not be nullptr",
                                    x_vars_name[0]));
 
-    if (x_vars[0]->IsType<framework::LoDTensor>()) {
+    if (x_vars[0]->IsType<phi::DenseTensor>()) {
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
         PADDLE_ENFORCE_NOT_NULL(
@@ -84,10 +84,10 @@ class SumOp : public framework::OperatorWithKernel {
           this->CanMKLDNNBeUsed(ctx, data_type) &&
           (data_type == framework::proto::VarType::FP32 ||
            data_type == framework::proto::VarType::BF16) &&
-          ctx.OutputVar("Out")->IsType<framework::LoDTensor>()) {
+          ctx.OutputVar("Out")->IsType<phi::DenseTensor>()) {
         if (std::all_of(
                 x_vars.begin(), x_vars.end(), [](const framework::Variable* v) {
-                  return v->IsType<framework::LoDTensor>();
+                  return v->IsType<phi::DenseTensor>();
                 })) {
           return framework::OpKernelType(data_type,
                                          ctx.GetPlace(),

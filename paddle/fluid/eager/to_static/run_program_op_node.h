@@ -252,9 +252,9 @@ static void GcScope(paddle::framework::Scope *scope) {
 
   for (auto &var : scope->LocalVars()) {
     if (var != nullptr) {
-      if (var->IsType<paddle::framework::LoDTensor>()) {
-        garbages->emplace_back(var->GetMutable<paddle::framework::LoDTensor>()
-                                   ->MoveMemoryHolder());
+      if (var->IsType<phi::DenseTensor>()) {
+        garbages->emplace_back(
+            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
       }
       if (var->IsType<phi::SelectedRows>()) {
         garbages->emplace_back(var->GetMutable<phi::SelectedRows>()

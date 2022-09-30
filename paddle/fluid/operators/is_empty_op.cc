@@ -28,7 +28,7 @@ class IsEmptyOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<framework::LoDTensor>("X");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), x->place());
   }
