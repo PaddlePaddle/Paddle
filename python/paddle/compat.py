@@ -18,7 +18,6 @@ import math
 __all__ = []
 
 int_type = int
-long_type = int
 
 
 #  str and bytes related functions
