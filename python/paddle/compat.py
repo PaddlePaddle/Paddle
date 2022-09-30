@@ -240,19 +240,3 @@ def floor_division(x, y):
         division result of x // y
     """
     return x // y
-
-
-# exception related functions
-def get_exception_message(exc):
-    """
-    Get the error message of a specific exception
-
-    Args:
-        exec(Exception) : The exception to get error message.
-
-    Returns:
-        the error message of exec
-    """
-    assert exc is not None
-
-    return str(exc)

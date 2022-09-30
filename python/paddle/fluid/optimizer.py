@@ -6272,7 +6272,7 @@ class RecomputeOptimizer(Optimizer):
                     state_dict = {}
                     sgd.load(state_dict)
                 except NotImplementedError as e:
-                    print(cpt.get_exception_message(e))
+                    print(e)
         """
         raise NotImplementedError(
             "load function is not supported by Recompute Optimizer for now")

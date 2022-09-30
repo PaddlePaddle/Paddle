@@ -106,7 +106,7 @@ class ApiZerosError(unittest.TestCase):
                 shape = [-1, 5]
                 out = paddle.zeros(shape)
             except Exception as e:
-                error_msg = cpt.get_exception_message(e)
+                error_msg = str(e)
                 assert error_msg.find("expected to be no less than 0") > 0
 
     def test_eager(self):

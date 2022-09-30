@@ -906,7 +906,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             print("warning: we skip trainer_desc_pb2 import problem in windows")
         except RuntimeError as e:
             error_msg = "dataset is need and should be initialized"
-            self.assertEqual(error_msg, cpt.get_exception_message(e))
+            self.assertEqual(error_msg, str(e))
         except Exception as e:
             self.assertTrue(False)
 
@@ -950,7 +950,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             print("warning: we skip trainer_desc_pb2 import problem in windows")
         except RuntimeError as e:
             error_msg = "dataset is need and should be initialized"
-            self.assertEqual(error_msg, cpt.get_exception_message(e))
+            self.assertEqual(error_msg, str(e))
         except Exception as e:
             self.assertTrue(False)
 

@@ -257,21 +257,6 @@ class TestCompatible(unittest.TestCase):
         self.assertRaises(ZeroDivisionError, cpt.floor_division, 3, 0)
         self.assertRaises(TypeError, cpt.floor_division, None, None)
 
-    def test_get_exception_message(self):
-        exception_message = "test_message"
-        self.assertRaises(AssertionError, cpt.get_exception_message, None)
-        try:
-            raise RuntimeError(exception_message)
-        except Exception as e:
-            self.assertEqual(exception_message, cpt.get_exception_message(e))
-            self.assertIsNotNone(e)
-
-        try:
-            raise Exception(exception_message)
-        except Exception as e:
-            self.assertEqual(exception_message, cpt.get_exception_message(e))
-            self.assertIsNotNone(e)
-
 
 if __name__ == "__main__":
     unittest.main()
