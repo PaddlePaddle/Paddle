@@ -673,6 +673,14 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("ipu_replica_num") = 1,
            py::arg("ipu_available_memory_proportion") = 1.0,
            py::arg("ipu_enable_half_partial") = false)
+      .def("set_ipu_custom_info",
+           &AnalysisConfig::SetIpuCustomInfo,
+           py::arg("ipu_custom_ops_info") =
+               std::vector<std::vector<std::string>>({}),
+           py::arg("ipu_custom_patterns") = std::map<std::string, bool>({}))
+      .def("load_ipu_config",
+           &AnalysisConfig::LoadIpuConfig,
+           py::arg("config_path"))
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
       .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)
