@@ -1817,8 +1817,8 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
         }
       };
   extract_min_max_opt(min_shapes, max_shapes, opt_shapes, shape_info_);
-  extract_min_max_opt(
-      min_values, max_values, opt_values, shape_tensor_value_);
+  extract_min_max_opt(min_values, max_values, opt_values, shape_tensor_value_);
+
   inference::SerializeShapeRangeInfo(config_.shape_range_info_path(),
                                      min_shapes,
                                      max_shapes,
