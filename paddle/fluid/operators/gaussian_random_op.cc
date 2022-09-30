@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
@@ -34,7 +34,7 @@ class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<phi::DenseTensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
@@ -75,7 +75,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;

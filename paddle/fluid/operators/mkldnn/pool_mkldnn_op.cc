@@ -27,7 +27,6 @@ using dnnl::primitive;
 using dnnl::reorder;
 using dnnl::stream;
 using framework::DataLayout;
-using framework::Tensor;
 using platform::to_void_cast;
 
 template <typename T>
@@ -38,8 +37,8 @@ class PoolingMKLDNNHandler
  public:
   PoolingMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                        const dnnl::engine mkldnn_engine,
-                       const Tensor* input,
-                       Tensor* output)
+                       const phi::DenseTensor* input,
+                       phi::DenseTensor* output)
       : platform::MKLDNNHandlerNoCachingT<T,
                                           dnnl::pooling_forward,
                                           dnnl::pooling_backward>(
@@ -131,9 +130,9 @@ class PoolingMKLDNNHandler
 
   PoolingMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                        const dnnl::engine mkldnn_engine,
-                       const Tensor* in_x,
-                       const Tensor* out_grad,
-                       Tensor* in_x_grad)
+                       const phi::DenseTensor* in_x,
+                       const phi::DenseTensor* out_grad,
+                       phi::DenseTensor* in_x_grad)
 
       : platform::MKLDNNHandlerNoCachingT<T,
                                           dnnl::pooling_forward,
@@ -308,8 +307,8 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
 
-    const Tensor* input = ctx.Input<Tensor>("X");
-    Tensor* output = ctx.Output<Tensor>("Out");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("X");
+    phi::DenseTensor* output = ctx.Output<phi::DenseTensor>("Out");
 
     PoolingMKLDNNHandler<T> handler(ctx, dev_ctx.GetEngine(), input, output);
 
@@ -347,9 +346,11 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                       true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL PoolGrad must use CPUPlace"));
-    const Tensor* in_x = ctx.Input<Tensor>("X");
-    const Tensor* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    Tensor* in_x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    const phi::DenseTensor* in_x = ctx.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor* out_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    phi::DenseTensor* in_x_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();

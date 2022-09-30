@@ -58,7 +58,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;

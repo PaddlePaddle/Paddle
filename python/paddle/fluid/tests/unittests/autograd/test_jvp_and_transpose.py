@@ -17,7 +17,7 @@ import unittest
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.utils import flatten
-from paddle.incubate.autograd.primrules import _orig2prim, _prim2orig, _jvp, _transpose
+from paddle.incubate.autograd.primrules import _jvp, _transpose
 
 paddle.enable_static()
 
@@ -233,6 +233,39 @@ class TestSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
             # prim op:
             'sqrt_p',
             # jvp op:
+            'div_p',
+            'mul_p',
+            'fill_constant_p',
+            # 'sqrt_p',
+            # transpose op:
+        ]
+
+
+class TestRSqrtPJVPAndTranspose(TestAddPJVPAndTranspose):
+
+    def init_data(self):
+        # Set prim op
+        self.op_type = 'rsqrt_p'
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='int64')
+        self.prim_input = {
+            'X': X,
+        }
+        self.prim_output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.prim_attrs = {}
+
+        # Set JVP
+        X_DOT = paddle.static.data(name='X_DOT', shape=[5, 6], dtype='int64')
+        self.jvp_args = (X_DOT, )
+        self.jvp_out_shape_map = {0: self.prim_output['Y']}
+
+        self.all_ops = [
+            # prim op:
+            'rsqrt_p',
+            # jvp op:
+            'div_p',
             'div_p',
             'mul_p',
             'fill_constant_p',

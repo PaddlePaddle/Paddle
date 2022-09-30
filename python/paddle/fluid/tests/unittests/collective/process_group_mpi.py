@@ -12,22 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import random
 import numpy as np
-import os
-import shutil
 
 import paddle
 from paddle.fluid import core
-from datetime import timedelta
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.collective import Group
-from paddle.distributed.collective import _group_map_by_name
 from paddle.distributed.collective import _default_group_name
 from paddle.distributed.collective import _set_group_map
 from paddle.distributed.collective import _set_group_map_by_name

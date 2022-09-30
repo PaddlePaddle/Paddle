@@ -26,7 +26,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 inline int Im2SeqOutputSize(
@@ -40,7 +40,7 @@ template <typename DeviceContext, typename T>
 class Im2SequenceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* in = ctx.Input<Tensor>("X");
+    const phi::DenseTensor* in = ctx.Input<phi::DenseTensor>("X");
     LoDTensor* out = ctx.Output<LoDTensor>("Out");
     auto in_dim = in->dims();
     int batch_size = in_dim[0];
@@ -51,7 +51,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
     if (ctx.HasInput("Y") && batch_size > 1) {
-      const Tensor* imgrealsize = ctx.Input<Tensor>("Y");
+      const phi::DenseTensor* imgrealsize = ctx.Input<phi::DenseTensor>("Y");
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       Tensor cpu_shape_tensor;
       paddle::framework::TensorCopySync(
@@ -157,10 +157,10 @@ template <typename DeviceContext, typename T>
 class Im2SequenceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<Tensor>("X");
-    Tensor* d_out =
-        const_cast<Tensor*>(ctx.Input<Tensor>(framework::GradVarName("Out")));
-    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    phi::DenseTensor* d_out = const_cast<phi::DenseTensor*>(
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out")));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     d_x->mutable_data<T>(ctx.GetPlace());
 
     auto x_v = framework::EigenVector<T>::Flatten(*d_x);

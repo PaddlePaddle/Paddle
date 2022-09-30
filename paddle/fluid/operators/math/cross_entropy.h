@@ -61,9 +61,9 @@ template <typename DeviceContext, typename T>
 class CrossEntropyFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  framework::Tensor* out,
-                  const framework::Tensor* prob,
-                  const framework::Tensor* labels,
+                  phi::DenseTensor* out,
+                  const phi::DenseTensor* prob,
+                  const phi::DenseTensor* labels,
                   const bool softLabel,
                   const int ignore_index,
                   const int axis_dim);
