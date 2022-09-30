@@ -23,16 +23,10 @@ message ShapeRangeInfos {
     repeated int32 min_shape = 2;
     repeated int32 max_shape = 3;
     repeated int32 opt_shape = 4;
+    repeated int32 min_value = 5;
+    repeated int32 max_value = 6;
+    repeated int32 opt_value = 7;
   }
 
   repeated ShapeRangeInfo shape_range_info = 1;
-}
-message ShapeTensorValueInfos {
-  message ShapeTensorValueInfo {
-    required string name = 1;
-    repeated int32 min_value = 2;
-    repeated int32 max_value = 3;
-    repeated int32 opt_value = 4;
-  }
-  repeated ShapeTensorValueInfo shape_tensor_value_info = 1;
 }

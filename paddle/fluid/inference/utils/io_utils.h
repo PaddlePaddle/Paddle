@@ -43,21 +43,21 @@ void SerializePDTensorsToFile(const std::string& path,
 void DeserializePDTensorsToFile(const std::string& path,
                                 std::vector<PaddleTensor>* tensors);
 void SerializeShapeRangeInfo(
-    const std::string &path,
-    const std::map<std::string, std::vector<int32_t>> &min_shape,
-    const std::map<std::string, std::vector<int32_t>> &max_shape,
-    const std::map<std::string, std::vector<int32_t>> &opt_shape,
-    const std::map<std::string, std::vector<int32_t>> &min_shape_tensor_value,
-    const std::map<std::string, std::vector<int32_t>> &max_shape_tensor_value,
-    const std::map<std::string, std::vector<int32_t>> &opt_shape_tensor_value);
+    const std::string& path,
+    const std::map<std::string, std::vector<int32_t>>& min_shape,
+    const std::map<std::string, std::vector<int32_t>>& max_shape,
+    const std::map<std::string, std::vector<int32_t>>& opt_shape,
+    const std::map<std::string, std::vector<int32_t>>& min_value,
+    const std::map<std::string, std::vector<int32_t>>& max_value,
+    const std::map<std::string, std::vector<int32_t>>& opt_value);
 void DeserializeShapeRangeInfo(
-    const std::string &path,
-    std::map<std::string, std::vector<int32_t>> *min_shape,
-    std::map<std::string, std::vector<int32_t>> *max_shape,
-    std::map<std::string, std::vector<int32_t>> *opt_shape,
-    std::map<std::string, std::vector<int32_t>> *min_shape_tensor_value,
-    std::map<std::string, std::vector<int32_t>> *max_shape_tensor_value,
-    std::map<std::string, std::vector<int32_t>> *opt_shape_tensor_value);
+    const std::string& path,
+    std::map<std::string, std::vector<int32_t>>* min_shape,
+    std::map<std::string, std::vector<int32_t>>* max_shape,
+    std::map<std::string, std::vector<int32_t>>* opt_shape,
+    std::map<std::string, std::vector<int32_t>>* min_value,
+    std::map<std::string, std::vector<int32_t>>* max_value,
+    std::map<std::string, std::vector<int32_t>>* opt_value);
 void UpdateShapeRangeInfo(
     const std::string& path,
     const std::map<std::string, std::vector<int32_t>>& min_shape,

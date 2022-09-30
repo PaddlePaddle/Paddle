@@ -169,15 +169,11 @@ void DeserializePDTensorsToFile(const std::string &path,
 
 void SerializeShapeRangeInfo(
     const std::string &path,
-    const paddle::inference::proto::ShapeRangeInfos &info0,
-    const paddle::inference::proto::ShapeTensorValueInfos &info1) {
+    const paddle::inference::proto::ShapeRangeInfos &info) {
   int out_fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
   google::protobuf::io::FileOutputStream *os =
       new google::protobuf::io::FileOutputStream(out_fd);
-  google::protobuf::TextFormat::Print(info0, os);
-  delete os;
-  os = new google::protobuf::io::FileOutputStream(out_fd);
-  google::protobuf::TextFormat::Print(info1, os);
+  google::protobuf::TextFormat::Print(info, os);
   delete os;
   close(out_fd);
 }
@@ -199,32 +195,28 @@ void SerializeShapeRangeInfo(
       s->add_max_shape(max_shape.at(it.first)[i]);
       s->add_opt_shape(opt_shape.at(it.first)[i]);
     }
-  }
-  paddle::inference::proto::ShapeTensorValueInfos shape_tensor_value_infos;
-  for (auto it : min_value) {
-    auto *s = shape_tensor_value_infos.add_shape_tensor_value_info();
-    s->set_name(it.first);
-    for (size_t i = 0; i < it.second.size(); ++i) {
-      s->add_min_value(it.second[i]);
-      s->add_max_value(max_value.at(it.first)[i]);
-      s->add_opt_value(opt_value.at(it.first)[i]);
+    // If it.first is a shape tensor, we should collect values from it.
+    if (min_value.count(it.first)) {
+      for (size_t i = 0; i < min_value.at(it.first).size(); ++i) {
+        s->add_min_value(min_value.at(it.first)[i]);
+        s->add_max_value(max_value.at(it.first)[i]);
+        s->add_opt_value(opt_value.at(it.first)[i]);
+      }
     }
   }
-  inference::SerializeShapeRangeInfo(path, shape_range_infos, shape_tensor_value_infos);
+  inference::SerializeShapeRangeInfo(path, shape_range_infos);
 }
 
 void DeserializeShapeRangeInfo(
-    const std::string &path, paddle::inference::proto::ShapeRangeInfos *info0,
-    paddle::inference::proto::ShapeTensorValueInfos *info1) {
+    const std::string &path, paddle::inference::proto::ShapeRangeInfos *info) {
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
     PADDLE_THROW(platform::errors::NotFound("File [%s] is not found.", path));
   }
   google::protobuf::io::FileInputStream *is =
       new google::protobuf::io::FileInputStream(fd);
-  google::protobuf::TextFormat::Parse(is, info0);
-  //google::protobuf::TextFormat::Parse(is, info1);
-  delete is; 
+  google::protobuf::TextFormat::Parse(is, info);
+  delete is;
   close(fd);
 }
 
@@ -237,8 +229,7 @@ void DeserializeShapeRangeInfo(
     std::map<std::string, std::vector<int32_t>> *max_value,
     std::map<std::string, std::vector<int32_t>> *opt_value) {
   paddle::inference::proto::ShapeRangeInfos shape_range_infos;
-  paddle::inference::proto::ShapeTensorValueInfos shape_tensor_value_infos;
-  DeserializeShapeRangeInfo(path, &shape_range_infos, &shape_tensor_value_infos);
+  DeserializeShapeRangeInfo(path, &shape_range_infos);
   for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
     auto info = shape_range_infos.shape_range_info(i);
     auto name = info.name();
@@ -259,8 +250,8 @@ void DeserializeShapeRangeInfo(
       opt_shape->insert(std::make_pair(name, tmp));
     }
   }
-  for (int i = 0; i < shape_tensor_value_infos.shape_tensor_value_info_size(); ++i) {
-    auto info = shape_tensor_value_infos.shape_tensor_value_info(i);
+  for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
+    auto info = shape_range_infos.shape_range_info(i);
     auto name = info.name();
     if (min_value->count(name) || max_value->count(name) ||
         opt_value->count(name)) {
@@ -288,8 +279,7 @@ void UpdateShapeRangeInfo(
     const std::map<std::string, std::vector<int32_t>> &opt_shape,
     const std::vector<std::string> &names) {
   paddle::inference::proto::ShapeRangeInfos shape_range_infos;
-  paddle::inference::proto::ShapeTensorValueInfos shape_tensor_value_infos;
-  DeserializeShapeRangeInfo(path, &shape_range_infos, &shape_tensor_value_infos);
+  DeserializeShapeRangeInfo(path, &shape_range_infos);
 
   for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
     auto *info = shape_range_infos.mutable_shape_range_info(i);
@@ -308,7 +298,8 @@ void UpdateShapeRangeInfo(
       }
     }
   }
-  inference::SerializeShapeRangeInfo(path, shape_range_infos, shape_tensor_value_infos);
+
+  inference::SerializeShapeRangeInfo(path, shape_range_infos);
 }
 
 }  // namespace inference
