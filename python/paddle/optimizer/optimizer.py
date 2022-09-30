@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import six
 import logging
@@ -1040,9 +1038,7 @@ class Optimizer(object):
         assert regularization_term is not None
 
         if framework.in_dygraph_mode():
-            if grad.is_dense() and regularization_term.is_dense():
-                return _C_ops.add_n([grad, regularization_term])
-            return _legacy_C_ops.sum([grad, regularization_term])
+            return _C_ops.add_n([grad, regularization_term])
         elif framework._in_legacy_dygraph():
             return _legacy_C_ops.sum([grad, regularization_term])
 

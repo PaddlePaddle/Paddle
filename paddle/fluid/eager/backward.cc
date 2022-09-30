@@ -71,7 +71,6 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
 
 // Enforce GradNode has TensorWrappers as Input
 void EnforceGradNodeHasInput(GradNodeBase* node) {
-  VLOG(6) << "Running in EnforceGradNodeHasInput";
   PADDLE_ENFORCE_NE(
       node->IsTensorWrappersCleared(),
       true,
@@ -227,7 +226,6 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
-    VLOG(4) << EagerUtils::GradNodeStr(*node);
     paddle::platform::RecordEvent node_record_event(
         std::string((*node).name()),
         paddle::platform::TracerEventType::Operator,
@@ -339,7 +337,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
           node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
         }
 
-        VLOG(3) << "Sum grad inputs for edge slot: " << edge_rank.first
+        VLOG(3) << "Sum or Move grad inputs for edge slot: " << edge_rank.first
                 << ", rank: " << edge_rank.second;
 
         node_input_buffers_dict[next_node]->add(edge_rank.first,
@@ -388,8 +386,8 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   }
   egr::Controller::Instance().ClearFinalBackwardHooks();
   if (!is_general_grad) return {};
-  return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
   VLOG(3) << "Finish Backward";
+  return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }
 
 void Backward(

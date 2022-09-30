@@ -91,8 +91,8 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
   }
 
  protected:
-  framework::Tensor input_;
-  framework::Tensor output_;
+  phi::DenseTensor input_;
+  phi::DenseTensor output_;
   TensorRTEngine *engine_;
   phi::GPUContext *ctx_;
 };
@@ -276,8 +276,8 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
   }
 
  protected:
-  std::vector<framework::Tensor> inputs_;
-  std::vector<framework::Tensor> outputs_;
+  std::vector<phi::DenseTensor> inputs_;
+  std::vector<phi::DenseTensor> outputs_;
   TensorRTEngine *engine_;
   phi::GPUContext *ctx_;
 };

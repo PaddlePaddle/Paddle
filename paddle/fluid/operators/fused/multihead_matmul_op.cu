@@ -275,11 +275,11 @@ template <typename DeviceContext, typename T>
 class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    using Tensor = framework::Tensor;
-    auto *input = context.Input<framework::Tensor>("Input");
-    auto *w = context.Input<framework::Tensor>("W");
-    auto *bias = context.Input<framework::Tensor>("Bias");
-    auto *bias_qk = context.Input<framework::Tensor>("BiasQK");
+    using Tensor = phi::DenseTensor;
+    auto *input = context.Input<phi::DenseTensor>("Input");
+    auto *w = context.Input<phi::DenseTensor>("W");
+    auto *bias = context.Input<phi::DenseTensor>("Bias");
+    auto *bias_qk = context.Input<phi::DenseTensor>("BiasQK");
 
     auto *input_d = input->data<T>();
     auto *w_d = w->data<T>();
@@ -352,7 +352,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     int all_head_size = w_dims[2];
     int head_size = all_head_size / head_number;
 
-    auto *out = context.Output<framework::Tensor>("Out");
+    auto *out = context.Output<phi::DenseTensor>("Out");
     out->Resize({batch, seq_len, all_head_size});
     auto *output_d =
         device_ctx.template Alloc<T>(out, out->numel() * sizeof(T));

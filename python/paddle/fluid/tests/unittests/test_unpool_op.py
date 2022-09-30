@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import numpy as np
@@ -428,6 +426,35 @@ class TestZOutputSizeTensor2(unittest.TestCase):
                                          padding=0,
                                          return_mask=True)
         output_size = [paddle.assign([7]), paddle.assign([7])]
+        unpool_out = F.max_unpool2d(pool_out,
+                                    indices,
+                                    kernel_size=2,
+                                    padding=0,
+                                    output_size=output_size)
+        np.testing.assert_array_equal(unpool_out.shape, [1, 3, 7, 7])
+
+
+class TestZOutputSizeTensor3(unittest.TestCase):
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_dygraph(self):
+        x = paddle.randn([1, 3, 6, 6])
+        pool_out, indices = F.max_pool2d(x,
+                                         kernel_size=2,
+                                         stride=2,
+                                         padding=0,
+                                         return_mask=True)
+        output_size = [
+            paddle.assign([1]),
+            paddle.assign([1]),
+            paddle.assign([7]),
+            paddle.assign([7])
+        ]
         unpool_out = F.max_unpool2d(pool_out,
                                     indices,
                                     kernel_size=2,

@@ -604,8 +604,8 @@ int QkvToContextPluginDynamic::enqueue(
   // input[0], (B, S, 3 * N * H, 1, 1)
   int batch = input_dims.d[0];
   int seq_len = input_dims.d[1];
-  framework::Tensor multihead_temp_tensor;
-  framework::Tensor temp_qk_bias_tensor;
+  phi::DenseTensor multihead_temp_tensor;
+  phi::DenseTensor temp_qk_bias_tensor;
   int scratch_size = batch * head_number_ * seq_len * seq_len * 1;
 
   int device_id;

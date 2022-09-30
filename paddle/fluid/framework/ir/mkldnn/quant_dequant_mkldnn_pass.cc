@@ -406,7 +406,7 @@ void QuantDequantMkldnnPass::RemoveFakeOps(
   GraphSafeRemoveNodes(graph, nodes2rm);
 }
 
-void QuantDequantMkldnnPass::TransposeWeight(Tensor* input) const {
+void QuantDequantMkldnnPass::TransposeWeight(phi::DenseTensor* input) const {
   const auto in_dims = input->dims();
   std::vector<int> out_dim_v;
   std::vector<int> axis;
@@ -421,7 +421,7 @@ void QuantDequantMkldnnPass::TransposeWeight(Tensor* input) const {
   auto out_stride = phi::stride(out_dims);
   const int count = input->numel();
 
-  Tensor trans_tensor;
+  phi::DenseTensor trans_tensor;
   trans_tensor.Resize(out_dims);
   float* trans_data = trans_tensor.mutable_data<float>(platform::CPUPlace());
   float* in_data = input->mutable_data<float>(platform::CPUPlace());
@@ -465,7 +465,7 @@ bool QuantDequantMkldnnPass::IsInt8Weight(
 
 void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
     const std::vector<float>& scales,
-    Tensor* weight_tensor,
+    phi::DenseTensor* weight_tensor,
     int8_t* int8_weight_data,
     float* fp32_weight_data,
     const std::string& weight_var_name) const {
@@ -716,10 +716,6 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
   bool onnx_format_quantize_model = false;
   auto* scope = param_scope();
-  GetInfoFromTheFirstOp(
-      graph, "has_quant_info", "var_quant_scales", &var_quant_scales);
-  VLOG(1) << "The nums of scale info from slim txt is: "
-          << var_quant_scales.size();
   MarkSkipQuantizedOps(graph, skip_ops);
   CollectInfoFromFake(graph, scope, fake_dequantize_types, &weight_thresholds);
   CollectWeightScalesInfoFromONNXFormatDequantize(graph,
