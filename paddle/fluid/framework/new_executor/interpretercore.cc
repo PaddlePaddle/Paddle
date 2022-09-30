@@ -321,7 +321,6 @@ std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
     async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
         execution_config_.host_num_threads,
         execution_config_.deivce_num_threads,
-        execution_config_.prepare_num_threads,
         &main_thread_blocker_);
   }
   return async_work_queue_;
