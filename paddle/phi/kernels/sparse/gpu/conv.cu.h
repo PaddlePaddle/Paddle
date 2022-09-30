@@ -674,19 +674,23 @@ int ProductRuleBook(const Context& dev_ctx,
   DenseTensorMeta rulebook_meta(
       indices_dtype, {rulebook_rows, rulebook_cols}, DataLayout::NCHW);
 
-  int64_t table_size = 1;
+  int64_t dense_size = 1;
   for (int i = 0; i < out_dims.size() - 1; i++) {
-    table_size *= out_dims[i];
+    dense_size *= out_dims[i];
   }
 
   if (subm) {
+    int64_t dense_size = 1;
+    for (int i = 0; i < out_dims.size() - 1; i++) {
+      dense_size *= out_dims[i];
+    }
     bool hash = true;
-    constexpr int max_table_size = 136000;
-    constexpr int min_nnz = 1 * 41 * 1600 * 1408;
-    constexpr float min_sparsity = 1 - (float)max_table_size / (float)min_nnz;
-    if (table_size > max_table_size) hash = false;
-    if (non_zero_num < min_nnz) hash = false;
-    float sparsity = 1 - (float)non_zero_num / (float)table_size;
+    constexpr int max_hash_table_size = 136000;
+    constexpr int min_dense_size = 1 * 41 * 1600 * 1408;
+    constexpr float min_sparsity = 1 - (float)max_hash_table_size / (float)min_dense_size;
+    if (non_zero_num > max_hash_table_size) hash = false;
+    if (dense_size < min_dense_size) hash = false;
+    float sparsity = 1 - (float)non_zero_num / (float)dense_size;
     if (sparsity < min_sparsity) hash = false;
 
     DenseTensor tmp_rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
@@ -765,8 +769,13 @@ int ProductRuleBook(const Context& dev_ctx,
                                                out_rulebook_ptr);
       *rulebook = out_rulebook;
 
+      if(nullptr != out_index_table_ptr) delete out_index_table_ptr;
       return rulebook_len;
     } else {
+      int64_t table_size = 1;
+      for (int i = 0; i < out_dims.size() - 1; i++) {
+        table_size *= out_dims[i];
+      }
       DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
       int* out_index_table_ptr = out_index_table.data<int>();
       phi::backends::gpu::GpuMemsetAsync(
@@ -841,6 +850,10 @@ int ProductRuleBook(const Context& dev_ctx,
     }
 
   } else {
+    int64_t table_size = 1;
+    for (int i = 0; i < out_dims.size() - 1; i++) {
+      table_size *= out_dims[i];
+    }
     DenseTensor out_index_table = phi::Empty<int>(dev_ctx, {table_size});
     int* out_index_table_ptr = out_index_table.data<int>();
     *rulebook = phi::Empty(dev_ctx, std::move(rulebook_meta));
