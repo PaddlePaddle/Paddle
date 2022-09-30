@@ -241,6 +241,14 @@ class ProcessGroup {
         "ProcessGroup%s does not support AllToAll", GetBackendName()));
   }
 
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      bool) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support alltoall", GetBackendName()));
+  }
+
   virtual std::shared_ptr<ProcessGroup::Task> AllToAll_Single(
       std::vector<phi::DenseTensor>&,  // NOLINT
       std::vector<phi::DenseTensor>&,  // NOLINT
@@ -248,6 +256,16 @@ class ProcessGroup {
       std::vector<int64_t>&) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "ProcessGroup%s does not support AllToAll_Single", GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAllSingle(
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<int64_t>&,
+      std::vector<int64_t>&,
+      bool) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support alltoall_single", GetBackendName()));
   }
 
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(

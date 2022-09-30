@@ -475,6 +475,61 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+              "alltoall",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_in_tensor_list,
+                 py::handle py_out_tensor_list,
+                 bool sync_op) {
+                auto in_tensor_list =
+                    CastPyArg2VectorOfTensor(py_in_tensor_list.ptr(), 0);
+                Tensor concat_in_tensor = paddle::concat(in_tensor_list, 0);
+                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    concat_in_tensor.impl());
+                std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
+
+                auto out_tensor_list =
+                    CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
+                Tensor concat_out_tensor = paddle::concat(out_tensor_list, 0);
+                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    concat_out_tensor.impl());
+                std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
+
+                // in_tensor_list should not be empty
+                const auto *dev_ctx =
+                    self.GetDeviceContext(in_tensor_list.back().place());
+                auto task = self.AllToAll(in_wrapper, out_wrapper, sync_op);
+                distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
+                return task;
+              },
+              py::arg("in"),
+              py::arg("out"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "alltoall_base",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_in_tensor,
+                 py::handle py_out_tensor,
+                 bool sync_op) {
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
+
+                auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    out_tensor.impl());
+                std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
+
+                return self.AllToAll(in_wrapper, out_wrapper, sync_op);
+              },
+              py::arg("in"),
+              py::arg("out"),
+              py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
               "alltoall_single",
               [](distributed::ProcessGroup &self,
                  py::handle py_in_tensor,
@@ -716,6 +771,7 @@ void BindDistributed(py::module *m) {
               py::call_guard<py::gil_scoped_release>())
 
           .def(
+<<<<<<< HEAD
               "all_gather_partial_on_calc_stream",
               [](distributed::ProcessGroupStream &self,
                  py::handle py_in_tensor,
@@ -744,6 +800,62 @@ void BindDistributed(py::module *m) {
               py::arg("out"),
               py::arg("num"),
               py::arg("id"),
+=======
+              "alltoall_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_in_tensor_list,
+                 py::handle py_out_tensor_list) {
+                auto in_tensor_list =
+                    CastPyArg2VectorOfTensor(py_in_tensor_list.ptr(), 0);
+                Tensor concat_in_tensor = paddle::concat(in_tensor_list, 0);
+                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    concat_in_tensor.impl());
+                std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
+
+                auto out_tensor_list =
+                    CastPyArg2VectorOfTensor(py_out_tensor_list.ptr(), 0);
+                Tensor concat_out_tensor = paddle::concat(out_tensor_list, 0);
+                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    concat_out_tensor.impl());
+                std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
+
+                // in_tensor_list must not be empty
+                const auto *dev_ctx = self.GetDeviceContext(
+                    in_tensor_list.back().place(), /*use_calc_stream*/ true);
+                auto task = self.AllToAll(in_wrapper,
+                                          out_wrapper,
+                                          /*sync_op*/ true,
+                                          /*use_calc_stream*/ true);
+                distributed::SplitTensor(dev_ctx, *out_dense, &out_tensor_list);
+                return task;
+              },
+              py::arg("in"),
+              py::arg("out"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "alltoall_base_on_calc_stream",
+              [](distributed::ProcessGroupStream &self,
+                 py::handle py_in_tensor,
+                 py::handle py_out_tensor) {
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto in_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                std::vector<phi::DenseTensor> in_wrapper = {*in_dense};
+
+                auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                auto out_dense = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    out_tensor.impl());
+                std::vector<phi::DenseTensor> out_wrapper = {*out_dense};
+
+                return self.AllToAll(in_wrapper,
+                                     out_wrapper,
+                                     /*sync_op*/ true,
+                                     /*use_calc_stream*/ true);
+              },
+              py::arg("in"),
+              py::arg("out"),
+>>>>>>> feat(distributed/communication/stream): add alltoall api
               py::call_guard<py::gil_scoped_release>())
 
           .def(

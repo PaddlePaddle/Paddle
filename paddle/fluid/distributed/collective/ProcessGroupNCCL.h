@@ -198,8 +198,14 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll(
-      std::vector<phi::DenseTensor>& in,
-      std::vector<phi::DenseTensor>& out) override;
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors) override;
+
+  std::shared_ptr<ProcessGroup::Task> AllToAll(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      bool sync_op,
+      bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> AllToAll_Single(
       std::vector<phi::DenseTensor>& in,
