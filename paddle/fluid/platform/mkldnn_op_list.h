@@ -20,7 +20,6 @@ namespace platform {
 static const std::unordered_set<std::string> mkldnn_white_list = {
     "cast",
     "transfer_dtype",
-    "concat_grad",
     "conv2d_transpose",
     "depthwise_conv2d_transpose",
     "conv3d_transpose",
@@ -40,8 +39,17 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "split",
     "sum",
     "transpose2_grad",
-    "sgd"};
-static const std::unordered_set<std::string> mkldnn_interp_white_list = {
+    "sgd",
+    // NOTE(jiahy0825): squeeze MKLDNN kernel are disabled
+    // (https://github.com/PaddlePaddle/Paddle/pull/35781). If these MKLDNN
+    // kernels and codes are deleted in the future, attributes `use_mkldnn`
+    // should be removed from function declaration
+    "squeeze",
+    "squeeze_grad",
+    "squeeze2",
+    "squeeze2_grad",
+    // NOTE(jiahy0825): After fixing GetExpectedKernelType in InterpolateOp,
+    // interpolate series hard code can be deleted together.
     "bilinear_interp",
     "nearest_interp",
     "trilinear_interp",
@@ -51,8 +59,9 @@ static const std::unordered_set<std::string> mkldnn_interp_white_list = {
     "nearest_interp_v2",
     "trilinear_interp_v2",
     "bicubic_interp_v2",
-    "linear_interp_v2"};
-static const std::unordered_set<std::string> mkldnn_reduce_white_list = {
+    "linear_interp_v2",
+    // NOTE(jiahy0825): After fixing GetExpectedKernelType in ReduceOp, reduce
+    // series hard code can be deleted together.
     "frobenius_norm",
     "reduce_amax",
     "reduce_amin",
@@ -68,29 +77,24 @@ static const std::unordered_set<std::string> mkldnn_reduce_white_list = {
     "reduce_mean_grad",
     "reduce_min_grad",
     "reduce_prod_grad",
-    "reduce_sum_grad"};
-static const std::unordered_set<std::string> mkldnn_customized_type_value_list =
-    {"addmm",
-     "conv2d",
-     "conv2d_grad",
-     "depthwise_conv2d",
-     "depthwise_conv2d_grad",
-     "conv3d",
-     "conv3d_grad",
-     "prior_box",
-     "fc",
-     "mul",
-     "mul_grad",
-     "transpose2"};
+    "reduce_sum_grad",
+    // NOTE(jiahy0825): Below ops register kernel with customized_type_value, we
+    // need to analysis and solve them one-by-one.
+    "addmm",
+    "conv2d",
+    "conv2d_grad",
+    "depthwise_conv2d",
+    "depthwise_conv2d_grad",
+    "conv3d",
+    "conv3d_grad",
+    "prior_box",
+    "fc",
+    "mul",
+    "mul_grad",
+    "transpose2"};
 
 inline bool in_mkldnn_white_list(const std::string& op_name) {
-  return mkldnn_white_list.find(op_name) != mkldnn_white_list.end() ||
-         mkldnn_interp_white_list.find(op_name) !=
-             mkldnn_interp_white_list.end() ||
-         mkldnn_reduce_white_list.find(op_name) !=
-             mkldnn_reduce_white_list.end() ||
-         mkldnn_customized_type_value_list.find(op_name) !=
-             mkldnn_customized_type_value_list.end();
+  return mkldnn_white_list.find(op_name) != mkldnn_white_list.end();
 }
 
 }  // namespace platform
