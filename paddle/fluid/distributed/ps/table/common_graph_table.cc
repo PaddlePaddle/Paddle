@@ -213,7 +213,8 @@ int32_t GraphTable::add_node_to_ssd(
                  ch,
                  sizeof(int) * 2 + sizeof(uint64_t),
                  str) == 0) {
-      uint64_t *stored_data = reinterpret_cast<uint64_t *>(str.c_str());
+      uint64_t *stored_data =
+          reinterpret_cast<uint64_t *>(const_cast<char *>(str.c_str()));
       int n = str.size() / sizeof(uint64_t);
       char *new_data = new char[n * sizeof(uint64_t) + len];
       memcpy(new_data, stored_data, n * sizeof(uint64_t));
@@ -254,7 +255,8 @@ char *GraphTable::random_sample_neighbor_from_ssd(
                ch,
                sizeof(int) * 2 + sizeof(uint64_t),
                str) == 0) {
-    uint64_t *data = reinterpret_cast<uint64_t *>(str.c_str());
+    uint64_t *data =
+        reinterpret_cast<uint64_t *>(const_cast<char *>(str.c_str()));
     int n = str.size() / sizeof(uint64_t);
     std::unordered_map<int, int> m;
     // std::vector<uint64_t> res;
@@ -312,7 +314,8 @@ int64_t GraphTable::load_graph_to_memory_from_ssd(int idx,
           if (_db->get(i, ch, sizeof(int) * 2 + sizeof(uint64_t), str) == 0) {
             count[i] += (int64_t)str.size();
             for (size_t j = 0; j < str.size(); j += sizeof(uint64_t)) {
-              uint64_t id = *reinterpret_cast<uint64_t *>(str.c_str() + j);
+              uint64_t id = *reinterpret_cast<uint64_t *>(
+                  const_cast<char *>(str.c_str()) + j);
               add_comm_edge(idx, v, id);
             }
           }
@@ -365,16 +368,17 @@ void GraphTable::make_partitions(int idx, int64_t byte_size, int device_len) {
       continue;
     }
     std::string key = iters[next]->key().ToString();
-    int type_idx = *reinterpret_cast<int *>(key.c_str());
-    int temp_idx = *reinterpret_cast<int *>(key.c_str() + sizeof(int));
+    int type_idx = *reinterpret_cast<int *>(const_cast<char *>(key.c_str()));
+    int temp_idx =
+        *reinterpret_cast<int *>(const_cast<char *>(key.c_str()) + sizeof(int));
     if (type_idx != 0 || temp_idx != idx) {
       iters[next]->Next();
       next++;
       continue;
     }
     std::string value = iters[next]->value().ToString();
-    std::uint64_t i_key =
-        *reinterpret_cast<uint64_t *>(key.c_str() + sizeof(int) * 2);
+    std::uint64_t i_key = *reinterpret_cast<uint64_t *>(
+        const_cast<char *>(key.c_str()) + sizeof(int) * 2);
     for (int i = 0; i < part_len; i++) {
       if (memory_remaining[i] < (int64_t)value.size()) {
         score[i] = -100000.0;
@@ -383,7 +387,8 @@ void GraphTable::make_partitions(int idx, int64_t byte_size, int device_len) {
       }
     }
     for (size_t j = 0; j < value.size(); j += sizeof(uint64_t)) {
-      uint64_t v = *(reinterpret_cast<uint64_t *>(value.c_str() + j));
+      uint64_t v = *(
+          reinterpret_cast<uint64_t *>(const_cast<char *>(value.c_str()) + j));
       int index = -1;
       if (id_map.find(v) != id_map.end()) {
         index = id_map[v];
