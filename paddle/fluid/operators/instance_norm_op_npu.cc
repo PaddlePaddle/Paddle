@@ -18,19 +18,19 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class InstanceNormNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto epsilon = ctx.Attr<float>("epsilon");
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* scale = ctx.Input<Tensor>("Scale");
-    const auto* bias = ctx.Input<Tensor>("Bias");
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* mean = ctx.Output<Tensor>("SavedMean");
-    auto* variance = ctx.Output<Tensor>("SavedVariance");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* mean = ctx.Output<phi::DenseTensor>("SavedMean");
+    auto* variance = ctx.Output<phi::DenseTensor>("SavedVariance");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     dev_ctx.template Alloc<T>(y);

@@ -771,18 +771,6 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnQuantizer();
 
   ///
-  /// \brief Set the calibration ranges file path of quantize model.
-  ///
-  ///
-  void SetCalibrationFilePath(const std::string& calibration_file_path = "");
-
-  ///
-  /// \brief Return the calibration ranges file path of quantize model.
-  ///
-  ///
-  std::string CalibrationFilePath() { return calibration_file_path_; }
-
-  ///
   /// \brief Turn on MKLDNN int8.
   ///
   /// \param op_list The operator type list.
@@ -960,7 +948,6 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;
-  mutable std::string calibration_file_path_;
 
   // Mixed precision.
   std::unordered_set<std::string> mixed_black_list_;

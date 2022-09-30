@@ -142,11 +142,22 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
           op_with_kernel->Type())) {
     auto phi_kernel_key = op_with_kernel->ChoosePhiKernel(exec_ctx);
+    auto phi_kernel_name = op_with_kernel->PhiKernelSignature()->name;
     VLOG(6) << "phi_kernel_key " << phi_kernel_key << "\n";
+    VLOG(6) << "phi_kernel_name " << phi_kernel_name << "\n";
 
     if (op_with_kernel->PhiKernel()->IsValid()) {
       run_phi_kernel = true;
     }
+
+    // For data transfer ops, they should not fallback to cpu.
+    // Though they're device-independent operations,
+    // their implementations are device-related.
+    // For example, consider changing the layout of a gpu tensor
+    // while the gpu kernel of transfer_layout op does not exist.
+    // To use the cpu kernel, you must insert memcpy_d2h/mepcpy_h2d op
+    // in addition. But such operation should not be done here.
+    // Maybe in future we will support this.
   }
 
   // 3. Execute transfer op and construct OpFuncNode
@@ -194,7 +205,8 @@ bool IsTensorOfVarInitialized(Variable* var) {
     if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>()) {
       return GetLoDTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
     } else if (var->IsType<LoDTensorArray>()) {
-      return static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]))
+      return static_cast<const phi::DenseTensor*>(
+                 &(var->Get<LoDTensorArray>()[0]))
           ->IsInitialized();
     }
   }
@@ -440,7 +452,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
       auto var = var_name_item.second[i];
       auto var_name = new_ins[var_name_item.first].at(i);
-      const Tensor* tensor_in;
+      const phi::DenseTensor* tensor_in;
       std::string new_var_name;
       bool is_transferred = false;
 
@@ -450,8 +462,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
         if (var->Get<LoDTensorArray>().size() == 0) {
           continue;
         }
-        tensor_in =
-            static_cast<const Tensor*>(&(var->Get<LoDTensorArray>()[0]));
+        tensor_in = static_cast<const phi::DenseTensor*>(
+            &(var->Get<LoDTensorArray>()[0]));
       } else {
         continue;
       }
@@ -470,7 +482,8 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
               (paddle::platform::MKLDNNDeviceContext::tls()
                    .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
-            VLOG(7) << "Created reshaped dummy input based on MKL-DNN Tensor , "
+            VLOG(7) << "Created reshaped dummy input based on MKL-DNN "
+                       "phi::DenseTensor , "
                        "but kNHWC layout"
                     << var_name_item.first << " in Operator "
                     << op_base->Type();

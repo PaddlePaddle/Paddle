@@ -269,7 +269,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 
 #define INIT_BASE_DEFINES                                  \
   auto* x = ctx.Input<LoDTensor>("X");                     \
-  auto* wh = ctx.Input<Tensor>("WeightH");                 \
+  auto* wh = ctx.Input<phi::DenseTensor>("WeightH");       \
   auto* xx = ctx.Output<LoDTensor>("XX");                  \
   auto x_lod = x->lod();                                   \
   auto x_dims = x->dims(); /* T x M*/                      \
@@ -281,9 +281,9 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   const int D3 = wh_dims[1]
 
 #define INIT_OTHER_DEFINES                                                   \
-  auto* h0 = ctx.Input<Tensor>("H0");                                        \
-  auto* wx = ctx.Input<Tensor>("WeightX");                                   \
-  auto* bias = ctx.Input<Tensor>("Bias");                                    \
+  auto* h0 = ctx.Input<phi::DenseTensor>("H0");                              \
+  auto* wx = ctx.Input<phi::DenseTensor>("WeightX");                         \
+  auto* bias = ctx.Input<phi::DenseTensor>("Bias");                          \
   auto* hidden_out = ctx.Output<LoDTensor>("Hidden");                        \
   bool is_reverse = ctx.Attr<bool>("is_reverse");                            \
   const int M = x_mat_dims[1];                                               \
@@ -408,7 +408,7 @@ class FusionGRUKernel : public framework::OpKernel<T> {
       return;
     }
     INIT_OTHER_DEFINES;
-    auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
+    auto* reordered_h0 = ctx.Output<phi::DenseTensor>("ReorderedH0");
     auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
     auto* batched_out = ctx.Output<LoDTensor>("BatchedOut");
     T* batched_input_data = batched_input->mutable_data<T>(place);

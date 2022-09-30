@@ -53,10 +53,10 @@ template <typename DeviceContext, typename T>
 class MineHardExamplesKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in_cls_loss = ctx.Input<framework::Tensor>("ClsLoss");
-    auto* in_loc_loss = ctx.Input<framework::Tensor>("LocLoss");
-    auto* in_matched_indices = ctx.Input<framework::Tensor>("MatchIndices");
-    auto* in_match_dist = ctx.Input<framework::Tensor>("MatchDist");
+    auto* in_cls_loss = ctx.Input<phi::DenseTensor>("ClsLoss");
+    auto* in_loc_loss = ctx.Input<phi::DenseTensor>("LocLoss");
+    auto* in_matched_indices = ctx.Input<phi::DenseTensor>("MatchIndices");
+    auto* in_match_dist = ctx.Input<phi::DenseTensor>("MatchDist");
     float neg_pos_ratio = ctx.Attr<float>("neg_pos_ratio");
     T neg_dist_threshold =
         static_cast<T>(ctx.Attr<float>("neg_dist_threshold"));
@@ -66,7 +66,7 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
 
     auto out_neg_indices = ctx.Output<framework::LoDTensor>("NegIndices");
     auto out_match_indices =
-        ctx.Output<framework::Tensor>("UpdatedMatchIndices");
+        ctx.Output<phi::DenseTensor>("UpdatedMatchIndices");
 
     framework::TensorCopy(
         *in_matched_indices, ctx.GetPlace(), out_match_indices);

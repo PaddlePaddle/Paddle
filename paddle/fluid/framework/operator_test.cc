@@ -146,7 +146,7 @@ class CPUKernelTest : public OpKernel<float> {
     cpu_kernel_run_num++;
     ASSERT_EQ(ctx.InputName("x"), "IN1");
     ASSERT_EQ(ctx.OutputName("y"), "OUT1");
-    auto* x = ctx.Input<Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
     ASSERT_EQ(x, nullptr);
   }
 };
@@ -196,13 +196,13 @@ class CPUKernalMultiInputsTest : public OpKernel<float> {
     auto outVar0 = ctx.MultiOutputVar("ys");
     ASSERT_EQ(outVar0.size(), 2U);
 
-    auto inTensor0 = ctx.MultiInput<Tensor>("xs");
+    auto inTensor0 = ctx.MultiInput<phi::DenseTensor>("xs");
     ASSERT_EQ(inTensor0.size(), 3U);
 
-    auto intTensor1 = ctx.Input<Tensor>("k");
+    auto intTensor1 = ctx.Input<phi::DenseTensor>("k");
     ASSERT_NE(intTensor1, nullptr);
 
-    auto outTensor0 = ctx.MultiOutput<Tensor>("ys");
+    auto outTensor0 = ctx.MultiOutput<phi::DenseTensor>("ys");
     ASSERT_EQ(outTensor0.size(), 2U);
 
     auto k = ctx.InputName("k");
@@ -349,7 +349,7 @@ class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
 class IndicateLoDTensorDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("LoDTensor", "Input of Tensor type Variable.");
+    AddInput("LoDTensor", "Input of phi::DenseTensor type Variable.");
     AddComment("This Op is only for IndicateVarDataType interface test.");
   }
 };
@@ -450,7 +450,8 @@ TEST(IndicateVarDataTypeTest, lodtensor) {
     EXPECT_TRUE(
         ex_msg.find(
             "The indicate_lod_tensor_data_type_test Op's Input Variable "
-            "`LoDTensor` contains uninitialized Tensor.") != std::string::npos);
+            "`LoDTensor` contains uninitialized phi::DenseTensor.") !=
+        std::string::npos);
   }
   ASSERT_TRUE(caught);
 }
@@ -477,7 +478,7 @@ TEST(IndicateVarDataTypeTest, selectedrows) {
     EXPECT_TRUE(
         ex_msg.find("The indicate_selected_rows_data_type_test Op's "
                     "Input Variable `SelectedRows` contains uninitialized "
-                    "Tensor.") != std::string::npos);
+                    "phi::DenseTensor.") != std::string::npos);
   }
   ASSERT_TRUE(caught);
 }
@@ -684,8 +685,8 @@ class OpWithoutUnusedVarKernelTest : public OpKernel<T> {
   void Compute(const ExecutionContext& ctx) const {
     ASSERT_EQ(ctx.InputName("X"), "X");
     ASSERT_EQ(ctx.OutputName("Y"), "Y");
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Output<Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
     ASSERT_NE(x, y);
     ASSERT_NE(y, nullptr);
   }

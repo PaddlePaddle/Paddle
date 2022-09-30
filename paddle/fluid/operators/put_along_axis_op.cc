@@ -39,7 +39,7 @@ class PutAlongAxisOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return framework::OpKernelType(
         expected_kernel_type.data_type_, tensor.place(), tensor.layout());
@@ -80,7 +80,7 @@ class PutAlongAxisGradOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return framework::OpKernelType(
         expected_kernel_type.data_type_, tensor.place(), tensor.layout());

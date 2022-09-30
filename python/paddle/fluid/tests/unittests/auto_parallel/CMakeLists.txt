@@ -78,6 +78,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_embedding MODULES test_dist_embedding ENVS
                   ${dist_ENVS})
   py_test_modules(test_dist_slice MODULES test_dist_slice ENVS ${dist_ENVS})
+  py_test_modules(test_dist_split MODULES test_dist_split ENVS ${dist_ENVS})
   py_test_modules(test_cluster MODULES test_cluster ENVS ${dist_ENVS})
   py_test_modules(test_comm_cost MODULES test_comm_cost ENVS ${dist_ENVS})
   py_test_modules(test_comp_cost MODULES test_comp_cost ENVS ${dist_ENVS})

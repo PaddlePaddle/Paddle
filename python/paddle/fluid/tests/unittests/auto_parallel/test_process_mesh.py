@@ -101,6 +101,12 @@ class TestProcessMesh(unittest.TestCase):
         self.assertEqual(sub_process_mesh4.dim_names, ["d0"])
         self.assertEqual(sub_process_mesh4.ndim, 1)
 
+        sub_process_mesh5 = sub_process_mesh3[0]
+        self.assertEqual(sub_process_mesh5.shape, [1])
+        self.assertEqual(sub_process_mesh5.process_ids, [1])
+        self.assertEqual(sub_process_mesh5.dim_names, ["d0"])
+        self.assertEqual(sub_process_mesh5.ndim, 1)
+
     def test_context_manager(self):
         mesh = np.array([1, 2, 3, 4])
         input = static.data(name="input",
