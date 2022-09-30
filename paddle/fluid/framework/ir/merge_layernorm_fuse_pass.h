@@ -25,15 +25,18 @@ namespace framework {
 namespace ir {
 
 // Fusing of path merge and layer_norm
-
+//
+// op: ss=stride_slice
+// shape: [ss] = [?x28x28x96]
+//
 //       input
 //         | [?x3136x96]
-//       reshape2                                                                  input
-//         | [?x56x56x96]                                                            | [?x3136x96]
-//         |--------------|--------------|--------------|                      merge_layernorm
-//   strided_slice  strided_slice  strided_slice  strided_slice          ->          | [?x784x384]
-//         | [?x28x28x96] | [?x28x28x96] | [?x28x28x96] | [?x28x28x96]  fused      output
-//         |--------------|--------------|--------------|
+//       reshape2                                 input
+//         | [?x56x56x96]                           | [?x3136x96]
+//         |------|------|------|              merge_layernorm
+//        ss     ss     ss      ss      ->          | [?x784x384]
+//         | [ss] | [ss] | [ss] | [ss]  fused      output
+//         |------|------|------|
 //       concat
 //         | [?x28x28x384]
 //       reshape2
@@ -41,7 +44,7 @@ namespace ir {
 //       layer_norm
 //         | [?x784x384]
 //        output
-// 
+//
 
 class MergeLayernormFusePass : public FusePassBase {
  public:

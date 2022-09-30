@@ -1939,12 +1939,11 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(reshape4_out);
 };
 
-// pattern for merge_layernorm 
+// pattern for merge_layernorm
 struct MergeLayernormPattern : public PatternBase {
-  MergeLayernormPattern(PDPattern* pattern, 
-                          const std::string& name_scope)
-    : PatternBase(pattern, name_scope, "merge_layernorm"){}
-  
+  MergeLayernormPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "merge_layernorm") {}
+
   PDNode* operator()(PDNode* reshape2_in);
 
   PATTERN_DECL_NODE(reshape2_00_op);
