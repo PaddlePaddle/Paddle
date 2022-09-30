@@ -489,9 +489,10 @@ def prior_box(input,
         box, var = paddle.vision.ops.prior_box(
             input=input,
             image=image,
-            min_sizes=[100.],
+            min_sizes=[2.0, 4.0],
             clip=True,
             flip=True)
+
     """
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
@@ -502,13 +503,10 @@ def prior_box(input,
     def _is_list_or_tuple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
-    if not _is_list_or_tuple_(min_sizes):
-        min_sizes = [min_sizes]
-    if not _is_list_or_tuple_(aspect_ratios):
-        aspect_ratios = [aspect_ratios]
-    if not (_is_list_or_tuple_(steps) and len(steps) == 2):
-        raise ValueError('steps should be a list or tuple ',
-                         'with length 2, (step_width, step_height).')
+    if not _is_list_or_tuple_(min_sizes): min_sizes = [min_sizes]
+    if not _is_list_or_tuple_(aspect_ratios): aspect_ratios = [aspect_ratios]
+    if not _is_list_or_tuple_(steps): steps = [steps]
+    if not len(steps) == 2: raise ValueError('steps should be (step_w, step_h)')
 
     min_sizes = list(map(float, min_sizes))
     aspect_ratios = list(map(float, aspect_ratios))
@@ -516,26 +514,23 @@ def prior_box(input,
 
     cur_max_sizes = None
     if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
-        if not _is_list_or_tuple_(max_sizes):
-            max_sizes = [max_sizes]
+        if not _is_list_or_tuple_(max_sizes): max_sizes = [max_sizes]
         cur_max_sizes = max_sizes
 
     if in_dygraph_mode():
         step_w, step_h = steps
-        if max_sizes == None:
-            max_sizes = []
+        if max_sizes == None: max_sizes = []
         box, var = _C_ops.prior_box(input, image, min_sizes, aspect_ratios,
                                     variance, max_sizes, flip, clip, step_w,
                                     step_h, offset, min_max_aspect_ratios_order)
         return box, var
 
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         attrs = ('min_sizes', min_sizes, 'aspect_ratios', aspect_ratios,
                  'variances', variance, 'flip', flip, 'clip', clip, 'step_w',
                  steps[0], 'step_h', steps[1], 'offset', offset,
                  'min_max_aspect_ratios_order', min_max_aspect_ratios_order)
-        if cur_max_sizes is not None:
-            attrs += ('max_sizes', cur_max_sizes)
+        if cur_max_sizes is not None: attrs += ('max_sizes', cur_max_sizes)
         box, var = _legacy_C_ops.prior_box(input, image, *attrs)
         return box, var
     else:
@@ -550,9 +545,7 @@ def prior_box(input,
             'offset': offset,
             'min_max_aspect_ratios_order': min_max_aspect_ratios_order
         }
-
-        if cur_max_sizes is not None:
-            attrs['max_sizes'] = cur_max_sizes
+        if cur_max_sizes is not None: attrs['max_sizes'] = cur_max_sizes
 
         box = helper.create_variable_for_type_inference(dtype)
         var = helper.create_variable_for_type_inference(dtype)
@@ -651,24 +644,26 @@ def box_coder(prior_box,
             import paddle
 
             # For encode
-            prior_box_encode = paddle.rand((512, 4), dtype=paddle.float32)
-            target_box_encode = paddle.rand((81, 4), dtype=paddle.float32)
+            prior_box_encode = paddle.rand((80, 4), dtype=paddle.float32)
+            prior_box_var_encode = paddle.rand((80, 4), dtype=paddle.float32)
+            target_box_encode = paddle.rand((20, 80, 4), dtype=paddle.float32)
             output_encode = paddle.vision.ops.box_coder(
                 prior_box=prior_box_encode,
-                prior_box_var=[0.1, 0.1, 0.2, 0.2],
+                prior_box_var=prior_box_var_encode,
                 target_box=target_box_encode,
                 code_type="encode_center_size")
 
             # For decode
-            prior_box_decode = paddle.rand((512, 4), dtype=paddle.float32)
-            target_box_decode = paddle.rand((512, 81, 4), dtype=paddle.float32)
+            prior_box_decode = paddle.rand((80, 4), dtype=paddle.float32)
+            prior_box_var_decode = paddle.rand((80, 4), dtype=paddle.float32)
+            target_box_decode = paddle.rand((20, 80, 4), dtype=paddle.float32)
             output_decode = paddle.vision.ops.box_coder(
                 prior_box=prior_box_decode,
-                prior_box_var=[0.1, 0.1, 0.2, 0.2],
+                prior_box_var=prior_box_var_decode,
                 target_box=target_box_decode,
                 code_type="decode_center_size",
-                box_normalized=False,
-                axis=1)
+                box_normalized=False)
+
     """
     check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
                              'box_coder')
@@ -684,17 +679,15 @@ def box_coder(prior_box,
                                           code_type, box_normalized, axis,
                                           prior_box_var)
         else:
-            raise TypeError(
-                "Input variance of box_coder must be Variable or lisz")
+            raise TypeError("Input prior_box_var must be Variable or list")
         return output_box
 
-    if _non_static_mode():
+    if _in_legacy_dygraph():
         if isinstance(prior_box_var, Variable):
             output_box = _legacy_C_ops.box_coder(prior_box, prior_box_var,
                                                  target_box, "code_type",
                                                  code_type, "box_normalized",
                                                  box_normalized, "axis", axis)
-
         elif isinstance(prior_box_var, list):
             output_box = _legacy_C_ops.box_coder(prior_box, None, target_box,
                                                  "code_type", code_type,
@@ -702,8 +695,7 @@ def box_coder(prior_box,
                                                  box_normalized, "axis", axis,
                                                  "variance", prior_box_var)
         else:
-            raise TypeError(
-                "Input variance of box_coder must be Variable or list")
+            raise TypeError("Input prior_box_var must be Variable or list")
         return output_box
     else:
         helper = LayerHelper("box_coder", **locals())
@@ -722,8 +714,7 @@ def box_coder(prior_box,
         elif isinstance(prior_box_var, list):
             attrs['variance'] = prior_box_var
         else:
-            raise TypeError(
-                "Input variance of box_coder must be Variable or list")
+            raise TypeError("Input prior_box_var must be Variable or list")
         helper.append_op(type="box_coder",
                          inputs=inputs,
                          attrs=attrs,
