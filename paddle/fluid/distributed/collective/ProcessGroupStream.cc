@@ -89,6 +89,31 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllToAll(
       "ProcessGroup%s does not support do alltoall", GetBackendName()));
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllToAllSingle(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    std::vector<int64_t>& in_sizes,
+    std::vector<int64_t>& out_sizes,
+    bool sync_op) {
+  return AllToAllSingle(in_tensors,
+                        out_tensors,
+                        in_sizes,
+                        out_sizes,
+                        sync_op,
+                        /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllToAllSingle(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    std::vector<int64_t>& in_sizes,
+    std::vector<int64_t>& out_sizes,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "ProcessGroup%s does not support do alltoall_single", GetBackendName()));
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Broadcast(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,

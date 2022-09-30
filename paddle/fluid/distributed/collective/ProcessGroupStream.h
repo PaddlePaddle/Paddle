@@ -92,6 +92,21 @@ class ProcessGroupStream : public ProcessGroup {
       bool sync_op,
       bool use_calc_stream);
 
+  std::shared_ptr<ProcessGroup::Task> AllToAllSingle(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      std::vector<int64_t>& in_sizes,              // NOLINT
+      std::vector<int64_t>& out_sizes,             // NOLINT
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllToAllSingle(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      std::vector<int64_t>& in_sizes,              // NOLINT
+      std::vector<int64_t>& out_sizes,             // NOLINT
+      bool sync_op,
+      bool use_calc_stream);
+
   std::shared_ptr<ProcessGroup::Task> Broadcast(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT

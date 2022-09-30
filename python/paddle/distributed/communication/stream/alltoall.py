@@ -76,18 +76,21 @@ def _alltoall_in_dygraph(out_tensor_list, in_tensor_list, group, sync_op,
     return task
 
 
-def alltoall(out_tensor_or_tensor_list,
-             in_tensor_or_tensor_list,
+def alltoall(out_tensor_or_tensor_list=None,
+             in_tensor_or_tensor_list=None,
              group=None,
              sync_op=True,
              use_calc_stream=False):
     """
 
-    Perform specific reduction (for example, sum, max) on inputs across devices.
+    Scatter a tensor (or a tensor list) across devices and gather outputs to another tensor (or a tensor list, respectively).
 
     Args:
-        out_tensor_or_tensor_list (Union[Tensor, List[Tensor]]):
-        in_tensor_or_tensor_list (Union[Tensor, List[Tensor]]):
+        out_tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The output (default is `None`, must be specified on the source rank).
+            If it is a tensor, it should be correctly-sized. If it is a list, it should be empty or contain correctly-sized tensors.
+        in_tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The input to scatter (default is `None`, must be specified on the source rank).
+            If it is a tensor, it should be correctly-sized. If it is a list, it should contain correctly-sized tensors. Support
+            float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
@@ -107,16 +110,17 @@ def alltoall(out_tensor_or_tensor_list,
             import paddle.distributed as dist
 
             dist.init_parallel_env()
-            local_rank = dist.get_rank()
-            data = None
-            if local_rank == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            out_tensor_list = []
+            if dist.get_rank() == 0:
+                data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+                data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])
             else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            task = dist.stream.all_reduce(data, sync_op=False)
-            task.wait()
-            out = data.numpy()
-            # [[5, 7, 9], [5, 7, 9]]
+                data1 = paddle.to_tensor([[13, 14, 15], [16, 17, 18]])
+                data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
+            dist.stream.alltoall(out_tensor_list, [data1, data2])
+            print(out_tensor_list)
+            # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]] (2 GPUs, out for rank 0)
+            # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
     """
     if group is not None and not group.is_member():
         raise RuntimeError(
@@ -126,6 +130,11 @@ def alltoall(out_tensor_or_tensor_list,
     if not sync_op and use_calc_stream:
         raise RuntimeError(
             "use_calc_stream can only be true in sync op behavior.")
+
+    if out_tensor_or_tensor_list is not None:
+        raise RuntimeError("The output should be specified.")
+    if in_tensor_or_tensor_list is not None:
+        raise RuntimeError("The input should be specified.")
 
     if framework.in_dygraph_mode():
         out_is_tensor = paddle.is_tensor(out_tensor_or_tensor_list)

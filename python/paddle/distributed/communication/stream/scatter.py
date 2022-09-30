@@ -46,8 +46,6 @@ def _scatter_base_in_dygraph(out_tensor, in_tensor, src, group, sync_op,
     nranks = group.nranks
     rank = dist.get_rank()
     if rank == src_rank:
-        if in_tensor is None:
-            raise RuntimeError("The in_tensor should be specified on src rank.")
         _check_tensor_shape(out_tensor, in_tensor.shape, nranks)
 
     if use_calc_stream:
@@ -72,9 +70,9 @@ def _scatter_in_dygraph(tensor, tensor_list, src, group, sync_op,
     nranks = group.nranks
     rank = dist.get_rank()
     if rank == src_rank:
-        if not tensor_list:
+        if len(tensor_list):
             raise RuntimeError(
-                "The tensor_list should be specified on src rank.")
+                "The tensor_list should not be empty on src rank.")
         _check_tensor_list_shape(tensor_list, tensor.shape, nranks)
     else:
         tensor_list = [tensor for _ in range(nranks)]
@@ -145,6 +143,9 @@ def scatter(tensor,
     if not sync_op and use_calc_stream:
         raise RuntimeError(
             "use_calc_stream can only be true in sync op behavior.")
+
+    if tensor_or_tensor_list is not None:
+        raise RuntimeError("The input should be specified.")
 
     if framework.in_dygraph_mode():
         if paddle.is_tensor(tensor_or_tensor_list):

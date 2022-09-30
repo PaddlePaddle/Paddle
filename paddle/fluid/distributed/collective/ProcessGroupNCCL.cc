@@ -1253,6 +1253,72 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll_Single(
       CommType::ALLTOALL_SINGLE);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAllSingle(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    std::vector<int64_t>& in_sizes,
+    std::vector<int64_t>& out_sizes,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(in_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCudaPlace(out_tensors),
+      true,
+      platform::errors::InvalidArgument("All inputs should be in CudaPlace."));
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          ncclComm_t comm,
+          const gpuStream_t& stream) {
+        PADDLE_ENFORCE_EQ(input.dtype() == output.dtype(),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "The dtypes of input and output must be equal."));
+
+        std::vector<int64_t> in_dims = phi::vectorize(input.dims());
+        std::vector<int64_t> out_dims = phi::vectorize(output.dims());
+        CheckSplitSizes(&in_sizes, in_dims);
+        CheckSplitSizes(&out_sizes, out_dims);
+
+        size_t in_offset = 0, out_offset = 0;
+        size_t in_length = 0, out_length = 0;
+        size_t in_row_size = input.numel() / in_dims[0];
+        size_t out_row_size = output.numel() / out_dims[0];
+
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+        for (auto i = 0; i < size_; i++) {
+          in_length = in_sizes[i] * in_row_size;
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+              GetPointerByOffset(input.data(), in_offset, input.dtype()),
+              in_length,
+              platform::ToNCCLDataType(input.dtype()),
+              i,
+              comm,
+              stream));
+          in_offset += in_length;
+
+          out_length = out_sizes[i] * out_row_size;
+          PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+              GetPointerByOffset(output.data(), out_offset, input.dtype()),
+              out_length,
+              platform::ToNCCLDataType(input.dtype()),
+              i,
+              comm,
+              stream));
+          out_offset += out_length;
+        }
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+      },
+      CommType::ALLTOALL_SINGLE,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
