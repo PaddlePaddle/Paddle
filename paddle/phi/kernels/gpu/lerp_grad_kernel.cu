@@ -123,14 +123,14 @@ bool XYNeedReduce(const DenseTensor& x,
   int out_rank = out_dims.size();
   int smaller_rank = std::min(x_rank, y_rank);
   if (std::max(x_rank, y_rank) < out_rank) {
-    return 1;
+    return true;
   }
   for (int i = 1; i <= smaller_rank; ++i) {
     int x_idx = x_rank - i;
     int y_idx = y_rank - i;
     int out_idx = out_rank - i;
     if (x_dims[x_idx] != y_dims[y_idx]) {
-      return 1;
+      return true;
     }
     if (x_dims[x_idx] == 1 && y_dims[y_idx] == 1 && out_dims[out_idx] != 1) {
       return true;
