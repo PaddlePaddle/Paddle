@@ -481,17 +481,17 @@ def prior_box(input,
     Examples:
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        input = paddle.to_tensor([1, 3, 6, 9], dtype=paddle.float32)
-        image = paddle.to_tensor([1, 3, 9, 12], dtype=paddle.float32)
+            input = paddle.to_tensor([1, 3, 6, 9], dtype=paddle.float32)
+            image = paddle.to_tensor([1, 3, 9, 12], dtype=paddle.float32)
 
-        box, var = paddle.vision.ops.prior_box(
-            input=input,
-            image=image,
-            min_sizes=[2.0, 4.0],
-            clip=True,
-            flip=True)
+            box, var = paddle.vision.ops.prior_box(
+                input=input,
+                image=image,
+                min_sizes=[2.0, 4.0],
+                clip=True,
+                flip=True)
 
     """
     helper = LayerHelper("prior_box", **locals())
