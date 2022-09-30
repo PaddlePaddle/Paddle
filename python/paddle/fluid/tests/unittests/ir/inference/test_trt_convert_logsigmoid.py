@@ -39,34 +39,30 @@ class TrtConvertLogSigmoidTest(TrtLayerAutoScanTest):
                 return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         for dims in [1, 2, 3, 4]:
-            for alpha in [1.0, 2.0, 3.0]:
-                self.dims = dims
+            self.dims = dims
 
-                dics = [{"alpha": alpha}]
+            ops_config = [{
+                "op_type": "logsigmoid",
+                "op_inputs": {
+                    "X": ["input_data"],
+                },
+                "op_outputs": {
+                    "Out": ["output_data"]
+                },
+                "op_attrs": {}
+            }]
+            ops = self.generate_op_config(ops_config)
 
-                ops_config = [{
-                    "op_type": "celu",
-                    "op_inputs": {
-                        "X": ["input_data"],
-                    },
-                    "op_outputs": {
-                        "Out": ["output_data"]
-                    },
-                    "op_attrs": dics[0]
-                }]
-                ops = self.generate_op_config(ops_config)
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input_data":
+                    TensorConfig(data_gen=partial(generate_input1, dims, {}))
+                },
+                outputs=["output_data"])
 
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={},
-                    inputs={
-                        "input_data":
-                        TensorConfig(
-                            data_gen=partial(generate_input1, dims, dics))
-                    },
-                    outputs=["output_data"])
-
-                yield program_config
+            yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):

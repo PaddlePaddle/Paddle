@@ -42,7 +42,7 @@ class TrtConvertTanhshrinkTest(TrtLayerAutoScanTest):
             self.dims = dims
 
             ops_config = [{
-                "op_type": "silu",
+                "op_type": "tanhshrink",
                 "op_inputs": {
                     "X": ["input_data"],
                 },
