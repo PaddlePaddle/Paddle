@@ -260,14 +260,14 @@ void Relu6GradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(relu_grad,
                    OneDNN,
-                   ALL_LAYOUT,
+                   ONEDNN,
                    phi::ReluGradKernel,
                    float,
                    phi::dtype::bfloat16) {}
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(                                  \
-      name, OneDNN, ALL_LAYOUT, phi::func, float, phi::dtype::bfloat16) {}
+      name, OneDNN, ONEDNN, phi::func, float, phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(abs_grad, AbsGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(elu_grad, EluGradKernel)

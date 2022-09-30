@@ -26,7 +26,6 @@ namespace paddle {
 namespace operators {
 
 using framework::OpKernelType;
-using framework::Tensor;
 
 class FlipOp : public framework::OperatorWithKernel {
  public:

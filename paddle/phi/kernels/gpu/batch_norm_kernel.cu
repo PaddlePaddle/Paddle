@@ -1105,7 +1105,7 @@ void BatchNormKernel(const Context &ctx,
         // Create reserve space and workspace for batch norm.
         // Create tensor for each batchnorm op, it will be used in the
         // backward. Thus this tensor shouldn't be temp.
-        // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+        // auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
         if (reserve_space == nullptr) {
           reserve_space = &reserve_space_tensor;
         }

@@ -17,8 +17,7 @@ import unittest
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.utils import flatten
-from paddle.incubate.autograd.primrules import _orig2prim, _prim2orig, _jvp, _transpose
-import paddle.fluid.core as core
+from paddle.incubate.autograd.primrules import _orig2prim
 
 paddle.enable_static()
 
@@ -462,9 +461,7 @@ class TestPNormOrig2Prim1(TestElementWiseAddOrig2Prim):
         }
 
         self.orig2prim_args = (X, )
-        self.all_ops = [
-            'p_norm', 'reshape_p', 'sqrt_p', 'reduce_sum_p', 'mul_p'
-        ]
+        self.all_ops = ['p_norm', 'reshape_p', 'abs_p', 'reduce_sum_p']
         self.out_map = {0: self.output['Out']}
 
 

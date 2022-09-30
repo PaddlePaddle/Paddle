@@ -27,7 +27,7 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::stream;
 using framework::DataLayout;
-using framework::Tensor;
+
 using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::to_void_cast;

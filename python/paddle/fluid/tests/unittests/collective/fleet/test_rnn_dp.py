@@ -16,12 +16,9 @@ import unittest
 import paddle
 import os
 
-import numpy as np
 import paddle
 import paddle.static as static
-import paddle.distributed.fleet as fleet
 import paddle.nn as nn
-import paddle.nn.functional as F
 
 paddle.enable_static()
 
