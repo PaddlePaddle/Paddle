@@ -30,7 +30,6 @@ namespace paddle {
 namespace operators {
 
 using framework::OpKernelType;
-using framework::Tensor;
 
 constexpr int kMULMKLDNNINT8 = 1;
 constexpr int kMULMKLDNNFP32 = 2;

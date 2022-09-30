@@ -31,7 +31,7 @@ namespace paddle {
 namespace platform {
 
 using framework::DataLayout;
-using framework::Tensor;
+
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
 
@@ -236,7 +236,7 @@ class MatMulV2MKLDNNHandler
     }
 
     if (ctx.HasInput("ResidualData")) {
-      auto* residual_data = ctx.Input<Tensor>("ResidualData");
+      auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
       auto residual_data_tz = phi::vectorize(residual_data->dims());
       auto residual_data_md = memory::desc(residual_data_tz,
                                            MKLDNNGetDataType<OT>(),
@@ -273,121 +273,22 @@ class MatMulV2MKLDNNHandler
     return fake_strides;
   }
 
-  std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
+  std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor* input) {
     const YT* input_data = input->data<YT>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
                                             to_void_cast<YT>(input_data));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      paddle::framework::Tensor* output) {
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output) {
     // We cannot use base AcquireDstMemory as it makes an allocation request
     // base on DST memory primitive size. This is fine in general, but in MatMul
     // we have primitive that covers only one batch of Data and then shift
-    // pointer for every new batch. Hence Tensor size is bigger that dst memory
-    // primitive size. So would we request less memory that is there and it
-    // triggers an
-    // assertion.  So as there is no 'any' format here we can leave default size
-    // of Tensor as computed in ComputeInferShape
+    // pointer for every new batch. Hence phi::DenseTensor size is bigger that
+    // dst memory primitive size. So would we request less memory that is there
+    // and it triggers an assertion.  So as there is no 'any' format here we can
+    // leave default size of phi::DenseTensor as computed in ComputeInferShape
     OT* ptr = output->mutable_data<OT>(this->place_);
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
-  }
-};
-
-template <typename T>
-class ActivationMKLDNNHandler
-    : public MKLDNNHandlerNoCachingT<T,
-                                     dnnl::eltwise_forward,
-                                     dnnl::eltwise_backward> {
- public:
-  ActivationMKLDNNHandler(dnnl::algorithm algorithm,
-                          const framework::ExecutionContext& ctx,
-                          const dnnl::engine engine,
-                          Place cpu_place,
-                          const framework::Tensor* x)
-      : platform::MKLDNNHandlerNoCachingT<T,
-                                          dnnl::eltwise_forward,
-                                          dnnl::eltwise_backward>(engine,
-                                                                  cpu_place) {
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
-    float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
-
-    if (ctx.Type() == "scale") {
-      bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
-      auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
-      alpha = (scale_tensor == nullptr)
-                  ? ctx.Attr<float>("scale")
-                  : static_cast<float>(*(scale_tensor->data<T>()));
-      beta = ctx.Attr<float>("bias");
-      // if bias_after_scale == true
-      //   out = scale*X + bias
-      // else
-      //   out = scale*(X + bias) = scale*X + scale*bias
-      if (!bias_after_scale) {
-        beta *= alpha;
-      }
-    } else if (ctx.Type() == "clip") {
-      alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
-                                  : ctx.Attr<float>("min");
-      beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
-                                 : ctx.Attr<float>("max");
-    } else {
-      // paddle uses beta but mkldnn uses alpha for swish
-      if (algorithm == dnnl::algorithm::eltwise_swish) {
-        std::swap(alpha, beta);
-      } else if (algorithm == dnnl::algorithm::eltwise_bounded_relu) {
-        alpha = ctx.Attr<float>("threshold");
-      }
-    }
-
-    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            algorithm,
-                                            x->mem_desc(),
-                                            alpha,
-                                            beta);
-  }
-
-  ActivationMKLDNNHandler(dnnl::algorithm algorithm,
-                          const framework::ExecutionContext& ctx,
-                          const dnnl::engine engine,
-                          Place cpu_place,
-                          const framework::Tensor* x,
-                          const Tensor* dout)
-      : platform::MKLDNNHandlerNoCachingT<T,
-                                          dnnl::eltwise_forward,
-                                          dnnl::eltwise_backward>(engine,
-                                                                  cpu_place) {
-    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
-    float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
-
-    // paddle uses beta but mkldnn uses alpha for swish
-    if (algorithm == dnnl::algorithm::eltwise_swish) {
-      std::swap(alpha, beta);
-    } else if (algorithm == dnnl::algorithm::eltwise_bounded_relu) {
-      alpha = ctx.Attr<float>("threshold");
-    }
-
-    if (ctx.Type() == "clip_grad") {
-      alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
-                                  : ctx.Attr<float>("min");
-      beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
-                                 : ctx.Attr<float>("max");
-    }
-
-    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            algorithm,
-                                            x->mem_desc(),
-                                            alpha,
-                                            beta);
-    this->AcquireBackwardPrimitiveDescriptor(
-        algorithm, dout->mem_desc(), x->mem_desc(), alpha, beta);
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireBackwardSrcMemory(
-      const framework::Tensor* input) {
-    const T* input_data = input->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->bwd_pd_->src_desc(),
-                                            to_void_cast<T>(input_data));
   }
 };
 
@@ -474,7 +375,7 @@ class ReorderMKLDNNHandler {
     return sub_mem_p;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(framework::Tensor* output,
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output,
                                                  const MKLDNNMemoryFormat& fmt,
                                                  platform::Place place) {
     auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
@@ -484,7 +385,7 @@ class ReorderMKLDNNHandler {
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      framework::Tensor* output,
+      phi::DenseTensor* output,
       const dnnl::memory::desc& src_md,
       platform::Place place) {
     if (vtype_dst_ == vtype_) {
@@ -501,7 +402,7 @@ class ReorderMKLDNNHandler {
   }
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
-      framework::Tensor* output,
+      phi::DenseTensor* output,
       const std::vector<int64_t>& dims,
       const MKLDNNMemoryFormat& fmt,
       platform::Place place) {

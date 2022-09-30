@@ -15,8 +15,6 @@
 Distribute CTR model for test fleet api
 """
 
-from __future__ import print_function
-
 import shutil
 import tempfile
 import time

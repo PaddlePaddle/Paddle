@@ -28,8 +28,6 @@ Multi30K: Multilingual English-German Image Descriptions.
 }
 """
 
-from __future__ import print_function
-
 import os
 import six
 import tarfile

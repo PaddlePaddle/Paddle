@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = platform::DataLayout;
 using framework::AlgorithmsCache;
 using framework::ConvSearchCache;
@@ -68,7 +68,7 @@ struct ConvArgsBase {
   platform::TensorDescriptor idesc, odesc;
   platform::FilterDescriptor wdesc;
   platform::ConvolutionDescriptor cdesc;
-  const framework::Tensor *x, *w, *o;
+  const phi::DenseTensor *x, *w, *o;
   DataT cudnn_dtype;
 
   // strides
@@ -84,9 +84,9 @@ struct ConvArgsBase {
   // data foramt
   DataLayout data_layout;
 
-  ConvArgsBase(const framework::Tensor* x,
-               const framework::Tensor* w,
-               const framework::Tensor* o,
+  ConvArgsBase(const phi::DenseTensor* x,
+               const phi::DenseTensor* w,
+               const phi::DenseTensor* o,
                const std::vector<int> s,
                const std::vector<int> p,
                const std::vector<int> d,
