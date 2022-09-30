@@ -1771,12 +1771,23 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
 
 void AnalysisPredictor::StatisticShapeRangeInfo(
     const std::map<std::string, std::vector<std::vector<int32_t>>>
-        &map_shape_range,
+        &shape_range,
+    const std::map<std::string, std::vector<std::vector<int32_t>>>
+        &shape_tensor_value_range,
     const std::string &file_path) {
   std::map<std::string, std::vector<int32_t>> min_shapes;
   std::map<std::string, std::vector<int32_t>> max_shapes;
   std::map<std::string, std::vector<int32_t>> opt_shapes;
-  for (auto it : map_shape_range) {
+  std::map<std::string, std::vector<int32_t>> min_values;
+  std::map<std::string, std::vector<int32_t>> max_values;
+  std::map<std::string, std::vector<int32_t>> opt_values;
+
+  auto extract_min_max_opt = [](std::map<std::string, std::vector<int32_t>>& min_data, 
+                               decltype(min_data) max_data, 
+                               decltype(min_data) opt_data,
+                              decltype(shape_range) shape_data) {
+
+  for (auto it : shape_data) {
     auto name = it.first;
     auto shapes = it.second;
 
@@ -1806,13 +1817,14 @@ void AnalysisPredictor::StatisticShapeRangeInfo(
       opt_shape[d] = ShapeMaxFreq(counter);
     }
 
-    min_shapes[name] = min_shape;
-    max_shapes[name] = max_shape;
-    opt_shapes[name] = opt_shape;
+    min_data[name] = min_shape;
+    max_data[name] = max_shape;
+    opt_data[name] = opt_shape;
   }
-
-  inference::SerializeShapeRangeInfo(
-      file_path, min_shapes, max_shapes, opt_shapes);
+};
+  extract_min_max_opt(min_shapes, max_shapes, opt_shapes, shape_range);
+  extract_min_max_opt(min_values, max_values, opt_values, shape_tensor_value_range);
+  inference::SerializeShapeRangeInfo(file_path, min_shapes, max_shapes, opt_shapes, min_values, max_values, opt_values);
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {
@@ -2034,10 +2046,10 @@ AnalysisPredictor::~AnalysisPredictor() {
 #endif
 
   if (config_.shape_range_info_collected()) {
-    StatisticShapeRangeInfo(shape_info_, config_.shape_range_info_path());
     StatisticShapeRangeInfo(
+       shape_info_,
         shape_tensor_value_,
-        config_.shape_range_info_path() + shape_tensor_file_suffix_);
+        config_.shape_range_info_path());
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (predictor_stream_ != nullptr) {

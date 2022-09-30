@@ -42,23 +42,22 @@ void SerializePDTensorsToFile(const std::string& path,
                               const std::vector<PaddleTensor>& tensors);
 void DeserializePDTensorsToFile(const std::string& path,
                                 std::vector<PaddleTensor>* tensors);
-
 void SerializeShapeRangeInfo(
-    const std::string& path,
-    const paddle::inference::proto::ShapeRangeInfos& info);
-void SerializeShapeRangeInfo(
-    const std::string& path,
-    const std::map<std::string, std::vector<int32_t>>& min_shape,
-    const std::map<std::string, std::vector<int32_t>>& max_shape,
-    const std::map<std::string, std::vector<int32_t>>& opt_shape);
-void DeserializeShapeRangeInfo(const std::string& path,
-                               paddle::inference::proto::ShapeRangeInfos* info);
+    const std::string &path,
+    const std::map<std::string, std::vector<int32_t>> &min_shape,
+    const std::map<std::string, std::vector<int32_t>> &max_shape,
+    const std::map<std::string, std::vector<int32_t>> &opt_shape,
+    const std::map<std::string, std::vector<int32_t>> &min_shape_tensor_value,
+    const std::map<std::string, std::vector<int32_t>> &max_shape_tensor_value,
+    const std::map<std::string, std::vector<int32_t>> &opt_shape_tensor_value);
 void DeserializeShapeRangeInfo(
-    const std::string& path,
-    std::map<std::string, std::vector<int32_t>>* min_shape,
-    std::map<std::string, std::vector<int32_t>>* max_shape,
-    std::map<std::string, std::vector<int32_t>>* opt_shape);
-
+    const std::string &path,
+    std::map<std::string, std::vector<int32_t>> *min_shape,
+    std::map<std::string, std::vector<int32_t>> *max_shape,
+    std::map<std::string, std::vector<int32_t>> *opt_shape,
+    std::map<std::string, std::vector<int32_t>> *min_shape_tensor_value,
+    std::map<std::string, std::vector<int32_t>> *max_shape_tensor_value,
+    std::map<std::string, std::vector<int32_t>> *opt_shape_tensor_value);
 void UpdateShapeRangeInfo(
     const std::string& path,
     const std::map<std::string, std::vector<int32_t>>& min_shape,

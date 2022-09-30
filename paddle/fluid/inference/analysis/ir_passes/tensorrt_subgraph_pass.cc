@@ -326,8 +326,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   auto allow_build_at_runtime = Get<bool>("trt_allow_build_at_runtime");
   auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
-  auto shape_tensor_value_info_path =
-      Get<std::string>("trt_shape_tensor_value_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
   int max_batch_size = Get<int>("max_batch_size");
   if (trt_tuned_dynamic_shape) {
@@ -335,8 +333,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     inference::DeserializeShapeRangeInfo(shape_range_info_path,
                                          &min_input_shape,
                                          &max_input_shape,
-                                         &opt_input_shape);
-    inference::DeserializeShapeRangeInfo(shape_tensor_value_info_path,
+                                         &opt_input_shape,
                                          &min_shape_tensor,
                                          &max_shape_tensor,
                                          &opt_shape_tensor);

@@ -413,10 +413,12 @@ class AnalysisPredictor : public PaddlePredictor {
   const void *GetDeviceContexts() const override;
 
  private:
-  void StatisticShapeRangeInfo(
-      const std::map<std::string, std::vector<std::vector<int32_t>>>
-          &map_shape_range,
-      const std::string &file_path);
+ void StatisticShapeRangeInfo(
+    const std::map<std::string, std::vector<std::vector<int32_t>>>
+        &shape_range,
+    const std::map<std::string, std::vector<std::vector<int32_t>>>
+        &shape_tensor_value_range,
+    const std::string &file_path);
   void CollectShapeRangeInfo();
 
   void InitPlace();
