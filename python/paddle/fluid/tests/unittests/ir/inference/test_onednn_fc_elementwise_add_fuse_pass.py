@@ -20,7 +20,7 @@ from functools import partial
 from program_config import TensorConfig, ProgramConfig, OpConfig
 
 
-class TestFCElementwiseAddMkldnnFusePass(PassAutoScanTest):
+class TestFCElementwiseAddOneDNNFusePass(PassAutoScanTest):
 
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
