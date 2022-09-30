@@ -14,7 +14,6 @@
 """
 math functions
 """
-from __future__ import print_function
 import numpy as np
 
 from paddle.common_ops_import import VarDesc
@@ -5109,3 +5108,52 @@ def take(x, index, mode='raise', name=None):
     out = input_1d.index_select(index_1d).reshape(index.shape)
 
     return out
+
+
+def frexp(x, name=None):
+    """
+    The function used to decompose a floating point number into mantissa and exponent.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+    Returns:
+
+        - mantissa (Tensor), A mantissa Tensor. The shape and data type of mantissa tensor and exponential tensor are
+            the same as those of input.
+
+        - exponent (Tensor), A exponent Tensor. The shape and data type of mantissa tensor and exponential tensor are
+            the same as those of input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([[1, 2, 3, 4]], dtype="float32")
+            print(paddle.tensor.math.frexp(x))
+            # (Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[0.50000000, 0.50000000, 0.75000000, 0.50000000]]),
+            #  Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,[[1., 2., 2., 3.]]))
+        """
+    if x.dtype not in [paddle.float32, paddle.float64]:
+        raise TypeError(
+            "The data type of input must be one of ['float32', 'float64'], but got {}"
+            .format(x.dtype))
+    input_x = paddle.abs(x)
+    exponent = paddle.floor(paddle.log2(input_x))
+    exponent = paddle.where(paddle.isinf(exponent),
+                            paddle.full_like(exponent, 0), exponent)
+
+    # 0填充
+    mantissa = paddle.divide(input_x, 2**exponent)
+    # 计算exponent
+    exponent = paddle.where((mantissa >= 1),
+                            paddle.add(exponent, paddle.ones_like(exponent)),
+                            exponent)
+    mantissa = paddle.where((mantissa >= 1),
+                            paddle.divide(mantissa,
+                                          2**paddle.ones_like(exponent)),
+                            mantissa)
+
+    mantissa = paddle.where((x < 0), mantissa * -1, mantissa)
+    return mantissa, exponent

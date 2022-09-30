@@ -23,12 +23,12 @@ template <typename DeviceContext, typename T>
 class SmoothL1LossNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in_x = context.Input<Tensor>("X");
-    auto* in_y = context.Input<Tensor>("Y");
-    auto* inside_weight = context.Input<Tensor>("InsideWeight");
-    auto* outside_weight = context.Input<Tensor>("OutsideWeight");
-    auto* out_diff = context.Output<Tensor>("Diff");
-    auto* out_loss = context.Output<Tensor>("Out");
+    auto* in_x = context.Input<phi::DenseTensor>("X");
+    auto* in_y = context.Input<phi::DenseTensor>("Y");
+    auto* inside_weight = context.Input<phi::DenseTensor>("InsideWeight");
+    auto* outside_weight = context.Input<phi::DenseTensor>("OutsideWeight");
+    auto* out_diff = context.Output<phi::DenseTensor>("Diff");
+    auto* out_loss = context.Output<phi::DenseTensor>("Out");
     out_diff->mutable_data<T>(context.GetPlace());
     out_loss->mutable_data<T>(context.GetPlace());
 
@@ -117,12 +117,14 @@ template <typename DeviceContext, typename T>
 class SmoothL1LossGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* inside_weight = context.Input<Tensor>("InsideWeight");
-    auto* outside_weight = context.Input<Tensor>("OutsideWeight");
-    auto* diff = context.Input<Tensor>("Diff");
-    auto* og = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* outx_grad = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* outy_grad = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto* inside_weight = context.Input<phi::DenseTensor>("InsideWeight");
+    auto* outside_weight = context.Input<phi::DenseTensor>("OutsideWeight");
+    auto* diff = context.Input<phi::DenseTensor>("Diff");
+    auto* og = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* outx_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* outy_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     auto sigma = context.Attr<T>("sigma");
     T sigma2 = 1.0 / (sigma * sigma);
     bool has_weight = (inside_weight != nullptr) && (outside_weight != nullptr);

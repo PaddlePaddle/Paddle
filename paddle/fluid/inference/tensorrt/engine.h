@@ -364,15 +364,15 @@ class TensorRTEngine {
 
   // Get fp16 trt weight. If src weight is not fp16, we will cast.
   Weight GetFp16TrtWeight(const std::string& name,
-                          const framework::Tensor& weight_tensor);
+                          const phi::DenseTensor& weight_tensor);
 
   // Get fp32 trt weight. If src weight is not fp32, we will cast.
   Weight GetFp32TrtWeight(const std::string& name,
-                          const framework::Tensor& weight_tensor);
+                          const phi::DenseTensor& weight_tensor);
 
   // if the src weight type is fp16, then return fp16 trt weight, etc.
   Weight GetTrtWeight(const std::string& name,
-                      const framework::Tensor& weight_tensor);
+                      const phi::DenseTensor& weight_tensor);
 
   float GetTensorDynamicRange(nvinfer1::ITensor* tensor) {
     return quant_dynamic_range_[tensor];
@@ -387,13 +387,13 @@ class TensorRTEngine {
   // so we need to copy the weights from GPU to CPU in our op converter.
   // We use a map to store these weights for the weight memory is not released
   // in advance, which affecting the construction of TRT Op.
-  std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
+  std::unordered_map<std::string /*name*/, std::unique_ptr<phi::DenseTensor>>
       weight_map;
 
   // When setting weight_map, a self-increasing suffix is needed for the names
   // so as to avoid repeatedly setting weights with the same name.
   void SetWeights(std::string w_name,
-                  std::unique_ptr<framework::Tensor> w_tensor) {
+                  std::unique_ptr<phi::DenseTensor> w_tensor) {
     static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
     std::string splitter = "__";

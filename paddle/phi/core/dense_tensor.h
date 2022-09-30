@@ -192,9 +192,9 @@ class DenseTensor : public TensorBase,
   - Question: In what scenarios will version counters NOT be shared?
   - Answer: Replacing a `Variable`'s data by calling
   `Tensor::ShareDataWith(...)` or `Tensor::ShareBufferWith(...)`. Because they
-  share the same Allocation but not framework::Tensor.
+  share the same Allocation but not phi::DenseTensor.
 
-  - Question: Why put the inplace_version_counter_ in framework::Tensor instead
+  - Question: Why put the inplace_version_counter_ in phi::DenseTensor instead
   of Allocation or Variable?
   - Answer:
    1. Tensor can call ResetHolder() to reset the corresponding Allocation so

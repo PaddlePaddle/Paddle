@@ -67,7 +67,7 @@ class SoftmaxGradMLUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Input<framework::LoDTensor>("Out");
     auto* dOut = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
 
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(ctx.GetPlace());
 
     const int rank = out->dims().size();

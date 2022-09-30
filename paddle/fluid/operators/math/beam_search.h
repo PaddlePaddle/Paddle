@@ -112,7 +112,7 @@ class BeamSearchFunctor {
                   const framework::LoDTensor* scores,
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores,
-                  framework::Tensor* parent_idx,
+                  phi::DenseTensor* parent_idx,
                   size_t level,
                   size_t beam_size,
                   int end_id,

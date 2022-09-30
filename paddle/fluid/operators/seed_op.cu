@@ -22,7 +22,7 @@ template <typename Place, typename T>
 class GPUSeedKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *out = context.Output<Tensor>("Out");
+    auto *out = context.Output<phi::DenseTensor>("Out");
     int seed = get_seed(context);
 
     auto force_cpu = context.Attr<bool>("force_cpu");
