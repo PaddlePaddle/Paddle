@@ -18,9 +18,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/data_layout.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -199,15 +196,6 @@ class DataNormOp : public framework::OperatorWithKernel {
                         platform::errors::InvalidArgument(
                             "bias input should be of float type"));
     }
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -508,18 +496,7 @@ class DataNormGradOp : public framework::OperatorWithKernel {
           "Y@GRAD can not be found for computation"));
     }
 
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-      return framework::OpKernelType(data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
     return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 };
