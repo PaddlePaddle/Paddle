@@ -47,12 +47,12 @@ template <typename DeviceContext,
 class DepthwiseConvFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& filter,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& filter,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
-                  framework::Tensor* output,
+                  phi::DenseTensor* output,
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
@@ -62,13 +62,13 @@ template <typename DeviceContext,
 class DepthwiseConvInputGradFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& filter,
-                  const framework::Tensor& output_grad,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& filter,
+                  const phi::DenseTensor& output_grad,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
-                  framework::Tensor* input_grad,
+                  phi::DenseTensor* input_grad,
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
@@ -78,12 +78,12 @@ template <typename DeviceContext,
 class DepthwiseConvFilterGradFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& output_grad,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& output_grad,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
-                  framework::Tensor* filter_grad,
+                  phi::DenseTensor* filter_grad,
                   const DataLayout data_layout = DataLayout::kNCHW);
 };
 
@@ -1197,12 +1197,12 @@ template <class T, bool fuse_relu_before_conv>
 class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& filter,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& filter,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
-                  framework::Tensor* output,
+                  phi::DenseTensor* output,
                   const DataLayout data_layout = DataLayout::kNCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
@@ -1233,7 +1233,7 @@ class DepthwiseConvFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     const T* filter_data = filter.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    framework::Tensor filter_hwc;
+    phi::DenseTensor filter_hwc;
     if (data_layout == DataLayout::kNHWC) {
       framework::DDim filter_hwc_dims({filter.dims()[2],
                                        filter.dims()[3],
@@ -1374,13 +1374,13 @@ template <typename T, bool fuse_relu_before_conv>
 class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& filter,
-                  const framework::Tensor& output_grad,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& filter,
+                  const phi::DenseTensor& output_grad,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
-                  framework::Tensor* input_grad,
+                  phi::DenseTensor* input_grad,
                   const DataLayout data_layout = DataLayout::kNCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
@@ -1412,7 +1412,7 @@ class DepthwiseConvInputGradFunctor<phi::GPUContext, T, fuse_relu_before_conv> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-    framework::Tensor filter_hwc;
+    phi::DenseTensor filter_hwc;
     if (data_layout == DataLayout::kNHWC) {
       framework::DDim filter_hwc_dims({filter.dims()[2],
                                        filter.dims()[3],
@@ -1539,12 +1539,12 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                      fuse_relu_before_conv> {
  public:
   void operator()(const phi::GPUContext& context,
-                  const framework::Tensor& input,
-                  const framework::Tensor& output_grad,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& output_grad,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
-                  framework::Tensor* filter_grad,
+                  phi::DenseTensor* filter_grad,
                   const DataLayout data_layout = DataLayout::kNCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
@@ -1636,7 +1636,7 @@ class DepthwiseConvFilterGradFunctor<phi::GPUContext,
                                                    dilate_width,               \
                                                    filter_grad_data);          \
     } else {                                                                   \
-      framework::Tensor filter_grad_hwc;                                       \
+      phi::DenseTensor filter_grad_hwc;                                        \
       if (c_filter != -1) {                                                    \
         framework::DDim filter_grad_hwc_dims({filter_grad->dims()[2],          \
                                               filter_grad->dims()[3],          \

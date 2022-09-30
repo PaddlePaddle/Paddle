@@ -15,11 +15,6 @@
 import typing
 import enum
 import sys
-import re
-import inspect
-import functools
-import contextlib
-import collections
 import numpy as np
 import paddle
 from paddle.incubate.autograd.utils import as_tensors

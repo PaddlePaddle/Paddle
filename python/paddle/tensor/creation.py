@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import math
 import re
@@ -926,7 +925,8 @@ def _tril_triu_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        op_type)
     if len(x.shape) < 2:
         raise ValueError("x shape in {} must be at least 2-D".format(op_type))
     diagonal = helper.kwargs.get('diagonal', 0)

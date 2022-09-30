@@ -48,7 +48,7 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Input<framework::LoDTensor>("Out");
     auto* dOut = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
 
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto dims = dX->dims();
     const int rank = dims.size();

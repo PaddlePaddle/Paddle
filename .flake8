@@ -1,22 +1,95 @@
 [flake8]
 select = C,E,F,W
-exclude = ./build
+exclude =
+    ./build,
+    # A trick to exclude fluid/ but keep fluid/tests/, see more at
+    # https://github.com/PaddlePaddle/Paddle/pull/46290#discussion_r976392010
+    ./python/paddle/fluid/[!t]**,
+    ./python/paddle/fluid/tra**
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-    E101,E121,E122,E123,E124,E125,E126,E127,E128,E129,E131,
-    E201,E202,E203,E221,E225,E226,E228,E231,E241,E251,E261,E262,E265,E266,E271,E272,E275,
+    E121,E122,E123,E125,E126,E127,E128,E129,E131,
+    E201,E202,E203,E225,E226,E228,E231,E241,E251,E261,E262,E265,E266,E271,E272,
     E301,E302,E303,E305,E306,
     E401,E402,
     E501,E502,
     E701,E711,E712,E713,E714,E721,E722,E731,E741,
 
     # F, see https://flake8.pycqa.org/en/latest/user/error-codes.html
-    F401,F402,F403,F404,F405,
-    F522,F523,F524,F541,
+    F402,F403,F405,
+    F522,F524,F541,
     F601,F631,F632,
-    F811,F821,F823,F841,
+    F811,F821,F841,
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-    W191,
     W503,W504
     W601,W605
+per-file-ignores =
+    # These files need tabs for testing.
+    python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py:E101,W191
+    python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py:E101,W191
+    # Ignore unused imports in __init__.py
+    __init__.py: F401
+    # These files will be fixed later
+    r/*:F401
+    cmake/*:F401
+    paddle/*:F401
+    tools/*:F401
+    python/paddle/signal.py:F401
+    python/paddle/common_ops_import.py:F401
+    python/paddle/check_import_scipy.py:F401
+    python/paddle/fft.py:F401
+    python/paddle/_C_ops.py:F401
+    python/paddle/framework/*:F401
+    python/paddle/reader/*:F401
+    python/paddle/nn/*:F401
+    python/paddle/distributed/*:F401
+    python/paddle/proto/*:F401
+    python/paddle/onnx/*:F401
+    python/paddle/optimizer/*:F401
+    python/paddle/hapi/*:F401
+    python/paddle/autograd/*:F401
+    python/paddle/dataset/*:F401
+    python/paddle/io/*:F401
+    python/paddle/cost_model/*:F401
+    python/paddle/tests/*:F401
+    python/paddle/distribution/*:F401
+    python/paddle/geometric/*:F401
+    python/paddle/utils/*:F401
+    python/paddle/vision/*:F401
+    python/paddle/quantization/*:F401
+    python/paddle/libs/*:F401
+    python/paddle/audio/*:F401
+    python/paddle/incubate/*:F401
+    python/paddle/amp/*:F401
+    python/paddle/jit/*:F401
+    python/paddle/static/*:F401
+    python/paddle/inference/*:F401
+    python/paddle/device/*:F401
+    python/paddle/profiler/*:F401
+    python/paddle/tensor/*:F401
+    python/paddle/text/*:F401
+    python/paddle/metric/*:F401
+    python/paddle/fluid/tests/custom_kernel/*:F401
+    python/paddle/fluid/tests/custom_runtime/*:F401
+    python/paddle/fluid/tests/unittests/ir/*:F401
+    python/paddle/fluid/tests/unittests/tokenizer/*:F401
+    python/paddle/fluid/tests/unittests/xpu/*:F401
+    python/paddle/fluid/tests/unittests/distribution/*:F401
+    python/paddle/fluid/tests/unittests/mlu/*:F401
+    python/paddle/fluid/tests/unittests/npu/*:F401
+    python/paddle/fluid/tests/unittests/ipu/*:F401
+    python/paddle/fluid/tests/unittests/distributed_passes/*:F401
+    python/paddle/fluid/tests/unittests/auto_parallel/*:F401
+    python/paddle/fluid/tests/unittests/dygraph_to_static/*:F401
+    python/paddle/fluid/tests/unittests/ps/*:F401
+    python/paddle/fluid/tests/unittests/fft/*:F401
+    python/paddle/fluid/tests/unittests/white_list/*:F401
+    python/paddle/fluid/tests/unittests/sequence/*:F401
+    python/paddle/fluid/tests/unittests/mkldnn/*:F401
+    python/paddle/fluid/tests/unittests/rnn/*:F401
+    python/paddle/fluid/tests/book/*:F401
+    python/paddle/fluid/tests/custom_op/*:F401
+    python/paddle/fluid/tests/unittests/test_*:F401
+    python/paddle/fluid/tests/test_*:F401
+    python/paddle/fluid/tests/*:F401

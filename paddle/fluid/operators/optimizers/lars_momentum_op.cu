@@ -484,7 +484,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     bool multi_precision = ctx.Attr<bool>("multi_precision");
     auto& cuda_ctx = ctx.template device_context<phi::GPUContext>();
     int sm_num = cuda_ctx.GetSMCount();
-    framework::Tensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
+    phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
         {LARS_BLOCK_SIZE << 1}, cuda_ctx);
     auto* p_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
     auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;

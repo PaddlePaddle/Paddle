@@ -28,7 +28,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 class SumOp : public framework::OperatorWithKernel {
  public:
