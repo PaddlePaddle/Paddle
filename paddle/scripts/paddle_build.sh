@@ -408,14 +408,8 @@ function build_base() {
 
     if [ "$WITH_ARM" == "ON" ];then
         make TARGET=ARMV8 -j ${parallel_number};build_error=$?
-        df -lh
-        sleep 100h
     else
         make install -j ${parallel_number};build_error=$?
-
-        
-        df -lh
-        sleep 100h
     fi
 
     # ci will collect ccache hit rate
