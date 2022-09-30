@@ -14,9 +14,11 @@
 
 import os
 import sys
+import six
 import unittest
 import time
 import math
+import multiprocessing
 import numpy as np
 
 import paddle

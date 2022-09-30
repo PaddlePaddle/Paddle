@@ -14,7 +14,9 @@
 
 import paddle
 import paddle.nn as nn
+import paddle.nn.functional as F
 import math
+import paddle.distributed.fleet as fleet
 
 
 class DNNLayer(nn.Layer):

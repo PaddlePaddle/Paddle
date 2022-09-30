@@ -25,7 +25,7 @@ import os
 import numpy as np
 
 import ctr_dataset_reader
-from test_dist_fleet_base import runtime_main
+from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 from dist_fleet_ctr import TestDistCTR2x2, fake_ctr_reader
 
 # Fix seed for test

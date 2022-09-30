@@ -15,6 +15,8 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
+import paddle.fluid as fluid
 from paddle.framework import core
 
 SEED = 2021

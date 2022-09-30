@@ -14,6 +14,7 @@
 
 import os
 import sys
+import time
 import paddle.fluid as fluid
 
 

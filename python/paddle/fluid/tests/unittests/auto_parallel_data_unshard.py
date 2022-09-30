@@ -14,11 +14,13 @@
 
 import unittest
 
+import copy
 import numpy as np
 import random
 
 import paddle
 import paddle.nn as nn
+import paddle.fluid.core as core
 from paddle.distributed.fleet import auto
 import paddle.nn.functional as F
 from paddle.distributed import fleet

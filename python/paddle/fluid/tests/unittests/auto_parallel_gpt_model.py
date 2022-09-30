@@ -13,14 +13,19 @@
 # limitations under the License.
 
 import collections
+import random
+import numpy as np
 
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.tensor as tensor
 from paddle.distributed.fleet import auto
+from paddle import fluid
 from paddle.fluid import layers
+from paddle.distributed import fleet
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
+from paddle.fluid.initializer import Normal, NumpyArrayInitializer
 
 paddle.enable_static()
 

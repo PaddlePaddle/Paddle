@@ -12,10 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import contextlib
+import unittest
 import numpy as np
+import six
+import pickle
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.dygraph as dygraph
+from paddle.fluid import core
+from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.dygraph.base import to_variable
 

@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import os
+import sys
+import time
 import paddle.fluid as fluid
 from paddle.fluid import unique_name
 import paddle.fluid.core as core
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.distributed import fleet
-from paddle.distributed.fleet.meta_optimizers.ascend import ascend_optimizer
+from paddle.distributed.fleet.meta_optimizers.ascend import ascend_parser, ascend_optimizer
 from collections import namedtuple
 
 Block = namedtuple('Block', ['program'])
