@@ -69,7 +69,6 @@ class CeluOpConverter : public OpConverter {
     std::vector<float> weight_alpha_data{alpha};
     std::vector<float> weight_zero_data{0.f};
     std::vector<float> weight_one_data{1.f};
-    std::vector<float> weight_two_data{2.f};
     auto* alpha_data =
         AddConstantLayer(weight_alpha_data.data(), constant_shape);
     auto* constant_zero_data =

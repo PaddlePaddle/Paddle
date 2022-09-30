@@ -31,22 +31,23 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class SiluOpConverter : public OpConverter {
+class LogSigmoidOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert fluid silu op to tensorrt layer";
+    VLOG(4) << "convert fluid LogSigmoid op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     int input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE_EQ(input_num,
-                      1,
-                      platform::errors::InvalidArgument(
-                          "The input X's size must equal to 1 in TRT silu op."
-                          " But received X's size %d.",
-                          input_num));
+    PADDLE_ENFORCE_EQ(
+        input_num,
+        1,
+        platform::errors::InvalidArgument(
+            "The input X's size must equal to 1 in TRT LogSigmoid op."
+            " But received X's size %d.",
+            input_num));
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get output
     size_t output_num = op_desc.Output("Out").size();
@@ -54,22 +55,19 @@ class SiluOpConverter : public OpConverter {
         output_num,
         1UL,
         platform::errors::InvalidArgument(
-            "The output Out's size must equal to 1 in TRT silu op. "
+            "The output Out's size must equal to 1 in TRT LogSigmoid op. "
             "But received Out's size %u.",
             output_num));
 
     nvinfer1::ILayer* layer = nullptr;
-
     auto* sigmoid = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *input, nvinfer1::ActivationType::kSIGMOID);
     layer = TRT_ENGINE_ADD_LAYER(engine_,
-                                 ElementWise,
-                                 *input,
+                                 Unary,
                                  *(sigmoid->getOutput(0)),
-                                 nvinfer1::ElementWiseOperation::kPROD);
-
+                                 nvinfer1::UnaryOperation::kLOG);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "silu", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "logsigmoid", {output_name}, test_mode);
   }
 };
 
@@ -77,4 +75,4 @@ class SiluOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(silu, SiluOpConverter);
+REGISTER_TRT_OP_CONVERTER(logsigmoid, LogSigmoidOpConverter);

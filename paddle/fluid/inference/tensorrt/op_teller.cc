@@ -76,16 +76,17 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",     "relu6", "sigmoid",
-        "elu",      "selu",  "softsign",
-        "softplus", "stanh", "thresholded_relu",
-        "exp",      "log",   "sqrt",
-        "abs",      "sin",   "cos",
-        "tan",      "tanh",  "sinh",
-        "cosh",     "asin",  "acos",
-        "atan",     "asinh", "atanh",
-        "ceil",     "floor", "erf",
-        "silu",     "celu",  "tanhshrink"};
+        "relu",      "relu6", "sigmoid",
+        "elu",       "selu",  "softsign",
+        "softplus",  "stanh", "thresholded_relu",
+        "exp",       "log",   "sqrt",
+        "abs",       "sin",   "cos",
+        "tan",       "tanh",  "sinh",
+        "cosh",      "asin",  "acos",
+        "atan",      "asinh", "atanh",
+        "ceil",      "floor", "erf",
+        "silu",      "celu",  "tanhshrink",
+        "logsigmoid"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -2203,7 +2204,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "layernorm_shift_partition",
       "celu",
-      "tanhshrink"};
+      "tanhshrink",
+      "logsigmoid"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2316,7 +2318,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_token_prune",
       "layernorm_shift_partition",
       "celu",
-      "tanhshrink"};
+      "tanhshrink",
+      "logsigmoid"};
 };
 
 struct GenericPluginTeller : public Teller {
