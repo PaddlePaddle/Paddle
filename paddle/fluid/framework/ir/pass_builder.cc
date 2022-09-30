@@ -25,10 +25,56 @@ namespace ir {
 
 class Pass;
 
-std::shared_ptr<Pass> PassBuilder::AppendPass(const std::string& pass_type) {
-  VLOG(1) << "Append " << pass_type;
-  auto pass = ir::PassRegistry::Instance().Get(pass_type);
-  passes_.emplace_back(pass.release());
+std::shared_ptr<Pass> PassBuilder::AppendPass(const std::string& pass_name) {
+  VLOG(1) << "Append " << pass_name;
+  auto pass = ir::PassRegistry::Instance().Get(pass_name);
+
+  // pass->Set("use_varseqlen", false));
+  // pass->Set("with_interleaved",
+  //           false);
+  // pass->Set("tensorrt_transformer_posid",
+  //           new std::string(argument->tensorrt_transformer_posid()));
+  // pass->Set("tensorrt_transformer_maskid",
+  //           new std::string(argument->tensorrt_transformer_maskid()));
+  // pass->Set("disable_logs", new bool(argument->disable_logs()));
+  // auto precision_mode = argument->tensorrt_precision_mode();
+  // bool enable_int8 = precision_mode == AnalysisConfig::Precision::kInt8;
+  // pass->Set("enable_int8", new bool(enable_int8));
+  // pass->Set("max_input_shape",
+  //           new std::map<std::string, std::vector<int>>(
+  //               argument->max_input_shape()));
+  // pass->Set("min_input_shape",
+  //           new std::map<std::string, std::vector<int>>(
+  //               argument->min_input_shape()));
+  // pass->Set("optim_input_shape",
+  //           new std::map<std::string, std::vector<int>>(
+  //               argument->optim_input_shape()));
+  // // tuned trt dynamic_shape
+  // pass->Set("trt_tuned_dynamic_shape",
+  //           new bool(argument->tensorrt_tuned_dynamic_shape()));
+  // bool with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
+  //                            argument->min_input_shape().size() > 0 &&
+  //                            argument->optim_input_shape().size() > 0) ||
+  //                           argument->tensorrt_tuned_dynamic_shape();
+  // pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
+
+  // pass->Set("model_precision", new int(argument->model_precision()));
+  // pass->Set(
+  //     "mixed_black_list",
+  //     new std::unordered_set<std::string>(argument->mixed_black_list()));
+
+  if (pass_name == "mkldnn_placement_pass") {
+    // pass->Set("mkldnn_enabled_op_types",
+    //           new std::unordered_set<std::string>(
+    //               argument->mkldnn_enabled_op_types()));
+  }
+
+  if (pass_name == "fc_fuse_pass") {
+    pass->Set("use_gpu", new bool(false));
+    pass->Set("use_fc_padding", new bool(false));
+  }
+
+  passes_.emplace_back(std::move(pass));
   return passes_.back();
 }
 

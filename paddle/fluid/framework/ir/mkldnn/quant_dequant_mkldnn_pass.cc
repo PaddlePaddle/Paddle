@@ -715,6 +715,7 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_map<std::string, std::vector<float>> weight_thresholds{};
   std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
   bool onnx_format_quantize_model = false;
+
   auto* scope = param_scope();
   GetInfoFromTheFirstOp(
       graph, "has_quant_info", "var_quant_scales", &var_quant_scales);
@@ -744,6 +745,8 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   // for compute_propagate_scales_mkldnn_pass
   SaveInfoInTheFirstOp(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
+  VLOG(1) << "The nums of scale info collect from graph: "
+          << var_quant_scales.size();
 }
 
 }  // namespace ir

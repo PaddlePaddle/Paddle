@@ -210,8 +210,68 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
              // fuses. Disabled by default due to
              // little gain and lots of problems
          })) {
-      AppendPassWithCheck(strategy_.enable_inference_pass_, pass);
+      AppendPassWithCheck(
+          strategy_.enable_inference_pass_ && !strategy_.use_quant_int8_, pass);
     }
+
+    for (auto &pass : std::vector<std::string>({
+             "quant_dequant_mkldnn_pass",
+             "mkldnn_placement_pass",
+             "simplify_with_basic_ops_pass",
+             "layer_norm_fuse_pass",
+             "attention_lstm_fuse_pass",
+             "seqconv_eltadd_relu_fuse_pass",
+             "fc_lstm_fuse_pass",
+             "mul_lstm_fuse_pass",
+             "fc_gru_fuse_pass",
+             "mul_gru_fuse_pass",
+             "multi_gru_fuse_pass",
+             "multi_gru_seq_fuse_pass",
+             "seq_concat_fc_fuse_pass",
+             "gpu_cpu_squeeze2_matmul_fuse_pass",
+             "gpu_cpu_reshape2_matmul_fuse_pass",
+             "gpu_cpu_flatten2_matmul_fuse_pass",
+             "matmul_v2_scale_fuse_pass",
+             "squared_mat_sub_fuse_pass",
+             "is_test_pass",
+             "gpu_cpu_map_matmul_v2_to_mul_pass",
+             "gpu_cpu_map_matmul_v2_to_matmul_pass",
+             "matmul_scale_fuse_pass",
+             "gpu_cpu_map_matmul_to_mul_pass",
+             "repeated_fc_relu_fuse_pass",
+             "depthwise_conv_mkldnn_pass",
+             "conv_bn_fuse_pass",
+             "conv_eltwiseadd_bn_fuse_pass",
+             "conv_affine_channel_mkldnn_fuse_pass",
+             "conv_transpose_bn_fuse_pass",
+             "conv_transpose_eltwiseadd_bn_fuse_pass",
+             "conv_bias_mkldnn_fuse_pass",
+             "conv_transpose_bias_mkldnn_fuse_pass",
+             "conv_elementwise_add_mkldnn_fuse_pass",
+             "conv_activation_mkldnn_fuse_pass",
+             "fc_fuse_pass",
+             "repeated_fc_relu_fuse_pass",
+             "fc_mkldnn_pass",
+             "fc_act_mkldnn_fuse_pass",
+             "matmul_transpose_reshape_mkldnn_fuse_pass",
+             "batch_norm_act_fuse_pass",
+             "softplus_activation_mkldnn_fuse_pass",
+             "compute_propagate_scales_mkldnn_pass",
+             "scale_matmul_fuse_pass",
+             "reshape_transpose_matmul_mkldnn_fuse_pass",
+             "matmul_elementwise_add_mkldnn_fuse_pass",
+             "cpu_quantize_placement_pass",
+             "cpu_quantize_pass",
+             "cpu_quantize_squash_pass",
+             "int8_scale_calculation_mkldnn_pass",
+             "params_quantization_mkldnn_pass",
+             "mkldnn_inplace_pass",
+             "runtime_context_cache_pass",
+         })) {
+      AppendPassWithCheck(
+          strategy_.enable_inference_pass_ && strategy_.use_quant_int8_, pass);
+    }
+
 #endif
 
     // 2. trainning pass
@@ -513,7 +573,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     VLOG(1) << "Start Apply Pass " << pass->Type();
     if (FLAGS_convert_all_blocks) {
       for (size_t i = 0; i < graph->SubGraphsSize(); ++i) {
-        VLOG(3) << "Apply Pass " << pass->Type() << "to SubGraph " << i;
+        VLOG(3) << "Apply Pass " << pass->Type() << " to SubGraph " << i;
         pass->Apply(graph->GetSubGraph(i));
       }
     } else {
