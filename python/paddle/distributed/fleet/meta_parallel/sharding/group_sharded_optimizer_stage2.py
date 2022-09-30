@@ -89,7 +89,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         self._optim = optim
 
         # sharing stage 2 comm overlap flag
-        self._comm_overlap = False
+        self._reduce_overlap = False
         # record the last task used for comm overlap for sharding stage 2
         self._comm_task = None
 
@@ -110,7 +110,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                 filter(lambda x: x.trainable and x.dtype == Type.fp16.value,
                        self._local_params))) > 0
 
-        self._overlap_broadcast = False
+        self._broadcast_overlap = False
         self._forward_pre_hook_remove_helper = []
         try:
             # The fp32 params such as layer_norm_0.w_0 will be at the end of param_list.
@@ -176,21 +176,21 @@ class GroupShardedOptimizerStage2(Optimizer):
                       sync_op=True)
 
     def _update_task(self, task):
-        if self._comm_overlap:
+        if self._reduce_overlap:
             assert task is not None
         # Only track of the last reduce task.
         # Since all tasks are on the same stream, only need to wait the last one.
         # After waiting for the last reduce task, all reduce tasks before have already finished.
         self._comm_task = task
 
-    def _set_comm_overlap(self, comm_overlap):
+    def _set_reduce_overlap(self, reduce_overlap):
         # Enable gradients' reduces overlap with backward calculation.
-        self._comm_overlap = comm_overlap
+        self._reduce_overlap = reduce_overlap
 
-    def _set_overlap_broadcast(self, overlap_broadcast, layers=None):
+    def _set_broadcast_overlap(self, broadcast_overlap, layers=None):
         # Enable post optimizer broadcasts overlap with the forward calculation of next batch.
-        self._overlap_broadcast = overlap_broadcast
-        if self._overlap_broadcast:
+        self._broadcast_overlap = broadcast_overlap
+        if self._broadcast_overlap:
             assert layers is not None, \
                 "To enable broadcast overlap forward, please pass the module to the function."
             self._layers = layers
@@ -414,7 +414,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
         # This method won't be called directly by opt.step()!
         # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
-        if self._overlap_broadcast:
+        if self._broadcast_overlap:
             # Clear the pre forward hook in the optimizer step.
             for hook_remove in self._forward_pre_hook_remove_helper:
                 hook_remove.remove()
@@ -463,7 +463,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         """Broadcast the parameters of the current rank to each rank"""
 
         # Exchange all the shards with the other ranks
-        if self._overlap_broadcast:
+        if self._broadcast_overlap:
             self._broadcast_params_overlap_forward()
         else:
             for dtype_per_rank in self.param_storages.values():

@@ -99,8 +99,8 @@ def train_mlp(model,
                                    optimizer,
                                    group=group,
                                    buffer_max_size=2**21)
-        optimizer._set_overlap_broadcast(True, model)
-        model._set_comm_overlap(True)
+        model._set_reduce_overlap(True)
+        optimizer._set_broadcast_overlap(True, model)
     else:
         model = paddle.DataParallel(model)
 
