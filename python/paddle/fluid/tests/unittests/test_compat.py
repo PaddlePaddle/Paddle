@@ -248,15 +248,6 @@ class TestCompatible(unittest.TestCase):
         self.assertEqual(5.0, cpt.round(5))
         self.assertRaises(TypeError, cpt.round, None)
 
-    def test_floor_division(self):
-        self.assertEqual(0.0, cpt.floor_division(3, 4))
-        self.assertEqual(1.0, cpt.floor_division(4, 3))
-        self.assertEqual(2.0, cpt.floor_division(6, 3))
-        self.assertEqual(-2.0, cpt.floor_division(-4, 3))
-        self.assertEqual(-2.0, cpt.floor_division(-6, 3))
-        self.assertRaises(ZeroDivisionError, cpt.floor_division, 3, 0)
-        self.assertRaises(TypeError, cpt.floor_division, None, None)
-
 
 if __name__ == "__main__":
     unittest.main()

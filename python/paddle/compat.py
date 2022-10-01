@@ -224,19 +224,3 @@ def round(x, d=0):
     else:
         import __builtin__
         return __builtin__.round(x, d)
-
-
-def floor_division(x, y):
-    """
-    Compatible division which act the same behaviour in Python3 and Python2,
-    whose result will be a int value of floor(x / y) in Python3 and value of
-    (x / y) in Python2.
-
-    Args:
-        x(int|float) : The number to divide.
-        y(int|float) : The number to be divided
-
-    Returns:
-        division result of x // y
-    """
-    return x // y
