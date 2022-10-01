@@ -156,7 +156,7 @@ class SliceOp : public framework::OperatorWithKernel {
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
       auto vec_dims = phi::vectorize(in_tensor.dims());
-      bool not_all_zero_dim = std::all_of(
+      bool not_all_zero_dims = std::all_of(
           vec_dims.cbegin(), vec_dims.cend(), [](int64_t i) { return i != 0; });
       if (!not_all_zero_dims && this->CanMKLDNNBeUsed(ctx, input_data_type)) {
         // OneDNN uses blocking format, which cannot be always supported with
