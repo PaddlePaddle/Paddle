@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import paddle
 from numpy.random import random as rand
 from paddle import tensor
 import paddle.fluid as fluid
