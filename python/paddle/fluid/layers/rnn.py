@@ -126,13 +126,7 @@ class RNNCell(object):
             Variable: tensor variable[s] packed in the same structure provided \
                 by shape, representing the initialized states.
         """
-        if sys.version_info < (3, ):
-            integer_types = (
-                int,
-                long,
-            )
-        else:
-            integer_types = (int, )
+        integer_types = (int, )
         check_variable_and_dtype(batch_ref, 'batch_ref',
                                  ['float32', 'float64', 'int32', 'int64'],
                                  'RNNCell')
@@ -152,13 +146,7 @@ class RNNCell(object):
         batch_ref = flatten(batch_ref)[0]
 
         def _is_shape_sequence(seq):
-            if sys.version_info < (3, ):
-                integer_types = (
-                    int,
-                    long,
-                )
-            else:
-                integer_types = (int, )
+            integer_types = (int, )
             """For shape, list/tuple of integer is the finest-grained objection"""
             if (isinstance(seq, list) or isinstance(seq, tuple)):
                 if reduce(lambda flag, x: isinstance(x, integer_types) and flag,
