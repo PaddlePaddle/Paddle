@@ -469,3 +469,14 @@
            transpose_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : transpose_grad
+
+- op : reshape
+  args : (Tensor x,  IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+  kernel :
+    func : reshape_coo{sparse_coo -> sparse_coo},
+           reshape_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : reshape_grad

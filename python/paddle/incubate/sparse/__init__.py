@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from sympy import im
 from .creation import sparse_coo_tensor
 from .creation import sparse_csr_tensor
 
@@ -35,6 +36,7 @@ from .unary import deg2rad
 from .unary import rad2deg
 from .unary import expm1
 from .unary import transpose
+from .unary import reshape
 
 from .binary import mv
 from .binary import matmul
@@ -81,4 +83,5 @@ __all__ = [
     'divide',
     'coalesce',
     'is_same_shape',
+    'reshape'
 ]
