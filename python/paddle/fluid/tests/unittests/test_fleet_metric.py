@@ -16,7 +16,6 @@
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import os
 import unittest
 import numpy as np
 import paddle.distributed.fleet.metrics.metric as metric
@@ -70,7 +69,6 @@ class TestFleetMetric(unittest.TestCase):
 
             def _barrier(self, comm_world="worker"):
                 """Fake barrier, do nothing."""
-                pass
 
         self.util = FakeUtil(FakeFleet())
         fleet.util = self.util

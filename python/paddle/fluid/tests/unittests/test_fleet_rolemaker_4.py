@@ -15,7 +15,6 @@
 
 import os
 import unittest
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestCloudRoleMaker(unittest.TestCase):
@@ -31,14 +30,8 @@ class TestCloudRoleMaker(unittest.TestCase):
 
     def test_pslib_1(self):
         """Test cases for pslib."""
-        import sys
         import threading
-        import paddle.fluid as fluid
         try:
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
-            from paddle.fluid.incubate.fleet.base.role_maker import \
-                GeneralRoleMaker
             from paddle.distributed.fleet.utils.http_server import KVHandler
             from paddle.distributed.fleet.utils.http_server import KVServer
             from paddle.distributed.fleet.utils.http_server import KVHTTPServer
@@ -58,7 +51,6 @@ class TestCloudRoleMaker(unittest.TestCase):
                 Args:
                     a(str): the string to write
                 """
-                pass
 
             def read(self, b):
                 """
@@ -73,8 +65,6 @@ class TestCloudRoleMaker(unittest.TestCase):
                 if b == 0:
                     raise ValueError("this is only for test")
                 return "fake"
-
-        import os
 
         try:
 
@@ -105,7 +95,6 @@ class TestCloudRoleMaker(unittest.TestCase):
                     Args:
                         code(int): error code
                     """
-                    pass
 
                 def send_header(self, a, b):
                     """
@@ -115,18 +104,14 @@ class TestCloudRoleMaker(unittest.TestCase):
                         a(str): some header
                         b(str): some header
                     """
-                    pass
 
                 def end_headers(self):
                     """
                     fake end header, it will do nothing.
                     """
-                    pass
         except:
             print("warning: no KVHandler, skip test_pslib_4")
             return
-
-        import sys
 
         try:
 
