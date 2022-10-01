@@ -14,9 +14,8 @@
 
 import unittest
 import numpy as np
-import math
 import functools
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
 from paddle import fluid
 from paddle.fluid import Program, program_guard
