@@ -18,11 +18,11 @@ import paddle.fluid as fluid
 
 
 def __assert_close(tensor, np_array, msg, atol=1e-4, rtol=1e-5):
-    np.testing.allclose(np.array(tensor),
-                        np_array,
-                        atol=atol,
-                        rtol=rtol,
-                        err_msg=msg)
+    np.testing.assert_allclose(np.array(tensor),
+                               np_array,
+                               atol=atol,
+                               rtol=rtol,
+                               err_msg=msg)
 
 
 def check_if_mkldnn_primitives_exist_in_bwd(test_case, op_type, x, out,

@@ -271,9 +271,8 @@ class TestQuantileRuntime(unittest.TestCase):
                     fetch_list=[results, results_fp64])
                 np_res = res_func(np_input_data, q=0.5, axis=1)
                 np_res_fp64 = res_func(np_input_data_fp64, q=0.5, axis=1)
-                self.assertTrue(
-                    np.allclose(paddle_res, np_res)
-                    and np.allclose(paddle_res_fp64, np_res_fp64))
+                np.testing.assert_allclose(paddle_res, np_res)
+                np.testing.assert_allclose(paddle_res_fp64, np_res_fp64)
 
 
 if __name__ == '__main__':
