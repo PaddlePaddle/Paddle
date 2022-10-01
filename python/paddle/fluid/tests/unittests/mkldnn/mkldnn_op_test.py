@@ -17,9 +17,12 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 
 
-def __assert_close(test_case, tensor, np_array, msg, atol=1e-4):
-    test_case.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol),
-                         msg)
+def __assert_close(tensor, np_array, msg, atol=1e-4, rtol=1e-5):
+    np.testing.allclose(np.array(tensor),
+                        np_array,
+                        atol=atol,
+                        rtol=rtol,
+                        err_msg=msg)
 
 
 def check_if_mkldnn_primitives_exist_in_bwd(test_case, op_type, x, out,
@@ -69,7 +72,7 @@ def check_if_mkldnn_primitives_exist_in_bwd(test_case, op_type, x, out,
                       for name in ['x', 'out@GRAD']},
                 fetch_list=['x@GRAD', 'out'])
 
-        __assert_close(test_case, x_grad, out[0], 'x@GRAD')
+        __assert_close(x_grad, out[0], 'x@GRAD')
 
 
 def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(test_case, var_dict,
@@ -144,7 +147,7 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(test_case, var_dict,
                 },
                 fetch_list=test_case.fetch_list)
             for id, name in enumerate(test_case.fetch_list):
-                __assert_close(test_case, var_dict[name], out[id], name)
+                __assert_close(var_dict[name], out[id], name)
 
         print("MKLDNN op test forward passed: ", str(place), data_layout)
 
