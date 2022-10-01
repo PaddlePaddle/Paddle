@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sympy import im
 from .creation import sparse_coo_tensor
 from .creation import sparse_csr_tensor
 
