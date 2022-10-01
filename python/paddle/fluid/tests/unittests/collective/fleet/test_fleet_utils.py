@@ -12,18 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import paddle
-import paddle.fluid as fluid
 import unittest
 import numpy as np
 import tarfile
 import tempfile
 import os
 import sys
-from paddle.dataset.common import download, DATA_HOME
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.dataset.common import download
 from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
 import paddle.fluid.incubate.fleet.utils.utils as utils
 

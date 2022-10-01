@@ -59,7 +59,7 @@ template <>
 struct Serializer<const char*> {
   static size_t serialized_size(const char* value) { return strlen(value) + 1; }
   static void serialize(void** buffer, const char* value) {
-    ::snprintf(static_cast<char*>(*buffer), value);
+    ::strcpy(static_cast<char*>(*buffer), value);  // NOLINT
     reinterpret_cast<char*&>(*buffer) += strlen(value) + 1;
   }
   static void deserialize(void const** buffer,

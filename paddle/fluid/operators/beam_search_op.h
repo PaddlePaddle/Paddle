@@ -49,7 +49,7 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     auto selected_ids = context.Output<framework::LoDTensor>("selected_ids");
     auto selected_scores =
         context.Output<framework::LoDTensor>("selected_scores");
-    auto* parent_idx = context.Output<framework::Tensor>("parent_idx");
+    auto* parent_idx = context.Output<phi::DenseTensor>("parent_idx");
     PADDLE_ENFORCE_NOT_NULL(
         selected_ids,
         platform::errors::NotFound(

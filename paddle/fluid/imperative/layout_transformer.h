@@ -25,7 +25,7 @@ namespace imperative {
 template <typename VarType>
 void SetOutDataLayout(std::shared_ptr<VarType> var,
                       const paddle::experimental::DataLayout layout) {
-  if (var != nullptr) {
+  if (var != nullptr && var->Var().IsInitialized()) {
     paddle::imperative::SetDataLayout(var, layout);
     // set out_tensor's layout
     if (var->MutableVar()->IsInitialized()) {

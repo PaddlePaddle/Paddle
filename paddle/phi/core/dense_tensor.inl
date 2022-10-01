@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 /* --------------------------- */
-/*   From framework::Tensor    */
+/*   From phi::DenseTensor    */
 /* --------------------------- */
-/* The following members & interfaces were copied from framework::Tensor,
+/* The following members & interfaces were copied from phi::DenseTensor,
     so as to facilitate the unification of different Tensors
 
     Will be adjusted/removed/moved in the near future
@@ -134,7 +134,7 @@ inline void set_format(const dnnl::memory::format_tag format) {
 /* ------------------------------ */
 /*   From framework::LoDTensor    */
 /* ------------------------------ */
-/* The following members & interfaces were copied from framework::Tensor,
+/* The following members & interfaces were copied from phi::DenseTensor,
     so as to facilitate the unification of different Tensors
 
     Will be adjusted/removed/moved in the near future

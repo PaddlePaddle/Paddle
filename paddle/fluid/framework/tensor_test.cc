@@ -22,8 +22,8 @@
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
-TEST(Tensor, Dims) {
-  framework::Tensor tt;
+TEST(DenseTensor, Dims) {
+  phi::DenseTensor tt;
   tt.Resize({2, 3, 4});
   framework::DDim dims = tt.dims();
   ASSERT_EQ(arity(dims), 3);
@@ -32,8 +32,8 @@ TEST(Tensor, Dims) {
   }
 }
 
-TEST(Tensor, DataAssert) {
-  framework::Tensor src_tensor;
+TEST(DenseTensor, DataAssert) {
+  phi::DenseTensor src_tensor;
 
   bool caught = false;
   try {
@@ -48,9 +48,9 @@ TEST(Tensor, DataAssert) {
   ASSERT_TRUE(caught);
 }
 
-TEST(Tensor, MutableData) {
+TEST(DenseTensor, MutableData) {
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
@@ -99,9 +99,10 @@ TEST(Tensor, MutableData) {
     EXPECT_NE(p1, p4);
     EXPECT_NE(p3_holder1.get(), p3_holder2.get());
   }
-  // Not sure if it's desired, but currently, Tensor type can be changed.
+  // Not sure if it's desired, but currently, phi::DenseTensor type can be
+  // changed.
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     int8_t* p1 = src_tensor.mutable_data<int8_t>(phi::make_ddim({1}),
                                                  platform::CPUPlace());
     EXPECT_NE(p1, nullptr);
@@ -115,7 +116,7 @@ TEST(Tensor, MutableData) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
@@ -144,7 +145,7 @@ TEST(Tensor, MutableData) {
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     float* p1 = nullptr;
     float* p2 = nullptr;
     // initialization
@@ -173,10 +174,10 @@ TEST(Tensor, MutableData) {
 #endif
 }
 
-TEST(Tensor, ShareDataWith) {
+TEST(DenseTensor, ShareDataWith) {
   {
-    framework::Tensor src_tensor;
-    framework::Tensor dst_tensor;
+    phi::DenseTensor src_tensor;
+    phi::DenseTensor dst_tensor;
     // Try to share data form uninitialized tensor
     bool caught = false;
     try {
@@ -198,8 +199,8 @@ TEST(Tensor, ShareDataWith) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
-    framework::Tensor src_tensor;
-    framework::Tensor dst_tensor;
+    phi::DenseTensor src_tensor;
+    phi::DenseTensor dst_tensor;
     src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}),
                                  platform::CUDAPlace(0));
     dst_tensor.ShareDataWith(src_tensor);
@@ -208,8 +209,8 @@ TEST(Tensor, ShareDataWith) {
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
   {
-    framework::Tensor src_tensor;
-    framework::Tensor dst_tensor;
+    phi::DenseTensor src_tensor;
+    phi::DenseTensor dst_tensor;
     src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}),
                                  platform::NPUPlace(0));
     dst_tensor.ShareDataWith(src_tensor);
@@ -218,12 +219,12 @@ TEST(Tensor, ShareDataWith) {
 #endif
 }
 
-TEST(Tensor, Slice) {
+TEST(DenseTensor, Slice) {
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     src_tensor.mutable_data<int>(phi::make_ddim({5, 3, 4}),
                                  platform::CPUPlace());
-    framework::Tensor slice_tensor = src_tensor.Slice(1, 3);
+    phi::DenseTensor slice_tensor = src_tensor.Slice(1, 3);
     framework::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 3);
     EXPECT_EQ(slice_dims[0], 2);
@@ -246,10 +247,10 @@ TEST(Tensor, Slice) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     src_tensor.mutable_data<double>(phi::make_ddim({6, 9}),
                                     platform::CUDAPlace(0));
-    framework::Tensor slice_tensor = src_tensor.Slice(2, 6);
+    phi::DenseTensor slice_tensor = src_tensor.Slice(2, 6);
     framework::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
     EXPECT_EQ(slice_dims[0], 4);
@@ -273,10 +274,10 @@ TEST(Tensor, Slice) {
 
 #ifdef PADDLE_WITH_ASCEND_CL
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     src_tensor.mutable_data<double>(phi::make_ddim({6, 9}),
                                     platform::NPUPlace(0));
-    framework::Tensor slice_tensor = src_tensor.Slice(2, 6);
+    phi::DenseTensor slice_tensor = src_tensor.Slice(2, 6);
     framework::DDim slice_dims = slice_tensor.dims();
     ASSERT_EQ(arity(slice_dims), 2);
     EXPECT_EQ(slice_dims[0], 4);
@@ -299,27 +300,27 @@ TEST(Tensor, Slice) {
 #endif
 }
 
-TEST(Tensor, ReshapeToMatrix) {
-  framework::Tensor src;
+TEST(DenseTensor, ReshapeToMatrix) {
+  phi::DenseTensor src;
   int* src_ptr = src.mutable_data<int>({2, 3, 4, 9}, platform::CPUPlace());
   for (int i = 0; i < 2 * 3 * 4 * 9; ++i) {
     src_ptr[i] = i;
   }
-  framework::Tensor res = framework::ReshapeToMatrix(src, 2);
+  phi::DenseTensor res = framework::ReshapeToMatrix(src, 2);
   ASSERT_EQ(res.dims()[0], 2 * 3);
   ASSERT_EQ(res.dims()[1], 4 * 9);
 }
 
-TEST(Tensor, Layout) {
-  framework::Tensor src;
+TEST(DenseTensor, Layout) {
+  phi::DenseTensor src;
   ASSERT_EQ(src.layout(), framework::DataLayout::kNCHW);
   src.set_layout(framework::DataLayout::kAnyLayout);
   ASSERT_EQ(src.layout(), framework::DataLayout::kAnyLayout);
 }
 
-TEST(Tensor, FP16) {
+TEST(DenseTensor, FP16) {
   using platform::float16;
-  framework::Tensor src;
+  phi::DenseTensor src;
   float16* src_ptr = src.mutable_data<float16>({2, 3}, platform::CPUPlace());
   for (int i = 0; i < 2 * 3; ++i) {
     src_ptr[i] = static_cast<float16>(i);
@@ -327,15 +328,16 @@ TEST(Tensor, FP16) {
   EXPECT_EQ(src.memory_size(), 2 * 3 * sizeof(float16));
   // EXPECT a human readable error message
   // src.data<uint8_t>();
-  // Tensor holds the wrong type, it holds N6paddle8platform7float16E at
+  // phi::DenseTensor holds the wrong type, it holds N6paddle8platform7float16E
+  // at
   // [/paddle/Paddle/paddle/fluid/framework/tensor_impl.h:43]
 }
 
-TEST(Tensor, Split) {
+TEST(DenseTensor, Split) {
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     src_tensor.mutable_data<int>(phi::make_ddim({6, 2}), platform::CPUPlace());
-    std::vector<framework::Tensor> split_tensor_list = src_tensor.Split(2, 0);
+    std::vector<phi::DenseTensor> split_tensor_list = src_tensor.Split(2, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
     EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
     EXPECT_EQ(split_tensor_list[1].dims()[0], 2);
@@ -361,10 +363,10 @@ TEST(Tensor, Split) {
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     src_tensor.mutable_data<double>(phi::make_ddim({6, 4}),
                                     platform::CUDAPlace(0));
-    std::vector<framework::Tensor> split_tensor_list = src_tensor.Split(2, 0);
+    std::vector<phi::DenseTensor> split_tensor_list = src_tensor.Split(2, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
     EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
     EXPECT_EQ(split_tensor_list[1].dims()[0], 2);
@@ -393,11 +395,11 @@ TEST(Tensor, Split) {
 #endif
 }
 
-TEST(Tensor, Chunk) {
+TEST(DenseTensor, Chunk) {
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     src_tensor.mutable_data<int>(phi::make_ddim({6, 2}), platform::CPUPlace());
-    std::vector<framework::Tensor> split_tensor_list = src_tensor.Chunk(3, 0);
+    std::vector<phi::DenseTensor> split_tensor_list = src_tensor.Chunk(3, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
     EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
     EXPECT_EQ(split_tensor_list[1].dims()[0], 2);
@@ -423,10 +425,10 @@ TEST(Tensor, Chunk) {
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
-    framework::Tensor src_tensor;
+    phi::DenseTensor src_tensor;
     src_tensor.mutable_data<double>(phi::make_ddim({6, 4}),
                                     platform::CUDAPlace(0));
-    std::vector<framework::Tensor> split_tensor_list = src_tensor.Chunk(3, 0);
+    std::vector<phi::DenseTensor> split_tensor_list = src_tensor.Chunk(3, 0);
     ASSERT_EQ(split_tensor_list.size(), 3UL);
     EXPECT_EQ(split_tensor_list[0].dims()[0], 2);
     EXPECT_EQ(split_tensor_list[1].dims()[0], 2);

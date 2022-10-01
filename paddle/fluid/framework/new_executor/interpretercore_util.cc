@@ -268,7 +268,7 @@ void create_all_ops(const framework::BlockDesc& block,
                     std::vector<std::unique_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
-    VLOG(1) << "CreateOp from : " << op_type;
+    VLOG(8) << "CreateOp from : " << op_type;
 
     auto& info = OpInfoMap::Instance().Get(op_type);
 
@@ -744,6 +744,12 @@ void build_op_func_list(const platform::Place& place,
 
     interpreter::LogDeviceMemoryStats(place);
   }
+
+  // NOTE(Ruibiao): Release memory cache to avoid memory fragments in Allocator.
+  // It reduce about 10% memory usage for V100 8-GPU training of
+  // transformer_base_bs4096_amp_fp16 and transformer_base_bs4096_pure_fp16
+  // model.
+  memory::Release(place);
 }
 
 void add_fetch(const std::vector<std::string>& fetch_names,

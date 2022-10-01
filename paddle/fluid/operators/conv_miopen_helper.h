@@ -24,8 +24,8 @@ using ConvArgs = ConvArgsBase<miopenHandle_t, miopenDataType_t>;
 
 template <typename DeviceContext, typename T, size_t D>
 static void RemovePaddingSlice(const phi::GPUContext& context,
-                               const Tensor* input,
-                               Tensor* out,
+                               const phi::DenseTensor* input,
+                               phi::DenseTensor* out,
                                const std::vector<int>& starts,
                                const std::vector<int>& axes) {
   auto& place = *context.eigen_device();

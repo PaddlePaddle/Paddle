@@ -124,8 +124,9 @@ inline bool VarIsTensor(const Variable& var) {
   return var.IsType<LoDTensor>() || var.IsType<phi::SelectedRows>();
 }
 
-const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
-Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
+const phi::DenseTensor* GetLoDTensorOrSelectedRowsValueFromVar(
+    const Variable& var);
+phi::DenseTensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
 class ExecutionContext;
 class OperatorBase;
@@ -449,8 +450,8 @@ class ExecutionContext {
 #endif
 
   template <typename T, typename DevContext>
-  Tensor AllocateTmpTensor(const framework::DDim& dim,
-                           const DevContext& dev_ctx) const {
+  phi::DenseTensor AllocateTmpTensor(const framework::DDim& dim,
+                                     const DevContext& dev_ctx) const {
     phi::DenseTensor tmp;
     tmp.Resize(dim);
     dev_ctx.template Alloc<T>(&tmp);
@@ -531,6 +532,11 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     });
   }
 
+  bool IsSparseCooTensorInput(const std::string& name) const override {
+    const auto* var = ctx_.InputVar(name);
+    return var->IsType<phi::SparseCooTensor>();
+  }
+
   bool IsDenseTensorOutput(const std::string& name) const override {
     auto vars = ctx_.MultiOutputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
@@ -552,11 +558,11 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
 };
 
 template <>
-const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
-    const std::string& name) const;
+const std::vector<const phi::DenseTensor*>
+ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const;
 
 template <>
-std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+std::vector<phi::DenseTensor*> ExecutionContext::MultiOutput<phi::DenseTensor>(
     const std::string& name) const;
 
 class OpKernelBase {
@@ -640,7 +646,7 @@ class OperatorWithKernel : public OperatorBase {
   // need transform data
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const OpKernelType& expected_kernel_type) const;
 
   platform::Place GetExecutionPlace(
@@ -649,12 +655,13 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   /* member functions for adapting to phi lib */
-  /** In the Tensor calculation library, the new Kernel adopts a clearer and
-   * more streamlined design. The arguments of the Kernel and the input and
-   * output arguments registered in the original OpMaker do not match in some
-   * cases, so we use map to record the arguments required by the kernel.
-   * When selecting Kernel during Op execution, select the arguments of the
-   * original Op according to the GetExpectedPhiKernelArgs returned arguments.
+  /** In the phi::DenseTensor calculation library, the new Kernel adopts a
+   * clearer and more streamlined design. The arguments of the Kernel and the
+   * input and output arguments registered in the original OpMaker do not match
+   * in some cases, so we use map to record the arguments required by the
+   * kernel. When selecting Kernel during Op execution, select the arguments of
+   * the original Op according to the GetExpectedPhiKernelArgs returned
+   * arguments.
    */
   phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
@@ -723,8 +730,8 @@ class OperatorWithKernel : public OperatorBase {
                                const std::string& name,
                                proto::VarType::Type* data_type) const;
   // used for IndicateOrPromoteVarDataTypes
-  Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
-                                   const std::string& name) const;
+  phi::DenseTensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
+                                             const std::string& name) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
