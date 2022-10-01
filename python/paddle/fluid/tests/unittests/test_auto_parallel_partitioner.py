@@ -234,9 +234,9 @@ def distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
 def distributed_attr_check_for_program(dist_main_prog, dist_context):
     have_dist_attr = True
     for block in dist_main_prog.blocks:
-        for tensor in block.vars.values():
+        for temp_tensor in block.vars.values():
             var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                tensor)
+                temp_tensor)
             if var_dist_attr is None:
                 have_dist_attr = False
 
