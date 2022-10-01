@@ -458,13 +458,14 @@
     layout : x
   backward: mv_grad
 
-- op : reshape
-  args : (Tensor x, IntArray shape)
+- op : transpose
+  args : (Tensor x, int[] perm)
   output : Tensor(out)
   infer_meta :
-    func : ReshapeInferMeta
+    func : TransposeInferMeta
+    param: [ x, perm ]
   kernel :
-    func : reshape_coo{sparse_coo -> sparse_coo},
-           reshape_csr{sparse_csr -> sparse_csr}
+    func : transpose_coo{sparse_coo -> sparse_coo},
+           transpose_csr{sparse_csr -> sparse_csr}
     layout : x
-  backward : reshape_grad
+  backward : transpose_grad

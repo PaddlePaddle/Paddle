@@ -126,22 +126,22 @@ class TestSyncBatchNormRunnerBase(object):
                 self._compare(args, place, layout, True)
 
         # Test FP16 - @TODO
-        self.dtype = np.float16
-        self.atol = 1e-2
+        # self.dtype = np.float16
+        # self.atol = 1e-2
 
-        # Test training
-        for place in places:
-            for layout in ["NCHW", "NHWC"]:
-                self._compare(args, place, layout, False)
+        # # Test training
+        # for place in places:
+        #     for layout in ["NCHW", "NHWC"]:
+        #         self._compare(args, place, layout, False)
 
-        # Test inference
-        for place in places:
-            for layout in ["NCHW", "NHWC"]:
-                self._compare(args, place, layout, True)
+        # # Test inference
+        # for place in places:
+        #     for layout in ["NCHW", "NHWC"]:
+        #         self._compare(args, place, layout, True)
 
-        sys.stdout.buffer.write(
-            pickle.dumps(
-                'training, inference, fp32, fp16, NCHW, NHWC all passed'))
+        # sys.stdout.buffer.write(
+        #     pickle.dumps(
+        #         'training, inference, fp32, fp16, NCHW, NHWC all passed'))
 
     def _compare(self, args, place, layout, only_forward):
         scope = core.Scope()
