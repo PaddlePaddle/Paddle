@@ -57,6 +57,19 @@ class ProcessGroupStream : public ProcessGroup {
   virtual phi::DeviceContext* GetDeviceContext(const Place& place,
                                                bool use_calc_stream) const;
 
+  std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor& in_tensor,
+      phi::DenseTensor& out_tensor,
+      const ReduceScatterOptions& opts,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor& in_tensor,   // NOLINT
+      phi::DenseTensor& out_tensor,  // NOLINT
+      const ReduceScatterOptions& opts,
+      bool sync_op,
+      bool use_calc_stream);
+
   std::shared_ptr<ProcessGroup::Task> AllGather(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
@@ -130,6 +143,19 @@ class ProcessGroupStream : public ProcessGroup {
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
       const ReduceOptions& opts,
+      bool sync_op,
+      bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> ReduceScatter(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      const ReduceScatterOptions& opts,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> ReduceScatter(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      const ReduceScatterOptions& opts,
       bool sync_op,
       bool use_calc_stream);
 

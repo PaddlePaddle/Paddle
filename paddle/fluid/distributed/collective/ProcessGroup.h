@@ -304,12 +304,33 @@ class ProcessGroup {
         GetBackendName()));
   }
 
-  virtual std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
-      phi::DenseTensor&,              // NOLINT
-      phi::DenseTensor&,              // NOLINT
-      const ReduceScatterOptions&) {  // NOLINT
+  virtual std::shared_ptr<ProcessGroup::Task> ReduceScatter(
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      std::vector<phi::DenseTensor>&,  // NOLINT
+      const ReduceScatterOptions&,
+      bool) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "ProcessGroup%s does not support ReduceScatter", GetBackendName()));
+        "ProcessGroup%s does not support reduce_scatter with sync_op flag",
+        GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,  // NOLINT
+      phi::DenseTensor&,  // NOLINT
+      const ReduceScatterOptions&) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support reduce_scatter_base",
+        GetBackendName()));
+  }
+
+  virtual std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,  // NOLINT
+      phi::DenseTensor&,  // NOLINT
+      const ReduceScatterOptions&,
+      bool) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "ProcessGroup%s does not support reduce_scatter_base with sync_op flag",
+        GetBackendName()));
   }
 
  protected:

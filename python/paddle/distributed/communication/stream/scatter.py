@@ -70,7 +70,7 @@ def _scatter_in_dygraph(tensor, tensor_list, src, group, sync_op,
     nranks = group.nranks
     rank = dist.get_rank()
     if rank == src_rank:
-        if len(tensor_list):
+        if len(tensor_list) == 0:
             raise RuntimeError(
                 "The tensor_list should not be empty on src rank.")
         _check_tensor_list_shape(tensor_list, tensor.shape, nranks)
@@ -144,7 +144,7 @@ def scatter(tensor,
         raise RuntimeError(
             "use_calc_stream can only be true in sync op behavior.")
 
-    if tensor_or_tensor_list is not None:
+    if tensor_or_tensor_list is None:
         raise RuntimeError("The input should be specified.")
 
     if framework.in_dygraph_mode():

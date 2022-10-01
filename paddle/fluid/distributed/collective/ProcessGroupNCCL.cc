@@ -1379,6 +1379,38 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
       use_calc_stream);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ReduceScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          ncclComm_t comm,
+          const gpuStream_t& stream) {
+        if (FLAGS_use_stream_safe_cuda_allocator) {
+          platform::CUDADeviceGuard cuda_guard;
+          cuda_guard.SetDevice(output.place());
+          memory::RecordStream(output.Holder(), stream);
+        }
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
+            input.data(),
+            output.data(),
+            output.numel(),
+            platform::ToNCCLDataType(input.dtype()),
+            ToNCCLRedType(opts.reduce_op),
+            comm,
+            stream));
+      },
+      CommType::REDUCE_SCATTER,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
@@ -1536,6 +1568,53 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::_ReduceScatterBase(
             stream));
       },
       CommType::REDUCE_SCATTER);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::_ReduceScatterBase(
+    phi::DenseTensor& in_tensor,
+    phi::DenseTensor& out_tensor,
+    const ReduceScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_ENFORCE_EQ(
+      out_tensor.dtype(),
+      in_tensor.dtype(),
+      platform::errors::InvalidArgument(
+          "Input tensor and output tensor should be same dtype."));
+
+  PADDLE_ENFORCE_EQ(
+      out_tensor.numel() * size_,
+      in_tensor.numel(),
+      platform::errors::InvalidArgument("input tensor must be the same size as "
+                                        "output tensor size times world_size"));
+
+  auto inputs = std::vector<phi::DenseTensor>{in_tensor};
+  auto outputs = std::vector<phi::DenseTensor>{out_tensor};
+
+  return Collective(
+      inputs,
+      outputs,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          ncclComm_t comm,
+          const gpuStream_t& stream) {
+        if (FLAGS_use_stream_safe_cuda_allocator) {
+          platform::CUDADeviceGuard cuda_guard;
+          cuda_guard.SetDevice(output.place());
+          memory::RecordStream(output.Holder(), stream);
+        }
+        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduceScatter(
+            input.data(),
+            output.data(),
+            output.numel(),
+            platform::ToNCCLDataType(input.dtype()),
+            ToNCCLRedType(opts.reduce_op),
+            comm,
+            stream));
+      },
+      CommType::REDUCE_SCATTER,
+      sync_op,
+      use_calc_stream);
 }
 
 void ProcessGroupNCCL::GroupStart() {

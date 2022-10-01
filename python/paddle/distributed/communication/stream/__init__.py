@@ -18,11 +18,12 @@ from .alltoall import alltoall
 from .alltoall_single import alltoall_single
 from .broadcast import broadcast
 from .reduce import reduce
+from .reduce_scatter import _reduce_scatter_base, reduce_scatter
 from .recv import recv
 from .scatter import scatter
 from .send import send
 
 __all__ = [
-    "all_reduce", "alltoall", "alltoall_single", "broadcast", "reduce", "recv",
-    "scatter", "send"
+    "_reduce_scatter_base", "all_reduce", "alltoall", "alltoall_single",
+    "broadcast", "reduce", "reduce_scatter", "recv", "scatter", "send"
 ]

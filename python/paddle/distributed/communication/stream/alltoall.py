@@ -76,8 +76,8 @@ def _alltoall_in_dygraph(out_tensor_list, in_tensor_list, group, sync_op,
     return task
 
 
-def alltoall(out_tensor_or_tensor_list=None,
-             in_tensor_or_tensor_list=None,
+def alltoall(out_tensor_or_tensor_list,
+             in_tensor_or_tensor_list,
              group=None,
              sync_op=True,
              use_calc_stream=False):
@@ -86,9 +86,9 @@ def alltoall(out_tensor_or_tensor_list=None,
     Scatter a tensor (or a tensor list) across devices and gather outputs to another tensor (or a tensor list, respectively).
 
     Args:
-        out_tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The output (default is `None`, must be specified on the source rank).
-            If it is a tensor, it should be correctly-sized. If it is a list, it should be empty or contain correctly-sized tensors.
-        in_tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The input to scatter (default is `None`, must be specified on the source rank).
+        out_tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The output. If it is a tensor, it should be correctly-sized.
+        If it is a list, it should be empty or contain correctly-sized tensors.
+        in_tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The input to scatter (must be specified on the source rank).
             If it is a tensor, it should be correctly-sized. If it is a list, it should contain correctly-sized tensors. Support
             float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
@@ -131,9 +131,9 @@ def alltoall(out_tensor_or_tensor_list=None,
         raise RuntimeError(
             "use_calc_stream can only be true in sync op behavior.")
 
-    if out_tensor_or_tensor_list is not None:
+    if out_tensor_or_tensor_list is None:
         raise RuntimeError("The output should be specified.")
-    if in_tensor_or_tensor_list is not None:
+    if in_tensor_or_tensor_list is None:
         raise RuntimeError("The input should be specified.")
 
     if framework.in_dygraph_mode():

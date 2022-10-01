@@ -233,6 +233,13 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> ReduceScatter(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      const ReduceScatterOptions& opts,
+      bool sync_op,
+      bool use_calc_stream) override;
+
   std::shared_ptr<ProcessGroup::Task> Scatter(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
@@ -246,9 +253,16 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
-      phi::DenseTensor&,  // NOLINT
-      phi::DenseTensor&,  // NOLINT
-      const ReduceScatterOptions&) override;
+      phi::DenseTensor& in_tensor,
+      phi::DenseTensor& out_tensor,
+      const ReduceScatterOptions& opts) override;
+
+  std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor& in_tensor,   // NOLINT
+      phi::DenseTensor& out_tensor,  // NOLINT
+      const ReduceScatterOptions& opts,
+      bool sync_op,
+      bool use_calc_stream);
 
   static void GroupStart();
 
