@@ -13,9 +13,12 @@
 # limitations under the License.
 
 from test_dist_base import TestDistRunnerBase, runtime_main
+import unittest
 import paddle
+import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+import numpy as np
 from functools import reduce
 import paddle.fluid as fluid
 
