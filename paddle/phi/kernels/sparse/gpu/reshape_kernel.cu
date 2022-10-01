@@ -37,10 +37,14 @@ __global__ void ReshapeCooCudaKernel(const int64_t *x_indices_data,
     CUDA_KERNEL_LOOP_TYPE(j, x_nnz, int64_t) {
         int64_t location = 0;
         for (int i = 0; i < num_x_sparse_part_dims; ++i) {
-            location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
+            // location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
+            // row major or column major ???
+            location += x_indices_data[j * num_x_sparse_part_dims + i] * x_sparse_part_strides[i];
         }
         for (int i = 0; i < num_out_sparse_part_dims; ++i) {
-            out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
+            // out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
+            // row major or column major ???
+            out_indices_data[j * num_out_sparse_part_dims + i] = location / out_sparse_part_strides[i];
             location %= out_sparse_part_strides[i];
         }
     }
