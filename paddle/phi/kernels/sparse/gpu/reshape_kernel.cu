@@ -26,10 +26,10 @@
 namespace phi {
 namespace sparse {
 
-__global__ void ReshapeCooCudaKernel(const int64_t *x_indices_data,
-                                     const int& num_x_sparse_part_dims,
-                                     const int& num_out_sparse_part_dims,
-                                     const int64_t& x_nnz,
+__global__ void ReshapeCooCudaKernel(const int64_t* x_indices_data,
+                                     const int num_x_sparse_part_dims,
+                                     const int num_out_sparse_part_dims,
+                                     const int64_t x_nnz,
                                      const int64_t* x_sparse_part_strides,
                                      const int64_t* out_sparse_part_strides,
                                      int64_t *out_indices_data) {
@@ -37,14 +37,14 @@ __global__ void ReshapeCooCudaKernel(const int64_t *x_indices_data,
     CUDA_KERNEL_LOOP_TYPE(j, x_nnz, int64_t) {
         int64_t location = 0;
         for (int i = 0; i < num_x_sparse_part_dims; ++i) {
-            // location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
+            location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
             // row major or column major ???
-            location += x_indices_data[j * num_x_sparse_part_dims + i] * x_sparse_part_strides[i];
+            // location += x_indices_data[j * num_x_sparse_part_dims + i] * x_sparse_part_strides[i];
         }
         for (int i = 0; i < num_out_sparse_part_dims; ++i) {
-            // out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
+            out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
             // row major or column major ???
-            out_indices_data[j * num_out_sparse_part_dims + i] = location / out_sparse_part_strides[i];
+            // out_indices_data[j * num_out_sparse_part_dims + i] = location / out_sparse_part_strides[i];
             location %= out_sparse_part_strides[i];
         }
     }
@@ -57,6 +57,8 @@ void ReshapeCooKernel(const Context& dev_ctx,
                       const phi::IntArray& shape,
                       SparseCooTensor *out) {
   int64_t x_nnz = x.nnz();
+
+  // TODO: consider using "DDim DDim::reshape(std::vector<int>& shape)"
   DDim out_dims = phi::make_ddim(shape.GetData());
   //  get sparse part dimensions of x and out
   std::vector<int64_t> x_sparse_part_dims;
@@ -75,21 +77,57 @@ void ReshapeCooKernel(const Context& dev_ctx,
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
   // compute values of out indices
-  const DenseTensor& x_indices = x.indices();
-  const auto *x_indices_data = x_indices.data<int64_t>();
+  // const DenseTensor& x_indices = x.indices();
+  // const auto *x_indices_data = x_indices.data<int64_t>();
+  const auto *x_indices_data = x.indices().data<int64_t>();
   auto *out_indices_data = out_indices.data<int64_t>();
   const phi::DDim& x_sparse_part_strides = phi::stride(phi::make_ddim(x_sparse_part_dims));
   const phi::DDim& out_sparse_part_strides = phi::stride(phi::make_ddim(out_sparse_part_dims));
 
+  int64_t* destination_x_sparse_part_strides, destination_out_sparse_part_strides;
+
+#ifdef PADDLE_WITH_HIP
+  hipMalloc(reinterpret_cast<void **>(&destination_x_sparse_part_strides), 
+            sizeof(int64_t) * x_sparse_part_strides.size());
+  hipMemcpy(
+      destination_x_sparse_part_strides, 
+      x_sparse_part_strides.Get(), 
+      sizeof(int64_t) * x_sparse_part_strides.size(), 
+      hipMemcpyHostToDevice);
+  hipMalloc(reinterpret_cast<void **>(&destination_out_sparse_part_strides), 
+            sizeof(int64_t) * out_sparse_part_strides.size());
+  hipMemcpy(
+      destination_out_sparse_part_strides, 
+      out_sparse_part_strides.Get(), 
+      sizeof(int64_t) * out_sparse_part_strides.size(), 
+      hipMemcpyHostToDevice);
+#else
+  cudaMalloc(reinterpret_cast<void **>(&destination_x_sparse_part_strides),
+              sizeof(int64_t) * x_sparse_part_strides.size());
+  cudaMemcpy(
+      destination_x_sparse_part_strides, 
+      x_sparse_part_strides.Get(), 
+      sizeof(int64_t) * x_sparse_part_strides.size(), 
+      cudaMemcpyHostToDevice);
+  cudaMalloc(reinterpret_cast<void **>(&destination_out_sparse_part_strides), 
+            sizeof(int64_t) * out_sparse_part_strides.size());
+  cudaMemcpy(
+      destination_out_sparse_part_strides, 
+      out_sparse_part_strides.Get(), 
+      sizeof(int64_t) * out_sparse_part_strides.size(), 
+      cudaMemcpyHostToDevice);
+#endif
+
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, x_nnz, 1);
   ReshapeCooCudaKernel<<<config.block_per_grid.x,
                          config.thread_per_block.x,
-                        //  0,
-                         1024, 
+                         0,
+                        //  1024, 
                          dev_ctx.stream()>>>(
       x_indices_data, 
       x_sparse_part_dims.size(), out_sparse_part_dims.size(), x_nnz,
-      x_sparse_part_strides.Get(), out_sparse_part_strides.Get(),
+      // x_sparse_part_strides.Get(), out_sparse_part_strides.Get(),
+      destination_x_sparse_part_strides, destination_out_sparse_part_strides,
       out_indices_data
   );
 }
