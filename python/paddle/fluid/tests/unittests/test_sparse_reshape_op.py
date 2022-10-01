@@ -69,7 +69,7 @@ class TestReshape(unittest.TestCase):
             # if paddle.is_compiled_with_cuda():
             # if False:
             if True:
-                ## cuda version
+                ## cuda  version
                 dense_x = paddle.to_tensor(np_x, place=paddle.CUDAPlace(0))
                 dense_x.numpy()
                 print(dense_x.numpy())
