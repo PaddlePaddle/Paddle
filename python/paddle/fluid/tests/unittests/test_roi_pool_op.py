@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 import math
 import sys
+import paddle.compat as cpt
 from op_test import OpTest
 import paddle.fluid as fluid
 
@@ -66,10 +67,10 @@ class TestROIPoolOp(OpTest):
         for i in range(self.rois_num):
             roi = self.rois[i]
             roi_batch_id = int(roi[0])
-            roi_start_w = int(round(roi[1] * self.spatial_scale))
-            roi_start_h = int(round(roi[2] * self.spatial_scale))
-            roi_end_w = int(round(roi[3] * self.spatial_scale))
-            roi_end_h = int(round(roi[4] * self.spatial_scale))
+            roi_start_w = int(cpt.round(roi[1] * self.spatial_scale))
+            roi_start_h = int(cpt.round(roi[2] * self.spatial_scale))
+            roi_end_w = int(cpt.round(roi[3] * self.spatial_scale))
+            roi_end_h = int(cpt.round(roi[4] * self.spatial_scale))
 
             roi_height = int(max(roi_end_h - roi_start_h + 1, 1))
             roi_width = int(max(roi_end_w - roi_start_w + 1, 1))
