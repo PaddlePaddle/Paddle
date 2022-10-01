@@ -126,31 +126,27 @@ class RNNCell(object):
             Variable: tensor variable[s] packed in the same structure provided \
                 by shape, representing the initialized states.
         """
-        integer_types = (int, )
         check_variable_and_dtype(batch_ref, 'batch_ref',
                                  ['float32', 'float64', 'int32', 'int64'],
                                  'RNNCell')
-        check_type(shape, 'shape', (list, tuple, type(None), integer_types),
-                   'RNNCell')
+        check_type(shape, 'shape', (list, tuple, type(None), int), 'RNNCell')
         if isinstance(shape, (list, tuple)):
             shapes = map_structure(lambda x: x, shape)
             if isinstance(shape, list):
                 for i, _shape in enumerate(shapes):
-                    check_type(_shape, 'shapes[' + str(i) + ']', integer_types,
-                               'RNNCell')
+                    check_type(_shape, 'shapes[' + str(i) + ']', int, 'RNNCell')
             else:
-                check_type(shapes, 'shapes', integer_types, 'RNNCell')
+                check_type(shapes, 'shapes', int, 'RNNCell')
         check_dtype(dtype, 'dtype', ['float32', 'float64'], 'RNNCell')
 
         # TODO: use inputs and batch_size
         batch_ref = flatten(batch_ref)[0]
 
         def _is_shape_sequence(seq):
-            integer_types = (int, )
             """For shape, list/tuple of integer is the finest-grained objection"""
             if (isinstance(seq, list) or isinstance(seq, tuple)):
-                if reduce(lambda flag, x: isinstance(x, integer_types) and flag,
-                          seq, True):
+                if reduce(lambda flag, x: isinstance(x, int) and flag, seq,
+                          True):
                     return False
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
