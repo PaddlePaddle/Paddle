@@ -1438,14 +1438,14 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                np.testing.assert_allclose(
-                    actual_np,
-                    expect_np,
-                    atol=atol,
-                    rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                    equal_nan=equal_nan,
-                    err_msg="Output (" + name + ") has diff at " + str(place) +
-                    " in " + self.checker_name)
+                self.op_test.assertTrue(
+                    np.allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                        equal_nan=equal_nan), "Output (" + name +
+                    ") has diff at " + str(place) + " in " + self.checker_name)
 
             def _compare_list(self, name, actual, expect):
                 """ if expect is a tuple, we need to compare list.
@@ -1584,14 +1584,15 @@ class OpTest(unittest.TestCase):
                                         1) == 0:
                     pass
                 else:
-                    np.testing.assert_allclose(
-                        actual_np,
-                        expect_np,
-                        atol=atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
-                        equal_nan=equal_nan,
-                        err_msg="Output (" + name + ") has diff at " +
-                        str(place) + " in " + self.checker_name)
+                    self.op_test.assertTrue(
+                        np.allclose(
+                            actual_np,
+                            expect_np,
+                            atol=atol,
+                            rtol=self.rtol if hasattr(self, 'rtol') else 1e-5,
+                            equal_nan=equal_nan),
+                        "Output (" + name + ") has diff at " + str(place) +
+                        " in " + self.checker_name)
 
         class EagerChecker(DygraphChecker):
 
