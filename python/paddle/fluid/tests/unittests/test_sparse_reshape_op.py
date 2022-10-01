@@ -15,7 +15,7 @@
 import paddle
 import numpy as np
 import unittest
-from paddle.fluid.framework import _test_eager_guard
+# from paddle.fluid.framework import _test_eager_guard
 
 
 class TestReshape(unittest.TestCase):
@@ -28,7 +28,7 @@ class TestReshape(unittest.TestCase):
             # origin_x = paddle.randint(-100, 100, x_shape) * mask
 
             # dense_x = paddle.clone(origin_x.detach())
-            mask = np.random.randint(0, 2, x_shape)
+            mask = np.random.randint( 0, 2, x_shape)
             np_x = np.random.randint(-100, 100, x_shape) * mask 
             
             
