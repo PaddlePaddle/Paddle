@@ -60,10 +60,10 @@ class profileFileReader(FileReader):
 
     def _is_forwardBackwardInfo(self, items):
         if items["name"] == "marker/compute/MarkerCUDA":
-            if items.has_key("args"):
+            if "args" in items:
                 if isinstance(items["args"], dict):
                     args = items["args"]
-                    if args.has_key("detail_info"):
+                    if "detail_info" in args:
                         if args["detail_info"] == "marker_forward_B" or \
                            args["detail_info"] == "marker_forward_E" or \
                            args["detail_info"] == "marker_backward_B" or \
