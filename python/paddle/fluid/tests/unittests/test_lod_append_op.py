@@ -15,11 +15,7 @@
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.op import Operator
-from paddle.fluid.backward import append_backward
+from paddle.fluid import Program
 
 
 class TestLoDAppendAPI(unittest.TestCase):
