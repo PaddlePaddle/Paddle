@@ -282,7 +282,7 @@ void DeserializeSelectedRows(
     const platform::DeviceContext& ctx) {
   const auto place = ctx.GetPlace();
   auto* slr = var->GetMutable<phi::SelectedRows>();
-  framework::Tensor* tensor = slr->mutable_value();
+  phi::DenseTensor* tensor = slr->mutable_value();
   slr->set_height(msg.slr_height());
   std::vector<int64_t> tmp_rows(msg.dims()[0]);
   memcpy(tmp_rows.data(), msg.data().data(), msg.dims()[0] * sizeof(int64_t));

@@ -84,7 +84,7 @@ void GroupConcatSplit(Place place, size_t size) {
           place, data, cpu_place, value.data(), sizeof(T) * value.size());
     }
 
-    framework::Tensor tmp;
+    phi::DenseTensor tmp;
     tmp.ShareDataWith(*tensor).Resize({static_cast<int64_t>(len)});
     group.dense_tensors_.push_back(std::move(tmp));
     group.all_length_ += len;
@@ -103,7 +103,7 @@ void GroupConcatSplit(Place place, size_t size) {
 
     group.DivNRanks(*dev_ctx, 1);
 
-    framework::Tensor tmp;
+    phi::DenseTensor tmp;
     framework::TensorCopySync(*tensor, cpu_place, &tmp);
     auto* data = tmp.data<T>();
     size_t offset = 0;
@@ -124,7 +124,7 @@ void GroupConcatSplit(Place place, size_t size) {
     for (size_t i = 0; i < size; ++i) {
       auto len = i + 1;
       auto& tensor = group.dense_tensors_[i];
-      framework::Tensor tmp;
+      phi::DenseTensor tmp;
       framework::TensorCopySync(tensor, cpu_place, &tmp);
       auto* data = tmp.data<T>();
 
