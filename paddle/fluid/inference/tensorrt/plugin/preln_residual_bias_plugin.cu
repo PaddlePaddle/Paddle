@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 #include <cuda_runtime.h>
 #include <stdio.h>
 
@@ -26,6 +27,17 @@
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
+
+#include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
+
+#define STR(x) #x
+#define XSTR(x) STR(x)
+#ifdef __CUDA_ARCH__
+#pragma message ("CUDA_ARCH=" XSTR(__CUDA_ARCH__))
+#else
+#pragma message ("No cuda_arch define")
+#endif
 
 namespace paddle {
 namespace inference {
@@ -80,6 +92,7 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
     int m,
     int n,
     float epsilon) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   __shared__ float s_mean;
   __shared__ float s_variance;
   float x_sum = 0.0f;
@@ -138,6 +151,7 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
     }
     normed_output[index] = val;
   }
+#endif
 }
 #endif
 
@@ -418,6 +432,7 @@ int PrelnResidualBiasPluginDynamic::enqueue(
     float *var = nullptr;
     const int VecSize = 8;
     // if odd
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
     if (hidden & 1 == 0) {
       int half_n = hidden / 2;
       int half_n_32 = (half_n + 31) / 32 * 32;
@@ -433,7 +448,9 @@ int PrelnResidualBiasPluginDynamic::enqueue(
           rows,
           half_n,
           epsilon);
-    } else {
+    } else 
+#endif
+    {
       paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
                                                                   uint8_t,
                                                                   VecSize,
