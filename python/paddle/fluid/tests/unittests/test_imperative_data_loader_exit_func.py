@@ -26,7 +26,7 @@ if sys.version_info[0] == 2:
 else:
     import queue
 
-from paddle.fluid.reader import multiprocess_queue_set, _cleanup, CleanupFuncRegistrar
+from paddle.fluid.reader import CleanupFuncRegistrar, _cleanup
 
 # NOTE: These special functions cannot be detected by the existing coverage mechanism,
 # so the following unittests are added for these internal functions.
