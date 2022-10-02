@@ -15,9 +15,12 @@
 import unittest
 import numpy as np
 import paddle.fluid.core as core
+from op_test import OpTest
 import paddle
-from paddle import fluid
+from paddle import fluid, nn
+import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
+import paddle.fluid.initializer as I
 
 
 class LinearTestCase(unittest.TestCase):

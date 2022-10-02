@@ -16,10 +16,13 @@ import unittest
 
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 import paddle
+import paddle.nn as nn
+import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid import compiler, Program, program_guard
 
 paddle.enable_static()
 SEED = 2049

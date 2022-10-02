@@ -17,6 +17,7 @@ import math
 import numpy as np
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.framework as framework

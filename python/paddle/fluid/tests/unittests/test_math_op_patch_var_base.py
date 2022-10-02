@@ -17,7 +17,7 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import inspect
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
 class TestMathOpPatchesVarBase(unittest.TestCase):

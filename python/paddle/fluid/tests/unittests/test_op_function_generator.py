@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+import paddle.fluid.core as core
 from paddle.fluid.dygraph.jit import TracedLayer
 import numpy as np
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 class TestTracedLayer(fluid.dygraph.Layer):

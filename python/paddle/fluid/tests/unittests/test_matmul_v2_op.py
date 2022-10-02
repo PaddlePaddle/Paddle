@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.framework as framework
 from paddle.fluid.framework import _test_eager_guard
 
 

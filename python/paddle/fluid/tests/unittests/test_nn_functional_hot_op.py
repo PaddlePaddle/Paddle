@@ -14,11 +14,13 @@
 
 import unittest
 import numpy as np
+import math
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as functional
+import paddle.fluid.framework as framework
 from paddle.fluid.framework import Program, program_guard
 
 

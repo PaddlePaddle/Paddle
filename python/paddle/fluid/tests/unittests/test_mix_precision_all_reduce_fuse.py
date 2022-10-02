@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import paddle.fluid.core as core
+import math
+import os
+import sys
 import unittest
 
 import numpy as np

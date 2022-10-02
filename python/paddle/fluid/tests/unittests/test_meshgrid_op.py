@@ -14,9 +14,10 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 import paddle
+from paddle.fluid import compiler, Program, program_guard, core
 from paddle.fluid.framework import _test_eager_guard
 
 

@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 from paddle import fluid
 from paddle.fluid.layers import lstm as LSTM
 from paddle.fluid.layers import fill_constant

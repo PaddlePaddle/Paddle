@@ -16,6 +16,8 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
+from op_test import OpTest
+from scipy.special import expit, erf
 import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn

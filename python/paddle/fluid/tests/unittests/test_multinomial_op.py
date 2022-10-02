@@ -15,6 +15,7 @@
 import unittest
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import core
 from op_test import OpTest
 import numpy as np
 import os

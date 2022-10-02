@@ -15,7 +15,10 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import math
+import random
 import paddle
+import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import Program, program_guard
 

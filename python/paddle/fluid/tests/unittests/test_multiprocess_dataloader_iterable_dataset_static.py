@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import six
 import time
 import unittest
+import multiprocessing
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.io import DataLoader, IterableDataset
+from paddle.io import IterableDataset, BatchSampler, DataLoader, get_worker_info
 
 EPOCH_NUM = 2
 BATCH_SIZE = 8
