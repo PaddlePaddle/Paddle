@@ -645,7 +645,7 @@ def reshape(x, shape, name=None):
     """
     Changes the shape of ``x`` without changing its value, requiring x to be a SparseCooTensor or SparseCsrTensor.
     Currently this function can only reshape the sparse dims of ``x`` , but ``shape`` argument must 
-    include all dims of the reshaped tensor.
+    include all dims of the reshaped tensor. Note: if x is a SparseCsrTensor, then len(shape) must be 2 or 3.
     .. math::
         out = reshape(x, shape)
     Parameters:

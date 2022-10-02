@@ -34,14 +34,9 @@ class TestReshape(unittest.TestCase):
             
             ### cpu version
             dense_x = paddle.to_tensor(np_x, place=paddle.CPUPlace())
-            dense_x.numpy()
-            print(dense_x.numpy())
             dense_x.stop_gradient = False
-            dense_x.numpy()
             # dense_out = paddle.transpose(dense_x, dims)
             dense_out = paddle.reshape(dense_x, new_shape)
-            dense_out.numpy()
-            print(dense_out.numpy())
 
             if format == "coo":
                 # sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
@@ -67,8 +62,8 @@ class TestReshape(unittest.TestCase):
                                     rtol=1e-05)
 
             # if paddle.is_compiled_with_cuda():
-            # if False:
-            if True:
+            if False:
+            # if True:
                 ## cuda  version
                 dense_x = paddle.to_tensor(np_x, place=paddle.CUDAPlace(0))
                 dense_x.numpy()
@@ -117,8 +112,8 @@ class TestReshape(unittest.TestCase):
         self.check_result([2, 5], [10,], 'coo')
         self.check_result([12, 5], [15, 4], 'coo')
 
-    #     self.check_result([10, 5], [2, 25], 'csr')
-    #     self.check_result([9, 8], [18, 4], 'csr')
+        self.check_result([10, 5], [2, 25], 'csr')
+        self.check_result([9, 8], [18, 4], 'csr')
 
     def test_transpose_3d(self):
         self.check_result([6, 2, 3], [6, 2, 3], 'coo')
@@ -128,12 +123,12 @@ class TestReshape(unittest.TestCase):
         self.check_result([6, 2, 3], [2, 1, 18], 'coo')
         self.check_result([6, 2, 3], [1, 2, 2, 3, 3], 'coo')
 
-    # #     self.check_result([6, 2, 3], [6, 2, 3], 'csr')
-    # #     self.check_result([6, 2, 3], [6, 3, 2], 'csr')
-    # #     # self.check_result([6, 2, 3], [1, 0, 2], 'csr')
-    # #     # self.check_result([6, 2, 3], [2, 0, 1], 'csr')
-    # #     # self.check_result([6, 2, 3], [2, 1, 0], 'csr')
-    # #     # self.check_result([6, 2, 3], [1, 2, 0], 'csr')
+        self.check_result([6, 2, 3], [6, 2, 3], 'csr')
+        self.check_result([6, 2, 3], [6, 3, 2], 'csr')
+        self.check_result([6, 2, 3], [2, 6, 3], 'csr')
+        self.check_result([6, 2, 3], [3, 6, 2], 'csr')
+        self.check_result([6, 2, 3], [4, 9, 1], 'csr')
+        self.check_result([6, 2, 3], [12, 1, 3], 'csr')
 
     def test_transpose_nd(self):
         self.check_result([8, 3, 4, 4, 5, 3], [24, 8, 10, 3], 'coo')
