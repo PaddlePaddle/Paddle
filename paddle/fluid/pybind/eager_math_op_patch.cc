@@ -1338,8 +1338,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
       other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
     } else {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func({1}, value, self_tensor.dtype(), place);
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -1423,8 +1422,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
       other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
     } else {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func({1}, value, self_tensor.dtype(), place);
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
