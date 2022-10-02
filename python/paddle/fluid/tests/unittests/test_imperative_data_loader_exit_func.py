@@ -26,7 +26,7 @@ if sys.version_info[0] == 2:
 else:
     import queue
 
-from paddle.fluid.reader import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup  # noqa: F401
+from paddle.fluid.reader import multiprocess_queue_set, _cleanup, CleanupFuncRegistrar
 
 # NOTE: These special functions cannot be detected by the existing coverage mechanism,
 # so the following unittests are added for these internal functions.
@@ -39,7 +39,6 @@ class TestDygraphDataLoaderCleanUpFunc(unittest.TestCase):
 
     def func_test_clear_queue_set(self):
         test_queue = queue.Queue(self.capacity)
-        global multiprocess_queue_set
         multiprocess_queue_set.add(test_queue)
         for i in range(0, self.capacity):
             test_queue.put(i)
