@@ -92,4 +92,4 @@ per-file-ignores =
     python/paddle/fluid/tests/custom_op/*:F401
     python/paddle/fluid/tests/unittests/test_*:F401
     python/paddle/fluid/tests/test_*:F401
-    python/paddle/fluid/tests/unittests/dist_[m-w]*:F401
+    python/paddle/fluid/tests/unittests/dist_[t-w]*:F401
