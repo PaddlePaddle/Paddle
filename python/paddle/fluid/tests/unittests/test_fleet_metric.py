@@ -69,6 +69,7 @@ class TestFleetMetric(unittest.TestCase):
 
             def _barrier(self, comm_world="worker"):
                 """Fake barrier, do nothing."""
+                pass
 
         self.util = FakeUtil(FakeFleet())
         fleet.util = self.util

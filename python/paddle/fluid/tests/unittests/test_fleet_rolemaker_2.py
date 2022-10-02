@@ -188,11 +188,13 @@ class TestCloudRoleMaker2(unittest.TestCase):
                     input(None): fake input
                     output(None): fale output
                 """
+                pass
 
             def barrier_worker(self):
                 """
                 dummy barrier worker
                 """
+                pass
 
         from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 
@@ -209,6 +211,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 """
                 dummy init worker
                 """
+                pass
 
             def init_server(self, model_dir=None):
                 """
@@ -217,16 +220,19 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 Args:
                     model_dir(None): fake model_dir
                 """
+                pass
 
             def run_server(self):
                 """
                 dummy run server
                 """
+                pass
 
             def stop_worker(self):
                 """
                 dummy stop worker
                 """
+                pass
 
             def distributed_optimizer(self, optimizer, strategy=None):
                 """
@@ -236,16 +242,19 @@ class TestCloudRoleMaker2(unittest.TestCase):
                     optimizer(None): fake optimizer
                     strategy(None): fake strategy
                 """
+                pass
 
             def save_inference_model(self):
                 """
                 dummy save inference model
                 """
+                pass
 
             def save_persistables(self):
                 """
                 dummy save persistables
                 """
+                pass
 
         os.environ["TRAINING_ROLE"] = "TRAINER"
         tmp = TmpFleet()

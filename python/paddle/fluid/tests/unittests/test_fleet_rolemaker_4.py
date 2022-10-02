@@ -51,6 +51,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                 Args:
                     a(str): the string to write
                 """
+                pass
 
             def read(self, b):
                 """
@@ -95,6 +96,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                     Args:
                         code(int): error code
                     """
+                    pass
 
                 def send_header(self, a, b):
                     """
@@ -104,11 +106,13 @@ class TestCloudRoleMaker(unittest.TestCase):
                         a(str): some header
                         b(str): some header
                     """
+                    pass
 
                 def end_headers(self):
                     """
                     fake end header, it will do nothing.
                     """
+                    pass
         except:
             print("warning: no KVHandler, skip test_pslib_4")
             return
