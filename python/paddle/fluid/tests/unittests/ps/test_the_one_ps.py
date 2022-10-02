@@ -21,6 +21,7 @@ from google.protobuf import text_format  # noqa: F401
 
 
 class TestTheOnePs(PsPassTestBase):
+
     def setUp(self):
         pass
 
@@ -47,6 +48,7 @@ class TestTheOnePs(PsPassTestBase):
         else:
             return False
         '''
+
     def test_ps_cpu_async(self):
         self.init()
         self.config['ps_mode_config'] = "../ps/cpu_async_ps_config.yaml"

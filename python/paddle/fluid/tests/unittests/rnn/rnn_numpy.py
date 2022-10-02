@@ -17,11 +17,13 @@ import math
 
 
 class LayerMixin(object):
+
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
 
 class LayerListMixin(LayerMixin):
+
     def __init__(self, layers=None):
         self._layers = list(layers) if layers else []
 
@@ -33,6 +35,7 @@ class LayerListMixin(LayerMixin):
 
 
 class SimpleRNNCell(LayerMixin):
+
     def __init__(self,
                  input_size,
                  hidden_size,
@@ -85,6 +88,7 @@ class SimpleRNNCell(LayerMixin):
 
 
 class GRUCell(LayerMixin):
+
     def __init__(self, input_size, hidden_size, bias=True, dtype="float64"):
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -133,6 +137,7 @@ class GRUCell(LayerMixin):
 
 
 class LSTMCell(LayerMixin):
+
     def __init__(self, input_size, hidden_size, bias=True, dtype="float64"):
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -327,6 +332,7 @@ def concat_states(states, bidirectional=False, state_components=1):
 
 
 class RNN(LayerMixin):
+
     def __init__(self, cell, is_reverse=False, time_major=False):
         super(RNN, self).__init__()
         self.cell = cell
@@ -347,6 +353,7 @@ class RNN(LayerMixin):
 
 
 class BiRNN(LayerMixin):
+
     def __init__(self, cell_fw, cell_bw, time_major=False):
         super(BiRNN, self).__init__()
         self.cell_fw = cell_fw
@@ -371,6 +378,7 @@ class BiRNN(LayerMixin):
 
 
 class RNNMixin(LayerListMixin):
+
     def forward(self, inputs, initial_states=None, sequence_length=None):
         batch_index = 1 if self.time_major else 0
         batch_size = inputs.shape[batch_index]
@@ -404,6 +412,7 @@ class RNNMixin(LayerListMixin):
 
 
 class SimpleRNN(RNNMixin):
+
     def __init__(self,
                  input_size,
                  hidden_size,
@@ -463,6 +472,7 @@ class SimpleRNN(RNNMixin):
 
 
 class LSTM(RNNMixin):
+
     def __init__(self,
                  input_size,
                  hidden_size,
@@ -504,6 +514,7 @@ class LSTM(RNNMixin):
 
 
 class GRU(RNNMixin):
+
     def __init__(self,
                  input_size,
                  hidden_size,

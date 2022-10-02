@@ -49,6 +49,7 @@ def rand_x(dims=1,
 
 
 def place(devices, key='place'):
+
     def decorate(cls):
         module = sys.modules[cls.__module__].__dict__
         raw_classes = {
@@ -104,6 +105,7 @@ def parameterize(fields, values=None):
      ('test_norm_forward', rand_x(5), None, 3, 'forward'),
      ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
 class TestFft(unittest.TestCase):
+
     def test_fft(self):
         """Test fft with norm condition
         """
@@ -130,6 +132,7 @@ class TestFft(unittest.TestCase):
      ('test_norm_forward', rand_x(5), None, 3, 'forward'),
      ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
 class TestIfft(unittest.TestCase):
+
     def test_fft(self):
         """Test ifft with norm condition
         """
@@ -153,6 +156,7 @@ class TestIfft(unittest.TestCase):
      ('test_norm_not_in_enum_value', rand_x(2), None, -1, 'random', ValueError)]
 )
 class TestFftException(unittest.TestCase):
+
     def test_fft(self):
         """Test fft with buoudary condition
         Test case include:
@@ -180,6 +184,7 @@ class TestFftException(unittest.TestCase):
     ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
 ])
 class TestFft2(unittest.TestCase):
+
     def test_fft2(self):
         """Test fft2 with norm condition
         """
@@ -209,6 +214,7 @@ class TestFft2(unittest.TestCase):
      ('test_axis_not_sequence', rand_x(5), None, -10, 'backward', ValueError),
      ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError)])
 class TestFft2Exception(unittest.TestCase):
+
     def test_fft2(self):
         """Test fft2 with buoudary condition
         Test case include:
@@ -238,6 +244,7 @@ class TestFft2Exception(unittest.TestCase):
      ('test_norm_forward', rand_x(5), None, None, 'forward'),
      ('test_norm_ortho', rand_x(5), None, None, 'ortho')])
 class TestFftn(unittest.TestCase):
+
     def test_fftn(self):
         """Test fftn with norm condition
         """
@@ -264,6 +271,7 @@ class TestFftn(unittest.TestCase):
      ('test_norm_forward', rand_x(5), None, None, 'forward'),
      ('test_norm_ortho', rand_x(5), None, None, 'ortho')])
 class TestIFftn(unittest.TestCase):
+
     def test_ifftn(self):
         """Test ifftn with norm condition
         """
@@ -293,6 +301,7 @@ class TestIFftn(unittest.TestCase):
      1j * np.random.randn(4, 4, 4), None, -1, "ortho"),
 ])
 class TestHfft(unittest.TestCase):
+
     def test_hfft(self):
         """Test hfft with norm condition
         """
@@ -323,6 +332,7 @@ class TestHfft(unittest.TestCase):
      1j * np.random.randn(4, 4, 4), None, -1, "ortho"),
 ])
 class TestIrfft(unittest.TestCase):
+
     def test_irfft(self):
         """Test irfft with norm condition
         """
@@ -352,6 +362,7 @@ class TestIrfft(unittest.TestCase):
      1j * np.random.randn(4, 4, 4), None, None, "ortho"),
 ])
 class TestIrfftn(unittest.TestCase):
+
     def test_irfftn(self):
         """Test irfftn with norm condition
         """
@@ -381,6 +392,7 @@ class TestIrfftn(unittest.TestCase):
      1j * np.random.randn(4, 4, 4), None, None, "ortho"),
 ])
 class TestHfftn(unittest.TestCase):
+
     def test_hfftn(self):
         """Test hfftn with norm condition
         """
@@ -411,6 +423,7 @@ class TestHfftn(unittest.TestCase):
      (-2, -1), "ortho"),
 ])
 class TestHfft2(unittest.TestCase):
+
     def test_hfft2(self):
         """Test hfft2 with norm condition
         """
@@ -442,6 +455,7 @@ class TestHfft2(unittest.TestCase):
      (-2, -1), "ortho"),
 ])
 class TestIrfft2(unittest.TestCase):
+
     def test_irfft2(self):
         """Test irfft2 with norm condition
         """
@@ -473,6 +487,7 @@ class TestIrfft2(unittest.TestCase):
      1j * np.random.randn(4, 4), None, -1, 'random', ValueError)
 ])
 class TestHfftException(unittest.TestCase):
+
     def test_hfft(self):
         """Test hfft with buoudary condition
         Test case include:
@@ -505,6 +520,7 @@ class TestHfftException(unittest.TestCase):
      1j * np.random.randn(4, 4), None, None, 'random', ValueError)
 ])
 class TestIrfftException(unittest.TestCase):
+
     def test_irfft(self):
         """
         Test irfft with buoudary condition
@@ -544,6 +560,7 @@ class TestIrfftException(unittest.TestCase):
      ('test_norm_not_in_enum_value', np.random.randn(4, 4) +
       1j * np.random.randn(4, 4), None, None, 'random', ValueError)])
 class TestHfft2Exception(unittest.TestCase):
+
     def test_hfft2(self):
         """
         Test hfft2 with buoudary condition
@@ -584,6 +601,7 @@ class TestHfft2Exception(unittest.TestCase):
      ('test_norm_not_in_enum_value', np.random.randn(4, 4) +
       1j * np.random.randn(4, 4), None, None, 'random', ValueError)])
 class TestIrfft2Exception(unittest.TestCase):
+
     def test_irfft2(self):
         """
         Test irfft2 with buoudary condition
@@ -624,6 +642,7 @@ class TestIrfft2Exception(unittest.TestCase):
      ('test_norm_not_in_enum_value', np.random.randn(4, 4) +
       1j * np.random.randn(4, 4), None, None, 'random', ValueError)])
 class TestHfftnException(unittest.TestCase):
+
     def test_hfftn(self):
         """Test hfftn with buoudary condition
         Test case include:
@@ -660,6 +679,7 @@ class TestHfftnException(unittest.TestCase):
      ('test_norm_not_in_enum_value', np.random.randn(4, 4) +
       1j * np.random.randn(4, 4), None, None, 'random', ValueError)])
 class TestIrfftnException(unittest.TestCase):
+
     def test_irfftn(self):
         """Test irfftn with buoudary condition
         Test case include:
@@ -686,6 +706,7 @@ class TestIrfftnException(unittest.TestCase):
                ('test_norm_forward', rand_x(5), None, 3, 'forward'),
                ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
 class TestRfft(unittest.TestCase):
+
     def test_rfft(self):
         """Test rfft with norm condition
         """
@@ -709,6 +730,7 @@ class TestRfft(unittest.TestCase):
      ('test_norm_not_in_enum_value', rand_x(2), None, -1, 'random', ValueError)]
 )
 class TestRfftException(unittest.TestCase):
+
     def test_rfft(self):
         """Test rfft with buoudary condition
         Test case include:
@@ -736,6 +758,7 @@ class TestRfftException(unittest.TestCase):
     ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
 ])
 class TestRfft2(unittest.TestCase):
+
     def test_rfft2(self):
         """Test rfft2 with norm condition
         """
@@ -762,6 +785,7 @@ class TestRfft2(unittest.TestCase):
     ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError),
 ])
 class TestRfft2Exception(unittest.TestCase):
+
     def test_rfft2(self):
         """Test rfft2 with buoudary condition
         Test case include:
@@ -790,6 +814,7 @@ class TestRfft2Exception(unittest.TestCase):
     ('test_norm_ortho', rand_x(5), None, None, 'ortho'),
 ])
 class TestRfftn(unittest.TestCase):
+
     def test_rfftn(self):
         """Test rfftn with norm condition
         """
@@ -813,6 +838,7 @@ class TestRfftn(unittest.TestCase):
     ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError)
 ])
 class TestRfftnException(unittest.TestCase):
+
     def test_rfftn(self):
         """Test rfftn with buoudary condition
         Test case include:
@@ -838,6 +864,7 @@ class TestRfftnException(unittest.TestCase):
                ('test_norm_forward', rand_x(5), None, 3, 'forward'),
                ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
 class TestIhfft(unittest.TestCase):
+
     def test_ihfft(self):
         """Test ihfft with norm condition
         """
@@ -860,6 +887,7 @@ class TestIhfft(unittest.TestCase):
      ('test_norm_not_in_enum_value', rand_x(2), None, -1, 'random', ValueError)]
 )
 class TestIhfftException(unittest.TestCase):
+
     def test_ihfft(self):
         """Test ihfft with buoudary condition
         Test case include:
@@ -886,6 +914,7 @@ class TestIhfftException(unittest.TestCase):
     ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
 ])
 class TestIhfft2(unittest.TestCase):
+
     def test_ihfft2(self):
         """Test ihfft2 with norm condition
         """
@@ -914,6 +943,7 @@ class TestIhfft2(unittest.TestCase):
      ('test_axis_not_sequence', rand_x(5), None, -10, 'backward', ValueError),
      ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError)])
 class TestIhfft2Exception(unittest.TestCase):
+
     def test_ihfft2(self):
         """Test ihfft2 with buoudary condition
         Test case include:
@@ -942,6 +972,7 @@ class TestIhfft2Exception(unittest.TestCase):
      ('test_norm_forward', rand_x(5), None, None, 'forward'),
      ('test_norm_ortho', rand_x(5), None, None, 'ortho')])
 class TestIhfftn(unittest.TestCase):
+
     def test_ihfftn(self):
         """Test ihfftn with norm condition
         """
@@ -964,6 +995,7 @@ class TestIhfftn(unittest.TestCase):
     ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError)
 ])
 class TestIhfftnException(unittest.TestCase):
+
     def test_ihfftn(self):
         """Test ihfftn with buoudary condition
         Test case include:
@@ -984,6 +1016,7 @@ class TestIhfftnException(unittest.TestCase):
     ('test_with_d', 20, 0.5, 'float32'),
 ])
 class TestFftFreq(unittest.TestCase):
+
     def test_fftfreq(self):
         """Test fftfreq with norm condition
         """
@@ -1001,6 +1034,7 @@ class TestFftFreq(unittest.TestCase):
     ('test_with_d', 20, 0.5, 'float32'),
 ])
 class TestRfftFreq(unittest.TestCase):
+
     def test_rfftfreq(self):
         """Test rfftfreq with norm condition
         """
@@ -1021,6 +1055,7 @@ class TestRfftFreq(unittest.TestCase):
      np.random.randn(5, 5) + 1j * np.random.randn(5, 5), None, 'complex128'),
 ])
 class TestFftShift(unittest.TestCase):
+
     def test_fftshift(self):
         """Test fftshift with norm condition
         """
@@ -1042,6 +1077,7 @@ class TestFftShift(unittest.TestCase):
      ('test_2d_odd_with_all_axes',
       np.random.randn(5, 5) + 1j * np.random.randn(5, 5), None, 'complex128')])
 class TestIfftShift(unittest.TestCase):
+
     def test_ifftshift(self):
         """Test ifftshift with norm condition
         """

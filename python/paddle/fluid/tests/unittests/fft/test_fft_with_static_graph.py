@@ -52,6 +52,7 @@ def stgraph(func, place, x, n, axes, norm):
                ('test_norm_forward', rand_x(5), None, 3, 'forward'),
                ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
 class TestFft(unittest.TestCase):
+
     def test_static_rfft(self):
         with stgraph(paddle.fft.fft, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -72,6 +73,7 @@ class TestFft(unittest.TestCase):
      ('test_norm_not_in_enum_value', rand_x(2), None, -1, 'random', ValueError)]
 )
 class TestFftException(unittest.TestCase):
+
     def test_fft(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.fft, self.place, self.x, self.n, self.axis,
@@ -93,6 +95,7 @@ class TestFftException(unittest.TestCase):
     ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
 ])
 class TestFft2(unittest.TestCase):
+
     def test_static_fft2(self):
         with stgraph(paddle.fft.fft2, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -120,6 +123,7 @@ class TestFft2(unittest.TestCase):
         ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError)
     ])
 class TestFft2Exception(unittest.TestCase):
+
     def test_static_fft2(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.fft2, self.place, self.x, self.n, self.axis,
@@ -141,6 +145,7 @@ class TestFft2Exception(unittest.TestCase):
      ('test_norm_forward', rand_x(5), None, None, 'forward'),
      ('test_norm_ortho', rand_x(5), None, None, 'ortho')])
 class TestFftn(unittest.TestCase):
+
     def test_static_fftn(self):
         with stgraph(paddle.fft.fftn, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -162,6 +167,7 @@ class TestFftn(unittest.TestCase):
     ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError)
 ])
 class TestRfftnException(unittest.TestCase):
+
     def test_static_rfftn(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.rfftn, self.place, self.x, self.n,
@@ -188,6 +194,7 @@ class TestRfftnException(unittest.TestCase):
 class TestHfft(unittest.TestCase):
     """Test hfft with norm condition
     """
+
     def test_hfft(self):
         with stgraph(paddle.fft.hfft, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -217,6 +224,7 @@ class TestHfft(unittest.TestCase):
 class TestIrfft(unittest.TestCase):
     """Test irfft with norm condition
     """
+
     def test_irfft(self):
         with stgraph(paddle.fft.irfft, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -246,6 +254,7 @@ class TestIrfft(unittest.TestCase):
 class Testirfftn(unittest.TestCase):
     """Test irfftn with norm condition
     """
+
     def test_static_irfftn(self):
         with stgraph(paddle.fft.irfftn, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -275,6 +284,7 @@ class Testirfftn(unittest.TestCase):
 class Testhfftn(unittest.TestCase):
     """Test hfftn with norm condition
     """
+
     def test_static_hfftn(self):
         with stgraph(paddle.fft.hfftn, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -309,6 +319,7 @@ class Testhfftn(unittest.TestCase):
 class Testhfft2(unittest.TestCase):
     """Test hfft2 with norm condition
     """
+
     def test_static_hfft2(self):
         with stgraph(paddle.fft.hfft2, self.place, self.x, self.s, self.axis,
                      self.norm) as y:
@@ -340,6 +351,7 @@ class Testhfft2(unittest.TestCase):
 class TestIrfft2(unittest.TestCase):
     """Test irfft2 with norm condition
     """
+
     def test_static_irfft2(self):
         with stgraph(paddle.fft.irfft2, self.place, self.x, self.s, self.axis,
                      self.norm) as y:
@@ -378,6 +390,7 @@ class TestHfftException(unittest.TestCase):
     - axis out of range
     - norm out of range
     '''
+
     def test_static_hfft(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.hfft, self.place, self.x, self.n, self.axis,
@@ -414,6 +427,7 @@ class TestIrfftException(unittest.TestCase):
     - norm out of range
     - the dimensions of n and axis are different
     '''
+
     def test_static_irfft(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.irfft, self.place, self.x, self.n,
@@ -454,6 +468,7 @@ class TestHfft2Exception(unittest.TestCase):
     - the dimensions of n and axis are different
     - norm out of range
     '''
+
     def test_static_hfft2(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.hfft2, self.place, self.x, self.n,
@@ -494,6 +509,7 @@ class TestIrfft2Exception(unittest.TestCase):
     - norm out of range
     - the dimensions of n and axis are different
     '''
+
     def test_static_irfft2(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.irfft2, self.place, self.x, self.n,
@@ -534,6 +550,7 @@ class TestHfftnException(unittest.TestCase):
     - norm out of range
     - the dimensions of n and axis are different
     '''
+
     def test_static_hfftn(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.hfftn, self.place, self.x, self.n,
@@ -577,6 +594,7 @@ class TestIrfftnException(unittest.TestCase):
     - norm out of range
     - the dimensions of n and axis are different
     '''
+
     def test_static_irfftn(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.irfftn, self.place, self.x, self.n,
@@ -595,6 +613,7 @@ class TestIrfftnException(unittest.TestCase):
                ('test_norm_forward', rand_x(5), None, 3, 'forward'),
                ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
 class TestRfft(unittest.TestCase):
+
     def test_static_rfft(self):
         with stgraph(paddle.fft.rfft, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -615,6 +634,7 @@ class TestRfft(unittest.TestCase):
      ('test_norm_not_in_enum_value', rand_x(2), None, -1, 'random', ValueError)]
 )
 class TestRfftException(unittest.TestCase):
+
     def test_rfft(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.rfft, self.place, self.x, self.n, self.axis,
@@ -635,6 +655,7 @@ class TestRfftException(unittest.TestCase):
     ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
 ])
 class TestRfft2(unittest.TestCase):
+
     def test_static_rfft2(self):
         with stgraph(paddle.fft.rfft2, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -664,6 +685,7 @@ class TestRfft2(unittest.TestCase):
         ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError)
     ])
 class TestRfft2Exception(unittest.TestCase):
+
     def test_static_rfft(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.rfft2, self.place, self.x, self.n,
@@ -683,6 +705,7 @@ class TestRfft2Exception(unittest.TestCase):
      ('test_norm_forward', rand_x(5), None, None, 'forward'),
      ('test_norm_ortho', rand_x(5), None, None, 'ortho')])
 class TestRfftn(unittest.TestCase):
+
     def test_static_rfft(self):
         with stgraph(paddle.fft.rfftn, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -704,6 +727,7 @@ class TestRfftn(unittest.TestCase):
     ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError)
 ])
 class TestRfftnException(unittest.TestCase):
+
     def test_static_rfftn(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.rfftn, self.place, self.x, self.n,
@@ -722,6 +746,7 @@ class TestRfftnException(unittest.TestCase):
                ('test_norm_forward', rand_x(5), None, 3, 'forward'),
                ('test_norm_ortho', rand_x(5), None, 3, 'ortho')])
 class TestIhfft(unittest.TestCase):
+
     def test_static_ihfft(self):
         with stgraph(paddle.fft.ihfft, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -742,6 +767,7 @@ class TestIhfft(unittest.TestCase):
      ('test_norm_not_in_enum_value', rand_x(2), None, -1, 'random', ValueError)]
 )
 class TestIhfftException(unittest.TestCase):
+
     def test_static_ihfft(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.ihfft, self.place, self.x, self.n,
@@ -762,6 +788,7 @@ class TestIhfftException(unittest.TestCase):
     ('test_norm_ortho', rand_x(5), None, (0, 1), 'ortho'),
 ])
 class TestIhfft2(unittest.TestCase):
+
     def test_static_ihfft2(self):
         with stgraph(paddle.fft.ihfft2, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -793,6 +820,7 @@ class TestIhfft2(unittest.TestCase):
         ('test_norm_not_enum', rand_x(2), None, -1, 'random', ValueError)
     ])
 class TestIhfft2Exception(unittest.TestCase):
+
     def test_static_ihfft2(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.ihfft2, self.place, self.x, self.n,
@@ -812,6 +840,7 @@ class TestIhfft2Exception(unittest.TestCase):
      ('test_norm_forward', rand_x(5), None, None, 'forward'),
      ('test_norm_ortho', rand_x(5), None, None, 'ortho')])
 class TestIhfftn(unittest.TestCase):
+
     def test_static_ihfftn(self):
         with stgraph(paddle.fft.ihfftn, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
@@ -832,6 +861,7 @@ class TestIhfftn(unittest.TestCase):
     ('test_norm_not_in_enum', rand_x(2), None, -1, 'random', ValueError)
 ])
 class TestIhfftnException(unittest.TestCase):
+
     def test_static_ihfftn(self):
         with self.assertRaises(self.expect_exception):
             with stgraph(paddle.fft.ihfftn, self.place, self.x, self.n,
@@ -848,6 +878,7 @@ class TestIhfftnException(unittest.TestCase):
      np.random.randn(5, 5) + 1j * np.random.randn(5, 5), None, 'complex128'),
 ])
 class TestFftShift(unittest.TestCase):
+
     def test_fftshift(self):
         """Test fftshift with norm condition
         """
@@ -873,6 +904,7 @@ class TestFftShift(unittest.TestCase):
      ('test_2d_odd_with_all_axes',
       np.random.randn(5, 5) + 1j * np.random.randn(5, 5), None, 'complex128')])
 class TestIfftShift(unittest.TestCase):
+
     def test_ifftshift(self):
         """Test ifftshift with norm condition
         """

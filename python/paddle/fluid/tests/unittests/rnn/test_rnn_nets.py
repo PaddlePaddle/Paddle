@@ -29,6 +29,7 @@ bidirectional_list = ["bidirectional", "bidirect"]
 
 
 class TestSimpleRNN(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super(TestSimpleRNN, self).__init__("runTest")
         self.time_major = time_major
@@ -116,6 +117,7 @@ class TestSimpleRNN(unittest.TestCase):
 
 
 class TestGRU(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super(TestGRU, self).__init__("runTest")
         self.time_major = time_major
@@ -203,6 +205,7 @@ class TestGRU(unittest.TestCase):
 
 
 class TestLSTM(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super(TestLSTM, self).__init__("runTest")
         self.time_major = time_major
@@ -302,6 +305,7 @@ def predict_test_util(place, mode, stop_gradient=True):
     np.random.seed(123)
 
     class Net(paddle.nn.Layer):
+
         def __init__(self):
             super(Net, self).__init__()
             self.rnn = getattr(paddle.nn, mode)(16,
