@@ -436,9 +436,7 @@ int PrelnResidualBiasPluginDynamic::enqueue(
           rows,
           half_n,
           epsilon);
-    } else 
-#endif
-    {
+    } else {
       paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
                                                                   uint8_t,
                                                                   VecSize,
@@ -464,6 +462,32 @@ int PrelnResidualBiasPluginDynamic::enqueue(
           var,
           stream);
     }
+#else
+    paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
+                                                                uint8_t,
+                                                                VecSize,
+                                                                float,
+                                                                false>()(
+        rows,
+        cols,
+        seed,
+        dropout_prob,
+        is_upscale_in_train,
+        is_test,
+        increment,
+        epsilon,
+        src,
+        residual,
+        bias,
+        scale,
+        layernorm_bias,
+        mask_data,
+        dst,
+        layernorm_dst,
+        mean,
+        var,
+        stream);
+#endif
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "The Ernie(Bert) tensorRT plugin should be "
