@@ -59,7 +59,7 @@ class TestBase(IPUOpTest):
         block = program.global_block()
         assert len(to_fp16_var_names) > 0
         for var_name in to_fp16_var_names:
-            assert (block.var(var_name).dtype, paddle.float16)
+            assert block.var(var_name).dtype, paddle.float16
 
     @IPUOpTest.static_graph
     def build_model(self):
