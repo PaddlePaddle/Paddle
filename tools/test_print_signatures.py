@@ -32,14 +32,14 @@ def func_example(param_a, param_b):
     """
     example function
     """
-    pass
+    pass  # noqa: F401
 
 
 def func_example_2(func=functools.partial(func_example, 1)):
     """
     example function 2
     """
-    pass
+    pass  # noqa: F401
 
 
 class ClassExample():
@@ -51,7 +51,7 @@ class ClassExample():
         """
         class method
         """
-        pass
+        pass  # noqa: F401
 
 
 class Test_all_in_print_signatures(unittest.TestCase):

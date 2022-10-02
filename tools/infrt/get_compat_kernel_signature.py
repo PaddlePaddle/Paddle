@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import re
-import json
 
 skip_list = ["adam_sig.cc", "adamw_sig.cc"]
 

@@ -17,10 +17,7 @@
 TestCases for check_api_compatible.py
 """
 import unittest
-import sys
-import os
 import tempfile
-import inspect
 
 from check_api_compatible import read_argspec_from_file
 from check_api_compatible import check_compatible

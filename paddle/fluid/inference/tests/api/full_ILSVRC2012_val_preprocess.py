@@ -10,18 +10,11 @@
 # without warranties or conditions of any kind, either express or implied.
 # see the license for the specific language governing permissions and
 # limitations under the license.
-import hashlib
-import unittest
 import os
 import io
 import numpy as np
-import time
 import sys
-import random
-import functools
-import contextlib
 from PIL import Image
-import math
 from paddle.dataset.common import download
 import tarfile
 import argparse

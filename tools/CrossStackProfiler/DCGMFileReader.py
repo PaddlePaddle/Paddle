@@ -14,23 +14,18 @@
 
 import os
 import re
-import json
-import glob
 import logging
 import tempfile
-import argparse
 import pandas as pd
 import multiprocessing
 from multiprocessing import Process
 
-from CspChromeTraceFormatter import ChromeTraceFormatter
 
 from CspFileReader import FileReader
 from CspFileReader import getLogger
 from CspFileReader import dcgmMetricParameterMap
-from CspFileReader import TIME_PATH, DCGM_PATH, NET_PATH, PROFILE_PATH
-from CspFileReader import NETINFO_TRACE_NUM, DCGMINFO_TRACE_NUM, PIPELINEINFO_TRACE_NUM
-from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER, FILEORGANIZEFORM_BYOTHER, FILEORGANIZEFORM
+from CspFileReader import PIPELINEINFO_TRACE_NUM
+from CspFileReader import FILEORGANIZEFORM_BYTRAINER
 
 
 class dcgmFileReader(FileReader):

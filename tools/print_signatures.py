@@ -140,7 +140,6 @@ def get_all_api(root_path='paddle', attr="__all__"):
                 continue
         except AttributeError:
             logger.warning("AttributeError occurred when `eval(%s)`", name)
-            pass
         else:
             api_counter += process_module(m, attr)
 
@@ -159,7 +158,6 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
     Return:
         api_info object or None
     """
-    import paddle
     try:
         obj = eval(full_name)
         fc_id = id(obj)

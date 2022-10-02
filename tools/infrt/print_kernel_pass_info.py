@@ -14,7 +14,6 @@
 
 import os
 import re
-import json
 
 skip_list = []
 
