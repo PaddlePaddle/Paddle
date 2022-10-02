@@ -23,12 +23,10 @@ categorical_range_ = range(14, 40)
 
 
 class CriteoDataset(dg.MultiSlotDataGenerator):
-
     def generate_sample(self, line):
         """
         Read the data line by line and process it as a dictionary
         """
-
         def reader():
             """
             This function needs to be implemented by the user, based on data format

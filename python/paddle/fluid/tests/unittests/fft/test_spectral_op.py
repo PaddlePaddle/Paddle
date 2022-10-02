@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as np
 import paddle
 
@@ -94,7 +93,6 @@ def fft_c2r_python_api(x, axes, norm, forward, last_dim_size=0):
      ('test_norm_ortho', (np.random.random((12, 14)) + 1j * np.random.random(
          (12, 14))).astype(np.complex128), (1, ), "ortho", True)])
 class TestFFTC2COp(OpTest):
-
     def setUp(self):
         self.op_type = "fft_c2c"
         self.dtype = self.x.dtype
@@ -142,7 +140,6 @@ class TestFFTC2COp(OpTest):
      ('test_norm_ortho', (np.random.random((12, 14)) + 1j * np.random.random(
          (12, 14))).astype(np.complex128), (1, ), "ortho", True, 26)])
 class TestFFTC2ROp(OpTest):
-
     def setUp(self):
         self.op_type = "fft_c2r"
         self.dtype = self.x.dtype
@@ -189,7 +186,6 @@ class TestFFTC2ROp(OpTest):
      ('test_norm_ortho', np.random.randn(12, 18).astype(np.float64),
       (1, ), "ortho", True, False)])
 class TestFFTR2COp(OpTest):
-
     def setUp(self):
         self.op_type = "fft_r2c"
         self.dtype = self.x.dtype

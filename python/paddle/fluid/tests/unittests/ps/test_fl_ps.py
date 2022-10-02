@@ -21,7 +21,6 @@ import os
 
 
 class FlPsTest(unittest.TestCase):
-
     def test_launch_fl_ps(self):
         '''
         cmd = [

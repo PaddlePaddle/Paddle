@@ -24,7 +24,6 @@ from convert import convert_params_for_cell
 
 
 class TestSimpleRNNCell(unittest.TestCase):
-
     def __init__(self, bias=True, place="cpu"):
         super(TestSimpleRNNCell, self).__init__(methodName="runTest")
         self.bias = bias
@@ -65,7 +64,6 @@ class TestSimpleRNNCell(unittest.TestCase):
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
     def test_errors(self):
-
         def test_zero_hidden_size():
             cell = paddle.nn.SimpleRNNCell(-1, 0)
 
@@ -78,7 +76,6 @@ class TestSimpleRNNCell(unittest.TestCase):
 
 
 class TestGRUCell(unittest.TestCase):
-
     def __init__(self, bias=True, place="cpu"):
         super(TestGRUCell, self).__init__(methodName="runTest")
         self.bias = bias
@@ -119,7 +116,6 @@ class TestGRUCell(unittest.TestCase):
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
     def test_errors(self):
-
         def test_zero_hidden_size():
             cell = paddle.nn.GRUCell(-1, 0)
 
@@ -132,7 +128,6 @@ class TestGRUCell(unittest.TestCase):
 
 
 class TestLSTMCell(unittest.TestCase):
-
     def __init__(self, bias=True, place="cpu"):
         super(TestLSTMCell, self).__init__(methodName="runTest")
         self.bias = bias
@@ -177,7 +172,6 @@ class TestLSTMCell(unittest.TestCase):
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
 
     def test_errors(self):
-
         def test_zero_hidden_size():
             cell = paddle.nn.LSTMCell(-1, 0)
 

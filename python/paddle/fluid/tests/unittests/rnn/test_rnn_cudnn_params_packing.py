@@ -26,7 +26,6 @@ def create_model():
 
 
 class TestRNNProgramClone(TestCase):
-
     def setUp(self):
         paddle.enable_static()
 
