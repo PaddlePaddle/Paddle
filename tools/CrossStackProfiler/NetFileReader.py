@@ -17,7 +17,6 @@ import multiprocessing
 
 from multiprocessing import Process
 
-
 from CspFileReader import FileReader
 from CspFileReader import getLogger
 from CspFileReader import PIPELINEINFO_TRACE_NUM

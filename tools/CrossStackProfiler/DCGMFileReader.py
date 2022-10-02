@@ -20,7 +20,6 @@ import pandas as pd
 import multiprocessing
 from multiprocessing import Process
 
-
 from CspFileReader import FileReader
 from CspFileReader import getLogger
 from CspFileReader import dcgmMetricParameterMap
