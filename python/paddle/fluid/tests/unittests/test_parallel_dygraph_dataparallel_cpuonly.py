@@ -14,8 +14,6 @@
 
 import unittest
 import time
-import paddle
-import paddle.fluid as fluid
 import copy
 import os
 import subprocess

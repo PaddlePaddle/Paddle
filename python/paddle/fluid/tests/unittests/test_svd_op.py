@@ -16,11 +16,8 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
-from gradient_checker import grad_check
-from decorator_helper import prog_scope
 
 
 class TestSvdOp(OpTest):
@@ -161,7 +158,6 @@ class TestSvdNormalMatrix6x3Batched(TestSvdOp):
     def test_svd_forward(self):
         """ test_svd_forward not support batched input, so disable this test.
         """
-        pass
 
 
 class TestSvdNormalMatrix3x6Batched(TestSvdOp):
@@ -181,7 +177,6 @@ class TestSvdNormalMatrix3x6Batched(TestSvdOp):
     def test_svd_forward(self):
         """ test_svd_forward not support batched input, so disable this test.
         """
-        pass
 
 
 class TestSvdNormalMatrix3x3x3x6Batched(TestSvdOp):
@@ -204,7 +199,6 @@ class TestSvdNormalMatrix3x3x3x6Batched(TestSvdOp):
     def test_svd_forward(self):
         """ test_svd_forward not support batched input, so disable this test.
         """
-        pass
 
 
 @skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
@@ -221,7 +215,6 @@ class TestSvdNormalMatrixBig(TestSvdOp):
     def test_svd_forward(self):
         """ test_svd_forward not support batched input, so disable this test.
         """
-        pass
 
     def test_check_grad(self):
         pass
@@ -264,7 +257,6 @@ class TestSvdFullMatriceGrad(TestSvdNormalMatrix6x3):
     def test_svd_forward(self):
         """ test_svd_forward not support full matrices, so disable this test.
         """
-        pass
 
     def test_check_grad(self):
         """
