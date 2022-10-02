@@ -67,8 +67,8 @@ class TestReshape(unittest.TestCase):
                                     rtol=1e-05)
 
             # if paddle.is_compiled_with_cuda():
-            if False:
-            # if True:
+            # if False:
+            if True:
                 ## cuda  version
                 dense_x = paddle.to_tensor(np_x, place=paddle.CUDAPlace(0))
                 dense_x.numpy()
@@ -115,18 +115,18 @@ class TestReshape(unittest.TestCase):
 
     def test_reshape_2d(self):
         self.check_result([2, 5], [10,], 'coo')
-        # self.check_result([12, 5], [15, 4], 'coo')
+        self.check_result([12, 5], [15, 4], 'coo')
 
     #     self.check_result([10, 5], [2, 25], 'csr')
     #     self.check_result([9, 8], [18, 4], 'csr')
 
-    # def test_transpose_3d(self):
-    #     self.check_result([6, 2, 3], [6, 2, 3], 'coo')
-    #     self.check_result([6, 2, 3], [2, 3, 3, 2], 'coo')
-    #     self.check_result([6, 2, 3], [1, 18, 2], 'coo')
-    #     self.check_result([6, 2, 3], [2, 9, 2], 'coo')
-    #     self.check_result([6, 2, 3], [2, 1, 18], 'coo')
-    #     self.check_result([6, 2, 3], [1, 2, 2, 3, 3], 'coo')
+    def test_transpose_3d(self):
+        self.check_result([6, 2, 3], [6, 2, 3], 'coo')
+        self.check_result([6, 2, 3], [2, 3, 3, 2], 'coo')
+        self.check_result([6, 2, 3], [1, 18, 2], 'coo')
+        self.check_result([6, 2, 3], [2, 9, 2], 'coo')
+        self.check_result([6, 2, 3], [2, 1, 18], 'coo')
+        self.check_result([6, 2, 3], [1, 2, 2, 3, 3], 'coo')
 
     # #     self.check_result([6, 2, 3], [6, 2, 3], 'csr')
     # #     self.check_result([6, 2, 3], [6, 3, 2], 'csr')
@@ -135,11 +135,11 @@ class TestReshape(unittest.TestCase):
     # #     # self.check_result([6, 2, 3], [2, 1, 0], 'csr')
     # #     # self.check_result([6, 2, 3], [1, 2, 0], 'csr')
 
-    # def test_transpose_nd(self):
-    #     self.check_result([8, 3, 4, 4, 5, 3], [24, 8, 10, 3], 'coo')
-    # #     # Randint now only supports access to dimension 0 to 9.
-    # #     # self.check_result([i % 3 + 2 for i in range(9)],
-    # #     #                   [(i + 2) % 9 for i in range(9)], 'coo')
+    def test_transpose_nd(self):
+        self.check_result([8, 3, 4, 4, 5, 3], [24, 8, 10, 3], 'coo')
+    #     # Randint now only supports access to dimension 0 to 9.
+    #     # self.check_result([i % 3 + 2 for i in range(9)],
+    #     #                   [(i + 2) % 9 for i in range(9)], 'coo')
 
 
 if __name__ == "__main__":
