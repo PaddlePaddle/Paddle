@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include <cuda_runtime.h>
 #include <stdio.h>
 
@@ -27,17 +26,6 @@
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/operators/math/bert_encoder_functor.h"
-
-#include "paddle/fluid/inference/tensorrt/engine.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
-
-#define STR(x) #x
-#define XSTR(x) STR(x)
-#ifdef __CUDA_ARCH__
-#pragma message ("CUDA_ARCH=" XSTR(__CUDA_ARCH__))
-#else
-#pragma message ("No cuda_arch define")
-#endif
 
 namespace paddle {
 namespace inference {
