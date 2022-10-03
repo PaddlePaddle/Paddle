@@ -19,7 +19,6 @@ from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
 from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
-from paddle.fluid.layers import utils
 from paddle import _C_ops, _legacy_C_ops
 from ..framework import _current_expected_place
 
