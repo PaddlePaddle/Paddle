@@ -15,7 +15,8 @@
 import numpy as np
 import math
 import re
-from ..fluid.layers import utils, fill_constant
+from paddle.common_ops_import import fill_constant
+from ..fluid.layers import utils
 from ..static import Variable, device_guard
 from ..framework import _current_expected_place, _get_paddle_place
 from ..framework import dygraph_only

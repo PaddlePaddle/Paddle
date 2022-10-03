@@ -20,14 +20,14 @@ from ..fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_chec
 from ..framework import LayerHelper
 from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..fluid.layers import utils, fill_constant
+from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor
 from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from ..common_ops_import import dygraph_utils, _varbase_creator
+from ..common_ops_import import dygraph_utils, fill_constant, _varbase_creator
 import warnings
 from .creation import zeros
 from .creation import _complex_to_real_dtype
