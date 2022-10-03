@@ -35,7 +35,6 @@ from .collective import all_gather_object  # noqa: F401
 from .collective import scatter  # noqa: F401
 from .collective import barrier  # noqa: F401
 from .collective import ReduceOp  # noqa: F401
-from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
 from .collective import alltoall  # noqa: F401
 from .collective import recv  # noqa: F401
