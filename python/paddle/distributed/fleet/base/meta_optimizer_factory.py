@@ -19,7 +19,6 @@ meta_optimizer_names = list(
 
 # Because HybridParallelOptimizer is dygraph optimizer, it
 # should be removed
-meta_optimizer_names.remove("HybridParallelOptimizer")
 meta_optimizer_names.remove("HeterParallelOptimizer")
 
 
