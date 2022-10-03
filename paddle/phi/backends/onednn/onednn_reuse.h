@@ -1076,9 +1076,7 @@ class TransposeOneDNNHandler {
   std::shared_ptr<dnnl::memory> AcquireDstMemory(DenseTensor* output,
                                                  Place place) {
     auto dst_md = Axis2MemoryDesc(dims_, axis_);
-    output->Resize(make_ddim(dims_));
     auto dst_data = dev_ctx_.Alloc<T>(output);
-
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
 
