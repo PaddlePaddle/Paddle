@@ -25,7 +25,6 @@ from .creation import full
 
 import paddle
 import warnings
-from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops, _legacy_C_ops
 
