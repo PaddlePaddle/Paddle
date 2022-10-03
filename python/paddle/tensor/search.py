@@ -18,8 +18,8 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid import layers
 from ..framework import core, in_dygraph_mode, _non_static_mode
 from ..fluid.framework import _in_legacy_dygraph
-from ..fluid.core import VarDesc
 from paddle.common_ops_import import Variable
+from paddle.common_ops_import import VarDesc
 from paddle import _C_ops, _legacy_C_ops
 from .logic import logical_not
 
