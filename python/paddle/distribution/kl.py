@@ -23,7 +23,7 @@ from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.normal import Normal
 from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 
 __all__ = ["register_kl", "kl_divergence"]
 

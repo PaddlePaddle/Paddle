@@ -15,9 +15,9 @@
 import paddle
 from ...utils.log_util import logger
 import numpy as np
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 import paddle.fluid.core as core
-from paddle.fluid.framework import _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .utils import paddle_2_number, paddle_2_number, number_2_dtype
 
 _hcg = None

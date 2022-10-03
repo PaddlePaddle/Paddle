@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
 from paddle.static import default_startup_program, device_guard
@@ -30,7 +29,6 @@ from .sharding.prune import ProgramDeps
 from .sharding import utils
 # FIXME: import *
 from .sharding.utils import *
-import logging
 from ..utils.log_util import logger
 
 __all__ = []

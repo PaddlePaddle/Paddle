@@ -18,12 +18,10 @@ from ...tensor.math import tanh_  # noqa: F401
 
 from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ...tensor.manipulation import chunk
-from ...tensor.math import multiply
 
-import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import convert_np_dtype_to_dtype_
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode

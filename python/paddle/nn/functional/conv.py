@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 from ...device import get_cudnn_version
 from ...static import Variable
-from ...fluid import dygraph_utils
 from ...fluid.layers.utils import convert_to_list, _is_symmetric_padding, _contain_var, _convert_to_tensor_list
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
-from ...framework import ParamAttr
 from ...fluid.layer_helper import LayerHelper
 from ...tensor.manipulation import unsqueeze, squeeze
-from ...tensor.math import add
 from ...fluid.layers import nn
 from paddle import _C_ops, _legacy_C_ops
 from paddle import get_flags
@@ -34,7 +30,6 @@ from paddle.device import is_compiled_with_rocm
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.framework import _in_legacy_dygraph
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.framework import _non_static_mode
 
 __all__ = []
 

@@ -16,20 +16,18 @@ import itertools
 import numpy as np
 import re
 
-from .linalg import dot, matmul, transpose
+from .linalg import matmul, transpose
 from .manipulation import squeeze, unsqueeze, reshape
 from .math import multiply
 from .math import sum as paddle_sum
 from ..fluid.framework import _in_legacy_dygraph
 from paddle import _C_ops, _legacy_C_ops
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from ..fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 import collections
 import string
 import opt_einsum
-
-from paddle.common_ops_import import dygraph_only
 
 __all__ = []
 

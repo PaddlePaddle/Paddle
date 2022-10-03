@@ -23,7 +23,7 @@ if _in_eager_mode_:
 else:
     from ..framework import VarBase as Tensor
 
-from ..framework import in_dygraph_mode, _non_static_mode
+from ..framework import in_dygraph_mode
 from ..framework import LayerHelper
 from ..fluid.framework import _in_legacy_dygraph
 # TODO: define logic functions of a tensor

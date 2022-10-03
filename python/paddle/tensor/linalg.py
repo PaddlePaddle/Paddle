@@ -14,7 +14,7 @@
 
 import numpy as np
 from ..framework import LayerHelper
-from ..framework import _varbase_creator, _dygraph_tracer, in_dygraph_mode, _non_static_mode
+from ..framework import _non_static_mode, in_dygraph_mode
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..static import Variable
 from ..fluid.framework import _in_legacy_dygraph
@@ -24,8 +24,6 @@ from .logic import logical_not
 from .creation import full
 
 import paddle
-import warnings
-from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops, _legacy_C_ops
 

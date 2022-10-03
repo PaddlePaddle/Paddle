@@ -19,12 +19,11 @@ from paddle.common_ops_import import fill_constant
 from ..fluid.layers import utils
 from ..static import Variable, device_guard
 from ..framework import _current_expected_place, _get_paddle_place
-from ..framework import dygraph_only
 from ..framework import core
 from ..framework import in_dygraph_mode, _non_static_mode
 from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from ..framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHolder
+from ..framework import convert_np_dtype_to_dtype_
 # TODO: define functions to get create a tensor
 import paddle
 from paddle import _C_ops, _legacy_C_ops
