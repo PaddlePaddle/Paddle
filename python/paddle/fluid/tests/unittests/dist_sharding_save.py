@@ -14,10 +14,7 @@
 
 import paddle
 import paddle.fluid as fluid
-# from test_dist_base import TestDistRunnerBase
-from dist_mnist import cnn_model
-# from paddle.fluid.incubate.fleet.collective import fleet
-# import paddle.distributed.fleet as fleet
+from dist_mnist import cnn_model  # noqa: F401
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet.meta_optimizers.sharding as sharding
 
