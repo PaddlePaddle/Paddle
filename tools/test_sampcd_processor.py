@@ -65,6 +65,9 @@ class Test_find_last_future_line_end(unittest.TestCase):
 
     def test_2_instant(self):
         samplecodes = """
+                from __future__ import print_function
+                from __future__ import division
+
                 print(10//3)
         """
         mo = re.search("division\n", samplecodes)
@@ -174,17 +177,22 @@ print("not-specified's sample code (name:None, id:1) is executed successfully!")
     def test_from_future(self):
         codeblock = {
             'codes': """
-            print(10//3)""",
+from __future__ import print_function
+from __future__ import division
+print(10//3)""",
             'name': 'future',
             'id': 1,
             'required': None,
         }
         self.assertEqual(
             """
-            import os
-            os.environ["CUDA_VISIBLE_DEVICES"] = ""
-            print(10//3)
-            print("not-specified's sample code (name:future, id:1) is executed successfully!")""",
+from __future__ import print_function
+from __future__ import division
+
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+print(10//3)
+print("not-specified's sample code (name:future, id:1) is executed successfully!")""",
             insert_codes_into_codeblock(codeblock))
 
 
