@@ -22,5 +22,3 @@ from .random import get_rng_state_tracker
 from .random import model_parallel_random_seed
 from .random import determinate_seed
 from .random import dropout
-
-from .mp_ops import split

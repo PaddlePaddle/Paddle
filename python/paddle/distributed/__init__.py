@@ -26,6 +26,7 @@ from .parallel_with_gloo import gloo_release
 from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
 from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
+from paddle.distributed.fleet.layers.mpu.mp_ops import split  # noqa: F401
 
 from .collective import broadcast  # noqa: F401
 from .collective import all_reduce  # noqa: F401
@@ -35,7 +36,6 @@ from .collective import all_gather_object  # noqa: F401
 from .collective import scatter  # noqa: F401
 from .collective import barrier  # noqa: F401
 from .collective import ReduceOp  # noqa: F401
-from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
 from .collective import alltoall  # noqa: F401
 from .collective import recv  # noqa: F401
