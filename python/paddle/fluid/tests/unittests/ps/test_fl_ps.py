@@ -35,7 +35,7 @@ class FlPsTest(unittest.TestCase):
         prepare_python_path_and_return_module(__file__)
         exitcode = os.system(' '.join(cmd))
         '''
-        pass  # noqa: F401
+        pass
 
 
 if __name__ == '__main__':

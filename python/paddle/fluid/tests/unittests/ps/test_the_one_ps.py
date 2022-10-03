@@ -48,7 +48,7 @@ class TestTheOnePs(PsPassTestBase):
         else:
             return False
         '''
-        pass  # noqa: F401
+        pass
 
     def test_ps_cpu_async(self):
         self.init()
