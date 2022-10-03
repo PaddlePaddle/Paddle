@@ -27,6 +27,7 @@ import paddle
 import paddle.fluid.core as core
 from paddle import _legacy_C_ops
 import contextlib
+from .fleet.layers.mpu.mp_ops import split  # noqa: F401
 from .communication.comm_utils import ReduceOp
 
 __all__ = []
