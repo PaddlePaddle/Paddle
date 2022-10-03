@@ -17,11 +17,13 @@ math functions
 import numpy as np
 
 from paddle.fluid.core import VarDesc
-from paddle.framework import dygraph_only
+from paddle.common_ops_import import dygraph_only
+from paddle.common_ops_import import templatedoc
+from paddle.common_ops_import import dygraph_utils
 
 from .manipulation import cast
 from .creation import _complex_to_real_dtype
-from .layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn, templatedoc
+from .layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
 
 import paddle
 from ..static import Variable
@@ -31,7 +33,6 @@ from ..framework import _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ..fluid.layers import utils
-from ..fluid import dygraph_utils
 
 # TODO: define math functions
 from .ops import abs  # noqa: F401

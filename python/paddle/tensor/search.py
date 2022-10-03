@@ -19,7 +19,7 @@ from ..fluid import layers
 from ..framework import core, in_dygraph_mode, _non_static_mode
 from ..fluid.framework import _in_legacy_dygraph
 from ..fluid.core import VarDesc
-from ..fluid.framework import Variable
+from paddle.common_ops_import import Variable
 from paddle import _C_ops, _legacy_C_ops
 from .logic import logical_not
 
