@@ -14,13 +14,15 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
-from ..fluid import core, layers
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
 from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
-from paddle.common_ops_import import *
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.framework import _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
+from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.layers import utils
 from paddle import _C_ops, _legacy_C_ops
 from ..framework import _current_expected_place
 
