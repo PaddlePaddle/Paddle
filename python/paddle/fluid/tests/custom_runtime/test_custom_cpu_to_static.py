@@ -24,7 +24,6 @@ BATCH_SIZE = 1024
 
 
 def train_func_base(epoch_id, train_loader, model, cost, optimizer):
-    pass
 
     total_step = len(train_loader)
     epoch_start = time.time()
