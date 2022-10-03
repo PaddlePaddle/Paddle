@@ -74,7 +74,7 @@ __all__ = [  # noqa
     "gloo_release", "QueueDataset", "split", "CountFilterEntry",
     "ShowClickEntry", "get_world_size", "get_group", "all_gather",
     "all_gather_object", "InMemoryDataset", "barrier", "all_reduce", "alltoall",
-    "send", "reduce", "recv", "ReduceOp", "split", "wait", "get_rank",
+    "send", "reduce", "recv", "ReduceOp", "wait", "get_rank",
     "ProbabilityEntry", "ParallelMode", "is_initialized", "isend", "irecv",
     "reduce_scatter"
 ]
