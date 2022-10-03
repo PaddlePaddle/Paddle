@@ -57,7 +57,6 @@ void ReshapeCooKernel(const Context& dev_ctx,
                       const phi::IntArray& shape,
                       SparseCooTensor *out) {
   int64_t x_nnz = x.nnz();
-
   // TODO: consider using "DDim DDim::reshape(std::vector<int>& shape)"
   DDim out_dims = phi::make_ddim(shape.GetData());
   //  get sparse part dimensions of x and out

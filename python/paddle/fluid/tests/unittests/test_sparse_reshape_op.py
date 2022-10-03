@@ -23,9 +23,8 @@ class TestReshape(unittest.TestCase):
     def check_result(self, x_shape, new_shape, format):
         mask = np.random.randint( 0, 2, x_shape)
         np_x = np.random.randint(-100, 100, x_shape) * mask 
-        
-        
-        ### cpu version
+          
+        # cpu version
         dense_x = paddle.to_tensor(np_x, place=paddle.CPUPlace())
         dense_x.stop_gradient = False
         # dense_out = paddle.transpose(dense_x, dims)
