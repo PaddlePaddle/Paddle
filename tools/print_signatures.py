@@ -25,6 +25,7 @@ import hashlib
 import pkgutil
 import logging
 import argparse
+import paddle
 
 member_dict = collections.OrderedDict()
 
@@ -126,7 +127,6 @@ def get_all_api(root_path='paddle', attr="__all__"):
     """
     walk through the paddle package to collect all the apis.
     """
-    import paddle
     global api_info_dict
     api_counter = 0
     for filefinder, name, ispkg in pkgutil.walk_packages(
@@ -220,7 +220,6 @@ def process_module(m, attr="__all__"):
 
 
 def check_public_api():
-    import paddle
     modulelist = [  #npqa
         paddle, paddle.amp, paddle.nn, paddle.nn.functional,
         paddle.nn.initializer, paddle.nn.utils, paddle.static, paddle.static.nn,
@@ -269,7 +268,6 @@ def check_public_api():
 
 
 def check_allmodule_callable():
-    import paddle
     modulelist = [paddle]
     for m in modulelist:
         visit_all_module(m)
