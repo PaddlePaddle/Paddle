@@ -80,18 +80,23 @@ template <typename T>
 class DimsSimplifier {
  public:
   explicit DimsSimplifier(const int sm_count,
-                          const int rank,
+                          const size_t rank,
                           const int64_t numel,
                           const std::vector<int32_t>& perm,
                           const std::vector<int>& dims,
                           const T* src,
                           T* dst)
-      : perm_(rank), dims_(rank), count_(numel) {
+      : perm_(rank), src_dims(rank), count_(numel) {
     SimplifyPermAndDims(rank, dims, perm);
     if (rank_ > 1) {
       vec_size_ = GetPermVecSize(sm_count, src, dst);
       perm_.resize(rank_);
-      dims_.resize(rank_);
+      src_dims.resize(rank_);
+      dst_dims.resize(rank_);
+
+      for (auto i = 0; i < rank_; ++i) {
+        dst_dims[i] = src_dims[perm_[i]];
+      }
     }
   }
 
@@ -101,35 +106,37 @@ class DimsSimplifier {
   PermuteType GetPermType() const { return type_; }
 
   std::vector<int> GetPerm() const { return perm_; }
-  std::vector<size_t> GetDims() const { return dims_; }
+  std::vector<int> GetSrcDims() const { return src_dims; }
+  std::vector<int> GetDstDims() const { return dst_dims; }
 
  private:
   int rank_{1};
   int64_t count_{0};
   int vec_size_{1};
   std::vector<int> perm_;
-  std::vector<int> dims_;
+  std::vector<int> src_dims;
+  std::vector<int> dst_dims;
   PermuteType type_{kCopy};
 
   void SimplifyPermAndDims(const size_t rank,
-                           const std::vector<size_t>& in_dims,
+                           const std::vector<int>& in_dims,
                            const std::vector<int32_t>& perm) {
-    size_t combined_dims[phi::DDim::kMaxRank];
+    int combined_dims[phi::DDim::kMaxRank];
     int valid_map[phi::DDim::kMaxRank];
 
-    // Merge consecutive dims to the fist one of this these dims,
-    // and leave the origin dim value to be 1. Example below :
+    // Merge consecutive dims to the fist one dim and
+    // leave original dim to be 1. Example below :
     // perm: [2, 3, 0, 1], origin_dims : [4, 8, 2, 5]
     // new_dims: [4, 8, 2, 5] -> [32, 1, 10, 1]
-    size_t start_perm_idx = 0;
+    int start_perm_idx = 0;
     while (start_perm_idx < rank) {
-      const size_t start_dim_idx = perm[start_perm_idx];
+      const int start_dim_idx = perm[start_perm_idx];
       combined_dims[start_dim_idx] = in_dims[start_dim_idx];
-      size_t end_perm_idx = start_perm_idx + 1;
+      int end_perm_idx = start_perm_idx + 1;
 
       while (end_perm_idx < rank &&
              perm[end_perm_idx] == perm[end_perm_idx - 1] + 1) {
-        const size_t end_dim_idx = perm[end_perm_idx];
+        const int end_dim_idx = perm[end_perm_idx];
         combined_dims[start_dim_idx] *= in_dims[end_dim_idx];
         combined_dims[end_dim_idx] = 1;
         end_perm_idx += 1;
@@ -143,20 +150,20 @@ class DimsSimplifier {
     // dims as [32, 10]
     int valid_dim_idx = 0;
     bool sequential_flag = false;
-    for (size_t i = 0; i < rank; ++i) {
+    for (auto i = 0; i < rank; ++i) {
       const int src_dim = combined_dims[i];
       if (src_dim == 1) {
         valid_map[i] = -1;
       } else {
         sequential_flag = true;
         valid_map[i] = valid_dim_idx;
-        dims_[valid_dim_idx] = src_dim;
+        src_dims[valid_dim_idx] = src_dim;
         valid_dim_idx += 1;
       }
     }
 
     if (valid_dim_idx == 0) {
-      dims_[0] = 1;
+      src_dims[0] = 1;
       perm_[0] = 0;
       return;
     } else if (valid_dim_idx == 1) {
@@ -165,8 +172,8 @@ class DimsSimplifier {
 
     // Acquire simplified perm with help of combined dims
     // and original perm, finally simplified perm is [1, 0]
-    size_t perm_idx = 0;
-    for (size_t i = 0; i < rank; ++i) {
+    int perm_idx = 0;
+    for (auto i = 0; i < rank; ++i) {
       const int mapped = valid_map[perm[i]];
       if (mapped >= 0) {
         perm_[perm_idx] = mapped;
@@ -186,7 +193,7 @@ class DimsSimplifier {
     // both vectorized read and write.
     if (perm_[rank_ - 1] == rank_ - 1) {
       int tmp_size = std::min(vec_size, phi::GetVectorizedSize<T>(src));
-      tmp_size = GetDimVesSize(tmp_size, dims_[rank_ - 1]);
+      tmp_size = GetDimVesSize(tmp_size, src_dims[rank_ - 1]);
       if (tmp_size > 1) {
         type_ = kVecPermute;
         vec_size = tmp_size;
@@ -203,7 +210,7 @@ class DimsSimplifier {
       // // With bytes limitation of shared_memory, the VecSize shall be
       // // restricted for the type whose byte-size is less than 8 (double).
       // int type_vec =
-      //     sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, dims_[rank_ - 1]);
+      //     sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, src_dims[rank_ - 1]);
       // for (int i = type_vec; i > 0; i /= 2) {
       //   if (blocks / i >= sm_count) {
       //     break;
