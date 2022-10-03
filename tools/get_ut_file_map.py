@@ -128,8 +128,6 @@ def notsuccessfuc(rootPath):
             count = count + 1
             utNotSuccess = utNotSuccess + '^%s$|' % ut
 
-    # ut not exec
-
     if utNotSuccess != '':
         print("utNotSuccess count: %s" % count)
         f = open('%s/build/utNotSuccess' % rootPath, 'w')

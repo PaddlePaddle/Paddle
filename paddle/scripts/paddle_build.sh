@@ -1899,14 +1899,7 @@ function precise_card_test() {
     echo "****************************************************************"
     
     tmpfile=$tmp_dir/$testcases".log"
-    tmpfile1=$tmp_dir/$testcases"-gpu.log"
-    nvidia-smi --id=0 --query-compute-apps=used_memory --format=csv -lms 10 > $tmpfile1 2>&1 &
-    gpu_memory_pid=$!
     env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
-    kill ${gpu_memory_pid}
-    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {max = 0} {if(NR>1){if ($1 > max) max=$1}} END {print "MAX_GPU_MEMORY_USE=", max}' >> $tmpfile 
-    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {sum = 0} {if(NR>1){sum = sum + $1 }} END {print "AVG_GPU_MEMORY_USE=", sum / (NR-2)}' >> $tmpfile 
-    rm -rf $tmpfile1
     set +m
 }
 
@@ -1916,6 +1909,8 @@ function get_precise_tests_map_file {
     ut_total_startTime_s=`date +%s`
     EXIT_CODE=0;
     test_cases=$(ctest -N -V) # get all test cases
+    echo "find test_pass_"
+    cat test_cases | grep "test_pass_*"
     ctest -N -V | grep "test_pass_"
     single_card_tests='' # all cases list which would take one graph card
     exclusive_tests=''        # cases list which would be run exclusively
@@ -1985,11 +1980,8 @@ set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
 
-    #precise_card_test_single "$single_card_tests" 1
-    #precise_card_test_single "$single_card_tests_1" 1
-    #precise_card_test_single "$multiple_card_tests" 2
-    #precise_card_test_single "$exclusive_tests"
-    ljd_testcases='^test_op_signature$|^variant_test$'
+
+    ljd_testcases='^test_op_signature$|^variant_test$|^test_cast_api$|^small_vector_test$'
     precise_card_test_single "$ljd_testcases" 1
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
 
