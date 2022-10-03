@@ -475,6 +475,7 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         .. code-block:: python
 
             from __future__ import print_function
+
             import paddle
             import paddle.nn as nn
             import paddle.optimizer as opt
