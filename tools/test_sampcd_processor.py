@@ -54,6 +54,7 @@ class Test_find_last_future_line_end(unittest.TestCase):
 
     def test_1_instant(self):
         samplecodes = """
+                from __future__ import print_function
                 print(10//3)
         """
         mo = re.search("print_function\n", samplecodes)
