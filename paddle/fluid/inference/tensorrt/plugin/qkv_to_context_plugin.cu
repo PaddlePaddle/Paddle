@@ -384,7 +384,7 @@ void invokeTransformMask(half *tranformed_mask,
     warps_n = 8;
   } else {
     PADDLE_THROW(platform::errors::Fatal(
-        "[ERROR][fastertransformer][invokeTransformMask]unsupported seq_len "
+        "Unsupported seq_len for fmha: "
         "%d\n",
         S));
   }
@@ -849,40 +849,40 @@ int QkvToContextPluginDynamic::enqueue(
       }
       int S;
       S = ft_dispatcher_fp16_->getSFromMaxSeqLen(seq_len);
-      framework::Tensor temp_qk_bias_tensor;
+      phi::DenseTensor temp_qk_bias_tensor;
       temp_qk_bias_tensor.Resize({head_number_, S * S / 64, 64});
       auto *temp_qk_bias_data =
           reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
               platform::CUDAPlace(device_id)));
-      framework::Tensor temp_qk_bias_mask_tensor;
+      phi::DenseTensor temp_qk_bias_mask_tensor;
 
       // input 1 is relative pos (biasqk)
       const half *input1_data = static_cast<const half *>(inputs[1]);
-      invokeTransformMask(
-          temp_qk_bias_data, input1_data, head_number_, seq_len, stream);
+      // invokeTransformMask(
+      //     temp_qk_bias_data, input1_data, head_number_, seq_len, stream);
 
       // input 2 is mask (biasqk_mask)
       const half *input2_data = nullptr;
-      half *temp_qk_bias_mask_data = nullptr;
+      // half *temp_qk_bias_mask_data = nullptr;
       if (has_biasqk_mask_) {
         input2_data = static_cast<const half *>(inputs[2]);  // mask
-        temp_qk_bias_mask_tensor.Resize({window_number_, S * S / 64, 64});
-        temp_qk_bias_mask_data = reinterpret_cast<half *>(
-            temp_qk_bias_mask_tensor.mutable_data<int16_t>(
-                platform::CUDAPlace(device_id)));
-        invokeTransformMask(temp_qk_bias_mask_data,
-                            input2_data,
-                            window_number_,
-                            seq_len,
-                            stream);
+        // temp_qk_bias_mask_tensor.Resize({window_number_, S * S / 64, 64});
+        // temp_qk_bias_mask_data = reinterpret_cast<half *>(
+        //     temp_qk_bias_mask_tensor.mutable_data<int16_t>(
+        //         platform::CUDAPlace(device_id)));
+        // invokeTransformMask(temp_qk_bias_mask_data,
+        //                     input2_data,
+        //                     window_number_,
+        //                     seq_len,
+        //                     stream);
       }
 
       ft_dispatcher_fp16_->setup(S, batch, window_number_);
       half *output = static_cast<half *>(outputs[0]);
 
       ft_dispatcher_fp16_->run(input0_data,
-                               temp_qk_bias_mask_data,
-                               temp_qk_bias_data,
+                               input2_data,
+                               input1_data,
                                seq_len,
                                nullptr,
                                output,
