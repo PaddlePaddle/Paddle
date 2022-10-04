@@ -251,6 +251,10 @@ void GpuPassStrategy::EnableMkldnnInt8() {
   LOG(ERROR) << "GPU not support MKL-DNN int8";
 }
 
+void GpuPassStrategy::DisableMkldnnFcPasses() {
+  LOG(ERROR) << "GPU not support MKL-DNN fc";
+}
+
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
@@ -318,8 +322,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              "matmul_elementwise_add_mkldnn_fuse_pass",    //
              "matmul_activation_mkldnn_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
-             //  "fc_mkldnn_pass",
-             //  "fc_act_mkldnn_fuse_pass",
+             "fc_mkldnn_pass",
+             "fc_act_mkldnn_fuse_pass",
              "fc_elementwise_add_mkldnn_fuse_pass",   //
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_mkldnn_fuse_pass",  //
@@ -429,6 +433,30 @@ void CpuPassStrategy::EnableMkldnnInt8() {
 #else
   use_mkldnn_int8_ = false;
 #endif
+}
+
+void CpuPassStrategy::DisableMkldnnFcPasses() {
+#ifdef PADDLE_WITH_MKLDNN
+  if (!disable_mkldnn_fc_passes_) {
+    EraseFcMkldnnPasses();
+  }
+  disable_mkldnn_fc_passes_ = true;
+#else
+  disable_mkldnn_fc_passes_ = false;
+#endif
+}
+
+void CpuPassStrategy::EraseFcMkldnnPasses() {
+  std::vector<std::string> fc_passes_to_erase(
+      {"fc_mkldnn_pass",
+       "fc_act_mkldnn_fuse_pass",
+       "fc_elementwise_add_mkldnn_fuse_pass"});
+  for (const auto &pass : fc_passes_to_erase) {
+    int idx = GetPassIndex(pass);
+    if (idx != -1) {
+      passes_.erase(std::begin(passes_) + idx);
+    }
+  }
 }
 
 IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {

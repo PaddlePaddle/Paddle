@@ -29,6 +29,7 @@ void SetInt8Config(AnalysisConfig *cfg,
                    std::vector<paddle::PaddleTensor> data) {
   cfg->SetModel(FLAGS_infer_model);
   cfg->EnableMKLDNN();
+  cfg->DisableMkldnnFcPasses();  // fc passes caused loss in accuracy
   cfg->EnableMkldnnQuantizer();
   auto pass_builder = cfg->pass_builder();
   pass_builder->DeletePass("constant_folding_pass");
