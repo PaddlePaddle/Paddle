@@ -358,7 +358,7 @@ class TestAll8DOp(OpTest):
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
         }
-        self.attrs = {'reduce_all': True, 'dim': (2, 3, 4)}
+        self.attrs = {'dim': (2, 3, 4)}
         self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     def test_check_output(self):
@@ -464,7 +464,7 @@ class TestAny8DOp(OpTest):
             'X': np.random.randint(0, 2,
                                    (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
         }
-        self.attrs = {'reduce_all': True, 'dim': (3, 5, 4)}
+        self.attrs = {'dim': (3, 5, 4)}
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
