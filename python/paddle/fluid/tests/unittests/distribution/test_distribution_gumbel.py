@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 import paddle
-import scipy
+import scipy.stats
 
 import config
 import parameterize
@@ -24,11 +24,10 @@ from paddle.distribution.gumbel import Gumbel
 
 
 @parameterize.place(config.DEVICES)
-@parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'loc', 'scale'), [
-    ('one-dim', parameterize.xrand((4, )),parameterize.xrand((4, ))),
-    ('multi-dim', parameterize.xrand((5, 3)),parameterize.xrand((5, 3))),
-    ])
+@parameterize.parameterize_cls((parameterize.TEST_CASE_NAME, 'loc', 'scale'), [
+    ('one-dim', parameterize.xrand((4, )), parameterize.xrand((4, ))),
+    ('multi-dim', parameterize.xrand((5, 3)), parameterize.xrand((5, 3))),
+])
 class TestGumbel(unittest.TestCase):
 
     def setUp(self):
@@ -38,7 +37,7 @@ class TestGumbel(unittest.TestCase):
 
     def test_mean(self):
         mean = self._dist.mean
-        mean = np.array(mean.numpy(),dtype=np.float64)
+        mean = np.array(mean.numpy(), dtype=np.float64)
 
         self.assertEqual(mean.dtype, self.scale.dtype)
         np.testing.assert_allclose(mean,
@@ -48,7 +47,7 @@ class TestGumbel(unittest.TestCase):
 
     def test_variance(self):
         var = self._dist.variance
-        var = np.array(var.numpy(),dtype=np.float64)
+        var = np.array(var.numpy(), dtype=np.float64)
 
         self.assertEqual(var.dtype, self.scale.dtype)
         np.testing.assert_allclose(var,
@@ -58,7 +57,7 @@ class TestGumbel(unittest.TestCase):
 
     def test_stddev(self):
         stddev = self._dist.stddev
-        stddev = np.array(stddev.numpy(),dtype=np.float64)
+        stddev = np.array(stddev.numpy(), dtype=np.float64)
 
         self.assertEqual(stddev.dtype, self.scale.dtype)
         np.testing.assert_allclose(stddev,
@@ -68,16 +67,15 @@ class TestGumbel(unittest.TestCase):
 
     def test_entropy(self):
         entropy = self._dist.entropy()
-        entropy = np.array(entropy.numpy(),dtype=np.float64)
+        entropy = np.array(entropy.numpy(), dtype=np.float64)
 
         self.assertEqual(entropy.dtype, self.scale.dtype)
-
 
     def test_sample(self):
 
         sample_shape = [10000]
         samples = self._dist.sample(sample_shape)
-        samples = np.array(samples.numpy(),dtype=np.float64)
+        samples = np.array(samples.numpy(), dtype=np.float64)
         sample_values = samples
         self.assertEqual(samples.dtype, self.scale.dtype)
 
@@ -85,11 +83,13 @@ class TestGumbel(unittest.TestCase):
         tolerance = 1e-3
 
         np.testing.assert_allclose(sample_values.mean(axis=0),
-                                   scipy.stats.gumbel_r.mean(self.loc,scale=self.scale),
+                                   scipy.stats.gumbel_r.mean(self.loc,
+                                                             scale=self.scale),
                                    rtol=0.1,
                                    atol=tolerance)
         np.testing.assert_allclose(sample_values.var(axis=0),
-                                   scipy.stats.gumbel_r.var(self.loc,scale=self.scale),
+                                   scipy.stats.gumbel_r.var(self.loc,
+                                                            scale=self.scale),
                                    rtol=0.1,
                                    atol=tolerance)
 
@@ -98,7 +98,7 @@ class TestGumbel(unittest.TestCase):
 
         sample_shape = [10000]
         samples = self._dist.rsample(sample_shape)
-        samples = np.array(samples.numpy(),dtype=np.float64)
+        samples = np.array(samples.numpy(), dtype=np.float64)
         sample_values = samples
         self.assertEqual(samples.dtype, self.scale.dtype)
 
@@ -106,14 +106,14 @@ class TestGumbel(unittest.TestCase):
         tolerance = 1e-4
 
         np.testing.assert_allclose(sample_values.mean(axis=0),
-                                   scipy.stats.gumbel_r.mean(self.loc,scale=self.scale),
+                                   scipy.stats.gumbel_r.mean(self.loc,
+                                                             scale=self.scale),
                                    rtol=0.1,
                                    atol=tolerance)
         np.testing.assert_allclose(sample_values.var(axis=0),
                                    scipy.stats.gumbel_r.var(self.loc,scale=self.scale),
                                    rtol=0.1,
                                    atol=tolerance)
-
 
     def _np_mean(self):
         return self.loc + self.scale * np.euler_gamma
@@ -122,20 +122,21 @@ class TestGumbel(unittest.TestCase):
         return np.sqrt(self._np_variance())
 
     def _np_variance(self):
-        return np.divide(np.multiply(np.power(self.scale, 2), np.power(np.pi, 2)), 6)
+        return np.divide(
+            np.multiply(np.power(self.scale, 2), np.power(np.pi, 2)), 6)
 
     def _np_entropy(self):
         return np.log(self.scale) + 1 + np.euler_gamma
 
 
-
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'loc', 'scale', 'value'),
-    [
-        ('value-float', np.array([0.1, 0.4]),np.array([1., 4.]), np.array([3., 7.])),
+    (parameterize.TEST_CASE_NAME, 'loc', 'scale', 'value'), [
+        ('value-float', np.array([0.1, 0.4]),np.array([1., 4.
+                                                       ]), np.array([3., 7.])),
         ('value-int', np.array([0.1, 0.4]),np.array([1, 4]), np.array([3, 7])),
-        ('value-multi-dim', np.array([0.1, 0.4]), np.array([1, 4]),np.array([[5., 4], [6, 2]])),
+        ('value-multi-dim', np.array([0.1, 0.4]), np.array(
+            [1, 4]), np.array([[5., 4], [6, 2]])),
     ])
 class TestGumbelPDF(unittest.TestCase):
 

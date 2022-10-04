@@ -65,15 +65,18 @@ class Gumbel(TransformedDistribution):
         self.scale = paddle.to_tensor(scale, dtype='float32')
 
         finfo = np.finfo(dtype='float32')
-        if isinstance(loc, numbers.Number) and isinstance(scale, numbers.Number):
+        if isinstance(loc, numbers.Number) and isinstance(
+                scale, numbers.Number):
             self.base_dist = Uniform(float(finfo.tiny), float(1 - finfo.eps))
         else:
-            self.base_dist = Uniform(paddle.full_like(self.loc, float(finfo.tiny)),
-                                     paddle.full_like(self.loc, float(1 - finfo.eps)))
+            self.base_dist = Uniform(
+                paddle.full_like(self.loc, float(finfo.tiny)),
+                paddle.full_like(self.loc, float(1 - finfo.eps)))
 
         super(Uniform, self.base_dist).__init__(tuple(self.loc.shape))
         self.transforms = (ExpTransform(),
-                           AffineTransform(loc=paddle.to_tensor(0, dtype='float32'),
+                           AffineTransform(loc=paddle.to_tensor(
+                               0, dtype='float32'),
                                            scale=-paddle.ones_like(self.scale)),
                            ExpTransform(),
                            AffineTransform(loc=self.loc, scale=-self.scale))
@@ -214,7 +217,7 @@ class Gumbel(TransformedDistribution):
         if value.dtype != self.loc.dtype:
             value = paddle.cast(value, self.loc.dtype)
 
-        return paddle.exp(-paddle.exp(- (value - self.loc) / self.scale))
+        return paddle.exp(-paddle.exp(-(value - self.loc) / self.scale))
 
     def entropy(self):
         """Entropy of Gumbel distribution.
@@ -278,9 +281,11 @@ class Gumbel(TransformedDistribution):
             x = self._base.sample(shape)
 
             expTransform = paddle.distribution.ExpTransform()
-            affineTf1 = paddle.distribution.AffineTransform(paddle.to_tensor(0, dtype='float32'),
-                                                            -paddle.ones_like(self.scale))
-            affineTf2 = paddle.distribution.AffineTransform(self.loc, -self.scale)
+            affineTf1 = paddle.distribution.AffineTransform(
+                paddle.to_tensor(0, dtype='float32'),
+                -paddle.ones_like(self.scale))
+            affineTf2 = paddle.distribution.AffineTransform(
+                self.loc, -self.scale)
 
             x = expTransform.inverse(x)
 
@@ -310,5 +315,6 @@ class Gumbel(TransformedDistribution):
         """
         if self.batch_size_unknown:
             self._batch_shape = ()
-        return list(sample_shape) + list(self._batch_shape) + list(self._event_shape)
+        return list(sample_shape) + list(self._batch_shape) + list(
+            self._event_shape)
 
