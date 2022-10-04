@@ -1056,9 +1056,9 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        axis (int, optional): The axis along which to perform log_softmax
+        axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
-            dimensions of ``x`` . If ``axis`` < 0, it works the same way as
+            rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
         dtype (str, optional): The data type of the output tensor, can be float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
