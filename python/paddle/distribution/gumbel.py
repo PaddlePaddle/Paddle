@@ -15,8 +15,8 @@
 import paddle
 import numbers
 import math
-
 import numpy as np
+
 from paddle.distribution.uniform import Uniform
 from paddle.distribution.transformed_distribution import TransformedDistribution
 from paddle.distribution.transform import AffineTransform, ExpTransform
@@ -25,6 +25,7 @@ try:
     from collections.abc import Iterable
 except:
     from collections import Iterable
+
 
 class Gumbel(TransformedDistribution):
     r"""The Gumbel distribution with location `loc` and `scale` parameters.
@@ -50,11 +51,12 @@ class Gumbel(TransformedDistribution):
     Examples:
 
         >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-        >>> m.sample()
+        >>> example.sample()
         Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
        [4.14814520])
 
     """
+
     def __init__(self, loc, scale):
 
         self.batch_size_unknown = False
@@ -64,18 +66,18 @@ class Gumbel(TransformedDistribution):
 
         finfo = np.finfo(dtype='float32')
         if isinstance(loc, numbers.Number) and isinstance(scale, numbers.Number):
-            base_dist = Uniform(float(finfo.tiny), float(1 - finfo.eps))
+            self.base_dist = Uniform(float(finfo.tiny), float(1 - finfo.eps))
         else:
-            base_dist = Uniform(paddle.full_like(self.loc, float(finfo.tiny)),
-                                paddle.full_like(self.loc, float(1 - finfo.eps)))
+            self.base_dist = Uniform(paddle.full_like(self.loc, float(finfo.tiny)),
+                                     paddle.full_like(self.loc, float(1 - finfo.eps)))
 
-        super(Uniform, base_dist).__init__(self.loc.shape)
-        self.transforms = [ExpTransform(),
+        super(Uniform, self.base_dist).__init__(tuple(self.loc.shape))
+        self.transforms = (ExpTransform(),
                            AffineTransform(loc=paddle.to_tensor(0, dtype='float32'),
                                            scale=-paddle.ones_like(self.scale)),
                            ExpTransform(),
-                           AffineTransform(loc=self.loc, scale=-self.scale)]
-        super(Gumbel, self).__init__(base_dist, self.transforms)
+                           AffineTransform(loc=self.loc, scale=-self.scale))
+        super(Gumbel, self).__init__(self.base_dist, self.transforms)
 
     @property
     def mean(self):
@@ -230,21 +232,22 @@ class Gumbel(TransformedDistribution):
         """
         return paddle.log(self.scale) + 1 + np.euler_gamma
 
-    def sample(self, shape=()):
-        """Generate samples of the specified shape.
+    def sample(self, shape):
+        """Sample from ``TransformedDistribution``.
 
         Args:
-          shape (list): 1D `int32`. Shape of the generated samples.
+            shape (list, optional): The sample shape. Defaults to ().
 
         Returns:
-          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+             Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         Examples:
 
         >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
         >>> m.sample()
-        Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-       [4.14814520])
+        Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+       [[0.39180365],
+        [2.69657302]])
 
         """
         if not isinstance(shape, Iterable):
@@ -267,24 +270,27 @@ class Gumbel(TransformedDistribution):
         >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
         >>> example.rsample([2])
        Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-       [[-0.00082598],
-        [ 0.15536778]])
+       [[0.80463481],
+        [0.91893655]])
 
         """
         with paddle.no_grad():
-            finfo = np.finfo(dtype='float32')
+            x = self._base.sample(shape)
 
-            if self.loc.dtype == paddle.float16 or \
-                    self.loc.dtype == paddle.float32 or \
-                    self.loc.dtype == paddle.complex64:
-                eps = float(finfo.eps)
-            else:
-                raise TypeError("self.loc requires a floating point type")
+            expTransform = paddle.distribution.ExpTransform()
+            affineTf1 = paddle.distribution.AffineTransform(paddle.to_tensor(0, dtype='float32'),
+                                                            -paddle.ones_like(self.scale))
+            affineTf2 = paddle.distribution.AffineTransform(self.loc, -self.scale)
 
-            shape = self._extend_shape(shape)
-            uniform_dist = paddle.uniform(shape=shape, min=eps - 1, max=1)
+            x = expTransform.inverse(x)
 
-            return self.loc - self.scale * uniform_dist.sign() * paddle.log1p(-uniform_dist.abs())
+            x = affineTf1.forward(x)
+
+            x = expTransform.inverse(x)
+
+            x = affineTf2.forward(x)
+
+            return x
 
     def _extend_shape(self, sample_shape):
         """compute shape of the sample
@@ -304,4 +310,5 @@ class Gumbel(TransformedDistribution):
         """
         if self.batch_size_unknown:
             self._batch_shape = ()
-        return list(sample_shape) + list(self._batch_shape)
+        return list(sample_shape) + list(self._batch_shape) + list(self._event_shape)
+
