@@ -30,8 +30,8 @@ from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
 
 __all__ = [  # noqa
-    'Beta', 'Categorical', 'Dirichlet', 'Distribution', 'ExponentialFamily', 'Gumbel',
-    'Multinomial', 'Normal', 'Uniform', 'kl_divergence', 'register_kl',
+    'Beta', 'Categorical', 'Dirichlet', 'Distribution', 'ExponentialFamily',
+    'Gumbel', 'Multinomial', 'Normal', 'Uniform', 'kl_divergence', 'register_kl',
     'Independent', 'TransformedDistribution', 'Laplace'
 ]
 

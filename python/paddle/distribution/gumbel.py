@@ -317,4 +317,3 @@ class Gumbel(TransformedDistribution):
             self._batch_shape = ()
         return list(sample_shape) + list(self._batch_shape) + list(
             self._event_shape)
-

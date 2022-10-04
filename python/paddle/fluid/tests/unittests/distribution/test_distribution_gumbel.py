@@ -93,7 +93,6 @@ class TestGumbel(unittest.TestCase):
                                    rtol=0.1,
                                    atol=tolerance)
 
-
     def test_rsample(self):
 
         sample_shape = [10000]
@@ -111,7 +110,8 @@ class TestGumbel(unittest.TestCase):
                                    rtol=0.1,
                                    atol=tolerance)
         np.testing.assert_allclose(sample_values.var(axis=0),
-                                   scipy.stats.gumbel_r.var(self.loc,scale=self.scale),
+                                   scipy.stats.gumbel_r.var(self.loc,
+                                                            scale=self.scale),
                                    rtol=0.1,
                                    atol=tolerance)
 
@@ -132,9 +132,9 @@ class TestGumbel(unittest.TestCase):
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'loc', 'scale', 'value'), [
-        ('value-float', np.array([0.1, 0.4]),np.array([1., 4.
-                                                       ]), np.array([3., 7.])),
-        ('value-int', np.array([0.1, 0.4]),np.array([1, 4]), np.array([3, 7])),
+        ('value-float', np.array([0.1, 0.4]), np.array([1., 4.
+                                                        ]), np.array([3., 7.])),
+        ('value-int', np.array([0.1, 0.4]), np.array([1, 4]), np.array([3, 7])),
         ('value-multi-dim', np.array([0.1, 0.4]), np.array(
             [1, 4]), np.array([[5., 4], [6, 2]])),
     ])
