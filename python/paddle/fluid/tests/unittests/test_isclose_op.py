@@ -41,13 +41,11 @@ class TestIscloseOp(OpTest):
         self.attrs = {'equal_nan': self.equal_nan}
         self.outputs = {
             'Out':
-            np.array([
-                np.isclose(self.inputs['Input'],
-                           self.inputs['Other'],
-                           rtol=self.rtol,
-                           atol=self.atol,
-                           equal_nan=self.equal_nan)
-            ])
+            np.isclose(self.inputs['Input'],
+                       self.inputs['Other'],
+                       rtol=self.rtol,
+                       atol=self.atol,
+                       equal_nan=self.equal_nan)
         }
 
     def test_check_output(self):
