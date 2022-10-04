@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import paddle
 import paddle.nn as nn
 from paddle.nn import AdaptiveAvgPool2D, Linear, MaxPool2D
@@ -195,7 +191,7 @@ class ShuffleNetV2(nn.Layer):
     Args:
         scale (float, optional): Scale of output channels. Default: True.
         act (str, optional): Activation function of neural network. Default: "relu".
-        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 

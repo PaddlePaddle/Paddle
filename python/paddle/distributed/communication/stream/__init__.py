@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .all_gather import all_gather
 from .all_reduce import all_reduce
+from .send import send
+from .recv import recv
 
-__all__ = ["all_reduce"]
+__all__ = ["all_gather", "all_reduce", "send", "recv"]

@@ -29,8 +29,8 @@ using ElementwiseType = phi::ElementwiseType;
 template <typename OutT, typename Functor, int NumOuts = 1>
 void LaunchSameDimsElementwiseCudaKernel(
     const KPDevice &ctx,
-    const std::vector<const framework::Tensor *> &ins,
-    std::vector<framework::Tensor *> *outs,
+    const std::vector<const phi::DenseTensor *> &ins,
+    std::vector<phi::DenseTensor *> *outs,
     Functor func) {
   std::vector<const phi::DenseTensor *> pt_inputs;
   std::vector<phi::DenseTensor *> pt_outputs;

@@ -21,17 +21,8 @@
 
 #include "paddle/phi/core/utils/rw_lock.h"
 
-// When in inference scenario, the scopes will not be written by two threads in
-// a mean time, but a scope may be read by multiple threads concurrently, and
-// the mutex will cause serious performance issue.
-// So the mutex is disabled when `ON_INFER`.
-#ifdef PADDLE_ON_INFERENCE
-#define SCOPE_VARS_READER_LOCK
-#define SCOPE_VARS_WRITER_LOCK
-#else
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
-#endif
 
 namespace paddle {
 namespace framework {
@@ -308,7 +299,7 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
 // Need to call ShareLayout explicitly in sequence related ops.
-// Shall we have a better method to shared info between in/out Tensor?
+// Shall we have a better method to shared info between in/out phi::DenseTensor?
 #ifdef PADDLE_WITH_MKLDNN
   // Fix me: ugly workaround below
   // Correct solution:

@@ -33,7 +33,7 @@ from types import MethodType
 import paddle
 from paddle import nn
 from paddle.distributed import collective
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 
 from .group_sharded_storage import GradStorage
 from .group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
@@ -47,8 +47,8 @@ def _trainable(param):
 
 
 class GroupShardedStage2(nn.Layer):
-    """ 
-    A wrapper for Sharding Stage2 Layer in Dygraph. 
+    """
+    A wrapper for Sharding Stage2 Layer in Dygraph.
     .. warning: GroupShardedStage2 encapsulates the layer strategy and integrates it into the nn.Layer.
     .. ZeRO: https://arxiv.org/pdf/1910.02054.pdf.
     """
@@ -99,6 +99,9 @@ class GroupShardedStage2(nn.Layer):
         self._all_params = []
         for optim in self._sharding_optimizers:
             self._all_params.extend(list(optim.local_params))
+
+        # sharing stage 2 comm overlap flag
+        self._comm_overlap = False
 
         self._trainable_params = []
         self._grad_reduced = []
@@ -287,7 +290,7 @@ class GroupShardedStage2(nn.Layer):
             collective.broadcast(buffer,
                                  self._global_root_rank,
                                  self._group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -305,6 +308,18 @@ class GroupShardedStage2(nn.Layer):
         if self._use_grad_storage:
             for grad_storage in self._grad_storage_list:
                 grad_storage.reset_checked_in()
+
+    def _set_comm_overlap(self, comm_overlap):
+        # Hacky way to not add an extra parameter to the `group_sharded_parallel` funct.
+        # User should use this like:
+        # model, optimizer, scaler = group_sharded_parallel(...)
+        # model._set_comm_overlap(True)
+        self._comm_overlap = comm_overlap
+        if self._comm_overlap:
+            assert len(
+                self._sharding_optimizers
+            ) == 1, "Only support comm overlap strategy for single optimizer"
+        self._sharding_optimizers[0]._set_comm_overlap(comm_overlap)
 
     def _get_reduce_fn(self, index, param, dst_rank):
         """
@@ -337,11 +352,12 @@ class GroupShardedStage2(nn.Layer):
                             del tmp_grad
                             param.clear_gradient(False)
 
-                    # Synchronize the reduce parameter gradient
-                    collective.reduce(tensor=param.grad,
-                                      dst=self._group.ranks[dst_rank],
-                                      group=self._group)
-                    #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
+                    # Synchronize the reduce parameter gradient asynchronize
+                    self._sharding_optimizers[0]._update_task(
+                        collective.reduce(tensor=param.grad,
+                                          dst=self._group.ranks[dst_rank],
+                                          group=self._group,
+                                          sync_op=not self._comm_overlap))
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     # self._clear_task_flow()
@@ -385,12 +401,13 @@ class GroupShardedStage2(nn.Layer):
 
                         # Reduce the bucket
                         grad_storage.sent = True
-                        # Synchronize the reduce parameter gradient
-                        collective.reduce(
-                            tensor=grad_storage.buffer,
-                            dst=self._group.ranks[grad_storage.destination],
-                            group=self._group)
-                        #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
+                        # Synchronize the reduce parameter gradient asynchronize
+                        self._sharding_optimizers[0]._update_task(
+                            collective.reduce(
+                                tensor=grad_storage.buffer,
+                                dst=self._group.ranks[grad_storage.destination],
+                                group=self._group,
+                                sync_op=not self._comm_overlap))
 
                         cleanup()
 
@@ -528,6 +545,10 @@ class GroupShardedStage2(nn.Layer):
             opt_step = opt.step
 
             def _opt_step(self):
+                if self._comm_overlap:
+                    # Wait for the last reduce task. This wait must before grad scale function.
+                    assert self._comm_task is not None
+                    self._comm_task.wait()
                 grad_func()
                 opt_step()
 

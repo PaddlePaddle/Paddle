@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import re
 import functools
 import warnings
@@ -393,7 +392,7 @@ def templatedoc(op_type=None):
 
 def add_sample_code(func, sample_code):
     """
-    Append sample code for dynamically generated functions. 
+    Append sample code for dynamically generated functions.
 
     Args:
        func: The function of the function to be append sample code to.

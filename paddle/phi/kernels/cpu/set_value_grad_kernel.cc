@@ -26,4 +26,5 @@ PD_REGISTER_KERNEL(set_value_grad,
                    double,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::float16) {}

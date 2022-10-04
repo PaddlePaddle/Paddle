@@ -41,7 +41,7 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class ReshapeOp : public framework::OperatorWithKernel {
  public:
@@ -383,7 +383,7 @@ class ReshapeKernel {
     auto *in = ctx.Input<framework::LoDTensor>("X");
 
     auto list_new_shape_tensor =
-        ctx.MultiInput<framework::Tensor>("ShapeTensor");
+        ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
     auto *shape_tensor = ctx.HasInput("Shape")
                              ? ctx.Input<framework::LoDTensor>("Shape")
                              : nullptr;
@@ -394,7 +394,7 @@ class ReshapeKernel {
       for (auto &tensor : list_new_shape_tensor) {
         if (platform::is_gpu_place(tensor->place()) ||
             platform::is_xpu_place(tensor->place())) {
-          framework::Tensor temp;
+          phi::DenseTensor temp;
           paddle::framework::TensorCopySync(
               *tensor, platform::CPUPlace(), &temp);
           pt_vec_shape.push_back(std::move(temp));
@@ -407,7 +407,7 @@ class ReshapeKernel {
       phi::DenseTensor pt_shape;
       if (platform::is_gpu_place(shape_tensor->place()) ||
           platform::is_xpu_place(shape_tensor->place())) {
-        framework::Tensor temp;
+        phi::DenseTensor temp;
         paddle::framework::TensorCopySync(
             *shape_tensor, platform::CPUPlace(), &temp);
         pt_shape = std::move(temp);
@@ -450,8 +450,8 @@ class ReshapeKernel {
 class ReshapeGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
@@ -479,9 +479,9 @@ class ReshapeGradKernel {
 class ReshapeDoubleGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    auto *dd_x = ctx.Input<framework::Tensor>("DDX");
-    auto *d_out = ctx.Input<framework::Tensor>("DOut");
-    auto *dd_out = ctx.Output<framework::Tensor>("DDOut");
+    auto *dd_x = ctx.Input<phi::DenseTensor>("DDX");
+    auto *d_out = ctx.Input<phi::DenseTensor>("DOut");
+    auto *dd_out = ctx.Output<phi::DenseTensor>("DDOut");
     dd_out->mutable_data(ctx.GetPlace(), dd_x->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {

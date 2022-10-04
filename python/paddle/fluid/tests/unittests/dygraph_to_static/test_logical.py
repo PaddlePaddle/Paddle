@@ -14,7 +14,6 @@
 """Tests for logical operators of Dynamic-to-Static.
 Only test simple cases here. The complex test samples like nested ifelse
 or nested loop have been covered in file test_ifelse.py and test_loop.py"""
-from __future__ import print_function
 
 import unittest
 

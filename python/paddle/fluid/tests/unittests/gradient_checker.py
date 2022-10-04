@@ -13,8 +13,6 @@
 # limitations under the License.
 """This is the lib for gradient checker unittest."""
 
-from __future__ import print_function
-
 import unittest
 import six
 import collections
@@ -268,6 +266,9 @@ def grad_check(x,
     for v in x:
         v.stop_gradient = False
         v.persistable = True
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     if place is None:
         place = fluid.CPUPlace()
     if program is None:
@@ -364,6 +365,9 @@ def double_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
 
     if program is None:
         program = fluid.default_main_program()
@@ -445,6 +449,9 @@ def triple_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
 
     if program is None:
         program = fluid.default_main_program()
@@ -578,6 +585,9 @@ def get_static_double_grad(x,
     for v in x:
         v.stop_gradient = False
         v.persistable = True
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     if place is None:
         place = fluid.CPUPlace()
     if program is None:
@@ -642,10 +652,10 @@ def get_eager_double_grad(func,
         place (fluid.CPUPlace or fluid.CUDAPlace): the device.
         return_mid_result (bool): A flag that controls the return content.
     Returns:
-        If 'return_mid_result' set True. 
+        If 'return_mid_result' set True.
         the second order derivative and the inputs of second order derivative's calculation
         will be returned for higher order derivative's calculation.
-        If 'return_mid_result' set False. 
+        If 'return_mid_result' set False.
         A list of numpy array that stores second derivative result calulated by dygraph.
     """
     if isinstance(place, fluid.CPUPlace):
@@ -709,8 +719,8 @@ def double_grad_check_for_dygraph(func,
                                   rtol=1e-3,
                                   raise_exception=True):
     """
-    Check second order gradients of dygraph. This function will compare the 
-    second order gradients of dygraph and second order gradients of static graph 
+    Check second order gradients of dygraph. This function will compare the
+    second order gradients of dygraph and second order gradients of static graph
     to validate dygraph's correctness
 
     Args:
@@ -736,7 +746,9 @@ def double_grad_check_for_dygraph(func,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -841,7 +853,7 @@ def get_eager_triple_grad(func,
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         dy_init (numpy.array|list[numpy.array]|None): the init value for gradient of output.
         place (fluid.CPUPlace or fluid.CUDAPlace): the device.
-        return_mid_result (list[Tensor], list[Tensor]): If set True, the 
+        return_mid_result (list[Tensor], list[Tensor]): If set True, the
     Returns:
         A list of numpy array that stores second derivative result calulated by dygraph
     """
@@ -876,8 +888,8 @@ def triple_grad_check_for_dygraph(func,
                                   rtol=1e-3,
                                   raise_exception=True):
     """
-    Check third order gradients of dygraph. This function will compare the 
-    third order gradients of dygraph and third order gradients of static graph 
+    Check third order gradients of dygraph. This function will compare the
+    third order gradients of dygraph and third order gradients of static graph
     to validate dygraph's correctness
 
     Args:
@@ -903,7 +915,9 @@ def triple_grad_check_for_dygraph(func,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)

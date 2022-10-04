@@ -42,11 +42,15 @@ PD_REGISTER_KERNEL(
     max, GPU, ALL_LAYOUT, phi::MaxKernel, float, double, int, int64_t) {}
 #endif
 
-#if defined(PADDLE_WITH_XPU_KP)
+#if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(max, KPS, ALL_LAYOUT, phi::MaxKernel, float) {}
 #endif
 
 #if defined(PADDLE_WITH_MKLDNN)
 PD_REGISTER_KERNEL(
-    max, OneDNN, ALL_LAYOUT, phi::MaxKernel, float, phi::dtype::bfloat16) {}
+    max, OneDNN, ONEDNN, phi::MaxKernel, float, phi::dtype::bfloat16) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(max, XPU, ALL_LAYOUT, phi::MaxKernel, float) {}
 #endif

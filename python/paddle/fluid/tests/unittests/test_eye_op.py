@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import numpy as np
@@ -31,7 +29,7 @@ class TestEyeOp(OpTest):
 
     def setUp(self):
         '''
-	Test eye op with specified shape
+        Test eye op with specified shape
         '''
         self.python_api = paddle.eye
         self.op_type = "eye"
@@ -52,7 +50,7 @@ class TestEyeOp1(OpTest):
 
     def setUp(self):
         '''
-	Test eye op with default parameters
+        Test eye op with default parameters
         '''
         self.python_api = paddle.eye
         self.op_type = "eye"

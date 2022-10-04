@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# import yaml
 import os
 import sys
 import copy
@@ -29,7 +30,6 @@ import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.distributed.passes import new_pass, PassContext
-from paddle.distributed.utils import get_logger
 
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
 from paddle.distributed.auto_parallel.completion import Completer
@@ -39,6 +39,7 @@ from paddle.distributed.auto_parallel.process_group import clear_all_process_gro
 from paddle.distributed.auto_parallel.utils import debug_program
 from paddle.distributed.auto_parallel.utils import make_data_unshard, set_grad_var_shape
 
+from ..utils import get_logger
 from .config import TuningConfig
 from .algorithms import new_algorithm
 from .trial import TrialStatus
@@ -161,7 +162,7 @@ def _copy_context(ref_dist_context):
 
 class OptimizationTuner:
     """
-    OptimizationTuner is used to manage the tuning procedure of hyper-parameters (configs) 
+    OptimizationTuner is used to manage the tuning procedure of hyper-parameters (configs)
     of Optimization Pass in AutoParallel.
     """
 
@@ -256,8 +257,8 @@ class OptimizationTuner:
         startup_program = dist_context.serial_startup_program
 
         # applying optimization pass
-        if new_strategy.amp:
-            config = copy.deepcopy(new_strategy.amp_configs)
+        if new_strategy.amp.enable:
+            config = copy.deepcopy(new_strategy.amp.to_dict())
             config["dist_context"] = dist_context
             config["params_grads"] = dist_context._params_grads
 
@@ -270,13 +271,15 @@ class OptimizationTuner:
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply([main_program], [startup_program],
                                               pass_context)
+                dist_context.serial_loss = auto_parallel_fp16_pass.get_loss()
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply([main_program], [startup_program],
                                              pass_context)
+                dist_context.serial_loss = auto_parallel_amp_pass.get_loss()
 
-        if new_strategy.recompute:
-            config = copy.deepcopy(new_strategy.recompute_configs)
+        if new_strategy.recompute.enable:
+            config = copy.deepcopy(new_strategy.recompute.to_dict())
             config["dist_context"] = dist_context
             config["no_grad_set"] = None
             config["loss"] = dist_context.serial_loss
@@ -303,8 +306,8 @@ class OptimizationTuner:
                               dist_context, dist_params_grads)
         resharder.reshard()
 
-        if new_strategy.sharding:
-            config = copy.deepcopy(new_strategy.sharding_configs)
+        if new_strategy.sharding.enable:
+            config = copy.deepcopy(new_strategy.sharding.to_dict())
             config["dist_context"] = dist_context
             config["params_grads"] = dist_params_grads
             config["global_rank"] = self.rank
@@ -313,8 +316,8 @@ class OptimizationTuner:
             auto_parallel_sharding_pass.apply([dist_main_prog],
                                               [dist_startup_prog], pass_context)
 
-        if new_strategy.gradient_merge:
-            config = copy.deepcopy(new_strategy.gradient_merge_configs)
+        if new_strategy.gradient_merge.enable:
+            config = copy.deepcopy(new_strategy.gradient_merge.to_dict())
             config["dist_context"] = dist_context
             config["params_grads"] = dist_params_grads
             auto_parallel_gradient_merge_pass = new_pass(
@@ -466,7 +469,7 @@ class OptimizationTuner:
         Return the best optimization configuration found in the tuning.
 
         Returns:
-            A object of fleet.DistributedStrategy with best configuration.       
+            A object of fleet.DistributedStrategy with best configuration.
         """
         assert self._best_iter >= 0, "The best configuration is not found yet !"
         best_trial = self._finished_trials[self._best_iter]
@@ -481,7 +484,7 @@ class OptimizationTuner:
         summary_ = """
 Tuning Result Summary
 Run total {} trials with {} min.
-The best trial is: [{}], whose configuration is following: 
+The best trial is: [{}], whose configuration is following:
         """.format(len(self._finished_trials),
                    (time.time() - self._tuning_start_time) / 60,
                    best_trial.name)
@@ -492,9 +495,10 @@ The best trial is: [{}], whose configuration is following:
             for line in summary_.split("\n"):
                 fw.write(line + "\n")
 
-        full_strategy = self.get_best_config()
-        full_strategy.save_to_prototxt(
-            os.path.join(self.project_dir, "tuned_dist_strategy.prototxt"))
+        # full_strategy = self.get_best_config()
+        # path = os.path.join(self.project_dir, "tuned_dist_strategy.yaml")
+        # with open(path, 'w') as outfile:
+        #     yaml.dump(full_strategy, outfile, default_flow_style=False)
 
     def clear(self):
         """
@@ -508,8 +512,8 @@ The best trial is: [{}], whose configuration is following:
 
     def tune(self):
         """
-        Performs the search for best hyperparameter configuations 
-        for the selected optimization pass(es). 
+        Performs the search for best hyperparameter configuations
+        for the selected optimization pass(es).
         """
 
         # step1: collect model info which might be used for

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 
@@ -164,7 +162,7 @@ def nested_if_else(x_v):
             if paddle.mean(y).numpy()[0] < batch_size:
                 y = fluid.layers.abs(y)
             else:
-                tmp = fluid.layers.fill_constant([feat_size],
+                tmp = fluid.layers.fill_constant(y.shape,
                                                  dtype='float32',
                                                  value=-1)
                 y = y - tmp
@@ -273,7 +271,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
                         [hidden_dim], dtype='float32', value=9)
                     y = fluid.layers.abs(y)
                 else:
-                    tmp = fluid.layers.fill_constant([5],
+                    tmp = fluid.layers.fill_constant(y.shape,
                                                      dtype='float32',
                                                      value=-1)
                     y = y - tmp

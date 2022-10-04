@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import os
 import unittest
 import numpy as np
@@ -28,7 +27,7 @@ from test_dist_sparse_tensor_load_sgd import TestSparseLoadProgram
 
 
 class TestSparseLoadProgramAdam(TestSparseLoadProgram):
-    """ 
+    """
     Test Sparse load operator.
     """
 

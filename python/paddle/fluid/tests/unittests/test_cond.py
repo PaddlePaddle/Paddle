@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import os
 import unittest
@@ -277,7 +275,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             a = 2 * i
             if i < 5:
                 if i >= 3:
-                    return a + a 
+                    return a + a
                 else:
                     return a - a
             else:

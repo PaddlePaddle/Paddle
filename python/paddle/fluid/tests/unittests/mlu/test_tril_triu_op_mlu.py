@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import sys
 
@@ -132,7 +130,7 @@ for _op_type in ['tril', 'triu']:
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):
-    """ test case by using API and has -1 dimension 
+    """ test case by using API and has -1 dimension
     """
 
     def test_api(self):
