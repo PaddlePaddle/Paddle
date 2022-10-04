@@ -29,7 +29,6 @@ using dnnl::stream;
 using framework::DDim;
 using framework::ExecutionContext;
 using LoDTensor = phi::DenseTensor;
-using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::MKLDNNGetDataType;
 using platform::to_void_cast;
