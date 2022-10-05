@@ -276,23 +276,32 @@ void TensorRTEngine::FreezeNetwork() {
             Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
       }
 
-      for (auto &input : min_shape_tensor_) {
-        if (!itensor_map_.count(input.first)) continue;
-        if (!GetITensor(input.first)->isShapeTensor()) continue;
-        optim_profiles_[i]->setShapeValues(input.first.c_str(),
+      for (int i = 0; i < network()->getNbInputs(); i++) {
+        auto input_name = network()->getInput(i)->getName();
+        if (!itensor_map_.count(input_name)) continue;
+        if (!GetITensor(input_name)->isShapeTensor()) continue;
+        PADDLE_ENFORCE_EQ(min_shape_tensor_.count(input_name) &&
+                              max_shape_tensor_.count(input_name) &&
+                              optim_shape_tensor_.count(input_name),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Fail to find min/max/optim shape value for TRT "
+                              "network's shape tensor input named %s.",
+                              input_name));
+        auto min_vec = min_shape_tensor_.at(input_name);
+        optim_profiles_[i]->setShapeValues(input_name,
                                            nvinfer1::OptProfileSelector::kMIN,
-                                           input.second.data(),
-                                           input.second.size());
+                                           min_vec.data(),
+                                           min_vec.size());
+        optim_profiles_[i]->setShapeValues(input_name,
+                                           nvinfer1::OptProfileSelector::kMAX,
+                                           max_shape_tensor_[input_name].data(),
+                                           min_vec.size());
         optim_profiles_[i]->setShapeValues(
-            input.first.c_str(),
-            nvinfer1::OptProfileSelector::kMAX,
-            max_shape_tensor_[input.first].data(),
-            input.second.size());
-        optim_profiles_[i]->setShapeValues(
-            input.first.c_str(),
+            input_name,
             nvinfer1::OptProfileSelector::kOPT,
-            optim_shape_tensor_[input.first].data(),
-            input.second.size());
+            optim_shape_tensor_[input_name].data(),
+            min_vec.size());
       }
 
       infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);

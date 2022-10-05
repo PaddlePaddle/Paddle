@@ -1742,9 +1742,11 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
     shape_info_[name].emplace_back(shape);
 
-    // We need collect value range for shape tensor for Paddle-TRT's use
-    // This is a simple method to identify all shape tensors with some mistakes,
-    // but it doesn't matter.
+    // We need collect value range for shape tensor for Paddle-TRT's use.
+    // To be noticed, this method to identify all shape tensors is based on
+    // assumption that all shape tensors in the model have numbers <= 7.
+    // This is a simple method to identify all shape tensors with some
+    // mistakes, but it doesn't matter.
     auto is_shape_tensor = tensor->numel() <= 7 && tensor->numel() >= 1;
     if (tensor->dtype() == paddle::experimental::DataType::INT32 &&
         is_shape_tensor) {
