@@ -255,7 +255,7 @@ def generate_gpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
 
 
 def generate_dialect_head():
-    comment_ = "/*===- TableGen'source file -----------------------------------------------===*\\\n\
+    comment_ = r"/*===- TableGen'source file -----------------------------------------------===*\\\n\
 |*                                                                            *|\n\
 |* Kernel Definitions                                                         *|\n\
 |*                                                                            *|\n\

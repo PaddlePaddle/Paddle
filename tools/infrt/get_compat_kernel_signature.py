@@ -67,7 +67,7 @@ def get_compat_kernels_info():
                     data = content.replace("\n", "").replace(
                         " ",
                         "").strip("return").strip("KernelSignature(").strip(
-                            "\);").replace("\"", "").replace("\\", "")
+                            r"\);").replace("\"", "").replace("\\", "")
                     registry = False
                     if is_grad_kernel(data):
                         continue

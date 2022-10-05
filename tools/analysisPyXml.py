@@ -49,7 +49,7 @@ def analysisPyXml(rootPath, ut):
                          '@', '\'\'\'', 'logger', '_logger', 'logging', 'r"""',
                          'pass', 'try', 'except',
                          'if __name__ == "__main__"')) == False:
-                        pattern = "(.*) = ('*')|(.*) = (\"*\")|(.*) = (\d)|(.*) = (-\d)|(.*) = (None)|(.*) = (True)|(.*) = (False)|(.*) = (URL_PREFIX*)|(.*) = (\[)|(.*) = (\{)|(.*) = (\()"  #a='b'/a="b"/a=0
+                        pattern = r"(.*) = ('*')|(.*) = (\"*\")|(.*) = (\d)|(.*) = (-\d)|(.*) = (None)|(.*) = (True)|(.*) = (False)|(.*) = (URL_PREFIX*)|(.*) = (\[)|(.*) = (\{)|(.*) = (\()"  #a='b'/a="b"/a=0
                         if re.match(pattern, output.strip()) == None:
                             pyCov_file.append(clazz_filename)
                             coverageMessage = 'RELATED'

@@ -211,7 +211,7 @@ def convert_op_proto_into_mlir(op_descs):
     dst_dialect_file = "../../paddle/infrt/dialect/pd/ir/pd_ops.td"
 
     # 1. Head files
-    comment_ = "/*===- TableGen'source file -----------------------------------------------===*\\\n\
+    comment_ = r"/*===- TableGen'source file -----------------------------------------------===*\\\n\
 |*                                                                            *|\n\
 |* Op Definitions                                                             *|\n\
 |*                                                                            *|\n\
