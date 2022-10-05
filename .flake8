@@ -41,6 +41,7 @@ per-file-ignores =
     python/paddle/fft.py:F401
     python/paddle/_C_ops.py:F401
     python/paddle/framework/*:F401
+    python/paddle/distributed/*:F401
     python/paddle/proto/*:F401
     python/paddle/onnx/*:F401
     python/paddle/optimizer/*:F401
