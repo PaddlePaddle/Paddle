@@ -471,11 +471,7 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope_};
-  auto* fc_input = gpd.mutable_pattern()
-                       ->NewNode("fc_quantizer/input")
-                       ->AsInput()
-                       ->assert_is_op_input("fc", "Input");
-  fc_pattern(fc_input, false);
+  fc_pattern(false /* with_residual */);
 
   int quantize_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
