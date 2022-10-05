@@ -24,7 +24,7 @@ import hypothesis.strategies as st
 
 
 class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
-    """
+    r"""
         x_1_var              x_2_var
           |                     |
       transpose2            transpose2

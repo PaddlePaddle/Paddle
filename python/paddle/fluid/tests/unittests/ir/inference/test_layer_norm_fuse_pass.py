@@ -26,7 +26,7 @@ import hypothesis.strategies as st
 
 
 class TestFcFusePass(PassAutoScanTest):
-    """
+    r"""
              x_var
               / \
              /   reduce_mean "u(x)"

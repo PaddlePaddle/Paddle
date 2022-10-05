@@ -26,7 +26,7 @@ import hypothesis.strategies as st
 
 
 class TestConvBiasMkldnnFusePass(PassAutoScanTest):
-    """
+    r"""
     x_var   f_var(persistable)
       \       /
         conv2d

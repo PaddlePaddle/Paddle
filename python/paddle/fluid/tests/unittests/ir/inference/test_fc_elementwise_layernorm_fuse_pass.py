@@ -26,7 +26,7 @@ import hypothesis.strategies as st
 
 
 class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
-    """
+    r"""
     x_var   w(persistable) bias_var(persistable)
       \     |              /
           fc

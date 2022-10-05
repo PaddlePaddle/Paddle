@@ -26,7 +26,7 @@ import hypothesis.strategies as st
 
 
 class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
-    """
+    r"""
         y_var
           |
        unsqueeze2
