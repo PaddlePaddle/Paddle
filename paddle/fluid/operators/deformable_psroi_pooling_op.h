@@ -33,7 +33,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
@@ -173,12 +173,12 @@ template <typename DeviceContext, typename T>
 class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* rois = ctx.Input<LoDTensor>("ROIs");
-    auto* trans = ctx.Input<Tensor>("Trans");
-    auto* out = ctx.Output<Tensor>("Output");
+    auto* trans = ctx.Input<phi::DenseTensor>("Trans");
+    auto* out = ctx.Output<phi::DenseTensor>("Output");
     out->mutable_data<T>(ctx.GetPlace());
-    auto* top_count = ctx.Output<Tensor>("TopCount");
+    auto* top_count = ctx.Output<phi::DenseTensor>("TopCount");
     top_count->mutable_data<T>(ctx.GetPlace());
 
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
@@ -196,7 +196,7 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
             "is:%d.",
             num_rois,
             out->dims()[0]));
-    framework::Tensor roi_batch_id_list;
+    phi::DenseTensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
@@ -475,19 +475,22 @@ template <typename DeviceContext, typename T>
 class DeformablePSROIPoolGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* rois = ctx.Input<LoDTensor>("ROIs");
-    auto* trans = ctx.Input<Tensor>("Trans");
-    auto* top_count = ctx.Input<Tensor>("TopCount");
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto* trans = ctx.Input<phi::DenseTensor>("Trans");
+    auto* top_count = ctx.Input<phi::DenseTensor>("TopCount");
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
       set_zero(dev_ctx, input_grad, static_cast<T>(.0));
     }
-    auto* trans_grad = ctx.Output<Tensor>(framework::GradVarName("Trans"));
+    auto* trans_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Trans"));
     if (trans_grad) {
       trans_grad->mutable_data<T>(ctx.GetPlace());
       set_zero(dev_ctx, trans_grad, static_cast<T>(.0));

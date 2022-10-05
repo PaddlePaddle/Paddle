@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
@@ -270,7 +270,7 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
     auto* bottom = ctx.Input<LoDTensor>("X");
     auto* in_row = ctx.Input<LoDTensor>("ROW");
     auto* in_col = ctx.Input<LoDTensor>("COLUMN");
-    auto* w = ctx.Input<Tensor>("W");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
     auto* top = ctx.Output<LoDTensor>("Out");
     auto* col = ctx.Output<LoDTensor>("Col");
 
@@ -451,7 +451,7 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
 
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<LoDTensor>("X");
-    auto* w = ctx.Input<Tensor>("W");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
     auto* col = ctx.Input<LoDTensor>("Col");
     auto* out = ctx.Input<LoDTensor>("Out");
 
@@ -462,7 +462,7 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
 
     auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* d_w = ctx.Output<Tensor>(framework::GradVarName("W"));
+    auto* d_w = ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
     Tensor col_grad;
     col_grad.Resize(col->dims());

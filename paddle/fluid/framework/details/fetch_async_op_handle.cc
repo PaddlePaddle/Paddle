@@ -130,8 +130,8 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
           offset));
 }
 
-static void TransData(const framework::Tensor *src_item,
-                      framework::Tensor *dst_item,
+static void TransData(const phi::DenseTensor *src_item,
+                      phi::DenseTensor *dst_item,
                       const platform::DeviceContext &ctx) {
   if (src_item->IsInitialized() && src_item->numel() > 0) {
     if (platform::is_gpu_place(src_item->place())) {

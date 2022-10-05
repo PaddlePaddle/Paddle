@@ -47,7 +47,7 @@ AttentionLSTMFusePass::AttentionLSTMFusePass() {
       .IsTensor()
       .IsOptional()
       .End()
-      .AddInput("ShapeTensorList")  // vector<Tensor<int>>
+      .AddInput("ShapeTensorList")  // vector<phi::DenseTensor<int>>
       .IsOptional()
       .End()
       .AddOutput("Out")
@@ -262,11 +262,12 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // reshape attention_bias
   auto* attention_bias_t =
       scope.FindVar(param.AttentionBias)->GetMutable<LoDTensor>();
-  PADDLE_ENFORCE_EQ(attention_bias_t->dims().size(),
-                    1,
-                    platform::errors::InvalidArgument(
-                        "Tensor attention bias dimension size(%d) must be 1.",
-                        attention_bias_t->dims().size()));
+  PADDLE_ENFORCE_EQ(
+      attention_bias_t->dims().size(),
+      1,
+      platform::errors::InvalidArgument(
+          "phi::DenseTensor attention bias dimension size(%d) must be 1.",
+          attention_bias_t->dims().size()));
   attention_bias_t->Resize(phi::make_ddim({1, attention_bias_t->dims()[0]}));
 
   auto* attention_scalar_bias_t =
@@ -339,11 +340,12 @@ void PrepareLSTMBias(const LoDTensor& B_forget,
                                       B_output.data<float>(),
                                       B_cell.data<float>()};
 
-  PADDLE_ENFORCE_EQ(B_forget.dims().size(),
-                    1,
-                    platform::errors::InvalidArgument(
-                        "Tensor B forget dimension size(%d) must be 1.",
-                        B_forget.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      B_forget.dims().size(),
+      1,
+      platform::errors::InvalidArgument(
+          "phi::DenseTensor B forget dimension size(%d) must be 1.",
+          B_forget.dims().size()));
   int D = B_forget.dims()[0];
   out->Resize(phi::make_ddim({1, 4 * D}));
   auto* out_data = out->mutable_data<float>(platform::CPUPlace());

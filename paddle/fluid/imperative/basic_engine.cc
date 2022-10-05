@@ -150,7 +150,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
       }
 
       auto* inner_var = var->MutableVar();
-      framework::Tensor* tensor = nullptr;
+      phi::DenseTensor* tensor = nullptr;
       if (!inner_var->IsInitialized() ||
           inner_var->IsType<framework::LoDTensor>()) {
         tensor = inner_var->GetMutable<framework::LoDTensor>();

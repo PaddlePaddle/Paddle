@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using Dim3 = framework::Dim3;
 using Index3 = framework::Index3;
 
@@ -713,9 +713,9 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
 template <typename T, typename IndexType = int>
 struct TransposeSimple {
   static bool run(const phi::GPUContext& ctx,
-                  const Tensor& in,
+                  const phi::DenseTensor& in,
                   const std::vector<int32_t> perm,
-                  Tensor* out) {
+                  phi::DenseTensor* out) {
     // First reduce the dimensions of the input tensor if possible.
     std::vector<int> new_perm;
     framework::DDim new_dims;
@@ -1157,8 +1157,8 @@ inline void LaunchWithDispatchIndex(const phi::GPUContext& ctx,
 template <typename DeviceContext, typename T>
 inline void SimplifyThenLaunch(const int rank,
                                const DeviceContext& ctx,
-                               const Tensor& in,
-                               Tensor* out,
+                               const phi::DenseTensor& in,
+                               phi::DenseTensor* out,
                                const std::vector<int32_t>& perm) {
   int sm_count = ctx.GetSMCount();
   auto src_dims = phi::vectorize<size_t>(in.dims());
@@ -1182,9 +1182,9 @@ inline void SimplifyThenLaunch(const int rank,
 
 template <typename T>
 void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
-                              const Tensor& in,
+                              const phi::DenseTensor& in,
                               const std::vector<int32_t>& perm,
-                              Tensor* out) {
+                              phi::DenseTensor* out) {
   const int rank = perm.size();
   int64_t numel = in.numel();
   bool ret{false};
@@ -1196,8 +1196,7 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
   if (!ret) {
     auto* tuner =
         phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
-    tuner->AddCallBack(
-        phi::autotune::MakeCallback<T>(SimplifyThenLaunch<phi::GPUContext, T>));
+    tuner->AddCallBack(SimplifyThenLaunch<phi::GPUContext, T>);
 
     size_t key = phi::autotune::TransposeKey(
         phi::vectorize(in.dims()),

@@ -26,14 +26,14 @@ template <typename T>
 class NPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    framework::Tensor *tensor = nullptr;
+    phi::DenseTensor *tensor = nullptr;
     auto out_var = ctx.OutputVar("Out");
     std::vector<int64_t> new_shape;
     auto list_new_shape_tensor =
-        ctx.MultiInput<framework::Tensor>("ShapeTensorList");
+        ctx.MultiInput<phi::DenseTensor>("ShapeTensorList");
     if (list_new_shape_tensor.size() > 0 || ctx.HasInput("ShapeTensor")) {
       if (ctx.HasInput("ShapeTensor")) {
-        auto *shape_tensor = ctx.Input<framework::Tensor>("ShapeTensor");
+        auto *shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
         new_shape = GetNewDataFromShapeTensor(shape_tensor);
       } else if (list_new_shape_tensor.size() > 0) {
         new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);

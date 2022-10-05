@@ -114,7 +114,7 @@ TEST(test_prepare_op, test_prepare_op) {
                               {}));
 }
 
-const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
+const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var);
 
 TEST(test_prepare_op, test_get_tensor_from_var) {
   std::shared_ptr<imperative::VarBase> vout_error(
@@ -259,5 +259,5 @@ TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
 USE_OP_ITSELF(split);
 USE_OP_ITSELF(relu);
 #ifdef PADDLE_WITH_MKLDNN
-PD_DECLARE_KERNEL(relu, OneDNN, ALL_LAYOUT);
+PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 #endif

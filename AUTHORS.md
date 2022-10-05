@@ -1,3 +1,6 @@
+This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddle/Paddle/) codebase, to see a full list, please use the source control tool git. PaddlePaddle community encourges every Paddle codebase author include his/her GitHub account and fullname here.
+
+
 | Github account | name |
 |---|---|
 | abhinavarora | Abhinav Arora |
@@ -9,6 +12,7 @@
 | beckett1124 | Bin Qi |
 | ChengduoZH | Cheng-Duo Zhao|
 | chengxiaohua1105 | Xiao-Hua Cheng |
+| chenwhql | Wei-Hang Chen |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
 | ddokupil | Dariusz Dokupil |
@@ -85,3 +89,28 @@
 | mingxu1067 | Ming Huang (NVIDIA) |
 | zlsh80826 | Reese Wang (NVIDIA) |
 | leo0519 | Leo Chen (NVIDIA) |
+| jzhang533 | Jun Zhang |
+| Ligoml | Meng-Liu Li |
+| jeff41404 | Xiang Gao |
+| zh794390558 | Hui Zhang |
+| limin2021 | Min Li |
+| zhouwei25 | Wei Zhou |
+| littletomatodonkey | Ruo-Yu Guo |
+| zhupengyang | Zhu Pengyang |
+| DesmonDay | Siming Dai |
+| thisjiang | jiangcheng |
+| yghstill | Guanghua Yu |
+| CtfGo | Tefeng Chen |
+| ZHUI | Hui Zhong|
+| LemonNoel | Huijuan Wang |
+| wawltor | Zeyang Fang |
+| FrostML | Zheng-Xi Liu |
+| jiangjiajun | jiangjiajun |
+| dingjiaweiww | dingjiawei |
+| gglin001 | Allen Guo (Graphcore) |
+| yaozhixin | Zhixin Yao (Graphcore) |
+| XBWGC | Xiaobing Wang (Graphcore) |
+| jianghaicheng | Haicheng Jiang (Graphcore) |
+| czr-gc | Zhaorui Chen (Graphcore) |
+| zhao-han | Han Zhao (Graphcore) |
+| yiakwy, yiakwy-xpu-ml-framework-team | Yi Wang (Graphcore) |

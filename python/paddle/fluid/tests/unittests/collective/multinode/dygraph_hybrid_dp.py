@@ -12,29 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import argparse
-import os
-import sys
-import signal
-import time
-import socket
-from contextlib import closing
-from six import string_types
-import math
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-import paddle.fluid.unique_name as nameGen
-from paddle.fluid import core
-import paddle.distributed.fleet as fleet
-from paddle.fluid.incubate.fleet.base import role_maker
-import unittest
-from multiprocessing import Process
-import paddle.fluid.layers as layers
-from functools import reduce
 from test_collective_multi_nodes import TestCollectiveAPIRunnerBase, runtime_main
 
 
@@ -46,7 +23,6 @@ class TestDygrapgHybridDP(TestCollectiveAPIRunnerBase):
     def check_pass(self, *args, **kwargs):
         from common import init_parallel_env
         import paddle
-        from paddle.distributed import fleet
         hcg = init_parallel_env("DP16-MP1-PP1-SH1-O1", 2)
         import numpy as np
         dp_group = hcg.get_data_parallel_group()

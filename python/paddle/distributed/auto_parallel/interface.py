@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
+
 import paddle
 from paddle.fluid import core
 from .process_mesh import ProcessMesh
@@ -196,15 +198,42 @@ def recompute(op):
     return RecomputeOperator(op)
 
 
-_g_fetched_tensors = {}
+# _g_fetched_tensors = {}
+
+# def fetch(tensor, name=None):
+#     if name is None:
+#         _g_fetched_tensors[tensor.name] = tensor
+#     else:
+#         _g_fetched_tensors[name] = tensor
+
+# def _get_fetches():
+#     return _g_fetched_tensors
+
+_g_collections = {}
+
+
+class CollectionNames(object):
+    FEEDS = "feeds"
+    FETCHES = "fetches"
+
+
+def get_collection(name):
+    collection = _g_collections.get(name, None)
+    if collection is None:
+        collection = []
+        _g_collections[name] = collection
+    return _g_collections[name]
+
+
+def add_to_collection(collection_name, value, value_name=None):
+    if collection_name not in _g_collections:
+        _g_collections[collection_name] = []
+    else:
+        if value_name is not None:
+            _g_collections[collection_name].append((value_name, value))
+        else:
+            _g_collections[collection_name].append((None, value))
 
 
 def fetch(tensor, name=None):
-    if name is None:
-        _g_fetched_tensors[tensor.name] = tensor
-    else:
-        _g_fetched_tensors[name] = tensor
-
-
-def _get_fetches():
-    return _g_fetched_tensors
+    add_to_collection(CollectionNames.FETCHES, tensor, name)

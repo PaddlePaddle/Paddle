@@ -584,11 +584,11 @@ void DownpourWorker::TrainFilesWithProfiler() {
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "Tensor %s contains Inf.", var_name));
+                            "phi::DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "Tensor %s contains NAN.", var_name));
+                            "phi::DenseTensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -872,7 +872,7 @@ void DownpourWorker::TrainFiles() {
             if (var == nullptr) {
               continue;
             }
-            Tensor* tensor = nullptr;
+            phi::DenseTensor* tensor = nullptr;
             int64_t len = 0;
             if (var->IsType<framework::LoDTensor>()) {
               tensor = var->GetMutable<LoDTensor>();
@@ -919,11 +919,11 @@ void DownpourWorker::TrainFiles() {
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "Tensor %s contains Inf.", var_name));
+                            "phi::DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
                         platform::errors::InvalidArgument(
-                            "Tensor %s contains NAN.", var_name));
+                            "phi::DenseTensor %s contains NAN.", var_name));
     }
 
     if (need_to_push_sparse_) {

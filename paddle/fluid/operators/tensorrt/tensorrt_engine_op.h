@@ -500,7 +500,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
       // check the input_tensor
       if (!platform::is_gpu_place(t.place())) {
-        framework::Tensor out;
+        phi::DenseTensor out;
         platform::CUDAPlace dst_place;
         framework::TransDataDevice(t, dst_place, &out);
         t.ShareDataWith(out);

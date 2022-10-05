@@ -32,7 +32,7 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
 }
 
 std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
-    const paddle::framework::Tensor& src) {
+    const phi::DenseTensor& src) {
   return std::make_unique<phi::DenseTensor>(src);
 }
 
@@ -62,9 +62,7 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
   }
 }
 
-phi::IntArray MakePhiIntArray(const paddle::framework::Tensor& src) {
-  return {src};
-}
+phi::IntArray MakePhiIntArray(const phi::DenseTensor& src) { return {src}; }
 
 phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
   if (variable.IsType<framework::LoDTensor>()) {
