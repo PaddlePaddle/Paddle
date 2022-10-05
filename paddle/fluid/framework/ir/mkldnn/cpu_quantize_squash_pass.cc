@@ -25,6 +25,24 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+namespace {
+std::string FindInputNameByVarName(OpDesc* op,
+                                   const std::string& searched_name) {
+  for (auto name : op->InputNames())
+    for (auto input_name : op->Input(name))
+      if (input_name == searched_name) return name;
+  return std::string{};
+}
+
+std::string FindOutputNameByVarName(OpDesc* op,
+                                    const std::string& searched_name) {
+  for (auto name : op->OutputNames())
+    for (auto output_name : op->Output(name))
+      if (output_name == searched_name) return name;
+  return std::string{};
+}
+}  // namespace
+
 using string::PrettyLogDetail;
 
 CPUQuantizeSquashPass::CPUQuantizeSquashPass() {
@@ -262,10 +280,8 @@ void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(requant_out, requant_out, op_requant_pattern);
 
     if (requant_in->outputs.size() == 1) {
-      std::string any_op_output_name;
-      for (auto name : any_op->Op()->OutputNames())
-        for (auto output_name : any_op->Op()->Output(name))
-          if (output_name == requant_in->Name()) any_op_output_name = name;
+      std::string any_op_output_name =
+          FindOutputNameByVarName(any_op->Op(), requant_in->Name());
 
       PADDLE_ENFORCE_NE(
           any_op_output_name.empty(),
@@ -308,10 +324,8 @@ void CPUQuantizeSquashPass::RequantOpSquash(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(any_op, any_op, requant_op_pattern);
 
     if (requant_out->outputs.size() == 1) {
-      std::string any_op_input_name;
-      for (auto name : any_op->Op()->InputNames())
-        for (auto input_name : any_op->Op()->Input(name))
-          if (input_name == requant_out->Name()) any_op_input_name = name;
+      std::string any_op_input_name =
+          FindInputNameByVarName(any_op->Op(), requant_out->Name());
 
       PADDLE_ENFORCE_NE(any_op_input_name.empty(),
                         true,
@@ -374,10 +388,8 @@ void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
           return;
       }
       // Find the name of the output linking any_op to dequant_in
-      std::string output_name;
-      for (auto name : any_op->Op()->OutputNames())
-        for (auto out_name : any_op->Op()->Output(name))
-          if (out_name == dequant_in->Name()) output_name = name;
+      std::string output_name =
+          FindOutputNameByVarName(any_op->Op(), dequant_in->Name());
 
       if (output_name.empty()) return;
 
@@ -430,17 +442,16 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
           quant_op->Op()->GetAttrIfExists<float>("Shift") == shift) {
         auto quant_out = quant_op->outputs[0];
         auto last_op = quant_out->outputs[0];
+        auto last_op_op = last_op->Op();
 
-        std::string last_op_input_name;
-        for (auto name : last_op->Op()->InputNames())
-          for (auto input_name : last_op->Op()->Input(name))
-            if (input_name == quant_out->Name()) last_op_input_name = name;
+        std::string last_op_input_name =
+            FindInputNameByVarName(last_op_op, quant_out->Name());
 
         PADDLE_ENFORCE_NE(
             last_op_input_name.empty(),
             true,
             platform::errors::NotFound("Operator after quantize operator(%s) "
-                                       "should has quantize output as input.",
+                                       "should have quantize output as input.",
                                        quant_out->Name()));
 
         // update the next operator input,

@@ -25,6 +25,16 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+namespace {
+std::string FindInputNameByVarName(OpDesc* op,
+                                   const std::string& searched_name) {
+  for (auto name : op->InputNames())
+    for (auto input_name : op->Input(name))
+      if (input_name == searched_name) return name;
+  return std::string{};
+}
+}  // namespace
+
 class Graph;
 
 using string::PrettyLogDetail;
@@ -110,10 +120,8 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
                             "Scale(%f) of scale op should have positive value.",
                             scale_scale));
 
-      std::string matmul_op_input_name;
-      for (auto name : matmul_op->Op()->InputNames())
-        for (auto input_name : matmul_op->Op()->Input(name))
-          if (input_name == scale_out->Name()) matmul_op_input_name = name;
+      std::string matmul_op_input_name =
+          FindInputNameByVarName(matmul_op->Op(), scale_out->Name());
 
       PADDLE_ENFORCE_NE(
           matmul_op_input_name.empty(),
