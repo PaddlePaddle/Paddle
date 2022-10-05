@@ -81,6 +81,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    VLOG(4) << "Fuse fc + elementwise_add as residual";
     GET_IR_NODE_FROM_SUBGRAPH(fc_op, fc, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_weights, weights, fc_pattern);
@@ -93,9 +94,18 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
     GET_IR_NODE_FROM_SUBGRAPH(
         elementwise_out, elementwise_out, elementwise_pattern);
 
-    if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) return;
-    if (!IsReachable(g, residual_data, fc_output)) return;
-    if (HasFusedActivation(fc_op)) return;
+    if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) {
+      VLOG(4) << "Skipping fusion because not both ops have use_mkldnn";
+      return;
+    }
+    if (!IsReachable(g, residual_data, fc_output)) {
+      VLOG(4) << "Skipping fusion because residual input is not reachable";
+      return;
+    }
+    if (HasFusedActivation(fc_op)) {
+      VLOG(4) << "Skipping fusion because fc_op has activation fused";
+      return;
+    }
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
