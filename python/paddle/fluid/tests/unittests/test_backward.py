@@ -359,8 +359,6 @@ class TestGradientsWithOptimizer(unittest.TestCase):
             opt = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
 
             forward_list = [o.type for o in main.current_block().ops]
-            optimize_ops, pram_grads = paddle.autograd.backward_mode.gradients_with_optimizer(
-                main, opt)
 
             optimized_list = [o.type for o in main.current_block().ops]
 
