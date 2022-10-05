@@ -298,7 +298,7 @@ def ParseYamlForwardFromBackward(string):
     wspace = r'\s*'
     fargs = r'(.*?)'
     frets = r'(.*)'
-    pattern = f'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
+    pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
 
     m = re.search(pattern, string)
     function_name = m.group(1)
@@ -317,7 +317,7 @@ def ParseYamlForward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = f'^\({fargs}\)$'
+    args_pattern = fr'^\({fargs}\)$'
     args_str = re.search(args_pattern, args_str.strip()).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
@@ -332,7 +332,7 @@ def ParseYamlBackward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = f'\({fargs}\)'
+    args_pattern = fr'\({fargs}\)'
     args_str = re.search(args_pattern, args_str).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)

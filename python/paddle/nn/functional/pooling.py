@@ -1382,7 +1382,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
 
 def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
-    """
+    r"""
     Applies 2D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
 
@@ -1503,7 +1503,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
 
 def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
-    """
+    r"""
     This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
 

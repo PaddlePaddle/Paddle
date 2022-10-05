@@ -1399,7 +1399,7 @@ def _build_table(statistic_data,
             append(header_sep)
             append(row_format.format(*headers))
             append(header_sep)
-            kernel_name_pattern = re.compile('(.+?)(<.*>)(\(.*\))')
+            kernel_name_pattern = re.compile(r'(.+?)(<.*>)(\(.*\))')
             for row_values in all_row_values:
                 match = kernel_name_pattern.match(row_values[0])
                 if match:
