@@ -27,12 +27,12 @@ namespace phi {
 
 template <typename T>
 __global__ void LerpGradKernelImpl(const T* weight,
-                            const T* dout,
-                            T* dx,
-                            T* dy,
-                            const int out_size,
-                            const int x_size,
-                            const int y_size) {
+                                   const T* dout,
+                                   T* dx,
+                                   T* dy,
+                                   const int out_size,
+                                   const int x_size,
+                                   const int y_size) {
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
     T temp_dx = weight[idx] * dout[idx];
     if (idx < x_size) {
@@ -45,15 +45,15 @@ __global__ void LerpGradKernelImpl(const T* weight,
 }
 
 template <typename T>
-__global__ void LerpGradScalarKernelImpl(const T* weight,
-                                    const T* dout,
-                                    T* dx,
-                                    T* dy,
-                                    const int out_size,
-                                    const int x_size,
-                                    const int y_size) {
+__global__ void LerpGradScalarKernelImpl(const T weight,
+                                         const T* dout,
+                                         T* dx,
+                                         T* dy,
+                                         const int out_size,
+                                         const int x_size,
+                                         const int y_size) {
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
-    T temp_dx = weight[0] * dout[idx];
+    T temp_dx = weight * dout[idx];
     if (idx < x_size) {
       dx[idx] = dout[idx] - temp_dx;
     }
@@ -155,15 +155,15 @@ void SwitchKernel(const Context& ctx,
     const int weight_size = weight.numel();
     auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
     LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
-                             gpu_config.GetBlockSize(),
-                             0,
-                             ctx.stream()>>>(weight_data,
-                                             out_grad_data,
-                                             x_grad_data,
-                                             y_grad_data,
-                                             out_size,
-                                             x_grad_size,
-                                             y_grad_size);
+                                  gpu_config.GetBlockSize(),
+                                  0,
+                                  ctx.stream()>>>(weight_data[0],
+                                                  out_grad_data,
+                                                  x_grad_data,
+                                                  y_grad_data,
+                                                  out_size,
+                                                  x_grad_size,
+                                                  y_grad_size);
   } else {
     //    broadcast weight with out_grad's dimensions
     const std::vector<const DenseTensor*> in_tensors = {&weight, &out_grad};
@@ -180,15 +180,15 @@ void SwitchKernel(const Context& ctx,
 
     auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
     LerpGradKernelImpl<T><<<gpu_config.GetGridSize(),
-                     gpu_config.GetBlockSize(),
-                     0,
-                     ctx.stream()>>>(weight_data,
-                                     out_grad_data,
-                                     x_grad_data,
-                                     y_grad_data,
-                                     out_size,
-                                     x_grad_size,
-                                     y_grad_size);
+                            gpu_config.GetBlockSize(),
+                            0,
+                            ctx.stream()>>>(weight_data,
+                                            out_grad_data,
+                                            x_grad_data,
+                                            y_grad_data,
+                                            out_size,
+                                            x_grad_size,
+                                            y_grad_size);
   }
 }
 
@@ -221,7 +221,7 @@ void LerpGradKernel(const Context& ctx,
   //  if x has a different dimension with y or weight in the middle axis, then
   //  they need to be broadcast and then reduced.
   bool reduce_flag = XYNeedReduce(x, y, out);
-  if (reduce_flag) {
+  if (!reduce_flag) {
     T* x_grad_data = ctx.template Alloc<T>(x_grad);
     T* y_grad_data = ctx.template Alloc<T>(y_grad);
     int x_grad_size = x.numel();
