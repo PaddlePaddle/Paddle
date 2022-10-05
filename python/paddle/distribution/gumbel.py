@@ -66,7 +66,7 @@ class Gumbel(TransformedDistribution):
 
         finfo = np.finfo(dtype='float32')
         if isinstance(loc, numbers.Number) and isinstance(
-            scale, numbers.Number):
+                scale, numbers.Number):
             self.base_dist = Uniform(float(finfo.tiny), float(1 - finfo.eps))
         else:
             self.base_dist = Uniform(
@@ -76,7 +76,7 @@ class Gumbel(TransformedDistribution):
         self.transforms = (ExpTransform(),
                            AffineTransform(loc=paddle.to_tensor(
                                0, dtype='float32'),
-                               scale=-paddle.ones_like(self.scale)),
+                                            scale=-paddle.ones_like(self.scale)),
                            ExpTransform(),
                            AffineTransform(loc=self.loc, scale=-self.scale))
 
