@@ -15,10 +15,10 @@
 import paddle
 import numpy as np
 import contextlib
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import Variable, _non_static_mode
+from paddle.fluid.framework import _non_static_mode, default_main_program, Variable
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []

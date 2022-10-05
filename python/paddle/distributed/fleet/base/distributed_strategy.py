@@ -15,7 +15,7 @@
 
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
-from paddle.fluid.framework import _global_flags
+from paddle.fluid.framework import Variable, set_flags, core, _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
 import google.protobuf
@@ -537,6 +537,7 @@ class DistributedStrategy(object):
             'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor',
             'DownpourDoubleUnitAccessor', 'DownpourCtrDymfAccessor'
         ]
+        from google.protobuf.descriptor import FieldDescriptor
         table_param = self.strategy.downpour_table_param
 
         def add_graph_config(graph, strategy):

@@ -16,8 +16,10 @@ from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
-from paddle.fluid import core
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.fluid import core, unique_name
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..utils import set_var_dist_attr
 from ..utils import set_dist_op_desc_original_id
 from ..process_group import new_process_group

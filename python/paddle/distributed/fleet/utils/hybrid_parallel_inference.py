@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from collections import defaultdict
-from paddle.fluid.framework import Block, Program
+from paddle.fluid.framework import Program, Block, Operator
 from paddle.fluid.framework import _non_static_mode
 import paddle.fluid.core as core
 import paddle.distributed.fleet as fleet

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from .public import *
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
-from paddle.distributed.passes import new_pass
+from paddle.distributed.passes import new_pass, PassContext
 
 
 class PsProgramBuilder(object):

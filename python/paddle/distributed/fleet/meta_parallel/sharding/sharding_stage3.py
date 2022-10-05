@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import copy
+import time
+import contextlib
 import logging
+import functools
 import numpy as np
+from itertools import chain
 from types import MethodType
-from collections import OrderedDict
+from collections import deque, OrderedDict
 
 import paddle
 from paddle import nn

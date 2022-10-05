@@ -24,10 +24,12 @@ import shutil
 from contextlib import closing
 import multiprocessing
 import socket
+import warnings
 import six
 import struct
 import json
 
+import paddle
 import paddle.fluid as fluid
 from distutils.util import strtobool
 import paddle.utils.cpp_extension.extension_utils as utils

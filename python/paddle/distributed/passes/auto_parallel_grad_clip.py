@@ -17,6 +17,7 @@ from functools import reduce
 
 import paddle
 
+from paddle.fluid import core
 from .pass_base import PassBase, register_pass
 from ..auto_parallel.reshard import Resharder
 from ..auto_parallel.process_group import get_world_process_group

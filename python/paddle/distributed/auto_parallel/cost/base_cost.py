@@ -17,7 +17,7 @@ from functools import reduce
 
 import paddle
 
-from ..utils import _get_comm_group
+from ..utils import _get_comm_group, _get_corresponding_rank
 from ..process_group import get_process_group
 from ..cluster import LinkType
 from ..dist_tensor import DistributedTensor

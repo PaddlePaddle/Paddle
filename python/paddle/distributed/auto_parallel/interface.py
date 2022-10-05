@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
+
 import paddle
 from paddle.fluid import core
 from .process_mesh import ProcessMesh
 from .process_mesh import get_current_process_mesh
+from .process_mesh import set_current_process_mesh
+from .process_mesh import reset_current_process_mesh
 from .dist_context import get_default_distributed_context
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperatorHelper

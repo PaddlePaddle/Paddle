@@ -16,6 +16,7 @@ from collections import OrderedDict
 from functools import reduce
 
 import paddle
+import paddle.fluid.core as core
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 from .base_cost import Cost

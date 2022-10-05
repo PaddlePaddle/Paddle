@@ -21,6 +21,7 @@ from paddle.fluid import framework
 import contextlib
 from paddle.fluid.framework import in_dygraph_mode
 
+import logging
 from ..utils.log_util import logger
 
 __all__ = []
@@ -128,6 +129,7 @@ class LegacyRecomputeFunction(LegacyPyLayer):
 
     @staticmethod
     def backward(ctx, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
@@ -263,6 +265,7 @@ class RecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 

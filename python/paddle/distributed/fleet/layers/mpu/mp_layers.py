@@ -18,6 +18,8 @@ from paddle.fluid import core
 from paddle.fluid.dygraph.layers import Layer
 from .random import get_rng_state_tracker
 from paddle.nn import functional as F
+from paddle import framework
+from paddle.autograd import PyLayer
 from ...base import topology as tp
 
 __all__ = []

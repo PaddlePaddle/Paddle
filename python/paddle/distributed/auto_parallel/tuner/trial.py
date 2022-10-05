@@ -18,6 +18,7 @@
 import hashlib
 import random
 import time
+from enum import Enum
 
 from .storable import Storable
 from .recorder import MetricsRecorder

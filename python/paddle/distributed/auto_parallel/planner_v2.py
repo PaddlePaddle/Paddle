@@ -14,6 +14,7 @@
 
 from .completion import Completer
 from .dist_context import get_default_distributed_context
+from .utils import print_program_with_dist_attr
 
 # from .tuner.parallel_tuner import ParallelTuner
 

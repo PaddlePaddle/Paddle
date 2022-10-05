@@ -13,7 +13,8 @@
 # limitations under the License
 
 import abc
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+import paddle
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..dist_attribute import OperatorDistributedAttribute
 from ..utils import _get_comm_group, _get_corresponding_rank, is_optimize_op
 from ..process_group import new_process_group

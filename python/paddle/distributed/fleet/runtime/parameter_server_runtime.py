@@ -21,7 +21,7 @@ from paddle.fluid.framework import Program
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
-from paddle.fluid.framework import Variable
+from paddle.fluid.framework import Variable, Parameter
 
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready

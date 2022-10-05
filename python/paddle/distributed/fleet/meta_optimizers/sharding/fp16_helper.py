@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from paddle.distributed.fleet.meta_optimizers.common import is_optimizer_op, OP_ROLE_KEY, OpRole
+from paddle.distributed.fleet.meta_optimizers.sharding.utils import *
 
 from paddle.fluid import core
 

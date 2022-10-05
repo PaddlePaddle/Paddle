@@ -16,11 +16,11 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle.fluid import unique_name
+from paddle.fluid import core, unique_name
 from paddle.fluid.framework import default_main_program
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from paddle.distributed.auto_parallel.operators.common import is_data_parallel_scale_op, is_data_parallel_reduce_op
-from paddle.distributed.auto_parallel.utils import find_higher_order_backward_op, is_loss_grad_op, is_optimize_op, ring_id_to_process_group
+from paddle.distributed.auto_parallel.utils import is_loss_grad_op, is_optimize_op, is_backward_op, ring_id_to_process_group, find_higher_order_backward_op
 from .pass_base import PassBase, PassType, register_pass
 
 # add new optimizers supporting rescale_grad here

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import subprocess
+import shlex
 import os
 import json
 import shutil

@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
+
 import paddle
+from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core
 from paddle.autograd import PyLayer
 from paddle.fluid import framework
 from ..meta_parallel.parallel_layers.random import get_rng_state_tracker
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.distributed import fleet
 from .recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
 from ..meta_parallel.pp_utils import utils
 

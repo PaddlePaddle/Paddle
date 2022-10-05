@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import logging
 
 from .pass_base import PassBase, register_pass
 from paddle.fluid import core, unique_name
 from paddle.fluid import framework as framework
-from paddle.fluid.framework import Variable
+from paddle.fluid.framework import Variable, Operator
 from paddle.fluid.backward import _append_grad_suffix_, _get_no_grad_set_name
 from paddle.fluid.backward import ProgramStats, _rename_arg_, _find_op_path_
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr, set_dist_op_desc_original_id
 from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping

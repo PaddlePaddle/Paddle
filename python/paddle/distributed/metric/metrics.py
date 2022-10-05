@@ -14,6 +14,7 @@
 
 import sys
 import yaml
+import paddle.fluid as fluid
 import logging
 from paddle.distributed.utils.log_utils import get_logger
 

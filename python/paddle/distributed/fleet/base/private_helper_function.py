@@ -15,6 +15,7 @@ import sys
 import time
 import socket
 from contextlib import closing
+from six import string_types
 
 __all__ = []
 

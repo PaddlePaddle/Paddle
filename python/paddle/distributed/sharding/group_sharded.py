@@ -14,6 +14,7 @@
 
 import os
 import logging
+from enum import Enum
 
 import paddle
 

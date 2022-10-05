@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import paddle
+import os
+import numpy as np
+from .base import topology as tp
 from .base.topology import ParallelMode
-from .meta_parallel import TensorParallel
+from .meta_parallel import TensorParallel, model_parallel_random_seed
 from .meta_parallel import PipelineParallel, ShardingParallel, PipelineParallelWithInterleave, PipelineLayer
+from paddle.fluid import core
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 from paddle.distributed import fleet
 
@@ -127,7 +131,7 @@ def distributed_model(model):
         # NOTE (JZ-LIANG) init parameters broadcast within sharding group
         # normally it should be done inside DataParallel
         if fleet_env.sharding_degree > 1:
-            from paddle.distributed.fleet.utils.hybrid_parallel_util import broadcast_sharding_parameters
+            from paddle.distributed.fleet.utils.hybrid_parallel_util import broadcast_mp_parameters, broadcast_sharding_parameters
             assert fleet_env.sharding_degree == fleet_env._hcg.get_sharding_parallel_world_size(
             )
             broadcast_sharding_parameters(model, fleet_env._hcg)

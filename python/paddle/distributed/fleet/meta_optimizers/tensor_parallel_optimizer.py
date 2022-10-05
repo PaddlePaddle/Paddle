@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 
 import paddle.fluid as fluid
+from paddle.fluid import core, unique_name
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import CollectiveHelper, OP_ROLE_KEY, OP_ROLE_VAR_KEY, OpRole, is_backward_op, is_loss_grad_op, is_optimizer_op
+from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 
 __all__ = []
 

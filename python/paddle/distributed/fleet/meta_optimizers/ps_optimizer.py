@@ -21,6 +21,7 @@ import os
 import platform
 from paddle.distributed.ps.utils.public import *
 from paddle.distributed.passes import PassContext
+from ..base.private_helper_function import wait_server_ready
 from paddle.distributed.ps.utils.ps_factory import PsProgramBuilderFactory
 
 

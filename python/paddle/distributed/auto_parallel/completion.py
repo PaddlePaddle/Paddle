@@ -13,13 +13,17 @@
 # limitations under the License.
 
 import copy
+from copy import deepcopy
 import time
 
 from paddle.fluid import core
+from paddle.fluid import framework
 
-from .utils import is_gradient_clip_op
+from .utils import print_program_with_dist_attr, is_gradient_clip_op
 from .operators import find_compatible_distributed_operator_impls
-from .dist_context import _node_id
+from .dist_context import get_default_distributed_context, _node_id
+from .dist_tensor import DistributedTensor
+from .dist_op import DistributedOperator
 from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import OperatorDistributedAttribute
 from .process_mesh import ProcessMesh

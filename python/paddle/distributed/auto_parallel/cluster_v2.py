@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import numpy as np
 from enum import IntEnum
 from enum import unique
 
+import paddle
 from paddle.fluid import core
+from paddle.fluid.core import Device
+from paddle.fluid.core import Link
 
 
 @unique

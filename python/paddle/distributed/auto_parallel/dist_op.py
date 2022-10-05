@@ -13,12 +13,16 @@
 # limitations under the License
 
 import copy
+from collections import defaultdict
 import paddle
 from paddle.fluid import core
 from paddle.fluid.framework import Variable
+from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import OperatorDistributedAttribute
 from .dist_attribute import append_op_input_suffix
 from .dist_attribute import append_op_output_suffix
+from .dist_attribute import get_tensor_dist_attr_field_keys
+from .dist_attribute import get_op_dist_attr_field_keys
 from .utils import convert_to_shard_spec, verify_shard_spec
 
 

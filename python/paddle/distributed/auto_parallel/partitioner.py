@@ -13,14 +13,19 @@
 # limitations under the License
 
 import copy
+import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Program
+from paddle.fluid import framework as framework
+from paddle.fluid import core, unique_name
+from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
+from paddle.distributed.auto_parallel.dist_context import DistributedContext, DistributedOperatorContext
 from .dist_attribute import OperatorDistributedAttribute
-from .utils import is_backward_op, is_forward_op, is_loss_op, is_optimize_op
+from .process_group import new_process_group
+from .utils import set_dist_op_desc_original_id
+from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op, is_loss_op, is_optimize_op
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]

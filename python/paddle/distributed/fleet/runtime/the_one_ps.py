@@ -21,6 +21,7 @@ from paddle.fluid.framework import Program
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
+from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
 
@@ -669,7 +670,7 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_worker(self):
         from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import \
-            SyncStrategy
+            SyncStrategy, GeoStrategy
 
         is_sync = self.compiled_strategy.is_sync_mode()
         worker = self._get_fleet_proto(is_server=False, is_sync=is_sync)

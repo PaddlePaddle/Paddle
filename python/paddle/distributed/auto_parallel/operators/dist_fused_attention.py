@@ -17,6 +17,9 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from ..utils import is_dim_shard, is_dim_replicate
+from ..utils import is_valid_list_index
+from ..utils import compute_compatible_dim_mapping
+from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
 from ..utils import _get_comm_group, _get_corresponding_rank

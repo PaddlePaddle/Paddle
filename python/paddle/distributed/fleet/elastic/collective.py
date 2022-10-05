@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import tempfile
+from paddle.distributed.fleet import launch_utils
+from paddle.distributed.fleet import cloud_utils
+from paddle.distributed.fleet import ascend_utils
 
 from paddle.distributed.fleet.launch_utils import *
 

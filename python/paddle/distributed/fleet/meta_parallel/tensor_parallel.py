@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.fluid.dygraph.layers import Layer
 from .meta_parallel_base import MetaParallelBase
 from ..utils.hybrid_parallel_util import broadcast_dp_parameters
 from ..utils.hybrid_parallel_util import broadcast_input_data

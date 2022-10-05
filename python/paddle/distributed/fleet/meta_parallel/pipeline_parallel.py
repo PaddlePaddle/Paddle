@@ -20,7 +20,7 @@ from ..utils.hybrid_parallel_util import broadcast_mp_parameters
 from ..utils.hybrid_parallel_util import broadcast_dp_parameters
 from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
 from ..utils.log_util import logger
-from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
+from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer, HybridParallelGradScaler
 import paddle.fluid.framework as framework
 from .pp_utils import p2p_communication as p2p
 import paddle.fluid.core as core

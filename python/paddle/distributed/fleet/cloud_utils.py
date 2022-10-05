@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import paddle
 from paddle.distributed.fleet.launch_utils import get_cluster, logger
 
 __all__ = []
@@ -66,6 +67,7 @@ paddlecloud environment.".format(args_node_ips, node_ips))
 
             except Exception as e:
                 print(e)
+                pass
 
         if started_port is None:
             started_port = 6170

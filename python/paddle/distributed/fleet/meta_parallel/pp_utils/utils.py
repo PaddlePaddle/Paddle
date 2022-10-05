@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle.fluid import core
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []
 

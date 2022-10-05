@@ -15,6 +15,7 @@
 from functools import reduce
 
 import collections
+import math
 import os
 import warnings
 import logging

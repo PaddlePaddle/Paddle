@@ -17,12 +17,18 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from .common import is_parameter_related
+from ..utils import is_dim_shard
+from ..utils import is_dim_replicate
+from ..utils import is_valid_list_index
+from ..utils import compute_compatible_dim_mapping
+from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
 from ..cost import Transpose2OpCost, Transpose2GradOpCost
-from ..cost import build_comp_desc_from_dist_op, build_dp_costs
+from ..cost import build_comp_desc_from_dist_op, build_comm_desc_from_dist_op, build_dp_costs
 from ..cost import build_comp_costs_from_descs
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.auto_parallel.cost.comm_op_cost import AllreduceSumOpCost
 
 
 class DistributedTranspose2(DistributedOperatorImplContainer):

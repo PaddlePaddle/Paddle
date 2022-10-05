@@ -14,9 +14,12 @@
 
 import abc
 import numpy as np
+from functools import wraps
 
 import paddle
-from paddle.io import BatchSampler, IterableDataset
+from .utils import to_list
+from paddle.fluid.layers.utils import flatten
+from paddle.io import DataLoader, BatchSampler, IterableDataset
 from paddle.fluid.dataloader.batch_sampler import _InfiniteIterableSampler
 from paddle.fluid.dataloader.dataloader_iter import _DatasetKind, default_collate_fn, default_convert_fn
 

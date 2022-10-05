@@ -14,7 +14,8 @@
 
 import os
 import json
-from paddle.distributed.fleet.launch_utils import DeviceMode, get_cluster, get_host_name_ip
+import paddle
+from paddle.distributed.fleet.launch_utils import get_cluster, logger, get_host_name_ip, DeviceMode
 
 __all__ = []
 

@@ -17,10 +17,19 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl, is_parameter_related
 from ..utils import is_dim_shard
+from ..utils import is_dim_replicate
+from ..utils import is_valid_list_index
+from ..utils import compute_compatible_dim_mapping
+from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from ..utils import set_dist_op_desc_original_id
+from paddle.fluid import core, unique_name
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import Program, Parameter, Variable, program_guard
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from .dist_default import DistributedDefaultImpl0
 from ..cost import build_comp_desc_from_dist_op, build_comp_costs_from_descs
+from ..cost import build_comm_costs_from_descs
 from ..cost import Reshape2OpCost
 from ..cost import Reshape2GradOpCost
 from paddle.distributed.fleet.meta_optimizers.common import OpRole

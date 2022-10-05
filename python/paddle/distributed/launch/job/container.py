@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
 from paddle.distributed.launch.utils.process_context import ProcessContext
 
 from .status import Status
 
-import os
-import sys
+import os, copy, sys
 
 
 class Container(object):
