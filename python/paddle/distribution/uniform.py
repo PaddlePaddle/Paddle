@@ -169,8 +169,8 @@ class Uniform(distribution.Distribution):
             output_shape = shape + batch_shape
             output = nn.uniform_random(
                 output_shape, dtype=self.dtype, min=0., max=1.,
-                seed=seed) * (tensor.zeros(
-                    output_shape, dtype=self.dtype) + (self.high - self.low))
+                seed=seed) * (tensor.zeros(output_shape, dtype=self.dtype) +
+                              (self.high - self.low))
             output = elementwise_add(output, self.low, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
