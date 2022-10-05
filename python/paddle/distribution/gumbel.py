@@ -105,15 +105,6 @@ class Gumbel(TransformedDistribution):
         return self.loc + self.scale * np.euler_gamma
 
     @property
-    def mode(self):
-        """Mode of distribution
-
-        Returns:
-            Tensor: mode value
-        """
-        return self.loc
-
-    @property
     def variance(self):
         """Variance of distribution.
 
@@ -296,24 +287,3 @@ class Gumbel(TransformedDistribution):
             x = affineTf2.forward(x)
 
             return x
-
-    def _extend_shape(self, sample_shape):
-        """compute shape of the sample
-
-        Args:
-            sample_shape (list or tuple): sample shape
-
-        Returns:
-            Tensor: generated sample data shape
-
-        Examples:
-
-        >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-        >>> example._extend_shape([2, 4])
-        [2, 4, 1]
-
-        """
-        if self.batch_size_unknown:
-            self._batch_shape = ()
-        return list(sample_shape) + list(self._batch_shape) + list(
-            self._event_shape)
