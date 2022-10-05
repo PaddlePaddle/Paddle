@@ -150,6 +150,7 @@ void SwitchKernel(const Context& ctx,
   if (weight.dims().size() == 1) {
     //    condition when weight is a scalar
     const T* weight_data = weight.data<T>();
+    const T weight_scalar = weight_data[0];
     const T* out_grad_data = out_grad.data<T>();
     const int out_size = out_grad.numel();
     const int weight_size = weight.numel();
@@ -157,7 +158,7 @@ void SwitchKernel(const Context& ctx,
     LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
                                   gpu_config.GetBlockSize(),
                                   0,
-                                  ctx.stream()>>>(weight_data[0],
+                                  ctx.stream()>>>(weight_scalar,
                                                   out_grad_data,
                                                   x_grad_data,
                                                   y_grad_data,
