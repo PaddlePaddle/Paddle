@@ -84,8 +84,6 @@ class DistributedInfer:
         return self.sparse_table_maps
 
     def _init_dense_params(self, exe=None, dirname=None):
-        pass
-
         sparse_table_maps = self._get_sparse_table_map()
 
         if dirname is not None and exe is not None:
