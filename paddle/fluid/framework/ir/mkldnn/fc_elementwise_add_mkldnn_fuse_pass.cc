@@ -95,15 +95,25 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
         elementwise_out, elementwise_out, elementwise_pattern);
 
     if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) {
-      VLOG(4) << "Skipping fusion because not both ops have use_mkldnn";
+      VLOG(4) << "Skipping fusion for " << fc_op->Name() << "(" << fc_op->id()
+              << ") with " << elementwise_op->Name() << "("
+              << elementwise_op->id()
+              << ") because not both ops have use_mkldnn";
       return;
     }
     if (!IsReachable(g, residual_data, fc_output)) {
-      VLOG(4) << "Skipping fusion because residual input is not reachable";
+      VLOG(4) << "Skipping fusion for " << fc_op->Name() << "(" << fc_op->id()
+              << ") with " << elementwise_op->Name() << "("
+              << elementwise_op->id() << ") because residual input "
+              << residual_data->Name() << "(" << residual_data->id()
+              << ") is not "
+                 "reachable";
       return;
     }
     if (HasFusedActivation(fc_op)) {
-      VLOG(4) << "Skipping fusion because fc_op has activation fused";
+      VLOG(4) << "Skipping fusion for " << fc_op->Name() << "(" << fc_op->id()
+              << ") with " << elementwise_op->Name() << "("
+              << elementwise_op->id() << ") because fc has activation fused";
       return;
     }
 
