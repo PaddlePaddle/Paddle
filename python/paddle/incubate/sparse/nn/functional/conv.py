@@ -33,6 +33,7 @@ def _conv3d(x,
             subm=False,
             key=None,
             data_format="NDHWC",
+            cutlass=False,
             name=None):
     assert groups == 1, "Currently, only support groups=1"
 
@@ -66,7 +67,7 @@ def _conv3d(x,
     if in_dynamic_mode():
         pre_bias = _C_ops.sparse_conv3d(x, weight, padding, dilation, stride,
                                         groups, subm,
-                                        key if key is not None else "")
+                                        key if key is not None else "", cutlass)
         if bias is not None:
             return add(pre_bias, bias)
         else:
@@ -79,7 +80,8 @@ def _conv3d(x,
             'strides': stride,
             'groups': groups,
             'subm': subm,
-            'key': key
+            'key': key,
+            'cutlass': cutlass
         }
         op_type = 'sparse_conv3d'
         helper = LayerHelper(op_type, **locals())
