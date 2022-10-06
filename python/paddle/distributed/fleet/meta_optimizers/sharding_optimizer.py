@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
 from paddle.static import default_startup_program, device_guard

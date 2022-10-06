@@ -17,6 +17,8 @@ from enum import IntEnum
 from enum import unique
 
 from paddle.fluid import core
+from paddle.fluid.core import Device  # noqa: F401
+from paddle.fluid.core import Link  # noqa: F401
 
 
 @unique
