@@ -27,6 +27,18 @@ import paddle
 import paddle.fluid.core as core
 from paddle import _legacy_C_ops
 import contextlib
+from .fleet.layers.mpu.mp_ops import split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
 from .communication.comm_utils import ReduceOp
 
 __all__ = []
