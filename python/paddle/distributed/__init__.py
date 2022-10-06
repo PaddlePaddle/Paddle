@@ -35,7 +35,6 @@ from .collective import all_gather_object  # noqa: F401
 from .collective import scatter  # noqa: F401
 from .collective import barrier  # noqa: F401
 from .collective import ReduceOp  # noqa: F401
-from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
 from .collective import alltoall  # noqa: F401
 from .collective import recv  # noqa: F401
@@ -57,6 +56,7 @@ from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel import shard_tensor  # noqa: F401
 
 from .fleet import BoxPSDataset  # noqa: F401
+from .fleet.layers.mpu.mp_ops import split  # noqa: F401
 
 from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
