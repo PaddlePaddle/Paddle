@@ -455,7 +455,7 @@ class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
                 x_data, y_data, batch_count, key_seq_len);
         break;
       default:
-        PADDLE_THROW(phi::errors::Unimplemented("Too large equence length."));
+        PADDLE_THROW(phi::errors::Unimplemented("Too large sequence length."));
         break;
     }
   }
@@ -582,7 +582,7 @@ class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
                                              key_seq_len);
         break;
       default:
-        PADDLE_THROW(phi::errors::Unimplemented("Too large equence length."));
+        PADDLE_THROW(phi::errors::Unimplemented("Too large sequence length."));
         break;
     }
   }
