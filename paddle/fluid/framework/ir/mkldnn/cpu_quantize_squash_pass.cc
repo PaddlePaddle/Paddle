@@ -28,18 +28,20 @@ namespace ir {
 namespace {
 std::string FindInputNameByVarName(OpDesc* op,
                                    const std::string& searched_name) {
+  std::string ret;
   for (auto name : op->InputNames())
     for (auto input_name : op->Input(name))
-      if (input_name == searched_name) return name;
-  return std::string{};
+      if (input_name == searched_name) ret = name;
+  return ret;
 }
 
 std::string FindOutputNameByVarName(OpDesc* op,
                                     const std::string& searched_name) {
+  std::string ret;
   for (auto name : op->OutputNames())
     for (auto output_name : op->Output(name))
-      if (output_name == searched_name) return name;
-  return std::string{};
+      if (output_name == searched_name) ret = name;
+  return ret;
 }
 }  // namespace
 
