@@ -1101,7 +1101,8 @@ class ThresholdedReLU(Layer):
 
 class Silu(Layer):
     r"""
-    Silu Activation.
+    Silu Activation
+
     .. math::
 
         silu(x) = \frac{x}{1 + \mathrm{e}^{-x}}
