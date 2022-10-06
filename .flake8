@@ -57,19 +57,8 @@ per-file-ignores =
     python/paddle/geometric/*:F401
     python/paddle/utils/*:F401
     python/paddle/vision/*:F401
-    python/paddle/quantization/*:F401
-    python/paddle/libs/*:F401
-    python/paddle/audio/*:F401
-    python/paddle/incubate/*:F401
-    python/paddle/amp/*:F401
-    python/paddle/jit/*:F401
     python/paddle/static/*:F401
-    python/paddle/inference/*:F401
-    python/paddle/device/*:F401
-    python/paddle/profiler/*:F401
     python/paddle/tensor/*:F401
-    python/paddle/text/*:F401
-    python/paddle/metric/*:F401
     python/paddle/fluid/tests/custom_kernel/*:F401
     python/paddle/fluid/tests/custom_runtime/*:F401
     python/paddle/fluid/tests/unittests/ir/*:F401
