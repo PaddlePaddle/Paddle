@@ -1138,7 +1138,7 @@ class SmoothL1Loss(Layer):
 
     .. math::
 
-        loss(x,y) = \frac{1}{n}\sum_{i}z_i
+        loss(x, y) = \frac{1}{n}\sum_{i}z_i
 
     where :math:`z_i` is given by:
 

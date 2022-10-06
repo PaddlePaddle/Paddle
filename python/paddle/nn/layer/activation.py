@@ -1105,7 +1105,7 @@ class Silu(Layer):
     Silu Activation.
     .. math::
 
-        silu(x) = \frac{x}{1 + e^{-x}}
+        silu(x) = \frac{x}{1 + \mathrm{e}^{-x}}
 
     Where :math:`x` is the input Tensor.
 
@@ -1271,15 +1271,13 @@ class Softmax(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.array([[[2.0, 3.0, 4.0, 5.0],
+            x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
                         [3.0, 4.0, 5.0, 6.0],
                         [7.0, 8.0, 8.0, 9.0]],
                         [[1.0, 2.0, 3.0, 4.0],
                         [5.0, 6.0, 7.0, 8.0],
-                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
-            x = paddle.to_tensor(x)
+                        [6.0, 7.0, 8.0, 9.0]]], dtype='float32')
             m = paddle.nn.Softmax()
             out = m(x)
             # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
