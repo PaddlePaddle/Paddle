@@ -1187,7 +1187,7 @@ def softplus(x, beta=1, threshold=20, name=None):
             import paddle
             import paddle.nn.functional as F
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3],dtype='float32')
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
 
