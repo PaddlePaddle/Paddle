@@ -22,15 +22,6 @@ import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from test_attribute_var import UnittestBase
 
-paddle.disable_static()
-
-np_data = np.arange(24).reshape((2, 3, 4))
-print(np_data)
-inp = paddle.to_tensor(np_data)
-out = paddle.argmin(inp)
-print(out)
-exit()
-
 
 class BaseTestCase(OpTest):
 

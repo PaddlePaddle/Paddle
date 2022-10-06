@@ -448,52 +448,6 @@ __device__ __forceinline__ void Reduce(T* out,
   }
 }
 
-/* index version of reduce */
-template <typename InT,
-          typename T,
-          int NX,
-          int NY,
-          class ReduceFunctor,
-          details::ReduceMode Mode>
-__device__ __forceinline__ void ReduceIndex(T* out,
-                                            const InT* in,
-                                            ReduceFunctor reducer,
-                                            bool reduce_last_dim) {
-  int block_index = blockDim.y;
-
-  if (Mode == details::ReduceMode::kGlobalMode) {
-    bool block_reduce_y = (!reduce_last_dim) && (block_index > 1);
-    // when reduce is not required for the last dim, and reduce num has been
-    // split into multiple threads
-    if (block_reduce_y) {
-#pragma unroll
-      for (int i = 0; i < NY * NX; i++) {  // reduce along blockdim.y
-        out[i] = details::BlockYReduce<T, ReduceFunctor>(out[i], reducer);
-      }
-    }
-
-    // when last dimension need to be reduced
-    if (reduce_last_dim) {
-#pragma unroll
-      for (int i = 0; i < NY * NX; i++) {  // reduce along blockDim.x
-        out[i] = details::BlockXReduce<T, ReduceFunctor>(out[i], reducer);
-      }
-    }
-  } else {  // else  kLocalMode
-#pragma unroll
-    for (int i = 0; i < NY; ++i) {
-#pragma unroll
-      for (int j = 0; j < NX; ++j) {
-        out[i] = reinterpret_cast<T>(reducer(in[out[i]],
-                                             in[i * NX + j],
-                                             static_cast<int64_t>(out[i]),
-                                             i * NX + j));
-        // out[i] = reducer(out[i], in[i * NX + j]);
-      }
-    }
-  }
-}
-
 /*
  * @brief Fill register with a constant according to OpFunc
  *
