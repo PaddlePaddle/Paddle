@@ -316,9 +316,94 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
           static_cast<T>(0));
     }
   }
-  if (!cutlass || !std::is_same<T, float>::value ||
-      !std::is_same<IntT, int32_t>::value || in_channels % 4 != 0 ||
-      out_channels % 4 != 0) {
+  if constexpr (std::is_same<T, phi::dtype::float16>::value &&
+                std::is_same<IntT, int32_t>::value) {
+    if (cutlass && in_channels % 8 == 0 && out_channels % 8 == 0) {
+      thrust::host_vector<cutlass::gemm::GemmCoord> h_shape(kernel_size);
+      thrust::host_vector<const T*> h_ptr_B(kernel_size);
+      thrust::host_vector<T*> h_ptr_D(kernel_size);
+      thrust::host_vector<const IntT*> h_ptr_gather_A_indices(kernel_size);
+
+      int group_count = 0;
+      int group_idx = 0;
+
+      for (int i = 0; i < kernel_size; i++) {
+        if (h_counter_ptr[i] <= 0) {
+          continue;
+        }
+        group_count++;
+        int M = h_counter_ptr[i];
+        int K = in_channels;
+        int N = out_channels;
+        h_shape[group_idx] = cutlass::gemm::GemmCoord(M, N, K);
+
+        const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+        T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
+        h_ptr_B[group_idx] = tmp_kernel_ptr;
+        h_ptr_D[group_idx] = tmp_out_ptr;
+        h_ptr_gather_A_indices[group_idx] = rulebook_ptr + h_offsets_ptr[i];
+        group_idx++;
+      }
+
+      thrust::device_vector<cutlass::gemm::GemmCoord> shape = h_shape;
+      thrust::device_vector<const T*> ptr_B = h_ptr_B;
+      thrust::device_vector<T*> ptr_D = h_ptr_D;
+      thrust::device_vector<const IntT*> ptr_gather_A_indices =
+          h_ptr_gather_A_indices;
+      thrust::device_vector<T*> ptr_A(kernel_size,
+                                      const_cast<T*>(x.values().data<T>()));
+      thrust::device_vector<int64_t> lda(kernel_size, (int64_t)in_channels);
+      thrust::device_vector<int64_t> ldb(kernel_size, (int64_t)out_channels);
+      thrust::device_vector<int64_t> ldd(kernel_size, (int64_t)out_channels);
+
+      using ElementA = cutlass::half_t;
+      using ElementB = cutlass::half_t;
+      using ElementAccumulator = float;
+      using ElementComputeEpilogue = cutlass::half_t;
+      using ElementOutput = cutlass::half_t;
+      using LayoutA = cutlass::layout::RowMajor;
+      using LayoutB = cutlass::layout::RowMajor;
+      using LayoutOutput = cutlass::layout::RowMajor;
+      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 128, 32>;
+      using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 32>;
+      using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 16>;
+      constexpr bool GatherA = true;
+      constexpr int NumStages = 3;
+      // group-gather-gemm fusion
+      group_gemm<ElementA,
+                 ElementB,
+                 ElementAccumulator,
+                 ElementComputeEpilogue,
+                 ElementOutput,
+                 LayoutA,
+                 LayoutB,
+                 LayoutOutput,
+                 IntT,
+                 ShapeMMAThreadBlock,
+                 ShapeMMAWarp,
+                 ShapeMMAOp,
+                 NumStages,
+                 GatherA>(reinterpret_cast<cutlass::half_t**>(
+                              thrust::raw_pointer_cast(ptr_A.data())),
+                          reinterpret_cast<cutlass::half_t**>(const_cast<T**>(
+                              thrust::raw_pointer_cast(ptr_B.data()))),
+                          nullptr,
+                          reinterpret_cast<cutlass::half_t**>(
+                              thrust::raw_pointer_cast(ptr_D.data())),
+                          thrust::raw_pointer_cast(shape.data()),
+                          thrust::raw_pointer_cast(lda.data()),
+                          thrust::raw_pointer_cast(ldb.data()),
+                          nullptr,
+                          thrust::raw_pointer_cast(ldd.data()),
+                          thrust::raw_pointer_cast(ptr_gather_A_indices.data()),
+                          group_count,
+                          static_cast<cutlass::half_t>(1),
+                          static_cast<cutlass::half_t>(0));
+    }
+  }
+  if (!cutlass || std::is_same<T, double>::value ||
+      !std::is_same<IntT, int32_t>::value || in_channels % 8 != 0 ||
+      out_channels % 8 != 0) {
 #endif
     // 2. gather
     phi::DenseTensor in_features =
