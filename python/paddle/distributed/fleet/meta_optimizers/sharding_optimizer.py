@@ -28,19 +28,6 @@ from .sharding.gradient_clip_helper import GradientClipHelper
 from .sharding.offload_helper import OffloadHelper
 from .sharding.prune import ProgramDeps
 from .sharding import utils
-from .sharding.utils import (
-    insert_sync_calc_op,
-    insert_sync_comm_ops,
-    insert_fill_constant_ops,
-    insert_cast_ops,
-    insert_allreduce_ops,
-    insert_reduce_ops,
-    get_grad_device,
-    get_first_optimize_op_idx,
-    insert_broadcast_ops,
-    get_var_size,
-    insert_scale_loss_grad_ops,
-)
 from ..utils.log_util import logger
 
 __all__ = []
@@ -391,7 +378,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         len_of_ops = len(main_block.ops)
         if self.scale_gradient:
             self._avg_grad_merge_after_sum(main_block, accumulated_grad_names)
-        first_optimize_op_index = get_first_optimize_op_idx(main_block)
+        first_optimize_op_index = utils.get_first_optimize_op_idx(main_block)
 
         if self.pp_allreduce_in_optimize:
             logger.info("Pipeline Persistable grad is {}".format(
@@ -399,7 +386,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             # FIXME(wangxi): accumulated_grad get from pipeline is not
             #  include sharding's param@BroadCast grad when
             #  pp_allreduce_in_optimize
-            accumulated_grad_names = insert_reduce_ops(
+            accumulated_grad_names = utils.insert_reduce_ops(
                 main_block,
                 first_optimize_op_index,
                 self.sharding_ring_id,
@@ -445,7 +432,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             if not strategy.fuse_grad_merge and not optimize_cast:
                 assert len(accumulated_grad_names) == len(optimizer_param)
         elif self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
-            insert_allreduce_ops(
+            utils.insert_allreduce_ops(
                 main_block,
                 first_optimize_op_index,
                 self.dp_ring_id,
@@ -536,7 +523,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         global_dp_degree = self.sharding_degree * self.dp_degree
         assert int(global_dp_degree) == global_dp_degree
         if global_dp_degree > 1:
-            insert_scale_loss_grad_ops(main_block, scale=global_dp_degree)
+            utils.insert_scale_loss_grad_ops(main_block, scale=global_dp_degree)
 
         main_block._sync_with_cpp()
 
@@ -896,7 +883,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 segment._param2broadcast[input_name] = broadcast_var_name
                 segment._broadcast_vars.append(
                     (broadcast_var_name, self._shard.device(input_name)))
-                segment._param_mem += get_var_size(
+                segment._param_mem += utils.get_var_size(
                     self._main_program.global_block().var(input_name))
 
             # find reduce vars
@@ -1097,9 +1084,11 @@ class ShardingOptimizer(MetaOptimizerBase):
             if self.gradient_merge_mode != "sharding_gm" or self._gradient_merge_acc_step <= 1:
                 if self.hybrid_dp and self.hybrid_dp_mode == "sharding_hybrid_dp" and len(
                         shard_allredue_vars) >= 1:
-                    insert_sync_comm_ops(block, self._segments[-1]._end_idx,
-                                         self.dp_ring_id, shard_allredue_vars)
-                    insert_allreduce_ops(
+                    utils.insert_sync_comm_ops(block,
+                                               self._segments[-1]._end_idx,
+                                               self.dp_ring_id,
+                                               shard_allredue_vars)
+                    utils.insert_allreduce_ops(
                         block,
                         self._segments[-1]._end_idx,
                         self.dp_ring_id,
@@ -1112,17 +1101,17 @@ class ShardingOptimizer(MetaOptimizerBase):
                     self._segments[-1]._end_idx, shard_allredue_vars,
                     self._shard)
 
-            insert_sync_comm_ops(block, self._segments[-1]._end_idx,
-                                 self.sharding_ring_id,
-                                 self._segments[-1]._allreduce_vars)
+            utils.insert_sync_comm_ops(block, self._segments[-1]._end_idx,
+                                       self.sharding_ring_id,
+                                       self._segments[-1]._allreduce_vars)
             # allreduce --> reduce
-            insert_reduce_ops(block,
-                              self._segments[-1]._end_idx,
-                              self.sharding_ring_id,
-                              self._segments[-1]._allreduce_vars,
-                              self._shard,
-                              op_role=OpRole.Backward,
-                              use_calc_stream=False)
+            utils.insert_reduce_ops(block,
+                                    self._segments[-1]._end_idx,
+                                    self.sharding_ring_id,
+                                    self._segments[-1]._allreduce_vars,
+                                    self._shard,
+                                    op_role=OpRole.Backward,
+                                    use_calc_stream=False)
 
         for idx, segment in reversed(list(enumerate(self._segments))):
             allreduce_vars = self._segments[
@@ -1165,43 +1154,45 @@ class ShardingOptimizer(MetaOptimizerBase):
             if self.gradient_merge_mode != "sharding_gm" or self._gradient_merge_acc_step <= 1:
                 if self.hybrid_dp and self.hybrid_dp_mode == "sharding_hybrid_dp" and len(
                         shard_allredue_vars) >= 1:
-                    insert_sync_comm_ops(block, segment._end_idx,
-                                         self.dp_ring_id, shard_allredue_vars)
+                    utils.insert_sync_comm_ops(block, segment._end_idx,
+                                               self.dp_ring_id,
+                                               shard_allredue_vars)
 
                     broad_cast_vars = [x[0] for x in broadcast_vars]
                     if len(broad_cast_vars) > 0:
-                        insert_sync_comm_ops(block, segment._end_idx,
-                                             self.sharding_ring_id,
-                                             broad_cast_vars)
+                        utils.insert_sync_comm_ops(block, segment._end_idx,
+                                                   self.sharding_ring_id,
+                                                   broad_cast_vars)
                 else:
                     comm_dep_vars = allreduce_vars + [
                         x[0] for x in broadcast_vars
                     ]
                     if len(comm_dep_vars) > 0:
-                        insert_sync_comm_ops(block, segment._end_idx,
-                                             self.sharding_ring_id,
-                                             comm_dep_vars)
+                        utils.insert_sync_comm_ops(block, segment._end_idx,
+                                                   self.sharding_ring_id,
+                                                   comm_dep_vars)
             # gradient merge
             elif self.gradient_merge_mode == "sharding_gm" and self._gradient_merge_acc_step > 1:
                 broad_cast_vars = [x[0] for x in broadcast_vars]
                 if len(broad_cast_vars) > 0:
-                    insert_sync_comm_ops(block, segment._end_idx,
-                                         self.sharding_ring_id, broad_cast_vars)
+                    utils.insert_sync_comm_ops(block, segment._end_idx,
+                                               self.sharding_ring_id,
+                                               broad_cast_vars)
 
             calc_dep_vars = fill_constant_vars + [
                 k for k, v in cast_ops.items()
             ] + self._segments[idx]._allreduce_vars
 
             if len(calc_dep_vars) > 0:
-                insert_sync_calc_op(block, segment._end_idx,
-                                    [calc_dep_vars[-1]])
+                utils.insert_sync_calc_op(block, segment._end_idx,
+                                          [calc_dep_vars[-1]])
 
             # step3: insert `fill_constant` ops
-            insert_fill_constant_ops(block, segment._end_idx,
-                                     fill_constant_vars)
+            utils.insert_fill_constant_ops(block, segment._end_idx,
+                                           fill_constant_vars)
 
             # step4: add `cast` ops
-            insert_cast_ops(block, segment._end_idx, cast_ops)
+            utils.insert_cast_ops(block, segment._end_idx, cast_ops)
 
             # step5: add broadcast ops
             # gradient merge
@@ -1210,47 +1201,49 @@ class ShardingOptimizer(MetaOptimizerBase):
                     block, self._startup_program.global_block(),
                     segment._start_idx, shard_allredue_vars, self._shard)
 
-            insert_broadcast_ops(block, segment._start_idx,
-                                 self.sharding_ring_id, broadcast_vars)
+            utils.insert_broadcast_ops(block, segment._start_idx,
+                                       self.sharding_ring_id, broadcast_vars)
 
             # step6: add all_reduce ops
             # dp
             if self.gradient_merge_mode != "sharding_gm" or self._gradient_merge_acc_step <= 1:
                 if self.hybrid_dp and self.hybrid_dp_mode == "sharding_hybrid_dp" and len(
                         shard_allredue_vars) >= 1:
-                    insert_allreduce_ops(
+                    utils.insert_allreduce_ops(
                         block,
                         segment._start_idx,
                         self.dp_ring_id,
                         shard_allredue_vars,
                         user_defined_strategy=self.user_defined_strategy)
-                    insert_sync_comm_ops(block, segment._start_idx,
-                                         self.sharding_ring_id, allreduce_vars)
+                    utils.insert_sync_comm_ops(block, segment._start_idx,
+                                               self.sharding_ring_id,
+                                               allreduce_vars)
             # gradient merge
             elif self.gradient_merge_mode == "sharding_gm" and self._gradient_merge_acc_step > 1:
-                insert_sync_comm_ops(block, segment._start_idx,
-                                     self.sharding_ring_id, allreduce_vars)
+                utils.insert_sync_comm_ops(block, segment._start_idx,
+                                           self.sharding_ring_id,
+                                           allreduce_vars)
             # sharding
             # allreduce --> reduce
             # TODO temp change
             if len(allreduce_vars) > 0:
-                insert_reduce_ops(block,
-                                  segment._start_idx,
-                                  self.sharding_ring_id,
-                                  allreduce_vars,
-                                  self._shard,
-                                  op_role=OpRole.Backward,
-                                  use_calc_stream=False)
+                utils.insert_reduce_ops(block,
+                                        segment._start_idx,
+                                        self.sharding_ring_id,
+                                        allreduce_vars,
+                                        self._shard,
+                                        op_role=OpRole.Backward,
+                                        use_calc_stream=False)
 
             block._sync_with_cpp()
 
         if self._segments[0]._broadcast_vars:
             broadcast_vars = [x[0] for x in self._segments[0]._broadcast_vars]
-            insert_sync_comm_ops(block, self._segments[0]._start_idx,
-                                 self.sharding_ring_id, broadcast_vars)
-            insert_broadcast_ops(block, self._segments[0]._start_idx,
-                                 self.sharding_ring_id,
-                                 self._segments[0]._broadcast_vars)
+            utils.insert_sync_comm_ops(block, self._segments[0]._start_idx,
+                                       self.sharding_ring_id, broadcast_vars)
+            utils.insert_broadcast_ops(block, self._segments[0]._start_idx,
+                                       self.sharding_ring_id,
+                                       self._segments[0]._broadcast_vars)
 
         fill_constant_vars = []
         for x in self._segments[:2]:
@@ -1264,15 +1257,15 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         calc_deps_vars = fill_constant_vars + [k for k, v in cast_ops.items()]
         if fill_constant_vars or cast_ops:
-            insert_sync_calc_op(block, self._segments[0]._start_idx,
-                                [calc_deps_vars[-1]])
+            utils.insert_sync_calc_op(block, self._segments[0]._start_idx,
+                                      [calc_deps_vars[-1]])
 
         if fill_constant_vars:
-            insert_fill_constant_ops(block, self._segments[0]._start_idx,
-                                     fill_constant_vars)
+            utils.insert_fill_constant_ops(block, self._segments[0]._start_idx,
+                                           fill_constant_vars)
 
         if cast_ops:
-            insert_cast_ops(block, self._segments[0]._start_idx, cast_ops)
+            utils.insert_cast_ops(block, self._segments[0]._start_idx, cast_ops)
 
         return
 
@@ -1574,7 +1567,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self, main_block, startup_block, insert_idx, grad_names, shard):
 
         for grad_name in grad_names:
-            assert get_grad_device(
+            assert utils.get_grad_device(
                 grad_name, shard
             ) == shard.worker_idx, "try to merge gradient not belong to current shard: [{}]".format(
                 grad_name)
