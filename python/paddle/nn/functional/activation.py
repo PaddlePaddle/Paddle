@@ -1074,15 +1074,13 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = np.array([[[2.0, 3.0, 4.0, 5.0],
+            x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
                         [3.0, 4.0, 5.0, 6.0],
                         [7.0, 8.0, 8.0, 9.0]],
                         [[1.0, 2.0, 3.0, 4.0],
                         [5.0, 6.0, 7.0, 8.0],
-                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
-            x = paddle.to_tensor(x)
+                        [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
             out1 = F.softmax(x)
             out2 = F.softmax(x, dtype='float64')
             # out1's data type is float32; out2's data type is float64
@@ -1188,9 +1186,8 @@ def softplus(x, beta=1, threshold=20, name=None):
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3],dtype='float32')
             out = F.softplus(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
 
