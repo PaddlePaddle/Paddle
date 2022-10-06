@@ -45,15 +45,16 @@ __global__ void LerpGradKernelImpl(const T* weight,
 }
 
 template <typename T>
-__global__ void LerpGradScalarKernelImpl(const T weight,
+__global__ void LerpGradScalarKernelImpl(const T* weight,
                                          const T* dout,
                                          T* dx,
                                          T* dy,
                                          const int out_size,
                                          const int x_size,
                                          const int y_size) {
+  T weight_scalar = weight[0];
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
-    T temp_dx = weight * dout[idx];
+    T temp_dx = weight_scalar * dout[idx];
     if (idx < x_size) {
       dx[idx] = dout[idx] - temp_dx;
     }
@@ -150,7 +151,7 @@ void SwitchKernel(const Context& ctx,
   if (weight.dims().size() == 1) {
     //    condition when weight is a scalar
     const T* weight_data = weight.data<T>();
-    const T weight_scalar = weight_data[0];
+    // const T weight_scalar = weight_data[0];
     const T* out_grad_data = out_grad.data<T>();
     const int out_size = out_grad.numel();
     const int weight_size = weight.numel();
@@ -158,7 +159,7 @@ void SwitchKernel(const Context& ctx,
     LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
                                   gpu_config.GetBlockSize(),
                                   0,
-                                  ctx.stream()>>>(weight_scalar,
+                                  ctx.stream()>>>(weight_data,
                                                   out_grad_data,
                                                   x_grad_data,
                                                   y_grad_data,
