@@ -981,7 +981,9 @@ void group_gemm(ElementA** A,
                 ElementComputeEpilogue beta) {
   using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
       ElementOutput,
-      128 / cutlass::sizeof_bits<ElementOutput>::value,
+      std::is_same<ElementOutput, double>::value
+          ? 1
+          : 128 / cutlass::sizeof_bits<ElementOutput>::value,
       ElementAccumulator,
       ElementAccumulator>;
 
@@ -989,13 +991,15 @@ void group_gemm(ElementA** A,
       ElementA,
       LayoutA,
       cutlass::ComplexTransform::kNone,
-      // 8,  // kAlignmentA
-      128 / cutlass::sizeof_bits<ElementA>::value,
+      std::is_same<ElementA, double>::value
+          ? 1
+          : 128 / cutlass::sizeof_bits<ElementA>::value,
       ElementB,
       LayoutB,
       cutlass::ComplexTransform::kNone,
-      // 8,  // kAlignmentB
-      128 / cutlass::sizeof_bits<ElementB>::value,
+      std::is_same<ElementB, double>::value
+          ? 1
+          : 128 / cutlass::sizeof_bits<ElementB>::value,
       ElementOutput,
       LayoutOutput,
       ElementAccumulator,
