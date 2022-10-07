@@ -276,8 +276,8 @@ void TensorRTEngine::FreezeNetwork() {
             Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
       }
 
-      for (int i = 0; i < network()->getNbInputs(); i++) {
-        auto input_name = network()->getInput(i)->getName();
+      for (int input_id = 0; input_id < network()->getNbInputs(); input_id++) {
+        auto input_name = network()->getInput(input_id)->getName();
         if (!itensor_map_.count(input_name)) continue;
         if (!GetITensor(input_name)->isShapeTensor()) continue;
         PADDLE_ENFORCE_EQ(min_shape_tensor_.count(input_name) &&
