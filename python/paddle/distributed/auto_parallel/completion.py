@@ -19,7 +19,7 @@ import time
 from paddle.fluid import core
 from paddle.fluid import framework
 
-from .utils import print_program_with_dist_attr, is_gradient_clip_op
+from .utils import print_program_with_dist_attr, is_gradient_clip_op, __not_shape_var_type__
 from .operators import find_compatible_distributed_operator_impls
 from .dist_context import get_default_distributed_context, _node_id
 from .dist_tensor import DistributedTensor
@@ -494,14 +494,14 @@ class Completer:
                         for tensor_node in node.inputs:
                             if tensor_node.is_var() and tensor_node.var(
                             ) is not None:
-                                if tensor_node.var().type() == core.VarDesc.VarType.READER \
+                                if tensor_node.var().type() in __not_shape_var_type__ \
                                     or len(tensor_node.var().shape()) != 1:
                                     flag = False
                                     break
                         for tensor_node in node.outputs:
                             if tensor_node.is_var() and tensor_node.var(
                             ) is not None:
-                                if tensor_node.var().type() == core.VarDesc.VarType.READER \
+                                if tensor_node.var().type() in __not_shape_var_type__ \
                                     or len(tensor_node.var().shape()) != 1:
                                     flag = False
                                     break

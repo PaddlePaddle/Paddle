@@ -37,6 +37,7 @@ _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
 _g_gradient_clip_ops = [
     "sum", "sqrt", "fill_constant", "elementwise_max", "elementwise_div"
 ]
+_g_sublock_ops = ["while", "conditional_block"]
 
 
 def get_var_with_recursion(var_name, block, program):
@@ -45,9 +46,10 @@ def get_var_with_recursion(var_name, block, program):
     if var_name in block.vars:
         var = block.vars[var_name]
     else:
-        parent_block = program.blocks[block.parent_idx]
-        if var_name in parent_block.vars:
-            var = parent_block.vars[var_name]
+        var = block._var_recursive(var_name)
+        # parent_block = program.blocks[block.parent_idx]
+        # if var_name in parent_block.vars:
+        #     var = parent_block.vars[var_name]
     assert var is not None
 
     return var
@@ -1106,13 +1108,18 @@ class Resharder:
         return False
 
     def is_condition_replicative(self, op):
-        assert op.type == "while"
+        # assert op.type == "while"
         sub_block = self.auto_parallel_main_prog.blocks[op.attr("sub_block").id]
         dist_op = self.dist_context.get_dist_op_for_program(op)
         op_dist_attr = dist_op.dist_attr
 
+        if op.type == "while":
+            input_cond = op.input("Condition")
+        elif op.type == "conditional_block":
+            input_cond = op.input("Cond")
+
         # the dims mapping of condition tensor should be replicative
-        for var_name in op.input("Condition"):
+        for var_name in input_cond:
             var = get_var_with_recursion(var_name, sub_block,
                                          self.auto_parallel_main_prog)
             dist_tensor = self.dist_context.get_dist_tensor_for_program(var)
@@ -1820,7 +1827,7 @@ class Resharder:
             if dist_op is not None:
                 op_input_dist_attrs = [
                 ]  # [(op_process_mesh, op_input_dims_mapping), (op_process_mesh, op_input_dims_mapping)]
-                if op.type == "while":
+                if op.type in _g_sublock_ops:
                     if not self.is_condition_replicative(op):
                         raise ValueError(
                             "Please check the condition due to the dims mapping is not replicative."
@@ -1834,6 +1841,8 @@ class Resharder:
                 if op.type == "while":
                     # condition var process mesh is the same with op and dims_mapping is replicative, so it do not need reshard
                     input_var_names = op.input("X")
+                elif op.type == "conditional_block":
+                    input_var_names = op.input("Input")
                 else:
                     input_var_names = op.input_arg_names
                 # to avoid while op X order different
@@ -2007,6 +2016,10 @@ class Resharder:
                         dist_op.dist_attr.process_mesh,
                         dist_op.dist_attr.get_output_dims_mapping(var_name)
                     ]
+                    # print("==> op:", op)
+                    # print("==> varname:", var_name)
+                    # print("==> dist_op:", dist_op)
+                    # print("==> dist_tensor:", dist_tensor)
                     if dist_tensor is not None and self.need_reshard(
                             dist_tensor, output_attr, False):
                         tensor_processes = set(
@@ -2083,7 +2096,8 @@ class Resharder:
 
             # reshard input
             self._reshard_input(block)
-
+            # print("_reshard_input **************************************************************")
+            # print_program_with_dist_attr(self.auto_parallel_main_prog, self.dist_context)
             # reshard output
             # NOTE: Only support that insert send and recv op if output process mesh is different from tensor process mesh
             self._reshard_output(block)

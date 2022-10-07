@@ -879,6 +879,7 @@ class Engine:
         fetch_list, fetch_new_names, fetch_sections = self._prepare_fetch(
             mode=self.mode)
 
+        # print_program_with_dist_attr(self.main_program, self.dist_context)
         for step, _ in enumerate(test_dataloader):
             try:
                 outs = self._executor.run(
