@@ -365,11 +365,11 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       using LayoutA = cutlass::layout::RowMajor;
       using LayoutB = cutlass::layout::RowMajor;
       using LayoutOutput = cutlass::layout::RowMajor;
-      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<64, 64, 16>;
-      using ShapeMMAWarp = cutlass::gemm::GemmShape<32, 32, 16>;
+      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 64, 16>;
+      using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 32, 16>;
       using ShapeMMAOp = cutlass::gemm::GemmShape<8, 8, 4>;
       constexpr bool GatherA = true;
-      constexpr int NumStages = 4;
+      constexpr int NumStages = 3;
       // group-gather-gemm fusion
       group_gemm<ElementA,
                  ElementB,
