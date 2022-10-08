@@ -323,10 +323,15 @@ class ExecutionContext {
   virtual const Attribute& GetAttr(const std::string& name) const {
     auto iter = op_.Attrs().find(name);
     if (iter == op_.Attrs().end()) {
-      return op_.RuntimeAttrs().at(name);
-    } else {
-      return iter->second;
+      iter = op_.RuntimeAttrs().find(name);
+      PADDLE_ENFORCE_NE(
+          iter,
+          op_.RuntimeAttrs().end(),
+          platform::errors::NotFound(
+              "(%s) is not found in AttributeMap and RuntimeAttributeMap.",
+              name));
     }
+    return iter->second;
   }
 
   virtual bool HasInput(const std::string& name) const;
