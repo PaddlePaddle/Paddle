@@ -85,16 +85,23 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
   framework::LibraryType library{framework::LibraryType::kPlain};
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = oper.IndicateVarDataType(ctx, name);
-  // FIXME(liuwei1031) temporarily disable the code to unblock users
-  // TODO(liuwei1031) figure out the reason behind
-  // https://github.com/PaddlePaddle/Paddle/issues/16096
-  // and re-enable this in the future
-  // #ifdef PADDLE_WITH_CUDA
-  //   auto it1 = oper.Attrs().find("use_cudnn");
-  //   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
-  //     library = framework::LibraryType::kCUDNN;
-  //   }
-  // #endif
+// FIXME(liuwei1031) temporarily disable the code to unblock users
+// TODO(liuwei1031) figure out the reason behind
+// https://github.com/PaddlePaddle/Paddle/issues/16096
+// and re-enable this in the future
+// #ifdef PADDLE_WITH_CUDA
+//   auto it1 = oper.Attrs().find("use_cudnn");
+//   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+//     library = framework::LibraryType::kCUDNN;
+//   }
+// #endif
+#ifdef PADDLE_WITH_MKLDNN
+  if (library == framework::LibraryType::kPlain &&
+      oper.CanMKLDNNBeUsed(ctx, data_type)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
+#endif
   return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
 }
 
