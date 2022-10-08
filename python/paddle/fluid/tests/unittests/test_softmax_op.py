@@ -79,10 +79,11 @@ class TestSoftmaxOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
+            self.check_output_with_place(place,
+                                         atol=1e-5,
+                                         check_eager=(self.use_mkldnn == False))
         else:
-            self.check_output(check_dygraph=(self.use_mkldnn == False))
+            self.check_output(check_eager=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -93,12 +94,12 @@ class TestSoftmaxOp(OpTest):
                     place, ["X"],
                     "Out",
                     max_relative_error=0.01,
-                    check_dygraph=(self.use_mkldnn == False))
+                    check_eager=(self.use_mkldnn == False))
         else:
             self.check_grad(["X"],
                             "Out",
                             max_relative_error=0.01,
-                            check_dygraph=(self.use_mkldnn == False))
+                            check_eager=(self.use_mkldnn == False))
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):
@@ -347,14 +348,14 @@ class TestSoftmaxBF16Op(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place,
-                                     check_dygraph=(self.use_mkldnn == False))
+                                     check_eager=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, ["X"],
                                    "Out",
                                    numeric_grad_delta=0.05,
-                                   check_dygraph=(self.use_mkldnn == False))
+                                   check_eager=(self.use_mkldnn == False))
 
 
 @unittest.skipIf(

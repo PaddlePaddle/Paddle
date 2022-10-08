@@ -65,13 +65,13 @@ class TestAddPositionEncodingTensorOp(OpTest):
         """
         check the correctness of output
         """
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         """
         check the correctness of grad
         """
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out', check_eager=False)
 
     def init_input_output(self):
         """
@@ -107,13 +107,13 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
         """
         check the correctness of output
         """
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         """
         check the correctness of grad
         """
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out', check_eager=False)
 
     def init_input_output(self):
         """

@@ -115,10 +115,10 @@ class TestCase1(TestMeanIOUOp):
         self.in_correct_num = 2
         self.in_mean_iou_num = 2
 
-    # NOTE(dev): Skip check_dygraph becuase Python API doesn't expose
+    # NOTE(dev): Skip check_eager becuase Python API doesn't expose
     # in_wrong_num/in_correct_num/in_mean_iou_num argument
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_eager=False)
+        self.check_output(check_eager=False)
 
 
 class TestMeanIOUOpError(unittest.TestCase):

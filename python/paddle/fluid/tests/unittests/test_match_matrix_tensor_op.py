@@ -70,10 +70,10 @@ class TestMatchMatrixTensorOp(OpTest):
         self.outputs = {'Out': (out, out_lod), 'Tmp': tmp}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
+        self.check_grad(['X', 'Y'], 'Out', check_eager=False)
 
 
 class TestMatchMatrixTensorOpCase1(TestMatchMatrixTensorOp):

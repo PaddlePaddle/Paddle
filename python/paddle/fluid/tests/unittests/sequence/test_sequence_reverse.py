@@ -59,10 +59,10 @@ class TestSequenceReverseBase(OpTest):
         return np.reshape(tmp_y, newshape=self.x.shape).astype(self.dtype)
 
     def test_output(self):
-        self.check_output(0, check_dygraph=False)
+        self.check_output(0, check_eager=False)
 
     def test_grad(self):
-        self.check_grad(['X'], 'Y', check_dygraph=False)
+        self.check_grad(['X'], 'Y', check_eager=False)
 
 
 class TestSequenceReserve1(TestSequenceReverseBase):

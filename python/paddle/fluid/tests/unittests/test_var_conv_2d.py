@@ -171,13 +171,13 @@ class TestVarConv2DOp(OpTest):
         return col_res, col_res_lod
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(['X'],
                         'Out',
                         max_relative_error=0.005,
-                        check_dygraph=False)
+                        check_eager=False)
 
 
 class TestVarConv2DOpCase1(TestVarConv2DOp):

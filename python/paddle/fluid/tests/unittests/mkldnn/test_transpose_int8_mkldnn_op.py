@@ -51,7 +51,7 @@ class TestTransposeOp(OpTest):
         self.check_output_with_place(core.CPUPlace(),
                                      1e-5,
                                      no_check_set=['XShape'],
-                                     check_dygraph=False)
+                                     check_eager=False)
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)

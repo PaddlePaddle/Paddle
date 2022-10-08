@@ -58,7 +58,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                 self.check_grad_with_place(
                     place, ['X', 'Y'],
                     'Out',
-                    check_dygraph=(self.use_mkldnn == False))
+                    check_eager=(self.use_mkldnn == False))
 
         def test_check_grad_ingore_x(self):
             if paddle.is_compiled_with_xpu():
@@ -67,7 +67,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     place, ['Y'],
                     'Out',
                     no_grad_set=set("X"),
-                    check_dygraph=(self.use_mkldnn == False))
+                    check_eager=(self.use_mkldnn == False))
 
         def test_check_grad_ingore_y(self):
             if paddle.is_compiled_with_xpu():
@@ -76,7 +76,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     place, ['X'],
                     'Out',
                     no_grad_set=set('Y'),
-                    check_dygraph=(self.use_mkldnn == False))
+                    check_eager=(self.use_mkldnn == False))
 
         def init_input_output(self):
             self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)

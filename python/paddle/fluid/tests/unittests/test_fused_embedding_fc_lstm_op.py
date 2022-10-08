@@ -139,7 +139,7 @@ class TestFusionLSTMOp(OpTest):
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False)
+            self.check_output(check_eager=False)
 
 
 class TestFusionLSTMOpInit(TestFusionLSTMOp):

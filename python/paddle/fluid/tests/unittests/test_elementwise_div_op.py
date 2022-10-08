@@ -53,7 +53,7 @@ class ElementwiseDivOp(OpTest):
         self.grad_y = grad_y
 
     def init_args(self):
-        self.check_dygraph = True
+        self.check_eager = True
         self.place = None
 
     def init_dtype(self):
@@ -105,7 +105,7 @@ class ElementwiseDivOp(OpTest):
                 'no_grad_set': check_option['no_grad'],
                 'user_defined_grads': check_option['val_grad'],
                 'user_defined_grad_outputs': [self.grad_out],
-                'check_dygraph': self.check_dygraph
+                'check_eager': self.check_eager
             }
             if self.place is None:
                 self.check_grad(*check_args, **check_kwargs)
@@ -121,7 +121,7 @@ class TestElementwiseDivOpBF16(ElementwiseDivOp):
 
     def init_args(self):
         # In due to output data type inconsistence of bfloat16 paddle op, we disable the dygraph check.
-        self.check_dygraph = False
+        self.check_eager = False
         self.place = core.CUDAPlace(0)
 
     def init_dtype(self):

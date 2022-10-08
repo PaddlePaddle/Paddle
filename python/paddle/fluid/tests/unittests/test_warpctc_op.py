@@ -255,12 +255,12 @@ class TestWarpCTCOp(OpTest):
             self.check_grad(["Logits"],
                             "Loss",
                             max_relative_error=0.009,
-                            check_dygraph=False)
+                            check_eager=False)
         else:
             self.check_grad(["Logits"],
                             "Loss",
                             max_relative_error=0.007,
-                            check_dygraph=False)
+                            check_eager=False)
 
 
 class TestWarpCTCOpCase1(TestWarpCTCOp):
@@ -362,12 +362,12 @@ class TestWarpCTCOpWithPadding(OpTest):
             self.check_grad(["Logits"],
                             "Loss",
                             max_relative_error=0.009,
-                            check_dygraph=False)
+                            check_eager=False)
         else:
             self.check_grad(["Logits"],
                             "Loss",
                             max_relative_error=0.007,
-                            check_dygraph=False)
+                            check_eager=False)
 
 
 class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):

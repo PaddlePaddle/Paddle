@@ -300,7 +300,7 @@ class TestConv3DOp(OpTest):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_output_with_place(place,
                                      atol=1e-5,
-                                     check_dygraph=(self.use_mkldnn == False))
+                                     check_eager=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -310,7 +310,7 @@ class TestConv3DOp(OpTest):
         self.check_grad_with_place(place, {'Input', 'Filter'},
                                    'Output',
                                    max_relative_error=0.03,
-                                   check_dygraph=(self.use_mkldnn == False))
+                                   check_eager=(self.use_mkldnn == False))
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
@@ -321,7 +321,7 @@ class TestConv3DOp(OpTest):
                                    'Output',
                                    max_relative_error=0.03,
                                    no_grad_set=set(['Filter']),
-                                   check_dygraph=(self.use_mkldnn == False))
+                                   check_eager=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
@@ -332,7 +332,7 @@ class TestConv3DOp(OpTest):
                                    'Output',
                                    max_relative_error=0.03,
                                    no_grad_set=set(['Input']),
-                                   check_dygraph=(self.use_mkldnn == False))
+                                   check_eager=(self.use_mkldnn == False))
 
     def init_test_case(self):
         self.pad = [0, 0, 0]

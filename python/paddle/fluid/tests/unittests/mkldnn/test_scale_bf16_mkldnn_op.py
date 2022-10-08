@@ -51,14 +51,14 @@ class TestScaleOpBF16(OpTest):
         self.dx = (self.out * scale)
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.calculate_grads()
         self.check_grad_with_place(
             core.CPUPlace(), ["X"],
             "Out",
-            check_dygraph=False,
+            check_eager=False,
             user_defined_grads=[self.dx],
             user_defined_grad_outputs=[convert_float_to_uint16(self.out)])
 

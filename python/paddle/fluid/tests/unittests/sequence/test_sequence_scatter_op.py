@@ -50,10 +50,10 @@ class TestSequenceScatterOp(OpTest):
         self.outputs = {'Out': Out_data}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['Updates'], 'Out', in_place=True, check_dygraph=False)
+        self.check_grad(['Updates'], 'Out', in_place=True, check_eager=False)
 
 
 class TestSequenceScatterOpSeqLen0(TestSequenceScatterOp):

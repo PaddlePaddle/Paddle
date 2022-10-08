@@ -31,7 +31,7 @@ class TestScaleOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -54,7 +54,7 @@ class TestScaleOpBiasNotAfterScale(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')

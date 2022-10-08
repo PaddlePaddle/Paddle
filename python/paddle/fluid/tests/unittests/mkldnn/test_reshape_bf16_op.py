@@ -59,7 +59,7 @@ class TestReshapeBf16Op(OpTest):
     def test_check_grad(self):
         self.check_grad_with_place(core.CPUPlace(), ["X"],
                                    "Out",
-                                   check_dygraph=False,
+                                   check_eager=False,
                                    user_defined_grads=[self.input_data_fp32],
                                    user_defined_grad_outputs=[
                                        self.inputs["X"].reshape(

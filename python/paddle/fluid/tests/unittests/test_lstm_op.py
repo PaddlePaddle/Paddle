@@ -275,7 +275,7 @@ class TestLstmOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8, check_dygraph=False)
+        self.check_output(atol=1e-8, check_eager=False)
 
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
@@ -285,7 +285,7 @@ class TestLstmOp(OpTest):
             (N, self.D)).astype('float64')
         self.check_grad(['Input', 'Weight', 'Bias'], ['Hidden'],
                         max_relative_error=5e-4,
-                        check_dygraph=False)
+                        check_eager=False)
 
 
 class TestLstmOpCase1(TestLstmOp):

@@ -78,9 +78,7 @@ class TestMKLDNNMulOpS8S8(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output_with_place(core.CPUPlace(),
-                                     atol=0,
-                                     check_dygraph=False)
+        self.check_output_with_place(core.CPUPlace(), atol=0, check_eager=False)
 
 
 '''

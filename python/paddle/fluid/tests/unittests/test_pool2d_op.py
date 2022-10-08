@@ -303,10 +303,11 @@ class TestPool2D_Op_Mixin(object):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.has_cudnn():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
+            self.check_output_with_place(place,
+                                         atol=1e-5,
+                                         check_eager=(self.use_mkldnn == False))
         else:
-            self.check_output(check_dygraph=(self.use_mkldnn == False))
+            self.check_output(check_eager=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -318,12 +319,12 @@ class TestPool2D_Op_Mixin(object):
                                        set(['X']),
                                        'Out',
                                        max_relative_error=0.07,
-                                       check_dygraph=(self.use_mkldnn == False))
+                                       check_eager=(self.use_mkldnn == False))
         elif self.pool_type != "max":
             self.check_grad(set(['X']),
                             'Out',
                             max_relative_error=0.07,
-                            check_dygraph=(self.use_mkldnn == False))
+                            check_eager=(self.use_mkldnn == False))
 
     def init_data_format(self):
         self.data_format = "NCHW"
@@ -472,7 +473,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                     self.check_output_with_place(
                         place,
                         atol=1e-3,
-                        check_dygraph=(self.use_mkldnn == False))
+                        check_eager=(self.use_mkldnn == False))
 
         def test_check_grad(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -484,7 +485,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                     set(['X']),
                     'Out',
                     max_relative_error=0.07,
-                    check_dygraph=(self.use_mkldnn == False))
+                    check_eager=(self.use_mkldnn == False))
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
@@ -509,7 +510,7 @@ def create_test_fp16_class(parent, check_grad=True):
                     self.check_output_with_place(
                         place,
                         atol=1e-3,
-                        check_dygraph=(self.use_mkldnn == False))
+                        check_eager=(self.use_mkldnn == False))
 
         def test_check_grad(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -521,7 +522,7 @@ def create_test_fp16_class(parent, check_grad=True):
                     set(['X']),
                     'Out',
                     max_relative_error=0.07,
-                    check_dygraph=(self.use_mkldnn == False))
+                    check_eager=(self.use_mkldnn == False))
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
     TestFp16Case.__name__ = cls_name

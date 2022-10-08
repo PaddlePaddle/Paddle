@@ -35,7 +35,7 @@ class TestReduceSumDefaultBF16OneDNNOp(OpTest):
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def calculate_grads(self):
         tmp_tensor = np.zeros(self.x_fp32.shape).astype("float32")
@@ -76,7 +76,7 @@ class TestReduceDefaultWithGradBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
         self.check_grad_with_place(
             core.CPUPlace(), ["X"],
             "Out",
-            check_dygraph=False,
+            check_eager=False,
             user_defined_grads=[self.grad_X],
             user_defined_grad_outputs=[convert_float_to_uint16(self.grad_Out)])
 

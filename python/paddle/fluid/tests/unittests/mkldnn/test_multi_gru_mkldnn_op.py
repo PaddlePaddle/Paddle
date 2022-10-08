@@ -163,7 +163,7 @@ class TestMultiGruMkldnnOp(OpTest):
             self.attrs['Shift_data'] = shift_data
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False, atol=self.error_margin)
+        self.check_output(check_eager=False, atol=self.error_margin)
 
 
 class TestMultiGruMkldnnOpNoBias(TestMultiGruMkldnnOp):

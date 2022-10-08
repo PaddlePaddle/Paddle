@@ -48,7 +48,7 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support lod in dygraph mode
@@ -57,7 +57,7 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
             self.check_grad(['W'],
                             'Out',
                             no_grad_set=['Ids'],
-                            check_dygraph=False)
+                            check_eager=False)
 
 
 class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
@@ -84,7 +84,7 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
             }
             self.attrs = {'padding_idx': int(padding_idx)}
             # TODO(wangzhongpu): support lod in dygraph mode
-            self.check_output(check_dygraph=False)
+            self.check_output(check_eager=False)
 
     def test_check_grad(self):
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
@@ -95,7 +95,7 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
             self.check_grad(['W'],
                             'Out',
                             no_grad_set=['Ids'],
-                            check_dygraph=False)
+                            check_eager=False)
 
 
 class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):

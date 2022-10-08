@@ -50,7 +50,7 @@ class TestSGDOpBF16(OpTest):
         self.w = 105
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
+        self.check_output_with_place(core.CPUPlace(), check_eager=False)
 
 
 @unittest.skipIf(not core.supports_bfloat16(),

@@ -40,11 +40,11 @@ class TestTransposeMKLDNN(TestTransposeOp):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(no_check_set=['XShape'], check_dygraph=False)
+        self.check_output(no_check_set=['XShape'], check_eager=False)
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out', check_eager=False)
 
     def initTestCase(self):
         self.shape = (30, 4)

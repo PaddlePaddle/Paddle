@@ -125,7 +125,7 @@ class TestBilinearInterpMKLDNNOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
 
 class TestBilinearInterpOpMKLDNNNHWC(TestBilinearInterpMKLDNNOp):

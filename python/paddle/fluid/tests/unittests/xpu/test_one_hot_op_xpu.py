@@ -68,7 +68,7 @@ class XPUTestOneHotOP(XPUOpTestWrapper):
             self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
         def test_check_output(self):
-            self.check_output(check_dygraph=False)
+            self.check_output(check_eager=False)
 
         def init_dtype(self):
             self.dtype = self.in_type

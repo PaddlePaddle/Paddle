@@ -86,7 +86,7 @@ class TestReQuantizeOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.assertTrue(self.input_data_type == 'uint8' or self.shift_in == 0.0,
                         'Input data must be unsigned if it has nonzero shift.')
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def check_raise_error(self, msg):
         try:

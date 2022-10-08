@@ -47,27 +47,27 @@ class ElementwiseMulOp(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(self.use_mkldnn == False))
+        self.check_output(check_eager=(self.use_mkldnn == False))
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(['X', 'Y'],
                         'Out',
-                        check_dygraph=(self.use_mkldnn == False))
+                        check_eager=(self.use_mkldnn == False))
 
     def test_check_grad_ingore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(['Y'],
                         'Out',
                         no_grad_set=set("X"),
-                        check_dygraph=(self.use_mkldnn == False))
+                        check_eager=(self.use_mkldnn == False))
 
     def test_check_grad_ingore_y(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(['X'],
                         'Out',
                         no_grad_set=set('Y'),
-                        check_dygraph=(self.use_mkldnn == False))
+                        check_eager=(self.use_mkldnn == False))
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)

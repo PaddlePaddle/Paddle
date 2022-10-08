@@ -65,7 +65,7 @@ class TestMatmulBf16MklDNNOp(OpTest):
         self.check_grad_with_place(
             core.CPUPlace(), ["X", "Y"],
             "Out",
-            check_dygraph=False,
+            check_eager=False,
             user_defined_grads=[self.dx, self.dy],
             user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
 

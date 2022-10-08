@@ -29,14 +29,14 @@ class TestLRNMKLDNNOp(TestLRNOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(atol=0.002,
                           no_check_set=['MidOut'],
-                          check_dygraph=False)
+                          check_eager=False)
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad(['X'],
                         'Out',
                         max_relative_error=0.01,
-                        check_dygraph=False)
+                        check_eager=False)
 
 
 class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
@@ -53,7 +53,7 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
                 self.check_grad(['X'],
                                 'Out',
                                 max_relative_error=0.01,
-                                check_dygraph=False)
+                                check_eager=False)
             except Exception as e:
                 t = \
                 "is_test attribute should be set to False in training phase."

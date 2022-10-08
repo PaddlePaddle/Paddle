@@ -38,11 +38,11 @@ class TestSumMKLDNN(TestSumOp):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(['x0'], 'Out', check_dygraph=False)
+        self.check_grad(['x0'], 'Out', check_eager=False)
 
 
 class TestMKLDNNSumInplaceOp(unittest.TestCase):

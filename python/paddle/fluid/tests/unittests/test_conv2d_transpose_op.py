@@ -164,10 +164,11 @@ class TestConv2DTransposeOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
+            self.check_output_with_place(place,
+                                         atol=1e-5,
+                                         check_eager=(self.use_mkldnn == False))
         else:
-            self.check_output(check_dygraph=(self.use_mkldnn == False))
+            self.check_output(check_eager=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
         if self.need_check_grad:
@@ -716,10 +717,11 @@ class TestCUDNN_FP16(TestConv2DTransposeOp):
     def test_check_output(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place, atol=0.02, check_dygraph=(self.use_mkldnn == False))
+            self.check_output_with_place(place,
+                                         atol=0.02,
+                                         check_eager=(self.use_mkldnn == False))
         else:
-            self.check_output(check_dygraph=(self.use_mkldnn == False))
+            self.check_output(check_eager=(self.use_mkldnn == False))
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

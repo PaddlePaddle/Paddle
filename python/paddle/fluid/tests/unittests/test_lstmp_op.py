@@ -188,7 +188,7 @@ class TestLstmpOp(LstmTest.TestLstmOp):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8, check_dygraph=False)
+        self.check_output(atol=1e-8, check_eager=False)
 
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
@@ -200,7 +200,7 @@ class TestLstmpOp(LstmTest.TestLstmOp):
         self.check_grad(['Input', 'Weight', 'ProjWeight', 'Bias'],
                         ['Projection'],
                         numeric_grad_delta=0.0000005,
-                        check_dygraph=False)
+                        check_eager=False)
 
 
 class TestLstmpOpHasInitial(TestLstmpOp):
@@ -218,7 +218,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.check_grad(['Input', 'Weight', 'ProjWeight', 'Bias', 'H0', 'C0'],
                         ['Projection'],
                         numeric_grad_delta=0.0000005,
-                        check_dygraph=False)
+                        check_eager=False)
 
     def test_check_grad_ingore_bias(self):
         N = len(self.lod[0])
@@ -229,7 +229,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.check_grad(['Input', 'ProjWeight', 'Weight'], ['Projection'],
                         numeric_grad_delta=0.0000005,
                         no_grad_set=set('Bias'),
-                        check_dygraph=False)
+                        check_eager=False)
 
     def test_check_grad_ingore_weight(self):
         N = len(self.lod[0])
@@ -240,7 +240,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.check_grad(['Input', 'ProjWeight', 'Bias'], ['Projection'],
                         numeric_grad_delta=0.0000005,
                         no_grad_set=set('Weight'),
-                        check_dygraph=False)
+                        check_eager=False)
 
     def test_check_grad_ingore_proj_weight(self):
         N = len(self.lod[0])
@@ -251,7 +251,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.check_grad(['Input', 'Weight', 'Bias'], ['Projection'],
                         numeric_grad_delta=0.0000005,
                         no_grad_set=set('ProjWeight'),
-                        check_dygraph=False)
+                        check_eager=False)
 
     def test_check_grad_ingore_input(self):
         N = len(self.lod[0])
@@ -262,7 +262,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         self.check_grad(['Weight', 'ProjWeight', 'Bias'], ['Projection'],
                         numeric_grad_delta=0.0000005,
                         no_grad_set=set('Input'),
-                        check_dygraph=False)
+                        check_eager=False)
 
     def test_check_grad_ingore_h0(self):
         N = len(self.lod[0])
@@ -274,7 +274,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
                         ['Projection'],
                         numeric_grad_delta=0.0000005,
                         no_grad_set=set('H0'),
-                        check_dygraph=False)
+                        check_eager=False)
 
     def test_check_grad_ingore_c0(self):
         N = len(self.lod[0])
@@ -286,7 +286,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
                         ['Projection'],
                         numeric_grad_delta=0.0000005,
                         no_grad_set=set('C0'),
-                        check_dygraph=False)
+                        check_eager=False)
 
 
 class TestLstmpOpRerverse(TestLstmpOp):
