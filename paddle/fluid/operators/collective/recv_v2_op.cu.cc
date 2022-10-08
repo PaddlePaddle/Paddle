@@ -46,7 +46,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
       platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
 
   // step1: recv the shape size
-  framework::Tensor gpu_shape_size_tensor(shape_dytpe);
+  phi::DenseTensor gpu_shape_size_tensor(shape_dytpe);
   if (!group) {
     gpu_shape_size_tensor.Resize({1});
     gpu_shape_size_tensor.mutable_data(place, shape_dytpe);
@@ -56,11 +56,11 @@ framework::DDim recv_shape_info(const platform::Place &place,
   }
 
   // copy the shape size tensor to cpu
-  framework::Tensor *cpu_shape_size_tensor = new framework::Tensor(shape_dytpe);
+  phi::DenseTensor *cpu_shape_size_tensor = new phi::DenseTensor(shape_dytpe);
   cpu_shape_size_tensor->Resize({1});
   cpu_shape_size_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
   if (group) {
-    std::vector<framework::Tensor> shape_size_tensor;
+    std::vector<phi::DenseTensor> shape_size_tensor;
     shape_size_tensor.emplace_back(*cpu_shape_size_tensor);
     auto shape_size_task = group->Recv(shape_size_tensor, peer);
   } else {
@@ -72,7 +72,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
   VLOG(3) << "recv the shape size: " << shape_size << " from peer";
 
   // step2: recv the shape
-  framework::Tensor gpu_shape_tensor(shape_dytpe);
+  phi::DenseTensor gpu_shape_tensor(shape_dytpe);
   if (!group) {
     gpu_shape_tensor.Resize({shape_size});
     gpu_shape_tensor.mutable_data(place, shape_dytpe);
@@ -82,11 +82,11 @@ framework::DDim recv_shape_info(const platform::Place &place,
   }
 
   // copy the shape tensor to cpu
-  framework::Tensor *cpu_shape_tensor = new framework::Tensor(shape_dytpe);
+  phi::DenseTensor *cpu_shape_tensor = new phi::DenseTensor(shape_dytpe);
   cpu_shape_tensor->Resize({shape_size});
   cpu_shape_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
   if (group) {
-    std::vector<framework::Tensor> shape_tensor;
+    std::vector<phi::DenseTensor> shape_tensor;
     shape_tensor.emplace_back(*cpu_shape_tensor);
     auto shape_task = group->Recv(shape_tensor, peer);
   } else {

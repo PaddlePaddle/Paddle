@@ -55,7 +55,7 @@ class TestOpWithKernel : public OperatorWithKernel {
     } else {
       VLOG(3) << "use default kernel";
       return OpKernelType(proto::VarType::FP32,
-                          ctx.Input<Tensor>("input")->place());
+                          ctx.Input<phi::DenseTensor>("input")->place());
     }
   }
 };
@@ -66,7 +66,7 @@ class TestKernel : public OpKernel<float> {
   void Compute(const ExecutionContext& ctx) const {
     std::cout << ctx.DebugString() << std::endl;
 
-    const Tensor* input = ctx.Input<Tensor>("input");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("input");
 
     std::cout << "input place:" << input->place() << std::endl;
     auto* output = ctx.Output<framework::LoDTensor>("output");
@@ -158,7 +158,7 @@ TEST(Operator, CPUtoGPU) {
       paddle::platform::DeviceContextPool::Instance();
   auto dev_ctx = pool.Get(cuda_place);
 
-  paddle::framework::Tensor output_tensor;
+  phi::DenseTensor output_tensor;
   paddle::framework::TensorCopy(output2->Get<paddle::framework::LoDTensor>(),
                                 paddle::platform::CPUPlace(),
                                 *dev_ctx,

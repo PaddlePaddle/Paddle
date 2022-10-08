@@ -38,7 +38,7 @@ void CheckInStreamState(std::istream& istre, size_t length) {
 
 struct DeserializedDataFunctor {
   DeserializedDataFunctor(void** buf,
-                          Tensor* tensor,
+                          phi::DenseTensor* tensor,
                           const platform::Place& place)
       : buf_(buf), tensor_(tensor), place_(place) {}
 
@@ -48,7 +48,7 @@ struct DeserializedDataFunctor {
   }
 
   void** buf_;
-  Tensor* tensor_;
+  phi::DenseTensor* tensor_;
   platform::Place place_;
 };
 
@@ -58,13 +58,14 @@ size_t ReadTensorNumber(std::istream& istre) {
              sizeof(char) * tensor_number_mark.size());
   std::string str_read_tensor_number_mark(tensor_number_mark_buffer,
                                           tensor_number_mark.size());
-  PADDLE_ENFORCE_EQ(tensor_number_mark,
-                    str_read_tensor_number_mark,
-                    platform::errors::InvalidArgument(
-                        "Tensor number mark does not match, expect mark is "
-                        "[%s], but the mark read from file is [%s].",
-                        tensor_number_mark,
-                        str_read_tensor_number_mark));
+  PADDLE_ENFORCE_EQ(
+      tensor_number_mark,
+      str_read_tensor_number_mark,
+      platform::errors::InvalidArgument(
+          "phi::DenseTensor number mark does not match, expect mark is "
+          "[%s], but the mark read from file is [%s].",
+          tensor_number_mark,
+          str_read_tensor_number_mark));
 
   size_t tensor_number = 0;
   istre.read(reinterpret_cast<char*>(&tensor_number), sizeof(tensor_number));
@@ -82,13 +83,14 @@ std::string ReadTensorName(std::istream& istre) {
 
   std::string str_read_tensor_name_mark(name_mark_buffer,
                                         tensor_name_mark.size());
-  PADDLE_ENFORCE_EQ(tensor_name_mark,
-                    str_read_tensor_name_mark,
-                    platform::errors::InvalidArgument(
-                        "Tensor name mark does not match, expect mark is [%s], "
-                        "but the mark read from file is [%s].",
-                        tensor_name_mark,
-                        str_read_tensor_name_mark));
+  PADDLE_ENFORCE_EQ(
+      tensor_name_mark,
+      str_read_tensor_name_mark,
+      platform::errors::InvalidArgument(
+          "phi::DenseTensor name mark does not match, expect mark is [%s], "
+          "but the mark read from file is [%s].",
+          tensor_name_mark,
+          str_read_tensor_name_mark));
 
   size_t tensor_name_length = 0;
   istre.read(reinterpret_cast<char*>(&tensor_name_length),
@@ -120,7 +122,7 @@ bool SaveStaticNameListToDisk(
     const std::string& file_name,
     const std::vector<std::string>& vec_tensor_name_list,
     const Scope& scope) {
-  std::map<std::string, Tensor*> map_tensor;
+  std::map<std::string, phi::DenseTensor*> map_tensor;
 
   for (size_t i = 0; i < vec_tensor_name_list.size(); ++i) {
     auto var_ptr = scope.FindVar(vec_tensor_name_list[i]);
@@ -131,7 +133,7 @@ bool SaveStaticNameListToDisk(
                                    "that exe.run(startup_program) has "
                                    "been executed.",
                                    vec_tensor_name_list[i]));
-    Tensor* tensor = var_ptr->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var_ptr->GetMutable<LoDTensor>();
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
                       true,
                       platform::errors::PreconditionNotMet(
@@ -149,11 +151,11 @@ bool SaveDygraphVarBaseListToDisk(
     const std::string& file_name,
     const std::vector<std::shared_ptr<imperative::VarBase>>&
         vec_var_base_list) {
-  std::map<std::string, Tensor*> map_tensor;
+  std::map<std::string, phi::DenseTensor*> map_tensor;
   for (size_t i = 0; i < vec_var_base_list.size(); ++i) {
     auto var_ptr = vec_var_base_list[i]->MutableVar();
 
-    Tensor* tensor = var_ptr->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var_ptr->GetMutable<LoDTensor>();
 
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
                       true,
@@ -170,7 +172,7 @@ bool SaveDygraphVarBaseListToDisk(
 
 const std::vector<std::shared_ptr<imperative::VarBase>>
 LoadDygraphVarBaseListFromDisk(const std::string& file_name) {
-  std::map<std::string, std::shared_ptr<Tensor>> map_load_tensor;
+  std::map<std::string, std::shared_ptr<phi::DenseTensor>> map_load_tensor;
   LoadTensorFromDisk(file_name, &map_load_tensor);
 
   std::vector<std::shared_ptr<imperative::VarBase>> vec_res;
@@ -194,7 +196,7 @@ bool LoadStaticNameListFromDisk(
     const std::string& file_name,
     const std::vector<std::string>& vec_tensor_name_list,
     const Scope& scope) {
-  std::map<std::string, std::shared_ptr<Tensor>> map_load_tensor;
+  std::map<std::string, std::shared_ptr<phi::DenseTensor>> map_load_tensor;
   LoadTensorFromDisk(file_name, &map_load_tensor);
 
   for (size_t i = 0; i < vec_tensor_name_list.size(); ++i) {
@@ -214,7 +216,7 @@ bool LoadStaticNameListFromDisk(
             "please make sure that exe.run(startup_program) has been executed.",
             vec_tensor_name_list[i]));
 
-    Tensor* tensor = var_ptr->GetMutable<LoDTensor>();
+    phi::DenseTensor* tensor = var_ptr->GetMutable<LoDTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
         platform::errors::PreconditionNotMet(
@@ -261,8 +263,9 @@ bool LoadStaticNameListFromDisk(
   return true;
 }
 
-bool SaveTensorToDisk(const std::string& file_name,
-                      const std::map<std::string, Tensor*>& map_tensor) {
+bool SaveTensorToDisk(
+    const std::string& file_name,
+    const std::map<std::string, phi::DenseTensor*>& map_tensor) {
   MkDirRecursively(DirName(file_name).c_str());
 
   std::ofstream fout(file_name, std::ios::binary);
@@ -316,12 +319,13 @@ bool SaveTensorToDisk(const std::string& file_name,
     auto* data_ptr = tensor->data();
     if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      framework::Tensor temp;
+      phi::DenseTensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       data_ptr = temp.data();
 #else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Tensor is in CUDA device, but paddle not compiled with CUDA."));
+      PADDLE_THROW(
+          platform::errors::Unavailable("phi::DenseTensor is in CUDA device, "
+                                        "but paddle not compiled with CUDA."));
 #endif
     }
     fout.write(static_cast<const char*>(data_ptr),
@@ -341,7 +345,7 @@ bool SaveTensorToDisk(const std::string& file_name,
 
 bool LoadTensorFromDisk(
     const std::string& file_name,
-    std::map<std::string, std::shared_ptr<Tensor>>* map_tensor) {
+    std::map<std::string, std::shared_ptr<phi::DenseTensor>>* map_tensor) {
   std::ifstream fin(file_name, std::ios::binary);
 
   PADDLE_ENFORCE_EQ(
@@ -356,7 +360,7 @@ bool LoadTensorFromDisk(
   for (size_t i = 0; i < tensor_number; ++i) {
     std::string str_tensor_name = ReadTensorName(fin);
 
-    std::shared_ptr<Tensor> tensor_temp(new Tensor());
+    std::shared_ptr<phi::DenseTensor> tensor_temp(new phi::DenseTensor());
     uint32_t version;
     fin.read(reinterpret_cast<char*>(&version), sizeof(version));
     CheckInStreamState(fin, sizeof(version));

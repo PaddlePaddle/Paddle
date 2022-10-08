@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 from test_parallel_executor_seresnext_with_reduce_cpu import TestResnetWithReduceBase, DeviceType
 

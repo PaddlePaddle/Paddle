@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 enum { kFCMKLDNNFP32 = 1, kFCMKLDNNINT8 = 2 };
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 inline void FCOutputSize(const framework::DDim& in_dims,
                          const framework::DDim& w_dims,
@@ -59,8 +59,8 @@ class FCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<framework::LoDTensor>("Input");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
     auto* output = ctx.Output<framework::LoDTensor>("Out");
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     bool with_relu =

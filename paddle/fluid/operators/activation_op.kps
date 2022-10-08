@@ -72,13 +72,13 @@ class ActivationCudaKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Tensor* x = nullptr;
-    framework::Tensor* out = nullptr;
+    const phi::DenseTensor* x = nullptr;
+    phi::DenseTensor* out = nullptr;
     ExtractActivationTensor(ctx, &x, &out);
     out->mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    std::vector<const framework::Tensor*> ins = {x};
-    std::vector<framework::Tensor*> outs = {out};
+    std::vector<const phi::DenseTensor*> ins = {x};
+    std::vector<phi::DenseTensor*> outs = {out};
     auto functor = Functor();
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
@@ -95,8 +95,8 @@ class ActivationGradCudaKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Tensor *x, *out, *d_out;
-    framework::Tensor* d_x = nullptr;
+    const phi::DenseTensor *x, *out, *d_out;
+    phi::DenseTensor* d_x = nullptr;
     x = out = d_out = nullptr;
     ExtractActivationGradTensor<Functor::FwdDeps()>(
         ctx, &x, &out, &d_out, &d_x);
@@ -108,8 +108,8 @@ class ActivationGradCudaKernel
       *attr.second = ctx.Attr<float>(attr.first);
     }
 
-    std::vector<const framework::Tensor*> ins = {d_out};
-    std::vector<framework::Tensor*> outs = {d_x};
+    std::vector<const phi::DenseTensor*> ins = {d_out};
+    std::vector<phi::DenseTensor*> outs = {d_x};
 
     if (static_cast<int>(Functor::FwdDeps()) ==
         static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
