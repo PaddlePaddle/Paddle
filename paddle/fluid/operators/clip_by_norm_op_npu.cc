@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class NPUClipByNormKernel : public framework::OpKernel<T> {
@@ -39,8 +39,8 @@ class NPUClipByNormKernel : public framework::OpKernel<T> {
         context.template device_context<paddle::platform::NPUDeviceContext>();
     auto stream = dev_ctx.stream();
 
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
+    auto* input = context.Input<phi::DenseTensor>("X");
+    auto* output = context.Output<phi::DenseTensor>("Out");
     output->mutable_data<T>(place);
 
     PADDLE_ENFORCE_NOT_NULL(input,

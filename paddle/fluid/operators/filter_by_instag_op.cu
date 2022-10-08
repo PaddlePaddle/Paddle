@@ -43,7 +43,7 @@ namespace cg = cooperative_groups;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 using LoDTensor = framework::LoDTensor;
 
@@ -360,7 +360,7 @@ class FilterByInstagGPUKernel : public framework::OpKernel<T> {
 
     // X3 is local fc tag list
     // LoD [[0, Sum(fc1), Sum(fc1, fc2) ...]]
-    const Tensor* x3 = context.Input<Tensor>("Filter_tag");
+    const phi::DenseTensor* x3 = context.Input<phi::DenseTensor>("Filter_tag");
     const int64_t* x3_data = x3->data<int64_t>();
 
     Vector<size_t> x2_lods;

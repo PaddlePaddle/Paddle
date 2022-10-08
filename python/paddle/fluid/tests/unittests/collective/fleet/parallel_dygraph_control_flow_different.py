@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-import paddle.distributed as dist
 
 import paddle
 import paddle.fluid as fluid

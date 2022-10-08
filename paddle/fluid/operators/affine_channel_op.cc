@@ -188,11 +188,11 @@ template <typename DeviceContext, typename T>
 class AffineChannelKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* scale = ctx.Input<framework::Tensor>("Scale");
-    auto* bias = ctx.Input<framework::Tensor>("Bias");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
 
-    auto* y = ctx.Output<framework::Tensor>("Out");
+    auto* y = ctx.Output<phi::DenseTensor>("Out");
     y->mutable_data<T>(ctx.GetPlace());
 
     const framework::DataLayout layout =
@@ -233,14 +233,14 @@ template <typename DeviceContext, typename T>
 class AffineChannelGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* scale = ctx.Input<framework::Tensor>("Scale");
-    auto* dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dscale =
-        ctx.Output<framework::Tensor>(framework::GradVarName("Scale"));
-    auto* dbias = ctx.Output<framework::Tensor>(framework::GradVarName("Bias"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     const framework::DataLayout layout =
         framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));

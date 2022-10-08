@@ -14,11 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import numpy as np
-import argparse
-import ast
-import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear

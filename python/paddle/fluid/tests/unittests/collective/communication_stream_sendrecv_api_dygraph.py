@@ -16,9 +16,7 @@ import os
 import numpy as np
 import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
 import test_collective_api_base as test_collective_base
-import test_communication_api_base as test_base
 
 
 class StreamSendRecvTestCase():

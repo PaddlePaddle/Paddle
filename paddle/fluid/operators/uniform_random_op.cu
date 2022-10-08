@@ -20,14 +20,14 @@ template <typename T>
 class GPUUniformRandomKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    framework::Tensor* tensor = nullptr;
+    phi::DenseTensor* tensor = nullptr;
     auto out_var = context.OutputVar("Out");
     std::vector<int64_t> new_shape;
     auto list_new_shape_tensor =
-        context.MultiInput<framework::Tensor>("ShapeTensorList");
+        context.MultiInput<phi::DenseTensor>("ShapeTensorList");
     if (list_new_shape_tensor.size() > 0 || context.HasInput("ShapeTensor")) {
       if (context.HasInput("ShapeTensor")) {
-        auto* shape_tensor = context.Input<framework::Tensor>("ShapeTensor");
+        auto* shape_tensor = context.Input<phi::DenseTensor>("ShapeTensor");
         new_shape = GetNewDataFromShapeTensor(shape_tensor);
       } else if (list_new_shape_tensor.size() > 0) {
         new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);

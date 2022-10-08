@@ -24,7 +24,6 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-using framework::Tensor;
 
 template <typename T,
           int MajorType = Eigen::RowMajor,
@@ -144,7 +143,7 @@ class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *x = context.Input<LoDTensor>("X");
-    auto *filter = context.Input<Tensor>("Filter");
+    auto *filter = context.Input<phi::DenseTensor>("Filter");
     auto *out = context.Output<LoDTensor>("Out");
 
     out->mutable_data<T>(context.GetPlace());
@@ -184,12 +183,12 @@ class RowConvKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
         current_timesteps = end - start;
       }
       // int current_timesteps = end - start;
-      Tensor cur_input_sequence =
+      phi::DenseTensor cur_input_sequence =
           x->Slice(start, end);  // Current input sequence
       cur_input_sequence =
           cur_input_sequence.Resize({current_timesteps, input_dim});
 
-      Tensor cur_output_sequence =
+      phi::DenseTensor cur_output_sequence =
           out->Slice(start, end);  // Current output sequence
       cur_output_sequence =
           cur_output_sequence.Resize({current_timesteps, input_dim});
@@ -219,10 +218,11 @@ class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *x = context.Input<LoDTensor>("X");
-    auto *filter = context.Input<Tensor>("Filter");
+    auto *filter = context.Input<phi::DenseTensor>("Filter");
     auto *d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto *dx = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto *d_filter = context.Output<Tensor>(framework::GradVarName("Filter"));
+    auto *d_filter =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
 
     auto &x_lod = x->lod();
     bool is_tensor = x_lod.empty();
@@ -264,9 +264,10 @@ class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
         } else {
           current_timesteps = end - start;
         }
-        Tensor cur_input = x->Slice(start, end);  // Current input sequence
+        phi::DenseTensor cur_input =
+            x->Slice(start, end);  // Current input sequence
         cur_input = cur_input.Resize({current_timesteps, input_dim});
-        Tensor cur_doutput =
+        phi::DenseTensor cur_doutput =
             d_out->Slice(start, end);  // Current output grad sequence
         cur_doutput = cur_doutput.Resize({current_timesteps, input_dim});
         auto cur_ip = EigenMatrix<T>::From(cur_input);
@@ -298,10 +299,10 @@ class RowConvGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
           current_timesteps = end - start;
         }
 
-        Tensor cur_doutput =
+        phi::DenseTensor cur_doutput =
             d_out->Slice(start, end);  // Current output grad sequence
         cur_doutput = cur_doutput.Resize({current_timesteps, input_dim});
-        Tensor cur_dinput =
+        phi::DenseTensor cur_dinput =
             dx->Slice(start, end);  // Current input grad sequence
         cur_dinput = cur_dinput.Resize({current_timesteps, input_dim});
 

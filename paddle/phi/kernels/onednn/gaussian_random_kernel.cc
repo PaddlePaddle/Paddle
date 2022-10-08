@@ -47,4 +47,4 @@ void GaussianRandomKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    gaussian_random, OneDNN, ALL_LAYOUT, phi::GaussianRandomKernel, float) {}
+    gaussian_random, OneDNN, ONEDNN, phi::GaussianRandomKernel, float) {}
