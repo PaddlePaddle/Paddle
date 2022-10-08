@@ -18,8 +18,6 @@ import numpy as np
 import tempfile
 import paddle
 import paddle.distributed.fleet as fleet
-from paddle.distributed import ReduceOp
-from paddle.distributed import init_parallel_env
 from paddle.inference import Config
 from paddle.inference import create_predictor
 from paddle.inference import PrecisionType

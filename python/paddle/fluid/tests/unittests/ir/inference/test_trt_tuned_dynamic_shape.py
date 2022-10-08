@@ -18,7 +18,7 @@ import paddle
 
 paddle.enable_static()
 import paddle.fluid as fluid
-from paddle.inference import Config, Predictor, create_predictor
+from paddle.inference import Config, create_predictor
 
 
 class TRTTunedDynamicShapeTest(unittest.TestCase):
