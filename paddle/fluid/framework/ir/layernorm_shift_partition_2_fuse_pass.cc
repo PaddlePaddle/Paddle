@@ -85,7 +85,7 @@ LayerNormShiftPartition2FusePass::LayerNormShiftPartition2FusePass() {
       .AddAttr("axis")
       .IsType<std::vector<int>>()
       .End();
-    AddOpCompat(OpCompat("roll"))
+  AddOpCompat(OpCompat("roll"))
       .AddInput("X")
       .IsTensor()
       .End()
@@ -180,7 +180,17 @@ void LayerNormShiftPartition2FusePass::ApplyImpl(ir::Graph* graph) const {
     if (window_size < 0 || input_resolution < 0) {
       return;
     }
-
+    std::vector<int64_t> roll_axis =
+        PADDLE_GET_CONST(std::vector<int64_t>, roll1_op->Op()->GetAttr("axis"));
+    std::vector<int64_t> roll_shifts = PADDLE_GET_CONST(
+        std::vector<int64_t>, roll1_op->Op()->GetAttr("shifts"));
+    if (roll_axis.size() != 2 || roll_axis[0] != 1 || roll_axis[1] != 2) {
+      return;
+    }
+    if (roll_shifts.size() != 2 || roll_shifts[0] != roll_shifts[1]) {
+      return;
+    }
+    int shift_size = static_cast<int>(-roll_shifts[0]);
     OpDesc new_op_desc;
     new_op_desc.SetType("layernorm_shift_partition");
     new_op_desc.SetInput("X", {layer_norm_in->Name()});
@@ -191,7 +201,10 @@ void LayerNormShiftPartition2FusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetAttr("begin_norm_axis",
                         layer_norm_op->Op()->GetAttr("begin_norm_axis"));
     new_op_desc.SetAttr("window_size", window_size);
-    new_op_desc.SetAttr("shift_size", (int)window_size/2); // if no circle_shift (roll), shift_size is 0
+    new_op_desc.SetAttr(
+        "shift_size",
+        shift_size);  // if no circle_shift (roll), shift_size is 0
+
     new_op_desc.SetAttr("input_resolution", input_resolution);
     new_op_desc.Flush();
 
