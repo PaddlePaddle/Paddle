@@ -201,9 +201,9 @@ class TrtConvertMatmulTest_dynamic3(TrtLayerAutoScanTest):
             return np.random.random(shape).astype(np.float32)
 
         # Do more loop to pass coverage CI
-        for batch in range(20, 70):
-            input1_shape = [batch, 40]
-            input2_shape = [40]
+        for batch in range(20, 400):
+            input1_shape = [batch, 50]
+            input2_shape = [50]
             dics = [{
                 "trans_x": False,
                 "trans_y": False,
