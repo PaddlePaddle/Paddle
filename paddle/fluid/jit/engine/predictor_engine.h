@@ -147,7 +147,7 @@ class PredictorEngine : public BaseEngine {
     } else if (platform::is_cpu_place(place_)) {
       config.DisableGpu();
     }
-    // config.EnableMKLDNN();
+    config.EnableMKLDNN();
     config.SwitchIrOptim(true);
     // config.SwitchIrDebug(true);
 
