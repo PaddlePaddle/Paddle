@@ -56,7 +56,7 @@ class TransformFlag {
   // the complex is always transferd, except stop_transform_ is true.
   bool trans_data_type_ = false;
 
-  // trans_backend_ and trans_layout_ are true defalutly,
+  // trans_backend_ and trans_layout_ are true defaultly,
   // and they can only be setted by global flag.
   bool trans_backend_ = true;
   bool trans_layout_ = true;

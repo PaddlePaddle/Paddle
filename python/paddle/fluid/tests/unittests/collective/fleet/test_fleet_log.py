@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.log_util import logger
 import logging

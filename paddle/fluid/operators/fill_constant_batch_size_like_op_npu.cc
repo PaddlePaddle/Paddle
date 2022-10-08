@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
@@ -32,7 +32,7 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
     auto str_value = ctx.Attr<std::string>("str_value");
     auto force_cpu = ctx.Attr<bool>("force_cpu");
 
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("Input");
     if (in->lod().size() && ctx.Attr<int>("input_dim_idx") == 0) {
       // set the correct batch size for the LoDTensor.

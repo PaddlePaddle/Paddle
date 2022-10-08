@@ -696,7 +696,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
-    framework::Tensor tensor;
+    phi::DenseTensor tensor;
 
     if (dl.device.device_type == kDLCPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
@@ -1936,6 +1936,9 @@ All parameter, weight, gradient are variables in Paddle.
             for (size_t i = 0; i < self.size(); ++i) {
               if (data_is_lod_tensor(self[i])) {
                 auto &data = PADDLE_GET(LoDTensor, self[i]);
+                res[i] = py::cast(std::move(data));
+              } else if (data_is_sparse_coo_tensor(self[i])) {
+                auto &data = PADDLE_GET(phi::SparseCooTensor, self[i]);
                 res[i] = py::cast(std::move(data));
               } else {
                 auto &data = PADDLE_GET(LoDTensorArray, self[i]);

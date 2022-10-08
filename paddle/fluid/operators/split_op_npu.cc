@@ -21,14 +21,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class SplitNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto outs = ctx.MultiOutput<phi::DenseTensor>("Out");
     int num = ctx.Attr<int>("num");
     std::vector<int> sections = ctx.Attr<std::vector<int>>("sections");
     int axis = ctx.Attr<int>("axis");

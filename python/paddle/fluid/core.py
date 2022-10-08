@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import site
 import sys
 import os
 import warnings
 import platform
 
-core_suffix = 'so'
-if os.name == 'nt':
-    core_suffix = 'pyd'
+has_paddle_dy_lib = False
 
-has_libpaddle_so = False
+dy_lib_name = 'libpaddle'
+dy_lib_suffix = 'so'
+if os.name == 'nt':
+    dy_lib_suffix = 'pyd'
+
 current_path = os.path.abspath(os.path.dirname(__file__))
-if os.path.exists(current_path + os.sep + 'libpaddle.' + core_suffix):
-    has_libpaddle_so = True
+if os.path.exists(current_path + os.sep + dy_lib_name + '.' + dy_lib_suffix):
+    has_paddle_dy_lib = True
 
 try:
     if os.name == 'nt':
@@ -193,8 +193,8 @@ def load_dso(dso_absolute_path):
 
 
 def pre_load(dso_name):
-    if has_libpaddle_so:
-        core_so = current_path + os.sep + 'libpaddle.' + core_suffix
+    if has_paddle_dy_lib:
+        core_so = current_path + os.sep + dy_lib_name + '.' + dy_lib_suffix
     else:
         core_so = None
     dso_path = get_dso_path(core_so, dso_name)
@@ -290,10 +290,10 @@ try:
         from .libpaddle import _cleanup_mmap_fds
         from .libpaddle import _remove_tensor_list_mmap_fds
 except Exception as e:
-    if has_libpaddle_so:
+    if has_paddle_dy_lib:
         sys.stderr.write(
             'Error: Can not import paddle core while this file exists: ' +
-            current_path + os.sep + 'libpaddle.' + core_suffix + '\n')
+            current_path + os.sep + 'libpaddle.' + dy_lib_suffix + '\n')
     if not avx_supported() and libpaddle.is_compiled_with_avx():
         sys.stderr.write(
             "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "

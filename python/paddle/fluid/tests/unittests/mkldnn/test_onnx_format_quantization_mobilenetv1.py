@@ -210,9 +210,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         config.set_cpu_math_library_num_threads(1)
         config.disable_glog_info()
         if is_quantized_model:
-            calibration_file_path = os.path.join(model_path,
-                                                 'calibration_table.txt')
-            config.set_calibration_file_path(calibration_file_path)
             config.enable_mkldnn_int8()
         predictor = paddle.inference.create_predictor(config)
 
@@ -292,24 +289,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                        is_use_cache_file=is_use_cache_file)
         ptq.quantize()
         ptq.save_quantized_model(self.int8_model)
-        if onnx_format:
-            try:
-                collect_dict = ptq._calibration_scales
-                save_quant_table_path = os.path.join(self.int8_model,
-                                                     'calibration_table.txt')
-                with open(save_quant_table_path, 'w') as txt_file:
-                    for tensor_name in collect_dict.keys():
-                        write_line = '{} {}'.format(
-                            tensor_name,
-                            collect_dict[tensor_name]['scale']) + '\n'
-                        txt_file.write(write_line)
-                print(
-                    "Quantization clip ranges of tensors is save in: {}".format(
-                        save_quant_table_path))
-            except:
-                print(
-                    "Unable to generate `calibration_table.txt`, please update PaddlePaddle >= 2.3.3"
-                )
 
     def run_test(self,
                  model,
@@ -427,36 +406,6 @@ class TestMKLDNNInt8ForMobilenetv1Avg(TestPostTrainingQuantization):
                       is_optimize_model,
                       diff_threshold,
                       onnx_format=False)
-
-
-class TestMKLDNNInt8ForMobilenetv1AbsMaxONNXFormat(TestPostTrainingQuantization
-                                                   ):
-
-    def test_onnx_format_abs_max_mobilenetv1(self):
-        model = "MobileNet-V1"
-        algo = "abs_max"
-        round_type = "round"
-        data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
-        ]
-        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
-        quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = False
-        # The accuracy diff of post-training quantization (abs_max) maybe bigger
-        diff_threshold = 0
-        self.run_test(model,
-                      algo,
-                      round_type,
-                      data_urls,
-                      data_md5s,
-                      quantizable_op_type,
-                      is_full_quantize,
-                      is_use_cache_file,
-                      is_optimize_model,
-                      diff_threshold,
-                      onnx_format=True)
 
 
 class TestMKLDNNInt8ForMobilenetv1AbsMax(TestPostTrainingQuantization):
