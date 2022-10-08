@@ -19,12 +19,8 @@ import sys
 sys.path.append("..")
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
-import op_test
-from op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
