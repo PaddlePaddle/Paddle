@@ -286,6 +286,8 @@ class TestWithDouble(TestModulatedDeformableConvOp):
         self.dtype = np.float64
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWithFloat16(TestModulatedDeformableConvOp):
 
     def init_type(self):
@@ -293,13 +295,6 @@ class TestWithFloat16(TestModulatedDeformableConvOp):
 
     def test_check_output(self):
         self.check_output(check_eager=True, atol=1e-3)
-
-    def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['Input', 'Offset', 'Filter'],
-                                   'Output',
-                                   numeric_grad_delta=1e-3,
-                                   max_relative_error=1e-3,
-                                   check_eager=True)
 
 
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
