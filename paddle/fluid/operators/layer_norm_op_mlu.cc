@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 
 template <typename T>
@@ -28,12 +28,12 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
     const auto epsilon = ctx.Attr<float>("epsilon");
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* scale = ctx.Input<Tensor>("Scale");
-    const auto* bias = ctx.Input<Tensor>("Bias");
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* mean = ctx.Output<Tensor>("Mean");
-    auto* variance = ctx.Output<Tensor>("Variance");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+    auto* variance = ctx.Output<phi::DenseTensor>("Variance");
 
     auto place = ctx.GetPlace();
 
@@ -151,14 +151,15 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* mean = ctx.Input<Tensor>("Mean");
-    const auto* variance = ctx.Input<Tensor>("Variance");
-    const auto* scale = ctx.Input<Tensor>("Scale");
-    const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dscale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto* dbias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    const auto* mean = ctx.Input<phi::DenseTensor>("Mean");
+    const auto* variance = ctx.Input<phi::DenseTensor>("Variance");
+    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dscale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     auto place = ctx.GetPlace();
     dx->mutable_data<T>(place);

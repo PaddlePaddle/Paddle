@@ -15,7 +15,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 template <typename DeviceContext, typename T>
@@ -62,8 +62,8 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
         epsilon_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&epsilon_tmp, epsilon);
         epsilon_tensor = &epsilon_tmp;
-        auto *mg_tensor = ctx.Input<Tensor>("MeanGrad");
-        auto *mean_grad_out = ctx.Output<Tensor>("MeanGradOut");
+        auto *mg_tensor = ctx.Input<phi::DenseTensor>("MeanGrad");
+        auto *mean_grad_out = ctx.Output<phi::DenseTensor>("MeanGradOut");
         mean_grad_out->mutable_data<T>(ctx.GetPlace());
         const auto &runner_applycenterrmsprop = NpuOpRunner(
             std::string("ApplyCenteredRMSPropD"),

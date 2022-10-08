@@ -124,7 +124,7 @@ message VarType {
     FP16 = 4;
     FP32 = 5;
     FP64 = 6;
-    // Tensor<size_t> is used in C++.
+    // phi::DenseTensor<size_t> is used in C++.
     SIZE_T = 19;
     UINT8 = 20;
     INT8 = 21;
@@ -154,6 +154,8 @@ message VarType {
     FEED_LIST = 28;
     // The data type of phi::StringTensor
     PSTRING = 29;
+    // the data type of phi::SparseCooTensor
+    SPARSE_COO = 30;
   }
 
   required Type type = 1;
@@ -186,6 +188,7 @@ message VarType {
   optional TensorDesc string = 8;
   optional TensorDesc strings = 9;
   optional TensorDesc vocab = 10;
+  optional TensorDesc sparse_coo = 11;
 }
 
 message VarDesc {

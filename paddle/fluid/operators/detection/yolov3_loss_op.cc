@@ -21,8 +21,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class Yolov3LossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;

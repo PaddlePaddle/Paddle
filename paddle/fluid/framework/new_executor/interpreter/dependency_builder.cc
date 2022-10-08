@@ -16,16 +16,6 @@
 
 #include <queue>
 
-// The difference between "sequential_run" and "serial_run":
-// "sequential_run" dispatches OPs one by one according to the sequence in the
-// Program, while "serial_run" ensures that all Ops are scheduled in a singal
-// thread. In standalone executor, "sequential_run" is also "serial_run", while
-// "serial_run" is not necessarily "sequential_run".
-PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
-                            false,
-                            "Enable sequential execution for standalone "
-                            "executor, only applied to GPU OPs.");
-
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -67,7 +57,7 @@ const std::string StringizeDownstreamMap(
 }
 
 const std::map<int, std::set<int>>& DependencyBuilder::Build(
-    const std::vector<Instruction>& instructions) {
+    const std::vector<Instruction>& instructions, bool is_sequential_run) {
   PADDLE_ENFORCE_EQ(
       is_build_,
       false,
@@ -80,14 +70,14 @@ const std::map<int, std::set<int>>& DependencyBuilder::Build(
   BuildOpHappensBefore();
   ShrinkDownstreamMap();
 
+  if (is_sequential_run) {
+    AddDependencyForSequentialRun();
+  }
+
   AddDependencyForCoalesceTensorOp();
   AddDependencyForCommunicationOp();
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
-
-  if (FLAGS_new_executor_sequential_run) {
-    AddDependencyForSequentialRun();
-  }
 
   is_build_ = true;
 
@@ -345,6 +335,10 @@ void DependencyBuilder::AddDownstreamOp(int prior_op_idx,
 
   if (op_happens_before_.size() != 0) {
     for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+      if (op_happens_before_[op_idx][prior_op_idx]) {
+        op_happens_before_[op_idx][posterior_op_idx] = true;
+      }
+
       if (op_happens_before_[posterior_op_idx][op_idx]) {
         op_happens_before_[prior_op_idx][op_idx] = true;
       }
@@ -471,10 +465,6 @@ void DependencyBuilder::BuildDownstreamMap() {
       AddDownstreamOp(dep_op, op);
     }
   }
-
-  VLOG(6) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
-  VLOG(6) << "downstream_map: " << std::endl
-          << StringizeDownstreamMap(op_downstream_map_);
 }
 
 void DependencyBuilder::BuildOpHappensBefore() {
@@ -505,7 +495,7 @@ void DependencyBuilder::BuildOpHappensBefore() {
                                 next,
                                 op_idx));
           op_happens_before_[op_idx][next] = true;
-          VLOG(8) << "happens before: " << op_idx << " " << next;
+          VLOG(10) << "happens before: " << op_idx << " " << next;
           q.push(next);
         }
       }
@@ -552,8 +542,9 @@ void DependencyBuilder::ShrinkDownstreamMap() {
     }
     op_downstream_map_.at(i) = minumum_nexts;
   }
-  VLOG(6) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
-  VLOG(6) << "downstream_map: " << std::endl
+  VLOG(8) << "Finish shrink downstream map";
+  VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
+  VLOG(8) << "downstream_map: " << std::endl
           << StringizeDownstreamMap(op_downstream_map_);
 }
 

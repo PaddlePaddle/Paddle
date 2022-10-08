@@ -192,7 +192,7 @@ void RecurrentBase::LinkTensor(const framework::Scope &src_scope,
       src_vars,
       dst_scope,
       dst_vars,
-      [&](const framework::Tensor &src, framework::Tensor *dst) {
+      [&](const phi::DenseTensor &src, phi::DenseTensor *dst) {
         dst->ShareDataWith(src);
       });
 }
@@ -247,8 +247,8 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
         Inputs(kInputs),
         &cur_scope,
         Inputs(kInputs),
-        [&seq_offset](const framework::Tensor &outside,
-                      framework::Tensor *inside) {
+        [&seq_offset](const phi::DenseTensor &outside,
+                      phi::DenseTensor *inside) {
           inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
           auto dims = phi::vectorize(inside->dims());
           dims.erase(dims.begin());
@@ -374,7 +374,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         Inputs(kOutputGrads),
         &cur_scope,
         Inputs(kOutputGrads),
-        [&](const framework::Tensor &outside, framework::Tensor *inside) {
+        [&](const phi::DenseTensor &outside, phi::DenseTensor *inside) {
           inside->ShareDataWith(outside.Slice(seq_offset, seq_offset + 1));
           auto dims = phi::vectorize(inside->dims());
           dims.erase(dims.begin());
@@ -439,7 +439,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
                 0) {  // Inside Gradient is not created.
               return;
             }
-            framework::Tensor src_slice =
+            phi::DenseTensor src_slice =
                 src_tensor.Slice(seq_offset, seq_offset + 1);
             dst_tensor->ShareDataWith(src_slice);
           },

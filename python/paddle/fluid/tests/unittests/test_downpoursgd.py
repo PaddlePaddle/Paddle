@@ -13,8 +13,6 @@
 # limitations under the License.
 """Test cases for Downpour."""
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 import os
