@@ -22,6 +22,8 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace phi {
 
@@ -62,55 +64,6 @@ __global__ void LerpGradScalarKernelImpl(const T* weight,
       dy[idx] = temp_dx;
     }
   }
-}
-
-template <typename T, typename Context, size_t D>
-void GetRduceResult(const Context& ctx,
-                    const DenseTensor& out_grad,
-                    const DenseTensor& b_xgrad,
-                    const DenseTensor& b_ygrad,
-                    DenseTensor* x_grad,
-                    DenseTensor* y_grad) {
-  auto& dout = out_grad;
-  auto dout_dims = dout.dims();
-  auto* dx = x_grad;
-  auto* dy = y_grad;
-  DDim dx_dims;
-  DDim dy_dims;
-  Eigen::DSizes<int, D * 2> dx_reshape_dims;
-  Eigen::DSizes<int, D * 2> dy_reshape_dims;
-  Eigen::DSizes<int, D> reduce_dims;
-  Eigen::DSizes<int, D> dx_bcast_dims;
-  Eigen::DSizes<int, D> dy_bcast_dims;
-
-  dx_dims = phi::funcs::ExtendDims2Rank(dx->dims(), D);
-  phi::funcs::GetBroadcastDims<D>(dx_dims, dout_dims, &dx_bcast_dims);
-  dy_dims = phi::funcs::ExtendDims2Rank(dy->dims(), D);
-  phi::funcs::GetBroadcastDims<D>(dy_dims, dout_dims, &dy_bcast_dims);
-  for (int i = 0; i < dout_dims.size(); ++i) {
-    dx_reshape_dims[2 * i] = dx_bcast_dims[i];
-    dx_reshape_dims[2 * i + 1] = dx_dims[i];
-
-    dy_reshape_dims[2 * i] = dy_bcast_dims[i];
-    dy_reshape_dims[2 * i + 1] = dy_dims[i];
-    reduce_dims[i] = 2 * i;
-  }
-
-  ctx.template Alloc<T>(dx);
-  ctx.template Alloc<T>(dy);
-  auto eigen_dx = phi::EigenTensor<T, D>::From(*dx, dx_dims);
-  auto eigen_dy = phi::EigenTensor<T, D>::From(*dy, dy_dims);
-  dx_dims = phi::funcs::ExtendDims2Rank(x_grad->dims(), D);
-  auto broad_dx = phi::EigenTensor<T, D>::From(b_xgrad);
-  auto broad_dy = phi::EigenTensor<T, D>::From(b_ygrad);
-
-  auto& place = *ctx.eigen_device();
-  eigen_dx.device(place) = broad_dx.reshape(dx_reshape_dims)
-                               .sum(reduce_dims)
-                               .reshape(eigen_dx.dimensions());
-  eigen_dy.device(place) = broad_dy.reshape(dy_reshape_dims)
-                               .sum(reduce_dims)
-                               .reshape(eigen_dy.dimensions());
 }
 
 bool XYNeedReduce(const DenseTensor& x,
@@ -253,32 +206,17 @@ void LerpGradKernel(const Context& ctx,
                              x_grad_data,
                              y_grad_data);
 
-    switch (rank) {
-      case 1:
-        GetRduceResult<T, Context, 1>(
-            ctx, out_grad, b_xgrad, b_ygrad, x_grad, y_grad);
-        break;
-      case 2:
-        GetRduceResult<T, Context, 2>(
-            ctx, out_grad, b_xgrad, b_ygrad, x_grad, y_grad);
-        break;
-      case 3:
-        GetRduceResult<T, Context, 3>(
-            ctx, out_grad, b_xgrad, b_ygrad, x_grad, y_grad);
-        break;
-      case 4:
-        GetRduceResult<T, Context, 4>(
-            ctx, out_grad, b_xgrad, b_ygrad, x_grad, y_grad);
-        break;
-      case 5:
-        GetRduceResult<T, Context, 5>(
-            ctx, out_grad, b_xgrad, b_ygrad, x_grad, y_grad);
-        break;
-      case 6:
-        GetRduceResult<T, Context, 6>(
-            ctx, out_grad, b_xgrad, b_ygrad, x_grad, y_grad);
-        break;
-    }
+    std::vector<int> reduce_axis_x =
+        funcs::GetReduceDim(x_grad->dims(), b_xgrad.dims(), -1);
+
+    std::vector<int> reduce_axis_y =
+        funcs::GetReduceDim(y_grad->dims(), b_ygrad.dims(), -1);
+
+    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        ctx, b_xgrad, x_grad, kps::IdentityFunctor<T>(), reduce_axis_x);
+
+    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        ctx, b_ygrad, y_grad, kps::IdentityFunctor<T>(), reduce_axis_y);
   }
 }
 
