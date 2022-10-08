@@ -22,6 +22,7 @@ sys.path.append("..")
 from op_test import OpTest
 
 paddle.enable_static()
+print("trigger npu ut")
 
 
 def test_static_layer(place,
