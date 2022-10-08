@@ -24,7 +24,6 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "depthwise_conv2d_transpose",
     "conv3d_transpose",
     "layer_norm",
-    "mul",
     "pad2d",
     "pad3d",
     "pool2d",
@@ -38,7 +37,6 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "softmax_grad",
     "split",
     "sum",
-    "transpose2_grad",
     "sgd",
     // NOTE(jiahy0825): squeeze MKLDNN kernel are disabled
     // (https://github.com/PaddlePaddle/Paddle/pull/35781). If these MKLDNN

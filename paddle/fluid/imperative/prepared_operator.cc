@@ -192,7 +192,7 @@ PreparedOp PrepareImpl(
 // NOTE(jiahy0825): The registered MKLDNN kernel have library_type =
 // LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
-// here, otherwise it cannot work.
+// here.
 #ifdef PADDLE_WITH_MKLDNN
   if (!paddle::platform::in_mkldnn_white_list(op.Type())) {
     if (op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
