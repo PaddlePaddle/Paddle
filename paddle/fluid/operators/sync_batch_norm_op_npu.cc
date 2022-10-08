@@ -20,7 +20,7 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 void training_or_inference(const framework::ExecutionContext &ctx,
@@ -325,16 +325,16 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                           "to set use_global_stats True. Please use batch_norm "
                           "in this case."));
 
-    const auto *x = ctx.Input<Tensor>("X");
-    auto *y = ctx.Output<Tensor>("Y");
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *bias = ctx.Input<Tensor>("Bias");
-    const auto *mean = ctx.Input<Tensor>("Mean");
-    const auto *variance = ctx.Input<Tensor>("Variance");
-    auto *mean_out = ctx.Output<Tensor>("MeanOut");
-    auto *variance_out = ctx.Output<Tensor>("VarianceOut");
-    auto *saved_mean = ctx.Output<Tensor>("SavedMean");
-    auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
+    const auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *y = ctx.Output<phi::DenseTensor>("Y");
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto *bias = ctx.Input<phi::DenseTensor>("Bias");
+    const auto *mean = ctx.Input<phi::DenseTensor>("Mean");
+    const auto *variance = ctx.Input<phi::DenseTensor>("Variance");
+    auto *mean_out = ctx.Output<phi::DenseTensor>("MeanOut");
+    auto *variance_out = ctx.Output<phi::DenseTensor>("VarianceOut");
+    auto *saved_mean = ctx.Output<phi::DenseTensor>("SavedMean");
+    auto *saved_variance = ctx.Output<phi::DenseTensor>("SavedVariance");
 
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_EQ(x_dims.size(),
@@ -398,7 +398,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
     } else {  // training
       if (ctx.HasInput("MomentumTensor")) {
-        const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+        const auto *mom_tensor = ctx.Input<phi::DenseTensor>("MomentumTensor");
         Tensor mom_cpu;
         paddle::framework::TensorCopySync(
             *mom_tensor, platform::CPUPlace(), &mom_cpu);
@@ -581,12 +581,13 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout layout = framework::StringToDataLayout(layout_str);
 
-    const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
-    const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
+    const auto *d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
+    const auto *saved_mean = ctx.Input<phi::DenseTensor>("SavedMean");
 
     const Tensor *x;
     if (ctx.HasInput("Y")) {
@@ -595,7 +596,7 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "sync_batch_norm_grad doesn't support input Y"));
     } else {
-      x = ctx.Input<Tensor>("X");
+      x = ctx.Input<phi::DenseTensor>("X");
     }
 
     int N, C, H, W, D;

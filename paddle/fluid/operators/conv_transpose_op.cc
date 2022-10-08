@@ -36,35 +36,34 @@ using DataLayout = framework::DataLayout;
 
 framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_{framework::LibraryType::kPlain};
-  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-  bool use_cudnn =
-      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
-    if (use_cudnn) {
-      library_ = framework::LibraryType::kCUDNN;
+    if (ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
+        dev_ctx.cudnn_handle() != nullptr) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kAnyLayout,
+                                     framework::LibraryType::kCUDNN);
     }
   }
 #endif
 #ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
+  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+    return framework::OpKernelType(data_type,
+                                   ctx.GetPlace(),
+                                   framework::DataLayout::kMKLDNN,
+                                   framework::LibraryType::kMKLDNN);
   }
 #endif
 
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     const std::string& var_name,
-    const framework::Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and

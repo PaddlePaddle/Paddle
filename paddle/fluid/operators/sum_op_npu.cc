@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
 using LoDTensor = framework::LoDTensor;
 
@@ -34,7 +34,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
     auto out_var = ctx.OutputVar("Out");
     if (out_var->IsType<framework::LoDTensor>()) {
       auto *out = out_var->GetMutable<framework::LoDTensor>();
-      auto x = ctx.MultiInput<Tensor>("X");
+      auto x = ctx.MultiInput<phi::DenseTensor>("X");
       out->mutable_data<T>(ctx.GetPlace());
 
       auto place = ctx.GetPlace();
@@ -45,7 +45,7 @@ class SumNPUKernel : public framework::OpKernel<T> {
         return;
       }
 
-      std::vector<framework::Tensor> inputs;
+      std::vector<phi::DenseTensor> inputs;
       std::vector<std::string> names;
       for (int i = 0; i < n; ++i) {
         if (x[i] && x[i]->numel() > 0) {

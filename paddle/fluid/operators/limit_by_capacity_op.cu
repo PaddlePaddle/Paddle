@@ -29,7 +29,7 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 __global__ void limit_by_capacity_impl(
@@ -54,10 +54,10 @@ template <typename T>
 class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto expert_count = context.Input<Tensor>("expert_count");
-    auto capacity = context.Input<Tensor>("capacity");
+    auto expert_count = context.Input<phi::DenseTensor>("expert_count");
+    auto capacity = context.Input<phi::DenseTensor>("capacity");
     auto n_worker = context.Attr<int>("n_worker");
-    auto out = context.Output<Tensor>("Out");
+    auto out = context.Output<phi::DenseTensor>("Out");
 
     auto n_expert = expert_count->numel() / n_worker;
     const auto place = context.GetPlace();
@@ -68,7 +68,7 @@ class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
     auto out_data = out->mutable_data<T>(place);
     const T* ec_data = expert_count->data<T>();
 
-    framework::Tensor capacity_copy;
+    phi::DenseTensor capacity_copy;
     framework::TensorCopy(*capacity, place, dev_ctx, &capacity_copy);
     T* cap_data = capacity_copy.mutable_data<T>(place);
 

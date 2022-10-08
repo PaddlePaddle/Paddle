@@ -24,7 +24,6 @@ namespace paddle {
 namespace operators {
 
 using framework::OpKernelType;
-using framework::Tensor;
 
 class HistogramOp : public framework::OperatorWithKernel {
  public:

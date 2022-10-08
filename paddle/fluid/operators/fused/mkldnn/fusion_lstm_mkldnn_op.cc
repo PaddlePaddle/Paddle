@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 using paddle::framework::LoDTensor;
-using paddle::framework::Tensor;
+
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
 using phi::CPUContext;
@@ -36,9 +36,9 @@ class LSTMMKLDNNHandler
                     const dnnl::engine mkldnn_engine,
                     platform::Place cpu_place,
                     const LoDTensor* input,
-                    const Tensor* weight_h,
-                    const Tensor* h0,
-                    const Tensor* c0,
+                    const phi::DenseTensor* weight_h,
+                    const phi::DenseTensor* h0,
+                    const phi::DenseTensor* c0,
                     const bool is_reverse,
                     const int64_t N,
                     const int64_t Ti,
@@ -168,7 +168,8 @@ class LSTMMKLDNNHandler
   }
 
   template <typename U>
-  std::shared_ptr<dnnl::memory> AcquireWeightXMemory(const Tensor* weight_x) {
+  std::shared_ptr<dnnl::memory> AcquireWeightXMemory(
+      const phi::DenseTensor* weight_x) {
     const std::string wx_key = this->memory_key_ + "@weight_x";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wx_key));
@@ -199,7 +200,8 @@ class LSTMMKLDNNHandler
   }
 
   template <typename U>
-  std::shared_ptr<dnnl::memory> AcquireWeightHMemory(const Tensor* weight_h) {
+  std::shared_ptr<dnnl::memory> AcquireWeightHMemory(
+      const phi::DenseTensor* weight_h) {
     const std::string wh_key = this->memory_key_ + "@weight_h";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wh_key));
@@ -229,7 +231,8 @@ class LSTMMKLDNNHandler
     return memory_p;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireBiasMemory(const Tensor* bias) {
+  std::shared_ptr<dnnl::memory> AcquireBiasMemory(
+      const phi::DenseTensor* bias) {
     const std::string bias_key = this->memory_key_ + "@bias";
     auto memory_p = std::static_pointer_cast<dnnl::memory>(
         this->dev_ctx_.GetBlob(bias_key));
@@ -256,7 +259,8 @@ class LSTMMKLDNNHandler
     return memory_p;
   }
 
-  std::shared_ptr<dnnl::memory> AcquirePeepholeWeights(const Tensor* bias) {
+  std::shared_ptr<dnnl::memory> AcquirePeepholeWeights(
+      const phi::DenseTensor* bias) {
     const std::string peepholes_key = this->memory_key_ + "@peepholes_weights";
     auto memory_p = std::static_pointer_cast<dnnl::memory>(
         this->dev_ctx_.GetBlob(peepholes_key));
@@ -282,7 +286,7 @@ class LSTMMKLDNNHandler
     return memory_p;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireC0Memory(const Tensor* c0) {
+  std::shared_ptr<dnnl::memory> AcquireC0Memory(const phi::DenseTensor* c0) {
     const std::string c0_key = this->memory_key_ + "@c0";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(c0_key));
@@ -340,11 +344,11 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
 
     // Get Tensors
     const auto* input = ctx.Input<LoDTensor>("X");
-    const auto* h0 = ctx.Input<Tensor>("H0");
-    const auto* c0 = ctx.Input<Tensor>("C0");
-    const auto* weight_x = ctx.Input<Tensor>("WeightX");
-    const auto* weight_h = ctx.Input<Tensor>("WeightH");
-    const auto* bias = ctx.Input<Tensor>("Bias");
+    const auto* h0 = ctx.Input<phi::DenseTensor>("H0");
+    const auto* c0 = ctx.Input<phi::DenseTensor>("C0");
+    const auto* weight_x = ctx.Input<phi::DenseTensor>("WeightX");
+    const auto* weight_h = ctx.Input<phi::DenseTensor>("WeightH");
+    const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
     auto* hidden = ctx.Output<LoDTensor>("Hidden");
     auto* cell = ctx.Output<LoDTensor>("Cell");
     cell = cell;

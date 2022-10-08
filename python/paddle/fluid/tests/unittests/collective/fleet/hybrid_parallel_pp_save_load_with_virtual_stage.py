@@ -15,7 +15,6 @@
 import unittest
 import paddle
 import numpy as np
-import random
 import os
 import shutil
 import tempfile
