@@ -94,6 +94,7 @@
     func : BatchNormInferMeta
   kernel :
     func : batch_norm_coo {sparse_coo, dense, dense, dense, dense -> sparse_coo, dense, dense, dense, dense, dense}
+    data_type : x
   backward : batch_norm_grad
 
 - op : cast
