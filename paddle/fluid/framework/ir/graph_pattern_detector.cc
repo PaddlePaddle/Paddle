@@ -3962,6 +3962,92 @@ PDNode* patterns::ReverseRollPattern::operator()(PDNode* in){
   return reshape2_50_out;
 }
 
+
+PDNode* patterns::ReverseRoll2Pattern::operator()(PDNode* in){
+    in->AsInput();
+  auto window_mha_i00_op=pattern->NewNode(window_mha_i00_op_repr())
+                                ->assert_is_op("multihead_matmul")
+                                ->assert_more([&](Node *node){
+                                  return node->Op()->HasAttr("window_number")
+                                      && node->Op()->HasAttr("head_number");
+                                });
+
+  auto window_mha_i00_out=pattern->NewNode(window_mha_i00_out_repr())
+                                 ->AsIntermediate()
+                                 ->assert_is_op_output("multihead_matmul","Out")
+                                 ->assert_is_op_input("matmul_v2","X");
+
+  auto matmul_i10_op=pattern->NewNode(matmul_i10_op_repr())
+                            ->assert_is_op("matmul_v2");
+
+  auto matmul_i10_out=pattern->NewNode(matmul_i10_out_repr())
+                             ->AsIntermediate()
+                             ->assert_is_op_output("matmul_v2","Out")
+                             ->assert_is_op_input("elementwise_add","X");
+
+  auto elw_add_i20_op=pattern->NewNode(elw_add_i20_op_repr())
+                             ->assert_is_op("elementwise_add");
+
+  auto elw_add_i20_out=pattern->NewNode(elw_add_i20_out_repr())
+                              ->AsIntermediate()
+                              ->assert_is_op_output("elementwise_add","Out")
+                              ->assert_is_op_input("reshape2","X");
+
+  auto reshape2_00_op=pattern->NewNode(reshape2_00_op_repr())
+                             ->assert_is_op("reshape2");
+
+  auto reshape2_00_out=pattern->NewNode(reshape2_00_out_repr())
+                              ->AsIntermediate()
+                              ->assert_is_op_output("reshape2","Out")
+                              ->assert_is_op_input("reshape2","X");
+
+  auto reshape2_10_op=pattern->NewNode(reshape2_10_op_repr())
+                             ->assert_is_op("reshape2");
+  auto reshape2_10_out=pattern->NewNode(reshape2_10_out_repr())
+                              ->AsIntermediate()
+                              ->assert_is_op_output("reshape2","Out")
+                              ->assert_is_op_input("transpose2","X");
+
+  auto transpose2_20_op=pattern->NewNode(transpose2_20_op_repr())
+                               ->assert_is_op("transpose2");
+  auto transpose2_20_out=pattern->NewNode(transpose2_20_out_repr())
+                                ->AsIntermediate()
+                                ->assert_is_op_output("transpose2","Out")
+                                ->assert_is_op_input("reshape2","X");
+
+  auto reshape2_30_op=pattern->NewNode(reshape2_30_op_repr())
+                             ->assert_is_op("reshape2");
+  auto reshape2_30_out=pattern->NewNode(reshape2_30_out_repr())
+                              ->AsIntermediate()
+                              ->assert_is_op_output("reshape2","Out")
+                              ->assert_is_op_input("reshape2","X");
+
+  auto reshape2_50_op=pattern->NewNode(reshape2_50_op_repr())
+                             ->assert_is_op("reshape2");
+  auto reshape2_50_out=pattern->NewNode(reshaep2_50_out_repr())
+                              ->assert_is_op_output("reshape2","Out")
+                              ->AsOutput();
+
+  window_mha_i00_op->LinksFrom({in});
+  window_mha_i00_out->LinksFrom({window_mha_i00_op});
+  matmul_i10_op->LinksFrom({window_mha_i00_out});
+  matmul_i10_out->LinksFrom({matmul_i10_op});
+  elw_add_i20_op->LinksFrom({matmul_i10_out});
+  elw_add_i20_out->LinksFrom({elw_add_i20_op});
+  reshape2_00_op->LinksFrom({elw_add_i20_out});
+  reshape2_00_out->LinksFrom({reshape2_00_op});
+  reshape2_10_op->LinksFrom({reshape2_00_out});
+  reshape2_10_out->LinksFrom({reshape2_10_op});
+  transpose2_20_op->LinksFrom({reshape2_10_out});
+  transpose2_20_out->LinksFrom({transpose2_20_op});
+  reshape2_30_op->LinksFrom({transpose2_20_out});
+  reshape2_30_out->LinksFrom({reshape2_30_op});
+  reshape2_50_op->LinksFrom({reshape2_30_out});
+  reshape2_50_out->LinksFrom({reshape2_50_op});
+  return reshape2_50_out;
+
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
