@@ -504,8 +504,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                 tasks = []
                 for param in layer.parameters():
                     if param.trainable:
-                        if param.name in self._broadcast_order_params:
-                            assert param.name in param2task
+                        if param.name in param2task:
                             tasks.append(param2task[param.name])
                 self._forward_pre_hook_remove_helper.append(
                     layer.register_forward_pre_hook(
