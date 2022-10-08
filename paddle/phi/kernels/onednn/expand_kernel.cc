@@ -75,9 +75,5 @@ void ExpandKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(expand,
-                   OneDNN,
-                   ALL_LAYOUT,
-                   phi::ExpandKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    expand, OneDNN, ONEDNN, phi::ExpandKernel, float, phi::dtype::bfloat16) {}

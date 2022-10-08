@@ -46,7 +46,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     auto out = ctx.Output<framework::LoDTensor>("Out");
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
-    framework::Tensor cpu_local_count;
+    phi::DenseTensor cpu_local_count;
     if (platform::is_cpu_place(local_count->place())) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
@@ -55,7 +55,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
       cpu_local_count_data = cpu_local_count.data<int64_t>();
     }
     auto global_count_len = 0;
-    framework::Tensor cpu_global_count;
+    phi::DenseTensor cpu_global_count;
     if (platform::is_cpu_place(global_count->place())) {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
@@ -167,7 +167,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     auto out = ctx.Output<framework::LoDTensor>("Out");
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
-    framework::Tensor cpu_local_count;
+    phi::DenseTensor cpu_local_count;
     if (platform::is_cpu_place(local_count->place())) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
@@ -176,7 +176,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
       cpu_local_count_data = cpu_local_count.data<int64_t>();
     }
     auto global_count_len = 0;
-    framework::Tensor cpu_global_count;
+    phi::DenseTensor cpu_global_count;
     if (platform::is_cpu_place(global_count->place())) {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();

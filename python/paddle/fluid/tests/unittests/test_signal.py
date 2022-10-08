@@ -642,7 +642,6 @@ def to_safe_name(s):
     return str(re.sub("[^a-zA-Z0-9_]+", "_", s))
 
 
-# yapf: disable
 @place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'frame_length', 'hop_length', 'axis'),
@@ -653,10 +652,19 @@ def to_safe_name(s):
         ('test_2d_input2', rand_x(2, np.float64, shape=[8, 150]), 50, 15, -1),
         ('test_3d_input1', rand_x(3, np.float64, shape=[150, 4, 2]), 50, 15, 0),
         ('test_3d_input2', rand_x(3, np.float64, shape=[4, 2, 150]), 50, 15, -1),
-    ])
+    ]) # yapf: disable
 class TestFrame(unittest.TestCase):
+
     def test_frame(self):
-        np.testing.assert_allclose(frame_for_api_test(self.x, self.frame_length, self.hop_length, self.axis), paddle.signal.frame(paddle.to_tensor(self.x), self.frame_length, self.hop_length, self.axis), rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
+        np.testing.assert_allclose(frame_for_api_test(self.x, self.frame_length,
+                                                      self.hop_length,
+                                                      self.axis),
+                                   paddle.signal.frame(paddle.to_tensor(self.x),
+                                                       self.frame_length,
+                                                       self.hop_length,
+                                                       self.axis),
+                                   rtol=rtol.get(str(self.x.dtype)),
+                                   atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -669,24 +677,29 @@ class TestFrame(unittest.TestCase):
         ('test_2d_input2', rand_x(2, np.float64, shape=[8, 150]), 50, 15, -1),
         ('test_3d_input1', rand_x(3, np.float64, shape=[150, 4, 2]), 50, 15, 0),
         ('test_3d_input2', rand_x(3, np.float64, shape=[4, 2, 150]), 50, 15, -1),
-    ])
+    ]) # yapf: disable
 class TestFrameStatic(unittest.TestCase):
+
     def test_frame_static(self):
         paddle.enable_static()
         mp, sp = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
-            input = paddle.static.data('input', self.x.shape, dtype=self.x.dtype)
-            output = paddle.signal.frame(
-                     input,
-                     self.frame_length,
-                     self.hop_length,
-                     self.axis),
+            input = paddle.static.data('input',
+                                       self.x.shape,
+                                       dtype=self.x.dtype)
+            output = paddle.signal.frame(input, self.frame_length,
+                                         self.hop_length, self.axis),
         exe = paddle.static.Executor(self.place)
         exe.run(sp)
         [output] = exe.run(mp, feed={'input': self.x}, fetch_list=[output])
         paddle.disable_static()
 
-        np.testing.assert_allclose(frame_for_api_test(self.x, self.frame_length, self.hop_length, self.axis), output, rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
+        np.testing.assert_allclose(frame_for_api_test(self.x, self.frame_length,
+                                                      self.hop_length,
+                                                      self.axis),
+                                   output,
+                                   rtol=rtol.get(str(self.x.dtype)),
+                                   atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -697,15 +710,13 @@ class TestFrameStatic(unittest.TestCase):
         ('test_hop_length', rand_x(1, np.float64, shape=[150]), 50, 0, -1, ValueError),
         ('test_frame_length1', rand_x(2, np.float64, shape=[150, 8]), 0, 15, 0, ValueError),
         ('test_frame_length2', rand_x(2, np.float64, shape=[150, 8]), 151, 15, 0, ValueError),
-    ])
+    ]) # yapf: disable
 class TestFrameException(unittest.TestCase):
+
     def test_frame(self):
         with self.assertRaises(self.expect_exception):
-            paddle.signal.frame(
-                paddle.to_tensor(self.x),
-                self.frame_length,
-                self.hop_length,
-                self.axis)
+            paddle.signal.frame(paddle.to_tensor(self.x), self.frame_length,
+                                self.hop_length, self.axis)
 
 
 @place(DEVICES)
@@ -718,10 +729,16 @@ class TestFrameException(unittest.TestCase):
         ('test_3d_input2', rand_x(3, np.float64, shape=[2, 40, 5]), 10, -1),
         ('test_4d_input1', rand_x(4, np.float64, shape=[8, 12, 5, 3]), 5, 0),
         ('test_4d_input2', rand_x(4, np.float64, shape=[3, 5, 12, 8]), 5, -1),
-    ])
+    ]) # yapf: disable
 class TestOverlapAdd(unittest.TestCase):
+
     def test_overlap_add(self):
-        np.testing.assert_allclose(overlap_add_for_api_test(self.x, self.hop_length, self.axis), paddle.signal.overlap_add(paddle.to_tensor(self.x), self.hop_length, self.axis), rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
+        np.testing.assert_allclose(
+            overlap_add_for_api_test(self.x, self.hop_length, self.axis),
+            paddle.signal.overlap_add(paddle.to_tensor(self.x), self.hop_length,
+                                      self.axis),
+            rtol=rtol.get(str(self.x.dtype)),
+            atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -734,23 +751,28 @@ class TestOverlapAdd(unittest.TestCase):
         ('test_3d_input2', rand_x(3, np.float64, shape=[2, 40, 5]), 10, -1),
         ('test_4d_input1', rand_x(4, np.float64, shape=[8, 12, 5, 3]), 5, 0),
         ('test_4d_input2', rand_x(4, np.float64, shape=[3, 5, 12, 8]), 5, -1),
-    ])
+    ]) # yapf: disable
 class TestOverlapAddStatic(unittest.TestCase):
+
     def test_overlap_add_static(self):
         paddle.enable_static()
         mp, sp = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
-            input = paddle.static.data('input', self.x.shape, dtype=self.x.dtype)
-            output = paddle.signal.overlap_add(
-                     input,
-                     self.hop_length,
-                     self.axis),
+            input = paddle.static.data('input',
+                                       self.x.shape,
+                                       dtype=self.x.dtype)
+            output = paddle.signal.overlap_add(input, self.hop_length,
+                                               self.axis),
         exe = paddle.static.Executor(self.place)
         exe.run(sp)
         [output] = exe.run(mp, feed={'input': self.x}, fetch_list=[output])
         paddle.disable_static()
 
-        np.testing.assert_allclose(overlap_add_for_api_test(self.x, self.hop_length, self.axis), output, rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
+        np.testing.assert_allclose(overlap_add_for_api_test(
+            self.x, self.hop_length, self.axis),
+                                   output,
+                                   rtol=rtol.get(str(self.x.dtype)),
+                                   atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -759,14 +781,13 @@ class TestOverlapAddStatic(unittest.TestCase):
     [
         ('test_axis', rand_x(2, np.float64, shape=[3, 50]), 4, 2, ValueError),
         ('test_hop_length', rand_x(2, np.float64, shape=[50, 3]), -1, -1, ValueError),
-    ])
+    ]) # yapf: disable
 class TestOverlapAddException(unittest.TestCase):
+
     def test_overlap_add(self):
         with self.assertRaises(self.expect_exception):
-            paddle.signal.overlap_add(
-                paddle.to_tensor(self.x),
-                self.hop_length,
-                self.axis)
+            paddle.signal.overlap_add(paddle.to_tensor(self.x), self.hop_length,
+                                      self.axis)
 
 
 # ================= STFT
@@ -815,8 +836,9 @@ class TestOverlapAddException(unittest.TestCase):
         512, None, None, None, True, 'reflect', False, True),
         ('test_center', rand_x(2, np.float64, shape=[1, 160000]),
         512, None, None, None, False, 'reflect', False, True),
-    ])
+    ])# yapf: disable
 class TestStft(unittest.TestCase):
+
     def test_stft(self):
         if self.window is None:
             win_p = None
@@ -825,7 +847,15 @@ class TestStft(unittest.TestCase):
             win_p = paddle.to_tensor(self.window)
             win_l = self.window
 
-        np.testing.assert_allclose(stft(self.x, self.n_fft, self.hop_length, self.win_length, win_l, self.center, self.pad_mode), paddle.signal.stft(paddle.to_tensor(self.x), self.n_fft, self.hop_length, self.win_length, win_p, self.center, self.pad_mode, self.normalized, self.onesided), rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
+        np.testing.assert_allclose(
+            stft(self.x, self.n_fft, self.hop_length, self.win_length, win_l,
+                 self.center, self.pad_mode),
+            paddle.signal.stft(paddle.to_tensor(self.x), self.n_fft,
+                               self.hop_length, self.win_length, win_p,
+                               self.center, self.pad_mode, self.normalized,
+                               self.onesided),
+            rtol=rtol.get(str(self.x.dtype)),
+            atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -848,8 +878,9 @@ class TestStft(unittest.TestCase):
         512, None, None, None, True, 'nonsense', False, True, AssertionError),
         ('test_complex_onesided', rand_x(1, np.float64, shape=[16000], complex=True),
         512, None, None, None, False, 'reflect', False, True, AssertionError),
-    ])
+    ]) # yapf: disable
 class TestStftException(unittest.TestCase):
+
     def test_stft(self):
         if self.window is None:
             win_p = None
@@ -857,16 +888,10 @@ class TestStftException(unittest.TestCase):
             win_p = paddle.to_tensor(self.window)
 
         with self.assertRaises(self.expect_exception):
-            paddle.signal.stft(
-                paddle.to_tensor(self.x),
-                self.n_fft,
-                self.hop_length,
-                self.win_length,
-                win_p,
-                self.center,
-                self.pad_mode,
-                self.normalized,
-                self.onesided),
+            paddle.signal.stft(paddle.to_tensor(self.x), self.n_fft,
+                               self.hop_length, self.win_length, win_p,
+                               self.center, self.pad_mode, self.normalized,
+                               self.onesided),
 
 
 @place(DEVICES)
@@ -887,8 +912,9 @@ class TestStftException(unittest.TestCase):
         512, None, None, None, False, False, True, None, False),
         ('test_length', rand_x(3, np.float64, shape=[1, 257, 471], complex=True),
         512, None, None, None, False, False, True, 1888, False),
-    ])
+    ]) # yapf: disable
 class TestIstft(unittest.TestCase):
+
     def test_istft(self):
         if self.window is None:
             win_p = None
@@ -897,7 +923,15 @@ class TestIstft(unittest.TestCase):
             win_p = paddle.to_tensor(self.window)
             win_l = self.window
 
-        np.testing.assert_allclose(istft(self.x, self.hop_length, self.win_length, win_l, self.center, self.length), paddle.signal.istft(paddle.to_tensor(self.x), self.n_fft, self.hop_length, self.win_length, win_p, self.center, self.normalized, self.onesided, self.length, self.return_complex), rtol=rtol.get(str(self.x.dtype)), atol=atol.get(str(self.x.dtype)))
+        np.testing.assert_allclose(
+            istft(self.x, self.hop_length, self.win_length, win_l, self.center,
+                  self.length),
+            paddle.signal.istft(paddle.to_tensor(self.x), self.n_fft,
+                                self.hop_length, self.win_length, win_p,
+                                self.center, self.normalized, self.onesided,
+                                self.length, self.return_complex),
+            rtol=rtol.get(str(self.x.dtype)),
+            atol=atol.get(str(self.x.dtype)))
 
 
 @place(DEVICES)
@@ -928,8 +962,9 @@ class TestIstft(unittest.TestCase):
         512, None, None, rand_x(1, np.float64, shape=[512], complex=True), True, False, True, None, False, AssertionError),
         ('test_NOLA', rand_x(3, np.float64, shape=[1, 257, 471], complex=True),
         512, 512, None, get_window('hann', 512), True, False, True, None, False, ValueError),
-    ])
+    ]) # yapf: disable
 class TestIstftException(unittest.TestCase):
+
     def test_istft(self):
         if self.window is None:
             win_p = None
@@ -937,20 +972,11 @@ class TestIstftException(unittest.TestCase):
             win_p = paddle.to_tensor(self.window)
 
         with self.assertRaises(self.expect_exception):
-            paddle.signal.istft(
-                paddle.to_tensor(self.x),
-                self.n_fft,
-                self.hop_length,
-                self.win_length,
-                win_p,
-                self.center,
-                self.normalized,
-                self.onesided,
-                self.length,
-                self.return_complex),
+            paddle.signal.istft(paddle.to_tensor(self.x), self.n_fft,
+                                self.hop_length, self.win_length, win_p,
+                                self.center, self.normalized, self.onesided,
+                                self.length, self.return_complex),
 
-
-# yapf: enable
 
 if __name__ == '__main__':
     unittest.main()

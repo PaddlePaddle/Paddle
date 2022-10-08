@@ -14,6 +14,7 @@ set(STANDALONE_EXECUTOR_SRCS
 set(STANDALONE_EXECUTOR_DEPS
     dependency_builder
     device_context
+    execution_config
     op_registry
     scope
     framework_proto

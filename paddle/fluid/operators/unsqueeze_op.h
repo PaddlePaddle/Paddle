@@ -37,11 +37,11 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
     bool need_resize_out_dims = false;
     if (axes.empty()) {
       auto axes_tensor_list =
-          context.MultiInput<framework::Tensor>("AxesTensorList");
+          context.MultiInput<phi::DenseTensor>("AxesTensorList");
       if (axes_tensor_list.size() > 0) {
         axes = GetDataFromTensorList<int>(axes_tensor_list);
       } else if (context.HasInput("AxesTensor")) {
-        auto *axes_tensor = context.Input<framework::Tensor>("AxesTensor");
+        auto *axes_tensor = context.Input<phi::DenseTensor>("AxesTensor");
         axes = GetDataFromTensor<int>(axes_tensor);
       }
       need_resize_out_dims = true;

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _varbase_creator, _dygraph_tracer, dygraph_only

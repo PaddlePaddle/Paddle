@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 // Shape of bitmask
 static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
@@ -209,16 +209,16 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     // and var tensors should be float when input tensor's dtype is float16.
     auto bn_param_type = framework::proto::VarType::FP32;
 
-    PADDLE_ENFORCE_EQ(
-        bn_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("ScaleX")->dtype()),
-        platform::errors::InvalidArgument(
-            "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(
-        bn_param_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("BiasX")->dtype()),
-        platform::errors::InvalidArgument(
-            "Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("ScaleX")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("BiasX")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(

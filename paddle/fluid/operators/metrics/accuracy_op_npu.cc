@@ -23,13 +23,13 @@ template <typename DeviceContext, typename T>
 class AccuracyNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* inference = ctx.Input<Tensor>("Out");
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* indices = ctx.Input<Tensor>("Indices");
+    auto* inference = ctx.Input<phi::DenseTensor>("Out");
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
+    auto* indices = ctx.Input<phi::DenseTensor>("Indices");
 
-    auto* accuracy = ctx.Output<Tensor>("Accuracy");
-    auto* correct = ctx.Output<Tensor>("Correct");
-    auto* total = ctx.Output<Tensor>("Total");
+    auto* accuracy = ctx.Output<phi::DenseTensor>("Accuracy");
+    auto* correct = ctx.Output<phi::DenseTensor>("Correct");
+    auto* total = ctx.Output<phi::DenseTensor>("Total");
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

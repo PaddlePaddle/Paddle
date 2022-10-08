@@ -55,7 +55,7 @@ class ArrayOp : public framework::OperatorBase {
         platform::is_npu_place(i_tensor.place()) ||
         platform::is_custom_place(i_tensor.place())) {
       // FIXME: Avoid copy from GPU to CPU
-      framework::Tensor t;
+      phi::DenseTensor t;
       framework::TensorCopy(i_tensor, platform::CPUPlace(), dev_ctx, &t);
       dev_ctx.Wait();
       offset = static_cast<size_t>(*t.data<int64_t>());

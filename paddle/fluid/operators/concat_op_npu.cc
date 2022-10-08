@@ -39,7 +39,7 @@ class ConcatNPUKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
-    std::vector<framework::Tensor> inputs;
+    std::vector<phi::DenseTensor> inputs;
     std::vector<std::string> names;
     for (size_t i = 0; i < ins.size(); ++i) {
       if (ins[i] && ins[i]->numel() > 0) {
@@ -66,8 +66,7 @@ template <typename T>
 class ConcatGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
     auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
     auto outs =

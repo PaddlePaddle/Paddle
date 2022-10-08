@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -21,9 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/mkldnn/axpy_handler.h"
 #endif
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 template <typename T>
 struct SelectedRowsAdd<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
@@ -34,11 +33,11 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height,
         input2.height(),
-        platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But received first input height  = "
-                                          "[%d], second input height = [%d]",
-                                          in1_height,
-                                          input2.height()));
+        phi::errors::InvalidArgument("The two inputs height must be equal."
+                                     "But received first input height  = "
+                                     "[%d], second input height = [%d]",
+                                     in1_height,
+                                     input2.height()));
     output->set_height(in1_height);
 
     auto& in1_rows = input1.rows();
@@ -59,7 +58,7 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         in2_value.numel() / in2_rows.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
             in1_row_numel,
@@ -67,42 +66,42 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         out_value->numel() / out_rows.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input and oupput width must be equal."
             "But received input width = [%d], output width = [%d]",
             in1_row_numel,
             out_value->numel() / out_rows.size()));
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in1_place),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2.place();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in2_place),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(out_place),
+    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(out_place),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
     auto* out_data = out_value->data<T>();
     auto* in1_data = in1_value.data<T>();
-    memory::Copy(out_place,
-                 out_data,
-                 in1_place,
-                 in1_data,
-                 in1_value.numel() * sizeof(T));
+    paddle::memory::Copy(out_place,
+                         out_data,
+                         in1_place,
+                         in1_data,
+                         in1_value.numel() * sizeof(T));
 
     auto* in2_data = in2_value.data<T>();
-    memory::Copy(out_place,
-                 out_data + in1_value.numel(),
-                 in2_place,
-                 in2_data,
-                 in2_value.numel() * sizeof(T));
+    paddle::memory::Copy(out_place,
+                         out_data + in1_value.numel(),
+                         in2_place,
+                         in2_data,
+                         in2_value.numel() * sizeof(T));
   }
 };
 
@@ -113,23 +112,23 @@ template <typename T>
 struct SelectedRowsAddTensor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const phi::SelectedRows& input1,
-                  const framework::Tensor& input2,
-                  framework::Tensor* output) {
+                  const phi::DenseTensor& input2,
+                  phi::DenseTensor* output) {
     auto in1_height = input1.height();
     const auto& in2_dims = input2.dims();
     const auto& out_dims = output->dims();
     PADDLE_ENFORCE_EQ(
         in1_height,
         in2_dims[0],
-        platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But received first input height = "
-                                          "[%d], second input height = [%d]",
-                                          in1_height,
-                                          in2_dims[0]));
+        phi::errors::InvalidArgument("The two inputs height must be equal."
+                                     "But received first input height = "
+                                     "[%d], second input height = [%d]",
+                                     in1_height,
+                                     in2_dims[0]));
     PADDLE_ENFORCE_EQ(
         in1_height,
         out_dims[0],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input and output height must be equal."
             "But received input height = [%d], output height = [%d]",
             in1_height,
@@ -142,7 +141,7 @@ struct SelectedRowsAddTensor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2.numel() / in1_height,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
             in1_row_numel,
@@ -150,7 +149,7 @@ struct SelectedRowsAddTensor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         output->numel() / in1_height,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The input and output width must be equal."
             "But received input width = [%d], output width = [%d]",
             in1_row_numel,
@@ -169,8 +168,8 @@ struct SelectedRowsAddTensor<phi::CPUContext, T> {
       }
     }
 
-    auto out_eigen = framework::EigenVector<T>::Flatten(*output);
-    auto in2_eigen = framework::EigenVector<T>::Flatten(input2);
+    auto out_eigen = EigenVector<T>::Flatten(*output);
+    auto in2_eigen = EigenVector<T>::Flatten(input2);
     out_eigen.device(*context.eigen_device()) = out_eigen + in2_eigen;
   }
 };
@@ -188,11 +187,11 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height,
         input2->height(),
-        platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But received first input height = "
-                                          "[%d], second input height = [%d]",
-                                          in1_height,
-                                          input2->height()));
+        phi::errors::InvalidArgument("The two inputs height must be equal."
+                                     "But received first input height = "
+                                     "[%d], second input height = [%d]",
+                                     in1_height,
+                                     input2->height()));
 
     auto& in1_rows = input1.rows();
     auto& in2_rows = *(input2->mutable_rows());
@@ -205,23 +204,23 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
     mixv_in2_rows.Extend(in1_rows.begin(), in1_rows.end());
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in1_place),
+    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in1_place),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
     auto in2_place = input2->place();
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(in2_place),
+    PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(in2_place),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The running environment is not on the CPU place."));
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();
-    memory::Copy(in2_place,
-                 in2_data + input2_offset,
-                 in1_place,
-                 in1_data,
-                 in1_value.numel() * sizeof(T));
+    paddle::memory::Copy(in2_place,
+                         in2_data + input2_offset,
+                         in1_place,
+                         in1_data,
+                         in1_value.numel() * sizeof(T));
   }
 };
 
@@ -244,7 +243,7 @@ struct SelectedRowsSumTo<phi::CPUContext, T> {
       auto in1_height = (*iter)->height();
       PADDLE_ENFORCE_EQ(in1_height,
                         input2->height(),
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The two inputs height must be equal."
                             "But received first input height = [%d], second "
                             "input height = [%d]",
@@ -255,7 +254,7 @@ struct SelectedRowsSumTo<phi::CPUContext, T> {
     std::vector<int64_t> in2_rows;
     in2_rows.reserve(in2_rows.size() + size);
     for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
-      const framework::Vector<int64_t>& in_rows = (*iter)->rows();
+      const paddle::framework::Vector<int64_t>& in_rows = (*iter)->rows();
       in2_rows.insert(in2_rows.end(), in_rows.begin(), in_rows.end());
     }
     input2->set_rows(in2_rows);
@@ -280,7 +279,7 @@ template <typename T>
 struct SelectedRowsAddToTensor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const phi::SelectedRows& input1,
-                  framework::Tensor* input2) {
+                  phi::DenseTensor* input2) {
     if (UNLIKELY(input1.rows().size() == 0)) {
       LOG(WARNING) << "input selected rows is empty!";
       return;
@@ -290,11 +289,11 @@ struct SelectedRowsAddToTensor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_height,
         in2_dims[0],
-        platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But received first input height = "
-                                          "[%d], second input height = [%d]",
-                                          in1_height,
-                                          in2_dims[0]));
+        phi::errors::InvalidArgument("The two inputs height must be equal."
+                                     "But received first input height = "
+                                     "[%d], second input height = [%d]",
+                                     in1_height,
+                                     in2_dims[0]));
 
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
@@ -303,7 +302,7 @@ struct SelectedRowsAddToTensor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2->numel() / in1_height,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
             in1_row_numel,
@@ -325,7 +324,7 @@ template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
-template struct SelectedRowsAddToTensor<phi::CPUContext, platform::bfloat16>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::bfloat16>;
 // This is a separated namespace for manipulate SelectedRows typed
 // data. Like merge duplicated rows, adding two SelectedRows etc.
 //
@@ -355,7 +354,7 @@ typename std::enable_if<std::is_integral<T>::value>::type elementwise_add_to(
 }
 
 template <typename T, typename DeviceContext>
-typename std::enable_if<std::is_same<T, platform::bfloat16>::value>::type
+typename std::enable_if<std::is_same<T, phi::dtype::bfloat16>::value>::type
 add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   const std::unordered_map<int64_t, size_t>& rows_to_id,
                   int64_t input_width,
@@ -372,7 +371,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
     auto& input_rows = input->rows();
 
 #ifdef PADDLE_WITH_MKLDNN
-    OneDNNAXPYHandler<T> axpy_handler(input_width, T(1.f));
+    paddle::operators::OneDNNAXPYHandler<T> axpy_handler(input_width, T(1.f));
     for (size_t i = 0; i < input_rows.size(); i++) {
       size_t out_i = rows_to_id.at(input_rows[i]);
       axpy_handler(&input_data[i * input_width],
@@ -391,7 +390,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
 }
 
 template <typename T, typename DeviceContext>
-typename std::enable_if<!std::is_same<T, platform::bfloat16>::value>::type
+typename std::enable_if<!std::is_same<T, phi::dtype::bfloat16>::value>::type
 add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   const std::unordered_map<int64_t, size_t>& rows_to_id,
                   int64_t input_width,
@@ -463,15 +462,15 @@ struct MergeAddImpl {
       if (input->rows().size() == 0) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(input_width,
-                        input->value().dims()[1],
-                        platform::errors::InvalidArgument(
-                            "All inputs should have same "
-                            "dimension except for the first one."));
-      PADDLE_ENFORCE_EQ(input_height,
-                        input->height(),
-                        platform::errors::InvalidArgument(
-                            "All inputs should have same height."));
+      PADDLE_ENFORCE_EQ(
+          input_width,
+          input->value().dims()[1],
+          phi::errors::InvalidArgument("All inputs should have same "
+                                       "dimension except for the first one."));
+      PADDLE_ENFORCE_EQ(
+          input_height,
+          input->height(),
+          phi::errors::InvalidArgument("All inputs should have same height."));
       row_num += input->rows().size();
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
@@ -499,11 +498,11 @@ struct MergeAddImpl {
       for (auto* in : inputs) {
         auto* in_data = in->value().data<T>();
         auto in_numel = in->rows().size() * input_width;
-        memory::Copy(out_place,
-                     out_data + copied_numel,
-                     in_place,
-                     in_data,
-                     in_numel * sizeof(T));
+        paddle::memory::Copy(out_place,
+                             out_data + copied_numel,
+                             in_place,
+                             in_data,
+                             in_numel * sizeof(T));
         copied_numel += in_numel;
       }
     } else {
@@ -563,9 +562,9 @@ TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(float)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(double)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(int)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(int64_t)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(platform::bfloat16)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(platform::complex<float>)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(platform::complex<double>)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(phi::dtype::bfloat16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(phi::dtype::complex<float>)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(phi::dtype::complex<double>)
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>
@@ -582,7 +581,7 @@ struct MergeAdd<phi::XPUContext, T> {
                   const phi::SelectedRows& input,
                   phi::SelectedRows* output,
                   const bool sorted_result = false) {
-    framework::Vector<int64_t> input_rows(input.rows());
+    paddle::framework::Vector<int64_t> input_rows(input.rows());
     if (input_rows.size() == 0) {
       return;
     }
@@ -612,16 +611,16 @@ struct MergeAdd<phi::XPUContext, T> {
     xpu::ctx_guard RAII_GUARD(context.x_context());
     int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
     int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-    memory::Copy(context.GetPlace(),
-                 y_rows_data,
-                 platform::CPUPlace(),
-                 merge_rows.data(),
-                 ym * sizeof(int64_t));
-    memory::Copy(context.GetPlace(),
-                 x_rows_data,
-                 platform::CPUPlace(),
-                 input_rows.data(),
-                 xm * sizeof(int64_t));
+    paddle::memory::Copy(context.GetPlace(),
+                         y_rows_data,
+                         phi::CPUPlace(),
+                         merge_rows.data(),
+                         ym * sizeof(int64_t));
+    paddle::memory::Copy(context.GetPlace(),
+                         x_rows_data,
+                         phi::CPUPlace(),
+                         input_rows.data(),
+                         xm * sizeof(int64_t));
     int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
                                             x_data,
                                             y_data,
@@ -661,15 +660,15 @@ struct MergeAdd<phi::XPUContext, T> {
       if (input->rows().size() == 0) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(input_width,
-                        input->value().dims()[1],
-                        platform::errors::InvalidArgument(
-                            "All inputs should have same "
-                            "dimension except for the first one."));
-      PADDLE_ENFORCE_EQ(input_height,
-                        input->height(),
-                        platform::errors::InvalidArgument(
-                            "All inputs should have same height."));
+      PADDLE_ENFORCE_EQ(
+          input_width,
+          input->value().dims()[1],
+          phi::errors::InvalidArgument("All inputs should have same "
+                                       "dimension except for the first one."));
+      PADDLE_ENFORCE_EQ(
+          input_height,
+          input->height(),
+          phi::errors::InvalidArgument("All inputs should have same height."));
       row_num += input->rows().size();
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
@@ -709,16 +708,16 @@ struct MergeAdd<phi::XPUContext, T> {
       xpu::ctx_guard RAII_GUARD(context.x_context());
       int64_t* x_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(xm);
       int64_t* y_rows_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(ym);
-      memory::Copy(context.GetPlace(),
-                   y_rows_data,
-                   platform::CPUPlace(),
-                   merge_rows.data(),
-                   ym * sizeof(int64_t));
-      memory::Copy(context.GetPlace(),
-                   x_rows_data,
-                   platform::CPUPlace(),
-                   input_rows.data(),
-                   xm * sizeof(int64_t));
+      paddle::memory::Copy(context.GetPlace(),
+                           y_rows_data,
+                           phi::CPUPlace(),
+                           merge_rows.data(),
+                           ym * sizeof(int64_t));
+      paddle::memory::Copy(context.GetPlace(),
+                           x_rows_data,
+                           phi::CPUPlace(),
+                           input_rows.data(),
+                           xm * sizeof(int64_t));
       int r = xpu::merge_dup_rows<T, int64_t>(context.x_context(),
                                               x_data,
                                               y_data,
@@ -777,15 +776,15 @@ struct MergeAverage<phi::CPUContext, T> {
       if (input->rows().size() == 0) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(input_width,
-                        input->value().dims()[1],
-                        platform::errors::InvalidArgument(
-                            "All inputs should have same "
-                            "dimension except for the first one."));
-      PADDLE_ENFORCE_EQ(input_height,
-                        input->height(),
-                        platform::errors::InvalidArgument(
-                            "All input should have same height."));
+      PADDLE_ENFORCE_EQ(
+          input_width,
+          input->value().dims()[1],
+          phi::errors::InvalidArgument("All inputs should have same "
+                                       "dimension except for the first one."));
+      PADDLE_ENFORCE_EQ(
+          input_height,
+          input->height(),
+          phi::errors::InvalidArgument("All input should have same height."));
       row_num += input->rows().size();
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
@@ -851,17 +850,17 @@ struct UpdateToTensor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const ScatterOps& op,
                   const phi::SelectedRows& input1,
-                  framework::Tensor* input2) {
+                  phi::DenseTensor* input2) {
     auto in1_height = input1.height();
     const auto& in2_dims = input2->dims();
     PADDLE_ENFORCE_EQ(
         in1_height,
         in2_dims[0],
-        platform::errors::InvalidArgument("The two inputs height must be equal."
-                                          "But received first input height = "
-                                          "[%d], second input height = [%d]",
-                                          in1_height,
-                                          in2_dims[0]));
+        phi::errors::InvalidArgument("The two inputs height must be equal."
+                                     "But received first input height = "
+                                     "[%d], second input height = [%d]",
+                                     in1_height,
+                                     in2_dims[0]));
 
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
@@ -870,7 +869,7 @@ struct UpdateToTensor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2->numel() / in1_height,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The two inputs width must be equal."
             "But received first input width = [%d], second input width = [%d]",
             in1_row_numel,
@@ -923,6 +922,5 @@ struct UpdateToTensor<phi::CPUContext, T> {
 };
 
 }  // namespace scatter
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

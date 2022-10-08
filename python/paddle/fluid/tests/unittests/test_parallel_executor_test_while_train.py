@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from simple_nets import simple_fc_net
 import paddle.fluid as fluid
 from paddle.fluid import compiler

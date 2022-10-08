@@ -1219,7 +1219,7 @@ class MultiLabelSoftMarginLoss(Layer):
         :math:`y` and :math:`x` must have the same size.
 
         Parameters:
-	        weight (Tensor,optional): a manual rescaling weight given to each class.
+            weight (Tensor,optional): a manual rescaling weight given to each class.
                     If given, has to be a Tensor of size C and the data type is float32, float64.
                     Default is ``'None'`` .
             reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -1482,7 +1482,7 @@ class TripletMarginWithDistanceLoss(Layer):
     where the default `distance_function`
 
     .. math::
-    	d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_2
+        d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_2
 
     or user can define their own distance function. `margin` is a nonnegative margin representing the minimum difference
     between the positive and negative distances that is required for the loss to be 0. If `swap` is true, it will compare distance of (input, negative) with
@@ -1510,15 +1510,15 @@ class TripletMarginWithDistanceLoss(Layer):
 
     Shapes:
         input (Tensor):Input tensor, the data type is float32 or float64.
-	the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+    the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
         positive (Tensor):Positive tensor, the data type is float32 or float64.
-	The shape of label is the same as the shape of input.
+    The shape of label is the same as the shape of input.
 
         negative (Tensor):Negative tensor, the data type is float32 or float64.
-	The shape of label is the same as the shape of input.
+    The shape of label is the same as the shape of input.
 
-	    output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+        output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
     Return：
         A callable object of TripletMarginWithDistanceLoss
