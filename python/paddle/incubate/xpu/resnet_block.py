@@ -211,28 +211,108 @@ def resnet_basic_block(x,
 
 
 class ResNetBasicBlock(Layer):
-    """
+    r"""
     ResNetBasicBlock is designed for optimize the performence of the basic unit of ssd resnet block.
-    The fusion op architecture like this:
-            has_shortcut = True:       else:
-                    X                         X
-                  /                         /
-                |       |                 |       |
-              CONV1     |               CONV1     |
-                |       |                 |       |
-               BN1      |                BN1      |
-                |       |                 |       |
-              RELU1     |               RELU1     |
-                |       |                 |       |
-              CONV2   CONV3             CONV2     |
-                |       |                 |       |
-               BN2     BN3               BN2      |
-                 \     /                   \     /
-                   ADD                       ADD
-                    |                         |
-                   RELU                      RELU
-                    |                         |
-                    Y                         Y
+    If has_shortcut = True, it can calculate 3 Conv2D, 3 BatchNorm and 2 ReLU in one time.
+    If has_shortcut = False, it can calculate 2 Conv2D, 2 BatchNorm and 2 ReLU in one time. In this
+    case the shape of output is same with input.
+
+
+    Args:
+        num_channels (int): The number of input image channel.
+        num_filter (int): The number of filter. It is as same as the output image channel.
+        filter_size (int|list|tuple): The filter size. If filter_size
+            is a tuple, it must contain two integers, (filter_size_height,
+            filter_size_width). Otherwise, filter_size_height = filter_size_width =\
+            filter_size.
+        stride (int, optional): The stride size. It means the stride in convolution.
+            If stride is a tuple, it must contain two integers, (stride_height, stride_width).
+            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
+        act (str, optional): Activation type, if it is set to None, activation is not appended.
+            Default: None
+        momentum (float, optional): The value used for the moving_mean and
+            moving_var computation. This should be a float number or a Tensor with
+            shape [1] and data type as float32. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        eps (float, optional): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. Now is only support `"NCHW"`, the data is stored in
+            the order of: `[batch_size, input_channels, input_height, input_width]`.
+        has_shortcut (bool, optional): Whether to calculate CONV3 and BN3. Default: False.
+        use_global_stats (bool, optional): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train period. Default: False.
+        is_test (bool, optional): A flag indicating whether it is in
+            test phrase or not. Default: False.
+        filter_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
+            will create ParamAttr as param_attr. Default: None.
+        scale_attr (ParamAttr|None): The parameter attribute for Parameter `scale`
+            of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm will create ParamAttr
+            as param_attr, the name of scale can be set in ParamAttr. If the Initializer of the param_attr is not set,
+            the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|None): The parameter attribute for the bias of batch_norm.
+            If it is set to None or one attribute of ParamAttr, batch_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            Default: None.
+        moving_mean_name (str, optional): The name of moving_mean which store the global Mean. If it
+            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm
+            will save global mean with the string. Default: None.
+        moving_var_name (str, optional): The name of the moving_variance which store the global Variance.
+            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm
+            will save global variance with the string. Default: None.
+        padding (int, optional): The padding size. It is only spupport padding_height = padding_width = padding.
+            Default: padding = 0.
+        dilation (int, optional): The dilation size. It means the spacing between the kernel
+            points. It is only spupport dilation_height = dilation_width = dilation.
+            Default: dilation = 1.
+        trainable_statistics (bool, optional): Whether to calculate mean and var in eval mode. In eval mode, when
+            setting trainable_statistics True, mean and variance will be calculated by current batch statistics.
+            Default: False.
+        find_conv_max (bool, optional): Whether to calculate max value of each conv2d. Default: True.
+
+
+    Returns:
+        A Tensor representing the ResNetBasicBlock, whose data type is the same with input.
+
+
+    Examples:
+
+        .. code-block:: python
+
+            # required: xpu
+            import paddle
+            from paddle.incubate.xpu.resnet_block import ResNetBasicBlock
+
+            ch_in = 4
+            ch_out = 8
+            x = paddle.uniform((2, ch_in, 16, 16), dtype='float32', min=-1., max=1.)
+            resnet_basic_block = ResNetBasicBlock(num_channels1=ch_in,
+                                                num_filter1=ch_out,
+                                                filter1_size=3,
+                                                num_channels2=ch_out,
+                                                num_filter2=ch_out,
+                                                filter2_size=3,
+                                                num_channels3=ch_in,
+                                                num_filter3=ch_out,
+                                                filter3_size=1,
+                                                stride1=1,
+                                                stride2=1,
+                                                stride3=1,
+                                                act='relu',
+                                                padding1=1,
+                                                padding2=1,
+                                                padding3=0,
+                                                has_shortcut=True)
+            out = resnet_basic_block.forward(x)
+
+            print(out.shape) # [2, 8, 16, 16]
     """
 
     def __init__(self,

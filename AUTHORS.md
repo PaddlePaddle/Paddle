@@ -12,6 +12,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | beckett1124 | Bin Qi |
 | ChengduoZH | Cheng-Duo Zhao|
 | chengxiaohua1105 | Xiao-Hua Cheng |
+| chenwhql | Wei-Hang Chen |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
 | ddokupil | Dariusz Dokupil |
@@ -91,3 +92,26 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | jzhang533 | Jun Zhang |
 | Ligoml | Meng-Liu Li |
 | jeff41404 | Xiang Gao |
+| zh794390558 | Hui Zhang |
+| limin2021 | Min Li |
+| zhouwei25 | Wei Zhou |
+| littletomatodonkey | Ruo-Yu Guo |
+| zhupengyang | Zhu Pengyang |
+| DesmonDay | Siming Dai |
+| thisjiang | jiangcheng |
+| yghstill | Guanghua Yu |
+| CtfGo | Tefeng Chen |
+| ZHUI | Hui Zhong|
+| LemonNoel | Huijuan Wang |
+| wawltor | Zeyang Fang |
+| FrostML | Zheng-Xi Liu |
+| jiangjiajun | jiangjiajun |
+| dingjiaweiww | dingjiawei |
+| gglin001 | Allen Guo (Graphcore) |
+| yaozhixin | Zhixin Yao (Graphcore) |
+| XBWGC | Xiaobing Wang (Graphcore) |
+| jianghaicheng | Haicheng Jiang (Graphcore) |
+| czr-gc | Zhaorui Chen (Graphcore) |
+| zhao-han | Han Zhao (Graphcore) |
+| yiakwy, yiakwy-xpu-ml-framework-team | Yi Wang (Graphcore) |
+| [Yulv-git](https://github.com/Yulv-git) | Shuangchi He |

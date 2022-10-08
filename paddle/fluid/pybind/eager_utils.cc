@@ -428,10 +428,10 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   return place;
 }
 
-framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
+phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_IsInstance(
           obj, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
-    return ::pybind11::handle(obj).cast<framework::Tensor>();
+    return ::pybind11::handle(obj).cast<phi::DenseTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -441,8 +441,8 @@ framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
-std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
-                                                            ssize_t arg_pos) {
+std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
+                                                           ssize_t arg_pos) {
   std::vector<framework::LoDTensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);

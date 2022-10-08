@@ -19,7 +19,6 @@ import random
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.fluid.dygraph.container import Sequential
 from paddle.distributed.fleet.meta_parallel import PipelineLayer
 from paddle.fluid.dygraph.layers import Layer
 import paddle.nn as nn

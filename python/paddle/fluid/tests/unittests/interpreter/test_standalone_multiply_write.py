@@ -12,18 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
 import unittest
 import paddle
-from paddle.fluid import core
-from paddle.fluid.core import StandaloneExecutor
-import paddle.fluid as fluid
-from paddle.fluid.framework import Program, program_guard
-import paddle.fluid.layers as layers
+from paddle.fluid.framework import Program
 
 from test_standalone_controlflow import TestCompatibility
-import numpy as np
 
 paddle.enable_static()
 

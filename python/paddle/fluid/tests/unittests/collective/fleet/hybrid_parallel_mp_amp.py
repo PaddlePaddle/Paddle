@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-import numpy as np
 from hybrid_parallel_mp_model import TestDistMPTraning
 import paddle.distributed.fleet as fleet
 import unittest

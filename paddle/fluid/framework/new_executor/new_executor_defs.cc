@@ -299,7 +299,7 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
 // Need to call ShareLayout explicitly in sequence related ops.
-// Shall we have a better method to shared info between in/out Tensor?
+// Shall we have a better method to shared info between in/out phi::DenseTensor?
 #ifdef PADDLE_WITH_MKLDNN
   // Fix me: ugly workaround below
   // Correct solution:

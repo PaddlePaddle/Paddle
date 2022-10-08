@@ -30,7 +30,7 @@ static void DataCopy(const framework::LoDTensor &src_item,
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
     if (src_item.layout() == framework::DataLayout::kMKLDNN) {
-      framework::Tensor out;
+      phi::DenseTensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
       VLOG(4) << "innerTransDataLayoutFromMKLDNN";
