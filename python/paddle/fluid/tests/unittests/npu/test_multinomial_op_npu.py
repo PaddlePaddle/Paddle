@@ -15,13 +15,11 @@
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
 import sys
 
 sys.path.append("..")
 from op_test import OpTest
 import numpy as np
-import os
 
 paddle.enable_static()
 

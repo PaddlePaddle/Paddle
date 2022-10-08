@@ -17,7 +17,6 @@ import numpy as np
 import sys
 
 sys.path.append("..")
-import math
 import paddle
 from op_test import OpTest
 

@@ -18,8 +18,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from paddle.fluid.framework import Program, program_guard
 
 
 class TestBeamSearchDecodeNPUOp(unittest.TestCase):

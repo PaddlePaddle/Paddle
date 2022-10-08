@@ -15,12 +15,10 @@
 import sys
 
 sys.path.append("..")
-import op_test
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.static import Program, program_guard
 
 SUPPORTED_DTYPES = [bool]
 

@@ -17,15 +17,10 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
 
 import paddle
 from paddle import fluid
 from paddle.static import Program, program_guard
-from paddle.fluid import core
-from paddle.fluid.op import Operator
-from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 

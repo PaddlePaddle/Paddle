@@ -14,10 +14,8 @@
 
 import numpy as np
 import unittest
-import sys
 from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
-import paddle.fluid as fluid
 
 paddle.enable_static()
 SEED = 2021

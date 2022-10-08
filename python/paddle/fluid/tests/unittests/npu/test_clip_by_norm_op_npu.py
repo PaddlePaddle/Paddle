@@ -15,8 +15,6 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 import sys
 
 sys.path.append("..")
