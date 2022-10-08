@@ -65,7 +65,23 @@ struct OpTransInfo {
                return true;
              }
              return false;
-           }}};
+           }},
+          {"expand", [](const ir::Node* node) -> bool {
+             if (!node->IsOp()) {
+               return false;
+             }
+             auto* op_desc = node->Op();
+             auto expand_times =
+                 op_desc->GetAttrIfExists<std::vector<int>>("expand_times");
+             if (std::find_if(
+                     expand_times.begin(), expand_times.end(), [](int v) {
+                       return v < 0;
+                     }) != expand_times.end()) {
+               return true;
+             }
+             return false;
+           }},
+      };
 
   const std::unordered_map<std::string, std::unordered_set<std::string>>
       deny_param_cond{{"batch_norm", {"ReserveSpace"}},
