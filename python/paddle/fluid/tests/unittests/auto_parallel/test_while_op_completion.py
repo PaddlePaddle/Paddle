@@ -187,6 +187,14 @@ class TestMLP(unittest.TestCase):
             train_program)
         # print_program_with_dist_attr(complete_train_program, dist_context)
 
+    def test_completer_by_dist_op(self):
+        train_program, start_program, dataloader, i, loss = get_program()
+        dist_context = DistributedContext()
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        complete_train_program = completer._complete_tensor_dist_attr_by_op()
+
 
 if __name__ == "__main__":
     unittest.main()
