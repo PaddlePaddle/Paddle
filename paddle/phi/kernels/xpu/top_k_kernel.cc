@@ -135,11 +135,11 @@ void TopkKernel(const Context& dev_ctx,
     // Transpose back to original dims
     std::vector<int> trans_back_axes;
     for (int i = 0; i < axis; i++) {
-      trans_axes.emplace_back(i);
+      trans_back_axes.emplace_back(i);
     }
-    trans_axes.emplace_back(trans_out_dims.size() - 1);
+    trans_back_axes.emplace_back(trans_out_dims.size() - 1);
     for (int i = axis; i < trans_out_dims.size() - 1; i++) {
-      trans_axes.emplace_back(i);
+      trans_back_axes.emplace_back(i);
     }
 
     std::vector<int> trans_out_shape_host(trans_back_axes.size(), 0);

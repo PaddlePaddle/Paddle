@@ -268,6 +268,14 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
+    test_communication_stream_allgather_api MODULES
+    test_communication_stream_allgather_api ENVS
+    "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
+  set_tests_properties(test_communication_stream_allgather_api
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
     test_communication_stream_allreduce_api MODULES
     test_communication_stream_allreduce_api ENVS
     "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
@@ -322,6 +330,18 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     ENVS
     "PADDLE_DIST_UT_PORT=21532;http_proxy=;https_proxy=")
   set_tests_properties(test_world_size_and_rank PROPERTIES TIMEOUT "120")
+endif()
+if(WITH_MPI)
+  if(LOCAL_ALL_ARCH AND (LINUX))
+    bash_test_modules(
+      test_mpi_comm
+      START_BASH
+      test_mpi_comm.sh
+      LABELS
+      "RUN_TYPE=DIST"
+      ENVS
+      "PADDLE_DIST_UT_PORT=21672;http_proxy=;https_proxy=")
+  endif()
 endif()
 add_subdirectory(fleet)
 add_subdirectory(multinode)

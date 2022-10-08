@@ -71,7 +71,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     return nccl_ctxs_;
   }
 
-  const ncclComm_t GetComm() const {
+  ncclComm_t GetComm() const {
     PADDLE_ENFORCE_EQ(
         places_.size(),
         1,

@@ -43,6 +43,13 @@ if(WITH_NCCL OR WITH_RCCL)
   endif()
 endif()
 
+if(WITH_MPI)
+  cc_library(
+    processgroup_mpi
+    SRCS ProcessGroupMPI.cc MPITools.cc Common.cc
+    DEPS collective_helper device_context)
+endif()
+
 if(WITH_ASCEND_CL)
   cc_library(
     processgroup_hccl

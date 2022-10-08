@@ -26,8 +26,6 @@ DECLARE_int32(paddle_num_threads);
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class GRUOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -321,10 +319,10 @@ class GRUCPUKernel : public framework::OpKernel<T> {
 
     bool origin_mode = context.Attr<bool>("origin_mode");
     auto* input = context.Input<LoDTensor>("Input");
-    auto* h0 = context.Input<Tensor>("H0");
-    auto* weight = context.Input<Tensor>("Weight");
+    auto* h0 = context.Input<phi::DenseTensor>("H0");
+    auto* weight = context.Input<phi::DenseTensor>("Weight");
     const T* weight_data = weight->data<T>();
-    auto* bias = context.Input<Tensor>("Bias");
+    auto* bias = context.Input<phi::DenseTensor>("Bias");
     auto* hidden = context.Output<LoDTensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 

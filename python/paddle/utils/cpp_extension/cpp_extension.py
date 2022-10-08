@@ -73,7 +73,7 @@ def setup(**attr):
     If the above conditions are not met, the corresponding warning will be printed, and a fatal error may
     occur because of ABI compatibility.
 
-    .. note::
+    Note:
 
         1. Currently we support Linux, MacOS and Windows platfrom.
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
@@ -230,7 +230,7 @@ def CppExtension(sources, *args, **kwargs):
         )
 
 
-    .. note::
+    Note:
         It is mainly used in ``setup`` and the nama of built shared library keeps same
         as ``name`` argument specified in ``setup`` interface.
 
@@ -282,7 +282,7 @@ def CUDAExtension(sources, *args, **kwargs):
         )
 
 
-    .. note::
+    Note:
         It is mainly used in ``setup`` and the nama of built shared library keeps same
         as ``name`` argument specified in ``setup`` interface.
 
@@ -293,7 +293,7 @@ def CUDAExtension(sources, *args, **kwargs):
         **kwargs(dict[option], optional): Specify other arguments same as ``setuptools.Extension`` .
 
     Returns:
-        setuptools.Extension: An instance of setuptools.Extension
+        setuptools.Extension: An instance of setuptools.Extension.
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
@@ -772,7 +772,7 @@ def load(name,
     ``python setup.py install`` command. The interface contains all compiling and installing
     process underground.
 
-    .. note::
+    Note:
 
         1. Currently we support Linux, MacOS and Windows platfrom.
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .

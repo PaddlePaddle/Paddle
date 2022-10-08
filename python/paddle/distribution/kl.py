@@ -22,6 +22,7 @@ from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.normal import Normal
 from paddle.distribution.uniform import Uniform
+from paddle.distribution.laplace import Laplace
 from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 
 __all__ = ["register_kl", "kl_divergence"]
@@ -38,11 +39,11 @@ def kl_divergence(p, q):
         KL(p||q) = \int p(x)log\frac{p(x)}{q(x)} \mathrm{d}x
 
     Args:
-        p (Distribution): ``Distribution`` object.
-        q (Distribution): ``Distribution`` object.
+        p (Distribution): ``Distribution`` object. Inherits from the Distribution Base class.
+        q (Distribution): ``Distribution`` object. Inherits from the Distribution Base class.
 
     Returns:
-        Tensor: Batchwise KL-divergence between distribution p and q.
+        Tensor, Batchwise KL-divergence between distribution p and q.
 
     Examples:
 
@@ -71,8 +72,8 @@ def register_kl(cls_p, cls_q):
     implemention funciton by the decorator.
 
     Args:
-        cls_p(Distribution): Subclass derived from ``Distribution``.
-        cls_q(Distribution): Subclass derived from ``Distribution``.
+        cls_p (Distribution): The Distribution type of Instance p. Subclass derived from ``Distribution``.
+        cls_q (Distribution): The Distribution type of Instance q. Subclass derived from ``Distribution``.
 
     Examples:
         .. code-block:: python
@@ -165,6 +166,11 @@ def _kl_normal_normal(p, q):
 
 @register_kl(Uniform, Uniform)
 def _kl_uniform_uniform(p, q):
+    return p.kl_divergence(q)
+
+
+@register_kl(Laplace, Laplace)
+def _kl_laplace_laplace(p, q):
     return p.kl_divergence(q)
 
 

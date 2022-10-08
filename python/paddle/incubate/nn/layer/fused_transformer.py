@@ -684,7 +684,7 @@ class FusedTransformerEncoderLayer(Layer):
 
         .. code-block:: python
 
-	    # required: gpu
+            # required: gpu
             import paddle
             from paddle.incubate.nn import FusedTransformerEncoderLayer
 

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-import os
 import paddle
 from paddle.distributed import fleet
 
@@ -53,24 +52,21 @@ class TestNewGroupAPI(object):
         paddle.distributed.scatter(result, [self.tensor2, self.tensor1],
                                    src=dp_src_rank,
                                    group=dp_gp,
-                                   use_calc_stream=True)
+                                   sync_op=True)
         if dp_rank == 0:
             assert np.array_equal(result, self.tensor2)
         elif dp_rank == 1:
             assert np.array_equal(result, self.tensor1)
         print("test scatter api ok")
 
-        paddle.distributed.broadcast(result,
-                                     src=1,
-                                     group=dp_gp,
-                                     use_calc_stream=True)
+        paddle.distributed.broadcast(result, src=1, group=dp_gp, sync_op=True)
         assert np.array_equal(result, self.tensor1)
         print("test broadcast api ok")
 
         paddle.distributed.reduce(result,
                                   dst=dp_src_rank,
                                   group=dp_gp,
-                                  use_calc_stream=True)
+                                  sync_op=True)
         if dp_rank == 0:
             assert np.array_equal(result, paddle.add(self.tensor1,
                                                      self.tensor1))
@@ -78,7 +74,7 @@ class TestNewGroupAPI(object):
             assert np.array_equal(result, self.tensor1)
         print("test reduce api ok")
 
-        paddle.distributed.all_reduce(result, use_calc_stream=True)
+        paddle.distributed.all_reduce(result, sync_op=True)
         assert np.array_equal(
             result,
             paddle.add(paddle.add(self.tensor1, self.tensor1), self.tensor1))
@@ -92,7 +88,7 @@ class TestNewGroupAPI(object):
         paddle.distributed.all_gather(result,
                                       self.tensor1,
                                       group=dp_gp,
-                                      use_calc_stream=True)
+                                      sync_op=True)
         assert np.array_equal(result[0], self.tensor1)
         assert np.array_equal(result[1], self.tensor1)
         print("test all_gather api ok")

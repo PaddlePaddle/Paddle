@@ -32,14 +32,14 @@ class DenseTensor;
 namespace paddle {
 namespace framework {
 // store the result bool in gpu tensor, async operation. Faster than above ones.
-void TensorContainsNAN(const framework::Tensor& tensor, framework::Tensor* out);
-void TensorContainsInf(const framework::Tensor& tensor, framework::Tensor* out);
-void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out);
+void TensorContainsNAN(const phi::DenseTensor& tensor, phi::DenseTensor* out);
+void TensorContainsInf(const phi::DenseTensor& tensor, phi::DenseTensor* out);
+void TensorIsfinite(const phi::DenseTensor& tensor, phi::DenseTensor* out);
 
 // copy the result bool to cpu
-bool TensorContainsNAN(const framework::Tensor& tensor);
-bool TensorContainsInf(const framework::Tensor& tensor);
-bool TensorIsfinite(const framework::Tensor& tensor);
+bool TensorContainsNAN(const phi::DenseTensor& tensor);
+bool TensorContainsInf(const phi::DenseTensor& tensor);
+bool TensorIsfinite(const phi::DenseTensor& tensor);
 
 #define FiniteVisitor(type, reduce_type, device)                             \
   struct type##Visitor##device {                                             \
@@ -50,7 +50,7 @@ bool TensorIsfinite(const framework::Tensor& tensor);
       auto place = in_.place();                                              \
       auto* ctx = static_cast<phi::device##Context*>(                        \
           platform::DeviceContextPool::Instance().Get(place));               \
-      Tensor tmp;                                                            \
+      phi::DenseTensor tmp;                                                  \
       tmp.Resize(in_.dims());                                                \
       out_->Resize({1});                                                     \
       std::vector<int64_t> dims(tmp.dims().size());                          \
@@ -73,8 +73,8 @@ FiniteVisitor(Isfinite, All, GPU);
 #endif
 
 // store the result bool in gpu tensor, async operation. Faster than above ones.
-inline void TensorContainsNAN(const framework::Tensor& tensor,
-                              framework::Tensor* out) {
+inline void TensorContainsNAN(const phi::DenseTensor& tensor,
+                              phi::DenseTensor* out) {
   auto place = tensor.place();
   if (platform::is_cpu_place(tensor.place())) {
     VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
@@ -90,8 +90,8 @@ inline void TensorContainsNAN(const framework::Tensor& tensor,
 #endif
   PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
 }
-inline void TensorContainsInf(const framework::Tensor& tensor,
-                              framework::Tensor* out) {
+inline void TensorContainsInf(const phi::DenseTensor& tensor,
+                              phi::DenseTensor* out) {
   auto place = tensor.place();
   if (platform::is_cpu_place(tensor.place())) {
     VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
@@ -107,8 +107,8 @@ inline void TensorContainsInf(const framework::Tensor& tensor,
 #endif
   PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
 }
-inline void TensorIsfinite(const framework::Tensor& tensor,
-                           framework::Tensor* out) {
+inline void TensorIsfinite(const phi::DenseTensor& tensor,
+                           phi::DenseTensor* out) {
   auto place = tensor.place();
   if (platform::is_cpu_place(tensor.place())) {
     VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
@@ -126,37 +126,37 @@ inline void TensorIsfinite(const framework::Tensor& tensor,
 }
 
 // copy the result bool to cpu
-inline bool TensorContainsNAN(const framework::Tensor& tensor) {
-  Tensor out;
+inline bool TensorContainsNAN(const phi::DenseTensor& tensor) {
+  phi::DenseTensor out;
   TensorContainsNAN(tensor, &out);
   return GetValue<bool>(&out);
 }
-inline bool TensorContainsInf(const framework::Tensor& tensor) {
-  Tensor out;
+inline bool TensorContainsInf(const phi::DenseTensor& tensor) {
+  phi::DenseTensor out;
   TensorContainsInf(tensor, &out);
   return GetValue<bool>(&out);
 }
-inline bool TensorIsfinite(const framework::Tensor& tensor) {
-  Tensor out;
+inline bool TensorIsfinite(const phi::DenseTensor& tensor) {
+  phi::DenseTensor out;
   TensorIsfinite(tensor, &out);
   return GetValue<bool>(&out);
 }
 }  // namespace framework
 namespace operators {
 struct InfinityFunctor {
-  void operator()(const framework::Tensor& tensor, framework::Tensor* out) {
+  void operator()(const phi::DenseTensor& tensor, phi::DenseTensor* out) {
     framework::TensorContainsInf(tensor, out);
   }
 };
 
 struct NANFunctor {
-  void operator()(const framework::Tensor& tensor, framework::Tensor* out) {
+  void operator()(const phi::DenseTensor& tensor, phi::DenseTensor* out) {
     framework::TensorContainsNAN(tensor, out);
   }
 };
 
 struct IsfiniteFunctor {
-  void operator()(const framework::Tensor& tensor, framework::Tensor* out) {
+  void operator()(const phi::DenseTensor& tensor, phi::DenseTensor* out) {
     framework::TensorIsfinite(tensor, out);
   }
 };
@@ -166,22 +166,22 @@ class OverflowKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     auto* x = ctx.InputVar("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
     Functor functor;
     if (x->IsType<framework::LoDTensor>()) {
-      auto* in = ctx.Input<framework::Tensor>("X");
+      auto* in = ctx.Input<phi::DenseTensor>("X");
       functor(*in, out);
     } else if (x->IsType<phi::SelectedRows>()) {
       auto& in = ctx.Input<phi::SelectedRows>("X")->value();
       functor(in, out);
     } else {
-      PADDLE_ENFORCE_EQ(
-          true,
-          false,
-          platform::errors::InvalidArgument(
-              "The input type mismatch, the type of Input(X) must be Tensor or "
-              "SelectedRows, please check your input."));
+      PADDLE_ENFORCE_EQ(true,
+                        false,
+                        platform::errors::InvalidArgument(
+                            "The input type mismatch, the type of Input(X) "
+                            "must be phi::DenseTensor or "
+                            "SelectedRows, please check your input."));
     }
   }
 };
