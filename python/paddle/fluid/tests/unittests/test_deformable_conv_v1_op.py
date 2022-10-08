@@ -294,11 +294,17 @@ class TestWithFloat16(TestModulatedDeformableConvOp):
     def test_check_output(self):
         self.check_output(check_eager=True, atol=1e-3)
 
+    def test_check_grad(self):
+        self.check_grad_with_place(core.CUDAPlace(0), ['Input', 'Offset', 'Filter'],
+                                   'Output',
+                                   numeric_grad_delta=1e-3,
+                                   max_relative_error=1e-3,
+                                   check_eager=True)
+
 
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
 
     def test_error(self):
-
         def test_invalid_input():
             input = [1, 3, 32, 32]
             offset = fluid.data(name='offset',
