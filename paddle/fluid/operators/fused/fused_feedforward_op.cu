@@ -43,8 +43,7 @@ static void AllReduce(phi::DenseTensor& tensor,  // NOLINT
 
   if (map->has(ring_id)) {
     paddle::distributed::ProcessGroup* pg = map->get(ring_id);
-    auto pg_strm = static_cast<distributed::ProcessGroupStream*>(pg);
-    auto pg_nccl = static_cast<distributed::ProcessGroupNCCL*>(pg_strm);
+    auto pg_nccl = static_cast<distributed::ProcessGroupNCCL*>(pg);
 
     std::vector<phi::DenseTensor> in_tensor;
     std::vector<phi::DenseTensor> out_tensor;
