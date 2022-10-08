@@ -172,9 +172,9 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 };
 
 UNUSED constexpr char SigmoidDoc[] = R"DOC(
-Sigmoid Activation Operator
+Sigmoid Activation
 
-$$out = \\frac{1}{1 + e^{-x}}$$
+$$out = \frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
