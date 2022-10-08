@@ -2382,14 +2382,6 @@ def cross_entropy(input,
         if soft_label == False:
             valid_label = paddle.cast(label != ignore_index,
                                       dtype=label.dtype) * label
-            label_min = paddle.min(valid_label)
-            label_max = paddle.max(valid_label)
-            if label_min < 0:
-                raise ValueError("Target {} is out of lower bound.".format(
-                    label_min.item()))
-            if label_max >= input.shape[axis]:
-                raise ValueError("Target {} is out of upper bound.".format(
-                    label_max.item()))
         if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
             if soft_label == False:
                 _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
