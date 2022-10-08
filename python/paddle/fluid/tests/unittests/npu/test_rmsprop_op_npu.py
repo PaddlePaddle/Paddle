@@ -16,7 +16,10 @@ import unittest
 import sys
 
 sys.path.append("..")
+from op_test import OpTest
 import numpy as np
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 

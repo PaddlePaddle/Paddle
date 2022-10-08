@@ -20,6 +20,7 @@ sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, Program, program_guard
 
 paddle.enable_static()

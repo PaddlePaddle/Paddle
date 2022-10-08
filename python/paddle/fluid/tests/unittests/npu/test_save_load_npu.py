@@ -19,6 +19,17 @@ sys.path.append("..")
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.nn import Embedding
+import paddle.fluid.framework as framework
+from paddle.fluid.optimizer import Adam
+from paddle.fluid.dygraph.base import to_variable
+from test_imperative_base import new_program_scope
+from paddle.fluid.executor import global_scope
+import numpy as np
+import six
+import pickle
+import os
+import errno
 from test_static_save_load import *
 
 paddle.enable_static()

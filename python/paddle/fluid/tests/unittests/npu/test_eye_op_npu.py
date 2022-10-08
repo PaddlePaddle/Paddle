@@ -20,6 +20,7 @@ sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import core
 import paddle.fluid.framework as framework
 
 paddle.enable_static()

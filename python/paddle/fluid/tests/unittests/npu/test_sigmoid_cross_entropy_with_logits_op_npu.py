@@ -16,7 +16,10 @@ import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
 from scipy.special import logit
 from scipy.special import expit
+import paddle.fluid.core as core
 import unittest
+from paddle.fluid import compiler, Program, program_guard
+import paddle.fluid as fluid
 import paddle
 
 paddle.enable_static()

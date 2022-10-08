@@ -20,6 +20,8 @@ sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import core
 
 paddle.enable_static()
 np.random.seed(10)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+import subprocess
 import unittest
 import numpy as np
 
@@ -22,6 +23,9 @@ import paddle
 import paddle.fluid.core as core
 import paddle
 from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
+from test_uniform_random_op import TestUniformRandomOp, TestUniformRandomOpSelectedRows
 
 paddle.enable_static()
 

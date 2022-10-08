@@ -17,8 +17,9 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
+from op_test import OpTest, _set_use_system_allocator
 import paddle
+import paddle.fluid as fluid
 
 paddle.enable_static()
 

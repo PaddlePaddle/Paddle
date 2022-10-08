@@ -20,7 +20,8 @@ sys.path.append("..")
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import _set_use_system_allocator
+from paddle.fluid.op import Operator
+from op_test import OpTest, _set_use_system_allocator
 from paddle.fluid import Program, program_guard
 
 from test_batch_norm_op import _reference_testing, _cal_mean_variance, _reference_training, _reference_grad

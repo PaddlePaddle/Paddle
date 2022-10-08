@@ -19,6 +19,7 @@ import sys
 sys.path.append("..")
 
 from paddle.fluid import Program, program_guard
+import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle
 from op_test import OpTest, skip_check_grad_ci

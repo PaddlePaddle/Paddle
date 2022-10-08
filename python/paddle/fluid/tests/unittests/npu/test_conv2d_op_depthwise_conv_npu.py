@@ -16,11 +16,15 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.fluid as fluid
 import sys
 
 sys.path.append("..")
 from op_test import OpTest
 from test_conv2d_op import conv2d_forward_naive
+from paddle import ParamAttr
+from paddle.regularizer import L2Decay
+from paddle.nn.initializer import KaimingNormal
 
 paddle.enable_static()
 SEED = 2021

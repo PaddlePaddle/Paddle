@@ -19,6 +19,8 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
+import paddle.fluid as fluid
+from paddle.fluid import core
 from test_top_k_v2_op_npu import numpy_topk
 
 paddle.enable_static()

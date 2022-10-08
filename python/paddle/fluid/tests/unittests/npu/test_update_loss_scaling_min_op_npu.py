@@ -15,10 +15,13 @@
 import unittest
 import numpy as np
 import sys
+import os
 
 sys.path.append("..")
+from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.contrib.mixed_precision.amp_nn as amp_nn
 from test_update_loss_scaling_op_npu import TestUpdateLossScalingOpBad
 
 paddle.enable_static()

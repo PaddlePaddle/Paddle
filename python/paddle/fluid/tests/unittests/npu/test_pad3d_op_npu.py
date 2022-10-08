@@ -21,6 +21,7 @@ import op_test
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard, Executor, default_main_program
 import paddle.fluid as fluid
 
@@ -97,6 +98,7 @@ class TestCase1(TestPad3dNPUOp):
 
     def test_check_grad(self):
         self.__class__.no_need_check_grad = True
+        pass
 
 
 class TestCase2(TestPad3dNPUOp):

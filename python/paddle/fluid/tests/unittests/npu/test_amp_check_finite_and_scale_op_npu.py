@@ -17,9 +17,10 @@ import numpy as np
 import sys
 
 sys.path.append("..")
+from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import program_guard
+from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.contrib.mixed_precision.amp_nn import check_finite_and_unscale
 
 paddle.enable_static()

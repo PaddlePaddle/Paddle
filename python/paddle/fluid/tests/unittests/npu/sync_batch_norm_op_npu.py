@@ -13,13 +13,29 @@
 # limitations under the License.
 
 import numpy as np
+import argparse
+import os
 import sys
 
 sys.path.append("..")
+import signal
+import time
+from contextlib import closing
+from six import string_types
+import math
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.profiler as profiler
+import paddle.fluid.unique_name as nameGen
+from paddle.fluid import core
+import unittest
+from multiprocessing import Process
+import paddle.fluid.layers as layers
+from functools import reduce
 from test_sync_batch_norm_base_npu import TestSyncBatchNormRunnerBase, runtime_main
-from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
+from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
+
+from paddle.fluid.tests.unittests.test_sync_batch_norm_op import create_or_get_tensor
 
 _set_use_system_allocator(False)
 paddle.enable_static()

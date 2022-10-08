@@ -21,6 +21,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.op import Operator
 from test_momentum_op import calculate_momentum_by_numpy
 
 paddle.enable_static()

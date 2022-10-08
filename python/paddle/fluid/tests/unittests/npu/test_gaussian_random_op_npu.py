@@ -18,7 +18,9 @@ import numpy as np
 
 sys.path.append("..")
 import paddle
+import paddle.fluid as fluid
 from op_test import OpTest
+from test_gaussian_random_op import TestGaussianRandomOp
 
 paddle.enable_static()
 

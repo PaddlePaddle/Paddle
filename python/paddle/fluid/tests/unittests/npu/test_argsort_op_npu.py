@@ -19,6 +19,13 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+
+from paddle.fluid import ParamAttr
+from paddle.fluid.framework import Program, grad_var_name
+from paddle.fluid.executor import Executor
+from paddle.fluid.backward import append_backward
 
 paddle.enable_static()
 
