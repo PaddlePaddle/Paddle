@@ -576,7 +576,7 @@ int main(int argc, char* argv[]) {
         << "};\n\n";
 
     out << "void BindOpFunctions" << i + 1 << "(pybind11::module *module) {\n"
-        << "  auto m = module->def_submodule(\"ops\");\n"
+        << "  auto m = module->def_submodule(\"opsdel\");\n"
         << "  if (PyModule_AddFunctions(m.ptr(), ExtestMethods) < 0) {\n"
         << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
            "core.ops failed!\"));\n"
