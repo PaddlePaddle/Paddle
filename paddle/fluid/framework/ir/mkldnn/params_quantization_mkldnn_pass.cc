@@ -58,13 +58,19 @@ void QuantizeConvInput(Scope* scope,
                        ir::Node* conv_op,
                        const std::string& input_name,
                        const std::string& scales_attr_name) {
-  const auto scales =
-      conv_op->Op()->GetAttrIfExists<std::vector<float>>(scales_attr_name);
+  auto var = scope->GetVar(input_name);
+  if (var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
+    VLOG(0) << "Skipping convolution filter: " << input_name
+            << " because it is detected again.";
+    conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
+  } else {
+    const auto scales =
+        conv_op->Op()->GetAttrIfExists<std::vector<float>>(scales_attr_name);
 
-  auto* tensor = scope->GetVar(input_name)->GetMutable<LoDTensor>();
-  QuantizeParams<T>(tensor, scales);
-
-  conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
+    auto* tensor = scope->GetVar(input_name)->GetMutable<LoDTensor>();
+    QuantizeParams<T>(tensor, scales);
+    conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
+  }
 }
 
 }  // namespace
@@ -139,29 +145,12 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
       return;
     }
 
-    auto filter_var = scope->GetVar(conv_filter->Name());
-    if (filter_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
-      VLOG(0) << "Skipping convolution filter: " << conv_filter->Name()
-              << " because it is detected again.";
-      conv_op->Op()->SetAttr("Scale_weights", std::vector<float>(1, 1));
-    } else {
-      VLOG(0) << conv_filter->Name();
-      QuantizeConvInput<int8_t>(
-          scope, g, conv_op, conv_filter->Name(), "Scale_weights");
-    }
+    QuantizeConvInput<int8_t>(
+        scope, g, conv_op, conv_filter->Name(), "Scale_weights");
 
     if (HasBias(conv_op)) {
-      auto bias_var = scope->GetVar(conv_op->Op()->Input("Bias")[0]);
-      if (bias_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
-        VLOG(0) << "Skipping convolution bias: "
-                << conv_op->Op()->Input("Bias")[0]
-                << " because it is detected again.";
-        conv_op->Op()->SetAttr("Bias_scales", std::vector<float>(1, 1));
-      } else {
-        VLOG(0) << conv_op->Op()->Input("Bias")[0];
-        QuantizeConvInput<int32_t>(
-            scope, g, conv_op, conv_op->Op()->Input("Bias")[0], "Bias_scales");
-      }
+      QuantizeConvInput<int32_t>(
+          scope, g, conv_op, conv_op->Op()->Input("Bias")[0], "Bias_scales");
     }
     params_to_int8_conv_found++;
   };
