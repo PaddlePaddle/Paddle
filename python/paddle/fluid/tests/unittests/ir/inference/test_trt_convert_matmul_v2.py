@@ -200,7 +200,8 @@ class TrtConvertMatmulTest_dynamic3(TrtLayerAutoScanTest):
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
-        for batch in [10, 11, 12, 13, 14, 15]:
+        # Do more loop to pass coverage CI
+        for batch in range(20, 70):
             input1_shape = [batch, 40]
             input2_shape = [40]
             dics = [{
@@ -236,6 +237,22 @@ class TrtConvertMatmulTest_dynamic3(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
+
+        def generate_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {
+                "input1_data": [60, 40],
+                "input2_data": [40]
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input1_data": [60, 40],
+                "input2_data": [40]
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input1_data": [60, 40],
+                "input2_data": [40]
+            }
+
+        generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (0, 4), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
