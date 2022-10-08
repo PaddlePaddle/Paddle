@@ -16,10 +16,7 @@ import unittest
 
 import paddle
 import numpy as np
-import paddle.distributed as dist
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-import random
 
 
 class TestDistTraning(unittest.TestCase):

@@ -367,7 +367,7 @@ void Tensor::CopyToCpuImpl(T *data,
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
 
-  paddle::framework::Tensor out;
+  phi::DenseTensor out;
   auto mem_allocation =
       std::make_shared<paddle::memory::allocation::Allocation>(
           static_cast<void *>(data),
@@ -843,7 +843,7 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
   auto *t_data = tensor->data<T>();
   auto t_place = tensor->place();
 
-  paddle::framework::Tensor out;
+  phi::DenseTensor out;
   auto mem_allocation =
       std::make_shared<paddle::memory::allocation::Allocation>(
           static_cast<void *>(data),

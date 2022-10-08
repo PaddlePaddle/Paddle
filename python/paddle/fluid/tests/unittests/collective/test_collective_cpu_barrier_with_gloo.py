@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import unittest
-import os
-import sys
 import time
 import multiprocessing
 from contextlib import closing

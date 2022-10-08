@@ -61,10 +61,10 @@ class MatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto &x = GET_DATA_SAFELY(
-        context.Input<framework::Tensor>("X"), "Input", "X", "MatMul");
+        context.Input<phi::DenseTensor>("X"), "Input", "X", "MatMul");
     auto &y = GET_DATA_SAFELY(
-        context.Input<framework::Tensor>("Y"), "Input", "Y", "MatMul");
-    auto *out = context.Output<framework::Tensor>("Out");
+        context.Input<phi::DenseTensor>("Y"), "Input", "Y", "MatMul");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
     dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
@@ -116,7 +116,7 @@ class MatMulKernel : public framework::OpKernel<T> {
 
 // Reshape a rank-3 tensor from P x M x N to (P * M) x N.
 // Identity op if the tensor is not of rank 3.
-static framework::Tensor FoldInitDims(const framework::Tensor &input) {
+static phi::DenseTensor FoldInitDims(const phi::DenseTensor &input) {
   auto output = input;
   auto in_dims = input.dims();
   if (in_dims.size() == 3) {
@@ -129,13 +129,13 @@ static framework::Tensor FoldInitDims(const framework::Tensor &input) {
 // (Warning: This requires transposing data and writes into new memory.)
 // Identity op if the tensor is not of rank 3.
 template <typename DeviceContext, typename T>
-static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
-                                             const framework::Tensor &input) {
+static phi::DenseTensor FoldHeadAndLastDims(const DeviceContext &context,
+                                            const phi::DenseTensor &input) {
   auto in_dims = input.dims();
   if (in_dims.size() != 3) {
     return input;
   }
-  framework::Tensor output;
+  phi::DenseTensor output;
   output.Resize({in_dims[1], in_dims[0], in_dims[2]});
   output.mutable_data<T>(context.GetPlace());
   std::vector<int> axis = {1, 0, 2};
@@ -153,7 +153,7 @@ static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
  * If transposed, `H,W` will be swapped.
  */
 static void ReshapeTensorIntoMatrixSequence(
-    framework::Tensor *x, const phi::funcs::MatDescriptor &descriptor) {
+    phi::DenseTensor *x, const phi::funcs::MatDescriptor &descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -181,9 +181,9 @@ static void ReshapeTensorIntoMatrixSequence(
  * If any of `X` and `Y` has batch size BatchSize, the out will have the
  * BatchSize.
  */
-static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
-                                           framework::Tensor *y,
-                                           framework::Tensor *out,
+static void ReshapeXYOutIntoMatrixSequence(phi::DenseTensor *x,
+                                           phi::DenseTensor *y,
+                                           phi::DenseTensor *out,
                                            bool trans_x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());
@@ -231,11 +231,11 @@ template <typename DeviceContext, typename T>
 class MatMulGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext &context,
-              const framework::Tensor &a,
+              const phi::DenseTensor &a,
               bool trans_a,
-              const framework::Tensor &b,
+              const phi::DenseTensor &b,
               bool trans_b,
-              framework::Tensor *out) const {
+              phi::DenseTensor *out) const {
     out->mutable_data<T>(context.GetPlace());
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
@@ -266,13 +266,13 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 
   void CalcInputGrad(const framework::ExecutionContext &context,
-                     const framework::Tensor &a,
+                     const phi::DenseTensor &a,
                      bool trans_a,
                      bool is_fold_init_dims_a,
-                     const framework::Tensor &b,
+                     const phi::DenseTensor &b,
                      bool trans_b,
                      bool is_fold_init_dims_b,
-                     framework::Tensor *out) const {
+                     phi::DenseTensor *out) const {
     if (out == nullptr) return;
     bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
                         out->dims().size() == 2;
@@ -293,12 +293,11 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext &context) const override {
-    auto x = *context.Input<framework::Tensor>("X");
-    auto y = *context.Input<framework::Tensor>("Y");
-    auto dout =
-        *context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto *dx = context.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto *dy = context.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto x = *context.Input<phi::DenseTensor>("X");
+    auto y = *context.Input<phi::DenseTensor>("Y");
+    auto dout = *context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *dy = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
 
@@ -370,12 +369,12 @@ template <typename DeviceContext, typename T>
 class MatMulDoubleGradKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const framework::ExecutionContext &context,
-              const framework::Tensor &a,
+              const phi::DenseTensor &a,
               bool trans_a,
-              const framework::Tensor &b,
+              const phi::DenseTensor &b,
               bool trans_b,
               bool flag,
-              framework::Tensor *out) const {
+              phi::DenseTensor *out) const {
     out->mutable_data<T>(context.GetPlace());
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(a.dims(), 0, trans_a);
@@ -404,14 +403,14 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
   }
 
   void CalcInputGrad(const framework::ExecutionContext &context,
-                     const framework::Tensor &a,
+                     const phi::DenseTensor &a,
                      bool trans_a,
                      bool is_fold_init_dims_a,
-                     const framework::Tensor &b,
+                     const phi::DenseTensor &b,
                      bool trans_b,
                      bool is_fold_init_dims_b,
                      bool flag,
-                     framework::Tensor *out) const {
+                     phi::DenseTensor *out) const {
     if (out == nullptr) return;
     bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
                         out->dims().size() == 2;
@@ -433,8 +432,8 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext &context) const override {
-    auto x = *context.Input<framework::Tensor>("X");
-    auto y = *context.Input<framework::Tensor>("Y");
+    auto x = *context.Input<phi::DenseTensor>("X");
+    auto y = *context.Input<phi::DenseTensor>("Y");
     auto dout = *context.Input<framework::LoDTensor>("DOut");
     auto *ddx = context.Input<framework::LoDTensor>("DDX");
     auto *ddy = context.Input<framework::LoDTensor>("DDY");
@@ -712,7 +711,7 @@ class MatMulOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input

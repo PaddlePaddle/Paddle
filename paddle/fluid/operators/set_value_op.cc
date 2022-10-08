@@ -36,7 +36,7 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class SetValue : public framework::OperatorWithKernel {
  public:
@@ -210,7 +210,7 @@ class SetValueGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto in_tensor = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto in_tensor = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Out")),
                                    in_tensor->place());

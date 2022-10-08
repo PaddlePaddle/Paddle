@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 class LocalityAwareNMSOp : public framework::OperatorWithKernel {
@@ -166,8 +166,8 @@ void GetMaxScoreIndexWithLocalityAware(
 template <typename T>
 class LocalityAwareNMSKernel : public framework::OpKernel<T> {
  public:
-  void LocalityAwareNMSFast(Tensor* bbox,
-                            Tensor* scores,
+  void LocalityAwareNMSFast(phi::DenseTensor* bbox,
+                            phi::DenseTensor* scores,
                             const T score_threshold,
                             const T nms_threshold,
                             const T eta,
@@ -237,8 +237,8 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
   }
 
   void LocalityAwareNMS(const framework::ExecutionContext& ctx,
-                        Tensor* scores,
-                        Tensor* bboxes,
+                        phi::DenseTensor* scores,
+                        phi::DenseTensor* bboxes,
                         const int scores_size,
                         std::map<int, std::vector<int>>* indices,
                         int* num_nmsed_out) const {
@@ -309,11 +309,11 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
 
   void LocalityAwareNMSOutput(
       const platform::DeviceContext& ctx,
-      const Tensor& scores,
-      const Tensor& bboxes,
+      const phi::DenseTensor& scores,
+      const phi::DenseTensor& bboxes,
       const std::map<int, std::vector<int>>& selected_indices,
       const int scores_size,
-      Tensor* outs,
+      phi::DenseTensor* outs,
       int* oindices = nullptr,
       const int offset = 0) const {
     int64_t predict_dim = scores.dims()[1];

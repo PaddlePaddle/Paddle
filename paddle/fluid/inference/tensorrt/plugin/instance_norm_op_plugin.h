@@ -33,8 +33,8 @@ class InstanceNormPlugin : public PluginTensorRT {
   std::vector<float> scale_;
   std::vector<float> bias_;
 
-  framework::Tensor scale_t;
-  framework::Tensor bias_t;
+  phi::DenseTensor scale_t;
+  phi::DenseTensor bias_t;
   cudnnHandle_t handle_;
   cudnnTensorDescriptor_t x_desc_, y_desc_, b_desc_;
 
