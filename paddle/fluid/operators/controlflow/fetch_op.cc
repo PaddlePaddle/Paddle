@@ -30,7 +30,7 @@ static void DataCopy(const framework::LoDTensor &src_item,
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
     if (src_item.layout() == framework::DataLayout::kMKLDNN) {
-      framework::Tensor out;
+      phi::DenseTensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
       VLOG(4) << "innerTransDataLayoutFromMKLDNN";
@@ -123,6 +123,9 @@ class FetchOp : public framework::OperatorBase {
       auto &src_item = fetch_var->Get<framework::Vocab>();
       auto *dst_item = &(PADDLE_GET(framework::Vocab, fetch_list->at(col)));
       *dst_item = src_item;
+    } else if (fetch_var->IsType<phi::SparseCooTensor>()) {
+      auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
+      fetch_list->at(col) = src_item;
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       framework::LoDTensorArray tmp(src_item.size());

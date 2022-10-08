@@ -17,13 +17,13 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename IndexT>
 void IndexSampleGather(const paddle::platform::NPUDeviceContext& dev_ctx,
-                       const Tensor* index,
-                       const Tensor* input,
-                       Tensor* out) {
+                       const phi::DenseTensor* index,
+                       const phi::DenseTensor* input,
+                       phi::DenseTensor* out) {
   auto index_dims = index->dims();
   auto input_dims = input->dims();
   auto batch_size = input_dims[0];
@@ -72,9 +72,9 @@ class IndexSampleNPUKernel : public framework::OpKernel<T> {
 
 template <typename IndexT>
 void IndexSampleGradScatter(const paddle::platform::NPUDeviceContext& dev_ctx,
-                            const Tensor* index,
-                            const Tensor* out_grad,
-                            Tensor* x_grad) {
+                            const phi::DenseTensor* index,
+                            const phi::DenseTensor* out_grad,
+                            phi::DenseTensor* x_grad) {
   auto index_dims = index->dims();
   auto input_dims = x_grad->dims();
   auto batch_size = input_dims[0];

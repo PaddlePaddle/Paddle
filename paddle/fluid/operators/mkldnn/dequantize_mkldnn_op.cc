@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dnnl.hpp"
+#include "paddle/fluid/operators/dequantize_op.h"
+
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/dequantize_op.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
@@ -27,7 +27,7 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
 using platform::to_void_cast;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using dnnl::stream;
 using framework::DataLayout;
 using platform::GetMKLDNNFormat;
@@ -36,11 +36,11 @@ template <typename T>
 class DeQuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("Input");
+    auto* x = ctx.Input<phi::DenseTensor>("Input");
     const auto quantization_scale = ctx.Attr<float>("Scale");
     const auto quantization_shift = ctx.Attr<float>("Shift");
     const bool with_shift = quantization_shift != 0.0f;
-    auto* out = ctx.Output<Tensor>("Output");
+    auto* out = ctx.Output<phi::DenseTensor>("Output");
 
     PADDLE_ENFORCE(quantization_scale != 0.0f,
                    platform::errors::InvalidArgument(

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import errno
 import warnings
@@ -1232,7 +1230,7 @@ def save_inference_model(dirname,
                          params_filename=None,
                          export_for_deployment=True,
                          program_only=False,
-                         clip_extra=False):
+                         clip_extra=True):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` .

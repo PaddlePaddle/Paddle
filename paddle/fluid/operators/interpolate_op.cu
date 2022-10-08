@@ -19,7 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
@@ -913,8 +912,8 @@ __global__ void KeBicubicInterpBw(T* in,
 
 template <typename T>
 static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
-                                 const Tensor& input,
-                                 Tensor* output) {
+                                 const phi::DenseTensor& input,
+                                 phi::DenseTensor* output) {
   auto* input_data = input.data<T>();
 
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -928,14 +927,14 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
 
   int out_w = ctx.Attr<int>("out_w");
 
-  auto list_new_shape_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_shape_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_shape_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_shape_tensor);
     out_w = new_size[0];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale = scale_data[0];
@@ -945,7 +944,7 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
     if (scale > 0) {
       out_w = static_cast<int>(in_w * scale);
     }
-    auto out_size = ctx.Input<Tensor>("OutSize");
+    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       Tensor sizes;
       framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
@@ -1005,8 +1004,8 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
-                                 const Tensor& input,
-                                 Tensor* output) {
+                                 const phi::DenseTensor& input,
+                                 phi::DenseTensor* output) {
   auto* input_data = input.data<T>();
 
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -1021,7 +1020,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
 
-  auto list_new_shape_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_shape_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_shape_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_shape_tensor);
@@ -1029,7 +1028,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
     out_w = new_size[1];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale = scale_data[0];
@@ -1040,7 +1039,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
       out_h = static_cast<int>(in_h * scale);
       out_w = static_cast<int>(in_w * scale);
     }
-    auto out_size = ctx.Input<Tensor>("OutSize");
+    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       Tensor sizes;
       framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
@@ -1157,8 +1156,8 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
-                                 const Tensor& input,
-                                 Tensor* output) {
+                                 const phi::DenseTensor& input,
+                                 phi::DenseTensor* output) {
   auto* input_data = input.data<T>();
 
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -1174,7 +1173,7 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
 
-  auto list_new_shape_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_shape_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_shape_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_shape_tensor);
@@ -1183,7 +1182,7 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
     out_w = new_size[2];
   } else {
     float scale;
-    auto scale_tensor = ctx.Input<Tensor>("Scale");
+    auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
     if (scale_tensor != nullptr) {
       auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
       scale = scale_data[0];
@@ -1195,7 +1194,7 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
       out_h = static_cast<int>(in_h * scale);
       out_w = static_cast<int>(in_w * scale);
     }
-    auto out_size = ctx.Input<Tensor>("OutSize");
+    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       Tensor sizes;
       framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
@@ -1289,9 +1288,9 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
-                                 Tensor* input_grad,
+                                 phi::DenseTensor* input_grad,
                                  const Tensor output_grad) {
-  auto* input = ctx.Input<Tensor>("X");
+  auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1303,7 +1302,7 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
 
   int out_w = ctx.Attr<int>("out_w");
   float scale;
-  auto scale_tensor = ctx.Input<Tensor>("Scale");
+  auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale = scale_data[0];
@@ -1314,14 +1313,14 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
     out_w = static_cast<int>(in_w * scale);
   }
 
-  auto out_size = ctx.Input<Tensor>("OutSize");
+  auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
     Tensor sizes;
     framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_w = size_data[0];
   }
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -1380,9 +1379,9 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
-                                 Tensor* input_grad,
+                                 phi::DenseTensor* input_grad,
                                  const Tensor output_grad) {
-  auto* input = ctx.Input<Tensor>("X");
+  auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1395,7 +1394,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
   float scale;
-  auto scale_tensor = ctx.Input<Tensor>("Scale");
+  auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale = scale_data[0];
@@ -1407,7 +1406,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
     out_w = static_cast<int>(in_w * scale);
   }
 
-  auto out_size = ctx.Input<Tensor>("OutSize");
+  auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
     Tensor sizes;
     framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
@@ -1415,7 +1414,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
     out_h = size_data[0];
     out_w = size_data[1];
   }
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -1526,9 +1525,9 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
-                                 Tensor* input_grad,
-                                 const Tensor& output_grad) {
-  auto* input = ctx.Input<Tensor>("X");
+                                 phi::DenseTensor* input_grad,
+                                 const phi::DenseTensor& output_grad) {
+  auto* input = ctx.Input<phi::DenseTensor>("X");
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1542,7 +1541,7 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
   int out_h = ctx.Attr<int>("out_h");
   int out_w = ctx.Attr<int>("out_w");
   float scale;
-  auto scale_tensor = ctx.Input<Tensor>("Scale");
+  auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
   if (scale_tensor != nullptr) {
     auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
     scale = scale_data[0];
@@ -1555,7 +1554,7 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
     out_w = static_cast<int>(in_w * scale);
   }
 
-  auto out_size = ctx.Input<Tensor>("OutSize");
+  auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
     Tensor sizes;
     framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
@@ -1564,7 +1563,7 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
     out_h = size_data[1];
     out_w = size_data[2];
   }
-  auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+  auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
   if (list_new_size_tensor.size() > 0) {
     // have size tensor
     auto new_size = get_new_shape(list_new_size_tensor);
@@ -1651,8 +1650,8 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
 
     auto input_dims = input->dims();
     if (input_dims.size() == 3) {  // 1D interpolation
@@ -1673,8 +1672,10 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
         platform::is_gpu_place(ctx.GetPlace()),
         true,
         platform::errors::NotFound("This kernel only runs on GPU device."));
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto output_grad_dims = output_grad->dims();
     if (output_grad_dims.size() == 3) {  // 1D interpolation
