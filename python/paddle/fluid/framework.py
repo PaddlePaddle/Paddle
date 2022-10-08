@@ -284,13 +284,13 @@ def ipu_shard_guard(index=-1, stage=-1):
             The sharded model will be computed from small to large. The default value is -1,
             which means no pipelining computation order and run Ops in terms of graph.
 
-    **Note**:
-    Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer
-    to :ref:`en-api-fluid-ipustrategy` .
-    Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer
-    to :ref:`en-api-fluid-ipustrategy` .
-    A index is allowed to match none stage or a stage. A stage is only allowed to match a new or
-    duplicated index.
+    Note:
+        Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer
+        to :ref:`api_paddle_static_IpuStrategy`.
+        Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer
+        to :ref:`api_paddle_static_IpuStrategy`.
+        A index is allowed to match none stage or a stage. A stage is only allowed to match a new or
+        duplicated index.
 
     Examples:
         .. code-block:: python
