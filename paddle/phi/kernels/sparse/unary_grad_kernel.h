@@ -77,5 +77,17 @@ void CastCsrGradKernel(const Context& dev_ctx,
                        DataType value_dtype,
                        SparseCsrTensor* dx);
 
+template <typename T, typename Context>
+void TransposeCooGradKernel(const Context& dev_ctx,
+                            const SparseCooTensor& dout,
+                            const std::vector<int>& perm,
+                            SparseCooTensor* dx);
+
+template <typename T, typename Context>
+void TransposeCsrGradKernel(const Context& dev_ctx,
+                            const SparseCsrTensor& dout,
+                            const std::vector<int>& perm,
+                            SparseCsrTensor* dx);
+
 }  // namespace sparse
 }  // namespace phi
