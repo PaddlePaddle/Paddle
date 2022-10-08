@@ -212,11 +212,19 @@ void LerpGradKernel(const Context& ctx,
     std::vector<int> reduce_axis_y =
         funcs::GetReduceDim(y_grad->dims(), b_ygrad.dims(), -1);
 
-    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        ctx, b_xgrad, x_grad, kps::IdentityFunctor<T>(), reduce_axis_x);
+    if (!reduce_axis_x.empty()) {
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, b_xgrad, x_grad, kps::IdentityFunctor<T>(), reduce_axis_x);
+    } else {
+      x_grad->ShareDataWith(b_xgrad);
+    }
 
-    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        ctx, b_ygrad, y_grad, kps::IdentityFunctor<T>(), reduce_axis_y);
+    if (!reduce_axis_y.empty()) {
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          ctx, b_ygrad, y_grad, kps::IdentityFunctor<T>(), reduce_axis_y);
+    } else {
+      y_grad->ShareDataWith(b_ygrad);
+    }
   }
 }
 
