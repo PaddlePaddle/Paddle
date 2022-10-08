@@ -35,8 +35,8 @@ def _check_tensor_list_shape(tensor_list, shape, nranks=1):
                 f"The tensor_list for scatter is not correctly-sized.")
 
 
-def _scatter_base_in_dygraph(out_tensor, in_tensor, src, group, sync_op,
-                             use_calc_stream):
+def _scatter_tensor_in_dygraph(out_tensor, in_tensor, src, group, sync_op,
+                               use_calc_stream):
     group = collective._get_default_group() if group is None else group
 
     src_rank = group.get_group_rank(src)
@@ -49,10 +49,11 @@ def _scatter_base_in_dygraph(out_tensor, in_tensor, src, group, sync_op,
         _check_tensor_shape(out_tensor, in_tensor.shape, nranks)
 
     if use_calc_stream:
-        return group.process_group.scatter_base_on_calc_stream(
+        return group.process_group.scatter_tensor_on_calc_stream(
             in_tensor, out_tensor, src)
 
-    task = group.process_group.scatter_base(in_tensor, out_tensor, src, sync_op)
+    task = group.process_group.scatter_tensor(in_tensor, out_tensor, src,
+                                              sync_op)
     if sync_op:
         task.wait()
 
@@ -100,7 +101,7 @@ def scatter(tensor,
 
     Args:
         tensor (Tensor): The output tensor on each rank. The result will overwrite this tenor after communication. Support
-            float16, float32, float64, int32 or int64 as the input data type.
+            float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
         tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The input to scatter (default is `None`, must be specified on the source rank).
             If it is a tensor, it should be correctly-sized. If it is a list, it should contain correctly-sized tensors.
         src (int, optional): Rank of the source device. If none is given, use `0` as default.
@@ -149,8 +150,9 @@ def scatter(tensor,
 
     if framework.in_dygraph_mode():
         if paddle.is_tensor(tensor_or_tensor_list):
-            return _scatter_base_in_dygraph(tensor, tensor_or_tensor_list, src,
-                                            group, sync_op, use_calc_stream)
+            return _scatter_tensor_in_dygraph(tensor, tensor_or_tensor_list,
+                                              src, group, sync_op,
+                                              use_calc_stream)
         else:
             return _scatter_in_dygraph(tensor, tensor_or_tensor_list, src,
                                        group, sync_op, use_calc_stream)

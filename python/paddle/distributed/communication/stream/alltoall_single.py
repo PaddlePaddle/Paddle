@@ -16,18 +16,10 @@ import paddle.fluid.framework as framework
 from paddle.distributed import collective
 
 
-def _check_tensor_shape(tensor, shape, nranks=1):
-    if tensor.shape != shape:
-        raise RuntimeError(
-            'The tensor for alltoall_single is not correctly-sized.')
-
-
 def _alltoall_single_in_dygraph(out_tensor, in_tensor, out_split_sizes,
                                 in_split_sizes, group, sync_op,
                                 use_calc_stream):
     group = collective._get_default_group() if group is None else group
-
-    _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
     if out_split_sizes is None:
         out_split_sizes = []
@@ -36,10 +28,10 @@ def _alltoall_single_in_dygraph(out_tensor, in_tensor, out_split_sizes,
 
     if use_calc_stream:
         return group.process_group.alltoall_single_on_calc_stream(
-            in_tensor, out_tensor, out_split_sizes, in_split_sizes)
+            in_tensor, out_tensor, in_split_sizes, out_split_sizes)
 
     task = group.process_group.alltoall_single(in_tensor, out_tensor,
-                                               out_split_sizes, in_split_sizes,
+                                               in_split_sizes, out_split_sizes,
                                                sync_op)
     if sync_op:
         task.wait()
@@ -56,11 +48,11 @@ def alltoall_single(out_tensor,
                     use_calc_stream=False):
     """
 
-    Perform specific reduction (for example, sum, max) on inputs across devices.
+    Split and Scatter the splitted input tensor to the out tensor across devices.
 
     Args:
-        out_tensor(Tensor): The output tensor. The data type should be the same as the data type of the input.
-        in_tensor (Tensor): The input tensor. The data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+        out_tensor(Tensor): The output tensor. Its data type should be the same as the input.
+        in_tensor (Tensor): The input tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
         out_split_sizes (List[int], optional): Split sizes of out_tensor for dim[0]. If not given, dim[0] of out_tensor must be divisible
             by group size and out_tensor will be gathered averagely from all participators. If none is given, use a empty list as default.
         in_split_sizes (List[int], optional): Split sizes of in_tensor for dim[0]. If not given, dim[0] of in_tensor must be divisible
@@ -86,6 +78,7 @@ def alltoall_single(out_tensor,
             dist.init_parallel_env()
             local_rank = dist.get_rank()
 
+            # case 1
             output = paddle.empty([2], dtype="int64")
             if local_rank == 0:
                 data = paddle.to_tensor([0, 1])
@@ -96,6 +89,25 @@ def alltoall_single(out_tensor,
             out = output.numpy()
             # [0, 2] (2 GPUs, out for rank 0)
             # [1, 3] (2 GPUs, out for rank 1)
+
+            # case 2
+            size = dist.get_world_size()
+            output = paddle.empty([(local_rank + 1) * size, size], dtype='float32')
+            if local_rank == 0:
+                data = paddle.to_tensor([[0., 0.], [0., 0.], [0., 0.]])
+            else:
+                data = paddle.to_tensor([[1., 1.], [1., 1.], [1., 1.]])
+            out_split_sizes = [local_rank + 1 for i in range(size)]
+            in_split_sizes = [i + 1 for i in range(size)]
+            task = dist.stream.alltoall_single(output,
+                                            data,
+                                            out_split_sizes,
+                                            in_split_sizes,
+                                            sync_op=False)
+            task.wait()
+            out = output.numpy()
+            # [[0., 0.], [1., 1.]]                     (2 GPUs, out for rank 0)
+            # [[0., 0.], [0., 0.], [1., 1.], [1., 1.]] (2 GPUs, out for rank 1)
     """
     if group is not None and not group.is_member():
         raise RuntimeError(

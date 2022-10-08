@@ -32,17 +32,17 @@ def _check_tensor_list_shape(tensor_list, shape, nranks=1):
                 'The tensor_list for alltoall is not correctly-sized.')
 
 
-def _alltoall_base_in_dygraph(out_tensor, in_tensor, group, sync_op,
-                              use_calc_stream):
+def _alltoall_tensor_in_dygraph(out_tensor, in_tensor, group, sync_op,
+                                use_calc_stream):
     group = collective._get_default_group() if group is None else group
 
     _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
     if use_calc_stream:
-        return group.process_group.alltoall_base_on_calc_stream(
+        return group.process_group.alltoall_tensor_on_calc_stream(
             in_tensor, out_tensor)
 
-    task = group.process_group.alltoall_base(in_tensor, out_tensor, sync_op)
+    task = group.process_group.alltoall_tensor(in_tensor, out_tensor, sync_op)
     if sync_op:
         task.wait()
 
@@ -87,7 +87,7 @@ def alltoall(out_tensor_or_tensor_list,
 
     Args:
         out_tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The output. If it is a tensor, it should be correctly-sized.
-        If it is a list, it should be empty or contain correctly-sized tensors.
+        If it is a list, it should be empty or contain correctly-sized tensors. Its data type should be the same as the input.
         in_tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The input to scatter (must be specified on the source rank).
             If it is a tensor, it should be correctly-sized. If it is a list, it should contain correctly-sized tensors. Support
             float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
@@ -117,9 +117,10 @@ def alltoall(out_tensor_or_tensor_list,
             else:
                 data1 = paddle.to_tensor([[13, 14, 15], [16, 17, 18]])
                 data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
-            dist.stream.alltoall(out_tensor_list, [data1, data2])
+            task = dist.stream.alltoall(out_tensor_list, [data1, data2], sync_op=False)
+            task.wait()
             print(out_tensor_list)
-            # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]] (2 GPUs, out for rank 0)
+            # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]    (2 GPUs, out for rank 0)
             # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
     """
     if group is not None and not group.is_member():
@@ -140,9 +141,9 @@ def alltoall(out_tensor_or_tensor_list,
         out_is_tensor = paddle.is_tensor(out_tensor_or_tensor_list)
         in_is_tensor = paddle.is_tensor(in_tensor_or_tensor_list)
         if out_is_tensor and in_is_tensor:
-            return _alltoall_base_in_dygraph(out_tensor_or_tensor_list,
-                                             in_tensor_or_tensor_list, group,
-                                             sync_op, use_calc_stream)
+            return _alltoall_tensor_in_dygraph(out_tensor_or_tensor_list,
+                                               in_tensor_or_tensor_list, group,
+                                               sync_op, use_calc_stream)
         elif not out_is_tensor and not in_is_tensor:
             return _alltoall_in_dygraph(out_tensor_or_tensor_list,
                                         in_tensor_or_tensor_list, group,

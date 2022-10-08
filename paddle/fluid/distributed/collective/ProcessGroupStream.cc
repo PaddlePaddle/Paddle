@@ -29,29 +29,6 @@ phi::DeviceContext* ProcessGroupStream::GetDeviceContext(
       "ProcessGroup%s does not support get device_context.", GetBackendName()));
 }
 
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::_ReduceScatterBase(
-    phi::DenseTensor& in_tensor,
-    phi::DenseTensor& out_tensor,
-    const ReduceScatterOptions& opts,
-    bool sync_op) {
-  return _ReduceScatterBase(in_tensor,
-                            out_tensor,
-                            opts,
-                            sync_op,
-                            /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::_ReduceScatterBase(
-    phi::DenseTensor& in_tensor,
-    phi::DenseTensor& out_tensor,
-    const ReduceScatterOptions& opts,
-    bool sync_op,
-    bool use_calc_stream) {
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "ProcessGroup%s does not support do reduce_scatter_base",
-      GetBackendName()));
-}
-
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather(
     std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
     std::vector<phi::DenseTensor>& output_tensors,  // NOLINT

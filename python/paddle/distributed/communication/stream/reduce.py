@@ -41,7 +41,7 @@ def reduce(tensor,
 
     Args:
         tensor (Tensor): The input tensor on each rank. The result will overwrite this tenor after communication. Support
-            float16, float32, float64, int32 or int64 as the input data type.
+            float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
         dst (int, optional): Rank of the destination device. If none is given, use `0` as default.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.

@@ -64,6 +64,19 @@ class StreamReduceScatterTestCase():
 
         # case 2: pass a pre-sized tensor
         result_tensor = paddle.empty_like(t1)
+        task = dist.stream.reduce_scatter(result_tensor,
+                                          tensor,
+                                          sync_op=self._sync_op,
+                                          use_calc_stream=self._use_calc_stream)
+        if not self._sync_op:
+            task.wait()
+        if rank == 0:
+            assert np.allclose(result_tensor, result1, rtol=1e-05, atol=1e-05)
+        else:
+            assert np.allclose(result_tensor, result2, rtol=1e-05, atol=1e-05)
+
+        # case 3: test the legacy API
+        result_tensor = paddle.empty_like(t1)
         task = dist.stream._reduce_scatter_base(
             result_tensor,
             tensor,
