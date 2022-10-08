@@ -109,7 +109,6 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
 };
 
 TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
-#if IS_TRT_VERSION_GE(8000)
   std::vector<void *> buffers(3);
   std::cout << "with_dynamic_shape: " << engine_->with_dynamic_shape()
             << std::endl;
@@ -160,7 +159,6 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   ASSERT_EQ(dims.d[0], 8);
   ASSERT_EQ(dims.d[1], 8);
   ASSERT_EQ(dims.d[2], 4);
-#endif
   return;
 }
 

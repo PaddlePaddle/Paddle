@@ -586,6 +586,17 @@ class TensorRTEngineOp : public framework::OperatorBase {
             platform::errors::Fatal("The TRT Engine OP only support "
                                     "float/int32_t/int64_t/float16 input."));
       }
+      // If this x is a shape tensor, we need call setInputShapeBinding
+      if (engine->engine()->isShapeBinding(bind_index) &&
+          engine->engine()->bindingIsInput(bind_index)) {
+        std::vector<int> shape_v(t.numel());
+        cudaMemcpy(shape_v.data(),
+                   t.data<int32_t>(),
+                   t.numel() * sizeof(int),
+                   cudaMemcpyDeviceToHost);
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+        trt_context->setInputShapeBinding(bind_index, shape_v.data());
+      }
     }
 
     // Bind output tensor to TRT.
