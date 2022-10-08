@@ -79,12 +79,12 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
     auto cache_kvs = ctx.MultiInput<phi::DenseTensor>("CacheKV");
     auto cache_kv_outs = ctx.MultiOutput<phi::DenseTensor>("CacheKVOut");
+    // auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
     auto pre_caches = ctx.MultiInput<phi::DenseTensor>("PreCaches");
     int cache_offset = 0;
     if (pre_caches.size() > 0) {
       cache_offset = pre_caches[0]->dims()[3];
     }
-    // auto *time_step = ctx.Input<Tensor>("TimeStep");
 
     auto out_seq_len = seq_len;
     if (time_step) {
