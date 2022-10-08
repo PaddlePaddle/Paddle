@@ -33,11 +33,11 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "pool3d_grad",
     "slice",
     "slice_grad",
-    "softmax",
-    "softmax_grad",
     "split",
     "sum",
     "sgd",
+    "softmax",
+    "softmax_grad",
     // NOTE(jiahy0825): squeeze MKLDNN kernel are disabled
     // (https://github.com/PaddlePaddle/Paddle/pull/35781). If these MKLDNN
     // kernels and codes are deleted in the future, attributes `use_mkldnn`
