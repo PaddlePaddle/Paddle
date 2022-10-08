@@ -141,8 +141,6 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 self._use_global_stats, trainable_statistics, False)
             return batch_norm_out
         else:
-            print(self.bias, self.weight)
-            print(self._mean, self._variance)
             inputs = {
                 'x': input,
                 'scale': self.weight,
