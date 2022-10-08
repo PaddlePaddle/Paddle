@@ -79,7 +79,6 @@ inline uint32_t getElementSize(nvinfer1::DataType t) noexcept {
       return 4;
     case nvinfer1::DataType::kHALF:
       return 2;
-    case nvinfer1::DataType::kBOOL:
     case nvinfer1::DataType::kINT8:
       return 1;
   }
