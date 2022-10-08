@@ -47,7 +47,7 @@ class TestLerp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True, max_relative_error=0.01)
 
 
 class TestLerpWithDim2(TestLerp):
@@ -87,8 +87,8 @@ class TestLerpBroadXY(TestLerp):
         self.python_api = paddle.lerp
         self.init_dtype()
         self.init_shape()
-        x = np.arange(1., 101.).astype(self.dtype).reshape([2, 2, 25])
-        y = np.full(150, 10.).astype(self.dtype).reshape([3, 2, 1, 25])
+        x = np.arange(1., 201.).astype(self.dtype).reshape([2, 1, 2, 50])
+        y = np.full(200, 10.).astype(self.dtype).reshape([2, 2, 1, 50])
         w = np.asarray([0.5]).astype(self.dtype)
         self.inputs = {'X': x, 'Y': y, 'Weight': w}
         self.outputs = {'Out': x + w * (y - x)}
@@ -101,9 +101,9 @@ class TestLerpBroadWToXY(TestLerp):
         self.python_api = paddle.lerp
         self.init_dtype()
         self.init_shape()
-        x = np.arange(1., 201.).astype(self.dtype).reshape([2, 2, 50])
-        y = np.full(100, 7.5).astype(self.dtype).reshape([1, 2, 50])
-        w = np.asarray([0.5]).astype(self.dtype)
+        x = np.full(600, 2.5).astype(self.dtype).reshape([3, 2, 2, 50])
+        y = np.full(600, 1.).astype(self.dtype).reshape([3, 2, 2, 50])
+        w = np.full(200, 0.5).astype(self.dtype).reshape([2, 2, 50])
         self.inputs = {'X': x, 'Y': y, 'Weight': w}
         self.outputs = {'Out': x + w * (y - x)}
 
