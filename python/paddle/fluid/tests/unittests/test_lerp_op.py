@@ -47,7 +47,7 @@ class TestLerp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True, max_relative_error=0.01)
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class TestLerpWithDim2(TestLerp):
