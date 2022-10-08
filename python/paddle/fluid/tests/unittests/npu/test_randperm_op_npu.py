@@ -19,7 +19,6 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
-import paddle.fluid.core as core
 from paddle.static import program_guard, Program
 from test_randperm_op import check_randperm_out, error_msg, convert_dtype
 

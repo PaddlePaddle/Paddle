@@ -17,11 +17,9 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 SEED = 2021

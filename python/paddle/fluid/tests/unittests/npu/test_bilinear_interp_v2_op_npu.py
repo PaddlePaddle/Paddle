@@ -18,9 +18,7 @@ import sys
 
 sys.path.append("..")
 from op_test import OpTest
-import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.nn.functional import interpolate
 import paddle
 
 from test_bilinear_interp_v2_op import bilinear_interp_np

@@ -19,10 +19,8 @@ import sys
 
 sys.path.append("..")
 
-from operator import mul
 from op_test import OpTest
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 
 paddle.enable_static()

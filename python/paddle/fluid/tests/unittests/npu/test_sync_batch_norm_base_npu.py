@@ -15,15 +15,12 @@
 import numpy as np
 import unittest
 import time
-import argparse
 import os
 import six
 import sys
 
 sys.path.append("..")
 import subprocess
-import traceback
-import functools
 import pickle
 from contextlib import closing
 import paddle.fluid as fluid
@@ -397,7 +394,6 @@ def runtime_main(test_class, col_type, sub_type):
     model.run_trainer(args)
 
 
-import paddle.compat as cpt
 import socket
 from contextlib import closing
 

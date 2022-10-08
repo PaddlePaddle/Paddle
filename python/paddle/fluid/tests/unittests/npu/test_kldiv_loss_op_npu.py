@@ -19,7 +19,6 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
-import paddle.fluid as fluid
 from test_kldiv_loss_op import kldiv_loss
 
 paddle.enable_static()

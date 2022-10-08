@@ -15,10 +15,9 @@
 import unittest
 import numpy as np
 import paddle
-import sys
 import math
 
-from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 paddle.enable_static()
 

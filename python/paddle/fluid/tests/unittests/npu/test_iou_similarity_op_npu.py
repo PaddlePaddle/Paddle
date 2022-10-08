@@ -18,7 +18,6 @@ import numpy.random as random
 import sys
 
 sys.path.append("..")
-import math
 import paddle
 from op_test import OpTest
 

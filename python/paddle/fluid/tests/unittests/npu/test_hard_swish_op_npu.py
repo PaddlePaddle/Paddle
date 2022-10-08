@@ -19,7 +19,6 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
 
 

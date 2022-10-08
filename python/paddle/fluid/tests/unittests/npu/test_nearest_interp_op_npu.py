@@ -19,7 +19,6 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 from test_nearest_interp_op import nearest_neighbor_interp_np
 
