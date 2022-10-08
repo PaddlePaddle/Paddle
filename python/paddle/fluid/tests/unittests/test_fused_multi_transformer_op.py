@@ -549,12 +549,6 @@ class TestFusedMultiTransformerOp(OpTest):
         epsilon = 1e-05
         ln2_epsilon = 1e-05
 
-        qkv_weights, qkv_biases = [], []
-        out_weights, out_biases = [], []
-        ln_scales, ln_biases = [], []
-        ffn1_weights, ffn1_biases = [], []
-        ffn2_weights, ffn2_biases = [], []
-        ffn_ln_scales, ffn_ln_biases = [], []
         qkv_weights_attr, qkv_biases_attr = [], []
         out_weights_attr, out_biases_attr = [], []
         ln_scales_attr, ln_biases_attr = [], []
