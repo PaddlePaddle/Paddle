@@ -65,7 +65,7 @@ class HuberLossMLUKernel : public framework::OpKernel<T> {
                                  GetBasePtr(out));
 
     // compute multiply by delta
-    framework::Tensor scale_tensor, bias_tensor;
+    Tensor scale_tensor, bias_tensor;
     scale_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     bias_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     FillMLUTensorWithHostValue(ctx, static_cast<T>(delta), &scale_tensor);
@@ -130,7 +130,7 @@ class HuberLossGradMLUKernel : public framework::OpKernel<T> {
                                     GetBasePtr(&t_grad_rd));
     }
     // compute multiply by delta
-    framework::Tensor scale_tensor, bias_tensor;
+    Tensor scale_tensor, bias_tensor;
     scale_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     bias_tensor = ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
 
