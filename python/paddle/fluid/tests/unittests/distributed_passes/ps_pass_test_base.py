@@ -16,7 +16,8 @@ import os
 import sys
 import shlex
 import unittest
-from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import prepare_python_path_and_return_module
+from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import (  # noqa: F401
+    prepare_python_path_and_return_module, remove_path_if_exists)
 
 
 class PsPassTestBase(unittest.TestCase):
