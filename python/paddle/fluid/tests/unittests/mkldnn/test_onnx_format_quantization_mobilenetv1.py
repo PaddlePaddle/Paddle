@@ -405,7 +405,7 @@ class TestMKLDNNInt8ForMobilenetv1Avg(TestPostTrainingQuantization):
                       is_use_cache_file,
                       is_optimize_model,
                       diff_threshold,
-                      onnx_format=False)
+                      onnx_format=True)
 
 
 class TestMKLDNNInt8ForMobilenetv1AbsMax(TestPostTrainingQuantization):
@@ -434,7 +434,7 @@ class TestMKLDNNInt8ForMobilenetv1AbsMax(TestPostTrainingQuantization):
                       is_use_cache_file,
                       is_optimize_model,
                       diff_threshold,
-                      onnx_format=False)
+                      onnx_format=True)
 
 
 if __name__ == '__main__':
