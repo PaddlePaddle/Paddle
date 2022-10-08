@@ -86,6 +86,7 @@ void Expand(const Context& ctx,
     out_dims[i] *= repeat_times[i];
   }
 
+  std::cout << "PADDLE::######## out_dims" << out_dims << std::endl;
   out->Resize(out_dims);
   auto x0 = EigenTensor<T, Rank>::From(x, new_in_dims);
   ctx.template Alloc<T>(out);

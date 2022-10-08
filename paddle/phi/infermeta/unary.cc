@@ -939,6 +939,7 @@ void ExpandInferMeta(const MetaTensor& x,
     }
   }
 
+  LOG(WARNING) << "PADDLE::INFERSHAPE::######## " << make_ddim(out_shape);
   out->set_dims(make_ddim(out_shape));
   out->set_dtype(x.dtype());
   if (out_shape[0] == x_dims[0]) {

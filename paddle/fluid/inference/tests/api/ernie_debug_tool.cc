@@ -34,6 +34,7 @@ DEFINE_string(model_dir, "", "Directory of the inference model.");
 DEFINE_bool(tuned_dynamic_shape, false, "use tuned dynamic shape");
 DEFINE_bool(tune, false, "tune to get shape range.");
 DEFINE_bool(enable_cinn, false, "enable cinn");
+DEFINE_int32(repeats, 100, "repeats");
 
 constexpr char shape_range_info[] = "shape_range_info.pbtxt";
 
@@ -127,7 +128,7 @@ void run(Predictor *predictor, std::vector<float> *out_data) {
   }
 
   infrt::tests::BenchmarkStats benchmark;
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < FLAGS_repeats; i++) {
     benchmark.Start();
     CHECK(predictor->Run());
 
@@ -152,6 +153,7 @@ int main(int argc, char *argv[]) {
   paddle::framework::InitGflags(
       {"--tryfromenv=allow_cinn_ops,deny_cinn_ops,enable_pe_launch_cinn"});
 
+  LOG(INFO) << "FLAGS_repeats: " << FLAGS_repeats;
   auto predictor = InitPredictor();
   std::vector<float> out_data;
   run(predictor.get(), &out_data);
