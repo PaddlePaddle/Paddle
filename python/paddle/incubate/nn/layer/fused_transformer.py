@@ -1299,6 +1299,7 @@ class FusedMultiTransformer(Layer):
             pre_layer_norm=self.normalize_before,
             epsilon=self._epsilon,
             cache_kvs=caches,
+            pre_caches=pre_caches,
             time_step=time_step,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,
