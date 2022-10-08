@@ -30,8 +30,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _dygraph_tracer
 import paddle.fluid.core as core
-from paddle.fluid.framework import _in_legacy_dygraph, _enable_legacy_dygraph, _in_eager_without_dygraph_check, _disable_legacy_dygraph
-from paddle.fluid.framework import _test_eager_guard
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
@@ -54,11 +53,6 @@ from white_list import (
     op_threshold_white_list,
     no_grad_set_white_list,
 )
-
-# For switch new eager mode globally
-g_is_in_eager = _in_eager_without_dygraph_check()
-g_enable_legacy_dygraph = _enable_legacy_dygraph if g_is_in_eager else lambda: None
-g_disable_legacy_dygraph = _disable_legacy_dygraph if g_is_in_eager else lambda: None
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -653,8 +647,7 @@ class OpTest(unittest.TestCase):
 
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if not _in_legacy_dygraph():
-                        v.retain_grads()
+                    v.retain_grads()
 
                 if has_lod:
                     v.value().get_tensor().set_recursive_sequence_lengths(
@@ -716,24 +709,6 @@ class OpTest(unittest.TestCase):
             return var_dict, inputs_grad_dict
         else:
             return var_dict
-
-    def _check_api_outs_by_dygraph_outs(self, api_outs, dygraph_outs, place):
-        """ for quick verify, here we take a simplest strategy:
-                1. we only check variable in api_outs.
-                2. we simply check the numpy (tensor) .
-                3. we set atol and rtol as 1e-5, because they are unrelated to dtype.
-        """
-        for name in api_outs:
-            np_api = np.array(api_outs[name])
-            np_dyg = np.array(dygraph_outs[name])
-            np.testing.assert_allclose(
-                np_api,
-                np_dyg,
-                rtol=1e-05,
-                equal_nan=False,
-                err_msg='Output (' + name + ') has diff at ' + str(place) +
-                '\nExpect ' + str(np_dyg) + '\n' + 'But Got' + str(np_api) +
-                ' in class ' + self.__class__.__name__)
 
     def _calc_python_api_output(self, place, egr_inps=None, egr_oups=None):
         """ set egr_inps and egr_oups = None if you want to create it by yourself.
@@ -1369,13 +1344,8 @@ class OpTest(unittest.TestCase):
                                 atol=0,
                                 no_check_set=None,
                                 equal_nan=False,
-                                check_dygraph=True,
-                                inplace_atol=None,
-                                check_eager=False):
-
-        # disable legacy dygraph check when check_eager is True
-        if check_eager == True:
-            check_dygraph = False
+                                check_eager=True,
+                                inplace_atol=None):
 
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
@@ -1536,46 +1506,21 @@ class OpTest(unittest.TestCase):
                     actual.recursive_sequence_lengths(), expect[1],
                     "Output (" + name + ") has different lod at " + str(place))
 
-        class DygraphChecker(Checker):
+        class EagerChecker(Checker):
 
             def init(self):
-                self.checker_name = "dygraph checker"
+                self.checker_name = "eager checker"
 
             def calculate_output(self):
-                self.outputs = self.op_test._calc_dygraph_output(
-                    place, no_check_set=no_check_set)
-
-            def find_actual_value(self, name):
-                with fluid.dygraph.base.guard(place=place):
-                    imperative_actual = find_imperative_actual(
-                        name, self.outputs, place)
-                    imperative_actual_t = np.array(
-                        imperative_actual.value().get_tensor())
-                    return imperative_actual, imperative_actual_t
-
-            def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                if actual_np.dtype == np.uint16 and expect_np.dtype in [
-                        np.float32, np.float64
-                ]:
-                    self.rtol = 1.e-2
-                else:
-                    self.rtol = 1.e-5
-                if self.op_test.is_bfloat16_op():
-                    if actual_np.dtype == np.uint16:
-                        actual_np = convert_uint16_to_float(actual_np)
-                    if expect_np.dtype == np.uint16:
-                        expect_np = convert_uint16_to_float(expect_np)
-                return actual_np, expect_np
-
-            def _compare_list(self, name, actual, expect):
-                """ if expect is a tuple, we need to compare list.
-                """
-                with fluid.dygraph.base.guard(place=place):
-                    self.op_test.assertListEqual(
-                        actual.value().get_tensor().recursive_sequence_lengths(
-                        ), expect[1],
-                        "Output (" + name + ") has different lod at " +
-                        str(place) + " in dygraph mode")
+                # we only check end2end api when check_eager=True
+                self.is_python_api_test = True
+                eager_dygraph_outs = self.op_test._calc_python_api_output(place)
+                if eager_dygraph_outs is None:
+                    self.is_python_api_test = False
+                    # missing KernelSignature, fall back to eager middle output.
+                    eager_dygraph_outs = self.op_test._calc_dygraph_output(
+                        place, no_check_set=no_check_set)
+                self.outputs = eager_dygraph_outs
 
             def _compare_numpy(self, name, actual_np, expect_np):
                 if six.moves.reduce(lambda x, y: x * y, actual_np.shape,
@@ -1594,42 +1539,37 @@ class OpTest(unittest.TestCase):
                         "Output (" + name + ") has diff at " + str(place) +
                         " in " + self.checker_name)
 
-        class EagerChecker(DygraphChecker):
-
-            def init(self):
-                self.checker_name = "eager checker"
-
-            def calculate_output(self):
-                # we only check end2end api when check_eager=True
-                with _test_eager_guard():
-                    self.is_python_api_test = True
-                    eager_dygraph_outs = self.op_test._calc_python_api_output(
-                        place)
-                    if eager_dygraph_outs is None:
-                        self.is_python_api_test = False
-                        # missing KernelSignature, fall back to eager middle output.
-                        eager_dygraph_outs = self.op_test._calc_dygraph_output(
-                            place, no_check_set=no_check_set)
-                self.outputs = eager_dygraph_outs
-
-            def _compare_numpy(self, name, actual_np, expect_np):
-                with _test_eager_guard():
-                    super()._compare_numpy(name, actual_np, expect_np)
-
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
-                with _test_eager_guard():
-                    return super().convert_uint16_to_float_ifneed(
-                        actual_np, expect_np)
+                if actual_np.dtype == np.uint16 and expect_np.dtype in [
+                        np.float32, np.float64
+                ]:
+                    self.rtol = 1.e-2
+                else:
+                    self.rtol = 1.e-5
+                if self.op_test.is_bfloat16_op():
+                    if actual_np.dtype == np.uint16:
+                        actual_np = convert_uint16_to_float(actual_np)
+                    if expect_np.dtype == np.uint16:
+                        expect_np = convert_uint16_to_float(expect_np)
+                return actual_np, expect_np
 
             def find_actual_value(self, name):
-                with _test_eager_guard():
-                    return super().find_actual_value(name)
+                with fluid.dygraph.base.guard(place=place):
+                    imperative_actual = find_imperative_actual(
+                        name, self.outputs, place)
+                    imperative_actual_t = np.array(
+                        imperative_actual.value().get_tensor())
+                    return imperative_actual, imperative_actual_t
 
             def _compare_list(self, name, actual, expect):
                 """ if expect is a tuple, we need to compare list.
                 """
-                with _test_eager_guard():
-                    super()._compare_list(name, actual, expect)
+                with fluid.dygraph.base.guard(place=place):
+                    self.op_test.assertListEqual(
+                        actual.value().get_tensor().recursive_sequence_lengths(
+                        ), expect[1],
+                        "Output (" + name + ") has different lod at " +
+                        str(place) + " in dygraph mode")
 
             def _is_skip_name(self, name):
                 # if in final state and kernel signature don't have name, then skip it.
@@ -1647,7 +1587,6 @@ class OpTest(unittest.TestCase):
 
         if self.is_bfloat16_op():
             if self.is_mkldnn_op():
-                check_dygraph = False
                 check_eager = False
                 if hasattr(self, 'force_fp32_output') and getattr(
                         self, 'force_fp32_output'):
@@ -1664,15 +1603,6 @@ class OpTest(unittest.TestCase):
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
-        if check_dygraph:
-            # always enable legacy dygraph
-            g_enable_legacy_dygraph()
-
-            dygraph_checker = DygraphChecker(self, self.outputs)
-            dygraph_checker.check()
-            dygraph_outs = dygraph_checker.outputs
-            # yield the original state
-            g_disable_legacy_dygraph()
         if check_eager:
             eager_checker = EagerChecker(self, self.outputs)
             eager_checker.check()
@@ -1701,10 +1631,7 @@ class OpTest(unittest.TestCase):
                                                  inplace_atol=inplace_atol)
 
         if check_eager:
-            assert check_dygraph == False
             return outs, eager_dygraph_outs, fetch_list
-        elif check_dygraph:
-            return outs, dygraph_outs, fetch_list
         else:
             return outs, fetch_list
 
@@ -1774,14 +1701,8 @@ class OpTest(unittest.TestCase):
                      atol=1e-5,
                      no_check_set=None,
                      equal_nan=False,
-                     check_dygraph=True,
-                     inplace_atol=None,
-                     check_eager=False):
-
-        # disable legacy dygraph check when check_eager is True
-        if check_eager == True:
-            check_dygraph = False
-
+                     check_eager=True,
+                     inplace_atol=None):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
             self.__class__.use_mkldnn = True
@@ -1791,18 +1712,11 @@ class OpTest(unittest.TestCase):
 
         places = self._get_places()
         for place in places:
-            res = self.check_output_with_place(place,
-                                               atol,
-                                               no_check_set,
-                                               equal_nan,
-                                               check_dygraph,
-                                               inplace_atol,
-                                               check_eager=check_eager)
+            res = self.check_output_with_place(place, atol, no_check_set,
+                                               equal_nan, check_eager,
+                                               inplace_atol)
             if check_eager:
-                assert check_dygraph == False
                 outs, eager_dygraph_outs, fetch_list = res
-            elif check_dygraph:
-                outs, dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
             if self.op_type not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST:
@@ -1872,13 +1786,7 @@ class OpTest(unittest.TestCase):
                    max_relative_error=0.005,
                    user_defined_grads=None,
                    user_defined_grad_outputs=None,
-                   check_dygraph=True,
-                   check_eager=False):
-
-        # disable legacy dygraph check when check_eager is True
-        if check_eager == True:
-            check_dygraph = False
-
+                   check_eager=True):
         self._check_grad_helper()
         places = self._get_places()
         for place in places:
@@ -1891,7 +1799,6 @@ class OpTest(unittest.TestCase):
                                        max_relative_error,
                                        user_defined_grads,
                                        user_defined_grad_outputs,
-                                       check_dygraph,
                                        check_eager=check_eager)
 
     def check_grad_with_place(self,
@@ -1904,14 +1811,8 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               user_defined_grad_outputs=None,
-                              check_dygraph=True,
-                              numeric_place=None,
-                              check_eager=False):
-
-        # disable legacy dygraph check when check_eager is True
-        if check_eager == True:
-            check_dygraph = False
-
+                              check_eager=True,
+                              numeric_place=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -1919,7 +1820,6 @@ class OpTest(unittest.TestCase):
 
         self._check_grad_helper()
         if self.is_bfloat16_op() and self.is_mkldnn_op():
-            check_dygraph = False
             check_eager = False
 
         if self.dtype == np.float64 and \
@@ -2007,43 +1907,21 @@ class OpTest(unittest.TestCase):
                               max_relative_error,
                               "Gradient Check On %s" % str(place))
 
-        if check_dygraph:
-            # ensure switch into legacy dygraph
-            g_enable_legacy_dygraph()
-
-            dygraph_grad = self._get_dygraph_grad(inputs_to_check, place,
-                                                  output_names,
-                                                  user_defined_grad_outputs,
-                                                  no_grad_set, False)
-            fp32_grads = []
-            for grad in dygraph_grad:
-                if grad.dtype == np.uint16:
-                    grad = convert_uint16_to_float(grad)
-                    max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
-                fp32_grads.append(grad)
-            dygraph_grad = fp32_grads
-            self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
-                                  max_relative_error,
-                                  "Gradient Check On %s" % str(place))
-            # ensure switch back eager dygraph
-            g_disable_legacy_dygraph()
-
         if check_eager:
             with fluid.dygraph.base.guard(place):
-                with _test_eager_guard():
-                    eager_dygraph_grad = self._get_dygraph_grad(
-                        inputs_to_check, place, output_names,
-                        user_defined_grad_outputs, no_grad_set, check_eager)
-                    fp32_grads = []
-                    for grad in eager_dygraph_grad:
-                        if grad.dtype == np.uint16:
-                            grad = convert_uint16_to_float(grad)
-                            max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
-                        fp32_grads.append(grad)
-                    eager_dygraph_grad = fp32_grads
-                    self._assert_is_close(numeric_grads, eager_dygraph_grad,
-                                          inputs_to_check, max_relative_error,
-                                          "Gradient Check On %s" % str(place))
+                eager_dygraph_grad = self._get_dygraph_grad(
+                    inputs_to_check, place, output_names,
+                    user_defined_grad_outputs, no_grad_set, check_eager)
+                fp32_grads = []
+                for grad in eager_dygraph_grad:
+                    if grad.dtype == np.uint16:
+                        grad = convert_uint16_to_float(grad)
+                        max_relative_error = 0.03 if max_relative_error < 0.03 else max_relative_error
+                    fp32_grads.append(grad)
+                eager_dygraph_grad = fp32_grads
+                self._assert_is_close(numeric_grads, eager_dygraph_grad,
+                                      inputs_to_check, max_relative_error,
+                                      "Gradient Check On %s" % str(place))
 
     def _find_var_in_dygraph(self, output_vars, name):
         if name in output_vars:
@@ -2180,7 +2058,7 @@ class OpTest(unittest.TestCase):
                 for no_grad_val in no_grad_set:
                     del (inputs[no_grad_val])
 
-                if not _in_legacy_dygraph():
+                if in_dygraph_mode():
                     core.eager.run_backward(fluid.layers.utils.flatten(outputs),
                                             grad_outputs, False)
                     grad_inputs = []

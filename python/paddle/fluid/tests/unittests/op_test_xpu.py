@@ -78,21 +78,19 @@ class XPUOpTest(OpTest):
                      atol=0.001,
                      no_check_set=None,
                      equal_nan=False,
-                     check_dygraph=True,
-                     inplace_atol=None,
-                     check_eager=False):
+                     check_eager=True,
+                     inplace_atol=None):
         place = paddle.XPUPlace(0)
         self.check_output_with_place(place, atol, no_check_set, equal_nan,
-                                     check_dygraph, inplace_atol, check_eager)
+                                     check_eager, inplace_atol)
 
     def check_output_with_place(self,
                                 place,
                                 atol=0.001,
                                 no_check_set=None,
                                 equal_nan=False,
-                                check_dygraph=True,
-                                inplace_atol=None,
-                                check_eager=False):
+                                check_eager=True,
+                                inplace_atol=None):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         if self.dtype == np.float64:
             return
@@ -104,7 +102,7 @@ class XPUOpTest(OpTest):
         if self.dtype == np.float16:
             atol = 0.1
         return super().check_output_with_place(place, atol, no_check_set,
-                                               equal_nan, check_dygraph,
+                                               equal_nan, check_eager,
                                                inplace_atol)
 
     def check_grad(self,
@@ -116,15 +114,14 @@ class XPUOpTest(OpTest):
                    max_relative_error=0.005,
                    user_defined_grads=None,
                    user_defined_grad_outputs=None,
-                   check_dygraph=True,
-                   numeric_place=None,
-                   check_eager=False):
+                   check_eager=True,
+                   numeric_place=None):
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(place, inputs_to_check, output_names,
                                    no_grad_set, numeric_grad_delta, in_place,
                                    max_relative_error, user_defined_grads,
-                                   user_defined_grad_outputs, check_dygraph,
-                                   numeric_place, check_eager)
+                                   user_defined_grad_outputs, check_eager,
+                                   numeric_place)
 
     def check_grad_with_place(self,
                               place,
@@ -136,9 +133,8 @@ class XPUOpTest(OpTest):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               user_defined_grad_outputs=None,
-                              check_dygraph=True,
-                              numeric_place=None,
-                              check_eager=False):
+                              check_eager=True,
+                              numeric_place=None):
         if hasattr(self, 'op_type_need_check_grad'):
             xpu_version = core.get_xpu_device_version(0)
             if is_empty_grad_op_type(xpu_version, self.op_type,
@@ -166,7 +162,7 @@ class XPUOpTest(OpTest):
             return super().check_grad_with_place(
                 place, inputs_to_check, output_names, no_grad_set,
                 numeric_grad_delta, in_place, max_relative_error,
-                user_defined_grads, user_defined_grad_outputs, check_dygraph)
+                user_defined_grads, user_defined_grad_outputs, check_eager)
 
         a1 = self.get_grad_with_place(
             place,
@@ -199,8 +195,7 @@ class XPUOpTest(OpTest):
                             numeric_grad_delta=0.005,
                             in_place=False,
                             max_relative_error=0.005,
-                            user_defined_grad_outputs=None,
-                            check_dygraph=True):
+                            user_defined_grad_outputs=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
