@@ -23,7 +23,7 @@ from paddle.distributed.utils.launch_utils import logger
 from paddle.distributed.rpc.internal import _serialize, PythonFunc
 from paddle.distributed.launch.context import Node
 
-ServiceInfo = namedtuple("ServiceInfo", ["name", "rank", "ip", "port"])
+WorkerInfo = namedtuple("WorkerInfo", ["name", "rank", "ip", "port"])
 
 _DEFAULT_RPC_TIMEOUT = -1
 _MAX_RPC_TIMEOUT_MS = 0x7fffffff
@@ -46,7 +46,7 @@ def _del_barrier_store():
 
 
 def _set_self_info(name, rank, ip, port):
-    self_info = pickle.dumps(ServiceInfo(name, rank, ip, port))
+    self_info = pickle.dumps(WorkerInfo(name, rank, ip, port))
     _barrier_store.set(str(rank), self_info)
 
 
@@ -117,8 +117,8 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     all_infos = _exchange_all_service_infos(world_size)
     c_infos = []
     for node_info in all_infos:
-        info = core.ServiceInfo(node_info.name, node_info.rank, node_info.ip,
-                                node_info.port)
+        info = core.WorkerInfo(node_info.name, node_info.rank, node_info.ip,
+                               node_info.port)
         c_infos.append(info)
     core.init_and_set_agent_instance(name, c_infos)
     core.rpc_start_server()
@@ -149,6 +149,7 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
 
     Examples:
         .. code-block:: python
+
             import paddle.distributed.rpc as rpc
 
             def add(a, b):
@@ -290,7 +291,7 @@ def get_worker_info(name):
         name (str): name of the worker.
 
     Returns:
-        class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`.
+        class `WorkerInfo` with attribute `name`, `rank`, `ip` and `port`.
 
     Examples:
         .. code-block:: python
@@ -308,7 +309,7 @@ def get_worker_info(name):
             rpc.shutdown()
 
     """
-    return core.rpc_get_service_info(name)
+    return core.rpc_get_worker_info(name)
 
 
 def get_all_worker_infos():
@@ -316,7 +317,7 @@ def get_all_worker_infos():
     Get all worker informations.
 
     Returns:
-        List[ServiceInfo].
+        List[WorkerInfo].
 
     Examples:
         .. code-block:: python
@@ -334,7 +335,7 @@ def get_all_worker_infos():
             rpc.shutdown()
 
     """
-    return core.rpc_get_all_service_infos()
+    return core.rpc_get_all_worker_infos()
 
 
 def get_current_worker_info():
@@ -342,7 +343,7 @@ def get_current_worker_info():
     Get current worker information.
 
     Returns:
-        class `ServiceInfo` with attribute `name`, `rank`, `ip` and `port`.
+        class `WorkerInfo` with attribute `name`, `rank`, `ip` and `port`.
 
     Examples:
         .. code-block:: python
@@ -360,4 +361,4 @@ def get_current_worker_info():
             rpc.shutdown()
 
     """
-    return core.rpc_get_current_service_info()
+    return core.rpc_get_current_worker_info()

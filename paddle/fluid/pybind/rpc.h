@@ -22,16 +22,16 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-void BindServiceInfo(py::module* m);
+void BindWorkerInfo(py::module* m);
 void BindFuture(py::module* m);
 void InitAndSetAgentInstance(py::module* m);
 void InvokeRpc(py::module* m);
 void StartServer(py::module* m);
 void StartClient(py::module* m);
 void StopServer(py::module* m);
-void GetServiceInfo(py::module* m);
-void GetServiceInfoByRank(py::module* m);
-void GetCurrentServiceInfo(py::module* m);
-void GetAllServiceInfos(py::module* m);
+void GetWorkerInfo(py::module* m);
+void GetWorkerInfoByRank(py::module* m);
+void GetCurrentWorkerInfo(py::module* m);
+void GetAllWorkerInfos(py::module* m);
 }  // namespace pybind
 }  // namespace paddle

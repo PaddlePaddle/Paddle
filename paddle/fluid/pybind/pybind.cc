@@ -2611,17 +2611,17 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
     !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
     !defined(PADDLE_WITH_HIP)
-  BindServiceInfo(&m);
+  BindWorkerInfo(&m);
   BindFuture(&m);
   InitAndSetAgentInstance(&m);
   InvokeRpc(&m);
   StartServer(&m);
   StartClient(&m);
   StopServer(&m);
-  GetServiceInfo(&m);
-  GetServiceInfoByRank(&m);
-  GetCurrentServiceInfo(&m);
-  GetAllServiceInfos(&m);
+  GetWorkerInfo(&m);
+  GetWorkerInfoByRank(&m);
+  GetCurrentWorkerInfo(&m);
+  GetAllWorkerInfos(&m);
 #endif
 }
 }  // namespace pybind

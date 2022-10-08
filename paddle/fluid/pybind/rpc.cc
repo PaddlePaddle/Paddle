@@ -21,19 +21,19 @@ namespace py = pybind11;
 using paddle::distributed::FutureWrapper;
 using paddle::distributed::PythonRpcHandler;
 using paddle::distributed::RpcAgent;
-using paddle::distributed::ServiceInfo;
+using paddle::distributed::WorkerInfo;
 namespace paddle {
 namespace pybind {
 
-void BindServiceInfo(py::module* m) {
-  py::class_<ServiceInfo>(*m, "ServiceInfo")
+void BindWorkerInfo(py::module* m) {
+  py::class_<WorkerInfo>(*m, "WorkerInfo")
       .def(py::init<std::string, uint32_t, std::string, uint32_t>())
-      .def_readonly("name", &ServiceInfo::name_)
-      .def_readonly("rank", &ServiceInfo::id_)
-      .def_readonly("ip", &ServiceInfo::ip_)
-      .def_readonly("port", &ServiceInfo::port_)
-      .def("__str__", &ServiceInfo::to_string)
-      .def("__repr__", &ServiceInfo::to_string);
+      .def_readonly("name", &WorkerInfo::name_)
+      .def_readonly("rank", &WorkerInfo::id_)
+      .def_readonly("ip", &WorkerInfo::ip_)
+      .def_readonly("port", &WorkerInfo::port_)
+      .def("__str__", &WorkerInfo::to_string)
+      .def("__repr__", &WorkerInfo::to_string);
 }
 void BindFuture(py::module* m) {
   py::class_<FutureWrapper, std::shared_ptr<FutureWrapper>>(*m, "Future")
@@ -46,7 +46,7 @@ void BindFuture(py::module* m) {
 void InitAndSetAgentInstance(py::module* m) {
   m->def(
       "init_and_set_agent_instance",
-      [](const std::string& name, const std::vector<ServiceInfo>& infos) {
+      [](const std::string& name, const std::vector<WorkerInfo>& infos) {
         auto instance = std::make_shared<RpcAgent>(name, infos);
         instance->SetAgentInstance(instance);
       },
@@ -94,41 +94,41 @@ void StopServer(py::module* m) {
       },
       py::call_guard<py::gil_scoped_release>());
 }
-void GetServiceInfo(py::module* m) {
+void GetWorkerInfo(py::module* m) {
   m->def(
-      "rpc_get_service_info",
+      "rpc_get_worker_info",
       [](const std::string& name) {
         auto instance = RpcAgent::RpcAgentInstance();
-        return instance->GetServiceInfo(name);
+        return instance->GetWorkerInfo(name);
       },
       py::call_guard<py::gil_scoped_release>(),
       py::arg("name"));
 }
-void GetServiceInfoByRank(py::module* m) {
+void GetWorkerInfoByRank(py::module* m) {
   m->def(
-      "rpc_get_service_info_by_rank",
+      "rpc_get_worker_info_by_rank",
       [](uint32_t rank) {
         auto instance = RpcAgent::RpcAgentInstance();
-        return instance->GetServiceInfoById(rank);
+        return instance->GetWorkerInfoById(rank);
       },
       py::call_guard<py::gil_scoped_release>(),
       py::arg("rank"));
 }
-void GetCurrentServiceInfo(py::module* m) {
+void GetCurrentWorkerInfo(py::module* m) {
   m->def(
-      "rpc_get_current_service_info",
+      "rpc_get_current_worker_info",
       []() {
         auto instance = RpcAgent::RpcAgentInstance();
-        return instance->GetCurrentServiceInfo();
+        return instance->GetCurrentWorkerInfo();
       },
       py::call_guard<py::gil_scoped_release>());
 }
-void GetAllServiceInfos(py::module* m) {
+void GetAllWorkerInfos(py::module* m) {
   m->def(
-      "rpc_get_all_service_infos",
+      "rpc_get_all_worker_infos",
       []() {
         auto instance = RpcAgent::RpcAgentInstance();
-        return instance->GetAllServiceInfos();
+        return instance->GetAllWorkerInfos();
       },
       py::call_guard<py::gil_scoped_release>());
 }

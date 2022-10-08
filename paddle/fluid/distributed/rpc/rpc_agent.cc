@@ -30,7 +30,7 @@ const int kMaxRetry = 5;
 const int kCloseWaitMs = 1000;
 std::shared_ptr<RpcAgent> RpcAgent::rpcAgentInstance_ = nullptr;
 
-RpcAgent::RpcAgent(std::string name, std::vector<ServiceInfo> infos) {
+RpcAgent::RpcAgent(std::string name, std::vector<WorkerInfo> infos) {
   name_ = std::move(name);
   for (auto info : infos) {
     nameToInfos_.insert({info.name_, info});
@@ -47,7 +47,7 @@ RpcAgent::RpcAgent(std::string name, std::vector<ServiceInfo> infos) {
 }
 
 int RpcAgent::StartServer() {
-  auto info = GetServiceInfo(name_);
+  auto info = GetWorkerInfo(name_);
   // Start the server.
   int port = info.port_;
   brpc::ServerOptions options;

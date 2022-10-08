@@ -29,12 +29,12 @@
 
 namespace paddle {
 namespace distributed {
-struct ServiceInfo {
+struct WorkerInfo {
   std::string name_;
   uint32_t id_;
   std::string ip_;
   uint32_t port_;
-  ServiceInfo(std::string name, uint32_t id, std::string ip, uint32_t port)
+  WorkerInfo(std::string name, uint32_t id, std::string ip, uint32_t port)
       : name_(std::move(name)), id_(id), ip_(std::move(ip)), port_(port) {}
 
   std::string to_string() const {
@@ -64,23 +64,23 @@ class RpcAgent {
   static std::shared_ptr<RpcAgent> RpcAgentInstance();
   static void SetAgentInstance(std::shared_ptr<RpcAgent> agent);
   // init RpcAgent instance and get information of all services
-  RpcAgent(std::string name, std::vector<ServiceInfo> infos);
+  RpcAgent(std::string name, std::vector<WorkerInfo> infos);
   ~RpcAgent() {}
   RpcAgent(const RpcAgent &) = delete;
   RpcAgent &operator=(const RpcAgent &) = delete;
 
-  const ServiceInfo &GetServiceInfo(const std::string &name) const {
+  const WorkerInfo &GetWorkerInfo(const std::string &name) const {
     auto it = nameToInfos_.find(name);
     return it->second;
   }
-  const ServiceInfo &GetServiceInfoById(uint32_t id) const {
+  const WorkerInfo &GetWorkerInfoById(uint32_t id) const {
     auto it = idToInfos_.find(id);
     return it->second;
   }
-  const ServiceInfo &GetCurrentServiceInfo() const {
-    return GetServiceInfo(name_);
+  const WorkerInfo &GetCurrentWorkerInfo() const {
+    return GetWorkerInfo(name_);
   }
-  const std::vector<ServiceInfo> &GetAllServiceInfos() const {
+  const std::vector<WorkerInfo> &GetAllWorkerInfos() const {
     return this->infos_;
   }
 
@@ -106,9 +106,9 @@ class RpcAgent {
   std::vector<std::shared_ptr<brpc::Channel>> channels_;
   std::string name_;
   uint32_t rank_;
-  std::unordered_map<std::string, ServiceInfo> nameToInfos_;
-  std::unordered_map<uint32_t, ServiceInfo> idToInfos_;
-  std::vector<ServiceInfo> infos_;
+  std::unordered_map<std::string, WorkerInfo> nameToInfos_;
+  std::unordered_map<uint32_t, WorkerInfo> idToInfos_;
+  std::vector<WorkerInfo> infos_;
 };
 }  // namespace distributed
 }  // namespace paddle
