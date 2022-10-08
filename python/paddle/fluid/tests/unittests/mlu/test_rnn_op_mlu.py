@@ -14,11 +14,7 @@
 
 import unittest
 import numpy as np
-import math
-import paddle.fluid.core as core
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import random
 import sys
 
@@ -26,7 +22,7 @@ sys.path.append('..')
 from op_test import OpTest
 
 sys.path.append("../rnn")
-from rnn_numpy import SimpleRNN, LSTM, GRU
+from rnn_numpy import LSTM
 from convert import get_params_for_net
 
 random.seed(2)

@@ -19,7 +19,6 @@ import unittest
 import sys
 
 sys.path.append('..')
-from op_test import OpTest
 from test_bce_with_logits_loss import call_bce_layer, call_bce_functional, test_dygraph, calc_bce_with_logits_loss
 
 

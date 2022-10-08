@@ -21,10 +21,6 @@ sys.path.append("..")
 import paddle
 
 paddle.enable_static()
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test import OpTest
-from paddle.fluid import Program, program_guard
 from test_conv2d_op_mlu import TestConv2DOp, TestConv2DOp_v2, create_test_padding_SAME_class, create_test_padding_VALID_class, create_test_channel_last_class, create_test_fp16_class
 
 #----------------TestDepthwiseConv -----

@@ -17,12 +17,9 @@ import sys
 sys.path.append("..")
 import paddle
 import paddle.fluid.core as core
-from paddle.static import program_guard, Program
-import paddle.compat as cpt
 import unittest
 import numpy as np
 from op_test import OpTest
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 paddle.enable_static()
 

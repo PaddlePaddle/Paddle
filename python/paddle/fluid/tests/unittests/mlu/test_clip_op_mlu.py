@@ -18,10 +18,7 @@ import sys
 sys.path.append("..")
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 

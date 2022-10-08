@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import math
 import sys
 
 sys.path.append('..')
@@ -22,8 +21,7 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-from paddle.fluid.framework import Program, program_guard, _test_eager_guard
+from paddle.fluid.framework import Program, program_guard
 
 paddle.enable_static()
 

@@ -19,7 +19,6 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
-import paddle.fluid as fluid
 
 SEED = 2022
 paddle.enable_static()

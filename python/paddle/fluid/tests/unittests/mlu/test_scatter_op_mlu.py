@@ -21,7 +21,6 @@ import os
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
-import paddle.fluid.core as core
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
 paddle.enable_static()

@@ -17,14 +17,14 @@ import numpy as np
 import sys
 
 sys.path.append('..')
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest
 
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import numpy as np
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 

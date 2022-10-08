@@ -15,7 +15,6 @@
 import sys
 
 sys.path.append('..')
-import op_test
 import unittest
 import numpy as np
 import paddle

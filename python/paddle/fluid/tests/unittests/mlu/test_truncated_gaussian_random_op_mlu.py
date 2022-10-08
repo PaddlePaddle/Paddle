@@ -21,8 +21,6 @@ import paddle.fluid.core as core
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
-from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import _test_eager_guard
 

@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import paddle
-import os
 import sys
 
 sys.path.append("..")
-from op_test import OpTest, _set_use_system_allocator
+from op_test import _set_use_system_allocator
 
 from test_sync_batch_norm_base_mlu import TestDistBase
 

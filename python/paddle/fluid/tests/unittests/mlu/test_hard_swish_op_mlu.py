@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle.nn.functional as F
-import paddle.fluid as fluid
 import paddle
 import sys
 

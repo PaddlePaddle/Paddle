@@ -18,7 +18,6 @@ import sys
 sys.path.append("..")
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
-import paddle.fluid as fluid
 import paddle
 
 paddle.enable_static()

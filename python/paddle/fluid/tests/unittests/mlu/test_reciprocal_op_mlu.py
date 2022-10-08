@@ -17,7 +17,7 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import paddle
 
 paddle.enable_static()

@@ -19,8 +19,6 @@ import sys
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.core import ops
 
 paddle.enable_static()
 SEED = 2022
