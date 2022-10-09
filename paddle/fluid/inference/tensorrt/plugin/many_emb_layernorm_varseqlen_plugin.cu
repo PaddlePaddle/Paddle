@@ -19,7 +19,6 @@
 #include <cstring>
 #include <vector>
 #include "NvInfer.h"
-#include "common/serialize.h"
 
 namespace paddle {
 namespace inference {

@@ -154,5 +154,30 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv_Partial(
       "ProcessGroup%s does not support do recv_partial", GetBackendName()));
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather_Partial(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    int offset,
+    int length,
+    bool sync_op) {
+  return AllGather_Partial(in_tensors,
+                           out_tensors,
+                           offset,
+                           length,
+                           sync_op,
+                           /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather_Partial(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    int offset,
+    int length,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "ProcessGroup%s does not support do recv_partial", GetBackendName()));
+}
+
 }  // namespace distributed
 }  // namespace paddle
