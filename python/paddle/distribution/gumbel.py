@@ -82,14 +82,16 @@ class Gumbel(TransformedDistribution):
             )
 
         if isinstance(loc, numbers.Real):
-            self.loc = paddle.full(shape=(), fill_value=loc)
+            loc = paddle.full(shape=(), fill_value=loc)
 
         if isinstance(scale, numbers.Real):
-            self.scale = paddle.full(shape=(), fill_value=scale)
+            scale = paddle.full(shape=(), fill_value=scale)
 
         if loc.shape != scale.shape:
             self.loc, self.scale = paddle.broadcast_tensors(
-                [self.loc, self.scale])
+                [loc, scale])
+        else:
+            self.loc, self.scale = loc, scale
 
         finfo = np.finfo(self.loc.dtype)
         self.base_dist = paddle.distribution.Uniform(
