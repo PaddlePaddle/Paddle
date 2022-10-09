@@ -22,6 +22,7 @@ list(
   gelu_op.cc
   layer_norm_op.cc
   multihead_matmul_op.cc
+  multihead_matmul_roformer_op.cc
   shuffle_channel_op.cc
   swish_op.cc
   silu_op.cc
