@@ -861,7 +861,7 @@ class Resharder:
         rank_id (int): The process id.
         dist_context (DistributedContext): The distributed context of this rank.
         dist_params_grads (list): The list contains the tuple of param and grad.
-        batch_size (int): The batch size. Default: None.
+        default_dim (int): The default dim. Default: 1.
     """
     while_block_info = {}
 
@@ -871,7 +871,7 @@ class Resharder:
                  rank_id,
                  dist_context,
                  dist_params_grads,
-                 batch_size=1):
+                 default_dim=1):
         assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_main_prog should be Program, " \
                                             "but got {}.".format(type(auto_parallel_main_prog))
         if auto_parallel_startup_prog is not None:
@@ -882,15 +882,15 @@ class Resharder:
         assert isinstance(dist_context, DistributedContext), "The type of dist_context should be DistributedContext, " \
                                             "but got {}.".format(type(dist_context))
 
-        assert isinstance(batch_size, int), "The type of batch_size should be int, " \
-                                            "but got {}.".format(type(batch_size))
+        assert isinstance(default_dim, int), "The type of default_dim should be int, " \
+                                            "but got {}.".format(type(default_dim))
 
         self._auto_parallel_main_prog = auto_parallel_main_prog
         self._auto_parallel_startup_prog = auto_parallel_startup_prog
         self._rank_id = rank_id
         self._dist_context = dist_context
         self._dist_params_grads = dist_params_grads
-        self._batch_size = batch_size
+        self._default_dim = default_dim
         self._has_sent = {}
         self._has_recv = {}
         self._has_allgather = {}
@@ -898,15 +898,15 @@ class Resharder:
         self._has_resharded = {}
         # use dynamic shape send/recv
         self._dynamic_shape = False
-        self._batch_dim_not_fixed = False
+        self._not_fixed_dims = []
 
     @property
     def dynamic_shape(self):
         return self._dynamic_shape
 
     @property
-    def batch_dim_not_fixed(self):
-        return self._batch_dim_not_fixed
+    def not_fixed_dims(self):
+        return self._not_fixed_dims
 
     @property
     def auto_parallel_main_prog(self):
@@ -929,8 +929,8 @@ class Resharder:
         return self._dist_params_grads
 
     @property
-    def batch_size(self):
-        return self._batch_size
+    def default_dim(self):
+        return self._default_dim
 
     @property
     def has_sent(self):
@@ -1248,12 +1248,15 @@ class Resharder:
         target_process_group = target_process_mesh.processes
         target_process_shape = target_process_mesh.topology
 
-        if source_tensor.shape[0] < 0:
-            assert source_tensor.shape[0] == -1
-            new_shape = list(source_tensor.shape)
-            new_shape[0] = self.batch_size
+        if -1 in source_tensor.shape:
+            new_shape = []
+            for idx, dim in enumerate(source_tensor.shape):
+                if dim == -1:
+                    self._not_fixed_dims.append(idx)
+                    new_shape.append(self.default_dim)
+                else:
+                    new_shape.append(dim)
             self._dynamic_shape = True
-            self._batch_dim_not_fixed = True
             source_tensor.desc.set_shape(new_shape)
 
         # NOTE: Whether use dynamic shape will be updated in the future by dynamic shape infer
@@ -1606,8 +1609,13 @@ class Resharder:
                     new_var_name=new_name,
                     op_role=reshard_op.attr('op_role'))
 
-                if self.batch_dim_not_fixed:
-                    new_shape = [-1] + target_tensor.shape[1:]
+                if self.not_fixed_dims:
+                    new_shape = []
+                    for idx, item in enumerate(target_tensor.shape):
+                        if idx in self.not_fixed_dims:
+                            new_shape.append(-1)
+                        else:
+                            new_shape.append(item)
                     target_tensor.desc.set_shape(new_shape)
                 process_mesh = dist_attr[0]
                 dims_mapping = dist_attr[1]
@@ -1900,7 +1908,7 @@ class Resharder:
                             ):
                                 continue
                         self._dynamic_shape = False
-                        self._batch_dim_not_fixed = False
+                        self._not_fixed_dims = []
                         if dist_tensor is not None and self.need_reshard(
                                 dist_tensor, input_attr):
                             reshard_op_desc = self.find_op_desc_seq(
@@ -2044,7 +2052,8 @@ class Resharder:
                         dist_op.dist_attr.get_output_dims_mapping(var_name)
                     ]
                     # NOTE: Whether use dynamic shape for output will be updated in the future by dynamic shape infer.
-                    self.dynamic_shape = True
+                    self._dynamic_shape = True
+
                     if dist_tensor is not None and self.need_reshard(
                             dist_tensor, output_attr, False):
                         tensor_processes = set(
