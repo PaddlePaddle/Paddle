@@ -40,11 +40,11 @@ inline paddle::experimental::Tensor EagerTraceTransposeOp(
   return out_tensor;
 }
 
-inline const paddle::experimental::DataLayout DesiredLayout() {
+inline paddle::experimental::DataLayout DesiredLayout() {
   return paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
 }
 
-inline const paddle::experimental::DataLayout DefaultLayout() {
+inline paddle::experimental::DataLayout DefaultLayout() {
   return paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
 }
 
