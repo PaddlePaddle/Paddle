@@ -296,10 +296,26 @@ class TestWithFloat16(TestModulatedDeformableConvOp):
     def test_check_output(self):
         self.check_output(check_eager=True, atol=1e-3)
 
+    def test_check_grad(self):
+        self.check_grad(['Input', 'Filter'],
+                        'Output',
+                        numeric_grad_delta=3e-1,
+                        max_relative_error=4e-1,
+                        check_eager=True)
+
+    def test_check_grad_no_filter(self):
+        self.check_grad(['Input'],
+                        'Output',
+                        numeric_grad_delta=3e-1,
+                        max_relative_error=2e-1,
+                        no_grad_set=set(['Filter']),
+                        check_eager=True)
+
 
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
 
     def test_error(self):
+
         def test_invalid_input():
             input = [1, 3, 32, 32]
             offset = fluid.data(name='offset',
