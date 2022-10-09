@@ -36,7 +36,7 @@ inline paddle::experimental::Tensor EagerTraceTransposeOp(
     axis = {0, 1, 2, 3};
   }
   auto out_tensor = transpose_ad_func(in, axis);
-  VLOG(4) << "AutoTune Transpose from " << in.layout << " to " << layout;
+  VLOG(4) << "AutoTune Transpose from " << in.layout() << " to " << layout;
   return out_tensor;
 }
 
