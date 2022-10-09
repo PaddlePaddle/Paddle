@@ -1058,15 +1058,6 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
 
 PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
   auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
-
-  if (!with_residual_data) {
-    fc_op->assert_more([&](Node *x) {
-      if (!HasOutput(x, "ResidualData") ||
-          x->Op()->Output("ResidualData").size() == 0)
-        return true;
-      return false;
-    });
-  }
   // Create variables
   // Input
   auto *input_var = pattern->NewNode(input_repr())
@@ -1101,6 +1092,13 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
                             return false;
                           });
     links_from.push_back(res_fc_var);
+  } else {
+    fc_op->assert_more([&](Node *x) {
+      if (!HasOutput(x, "ResidualData") ||
+          x->Op()->Output("ResidualData").size() == 0)
+        return true;
+      return false;
+    });
   }
 
   fc_op->LinksFrom(links_from).LinksTo({fc_out_var});

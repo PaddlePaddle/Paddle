@@ -30,11 +30,10 @@ namespace ir {
 class Graph;
 
 namespace {
-void LogEnabledOps(const int counter, const char* details = nullptr) {
-  std::stringstream msg_ss;
-  msg_ss << "---    enabled FC MKL-DNN for " << counter << " fc ops";
-  if (details) msg_ss << " " << details;
-  string::PrettyLogDetail(msg_ss.str().c_str());
+void LogEnabledOps(const int counter, const std::string& details) {
+  std::string msg_ss{"---    enabled FC MKL-DNN for "};
+  msg_ss += counter + " fc ops " + details;
+  string::PrettyLogDetail(msg_ss.c_str());
 }
 }  // namespace
 
