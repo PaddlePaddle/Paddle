@@ -247,10 +247,8 @@ class Gumbel(TransformedDistribution):
         """
         exp_transform = paddle.distribution.ExpTransform()
         affine_tf1 = paddle.distribution.AffineTransform(
-            paddle.to_tensor(0, dtype='float32'),
-            -paddle.ones_like(self.scale))
-        affine_tf2 = paddle.distribution.AffineTransform(
-            self.loc, -self.scale)
+            paddle.to_tensor(0, dtype='float32'), -paddle.ones_like(self.scale))
+        affine_tf2 = paddle.distribution.AffineTransform(self.loc, -self.scale)
 
         return affine_tf2.forward(
             exp_transform.inverse(
