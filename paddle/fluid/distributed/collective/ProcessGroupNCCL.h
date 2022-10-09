@@ -252,6 +252,11 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream) override;
 
+  std::shared_ptr<ProcessGroup::Task> _ReduceScatterBase(
+      phi::DenseTensor&,  // NOLINT
+      phi::DenseTensor&,  // NOLINT
+      const ReduceScatterOptions&) override;
+
   static void GroupStart();
 
   static void GroupEnd();

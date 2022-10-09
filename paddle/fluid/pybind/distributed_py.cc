@@ -752,6 +752,27 @@ void BindDistributed(py::module *m) {
               py::arg("out"),
               py::arg("src"),
               py::arg("sync_op"),
+              py::call_guard<py::gil_scoped_release>())
+
+          .def(
+              "_reduce_scatter_base",
+              [](distributed::ProcessGroup &self,
+                 py::handle py_out_tensor,
+                 py::handle py_in_tensor,
+                 distributed::ReduceOp op) {
+                auto in_tensor = CastPyArg2Tensor(py_in_tensor.ptr(), 0);
+                auto out_tensor = CastPyArg2Tensor(py_out_tensor.ptr(), 0);
+                distributed::ReduceScatterOptions opts;
+                opts.reduce_op = op;
+                auto dense_out = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    out_tensor.impl());
+                auto dense_in = std::dynamic_pointer_cast<phi::DenseTensor>(
+                    in_tensor.impl());
+                return self._ReduceScatterBase(*dense_out, *dense_in, opts);
+              },
+              py::arg("out_tensor"),
+              py::arg("in_tensor"),
+              py::arg("op") = distributed::ReduceOp::SUM,
               py::call_guard<py::gil_scoped_release>());
 
   auto ProcessGroupStream =
