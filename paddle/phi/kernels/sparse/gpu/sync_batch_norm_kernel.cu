@@ -60,6 +60,7 @@ void SyncBatchNormCooKernel(const Context& dev_ctx,
                                        saved_mean,
                                        saved_variance,
                                        reserve_space);
+  y->SetIndicesDict(x.GetIndicesDict());
 }
 
 }  // namespace sparse

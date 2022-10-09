@@ -62,7 +62,6 @@ void SyncBatchNormCooGradKernel(
                                            x_grad->mutable_values(),
                                            scale_grad,
                                            bias_grad);
-  y->SetIndicesDict(x.GetIndicesDict());
 }
 
 }  // namespace sparse
