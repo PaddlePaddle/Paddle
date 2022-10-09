@@ -18,7 +18,6 @@ import math
 import numpy as np
 
 from paddle.distribution.transformed_distribution import TransformedDistribution
-from paddle.distribution.transform import AffineTransform, ExpTransform
 from paddle.fluid import framework as framework
 
 try:
@@ -88,7 +87,7 @@ class Gumbel(TransformedDistribution):
         if isinstance(scale, numbers.Real):
             self.scale = paddle.full(shape=(), fill_value=scale)
 
-        if self.loc.shape != self.scale.shape:
+        if loc.shape != scale.shape:
             self.loc, self.scale = paddle.broadcast_tensors(
                 [self.loc, self.scale])
 
