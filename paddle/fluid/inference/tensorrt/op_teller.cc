@@ -1744,16 +1744,16 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "reshape" || op_type == "reshape2") {
-      if (with_dynamic_shape) {
-        return true;
-      }
       if (!desc.HasAttr("shape")) {
         return false;
       }
-      // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
+      // Static shape mode does not support the input tensors: Shape and
+      // ShapeTensor.
+      // Dynamic shape mode does not support the input tensor:
+      // ShapeTensor
       auto reshape_inputs = desc.Inputs();
       if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
-        if (desc.Input("Shape").size() >= 1) {
+        if (!with_dynamic_shape && desc.Input("Shape").size() >= 1) {
           return false;
         }
       }
