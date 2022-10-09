@@ -1686,6 +1686,57 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "multihead_matmul_roformer") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the multihead_matmul_roformer does not support static shape yet";
+        return false;
+      }
+
+      if (desc.HasAttr("enable_int8") && !desc.HasAttr("Input_scale")) {
+        VLOG(3) << "Multihead layers must have input scale in int8 mode.";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* input_desc = block->FindVar(desc.Input("Input").front());
+      const auto input_shape = input_desc->GetShape();
+      const auto head_number =
+          PADDLE_GET_CONST(int, desc.GetAttr("head_number"));
+      auto inputs = desc.Inputs();
+      bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
+      if (has_bias_qk) {
+        auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
+        const auto biasqk_shape = biasqk_desc->GetShape();
+        // The BiasQK's shape requires to be
+        // [batch, 1, 1, length] or [batch, head, length, length].
+        bool has_same_shape = head_number == biasqk_shape[1] &&
+                              input_shape[1] == biasqk_shape[2] &&
+                              input_shape[1] == biasqk_shape[3];
+        bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
+                                input_shape[1] == biasqk_shape[3];
+        if (!(has_same_shape || is_broadcastable)) {
+          VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
+                  << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
+                  << ", " << head_number << ", " << input_shape[1] << ", "
+                  << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
+                  << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
+                  << biasqk_shape[3] << "].";
+          return false;
+        }
+      } else {
+#if !IS_TRT_VERSION_GE(8000)
+        VLOG(3) << "The version of TRT must be greater than 8000";
+        return false;
+#endif
+      }
+    }
+
     if (op_type == "fc") {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -2189,6 +2240,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "clip",
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
+      "multihead_matmul_roformer",
       "skip_layernorm",
       "slice",
       "strided_slice",
@@ -2300,6 +2352,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "clip",
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
+      "multihead_matmul_roformer",
       "skip_layernorm",
       "slice",
       "strided_slice",
