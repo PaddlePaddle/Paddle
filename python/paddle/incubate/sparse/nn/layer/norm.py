@@ -12,24 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import paddle
 import warnings
 from paddle.nn.layer.norm import _BatchNormBase
 from paddle.framework import no_grad
-from paddle import _C_ops
+from paddle import _C_ops, in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 
 class BatchNorm(paddle.nn.BatchNorm1D):
@@ -132,34 +120,70 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             raise ValueError('sparse BatchNorm only support layout of "NDHWC"')
 
     def forward(self, input):
-        values = input.values()
         self._check_data_format(self._data_format)
-
-        if len(values.shape) != 2:
-            raise ValueError('expected 2D input.values() (got {}D)'.format(
-                len(values.shape)))
 
         if self.training:
             warnings.warn(
                 "When training, we now always track global mean and variance.")
 
-        batch_norm_out = paddle.nn.functional.batch_norm(
-            values,
-            self._mean,
-            self._variance,
-            weight=self.weight,
-            bias=self.bias,
-            training=self.training,
-            momentum=self._momentum,
-            epsilon=self._epsilon,
-            data_format='NC',
-            use_global_stats=self._use_global_stats)
+        if self._use_global_stats == None:
+            self._use_global_stats = not self.training
+            trainable_statistics = False
+        else:
+            trainable_statistics = not self._use_global_stats
 
-        return paddle.incubate.sparse.sparse_coo_tensor(
-            input.indices(),
-            batch_norm_out,
-            shape=input.shape,
-            stop_gradient=input.stop_gradient)
+        data_format = 'NCHW' if self._data_format[1] == 'C' else 'NHWC'
+
+        if in_dynamic_mode():
+            batch_norm_out, _, _, _, _, _ = _C_ops.sparse_batch_norm(
+                input, self.weight, self.bias, self._mean, self._variance,
+                self._momentum, self._epsilon, data_format, not self.training,
+                self._use_global_stats, trainable_statistics, False)
+            return batch_norm_out
+        else:
+            inputs = {
+                'x': input,
+                'scale': self.weight,
+                'bias': self.bias,
+                'mean': self._mean,
+                'variance': self._variance
+            }
+            attrs = {
+                'momentum': self._momentum,
+                'epsilon': self._epsilon,
+                'data_layout': data_format,
+                'is_test': not self.training,
+                'use_global_stats': self._use_global_stats,
+                'trainable_statistics': trainable_statistics,
+                'fuse_with_relu': False
+            }
+            op_type = 'sparse_batch_norm'
+            helper = LayerHelper(op_type)
+            dtype = input.dtype
+            mean_out = helper.create_variable_for_type_inference(
+                dtype=dtype, stop_gradient=True)
+            variance_out = helper.create_variable_for_type_inference(
+                dtype=dtype, stop_gradient=True)
+            saved_mean = helper.create_variable_for_type_inference(
+                dtype=dtype, stop_gradient=True)
+            saved_variance = helper.create_variable_for_type_inference(
+                dtype=dtype, stop_gradient=True)
+            reserve_space = helper.create_variable_for_type_inference(
+                dtype=dtype, stop_gradient=True)
+            y = helper.create_sparse_variable_for_type_inference(dtype)
+            outputs = {
+                "y": y,
+                "mean_out": mean_out,
+                "variance_out": variance_out,
+                "saved_mean": saved_mean,
+                "saved_variance": saved_variance,
+                "reserve_space": reserve_space
+            }
+            helper.append_op(type=op_type,
+                             inputs=inputs,
+                             outputs=outputs,
+                             attrs=attrs)
+            return y
 
 
 class SyncBatchNorm(paddle.nn.SyncBatchNorm):

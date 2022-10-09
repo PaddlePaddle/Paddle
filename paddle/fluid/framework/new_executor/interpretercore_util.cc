@@ -68,7 +68,7 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
   group_options.emplace_back(/*name*/ "DeviceKernelLaunch",
                              /*num_threads*/ device_num_threads,
                              /*allow_spinning*/ true,
-                             /*always_spinning*/ true,
+                             /*always_spinning*/ false,
                              /*track_task*/ false,
                              /*detached*/ true,
                              /*events_waiter*/ waiter);
