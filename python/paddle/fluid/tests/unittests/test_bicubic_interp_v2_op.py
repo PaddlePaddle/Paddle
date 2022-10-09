@@ -14,7 +14,8 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest, _in_eager_without_dygraph_check
+from op_test import OpTest
+from paddle.fluid.framework import _in_eager_without_dygraph_check
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle
