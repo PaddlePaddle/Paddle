@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.distribution.normal import Normal
 from paddle.distribution.transform import ExpTransform
 from paddle.distribution.transformed_distribution import \
     TransformedDistribution
-
-import paddle
 
 
 class LogNormal(TransformedDistribution):

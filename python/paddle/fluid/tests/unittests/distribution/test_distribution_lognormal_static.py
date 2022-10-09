@@ -16,12 +16,13 @@ import unittest
 
 import config
 import numpy as np
-import scipy.stats
 import paddle
 from paddle.distribution.kl import kl_divergence
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+import scipy.stats
+
 from test_distribution_lognormal import LogNormalNumpy
 
 
