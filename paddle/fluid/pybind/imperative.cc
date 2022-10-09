@@ -282,7 +282,7 @@ static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
 }
 
 static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
-                                                const framework::Tensor &tensor,
+                                                const phi::DenseTensor &tensor,
                                                 const std::string &name) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
@@ -306,7 +306,7 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
 
 template <typename P>
 static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
-                                         const framework::Tensor &tensor,
+                                         const phi::DenseTensor &tensor,
                                          const P &place,
                                          const std::string &name) {
   VLOG(4) << "Init VarBase";
@@ -3031,9 +3031,9 @@ void BindImperative(py::module *m_ptr) {
         }
 
         // Select the index data to the buffer
-        auto index_select = [](const framework::Tensor &src_tensor,
-                               const framework::Tensor &index_tensor,
-                               framework::Tensor *buffer_tensor) {
+        auto index_select = [](const phi::DenseTensor &src_tensor,
+                               const phi::DenseTensor &index_tensor,
+                               phi::DenseTensor *buffer_tensor) {
           auto *src_data = src_tensor.data<float>();
           auto *index_data = index_tensor.data<int64_t>();
           auto *buffer_data =

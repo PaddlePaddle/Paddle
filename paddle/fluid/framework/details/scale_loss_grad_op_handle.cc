@@ -43,13 +43,13 @@ ScaleLossGradOpHandle::~ScaleLossGradOpHandle() {}
 
 struct ScaleLossGradFunctor {
   float coeff_;
-  Tensor *out_;
+  phi::DenseTensor *out_;
   platform::Place place_;
   proto::VarType::Type out_dtype_;
   platform::DeviceContext *ctx_;
 
   ScaleLossGradFunctor(float coeff,
-                       Tensor *out,
+                       phi::DenseTensor *out,
                        platform::Place place,
                        proto::VarType::Type dtype,
                        platform::DeviceContext *ctx)

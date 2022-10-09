@@ -203,6 +203,7 @@ _g_collections = {}
 
 class CollectionNames(object):
     FETCHES = "fetches"
+    LOGGING = "logging"
 
 
 def get_collection(name):
@@ -216,12 +217,13 @@ def get_collection(name):
 def add_to_collection(collection_name, value, name=None):
     if collection_name not in _g_collections:
         _g_collections[collection_name] = []
+    if name is not None:
+        _g_collections[collection_name].append((name, value))
     else:
-        if name is not None:
-            _g_collections[collection_name].append((name, value))
-        else:
-            _g_collections[collection_name].append((None, value))
+        _g_collections[collection_name].append((None, value))
 
 
-def fetch(tensor, name=None):
+def fetch(tensor, name=None, logging=False):
     add_to_collection(CollectionNames.FETCHES, tensor, name)
+    if logging:
+        add_to_collection(CollectionNames.LOGGING, tensor, name)

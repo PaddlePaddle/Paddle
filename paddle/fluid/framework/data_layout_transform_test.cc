@@ -18,8 +18,8 @@
 
 TEST(DataTransform, DataLayoutFunction) {
   auto place = paddle::platform::CPUPlace();
-  paddle::framework::Tensor in = paddle::framework::Tensor();
-  paddle::framework::Tensor out = paddle::framework::Tensor();
+  phi::DenseTensor in = phi::DenseTensor();
+  phi::DenseTensor out = phi::DenseTensor();
   in.mutable_data<double>(phi::make_ddim({2, 3, 1, 2}), place);
   in.set_layout(paddle::framework::DataLayout::kNHWC);
 
@@ -48,7 +48,7 @@ TEST(DataTransform, DataLayoutFunction) {
 #ifdef PADDLE_WITH_MKLDNN
 TEST(DataTransformBf16, GetDataFromTensorDNNL) {
   auto place = paddle::platform::CPUPlace();
-  paddle::framework::Tensor in = paddle::framework::Tensor();
+  phi::DenseTensor in = phi::DenseTensor();
   in.mutable_data<paddle::platform::bfloat16>(phi::make_ddim({2, 3, 1, 2}),
                                               place);
 
@@ -61,7 +61,7 @@ TEST(DataTransformBf16, GetDataFromTensorDNNL) {
 
 TEST(DataTransformInt32, GetDataFromTensorDNNL) {
   auto place = paddle::platform::CPUPlace();
-  paddle::framework::Tensor in = paddle::framework::Tensor();
+  phi::DenseTensor in = phi::DenseTensor();
   in.mutable_data<int32_t>(phi::make_ddim({2, 3, 1, 2}), place);
 
   void* in_data =

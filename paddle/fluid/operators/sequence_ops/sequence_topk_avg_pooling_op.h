@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 static constexpr int TopKPosPaddingId = -1;
 
@@ -75,7 +75,7 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
     auto* row = context.Input<LoDTensor>("ROW");
     auto* col = context.Input<LoDTensor>("COLUMN");
     auto* out = context.Output<LoDTensor>("Out");
-    auto* pos = context.Output<Tensor>("pos");
+    auto* pos = context.Output<phi::DenseTensor>("pos");
 
     PADDLE_ENFORCE_EQ(
         in->lod().empty(),
@@ -184,7 +184,7 @@ class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* d_in = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* pos_input = context.Input<Tensor>("pos");
+    auto* pos_input = context.Input<phi::DenseTensor>("pos");
     auto* row_input = context.Input<LoDTensor>("ROW");
     auto* col_input = context.Input<LoDTensor>("COLUMN");
     auto* forward_input = context.Input<LoDTensor>("X");

@@ -64,7 +64,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     const std::string& var_name,
-    const framework::Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and

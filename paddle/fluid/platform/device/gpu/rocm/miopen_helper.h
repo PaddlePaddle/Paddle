@@ -285,7 +285,7 @@ class ScopedDropoutDescriptor {
                                               const platform::Place& place,
                                               bool initialized,
                                               float dropout_prob_,
-                                              framework::Tensor* dropout_state_,
+                                              phi::DenseTensor* dropout_state_,
                                               int seed,
                                               size_t state_size) {
     if (dropout_state_ == nullptr) {  // for no dropout or test
