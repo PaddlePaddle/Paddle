@@ -141,8 +141,8 @@ EmbLayerNormVarSeqlenPluginMTron::EmbLayerNormVarSeqlenPluginMTron(
 // IPluginV2DynamicExt Methods
 nvinfer1::IPluginV2DynamicExt* EmbLayerNormVarSeqlenPluginHFace::clone()
     const noexcept {
-  TRANSFORMER_DEBUG_MSG("EmbLayerNormVarSeqlenPluginMTron clone");
-  auto p = new EmbLayerNormVarSeqlenPluginMTron(
+  TRANSFORMER_DEBUG_MSG("EmbLayerNormVarSeqlenPluginHFace clone");
+  auto p = new EmbLayerNormVarSeqlenPluginHFace(
       mLayerName, mType, mBeta, mGamma, mIdsEmb_);
   p->setPluginNamespace(mNamespace.c_str());
   return p;
@@ -346,7 +346,6 @@ int32_t EmbLayerNormVarSeqlenPluginHFace::enqueue(
   }
   const float* beta = mBetaDev.get();
   const float* gamma = mGammaDev.get();
-
   if (mType == nvinfer1::DataType::kFLOAT) {
     auto output = static_cast<float*>(outputs[0]);
     if (nbLookupTables_ == 2) {

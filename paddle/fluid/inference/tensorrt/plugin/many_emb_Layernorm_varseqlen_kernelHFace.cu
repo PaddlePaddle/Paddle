@@ -44,9 +44,8 @@ __global__ void embLayerNormKernelHFace_2(int32_t ld,
   cub::Sum pairSum;
   int32_t const s = blockIdx.x;
   int32_t const b = blockIdx.y;
-  int32_t const* cuSeqlens = inputIds0;
-  int32_t const sumS = cuSeqlens[b];
-  int32_t const s_b = cuSeqlens[b + 1] - sumS;
+  int32_t const sumS = inputIds0[b];
+  int32_t const s_b = inputIds0[b + 1] - sumS;
   if (s >= s_b) {
     return;  // This CTA has nothing to do
   }
@@ -107,9 +106,8 @@ __global__ void embLayerNormKernelHFace_3(int32_t ld,
   cub::Sum pairSum;
   int32_t const s = blockIdx.x;
   int32_t const b = blockIdx.y;
-  int32_t const* cuSeqlens = inputIds0;
-  int32_t const sumS = cuSeqlens[b];
-  int32_t const s_b = cuSeqlens[b + 1] - sumS;
+  int32_t const sumS = inputIds0[b];
+  int32_t const s_b = inputIds0[b + 1] - sumS;
   if (s >= s_b) {
     return;  // This CTA has nothing to do
   }
@@ -185,9 +183,8 @@ __global__ void embLayerNormKernelHFace_4(int32_t ld,
   cub::Sum pairSum;
   int32_t const s = blockIdx.x;
   int32_t const b = blockIdx.y;
-  int32_t const* cuSeqlens = inputIds0;
-  int32_t const sumS = cuSeqlens[b];
-  int32_t const s_b = cuSeqlens[b + 1] - sumS;
+  int32_t const sumS = inputIds0[b];
+  int32_t const s_b = inputIds0[b + 1] - sumS;
   if (s >= s_b) {
     return;  // This CTA has nothing to do
   }

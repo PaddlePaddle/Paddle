@@ -217,7 +217,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       auto plugin_layer = engine_->network()->addPluginV2(
           plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
 
-      plugin_layer->setName(("ManyEmbLayerNormPluginDynamic_V2(Output: " +
+      plugin_layer->setName(("ManyEmbLayerNormPluginDynamic_V1(Output: " +
                              op_desc.Output("Out")[0] + ")")
                                 .c_str());
       free(plugin_ptr);
@@ -248,7 +248,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         layer = plugin_layer;
         auto output_name = op_desc.Output("Out")[0];
         RreplenishLayerAndOutput(layer,
-                                 "ManyEmbLayerNormPluginDynamic_V2",
+                                 "ManyEmbLayerNormPluginDynamic_V1",
                                  {output_name, std::string("qkv_plugin_mask")},
                                  test_mode);
       }
