@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
+import paddle.distributed as dist
 import paddle.fluid as fluid
-import unittest
 import test_collective_api_base as test_base
 
 
@@ -25,12 +25,21 @@ class TestCollectiveSendRecvAPI(test_base.TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
         with fluid.program_guard(main_prog, startup_program):
-            tindata = paddle.to_tensor(indata)
-            if rank == 0:
-                paddle.distributed.send(tindata, dst=1)
+            # NOTE: this is a hack relying on an undocumented behavior that `to_tensor` uses uint16 to replace bfloat16
+            if indata.dtype == "bfloat16":
+                tindata = paddle.to_tensor(indata, "float32").cast("uint16")
+                if rank == 0:
+                    dist.send(tindata, dst=1)
+                else:
+                    dist.recv(tindata, src=0)
+                return [tindata.cast("float32").numpy()]
             else:
-                paddle.distributed.recv(tindata, src=0)
-            return [tindata.numpy()]
+                tindata = paddle.to_tensor(indata)
+                if rank == 0:
+                    dist.send(tindata, dst=1)
+                else:
+                    dist.recv(tindata, src=0)
+                return [tindata.numpy()]
 
 
 if __name__ == "__main__":
