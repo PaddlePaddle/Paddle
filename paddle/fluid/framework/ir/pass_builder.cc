@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 
 #include "glog/logging.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -24,6 +25,9 @@ namespace framework {
 namespace ir {
 
 class Pass;
+
+using VarQuantScale =
+    std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
 
 std::shared_ptr<Pass> PassBuilder::AppendPass(const std::string& pass_name) {
   VLOG(1) << "Append " << pass_name;
@@ -63,11 +67,15 @@ std::shared_ptr<Pass> PassBuilder::AppendPass(const std::string& pass_name) {
   //     "mixed_black_list",
   //     new std::unordered_set<std::string>(argument->mixed_black_list()));
 
-  if (pass_name == "mkldnn_placement_pass") {
-    // pass->Set("mkldnn_enabled_op_types",
-    //           new std::unordered_set<std::string>(
-    //               argument->mkldnn_enabled_op_types()));
+#ifdef PADDLE_WITH_MKLDNN
+  if (pass_name == "cpu_quantize_pass") {
+    // if (argument->quantize_enabled_op_types().count("conv2d") ||
+    //     argument->quantize_enabled_op_types().count("depthwise_conv2d")) {
+    //   pass->Set("data_layout", new std::string("NHWC"));
+    // }
+    pass->Set("quant_var_scales", new VarQuantScale({}));
   }
+#endif
 
   if (pass_name == "fc_fuse_pass") {
     pass->Set("use_gpu", new bool(false));

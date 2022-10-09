@@ -170,12 +170,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
   void AppendOpFusePasses() {
     // 1. infernce pass if enabled.
-    AppendPassWithCheck(
-        strategy_.enable_inference_pass_ && strategy_.delete_dropout_,
-        "delete_dropout_op_x_pass");
-    AppendPassWithCheck(
-        strategy_.enable_inference_pass_ && strategy_.use_mkldnn_,
-        "mkldnn_placement_pass");
+    // AppendPassWithCheck(
+    //     strategy_.enable_inference_pass_ && strategy_.delete_dropout_,
+    //     "delete_dropout_op_x_pass");
+    // AppendPassWithCheck(
+    //     strategy_.enable_inference_pass_ && strategy_.use_mkldnn_,
+    //     "mkldnn_placement_pass");
 
 #ifdef PADDLE_WITH_MKLDNN
     for (auto &pass : std::vector<std::string>({
@@ -217,7 +217,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     for (auto &pass : std::vector<std::string>({
              "quant_dequant_mkldnn_pass",
              "mkldnn_placement_pass",
-             "simplify_with_basic_ops_pass",
+             //  "simplify_with_basic_ops_pass",
+             "delete_dropout_op_x_pass",
              "layer_norm_fuse_pass",
              "attention_lstm_fuse_pass",
              "seqconv_eltadd_relu_fuse_pass",
@@ -238,7 +239,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
              "gpu_cpu_map_matmul_v2_to_matmul_pass",
              "matmul_scale_fuse_pass",
              "gpu_cpu_map_matmul_to_mul_pass",
-             "repeated_fc_relu_fuse_pass",
+             //  "repeated_fc_relu_fuse_pass",
              "depthwise_conv_mkldnn_pass",
              "conv_bn_fuse_pass",
              "conv_eltwiseadd_bn_fuse_pass",
@@ -249,10 +250,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
              "conv_transpose_bias_mkldnn_fuse_pass",
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_activation_mkldnn_fuse_pass",
-             "fc_fuse_pass",
-             "repeated_fc_relu_fuse_pass",
-             "fc_mkldnn_pass",
-             "fc_act_mkldnn_fuse_pass",
+             //  "fc_fuse_pass",
+             //  "repeated_fc_relu_fuse_pass",
+             //  "fc_mkldnn_pass",
+             //  "fc_act_mkldnn_fuse_pass",
              "matmul_transpose_reshape_mkldnn_fuse_pass",
              "batch_norm_act_fuse_pass",
              "softplus_activation_mkldnn_fuse_pass",
