@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from paddle.distribution.normal import Normal
 from paddle.distribution.transform import ExpTransform
-from paddle.distribution.transformed_distribution import TransformedDistribution
+from paddle.distribution.transformed_distribution import \
+    TransformedDistribution
+
+import paddle
 
 
 class LogNormal(TransformedDistribution):
@@ -45,7 +47,6 @@ class LogNormal(TransformedDistribution):
     Args:
         loc(int|float|list|tuple|numpy.ndarray|Tensor): The means of the underlying Normal distribution.
         scale(int|float|list|tuple|numpy.ndarray|Tensor): The stddevs of the underlying Normal distribution.
-        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
@@ -82,8 +83,8 @@ class LogNormal(TransformedDistribution):
           # [0.34939718] with shape: [1]
     """
 
-    def __init__(self, loc, scale, name=None):
-        self._base = Normal(loc=loc, scale=scale, name=name)
+    def __init__(self, loc, scale):
+        self._base = Normal(loc=loc, scale=scale)
         self.loc = self._base.loc
         self.scale = self._base.scale
         super(LogNormal, self).__init__(self._base, [ExpTransform()])

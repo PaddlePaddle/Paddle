@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import config
 import numpy as np
-import paddle
 import scipy.stats
-import unittest
+import paddle
 from paddle.distribution.kl import kl_divergence
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal

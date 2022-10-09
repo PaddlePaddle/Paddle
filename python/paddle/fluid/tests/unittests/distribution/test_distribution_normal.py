@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+import unittest
 
 import config
 import numpy as np
@@ -23,7 +24,6 @@ from paddle.fluid import layers
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 import scipy.stats
 from test_distribution import DistributionNumpy
-import unittest
 
 np.random.seed(2022)
 

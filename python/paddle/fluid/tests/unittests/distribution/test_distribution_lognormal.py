@@ -13,15 +13,15 @@
 # limitations under the License.
 
 import math
+import unittest
 
 import config
 import numpy as np
-import paddle
 import scipy.stats
-import unittest
+import paddle
 from paddle.distribution.kl import kl_divergence
-from paddle.distribution.normal import Normal
 from paddle.distribution.lognormal import LogNormal
+from paddle.distribution.normal import Normal
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 from test_distribution import DistributionNumpy
 
