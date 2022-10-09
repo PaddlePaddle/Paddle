@@ -2048,7 +2048,6 @@ void BindImperative(py::module *m_ptr) {
                   self.Var().Get<framework::LoDTensor>().dims());
               auto tensor = self.Var().Get<framework::LoDTensor>();
               auto tmp_value = value;
-              bool tmp = egr::Controller::Instance().UseLayoutAutoTune();
               auto desired_layout =
                   paddle::imperative::LayoutAutoTune::Instance()
                       .GetDesiredLayout();
@@ -2056,18 +2055,14 @@ void BindImperative(py::module *m_ptr) {
                   paddle::imperative::LayoutAutoTune::Instance()
                       .GetDefaultLayout();
               bool change_dim =
-                  (tmp && desired_layout != default_layout &&
+                  (desired_layout != default_layout &&
                    tensor.layout() == desired_layout && value.size() == 4);
-              VLOG(6) << "'Shape' method, layout autotune: " << tmp
+              VLOG(6) << "'Shape' method, layout autotune,"
                       << " desired_layout: " << desired_layout
                       << " default_layout: " << default_layout
                       << " tensor layout: " << tensor.layout()
                       << " tensor's shape size is : " << value.size();
 
-              std::cout << " tmp " << tmp << " desired_layout "
-                        << desired_layout << " default_layout "
-                        << default_layout << " change_dim " << change_dim
-                        << " tensor " << tensor.layout() << std::endl;
               if (change_dim && paddle::framework::DataLayoutToString(
                                     desired_layout) == "NCHW") {
                 VLOG(6) << "layout autotune get Shape from NHWC -> NCHW "

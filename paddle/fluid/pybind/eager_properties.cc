@@ -184,15 +184,14 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
     }
   }
 
-  bool tmp = egr::Controller::Instance().UseLayoutAutoTune();
   auto desired_layout =
       paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
   auto default_layout =
       paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
   bool change_dim =
-      (tmp && desired_layout != default_layout &&
+      (desired_layout != default_layout &&
        self->tensor.layout() == desired_layout && value.size() == 4);
-  VLOG(6) << "eager_properties 'Shape' method, layout autotune: " << tmp
+  VLOG(6) << "eager_properties 'Shape' method, layout autotune "
           << " desired_layout: " << desired_layout
           << " default_layout: " << default_layout
           << " tensor layout: " << self->tensor.layout()
