@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
