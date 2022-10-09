@@ -1751,16 +1751,19 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
         is_shape_tensor) {
       std::vector<int> int32_host(tensor->numel());
       if (tensor->place() == platform::CPUPlace()) {
-        memcpy(int32_host.data(),
-               tensor->data<int>(),
-               tensor->numel() * sizeof(int));
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int32_host.data(),
+                             platform::CPUPlace(),
+                             tensor->data<int>(),
+                             tensor->numel() * sizeof(int));
       } else if (tensor->place() == platform::CUDAPlace()) {
 #if defined(PADDLE_WITH_CUDA)
-        cudaMemcpy(int32_host.data(),
-                   tensor->data<int>(),
-                   tensor->numel() * sizeof(int),
-                   cudaMemcpyDeviceToHost);
-        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int32_host.data(),
+                             platform::CUDAPlace(),
+                             tensor->data<int>(),
+                             tensor->numel() * sizeof(int),
+                             nullptr);
 #endif
       }
       shape_tensor_value_[name].emplace_back(int32_host);

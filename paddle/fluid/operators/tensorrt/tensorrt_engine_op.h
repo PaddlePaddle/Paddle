@@ -590,11 +590,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
       if (engine->engine()->isShapeBinding(bind_index) &&
           engine->engine()->bindingIsInput(bind_index)) {
         std::vector<int> shape_v(t.numel());
-        cudaMemcpy(shape_v.data(),
-                   t.data<int32_t>(),
-                   t.numel() * sizeof(int),
-                   cudaMemcpyDeviceToHost);
-        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+        paddle::memory::Copy(platform::CPUPlace(),
+                             shape_v.data(),
+                             platform::CUDAPlace(),
+                             t.data<int32_t>(),
+                             t.numel() * sizeof(int),
+                             nullptr);
         trt_context->setInputShapeBinding(bind_index, shape_v.data());
       }
     }
