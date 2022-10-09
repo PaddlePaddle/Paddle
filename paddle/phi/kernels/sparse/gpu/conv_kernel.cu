@@ -33,82 +33,6 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-#ifdef PADDLE_WITH_CUTLASS
-template <typename T>
-void AlignFeaturesChannel(const GPUContext& dev_ctx,
-                          const SparseCooTensor& x,
-                          SparseCooTensor* const aligned_x,
-                          int channel_idx,
-                          int padding_num) {
-  if (padding_num <= 0) {
-    *aligned_x = x;
-    return;
-  }
-  if (padding_num > 0) {
-    int features_channel_idx = -1;
-    phi::DenseTensor features = x.non_zero_elements();
-    phi::DenseTensor paddings = phi::Empty<T>(dev_ctx, {x.nnz(), padding_num});
-    phi::DenseTensor aligned_features =
-        phi::Empty<T>(dev_ctx, {x.nnz(), x.dims()[channel_idx] + padding_num});
-    ConcatKernel<T, GPUContext>(
-        dev_ctx,
-        std::vector<const DenseTensor*>{&features, &paddings},
-        features_channel_idx,
-        &aligned_features);
-    DDim aligned_dims(x.dims());
-    aligned_dims[channel_idx] += padding_num;
-    *aligned_x =
-        SparseCooTensor(x.non_zero_indices(), aligned_features, aligned_dims);
-  }
-}
-
-template <typename T>
-void AlignKernelChannel(const GPUContext& dev_ctx,
-                        const DenseTensor& kernel,
-                        DenseTensor* const aligned_kernel,
-                        int channel_idx,
-                        int padding_num) {
-  if (padding_num <= 0) {
-    *aligned_kernel = kernel;
-    return;
-  }
-  if (padding_num > 0) {
-    DDim padding_dims = kernel.dims();
-    padding_dims[channel_idx] = padding_num;
-    DenseTensor paddings = phi::Empty<T>(dev_ctx,
-                                         {
-                                             padding_dims[0],
-                                             padding_dims[1],
-                                             padding_dims[2],
-                                             padding_dims[3],
-                                             padding_dims[4],
-                                         });
-    ConcatKernel<T, GPUContext>(
-        dev_ctx,
-        std::vector<const DenseTensor*>{&kernel, &paddings},
-        channel_idx,
-        aligned_kernel);
-  }
-}
-
-template <typename T>
-void AlignKernelChannels(const GPUContext& dev_ctx,
-                         const DenseTensor& kernel,
-                         DenseTensor* const aligned_kernel,
-                         int channel_in_idx,
-                         int channel_out_idx,
-                         int in_padding_num,
-                         int out_padding_num) {
-  DenseTensor aligned_in_kernel;
-  AlignKernelChannel<T>(
-      dev_ctx, kernel, aligned_in_kernel, channel_in_idx, in_padding_num);
-  AlignKernelChannel<T>(dev_ctx,
-                        aligned_in_kernel,
-                        *aligned_kernel,
-                        channel_out_idx,
-                        out_padding_num);
-}
-#endif
 template <typename T, typename IntT>
 void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                         const SparseCooTensor& x,
@@ -365,11 +289,11 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
       using LayoutA = cutlass::layout::RowMajor;
       using LayoutB = cutlass::layout::RowMajor;
       using LayoutOutput = cutlass::layout::RowMajor;
-      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 64, 16>;
-      using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 32, 16>;
+      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<32, 16, 16>;
+      using ShapeMMAWarp = cutlass::gemm::GemmShape<16, 16, 16>;
       using ShapeMMAOp = cutlass::gemm::GemmShape<8, 8, 4>;
       constexpr bool GatherA = true;
-      constexpr int NumStages = 3;
+      constexpr int NumStages = 5;
       // group-gather-gemm fusion
       group_gemm<ElementA,
                  ElementB,
