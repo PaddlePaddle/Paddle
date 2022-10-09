@@ -1006,19 +1006,20 @@ def cuda_pinned_places(device_count=None):
 
 def mlu_places(device_ids=None):
     """
-    **Note**:
+    This function creates a list of :code:`paddle.device.MLUPlace` objects.
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_mlus` would be checked first. For example, if
+    :code:`FLAGS_selected_mlus=0,1,2`, the returned list would
+    be [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+    If :code:`FLAGS_selected_mlus` is not set, all visible
+    mlu places would be returned.
+    If :code:`device_ids` is not None, it should be the device
+    ids of MLUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be
+    [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+
+    Note:
         For multi-card tasks, please use `FLAGS_selected_mlus` environment variable to set the visible MLU device.
-        This function creates a list of :code:`paddle.device.MLUPlace` objects.
-        If :code:`device_ids` is None, environment variable of
-        :code:`FLAGS_selected_mlus` would be checked first. For example, if
-        :code:`FLAGS_selected_mlus=0,1,2`, the returned list would
-        be [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
-        If :code:`FLAGS_selected_mlus` is not set, all visible
-        mlu places would be returned.
-        If :code:`device_ids` is not None, it should be the device
-        ids of MLUs. For example, if :code:`device_ids=[0,1,2]`,
-        the returned list would be
-        [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
 
     Parameters:
         device_ids (list or tuple of int, optional): list of MLU device ids.
