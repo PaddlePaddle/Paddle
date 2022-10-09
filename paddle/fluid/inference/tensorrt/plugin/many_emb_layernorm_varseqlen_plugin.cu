@@ -65,12 +65,14 @@ EmbLayerNormVarSeqlenPluginBase::EmbLayerNormVarSeqlenPluginBase(
   for (size_t i = 0; i < mIdsEmb_.size(); ++i) {
     assert(mIdsEmb_[i].count % mLd == 0);
     mIdsVocabSize.push_back(int32_t(mIdsEmb_[i].count / mLd));
+    WeightsWithOwnership tem_weight;
+    tem_weight.convertAndCopy(mIdsEmb_[i], mType);
     void* cudaMem{nullptr};
     PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMalloc(&cudaMem, getWeightsSize(mIdsEmb_[i], mType)));
+        cudaMalloc(&cudaMem, getWeightsSize(tem_weight, mType)));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpy(cudaMem,
-                                          mIdsEmb_[i].values,
-                                          getWeightsSize(mIdsEmb_[i], mType),
+                                          tem_weight.values,
+                                          getWeightsSize(tem_weight, mType),
                                           cudaMemcpyHostToDevice));
     mIdsEmbPtrs.push_back(cudaMem);
   }
@@ -822,15 +824,12 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginHFaceCreator::createPlugin(
   std::vector<nvinfer1::Weights> IdsEmb;
   bool output_fp16 = initializeFields(fc, &beta, &gamma, &IdsEmb);
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
-  nvinfer1::DataType type;
-  if (output_fp16) {
-    type = nvinfer1::DataType::kHALF;
-  } else {
-    type = nvinfer1::DataType::kFLOAT;
-  }
-  EmbLayerNormVarSeqlenPluginHFace* p =
-      new EmbLayerNormVarSeqlenPluginHFace(name, type, beta, gamma, IdsEmb);
-
+  EmbLayerNormVarSeqlenPluginHFace* p = new EmbLayerNormVarSeqlenPluginHFace(
+      name,
+      output_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+      beta,
+      gamma,
+      IdsEmb);
   return p;
 }
 
@@ -842,14 +841,12 @@ nvinfer1::IPluginV2* EmbLayerNormVarSeqlenPluginMTronCreator::createPlugin(
   std::vector<nvinfer1::Weights> IdsEmb;
   bool output_fp16 = initializeFields(fc, &beta, &gamma, &IdsEmb);
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
-  nvinfer1::DataType type;
-  if (output_fp16) {
-    type = nvinfer1::DataType::kHALF;
-  } else {
-    type = nvinfer1::DataType::kFLOAT;
-  }
-  EmbLayerNormVarSeqlenPluginMTron* p =
-      new EmbLayerNormVarSeqlenPluginMTron(name, type, beta, gamma, IdsEmb);
+  EmbLayerNormVarSeqlenPluginMTron* p = new EmbLayerNormVarSeqlenPluginMTron(
+      name,
+      output_fp16 ? nvinfer1::DataType::kHALF : nvinfer1::DataType::kFLOAT,
+      beta,
+      gamma,
+      IdsEmb);
   return p;
 }
 
