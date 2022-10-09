@@ -97,14 +97,7 @@ class Gumbel(TransformedDistribution):
             paddle.full_like(self.loc, float(finfo.tiny)),
             paddle.full_like(self.loc, float(1 - finfo.eps)))
 
-        self.transforms = (ExpTransform(),
-                           AffineTransform(loc=paddle.full(
-                               0, dtype=self.loc.dtype),
-                                           scale=-paddle.ones_like(self.scale)),
-                           ExpTransform(),
-                           AffineTransform(loc=self.loc, scale=-self.scale))
-
-        super(Gumbel, self).__init__(self.base_dist, self.transforms)
+        super(Gumbel, self).__init__(self.base_dist, ())
 
     @property
     def mean(self):
