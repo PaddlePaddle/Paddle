@@ -61,7 +61,7 @@ class Gumbel(TransformedDistribution):
           value = paddle.full([0.5])
           dist.prob(value)
           # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.33070430])
-          dist.log_prob(value
+          dist.log_prob(value)
           # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [-1.10653067])
           dist.cdf(value)
           # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.54523915])
@@ -147,7 +147,7 @@ class Gumbel(TransformedDistribution):
             Tensor: The variance value.
 
         """
-        temp = paddle.full(math.pi * math.pi, self.scale.dtype)
+        temp = paddle.full(shape=(), fill_value=math.pi * math.pi, dtype=self.scale.dtype)
 
         return paddle.pow(self.scale, 2) * temp / 6
 
@@ -247,7 +247,7 @@ class Gumbel(TransformedDistribution):
         """
         exp_transform = paddle.distribution.ExpTransform()
         affine_tf1 = paddle.distribution.AffineTransform(
-            paddle.full(0), -paddle.ones_like(self.scale))
+            paddle.full(shape=(), fill_value=0), -paddle.ones_like(self.scale))
         affine_tf2 = paddle.distribution.AffineTransform(self.loc, -self.scale)
 
         return affine_tf2.forward(
