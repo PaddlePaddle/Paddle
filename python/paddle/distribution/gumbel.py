@@ -17,9 +17,9 @@ import numbers
 import math
 import numpy as np
 
-from paddle.distribution.uniform import Uniform
 from paddle.distribution.transformed_distribution import TransformedDistribution
 from paddle.distribution.transform import AffineTransform, ExpTransform
+from paddle.fluid import framework as framework
 
 try:
     from collections.abc import Iterable
@@ -49,33 +49,55 @@ class Gumbel(TransformedDistribution):
         scale(int|float|tensor): The std of gumbel distribution.The data type is int, float, tensor.
 
     Examples:
+        .. code-block:: python
 
-        >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-        >>> example.sample()
-        Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-       [4.14814520])
+          import paddle
+          from paddle.distribution.gumbel import Gumbel
+
+          # Gumbel distributed with loc=0, scale=1
+          dist = Gumbel(paddle.full([0.0]), paddle.full([1.0]))
+          dist.sample()
+          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [4.14814520])
+          value = paddle.full([0.5])
+          dist.prob(value)
+          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.33070430])
+          dist.log_prob(value
+          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [-1.10653067])
+          dist.cdf(value)
+          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.54523915])
+          dist.entropy()
+          # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [1.57721567])
+          dist.rsample([2])
+          # Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [[0.80463481], [0.91893655]])
 
     """
 
     def __init__(self, loc, scale):
 
-        self.batch_size_unknown = False
-        self.all_arg_is_float = False
-        self.loc = paddle.to_tensor(loc, dtype='float32')
-        self.scale = paddle.to_tensor(scale, dtype='float32')
+        if not isinstance(loc, (numbers.Real, framework.Variable)):
+            raise TypeError(
+                f"Expected type of loc is Real|Variable, but got {type(loc)}")
+        if not isinstance(scale, (numbers.Real, framework.Variable)):
+            raise TypeError(
+                f"Expected type of scale is Real|Variable, but got {type(scale)}"
+            )
 
-        finfo = np.finfo(dtype='float32')
-        if isinstance(loc, numbers.Number) and isinstance(
-                scale, numbers.Number):
-            self.base_dist = Uniform(float(finfo.tiny), float(1 - finfo.eps))
-        else:
-            self.base_dist = Uniform(
-                paddle.full_like(self.loc, float(finfo.tiny)),
-                paddle.full_like(self.loc, float(1 - finfo.eps)))
+        if isinstance(loc, numbers.Real):
+            self.loc = paddle.full(shape=(), fill_value=loc)
+
+        if isinstance(scale, numbers.Real):
+            self.scale = paddle.full(shape=(), fill_value=scale)
+
+        if self.loc.shape != self.scale.shape:
+            self.loc, self.scale = paddle.broadcast_tensors([self.loc, self.scale])
+
+        finfo = np.finfo(self.loc.dtype)
+        self.base_dist = paddle.distribution.Uniform(
+            paddle.full_like(self.loc, float(finfo.tiny)),
+            paddle.full_like(self.loc, float(1 - finfo.eps)))
 
         self.transforms = (ExpTransform(),
-                           AffineTransform(loc=paddle.to_tensor(
-                               0, dtype='float32'),
+                           AffineTransform(loc=paddle.full(0, dtype=self.loc.dtype),
                                            scale=-paddle.ones_like(self.scale)),
                            ExpTransform(),
                            AffineTransform(loc=self.loc, scale=-self.scale))
@@ -122,7 +144,7 @@ class Gumbel(TransformedDistribution):
             Tensor: The variance value.
 
         """
-        temp = paddle.to_tensor(math.pi * math.pi, dtype='float32')
+        temp = paddle.full(math.pi * math.pi, self.scale.dtype)
 
         return paddle.pow(self.scale, 2) * temp / 6
 
@@ -148,18 +170,10 @@ class Gumbel(TransformedDistribution):
         """Probability density/mass function
 
         Args:
-          value (Tensor): The input tensor.
+            value (Tensor): The input tensor.
 
         Returns:
-          Tensor: probability.The data type is same with value.
-
-        Examples:
-
-            >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-            >>> value = paddle.to_tensor([0.5])
-            >>> example.prob(value)
-            Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            [0.33070430])
+            Tensor: probability.The data type is same with value.
 
         """
         if type(value) != type(self.loc):
@@ -172,18 +186,10 @@ class Gumbel(TransformedDistribution):
         """Log probability density/mass function.
 
         Args:
-          value (Tensor): The input tensor.
+            value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability.The data type is same with value.
-
-        Examples:
-
-        >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-        >>> value = paddle.to_tensor([0.5])
-        >>> example.prob(value
-        Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-        [-1.10653067])
+            Tensor: log probability.The data type is same with value.
 
         """
         return paddle.log(self.prob(value))
@@ -195,14 +201,6 @@ class Gumbel(TransformedDistribution):
 
         Returns:
             Tensor: cumulative probability of value.
-
-        Examples:
-
-        >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-        >>> value = paddle.to_tensor([0.5])
-        >>> example.cdf(value)
-        Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-       [0.54523915])
 
         """
         if value.dtype != self.loc.dtype:
@@ -216,32 +214,17 @@ class Gumbel(TransformedDistribution):
         Returns:
             Entropy of distribution.
 
-        Examples:
-
-        >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-        >>> example.entropy()
-        Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-       [1.57721567])
-
         """
         return paddle.log(self.scale) + 1 + np.euler_gamma
 
     def sample(self, shape):
-        """Sample from ``TransformedDistribution``.
+        """Sample from ``Gumbel``.
 
         Args:
-            shape (list, optional): The sample shape. Defaults to ().
+            shape (Sequence[int], optional): The sample shape. Defaults to ().
 
         Returns:
-             Tensor: A tensor with prepended dimensions shape.The data type is float32.
-
-        Examples:
-
-        >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-        >>> m.sample()
-        Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-       [[0.39180365],
-        [2.69657302]])
+            Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
         if not isinstance(shape, Iterable):
@@ -253,37 +236,19 @@ class Gumbel(TransformedDistribution):
     def rsample(self, shape):
         """reparameterized sample
         Args:
-          shape (list): 1D `int32`. Shape of the generated samples.
-          seed (int): Python integer number.
+            shape (Sequence[int]): 1D `int32`. Shape of the generated samples.
 
         Returns:
-          Tensor: A tensor with prepended dimensions shape.The data type is float32.
-
-        Examples:
-
-        >>> example = Gumbel(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-        >>> example.rsample([2])
-       Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-       [[0.80463481],
-        [0.91893655]])
+            Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-        with paddle.no_grad():
-            x = self._base.sample(shape)
+        exp_transform = paddle.distribution.ExpTransform()
+        affine_tf1 = paddle.distribution.AffineTransform(
+            paddle.full(0),
+            -paddle.ones_like(self.scale))
+        affine_tf2 = paddle.distribution.AffineTransform(
+            self.loc, -self.scale)
 
-            expTransform = paddle.distribution.ExpTransform()
-            affineTf1 = paddle.distribution.AffineTransform(
-                paddle.to_tensor(0, dtype='float32'),
-                -paddle.ones_like(self.scale))
-            affineTf2 = paddle.distribution.AffineTransform(
-                self.loc, -self.scale)
+        return affine_tf2.forward(exp_transform.inverse(affine_tf1.forward(exp_transform.inverse(
+            self._base.sample(shape)))))
 
-            x = expTransform.inverse(x)
-
-            x = affineTf1.forward(x)
-
-            x = expTransform.inverse(x)
-
-            x = affineTf2.forward(x)
-
-            return x

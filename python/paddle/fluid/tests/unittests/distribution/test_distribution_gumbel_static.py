@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,14 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
 import scipy.stats
 
+import paddle
 import config
 import parameterize
 
 from paddle.distribution.gumbel import Gumbel
+
+paddle.enable_static()
 
 
 @parameterize.place(config.DEVICES)
@@ -31,78 +34,70 @@ from paddle.distribution.gumbel import Gumbel
 class TestGumbel(unittest.TestCase):
 
     def setUp(self):
-        self._dist = Gumbel(loc=paddle.to_tensor(self.loc),
-                            scale=paddle.to_tensor(self.scale))
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        executor = paddle.static.Executor(self.place)
+        with paddle.static.program_guard(main_program, startup_program):
+            loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
+            scale = paddle.static.data('scale', self.scale.shape,
+                                       self.scale.dtype)
+            self._dist = Gumbel(loc=loc, scale=scale)
+            self.sample_shape = (50000, )
+            mean = self._dist.mean
+            var = self._dist.variance
+            stddev = self._dist.stddev
+            entropy = self._dist.entropy()
+            samples = self._dist.sample(self.sample_shape)
+        fetch_list = [mean, var, stddev, entropy, samples]
+        self.feeds = {'loc': self.loc, 'scale': self.scale}
+
+        executor.run(startup_program)
+        [self.mean, self.var, self.stddev, self.entropy,
+         self.samples] = executor.run(main_program,
+                                      feed=self.feeds,
+                                      fetch_list=fetch_list)
 
     def test_mean(self):
-        mean = self._dist.mean
-        self.assertEqual(mean.numpy().dtype, self._np_mean().dtype)
-        np.testing.assert_allclose(mean,
+        self.assertEqual(str(self.mean.dtype).split('.')[-1], self.scale.dtype)
+        np.testing.assert_allclose(self.mean,
                                    self._np_mean(),
                                    rtol=config.RTOL.get(str(self.scale.dtype)),
                                    atol=config.ATOL.get(str(self.scale.dtype)))
 
     def test_variance(self):
-        var = self._dist.variance
-        self.assertEqual(var.numpy().dtype, self._np_variance().dtype)
-        np.testing.assert_allclose(var,
+        self.assertEqual(str(self.var.dtype).split('.')[-1], self.scale.dtype)
+        np.testing.assert_allclose(self.var,
                                    self._np_variance(),
                                    rtol=config.RTOL.get(str(self.scale.dtype)),
                                    atol=config.ATOL.get(str(self.scale.dtype)))
 
     def test_stddev(self):
-        stddev = self._dist.stddev
-        self.assertEqual(stddev.numpy().dtype, self._np_stddev().dtype)
-        np.testing.assert_allclose(stddev,
+        self.assertEqual(
+            str(self.stddev.dtype).split('.')[-1], self.scale.dtype)
+        np.testing.assert_allclose(self.stddev,
                                    self._np_stddev(),
                                    rtol=config.RTOL.get(str(self.scale.dtype)),
                                    atol=config.ATOL.get(str(self.scale.dtype)))
 
     def test_entropy(self):
-        entropy = self._dist.entropy()
-        self.assertEqual(entropy.numpy().dtype, self._np_entropy().dtype)
-        np.testing.assert_allclose(entropy,
-                                   self._np_stddev(),
-                                   rtol=config.RTOL.get(str(self.scale.dtype)),
-                                   atol=config.ATOL.get(str(self.scale.dtype)))
+        self.assertEqual(
+            str(self.entropy.dtype).split('.')[-1], self.scale.dtype)
 
     def test_sample(self):
+        self.assertEqual(self.samples.dtype, self.scale.dtype)
+        self.assertEqual(tuple(self.samples.shape),
+                         tuple(self._dist._extend_shape(self.sample_shape)))
 
-        sample_shape = [10000]
-        samples = self._dist.sample(sample_shape)
-        sample_values = samples.numpy()
-        self.assertEqual(samples.dtype, self.scale.dtype)
+        self.assertEqual(self.samples.shape, self.sample_shape + self.loc.shape)
+        self.assertEqual(self.samples.shape, self.sample_shape + self.loc.shape)
 
-        # There is a loss of accuracy in this conversion.
         tolerance = 1e-3
-
-        np.testing.assert_allclose(sample_values.mean(axis=0),
+        np.testing.assert_allclose(self.samples.mean(axis=0),
                                    scipy.stats.gumbel_r.mean(self.loc,
                                                              scale=self.scale),
                                    rtol=0.1,
                                    atol=tolerance)
-        np.testing.assert_allclose(sample_values.var(axis=0),
-                                   scipy.stats.gumbel_r.var(self.loc,
-                                                            scale=self.scale),
-                                   rtol=0.1,
-                                   atol=tolerance)
-
-    def test_rsample(self):
-
-        sample_shape = [10000]
-        samples = self._dist.rsample(sample_shape)
-        sample_values = samples.numpy()
-        self.assertEqual(samples.dtype, self.scale.dtype)
-
-        # There is a loss of accuracy in this conversion.
-        tolerance = 1e-4
-
-        np.testing.assert_allclose(sample_values.mean(axis=0),
-                                   scipy.stats.gumbel_r.mean(self.loc,
-                                                             scale=self.scale),
-                                   rtol=0.1,
-                                   atol=tolerance)
-        np.testing.assert_allclose(sample_values.var(axis=0),
+        np.testing.assert_allclose(self.samples.var(axis=0),
                                    scipy.stats.gumbel_r.var(self.loc,
                                                             scale=self.scale),
                                    rtol=0.1,
@@ -157,7 +152,6 @@ class TestGumbelPDF(unittest.TestCase):
                                        self.value, self.loc, self.scale),
                                    rtol=config.RTOL.get(str(self.loc.dtype)),
                                    atol=config.ATOL.get(str(self.loc.dtype)))
-
 
 if __name__ == '__main__':
     unittest.main()
