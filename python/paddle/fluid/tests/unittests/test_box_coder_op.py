@@ -333,7 +333,7 @@ class TestBoxCoderAPI(unittest.TestCase):
                                                box_normalized=False)
         boxes_dy_np = boxes_dy.numpy()
 
-        self.assertTrue(np.array_equal(boxes_np[0], boxes_dy_np))
+        np.testing.assert_allclose(boxes_np[0], boxes_dy_np)
         paddle.enable_static()
 
 
