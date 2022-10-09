@@ -37,11 +37,15 @@ __global__ void LerpGradKernelImpl(const T* weight,
                                    const int y_size) {
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
     T temp_dx = weight[idx] * dout[idx];
-    if (idx < x_size) {
-      dx[idx] = dout[idx] - temp_dx;
+    if (dx) {
+      if (idx < x_size) {
+        dx[idx] = dout[idx] - temp_dx;
+      }
     }
-    if (idx < y_size) {
-      dy[idx] = temp_dx;
+    if (dy) {
+      if (idx < y_size) {
+        dy[idx] = temp_dx;
+      }
     }
   }
 }
@@ -57,11 +61,15 @@ __global__ void LerpGradScalarKernelImpl(const T* weight,
   T weight_scalar = weight[0];
   CUDA_KERNEL_LOOP_TYPE(idx, out_size, int64_t) {
     T temp_dx = weight_scalar * dout[idx];
-    if (idx < x_size) {
-      dx[idx] = dout[idx] - temp_dx;
+    if (dx) {
+      if (idx < x_size) {
+        dx[idx] = dout[idx] - temp_dx;
+      }
     }
-    if (idx < y_size) {
-      dy[idx] = temp_dx;
+    if (dy) {
+      if (idx < y_size) {
+        dy[idx] = temp_dx;
+      }
     }
   }
 }
@@ -176,10 +184,19 @@ void LerpGradKernel(const Context& ctx,
   //  they need to be broadcast and then reduced.
   bool reduce_flag = XYNeedReduce(x, y, out);
   if (!reduce_flag) {
-    T* x_grad_data = ctx.template Alloc<T>(x_grad);
-    T* y_grad_data = ctx.template Alloc<T>(y_grad);
-    int x_grad_size = x.numel();
-    int y_grad_size = y.numel();
+    int x_grad_size = 0, y_grad_size = 0;
+    T* x_grad_data;
+    T* y_grad_data;
+
+    if (x_grad) {
+      x_grad_data = ctx.template Alloc<T>(x_grad);
+      x_grad_size = x.numel();
+    }
+
+    if (y_grad) {
+      y_grad_data = ctx.template Alloc<T>(y_grad);
+      y_grad_size = y.numel();
+    }
 
     SwitchKernel<T, Context>(ctx,
                              weight,
@@ -190,12 +207,21 @@ void LerpGradKernel(const Context& ctx,
                              y_grad_data);
 
   } else {
+    int x_grad_size = 0, y_grad_size = 0;
     DenseTensor b_xgrad = phi::EmptyLike<T, Context>(ctx, out_grad);
     DenseTensor b_ygrad = phi::EmptyLike<T, Context>(ctx, out_grad);
-    T* x_grad_data = ctx.template Alloc<T>(&b_xgrad);
-    T* y_grad_data = ctx.template Alloc<T>(&b_ygrad);
-    int x_grad_size = out.numel();
-    int y_grad_size = out.numel();
+    T* x_grad_data;
+    T* y_grad_data;
+
+    if (x_grad) {
+      x_grad_data = ctx.template Alloc<T>(&b_xgrad);
+      x_grad_size = out.numel();
+    }
+
+    if (y_grad) {
+      y_grad_data = ctx.template Alloc<T>(&b_ygrad);
+      y_grad_size = out.numel();
+    }
 
     SwitchKernel<T, Context>(ctx,
                              weight,
@@ -205,24 +231,28 @@ void LerpGradKernel(const Context& ctx,
                              x_grad_data,
                              y_grad_data);
 
-    std::vector<int> reduce_axis_x =
-        funcs::GetReduceDim(x_grad->dims(), b_xgrad.dims(), -1);
-
-    std::vector<int> reduce_axis_y =
-        funcs::GetReduceDim(y_grad->dims(), b_ygrad.dims(), -1);
-
-    if (!reduce_axis_x.empty()) {
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, b_xgrad, x_grad, kps::IdentityFunctor<T>(), reduce_axis_x);
-    } else {
-      x_grad->ShareDataWith(b_xgrad);
+    if (x_grad) {
+      std::vector<int> reduce_axis_x =
+          funcs::GetReduceDim(x_grad->dims(), b_xgrad.dims(), -1);
+      if (!reduce_axis_x.empty()) {
+        phi::funcs::
+            ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+                ctx, b_xgrad, x_grad, kps::IdentityFunctor<T>(), reduce_axis_x);
+      } else {
+        x_grad->ShareDataWith(b_xgrad);
+      }
     }
 
-    if (!reduce_axis_y.empty()) {
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-          ctx, b_ygrad, y_grad, kps::IdentityFunctor<T>(), reduce_axis_y);
-    } else {
-      y_grad->ShareDataWith(b_ygrad);
+    if (y_grad) {
+      std::vector<int> reduce_axis_y =
+          funcs::GetReduceDim(y_grad->dims(), b_ygrad.dims(), -1);
+      if (!reduce_axis_y.empty()) {
+        phi::funcs::
+            ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+                ctx, b_ygrad, y_grad, kps::IdentityFunctor<T>(), reduce_axis_y);
+      } else {
+        y_grad->ShareDataWith(b_ygrad);
+      }
     }
   }
 }
