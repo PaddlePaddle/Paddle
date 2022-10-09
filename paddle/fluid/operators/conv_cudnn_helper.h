@@ -14,12 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/conv_base_helper.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace paddle {
@@ -53,11 +52,9 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
   }
 
   auto in_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *input);
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *out, new_out_dims);
+      phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
+  auto out_t = phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+      *out, new_out_dims);
 
   phi::funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_t, in_t, offsets, extents);
@@ -196,6 +193,7 @@ struct SearchAlgorithmBase<cudnnConvolutionFwdAlgoPerf_t> {
     return actual_perf_count;
   }
 
+#if CUDNN_VERSION < 8000
   static int GetConvolutionAlgorithm(const ConvArgs& args,
                                      int64_t workspace_size_limit) {
     int algo = -1;
@@ -211,6 +209,7 @@ struct SearchAlgorithmBase<cudnnConvolutionFwdAlgoPerf_t> {
             &algo));
     return algo;
   }
+#endif
 
   template <typename T>
   static SearchResult<AlgoT> FindAlgoExhaustiveSearch(
@@ -333,6 +332,7 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdDataAlgoPerf_t> {
     return actual_perf_count;
   }
 
+#if CUDNN_VERSION < 8000
   static int GetConvolutionAlgorithm(const ConvArgs& args,
                                      int64_t workspace_size_limit) {
     int algo = -1;
@@ -348,6 +348,7 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdDataAlgoPerf_t> {
             &algo));
     return algo;
   }
+#endif
 
   template <typename T>
   static SearchResult<AlgoT> FindAlgoExhaustiveSearch(
@@ -470,6 +471,7 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
     return actual_perf_count;
   }
 
+#if CUDNN_VERSION < 8000
   static int GetConvolutionAlgorithm(const ConvArgs& args,
                                      int64_t workspace_size_limit) {
     int algo = -1;
@@ -485,6 +487,7 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
             &algo));
     return algo;
   }
+#endif
 
   template <typename T>
   static SearchResult<AlgoT> FindAlgoExhaustiveSearch(
@@ -749,7 +752,8 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
     }
 #endif
 
-    result.workspace_size = GetWorkspaceSize(args, result.algo);
+    result.workspace_size =
+        SearchAlgorithmBase<PerfT>::GetWorkspaceSize(args, result.algo);
     if (result.workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
       VLOG(4) << GetPerfResultString<PerfT>("[Heuristic] Perf result",
@@ -772,7 +776,8 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
     result.algo = SearchAlgorithmBase<PerfT>::GetConvolutionAlgorithm(
         args, workspace_size_limit);
 #endif
-    result.workspace_size = GetWorkspaceSize(args, result.algo);
+    result.workspace_size =
+        SearchAlgorithmBase<PerfT>::GetWorkspaceSize(args, result.algo);
 
     return result;
   }
