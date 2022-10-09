@@ -92,7 +92,7 @@ class Gumbel(TransformedDistribution):
         else:
             self.loc, self.scale = loc, scale
 
-        finfo = np.finfo(self.loc.dtype)
+        finfo = np.finfo(dtype='float32')
         self.base_dist = paddle.distribution.Uniform(
             paddle.full_like(self.loc, float(finfo.tiny)),
             paddle.full_like(self.loc, float(1 - finfo.eps)))
