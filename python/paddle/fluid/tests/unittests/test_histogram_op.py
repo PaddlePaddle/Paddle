@@ -19,7 +19,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestHistogramOpAPI(unittest.TestCase):

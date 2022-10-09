@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 import six
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorFillDiagTensor_Test(unittest.TestCase):
@@ -58,8 +57,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
     def test_dim2(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim2()
         self.func_dim2()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -92,8 +89,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
     def test_dim2_offset_1(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim2_offset_1()
         self.func_dim2_offset_1()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -126,8 +121,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
     def test_dim2_offset1(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim2_offset1()
         self.func_dim2_offset1()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -173,8 +166,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
     def test_func_dim4(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_dim4()
         self.func_dim4()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -204,8 +195,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
 
     def test_largedim(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_largedim()
         self.func_largedim()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 

@@ -18,7 +18,6 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
 
 
 def p_normalize(x, axis=1, p=2, epsilon=1e-12, keepdims=True):

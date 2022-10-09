@@ -22,7 +22,7 @@ import cv2
 import paddle.vision.transforms as T
 from paddle.vision.datasets import DatasetFolder, ImageFolder, MNIST, FashionMNIST, Flowers
 from paddle.dataset.common import _check_exists_and_download
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestFolderDatasets(unittest.TestCase):
@@ -55,8 +55,6 @@ class TestFolderDatasets(unittest.TestCase):
             pass
 
     def test_dataset(self):
-        with _test_eager_guard():
-            self.func_test_dataset()
         self.func_test_dataset()
 
     def func_test_folder(self):
@@ -72,8 +70,6 @@ class TestFolderDatasets(unittest.TestCase):
         assert len(loader) == 4
 
     def test_folder(self):
-        with _test_eager_guard():
-            self.func_test_folder()
         self.func_test_folder()
 
     def func_test_transform(self):
@@ -92,8 +88,6 @@ class TestFolderDatasets(unittest.TestCase):
             pass
 
     def test_transform(self):
-        with _test_eager_guard():
-            self.func_test_transform()
         self.func_test_transform()
 
     def func_test_errors(self):
@@ -106,8 +100,6 @@ class TestFolderDatasets(unittest.TestCase):
             _check_exists_and_download('temp_paddle', None, None, None, False)
 
     def test_errors(self):
-        with _test_eager_guard():
-            self.func_test_errors()
         self.func_test_errors()
 
 
@@ -127,8 +119,6 @@ class TestMNISTTest(unittest.TestCase):
         self.assertTrue(0 <= int(label) <= 9)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -164,8 +154,6 @@ class TestMNISTTrain(unittest.TestCase):
             mnist = MNIST(mode='train', transform=transform, backend=1)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -185,8 +173,6 @@ class TestFASHIONMNISTTest(unittest.TestCase):
         self.assertTrue(0 <= int(label) <= 9)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -222,8 +208,6 @@ class TestFASHIONMNISTTrain(unittest.TestCase):
             mnist = FashionMNIST(mode='train', transform=transform, backend=1)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
     def func_test_dataset_value(self):
@@ -234,8 +218,6 @@ class TestFASHIONMNISTTrain(unittest.TestCase):
         np.testing.assert_allclose(value, 72.94035223214286)
 
     def test_dataset_value(self):
-        with _test_eager_guard():
-            self.func_test_dataset_value()
         self.func_test_dataset_value()
 
 
@@ -255,8 +237,6 @@ class TestFlowersTrain(unittest.TestCase):
         self.assertTrue(label.shape[0] == 1)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -276,8 +256,6 @@ class TestFlowersValid(unittest.TestCase):
         self.assertTrue(label.shape[0] == 1)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -313,8 +291,6 @@ class TestFlowersTest(unittest.TestCase):
             flowers = Flowers(mode='test', backend=1)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 

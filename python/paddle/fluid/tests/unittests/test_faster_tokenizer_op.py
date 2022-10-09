@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 from paddle.dataset.common import DATA_HOME
-from paddle.fluid.framework import core, _non_static_mode, _test_eager_guard
+from paddle.fluid.framework import core, _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle import _C_ops, _legacy_C_ops
 

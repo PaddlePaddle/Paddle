@@ -310,5 +310,4 @@ class TestPtb(unittest.TestCase):
 
 if __name__ == '__main__':
     # switch into new eager mode
-    with fluid.framework._test_eager_guard():
-        unittest.main()
+    unittest.main()

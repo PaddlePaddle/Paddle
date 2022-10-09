@@ -192,25 +192,23 @@ def mv(x, vec, name=None):
         .. code-block:: python
 
             import paddle
-            from paddle.fluid.framework import _test_eager_guard
             paddle.seed(100)
 
             # csr @ dense -> dense
-            with _test_eager_guard():
-                crows = [0, 2, 3, 5]
-                cols = [1, 3, 2, 0, 1]
-                values = [1., 2., 3., 4., 5.]
-                dense_shape = [3, 4]
-                csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-                #        crows=[0, 2, 3, 5],
-                #        cols=[1, 3, 2, 0, 1],
-                #        values=[1., 2., 3., 4., 5.])
-                vec = paddle.randn([4])
+            crows = [0, 2, 3, 5]
+            cols = [1, 3, 2, 0, 1]
+            values = [1., 2., 3., 4., 5.]
+            dense_shape = [3, 4]
+            csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 2, 3, 5],
+            #        cols=[1, 3, 2, 0, 1],
+            #        values=[1., 2., 3., 4., 5.])
+            vec = paddle.randn([4])
 
-                out = paddle.incubate.sparse.mv(csr, vec)
-                # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                #        [-3.85499096, -2.42975140, -1.75087738])
+            out = paddle.incubate.sparse.mv(csr, vec)
+            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-3.85499096, -2.42975140, -1.75087738])
 
     """
     return _C_ops.sparse_mv(x, vec)
@@ -238,17 +236,15 @@ def add(x, y, name=None):
     ..  code-block:: python
 
         import paddle
-        from paddle.fluid.framework import _test_eager_guard
 
         paddle.device.set_device("cpu")
 
-        with _test_eager_guard():
-            x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
-            y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
-            sparse_x = x.to_sparse_csr()
-            sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.incubate.sparse.add(sparse_x, sparse_y)
-            print(sparse_z.to_dense())
+        x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
+        y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
+        sparse_x = x.to_sparse_csr()
+        sparse_y = y.to_sparse_csr()
+        sparse_z = paddle.incubate.sparse.add(sparse_x, sparse_y)
+        print(sparse_z.to_dense())
 
         # [[ 0., -1.,  0.,  0.],
         # [ 0.,  2., -6.,  0.],
@@ -295,17 +291,15 @@ def subtract(x, y, name=None):
     ..  code-block:: python
 
         import paddle
-        from paddle.fluid.framework import _test_eager_guard
 
         paddle.device.set_device("cpu")
 
-        with _test_eager_guard():
-            x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
-            y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
-            sparse_x = x.to_sparse_csr()
-            sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.incubate.sparse.subtract(sparse_x, sparse_y)
-            print(sparse_z.to_dense())
+        x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
+        y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
+        sparse_x = x.to_sparse_csr()
+        sparse_y = y.to_sparse_csr()
+        sparse_z = paddle.incubate.sparse.subtract(sparse_x, sparse_y)
+        print(sparse_z.to_dense())
 
         # [[ 0., -1.,  0.,  4.],
         # [ 0., -2.,  0.,  0.],
@@ -340,17 +334,15 @@ def multiply(x, y, name=None):
     ..  code-block:: python
 
         import paddle
-        from paddle.fluid.framework import _test_eager_guard
 
         paddle.device.set_device("cpu")
 
-        with _test_eager_guard():
-            x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
-            y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
-            sparse_x = x.to_sparse_csr()
-            sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.incubate.sparse.multiply(sparse_x, sparse_y)
-            print(sparse_z.to_dense())
+        x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
+        y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
+        sparse_x = x.to_sparse_csr()
+        sparse_y = y.to_sparse_csr()
+        sparse_z = paddle.incubate.sparse.multiply(sparse_x, sparse_y)
+        print(sparse_z.to_dense())
 
         # [[ 0.,  0.,  0., -4.],
         # [ 0.,  0.,  9.,  0.],
@@ -388,17 +380,15 @@ def divide(x, y, name=None):
     ..  code-block:: python
 
         import paddle
-        from paddle.fluid.framework import _test_eager_guard
 
         paddle.device.set_device("cpu")
 
-        with _test_eager_guard():
-            x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
-            y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
-            sparse_x = x.to_sparse_csr()
-            sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.incubate.sparse.divide(sparse_x, sparse_y)
-            print(sparse_z.to_dense())
+        x = paddle.to_tensor([[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]], 'float32')
+        y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
+        sparse_x = x.to_sparse_csr()
+        sparse_y = y.to_sparse_csr()
+        sparse_z = paddle.incubate.sparse.divide(sparse_x, sparse_y)
+        print(sparse_z.to_dense())
 
         # [[ nan      , -inf.     ,  nan      , -1.       ],
         # [ nan      ,  0.       ,  1.       ,  nan      ],

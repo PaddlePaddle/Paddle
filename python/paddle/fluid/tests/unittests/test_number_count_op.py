@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.backward import append_backward
 from paddle.distributed.models.moe import utils
-from paddle.fluid.framework import _test_eager_guard
 
 
 def count(x, upper_num):

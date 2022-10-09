@@ -19,7 +19,6 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 
@@ -93,16 +92,11 @@ class TestTruncAPI(unittest.TestCase):
     def test_api_eager(self):
         paddle.disable_static(self.place)
 
-        with _test_eager_guard():
-            x_tensor = paddle.to_tensor(self.x)
-            out = paddle.trunc(x_tensor)
+        x_tensor = paddle.to_tensor(self.x)
+        out = paddle.trunc(x_tensor)
         out_ref = np.trunc(self.x)
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_dygraph()
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):

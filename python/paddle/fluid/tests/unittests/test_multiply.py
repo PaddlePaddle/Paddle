@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.tensor as tensor
 from paddle.static import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 
 class TestMultiplyApi(unittest.TestCase):

@@ -18,7 +18,6 @@ import time
 import paddle.nn as nn
 import numpy as np
 import threading
-from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleNet(nn.Layer):

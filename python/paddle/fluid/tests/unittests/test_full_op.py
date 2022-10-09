@@ -21,7 +21,6 @@ from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 # Test python API

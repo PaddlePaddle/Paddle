@@ -17,7 +17,6 @@ import numpy as np
 import paddle
 from paddle.incubate import sparse
 from paddle.incubate.sparse import nn
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestGradientAdd(unittest.TestCase):

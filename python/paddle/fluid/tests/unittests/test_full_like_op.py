@@ -20,7 +20,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestFullOp(unittest.TestCase):

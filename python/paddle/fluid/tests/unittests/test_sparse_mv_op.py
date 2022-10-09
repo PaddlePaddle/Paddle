@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 import numpy as np
 import scipy

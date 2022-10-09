@@ -19,7 +19,6 @@ import paddle.nn.functional as F
 import paddle.fluid.initializer as I
 import unittest
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 def _reverse_repeat_list(t, n):

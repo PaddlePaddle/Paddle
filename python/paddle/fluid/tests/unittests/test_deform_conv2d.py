@@ -17,7 +17,6 @@ import paddle.nn.functional as F
 import paddle.nn.initializer as I
 import numpy as np
 import unittest
-from paddle.fluid.framework import _test_eager_guard
 from unittest import TestCase
 
 

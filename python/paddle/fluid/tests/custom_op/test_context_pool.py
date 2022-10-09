@@ -20,7 +20,6 @@ import paddle
 from paddle.utils.cpp_extension import load, get_build_directory
 from utils import paddle_includes, extra_cc_args, extra_nvcc_args
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from paddle.fluid.framework import _test_eager_guard
 
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.

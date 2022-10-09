@@ -16,7 +16,6 @@ import unittest
 import paddle.fluid as fluid
 import numpy as np
 from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _test_eager_guard
 
 
 class MLP(fluid.Layer):

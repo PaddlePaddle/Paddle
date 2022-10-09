@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.io import Dataset, IterableDataset, TensorDataset, \
         ComposeDataset, ChainDataset, DataLoader, random_split, Subset
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph
 
 IMAGE_SIZE = 32
 

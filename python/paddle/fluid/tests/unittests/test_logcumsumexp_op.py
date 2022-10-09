@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 from op_test import OpTest
 
 

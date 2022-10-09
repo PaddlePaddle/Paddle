@@ -26,7 +26,6 @@ import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
 from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
-from paddle.fluid.framework import _test_eager_guard
 from imperative_test_utils import fix_model_dict, ImperativeLenet
 
 os.environ["CPU_NUM"] = "1"

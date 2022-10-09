@@ -207,10 +207,8 @@ class Conv3D(_Conv3D):
 
         .. code-block:: python
 
-          import paddle
-          from paddle.fluid.framework import _test_eager_guard
+            import paddle
 
-          with _test_eager_guard():
             indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
             values = [[1], [2], [3], [4]]
             indices = paddle.to_tensor(indices, dtype='int32')
@@ -344,10 +342,8 @@ class SubmConv3D(_Conv3D):
 
         .. code-block:: python
 
-          import paddle
-          from paddle.fluid.framework import _test_eager_guard
+            import paddle
 
-          with _test_eager_guard():
             indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
             values = [[1], [2], [3], [4]]
             dense_shape = [1, 1, 3, 4, 1]

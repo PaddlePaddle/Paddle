@@ -121,16 +121,12 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
         self.run_program(enable_autotune=True)
 
     def test_enable_autotune(self):
-        with paddle.fluid.framework._test_eager_guard():
-            self.func_enable_autotune()
         self.func_enable_autotune()
 
     def func_disable_autotune(self):
         self.run_program(enable_autotune=False)
 
     def test_disable_autotune(self):
-        with paddle.fluid.framework._test_eager_guard():
-            self.func_disable_autotune()
         self.func_disable_autotune()
 
 

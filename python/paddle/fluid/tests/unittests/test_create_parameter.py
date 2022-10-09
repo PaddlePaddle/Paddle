@@ -54,8 +54,6 @@ class TestCreateParameterError(unittest.TestCase):
             self.assertRaises(TypeError, test_default_initializer)
 
     def test_errors(self):
-        with fluid.framework._test_eager_guard():
-            self.func_errors()
         self.func_errors()
 
 

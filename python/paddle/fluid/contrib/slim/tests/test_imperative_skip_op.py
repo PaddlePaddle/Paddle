@@ -30,7 +30,6 @@ from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
 
 from imperative_test_utils import fix_model_dict, train_lenet, ImperativeLenetWithSkipQuant
-from paddle.fluid.framework import _test_eager_guard
 
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():

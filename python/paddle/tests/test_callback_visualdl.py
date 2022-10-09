@@ -29,7 +29,7 @@ import paddle.vision.transforms as T
 from paddle.vision.datasets import MNIST
 from paddle.metric import Accuracy
 from paddle.nn.layer.loss import CrossEntropyLoss
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class MnistDataset(MNIST):
@@ -73,8 +73,6 @@ class TestCallbacks(unittest.TestCase):
                   callbacks=callback)
 
     def test_visualdl_callback(self):
-        with _test_eager_guard():
-            self.func_visualdl_callback()
         self.func_visualdl_callback()
 
 

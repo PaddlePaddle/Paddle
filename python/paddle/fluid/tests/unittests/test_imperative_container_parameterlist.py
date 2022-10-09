@@ -17,7 +17,6 @@ import paddle.fluid as fluid
 import numpy as np
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import _test_eager_guard
 
 
 class MyLayer(fluid.Layer):

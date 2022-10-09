@@ -19,7 +19,6 @@ from op_test import OpTest
 import paddle
 from paddle.fluid import dygraph
 from paddle import static
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 

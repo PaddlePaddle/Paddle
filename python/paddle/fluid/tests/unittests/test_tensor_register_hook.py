@@ -17,7 +17,6 @@ import numpy as np
 
 import paddle
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
@@ -161,8 +160,6 @@ class TestTensorRegisterHook(unittest.TestCase):
 
     def test_hook_for_interior_var(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_hook_for_interior_var()
         self.func_hook_for_interior_var()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -208,8 +205,6 @@ class TestTensorRegisterHook(unittest.TestCase):
 
     def test_hook_for_leaf_var(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_hook_for_leaf_var()
         self.func_hook_for_leaf_var()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -269,8 +264,6 @@ class TestTensorRegisterHook(unittest.TestCase):
 
     def test_hook_for_accumulated_grad_interior_var(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_hook_for_accumulated_grad_interior_var()
         self.func_hook_for_accumulated_grad_interior_var()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -316,8 +309,6 @@ class TestTensorRegisterHook(unittest.TestCase):
                                                       removed=True)
 
     def test_hook_for_accumulated_grad_leaf_var(self):
-        with _test_eager_guard():
-            self.func_hook_for_accumulated_grad_leaf_var()
         self.func_hook_for_accumulated_grad_leaf_var()
 
     def func_hook_in_model(self):
@@ -370,8 +361,6 @@ class TestTensorRegisterHook(unittest.TestCase):
 
     def test_func_hook_in_model(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_hook_in_model()
         self.func_hook_in_model()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -456,8 +445,6 @@ class TestTensorRegisterHook(unittest.TestCase):
 
     def test_multiple_hooks_for_interior_var(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_multiple_hooks_for_interior_var()
         self.func_multiple_hooks_for_interior_var()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -500,8 +487,6 @@ class TestTensorRegisterHook(unittest.TestCase):
             np.testing.assert_array_equal(x.grad.numpy(), np.array([8.0]))
 
     def test_hook_in_double_grad(self):
-        with _test_eager_guard():
-            self.func_hook_in_double_grad()
         self.func_hook_in_double_grad()
 
     def func_remove_one_hook_multiple_times(self):
@@ -516,8 +501,6 @@ class TestTensorRegisterHook(unittest.TestCase):
             self.assertFalse(h.remove())
 
     def test_remove_one_hook_multiple_times(self):
-        with _test_eager_guard():
-            self.func_remove_one_hook_multiple_times()
         self.func_remove_one_hook_multiple_times()
 
     def func_register_hook_for_stop_gradient_var(self):
@@ -530,8 +513,6 @@ class TestTensorRegisterHook(unittest.TestCase):
                 x.register_hook(lambda grad: grad * 2)
 
     def test_register_hook_for_stop_gradient_var(self):
-        with _test_eager_guard():
-            self.func_register_hook_for_stop_gradient_var()
         self.func_register_hook_for_stop_gradient_var()
 
     def test_register_hook_in_static_mode(self):
@@ -564,8 +545,6 @@ class TestTensorRegisterHook(unittest.TestCase):
             out = jit_net(data_t)
 
     def test_register_hook_in_dy2static_mode(self):
-        with _test_eager_guard():
-            self.func_register_hook_in_dy2static_mode()
         self.func_register_hook_in_dy2static_mode()
 
 
@@ -605,8 +584,6 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
             HOOK_IS_CALLED = False
 
     def test_register_backward_hook(self):
-        with _test_eager_guard():
-            self.func_register_backward_hook()
         self.func_register_backward_hook()
 
     def func_register_backward_hook_for_interior_var(self):
@@ -617,8 +594,6 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
             y._register_backward_hook(global_void_hook)
 
     def test_register_backward_hook_for_interior_var(self):
-        with _test_eager_guard():
-            self.func_register_backward_hook_for_interior_var()
         self.func_register_backward_hook_for_interior_var()
 
     def func_register_backward_hook_for_var_without_gradient(self):
@@ -629,8 +604,6 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
             x._register_backward_hook(global_void_hook)
 
     def test_register_backward_hook_for_var_without_gradient(self):
-        with _test_eager_guard():
-            self.func_register_backward_hook_for_var_without_gradient()
         self.func_register_backward_hook_for_var_without_gradient()
 
 

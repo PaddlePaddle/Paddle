@@ -20,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import numpy
-from paddle.fluid.framework import _test_eager_guard
 
 
 def calculate_momentum_by_numpy(param,

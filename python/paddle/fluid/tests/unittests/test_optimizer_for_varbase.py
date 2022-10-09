@@ -17,7 +17,7 @@ import unittest
 
 import paddle
 import paddle.optimizer as optimizer
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestOptimizerForVarBase(unittest.TestCase):

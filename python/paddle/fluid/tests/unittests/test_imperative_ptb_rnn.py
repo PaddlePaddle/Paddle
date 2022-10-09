@@ -25,7 +25,7 @@ from test_imperative_base import new_program_scope
 import numpy as np
 import six
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class SimpleLSTMRNN(fluid.Layer):

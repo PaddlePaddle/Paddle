@@ -19,7 +19,6 @@ import paddle.fluid.dygraph as dg
 import paddle.fluid.initializer as I
 import paddle.nn.functional as F
 from paddle import fluid
-from paddle.fluid.framework import _test_eager_guard
 from unittest import TestCase
 
 

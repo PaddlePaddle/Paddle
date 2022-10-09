@@ -18,7 +18,6 @@ from op_test import OpTest, skip_check_grad_ci
 from numpy.linalg import multi_dot
 from op_test import OpTest
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 

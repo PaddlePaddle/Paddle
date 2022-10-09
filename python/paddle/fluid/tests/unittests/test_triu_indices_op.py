@@ -18,7 +18,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTriuIndicesOp(OpTest):
@@ -84,10 +83,6 @@ class TestTriuIndicesAPICaseDygraph(unittest.TestCase):
             out = paddle.triu_indices(4, 4, 2)
         expected_result = np.triu_indices(4, 2, 4)
         np.testing.assert_array_equal(out, expected_result)
-
-    def test_dygraph_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
 
 
 class TestTriuIndicesAPICaseError(unittest.TestCase):

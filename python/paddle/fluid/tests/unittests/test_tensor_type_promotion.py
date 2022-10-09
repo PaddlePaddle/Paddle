@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 import warnings
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTensorTypePromotion(unittest.TestCase):
@@ -58,9 +57,6 @@ class TestTensorTypePromotion(unittest.TestCase):
                     context[-1].message))
 
     def test_operator(self):
-        with _test_eager_guard():
-            pass
-            # add / sub / mul / div has been sunk to cpp level, there is no warnings to catch by this test.
         self.setUp()
         self.add_operator()
         self.sub_operator()

@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.distributed import fleet
-from paddle.fluid.framework import _test_eager_guard
 from paddle.distributed.sharding import group_sharded_parallel, save_group_sharded_model
 
 epoch = 10
@@ -180,7 +179,5 @@ def test_sharding_api():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        pass
     fleet.init(is_collective=True)
     test_sharding_api()

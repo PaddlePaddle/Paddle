@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.nn.functional as F
 from paddle.incubate.autograd.utils import as_tensors
-from paddle.fluid.framework import _test_eager_guard
 
 import config
 import utils
@@ -204,14 +203,6 @@ class TestVJP(TestAutogradFunctional):
         self.check_results(ref_result, aliased_result)
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.func_vjp_i1o1()
-            self.func_vjp_i2o1()
-            self.func_vjp_i2o2()
-            self.func_vjp_i2o2_omitting_v()
-            self.func_vjp_nested()
-            self.func_vjp_aliased_input()
-
         self.func_vjp_i1o1()
         self.func_vjp_i2o1()
         self.func_vjp_i2o2()
@@ -238,8 +229,6 @@ class TestVJPException(unittest.TestCase):
                                          paddle.to_tensor(self.v))
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.func_vjp()
         self.func_vjp()
 
 
@@ -318,11 +307,6 @@ class TestJVP(TestAutogradFunctional):
             self.check_results(results_omitting_v, results_with_v)
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.func_jvp_i1o1()
-            self.func_jvp_i2o1()
-            self.func_jvp_i2o2()
-            self.func_jvp_i2o2_omitting_v()
         self.func_jvp_i1o1()
         self.func_jvp_i2o1()
         self.func_jvp_i2o2()
@@ -379,8 +363,6 @@ class TestJacobianNoBatch(unittest.TestCase):
         return utils._np_concat_matrix_sequence(jac, utils.MatrixFormat.NM)
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.func_jacobian()
         self.func_jacobian()
 
 
@@ -442,8 +424,6 @@ class TestJacobianBatchFirst(unittest.TestCase):
                                                  utils.MatrixFormat.BNM)
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.func_jacobian()
         self.func_jacobian()
 
 
@@ -532,13 +512,6 @@ class TestHessianNoBatch(unittest.TestCase):
             paddle.incubate.autograd.Hessian(func, paddle.ones([3]))
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.setUpClass()
-            self.func_single_input()
-            self.func_multi_input()
-            self.func_allow_unused_true()
-            self.func_create_graph_true()
-            self.func_out_not_single()
         self.setUpClass()
         self.func_single_input()
         self.func_multi_input()
@@ -661,13 +634,6 @@ class TestHessianBatchFirst(unittest.TestCase):
                                              is_batched=True)
 
     def test_all_cases(self):
-        with _test_eager_guard():
-            self.setUpClass()
-            self.func_single_input()
-            self.func_multi_input()
-            self.func_allow_unused()
-            self.func_stop_gradient()
-            self.func_out_not_single()
         self.setUpClass()
         self.func_single_input()
         self.func_multi_input()

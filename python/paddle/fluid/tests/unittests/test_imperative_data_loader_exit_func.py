@@ -19,7 +19,6 @@ import multiprocessing
 import time
 
 import paddle.compat as cpt
-from paddle.fluid.framework import _test_eager_guard
 
 if sys.version_info[0] == 2:
     import Queue as queue

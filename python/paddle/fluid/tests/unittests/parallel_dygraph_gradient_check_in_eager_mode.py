@@ -21,7 +21,6 @@ import numpy as np
 import paddle.distributed as dist
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
 import paddle.fluid.core as core
 

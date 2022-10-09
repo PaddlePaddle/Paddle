@@ -18,7 +18,7 @@ import numpy as np
 import paddle
 from paddle.fluid import core
 from paddle.device import cuda
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestAsyncRead(unittest.TestCase):
@@ -93,13 +93,6 @@ class TestAsyncRead(unittest.TestCase):
         np.testing.assert_allclose(array1.numpy(), array2.numpy(), rtol=1e-05)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_async_read_empty_offset_and_count()
-            self.func_setUp()
-            self.func_test_async_read_success()
-            self.func_setUp()
-            self.func_test_async_read_only_1dim()
         self.func_setUp()
         self.func_test_async_read_empty_offset_and_count()
         self.func_setUp()
@@ -135,9 +128,6 @@ class TestAsyncWrite(unittest.TestCase):
                                    rtol=1e-05)
 
     def test_async_write_success(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_async_write_success()
         self.func_setUp()
         self.func_test_async_write_success()
 

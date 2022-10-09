@@ -19,7 +19,6 @@ from paddle.fluid import core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestAdamOp1(OpTest):

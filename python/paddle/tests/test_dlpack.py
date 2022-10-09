@@ -18,7 +18,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 
 class TestDLPack(unittest.TestCase):
@@ -37,8 +37,6 @@ class TestDLPack(unittest.TestCase):
                                       np.array([1, 2, 3, 4]).astype('int'))
 
     def test_dlpack_dygraph(self):
-        with _test_eager_guard():
-            self.func_test_dlpack_dygraph()
         self.func_test_dlpack_dygraph()
 
     def func_test_dlpack_tensor_larger_than_2dim(self):
@@ -51,8 +49,6 @@ class TestDLPack(unittest.TestCase):
         np.testing.assert_allclose(numpy_data, out.numpy(), rtol=1e-05)
 
     def test_dlpack_tensor_larger_than_2dim(self):
-        with _test_eager_guard():
-            self.func_test_dlpack_tensor_larger_than_2dim()
         self.func_test_dlpack_tensor_larger_than_2dim()
 
     def test_dlpack_static(self):
@@ -111,8 +107,6 @@ class TestDLPack(unittest.TestCase):
             np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
 
     def test_dlpack_dtype_conversion(self):
-        with _test_eager_guard():
-            self.func_test_dlpack_dtype_conversion()
         self.func_test_dlpack_dtype_conversion()
 
 
@@ -123,16 +117,12 @@ class TestRaiseError(unittest.TestCase):
                           np.zeros(5))
 
     def test_from_dlpack_raise_type_error(self):
-        with _test_eager_guard():
-            self.func_test_from_dlpack_raise_type_error()
         self.func_test_from_dlpack_raise_type_error()
 
     def func_test_to_dlpack_raise_type_error(self):
         self.assertRaises(TypeError, paddle.utils.dlpack.to_dlpack, np.zeros(5))
 
     def test_to_dlpack_raise_type_error(self):
-        with _test_eager_guard():
-            self.func_test_to_dlpack_raise_type_error()
         self.func_test_to_dlpack_raise_type_error()
 
 

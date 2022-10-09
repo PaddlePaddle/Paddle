@@ -19,7 +19,6 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid.framework import _test_eager_guard
 
 
 def gelu(x, approximate):

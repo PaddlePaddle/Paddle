@@ -21,7 +21,6 @@ import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.framework import _test_eager_guard
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):

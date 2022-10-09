@@ -18,7 +18,6 @@ import numpy as np
 import paddle
 from paddle.static import Program, program_guard, Executor
 from paddle.framework import _non_static_mode
-from paddle.fluid.framework import _test_eager_guard
 
 SUPPORTED_DTYPES = [
     bool, np.int8, np.int16, np.int32, np.int64, np.float32, np.float64

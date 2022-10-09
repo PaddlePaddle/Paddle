@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.static as static
 from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDigammaOp(OpTest):

@@ -18,7 +18,6 @@ import numpy as np
 import paddle
 import paddle.fluid.dygraph as dg
 from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexAbsOp(OpTest):

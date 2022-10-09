@@ -16,7 +16,7 @@ import paddle
 import unittest
 import numpy as np
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestTensorCopyFrom(unittest.TestCase):
@@ -30,8 +30,6 @@ class TestTensorCopyFrom(unittest.TestCase):
             self.assertTrue(tensor.place.is_gpu_place())
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_main()
         self.func_main()
 
 
@@ -69,8 +67,6 @@ class TestUVATensorFromNumpy(unittest.TestCase):
                                        rtol=1e-05)
 
     def test_uva_tensor_creation(self):
-        with _test_eager_guard():
-            self.func_uva_tensor_creation()
         self.func_uva_tensor_creation()
 
 

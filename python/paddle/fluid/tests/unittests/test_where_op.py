@@ -22,7 +22,6 @@ from op_test import OpTest
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.op import Operator
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestWhereOp(OpTest):
@@ -359,18 +358,6 @@ class TestWhereDygraphAPI(unittest.TestCase):
         expect_out = np.array([[0], [1]])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_api()
-            self.test_dygraph_api_broadcast_1()
-            self.test_dygraph_api_broadcast_2()
-            self.test_dygraph_api_broadcast_3()
-            self.test_dygraph_api_broadcast_4()
-            self.test_dygraph_api_broadcast_5()
-            self.test_dygraph_api_broadcast_6()
-            self.test_dygraph_api_broadcast_7()
-            self.test_dygraph_api_broadcast_8()
-
 
 class TestWhereOpError(unittest.TestCase):
 
@@ -400,10 +387,6 @@ class TestWhereOpError(unittest.TestCase):
             cond = (cond_tmp < 0.3)
             a = paddle.rand(cond_shape)
             self.assertRaises(ValueError, paddle.where, cond, a)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_value_error()
 
 
 if __name__ == "__main__":

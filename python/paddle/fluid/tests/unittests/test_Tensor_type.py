@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorTypeTest(unittest.TestCase):
@@ -30,8 +29,6 @@ class TensorTypeTest(unittest.TestCase):
         self.assertEqual((typex_str == expectx), True)
 
     def test_type_totensor(self):
-        with _test_eager_guard():
-            self.func_type_totensor()
         self.func_type_totensor()
 
     def func_type_Tensor(self):
@@ -49,8 +46,6 @@ class TensorTypeTest(unittest.TestCase):
         self.assertEqual((typex_str == expectx), True)
 
     def test_type_Tensor(self):
-        with _test_eager_guard():
-            self.func_type_Tensor()
         self.func_type_Tensor()
 
     def func_type_core(self):
@@ -67,8 +62,6 @@ class TensorTypeTest(unittest.TestCase):
         self.assertEqual((typex_str == expectx), True)
 
     def test_type_core(self):
-        with _test_eager_guard():
-            pass
         self.func_type_core()
 
 

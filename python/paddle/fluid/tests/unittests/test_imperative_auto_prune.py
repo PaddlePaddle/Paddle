@@ -16,7 +16,6 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
 
 
 class AutoPruneLayer0(fluid.Layer):

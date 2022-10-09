@@ -28,7 +28,6 @@ from paddle.fluid.dygraph import Pool2D
 from paddle.fluid.dygraph import Linear
 from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.framework import _test_eager_guard
 
 os.environ["CPU_NUM"] = "1"
 

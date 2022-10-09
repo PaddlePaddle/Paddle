@@ -16,7 +16,7 @@ import unittest
 import copy
 import paddle
 from paddle.fluid.dygraph import guard
-from paddle.fluid.framework import default_main_program, Variable, _test_eager_guard
+from paddle.fluid.framework import default_main_program, Variable
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 import paddle.fluid.io as io

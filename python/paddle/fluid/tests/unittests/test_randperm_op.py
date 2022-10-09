@@ -18,7 +18,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 from paddle.static import program_guard, Program
-from paddle.fluid.framework import _test_eager_guard
 import os
 
 

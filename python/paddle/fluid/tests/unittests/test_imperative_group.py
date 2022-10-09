@@ -24,7 +24,7 @@ import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.nn import Linear
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 
 class TestDataParallelGroup(unittest.TestCase):

@@ -19,7 +19,6 @@ import paddle.nn as nn
 import paddle.fluid as fluid
 
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
 
 
 class LeNetDygraph(fluid.dygraph.Layer):

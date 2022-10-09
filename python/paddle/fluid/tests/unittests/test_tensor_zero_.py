@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 import six
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorFill_Test(unittest.TestCase):
@@ -44,8 +43,6 @@ class TensorFill_Test(unittest.TestCase):
                 self.assertEqual((tensor.numpy() == target).all().item(), True)
 
     def test_tensor_fill_true(self):
-        with _test_eager_guard():
-            self.func_test_tensor_fill_true()
         self.func_test_tensor_fill_true()
 
 

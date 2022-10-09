@@ -19,7 +19,6 @@ import paddle.fluid.dygraph as dg
 import paddle.fluid.core as core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexVariable(unittest.TestCase):

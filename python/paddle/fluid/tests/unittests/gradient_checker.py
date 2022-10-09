@@ -24,7 +24,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
-from paddle.fluid.framework import _test_eager_guard
 try:
     from collections.abc import Sequence
 except:

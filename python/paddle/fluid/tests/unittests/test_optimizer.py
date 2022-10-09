@@ -24,7 +24,6 @@ import paddle.compat as cpt
 import numpy as np
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard, convert_np_dtype_to_dtype_
-from paddle.fluid.framework import _test_eager_guard
 import paddle
 from paddle.io import Dataset
 import numpy

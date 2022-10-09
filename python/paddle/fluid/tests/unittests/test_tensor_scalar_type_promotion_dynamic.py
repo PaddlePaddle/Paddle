@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 # Support types are ref from `paddle.tensor.math`
 # - Related paddle dtypes:
@@ -82,8 +81,6 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         self.check_operation(a, b, c, '+')
 
     def test_tensor_add_scalar(self):
-        with _test_eager_guard():
-            self.func_tensor_add_scalar()
         self.func_tensor_add_scalar()
 
     def func_tensor_sub_scalar(self):
@@ -118,8 +115,6 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         self.check_operation(a, b, c, '-')
 
     def test_tensor_sub_scalar(self):
-        with _test_eager_guard():
-            self.func_tensor_sub_scalar()
         self.func_tensor_sub_scalar()
 
     def func_scalar_sub_tensor(self):
@@ -154,8 +149,6 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         self.check_operation(a, b, c, '-')
 
     def test_scalar_sub_tensor(self):
-        with _test_eager_guard():
-            self.func_scalar_sub_tensor()
         self.func_scalar_sub_tensor()
 
     def func_tensor_mul_tensor(self):
@@ -190,8 +183,6 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         self.check_operation(a, b, c, '*')
 
     def test_tensor_mul_tensor(self):
-        with _test_eager_guard():
-            self.func_tensor_mul_tensor()
         self.func_tensor_mul_tensor()
 
     def func_tensor_div_scalar(self):
@@ -226,8 +217,6 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         self.check_operation(a, b, c, '/')
 
     def test_tensor_div_scalar(self):
-        with _test_eager_guard():
-            self.func_tensor_div_scalar()
         self.func_tensor_div_scalar()
 
     def func_scalar_div_tensor(self):
@@ -256,8 +245,6 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         self.check_operation(a, b, c, '/')
 
     def test_scalar_div_tensor(self):
-        with _test_eager_guard():
-            self.func_scalar_div_tensor()
         self.func_scalar_div_tensor()
 
     def func_tensor_pow_scalar(self):
@@ -286,8 +273,6 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         self.check_operation(a, b, c, '**')
 
     def test_tensor_pow_scalar(self):
-        with _test_eager_guard():
-            self.func_tensor_pow_scalar()
         self.func_tensor_pow_scalar()
 
     def func_scalar_pow_tensor(self):
@@ -316,8 +301,6 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         self.check_operation(a, b, c, '**')
 
     def test_scalar_pow_tensor(self):
-        with _test_eager_guard():
-            self.func_scalar_pow_tensor()
         self.func_scalar_pow_tensor()
 
     ## TODO: floordiv op kernel doesn't support float
@@ -329,8 +312,6 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         self.check_operation(a, b, c, '//')
 
     def test_tensor_floordiv_scalar(self):
-        with _test_eager_guard():
-            self.func_tensor_floordiv_scalar()
         self.func_tensor_floordiv_scalar()
 
     def func_tensor_mod_scalar(self):
@@ -359,8 +340,6 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
         self.check_operation(a, b, c, '%')
 
     def test_tensor_mod_scalar(self):
-        with _test_eager_guard():
-            self.func_tensor_mod_scalar()
         self.func_tensor_mod_scalar()
 
 

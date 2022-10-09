@@ -24,7 +24,6 @@ from test_imperative_base import new_program_scope
 from test_imperative_ptb_rnn import PtbModel
 import numpy as np
 import six
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDygraphPtbRnnSortGradient(unittest.TestCase):

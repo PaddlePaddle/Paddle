@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 import six
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorFill_Test(unittest.TestCase):
@@ -49,8 +48,6 @@ class TensorFill_Test(unittest.TestCase):
                 self.assertEqual((tensor.numpy() == target).all(), True)
 
     def test_tensor_fill_true(self):
-        with _test_eager_guard():
-            self.func_test_tensor_fill_true()
         self.func_test_tensor_fill_true()
 
     def func_test_tensor_fill_backward(self):
@@ -80,8 +77,6 @@ class TensorFill_Test(unittest.TestCase):
 
     def test_tensor_fill_backward(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_test_tensor_fill_backward()
         self.func_test_tensor_fill_backward()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -94,8 +89,6 @@ class TensorFill_Test(unittest.TestCase):
         self.assertRaises(TypeError, test_list)
 
     def test_errors(self):
-        with _test_eager_guard():
-            self.func_test_errors()
         self.func_test_errors()
 
 

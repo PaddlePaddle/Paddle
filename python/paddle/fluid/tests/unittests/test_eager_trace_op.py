@@ -20,7 +20,6 @@ import paddle.fluid.core as core
 from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestEagerTraceOp(unittest.TestCase):

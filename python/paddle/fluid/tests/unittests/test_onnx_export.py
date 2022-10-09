@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle.static import InputSpec
 
-from paddle.fluid.framework import in_dygraph_mode, _test_eager_guard
+from paddle.fluid.framework import in_dygraph_mode
 
 
 class LinearNet(paddle.nn.Layer):

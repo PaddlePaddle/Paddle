@@ -21,7 +21,6 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestZerosOpError(unittest.TestCase):
@@ -31,10 +30,6 @@ class TestZerosOpError(unittest.TestCase):
             shape = [4]
             dtype = 'int8'
             self.assertRaises(TypeError, fluid.layers.zeros, shape, dtype)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_errors()
 
 
 class ApiZerosTest(unittest.TestCase):
@@ -78,11 +73,6 @@ class ApiZerosTest(unittest.TestCase):
             expected_result = np.zeros(10, dtype='int64')
         self.assertEqual((result == expected_result).all(), True)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_out()
-            self.test_fluid_out()
-
 
 class ApiZerosError(unittest.TestCase):
 
@@ -108,11 +98,6 @@ class ApiZerosError(unittest.TestCase):
             except Exception as e:
                 error_msg = cpt.get_exception_message(e)
                 assert error_msg.find("expected to be no less than 0") > 0
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_errors()
-            self.test_shape_errors()
 
 
 if (__name__ == '__main__'):

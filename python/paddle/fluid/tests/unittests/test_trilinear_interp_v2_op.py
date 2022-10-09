@@ -17,7 +17,6 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import interpolate
 import paddle
 
@@ -710,8 +709,6 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
 class TestTrilinearInterpAPI(unittest.TestCase):
 
     def test_imperative_case(self):
-        with _test_eager_guard():
-            self.func_case()
         self.func_case()
 
     def func_case(self):

@@ -19,7 +19,6 @@ from numpy.random import random as rand
 from paddle import tensor
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexSumLayer(unittest.TestCase):

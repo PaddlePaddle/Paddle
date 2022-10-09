@@ -18,7 +18,6 @@ import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 

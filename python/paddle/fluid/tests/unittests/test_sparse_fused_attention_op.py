@@ -20,7 +20,6 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 def get_cuda_version():

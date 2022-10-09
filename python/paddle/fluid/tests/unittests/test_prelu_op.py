@@ -21,7 +21,6 @@ from paddle.fluid import Program, program_guard
 from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid.framework import _test_eager_guard
 
 
 def ref_prelu(x, weight):

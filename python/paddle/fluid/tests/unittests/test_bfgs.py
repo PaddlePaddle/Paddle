@@ -20,7 +20,6 @@ import paddle
 import paddle.nn.functional as F
 
 from paddle.incubate.optimizer.functional.bfgs import minimize_bfgs
-from paddle.fluid.framework import _test_eager_guard
 
 np.random.seed(123)
 

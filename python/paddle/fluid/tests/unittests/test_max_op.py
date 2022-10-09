@@ -18,7 +18,6 @@ import tempfile
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci, check_out_dtype
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 import paddle.fluid.core as core
 import paddle.inference as paddle_infer
 from test_sum_op import TestReduceOPTensorAxisBase

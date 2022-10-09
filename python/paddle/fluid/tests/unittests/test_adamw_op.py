@@ -20,7 +20,6 @@ import paddle.fluid as fluid
 from op_test import OpTest
 from functools import partial
 from paddle.framework import core
-from paddle.fluid.framework import _test_eager_guard
 
 
 def adamw_step(inputs, attributes):

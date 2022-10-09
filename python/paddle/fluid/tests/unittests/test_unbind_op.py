@@ -19,7 +19,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
 from paddle.fluid import compiler, Program, program_guard, core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestUnbind(unittest.TestCase):
@@ -56,10 +55,6 @@ class TestUnbind(unittest.TestCase):
             np_grad = np.ones(x.shape, np.float32)
             out.backward()
             np.testing.assert_array_equal(x.grad.numpy(), np_grad)
-
-    def test_unbind_dygraph_final_state(self):
-        with _test_eager_guard():
-            self.test_unbind_dygraph()
 
 
 class TestLayersUnbind(unittest.TestCase):

@@ -18,7 +18,7 @@ import numpy as np
 
 from op_test import OpTest
 import paddle
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 
 # NOTE(pangyoki): Tensor View Strategy.
@@ -50,8 +50,6 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
         np.testing.assert_array_equal(var_numpy, view_var_numpy)
 
     def test_view_api(self):
-        with _test_eager_guard():
-            self.func_test_view_api()
         self.func_test_view_api()
 
     def func_test_forward_version(self):
@@ -72,8 +70,6 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
         self.assertEqual(view_var_2.inplace_version, 2)
 
     def test_forward_version(self):
-        with _test_eager_guard():
-            self.func_test_forward_version()
         self.func_test_forward_version()
 
     def func_test_backward_error(self):
@@ -98,8 +94,6 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
                 loss.backward()
 
     def test_backward_error(self):
-        with _test_eager_guard():
-            self.func_test_backward_error()
         self.func_test_backward_error()
 
 

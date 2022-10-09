@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from paddle.fluid import core
 from paddle.device.cuda import device_count, memory_reserved
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestMemoryreserved(unittest.TestCase):

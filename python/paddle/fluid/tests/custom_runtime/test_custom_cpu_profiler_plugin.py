@@ -49,8 +49,7 @@ class TestCustomCPUProfilerPlugin(unittest.TestCase):
 
     def test_custom_device(self):
         import paddle
-        with paddle.fluid.framework._test_eager_guard():
-            self._test_custom_profiler()
+        self._test_custom_profiler()
 
     def _test_custom_profiler(self):
         import paddle

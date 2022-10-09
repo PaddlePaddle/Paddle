@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-from paddle.fluid.framework import Program, program_guard, _test_eager_guard
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestOneHotOp(OpTest):

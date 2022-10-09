@@ -22,7 +22,6 @@ from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from test_imperative_resnet import ResNet
-from paddle.fluid.framework import _test_eager_guard
 
 batch_size = 8
 train_parameters = {

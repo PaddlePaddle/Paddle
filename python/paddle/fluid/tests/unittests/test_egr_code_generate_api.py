@@ -15,7 +15,6 @@
 import paddle.fluid.core as core
 import paddle
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
 import unittest
 
 

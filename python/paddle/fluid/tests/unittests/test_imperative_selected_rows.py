@@ -20,7 +20,6 @@ from paddle.fluid.optimizer import SGDOptimizer
 import numpy as np
 import paddle.fluid.core as core
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleNet(paddle.nn.Layer):

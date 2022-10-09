@@ -24,7 +24,6 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from test_imperative_mnist import MNIST
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativeMnistSortGradient(unittest.TestCase):

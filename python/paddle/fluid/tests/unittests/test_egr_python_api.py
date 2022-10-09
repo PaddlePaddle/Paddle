@@ -15,7 +15,7 @@
 import paddle.fluid.core as core
 import paddle
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard, EagerParamBase, _in_legacy_dygraph, in_dygraph_mode, _current_expected_place
+from paddle.fluid.framework import EagerParamBase, _in_legacy_dygraph, in_dygraph_mode, _current_expected_place
 from paddle.fluid.data_feeder import convert_dtype
 import unittest
 import copy
@@ -912,14 +912,6 @@ class EagerParamBaseUsageTestCase(unittest.TestCase):
         linear.weight.set_value(new_weight)
         np.testing.assert_array_equal(linear.weight.numpy(), new_weight)
         self.assertTrue(linear.weight.place._equals(ori_place))
-
-
-class EagerGuardTestCase(unittest.TestCase):
-
-    def test__test_eager_guard(self):
-        tracer = paddle.fluid.dygraph.tracer.Tracer()
-        with _test_eager_guard(tracer):
-            self.assertTrue(in_dygraph_mode())
 
 
 if __name__ == "__main__":

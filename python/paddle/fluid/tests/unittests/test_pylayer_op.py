@@ -17,7 +17,7 @@ import numpy as np
 
 import paddle
 from paddle.autograd.py_layer import EagerPyLayer
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 
 class FakeTensor(paddle.fluid.core.VarBase):

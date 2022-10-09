@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 import six
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorToListTest(unittest.TestCase):
@@ -42,8 +41,6 @@ class TensorToListTest(unittest.TestCase):
             self.assertEqual(tensorlist, expectlist)
 
     def test_tensor_tolist(self):
-        with _test_eager_guard():
-            self.func_tensor_tolist()
         self.func_tensor_tolist()
 
 

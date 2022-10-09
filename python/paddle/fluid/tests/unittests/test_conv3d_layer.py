@@ -18,7 +18,6 @@ import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
 import paddle.fluid.initializer as I
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 import unittest
 
 

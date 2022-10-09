@@ -19,7 +19,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDiffOp(unittest.TestCase):

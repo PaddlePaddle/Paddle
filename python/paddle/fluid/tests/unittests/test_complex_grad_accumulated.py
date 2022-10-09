@@ -18,7 +18,6 @@ import numpy as np
 import paddle
 
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class Optimization_ex1(paddle.nn.Layer):

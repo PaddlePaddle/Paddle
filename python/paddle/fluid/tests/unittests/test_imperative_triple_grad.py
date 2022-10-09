@@ -19,7 +19,7 @@ from paddle.vision.models import resnet50, resnet101
 import unittest
 from unittest import TestCase
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
+from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 
 def _dygraph_guard_(func):

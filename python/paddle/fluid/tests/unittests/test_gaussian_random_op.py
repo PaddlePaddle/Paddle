@@ -21,7 +21,6 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
-from paddle.fluid.framework import _test_eager_guard
 import paddle
 
 

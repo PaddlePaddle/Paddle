@@ -19,7 +19,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLinspaceOpCommonCase(OpTest):

@@ -20,7 +20,7 @@ import copy
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 class TestVarBase(unittest.TestCase):
@@ -273,8 +273,6 @@ class TestVarBase(unittest.TestCase):
             check_with_place("npu:0")
 
     def test_to_tensor(self):
-        with _test_eager_guard():
-            self.func_test_to_tensor()
         self.func_test_to_tensor()
 
     def func_test_to_tensor_not_change_input_stop_gradient(self):
@@ -286,8 +284,6 @@ class TestVarBase(unittest.TestCase):
             self.assertEqual(b.stop_gradient, True)
 
     def test_to_tensor_not_change_input_stop_gradient(self):
-        with _test_eager_guard():
-            self.func_test_to_tensor_not_change_input_stop_gradient()
         self.func_test_to_tensor_not_change_input_stop_gradient()
 
     def func_test_to_tensor_change_place(self):
@@ -309,8 +305,6 @@ class TestVarBase(unittest.TestCase):
                 self.assertEqual(a.place.__repr__(), "Place(gpu_pinned)")
 
     def test_to_tensor_change_place(self):
-        with _test_eager_guard():
-            self.func_test_to_tensor_change_place()
         self.func_test_to_tensor_change_place()
 
     def func_test_to_tensor_with_lodtensor(self):
@@ -330,8 +324,6 @@ class TestVarBase(unittest.TestCase):
                 self.assertTrue(a.place.__repr__(), "Place(cpu)")
 
     def test_to_tensor_with_lodtensor(self):
-        with _test_eager_guard():
-            self.func_test_to_tensor_with_lodtensor()
         self.func_test_to_tensor_with_lodtensor()
 
     def func_test_to_variable(self):
@@ -354,8 +346,6 @@ class TestVarBase(unittest.TestCase):
                 var = linear._helper.to_variable("test", name="abc")
 
     def test_to_variable(self):
-        with _test_eager_guard():
-            self.func_test_to_variable()
         self.func_test_to_variable()
 
     def func_test_list_to_variable(self):
@@ -368,8 +358,6 @@ class TestVarBase(unittest.TestCase):
             self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
 
     def test_list_to_variable(self):
-        with _test_eager_guard():
-            self.func_test_list_to_variable()
         self.func_test_list_to_variable()
 
     def func_test_tuple_to_variable(self):
@@ -382,8 +370,6 @@ class TestVarBase(unittest.TestCase):
             self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
 
     def test_tuple_to_variable(self):
-        with _test_eager_guard():
-            self.func_test_tuple_to_variable()
         self.func_test_tuple_to_variable()
 
     def func_test_tensor_to_variable(self):
@@ -394,8 +380,6 @@ class TestVarBase(unittest.TestCase):
             np.testing.assert_array_equal(t, var.numpy())
 
     def test_tensor_to_variable(self):
-        with _test_eager_guard():
-            self.func_test_tensor_to_variable()
         self.func_test_tensor_to_variable()
 
     def func_test_leaf_tensor(self):
@@ -423,8 +407,6 @@ class TestVarBase(unittest.TestCase):
             self.assertFalse(out.is_leaf)
 
     def test_leaf_tensor(self):
-        with _test_eager_guard():
-            self.func_test_leaf_tensor()
         self.func_test_leaf_tensor()
 
     def func_test_detach(self):
@@ -461,8 +443,6 @@ class TestVarBase(unittest.TestCase):
                 y.backward()
 
     def test_detach(self):
-        with _test_eager_guard():
-            self.func_test_detach()
         self.func_test_detach()
 
     def func_test_write_property(self):
@@ -482,8 +462,6 @@ class TestVarBase(unittest.TestCase):
             self.assertEqual(var.stop_gradient, False)
 
     def test_write_property(self):
-        with _test_eager_guard():
-            self.func_test_write_property()
         self.func_test_write_property()
 
     def func_test_deep_copy(self):
@@ -558,8 +536,6 @@ class TestVarBase(unittest.TestCase):
                 np.array(selected_rows.get_tensor()))
 
     def test_deep_copy(self):
-        with _test_eager_guard():
-            self.func_test_deep_copy()
         self.func_test_deep_copy()
 
     # test some patched methods
@@ -574,8 +550,6 @@ class TestVarBase(unittest.TestCase):
             np.testing.assert_array_equal(var.numpy(), tmp2)
 
     def test_set_value(self):
-        with _test_eager_guard():
-            self.func_test_set_value()
         self.func_test_set_value()
 
     def func_test_to_string(self):
@@ -584,8 +558,6 @@ class TestVarBase(unittest.TestCase):
             self.assertTrue(isinstance(str(var), str))
 
     def test_to_string(self):
-        with _test_eager_guard():
-            self.func_test_to_string()
         self.func_test_to_string()
 
     def func_test_element_size(self):
@@ -624,8 +596,6 @@ class TestVarBase(unittest.TestCase):
             self.assertEqual(x.element_size(), 16)
 
     def test_element_size(self):
-        with _test_eager_guard():
-            self.func_test_element_size()
         self.func_test_element_size()
 
     def func_test_backward(self):
@@ -638,8 +608,6 @@ class TestVarBase(unittest.TestCase):
             self.assertEqual(grad_var.shape, self.shape)
 
     def test_backward(self):
-        with _test_eager_guard():
-            self.func_test_backward()
         self.func_test_backward()
 
     def func_test_gradient(self):
@@ -652,8 +620,6 @@ class TestVarBase(unittest.TestCase):
             self.assertEqual(grad_var.shape, self.array.shape)
 
     def test_gradient(self):
-        with _test_eager_guard():
-            self.func_test_gradient()
         self.func_test_gradient()
 
     def func_test_block(self):
@@ -663,8 +629,6 @@ class TestVarBase(unittest.TestCase):
                              fluid.default_main_program().global_block())
 
     def test_block(self):
-        with _test_eager_guard():
-            self.func_test_block()
         self.func_test_block()
 
     def _test_slice(self):
@@ -1013,8 +977,6 @@ class TestVarBase(unittest.TestCase):
                 var[paddle.to_tensor([0, 1]), mask]
 
     def test_slice(self):
-        with _test_eager_guard():
-            self.func_test_slice()
         self.func_test_slice()
 
     def func_test_var_base_to_np(self):
@@ -1024,8 +986,6 @@ class TestVarBase(unittest.TestCase):
                                           fluid.framework._var_base_to_np(var))
 
     def test_var_base_to_np(self):
-        with _test_eager_guard():
-            self.func_test_var_base_to_np()
         self.func_test_var_base_to_np()
 
     def func_test_var_base_as_np(self):
@@ -1036,8 +996,6 @@ class TestVarBase(unittest.TestCase):
                                           np.array(var, dtype=np.float32))
 
     def test_var_base_as_np(self):
-        with _test_eager_guard():
-            self.func_test_var_base_as_np()
         self.func_test_var_base_as_np()
 
     def func_test_if(self):
@@ -1060,8 +1018,6 @@ class TestVarBase(unittest.TestCase):
             assert bool(var2) == True, "bool(var2) is True"
 
     def test_if(self):
-        with _test_eager_guard():
-            self.func_test_if()
         self.func_test_if()
 
     def func_test_to_static_var(self):
@@ -1088,8 +1044,6 @@ class TestVarBase(unittest.TestCase):
             self._assert_to_static(weight, static_param, True)
 
     def test_to_static_var(self):
-        with _test_eager_guard():
-            self.func_test_to_static_var()
         self.func_test_to_static_var()
 
     def _assert_to_static(self, var_base, static_var, is_param=False):
@@ -1135,8 +1089,6 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
 
     def test_tensor_str(self):
-        with _test_eager_guard():
-            self.func_test_tensor_str()
         self.func_test_tensor_str()
 
     def func_test_tensor_str2(self):
@@ -1151,8 +1103,6 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
 
     def test_tensor_str2(self):
-        with _test_eager_guard():
-            self.func_test_tensor_str2()
         self.func_test_tensor_str2()
 
     def func_test_tensor_str3(self):
@@ -1167,8 +1117,6 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
 
     def test_tensor_str3(self):
-        with _test_eager_guard():
-            self.func_test_tensor_str3()
         self.func_test_tensor_str3()
 
     def func_test_tensor_str_scaler(self):
@@ -1182,8 +1130,6 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
 
     def test_tensor_str_scaler(self):
-        with _test_eager_guard():
-            self.func_test_tensor_str_scaler()
         self.func_test_tensor_str_scaler()
 
     def func_test_tensor_str_shape_with_zero(self):
@@ -1198,8 +1144,6 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
 
     def test_tensor_str_shape_with_zero(self):
-        with _test_eager_guard():
-            self.func_test_tensor_str_shape_with_zero()
         self.func_test_tensor_str_shape_with_zero()
 
     def func_test_tensor_str_linewidth(self):
@@ -1232,8 +1176,6 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
 
     def test_tensor_str_linewidth(self):
-        with _test_eager_guard():
-            self.func_test_tensor_str_linewidth()
         self.func_test_tensor_str_linewidth()
 
     def func_test_tensor_str_linewidth2(self):
@@ -1259,8 +1201,6 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
 
     def test_tensor_str_linewidth2(self):
-        with _test_eager_guard():
-            self.func_test_tensor_str_linewidth2()
         self.func_test_tensor_str_linewidth2()
 
     def func_tensor_str_bf16(self):
@@ -1277,13 +1217,9 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
 
     def test_tensor_str_bf16(self):
-        with _test_eager_guard():
-            self.func_tensor_str_bf16()
         self.func_tensor_str_bf16()
 
     def test_tensor_str_bf16(self):
-        with _test_eager_guard():
-            self.func_tensor_str_bf16()
         self.func_tensor_str_bf16()
 
     def func_test_print_tensor_dtype(self):
@@ -1296,8 +1232,6 @@ class TestVarBase(unittest.TestCase):
         self.assertEqual(a_str, expected)
 
     def test_print_tensor_dtype(self):
-        with _test_eager_guard():
-            self.func_test_print_tensor_dtype()
         self.func_test_print_tensor_dtype()
 
 
@@ -1346,9 +1280,6 @@ class TestVarBaseSetitem(unittest.TestCase):
         self._test(self.tensor_value)
 
     def test_value_tensor(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_value_tensor()
         self.func_setUp()
         self.func_test_value_tensor()
 
@@ -1356,9 +1287,6 @@ class TestVarBaseSetitem(unittest.TestCase):
         self._test(self.np_value)
 
     def test_value_numpy(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_value_numpy()
         self.func_setUp()
         self.func_test_value_numpy()
 
@@ -1366,9 +1294,6 @@ class TestVarBaseSetitem(unittest.TestCase):
         self._test(10)
 
     def test_value_int(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_value_int()
         self.func_setUp()
         self.func_test_value_int()
 
@@ -1389,9 +1314,6 @@ class TestVarBaseSetitemFp32(TestVarBaseSetitem):
         self._test(3.3)
 
     def test_value_float(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_value_float()
         self.func_setUp()
         self.func_test_value_float()
 
@@ -1452,9 +1374,6 @@ class TestVarBaseSetitemBoolIndex(unittest.TestCase):
         self._test(self.tensor_value)
 
     def test_value_tensor(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_value_tensor()
         self.func_setUp()
         self.func_test_value_tensor()
 
@@ -1463,9 +1382,6 @@ class TestVarBaseSetitemBoolIndex(unittest.TestCase):
         self._test(self.np_value)
 
     def test_value_numpy(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_value_numpy()
         self.func_setUp()
         self.func_test_value_numpy()
 
@@ -1474,9 +1390,6 @@ class TestVarBaseSetitemBoolIndex(unittest.TestCase):
         self._test(10)
 
     def test_value_int(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_value_int()
         self.func_setUp()
         self.func_test_value_int()
 
@@ -1522,8 +1435,6 @@ class TestVarBaseInplaceVersion(unittest.TestCase):
         self.assertEqual(var.inplace_version, 2)
 
     def test_setitem(self):
-        with _test_eager_guard():
-            self.func_test_setitem()
         self.func_test_setitem()
 
     def func_test_bump_inplace_version(self):
@@ -1538,8 +1449,6 @@ class TestVarBaseInplaceVersion(unittest.TestCase):
         self.assertEqual(var.inplace_version, 2)
 
     def test_bump_inplace_version(self):
-        with _test_eager_guard():
-            self.func_test_bump_inplace_version()
         self.func_test_bump_inplace_version()
 
 
@@ -1554,8 +1463,6 @@ class TestVarBaseSlice(unittest.TestCase):
         self.assertEqual(actual_x.numpy().all(), np_x[0:1].all())
 
     def test_slice(self):
-        with _test_eager_guard():
-            self.func_test_slice()
         self.func_test_slice()
 
 
@@ -1569,8 +1476,6 @@ class TestVarBaseClear(unittest.TestCase):
         self.assertEqual(str(x), "Tensor(Not initialized)")
 
     def test_clear(self):
-        with _test_eager_guard():
-            self.func_test_clear()
         self.func_test_clear()
 
 
@@ -1586,8 +1491,6 @@ class TestVarBaseOffset(unittest.TestCase):
         self.assertEqual(actual_x._offset(), expected_offset)
 
     def test_offset(self):
-        with _test_eager_guard():
-            self.func_offset()
         self.func_offset()
 
 
@@ -1606,8 +1509,6 @@ class TestVarBaseShareBufferTo(unittest.TestCase):
         self.assertEqual(src._is_shared_buffer_with(dst), True)
 
     def test_share_buffer_To(self):
-        with _test_eager_guard():
-            self.func_test_share_buffer_To()
         self.func_test_share_buffer_To()
 
 
@@ -1666,9 +1567,6 @@ class TestVarBaseTo(unittest.TestCase):
         self.assertRaises(AssertionError, self.x._to, blocking=1)
 
     def test_to_api(self):
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_test_to_api()
         self.func_setUp()
         self.func_test_to_api()
 
@@ -1698,8 +1596,6 @@ class TestVarBaseInitVarBaseFromTensorWithDevice(unittest.TestCase):
         self.assertEqual(tmp.numpy().all(), np_x.all())
 
     def test_varbase_init(self):
-        with _test_eager_guard():
-            self.func_test_varbase_init()
         self.func_test_varbase_init()
 
 
@@ -1714,8 +1610,6 @@ class TestVarBaseNumel(unittest.TestCase):
         self.assertEqual(x_actual_numel, x_expected_numel)
 
     def test_numel_normal(self):
-        with _test_eager_guard():
-            self.func_test_numel_normal()
         self.func_test_numel_normal()
 
     def func_test_numel_without_holder(self):
@@ -1728,8 +1622,6 @@ class TestVarBaseNumel(unittest.TestCase):
         self.assertEqual(x_actual_numel, 0)
 
     def ttest_numel_without_holder(self):
-        with _test_eager_guard():
-            self.func_test_numel_without_holder()
         self.func_test_numel_without_holder()
 
 
@@ -1747,23 +1639,20 @@ class TestVarBaseCopyGradientFrom(unittest.TestCase):
         self.assertEqual(x.grad.numpy().all(), np_y.all())
 
     def test_copy_gradient_from(self):
-        with _test_eager_guard():
-            self.func_test_copy_gradient_from()
         self.func_test_copy_gradient_from()
 
 
 class TestEagerTensorGradNameValue(unittest.TestCase):
 
     def test_eager_tensor_grad_name_value(self):
-        with _test_eager_guard():
-            a_np = np.array([2, 3]).astype('float32')
-            a = paddle.to_tensor(a_np)
-            a.stop_gradient = False
-            b = a**2
-            self.assertEqual(a._grad_value(), None)
-            b.backward()
-            # Note, for new dygraph, there are no generated grad name, so we skip the name check.
-            self.assertNotEqual(a._grad_value(), None)
+        a_np = np.array([2, 3]).astype('float32')
+        a = paddle.to_tensor(a_np)
+        a.stop_gradient = False
+        b = a**2
+        self.assertEqual(a._grad_value(), None)
+        b.backward()
+        # Note, for new dygraph, there are no generated grad name, so we skip the name check.
+        self.assertNotEqual(a._grad_value(), None)
 
 
 if __name__ == '__main__':

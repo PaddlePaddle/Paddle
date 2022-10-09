@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 import paddle
 from collections import OrderedDict
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestLayerDict(unittest.TestCase):

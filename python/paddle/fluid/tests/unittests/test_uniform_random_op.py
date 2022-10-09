@@ -24,7 +24,6 @@ import paddle
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 
 from test_attribute_var import UnittestBase
 
@@ -185,8 +184,6 @@ class TestUniformRandomOp(OpTest):
                                       self.attrs['seed'])
 
     def test_check_api_eager(self):
-        with _test_eager_guard():
-            self.func_test_check_api()
         self.func_test_check_api()
 
 

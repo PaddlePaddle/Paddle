@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle
-from paddle.fluid.framework import _test_eager_guard
 import gradient_checker
 from decorator_helper import prog_scope
 import paddle.fluid.layers as layers

@@ -23,7 +23,6 @@ import paddle.fluid.core as core
 import paddle.fluid.dygraph.base as base
 
 from test_imperative_lod_tensor_to_selected_rows import SimpleNet
-from paddle.fluid.framework import _test_eager_guard
 
 call_forward_post_hook = False
 call_forward_pre_hook = False

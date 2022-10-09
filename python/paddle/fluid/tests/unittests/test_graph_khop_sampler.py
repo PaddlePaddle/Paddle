@@ -81,8 +81,6 @@ class TestGraphKhopSampler(unittest.TestCase):
             self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
     def test_sample_result(self):
-        with fluid.framework._test_eager_guard():
-            self.func_sample_result()
         self.func_sample_result()
 
     def func_uva_sample_result(self):
@@ -128,8 +126,6 @@ class TestGraphKhopSampler(unittest.TestCase):
                 self.assertTrue(np.sum(in_neighbors) == in_neighbors.shape[0])
 
     def test_uva_sample_result(self):
-        with fluid.framework._test_eager_guard():
-            self.func_uva_sample_result()
         self.func_uva_sample_result()
 
     def test_sample_result_static_with_eids(self):

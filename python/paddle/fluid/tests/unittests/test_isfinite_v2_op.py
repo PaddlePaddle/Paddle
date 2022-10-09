@@ -16,7 +16,6 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
 
 
 def run_static(x_np, dtype, op_str, use_gpu=False):

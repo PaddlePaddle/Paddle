@@ -24,7 +24,6 @@ import paddle.fluid.core as core
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph import Linear
-from paddle.fluid.framework import _test_eager_guard
 
 
 class DMF(fluid.Layer):

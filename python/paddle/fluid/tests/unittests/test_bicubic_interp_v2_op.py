@@ -19,7 +19,6 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import interpolate
 
 

@@ -23,7 +23,6 @@ import subprocess
 import numpy as np
 from paddle.vision.transforms import Compose, Normalize
 from paddle.utils.cpp_extension.extension_utils import run_cmd
-from paddle.fluid.framework import _test_eager_guard
 
 
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):

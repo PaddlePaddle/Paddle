@@ -82,19 +82,17 @@ class BatchNorm(paddle.nn.BatchNorm1D):
     Examples:
         .. code-block:: python
 
-          import paddle
-          from paddle.fluid.framework import _test_eager_guard
+            import paddle
 
-          with _test_eager_guard():
-              paddle.seed(123)
-              channels = 3
-              x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
-              dense_x = paddle.to_tensor(x_data)
-              sparse_x = dense_x.to_sparse_coo(4)
-              batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
-              batch_norm_out = batch_norm(sparse_x)
-              print(batch_norm_out.shape)
-              # [1, 6, 6, 6, 3]
+            paddle.seed(123)
+            channels = 3
+            x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
+            dense_x = paddle.to_tensor(x_data)
+            sparse_x = dense_x.to_sparse_coo(4)
+            batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
+            batch_norm_out = batch_norm(sparse_x)
+            print(batch_norm_out.shape)
+            # [1, 6, 6, 6, 3]
     """
 
     def __init__(self,

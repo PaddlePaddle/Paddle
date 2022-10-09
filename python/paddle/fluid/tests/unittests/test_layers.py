@@ -33,7 +33,6 @@ from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph import nn
 from paddle.fluid.dygraph import base
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _test_eager_guard
 
 
 class LayerTest(unittest.TestCase):

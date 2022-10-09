@@ -18,9 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import avg_pool3d, max_pool3d
-from paddle.fluid.framework import _test_eager_guard
 from test_pool3d_op import adaptive_start_index, adaptive_end_index, pool3D_forward_naive, avg_pool3D_forward_naive, max_pool3D_forward_naive
 
 

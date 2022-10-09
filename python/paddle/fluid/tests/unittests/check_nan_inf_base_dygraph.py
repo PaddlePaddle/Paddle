@@ -22,7 +22,6 @@ os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 
 import paddle
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard
 
 np.random.seed(0)
 

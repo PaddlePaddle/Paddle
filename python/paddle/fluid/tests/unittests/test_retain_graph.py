@@ -145,8 +145,6 @@ class TestRetainGraph(unittest.TestCase):
             self.assertRaises(RuntimeError, self.run_retain, need_retain=False)
 
     def test_retain(self):
-        with fluid.framework._test_eager_guard():
-            self.func_retain()
         self.func_retain()
 
 

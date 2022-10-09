@@ -16,7 +16,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import framework
-from paddle.fluid.framework import _test_eager_guard
 import unittest
 
 paddle.set_device('cpu')

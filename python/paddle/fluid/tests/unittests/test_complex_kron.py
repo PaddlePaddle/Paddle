@@ -17,7 +17,6 @@ import paddle
 import paddle.fluid.dygraph as dg
 import numpy as np
 import unittest
-from paddle.fluid.framework import _test_eager_guard
 
 
 class ComplexKronTestCase(unittest.TestCase):

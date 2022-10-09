@@ -29,7 +29,7 @@ from paddle.hapi.callbacks import config_callbacks
 from paddle.vision.datasets import MNIST
 from paddle.metric import Accuracy
 from paddle.nn.layer.loss import CrossEntropyLoss
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph
 
 
 # Accelerate unittest
@@ -64,8 +64,6 @@ class TestReduceLROnPlateau(unittest.TestCase):
                   callbacks=[callbacks])
 
     def test_reduce_lr_on_plateau(self):
-        with _test_eager_guard():
-            self.func_reduce_lr_on_plateau()
         self.func_reduce_lr_on_plateau()
 
     def func_warn_or_error(self):
@@ -115,8 +113,6 @@ class TestReduceLROnPlateau(unittest.TestCase):
                   callbacks=[callbacks])
 
     def test_warn_or_error(self):
-        with _test_eager_guard():
-            self.func_warn_or_error()
         self.func_warn_or_error()
 
 

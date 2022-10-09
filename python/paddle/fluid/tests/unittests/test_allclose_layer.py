@@ -16,7 +16,6 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestAllcloseLayer(unittest.TestCase):

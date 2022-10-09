@@ -34,7 +34,6 @@ import paddle.fluid.core as core
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import DataParallel, ParallelEnv
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 

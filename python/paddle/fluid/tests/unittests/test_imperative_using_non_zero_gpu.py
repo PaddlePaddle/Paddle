@@ -17,7 +17,6 @@ import paddle.fluid as fluid
 import unittest
 from paddle.fluid.dygraph import to_variable, guard
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativeUsingNonZeroGpu(unittest.TestCase):

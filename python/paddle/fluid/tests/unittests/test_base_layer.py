@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import ParamBase, EagerParamBase
 from paddle.jit import ProgramTranslator
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 
 class L1(fluid.Layer):

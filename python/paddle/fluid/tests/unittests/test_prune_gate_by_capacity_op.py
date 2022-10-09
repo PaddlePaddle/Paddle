@@ -17,7 +17,6 @@ import paddle
 import numpy as np
 from paddle.distributed.models.moe import utils
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard
 
 
 def count(x, upper_num):

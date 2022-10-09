@@ -18,7 +18,6 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.reader import use_pinned_memory
-from paddle.fluid.framework import _test_eager_guard
 
 
 def get_random_images_and_labels(image_shape, label_shape):

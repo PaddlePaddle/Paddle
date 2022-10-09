@@ -19,7 +19,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 np.random.seed(1)

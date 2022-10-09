@@ -19,7 +19,6 @@ import paddle.fluid as fluid
 from paddle import zeros_like
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import core, Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
@@ -29,10 +28,6 @@ class TestZerosLikeAPIError(unittest.TestCase):
         with program_guard(Program(), Program()):
             x = paddle.fluid.data('x', [3, 4])
             self.assertRaises(TypeError, zeros_like, x, 'int8')
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_errors()
 
 
 class TestZerosLikeAPI(unittest.TestCase):
@@ -59,10 +54,6 @@ class TestZerosLikeAPI(unittest.TestCase):
             self.assertEqual(outs[i].dtype, dtype)
             self.assertEqual((outs[i] == np.zeros(shape, dtype)).all(), True)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_api()
-
 
 class TestZerosLikeImpeartive(unittest.TestCase):
 
@@ -81,10 +72,6 @@ class TestZerosLikeImpeartive(unittest.TestCase):
         out = paddle.tensor.creation.zeros_like(x)
         self.assertEqual((out.numpy() == np.zeros(shape, dtype)).all(), True)
         paddle.enable_static()
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_out()
 
 
 class TestZerosAPI(unittest.TestCase):

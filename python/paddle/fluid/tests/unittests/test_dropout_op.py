@@ -20,7 +20,6 @@ import paddle
 import paddle.static as static
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 import os
 
 from paddle import _C_ops, _legacy_C_ops

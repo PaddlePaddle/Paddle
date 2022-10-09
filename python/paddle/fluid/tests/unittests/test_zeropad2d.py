@@ -43,8 +43,6 @@ class TestZeroPad2dAPIError(unittest.TestCase):
             self.assertRaises(TypeError, zeropad2d, x=x_tensor, padding=pad)
 
     def test_unsupport_dtypes(self):
-        with paddle.fluid.framework._test_eager_guard():
-            self.func_unsupport_dtypes()
         self.func_unsupport_dtypes()
 
 
@@ -74,8 +72,6 @@ class TestZeroPad2dAPI(unittest.TestCase):
             np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
     def test_support_dtypes(self):
-        with paddle.fluid.framework._test_eager_guard():
-            self.func_support_dtypes()
         self.func_support_dtypes()
 
     def func_support_pad2(self):
@@ -92,8 +88,6 @@ class TestZeroPad2dAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
     def test_support_pad2(self):
-        with paddle.fluid.framework._test_eager_guard():
-            self.func_support_pad2()
         self.func_support_pad2()
 
     def func_support_pad3(self):
@@ -110,8 +104,6 @@ class TestZeroPad2dAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
     def test_support_pad3(self):
-        with paddle.fluid.framework._test_eager_guard():
-            self.func_support_pad3()
         self.func_support_pad3()
 
     def func_support_pad4(self):
@@ -129,8 +121,6 @@ class TestZeroPad2dAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
     def test_support_pad4(self):
-        with paddle.fluid.framework._test_eager_guard():
-            self.func_support_pad4()
         self.func_support_pad4()
 
 
@@ -155,8 +145,6 @@ class TestZeroPad2DLayer(unittest.TestCase):
                                    rtol=1e-05)
 
     def test_layer(self):
-        with paddle.fluid.framework._test_eager_guard():
-            self.func_layer()
         self.func_layer()
 
 

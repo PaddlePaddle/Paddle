@@ -19,7 +19,6 @@ import paddle
 
 # used by model.run_trainer in test_dist_base
 from test_dist_base import RUN_STEP
-from paddle.fluid.framework import _test_eager_guard
 
 
 # NOTE: compatible TestParallelDyGraphRunnerBase args

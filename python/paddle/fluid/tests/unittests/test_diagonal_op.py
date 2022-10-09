@@ -20,7 +20,6 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.tensor as tensor
-from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
 

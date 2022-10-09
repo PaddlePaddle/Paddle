@@ -17,7 +17,6 @@ import paddle.fluid as fluid
 import numpy as np
 import unittest
 from op_test import OpTest
-from paddle.fluid.framework import _test_eager_guard
 
 
 def call_bce_layer(logit,

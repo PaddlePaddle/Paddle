@@ -30,7 +30,6 @@ from paddle.nn import Linear, Conv2D, Softmax, Conv2DTranspose
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn.quant.quant_layers import QuantizedConv2D, QuantizedConv2DTranspose
-from paddle.fluid.framework import _test_eager_guard
 from imperative_test_utils import fix_model_dict, ImperativeLenet
 
 paddle.enable_static()

@@ -25,7 +25,6 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 import paddle.fluid.dygraph.nn as nn
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _test_eager_guard
 
 
 class Policy(fluid.dygraph.Layer):

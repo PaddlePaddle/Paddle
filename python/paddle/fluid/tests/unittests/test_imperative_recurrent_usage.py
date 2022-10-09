@@ -18,7 +18,6 @@ import paddle
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
-from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope

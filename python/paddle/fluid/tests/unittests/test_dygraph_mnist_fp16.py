@@ -18,7 +18,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from paddle.fluid.framework import _test_eager_guard
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):

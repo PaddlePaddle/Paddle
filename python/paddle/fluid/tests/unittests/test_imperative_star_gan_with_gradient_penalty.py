@@ -17,7 +17,7 @@ import paddle.fluid as fluid
 import numpy as np
 import unittest
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _in_eager_without_dygraph_check
+from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check
 
 if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True

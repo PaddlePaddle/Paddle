@@ -594,16 +594,14 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
 
     def test_bilinear_initializer(self):
         paddle.disable_static()
-        with framework._test_eager_guard():
-            eager_x = self.func_test_case()
+        eager_x = self.func_test_case()
         legacy_x = self.func_test_case()
         self.assertEqual(eager_x.numpy().all(), legacy_x.numpy().all())
         paddle.enable_static()
 
     def test_bilinear_initializer_fp16(self):
         paddle.disable_static()
-        with framework._test_eager_guard():
-            eager_x = self.func_test_case_fp16()
+        eager_x = self.func_test_case_fp16()
         legacy_x = self.func_test_case_fp16()
         self.assertEqual(eager_x.numpy().all(), legacy_x.numpy().all())
         paddle.enable_static()
@@ -731,8 +729,6 @@ class TestUniformInitializerDygraph(unittest.TestCase):
         paddle.enable_static()
 
     def test_uniform_initializer(self, dtype="float32"):
-        with framework._test_eager_guard():
-            self.func_uniform_initializer()
         self.func_uniform_initializer()
 
 
@@ -761,8 +757,6 @@ class TestXavierInitializerDygraph(unittest.TestCase):
         paddle.enable_static()
 
     def test_xavier_initializer(self, dtype="float32"):
-        with framework._test_eager_guard():
-            self.func_xvarier_initializer()
         self.func_xvarier_initializer()
 
 
@@ -790,8 +784,6 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
         paddle.enable_static()
 
     def test_msra_initializer(self, dtype="float32"):
-        with framework._test_eager_guard():
-            self.func_msra_initializer()
         self.func_msra_initializer()
 
 
@@ -844,8 +836,6 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
         np.testing.assert_array_equal(dynamic_res[1], static_res[1])
 
     def test_order(self):
-        with framework._test_eager_guard():
-            self.func_order()
         self.func_order()
 
 
@@ -906,8 +896,6 @@ class TestOrthogonalInitializer1(unittest.TestCase):
         self.check_result(res_dygraph, res_static)
 
     def test_orthogonal(self):
-        with framework._test_eager_guard():
-            self.func_orthogonal()
         self.func_orthogonal()
 
 
@@ -1013,8 +1001,6 @@ class TestOrthogonalInitializer4(unittest.TestCase):
         self.check_result(res_dygraph, res_static)
 
     def test_orthogonal(self):
-        with framework._test_eager_guard():
-            self.func_orthogonal()
         self.func_orthogonal()
 
 
@@ -1128,8 +1114,6 @@ class TestDiracInitializer1(unittest.TestCase):
                           conv_output)
 
     def test_dirac(self):
-        with framework._test_eager_guard():
-            self.func_dirac()
         self.func_dirac()
 
 
