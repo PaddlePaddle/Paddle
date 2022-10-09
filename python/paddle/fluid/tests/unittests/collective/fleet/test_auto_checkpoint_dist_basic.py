@@ -16,20 +16,13 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
+from paddle.fluid.incubate.fleet.collective import fleet
 import os
-import sys
 
 from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
-from paddle.fluid.framework import program_guard
-from paddle.fluid import unique_name
 
-import numpy as np
-from paddle.io import Dataset, BatchSampler, DataLoader
-
-from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
 from test_auto_checkpoint import AutoCheckPointACLBase
 
 paddle.enable_static()

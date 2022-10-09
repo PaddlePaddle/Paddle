@@ -27,7 +27,7 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T, typename Type>
 bool is_continuous(const Type &weight_list) {
@@ -112,7 +112,7 @@ void LSTMInferece(const bool &has_seq_length,
                   T *out_data,
                   T *last_h_data,
                   T *last_c_data,
-                  framework::Tensor *workspace_data,
+                  phi::DenseTensor *workspace_data,
                   const size_t &workspace_size) {
   if (!has_seq_length) {
 // for inference
@@ -205,15 +205,15 @@ template <typename T>
 class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const Tensor *x = ctx.Input<Tensor>("Input");
-    const Tensor *init_h = ctx.Input<Tensor>("InitH");
-    const Tensor *init_c = ctx.Input<Tensor>("InitC");
+    const Tensor *x = ctx.Input<phi::DenseTensor>("Input");
+    const Tensor *init_h = ctx.Input<phi::DenseTensor>("InitH");
+    const Tensor *init_c = ctx.Input<phi::DenseTensor>("InitC");
 
-    Tensor *out = ctx.Output<Tensor>("Out");
-    Tensor *last_h = ctx.Output<Tensor>("LastH");
-    Tensor *last_c = ctx.Output<Tensor>("LastC");
-    Tensor *reserve = ctx.Output<Tensor>("Reserve");
-    Tensor *state_out = ctx.Output<Tensor>("StateOut");
+    Tensor *out = ctx.Output<phi::DenseTensor>("Out");
+    Tensor *last_h = ctx.Output<phi::DenseTensor>("LastH");
+    Tensor *last_c = ctx.Output<phi::DenseTensor>("LastC");
+    Tensor *reserve = ctx.Output<phi::DenseTensor>("Reserve");
+    Tensor *state_out = ctx.Output<phi::DenseTensor>("StateOut");
 
     const T *x_data = x->data<T>();
     const T *init_h_data = init_h->data<T>();
@@ -243,7 +243,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     bool has_seq_length = ctx.HasInput("SequenceLength");
     std::vector<int> SequenceLength;
     if (has_seq_length) {
-      auto *sequence_length = ctx.Input<Tensor>("SequenceLength");
+      auto *sequence_length = ctx.Input<phi::DenseTensor>("SequenceLength");
       SequenceLength = operators::GetDataFromTensor<int>(sequence_length);
     }
 
@@ -266,12 +266,12 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
         reinterpret_cast<const phi::GPUContext &>(ctx.device_context())
             .stream();
     if (is_test && ctx.HasInput("W")) {
-      auto *W = ctx.Input<Tensor>("W");
+      auto *W = ctx.Input<phi::DenseTensor>("W");
       w_initialized = W->IsInitialized() ? true : false;
       weight_numel = W->numel();
     }
     if (!w_initialized) {
-      auto weight_list = ctx.MultiInput<framework::Tensor>("WeightList");
+      auto weight_list = ctx.MultiInput<phi::DenseTensor>("WeightList");
       bool continuous =
           is_continuous<T, std::vector<const Tensor *>>(weight_list);
       weight_numel = size_sum(weight_list);
@@ -301,7 +301,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
         w_data = const_cast<T *>(weight_list[0]->data<T>());
       }
     } else {
-      auto *W = ctx.Input<Tensor>("W");
+      auto *W = ctx.Input<phi::DenseTensor>("W");
       w_data = const_cast<T *>(W->data<T>());
     }
 
@@ -322,7 +322,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
                   &reserve_size,
                   state_out);
 
-    framework::Tensor workspace_data_;
+    phi::DenseTensor workspace_data_;
     workspace_data_.mutable_data<uint8_t>(
         {static_cast<int64_t>(workspace_size)}, ctx.GetPlace());
 
@@ -442,23 +442,28 @@ template <typename T>
 class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *input = ctx.Input<Tensor>("Input");
-    auto *init_h = ctx.Input<Tensor>("InitH");
-    auto *init_c = ctx.Input<Tensor>("InitC");
-    auto *reserve = ctx.Input<Tensor>("Reserve");
-    auto *state_out = ctx.Input<Tensor>("StateOut");
-    auto weight_list = ctx.MultiInput<Tensor>("WeightList");
+    auto *input = ctx.Input<phi::DenseTensor>("Input");
+    auto *init_h = ctx.Input<phi::DenseTensor>("InitH");
+    auto *init_c = ctx.Input<phi::DenseTensor>("InitC");
+    auto *reserve = ctx.Input<phi::DenseTensor>("Reserve");
+    auto *state_out = ctx.Input<phi::DenseTensor>("StateOut");
+    auto weight_list = ctx.MultiInput<phi::DenseTensor>("WeightList");
 
-    auto *out = ctx.Input<Tensor>("Out");
-    auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *last_h_grad = ctx.Input<Tensor>(framework::GradVarName("LastH"));
-    auto *last_c_grad = ctx.Input<Tensor>(framework::GradVarName("LastC"));
+    auto *out = ctx.Input<phi::DenseTensor>("Out");
+    auto *out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *last_h_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("LastH"));
+    auto *last_c_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("LastC"));
 
-    auto *in_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    auto *init_h_grad = ctx.Output<Tensor>(framework::GradVarName("InitH"));
-    auto *init_c_grad = ctx.Output<Tensor>(framework::GradVarName("InitC"));
-    auto weight_grad_list = ctx.MultiOutput<framework::Tensor>(
-        framework::GradVarName("WeightList"));
+    auto *in_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    auto *init_h_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("InitH"));
+    auto *init_c_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("InitC"));
+    auto weight_grad_list =
+        ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("WeightList"));
 
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto handle = dev_ctx.cudnn_handle();
@@ -528,7 +533,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     bool has_seq_length = ctx.HasInput("SequenceLength");
     std::vector<int> SequenceLength;
     if (has_seq_length) {
-      auto *sequence_length = ctx.Input<Tensor>("SequenceLength");
+      auto *sequence_length = ctx.Input<phi::DenseTensor>("SequenceLength");
       SequenceLength = operators::GetDataFromTensor<int>(sequence_length);
     }
 
@@ -557,7 +562,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
                   &reserve_size,
                   const_cast<Tensor *>(state_out));
 
-    framework::Tensor workspace_data_;
+    phi::DenseTensor workspace_data_;
     workspace_data_.mutable_data<uint8_t>(
         {static_cast<int64_t>(workspace_size)}, ctx.GetPlace());
     const uint8_t *reserve_data = reserve->data<uint8_t>();

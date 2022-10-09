@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 
 #include <algorithm>
@@ -18,6 +19,7 @@
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
@@ -33,6 +35,11 @@ PADDLE_DEFINE_EXPORTED_bool(
     new_executor_serial_run,
     false,
     "Enable serial execution for standalone executor, used for debug.");
+
+PADDLE_DEFINE_EXPORTED_bool(
+    new_executor_log_memory_stats,
+    false,
+    "Log memory stats after each op runs, just used for debug.");
 
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(check_nan_inf);
@@ -61,7 +68,7 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
   group_options.emplace_back(/*name*/ "DeviceKernelLaunch",
                              /*num_threads*/ device_num_threads,
                              /*allow_spinning*/ true,
-                             /*always_spinning*/ true,
+                             /*always_spinning*/ false,
                              /*track_task*/ false,
                              /*detached*/ true,
                              /*events_waiter*/ waiter);
@@ -133,6 +140,21 @@ std::unique_ptr<AtomicVectorSizeT> PrepareAtomicVarRef(
   }
   VLOG(4) << "AtomicVarRef:" << var_ref.get() << " " << var_ref->size();
   return var_ref;
+}
+
+void LogDeviceMemoryStats(const platform::Place& place) {
+  if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
+    VLOG(0) << "memory_allocated: "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB";
+    VLOG(0) << "max_memory_allocated: "
+            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
+                   "Allocated", place.device)) /
+                   1024 / 1024
+            << " MB";
+  }
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
@@ -246,7 +268,7 @@ void create_all_ops(const framework::BlockDesc& block,
                     std::vector<std::unique_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
-    VLOG(1) << "CreateOp from : " << op_type;
+    VLOG(8) << "CreateOp from : " << op_type;
 
     auto& info = OpInfoMap::Instance().Get(op_type);
 
@@ -629,18 +651,14 @@ void build_op_func_list(const platform::Place& place,
 
         // step 5. run kernel
         if (run_phi_kernel) {
-          VLOG(1) << "start run phi kernel. ";
           phi::KernelContext phi_kernel_context;
           op_with_kernel->BuildPhiKernelContext(
               runtime_context, dev_ctx, &phi_kernel_context);
           (*op_func_node.phi_kernel_)(&phi_kernel_context);
-          VLOG(1) << "end run phi kernel. ";
         } else {
-          VLOG(4) << "start run kernel. ";
           // the place of exec_ctx maybe has changed.
           op_func_node.kernel_func_(ExecutionContext(
               *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context));
-          VLOG(4) << "end run kernel. ";
         }
 
         // post-process grad_op.outputs if need cast complex grad into real
@@ -702,6 +720,7 @@ void build_op_func_list(const platform::Place& place,
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op);
     if (iter == unused_var_map.end()) {
+      interpreter::LogDeviceMemoryStats(place);
       continue;
     }
 
@@ -722,7 +741,15 @@ void build_op_func_list(const platform::Place& place,
       }
     }
     delete garbages;  // free mem
+
+    interpreter::LogDeviceMemoryStats(place);
   }
+
+  // NOTE(Ruibiao): Release memory cache to avoid memory fragments in Allocator.
+  // It reduce about 10% memory usage for V100 8-GPU training of
+  // transformer_base_bs4096_amp_fp16 and transformer_base_bs4096_pure_fp16
+  // model.
+  memory::Release(place);
 }
 
 void add_fetch(const std::vector<std::string>& fetch_names,

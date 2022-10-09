@@ -367,14 +367,14 @@ template <typename T>
 class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    auto* out2in_idx = ctx.Output<framework::Tensor>("Out2InIdx");
-    auto* out2in_w = ctx.Output<framework::Tensor>("Out2InWeights");
-    auto* mask = ctx.Output<framework::Tensor>("Mask");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* out2in_idx = ctx.Output<phi::DenseTensor>("Out2InIdx");
+    auto* out2in_w = ctx.Output<phi::DenseTensor>("Out2InWeights");
+    auto* mask = ctx.Output<phi::DenseTensor>("Mask");
     auto* out_transform_matrix =
-        ctx.Output<framework::Tensor>("TransformMatrix");
+        ctx.Output<phi::DenseTensor>("TransformMatrix");
 
     int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
     int* out2in_idx_data =
@@ -400,8 +400,8 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     const T* rois_data = rois->data<T>();
 
-    framework::Tensor roi2image;
-    framework::Tensor roi2image_dev;
+    phi::DenseTensor roi2image;
+    phi::DenseTensor roi2image_dev;
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(platform::CPUPlace());
     auto lod = rois->lod().back();
@@ -513,9 +513,8 @@ class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* out2in_idx = ctx.Input<framework::LoDTensor>("Out2InIdx");
     auto* out2in_w = ctx.Input<framework::LoDTensor>("Out2InWeights");
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     T* in_grad_data = in_grad->mutable_data<T>(ctx.GetPlace());
 

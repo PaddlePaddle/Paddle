@@ -97,7 +97,7 @@ class MLPLayer(nn.Layer):
         out = self.dropout(out)
         out = self.linear2(out)
         if is_fetch:
-            auto.fetch(out, "out")
+            auto.fetch(out, "my_out")
         return out
 
 
@@ -145,6 +145,57 @@ def train(fetch):
     temp_dir.cleanup()
 
 
+def train_callable():
+    mlp = MLPLayer(hidden_size=hidden_size,
+                   intermediate_size=4 * hidden_size,
+                   dropout_ratio=0.1,
+                   initializer_range=0.02)
+    loss = paddle.nn.CrossEntropyLoss()
+    optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                      beta1=0.9,
+                                      beta2=0.999,
+                                      epsilon=1e-08,
+                                      grad_clip=None)
+    metric = paddle.metric.Accuracy()
+
+    strategy = auto.Strategy()
+    strategy.auto_mode = "semi"
+
+    engine = auto.Engine(mlp, loss, optimizer, metric, strategy=strategy)
+
+    # train
+    train_dataset = MyDataset(batch_num * batch_size)
+    train_dataloader = engine.dataloader(train_dataset,
+                                         batch_size=batch_size,
+                                         mode="train")
+    for _ in train_dataloader:
+        outs = engine(mode="train")
+
+    # eval
+    eval_dataset2 = MyDataset(batch_size)
+    eval_dataloader = engine.dataloader(eval_dataset2,
+                                        batch_size=batch_size,
+                                        mode="eval")
+    for _ in eval_dataloader:
+        outs = engine(mode="eval")
+
+    # predict
+    test_dataset = MyDataset(batch_size)
+    predict_dataloader = engine.dataloader(test_dataset,
+                                           batch_size=batch_size,
+                                           mode="predict")
+    for _ in predict_dataloader:
+        outs = engine(mode="predict")
+
+    # save
+    temp_dir = tempfile.TemporaryDirectory()
+    model_filename = os.path.join(temp_dir.name, 'mlp')
+    engine.save(model_filename, training=True)
+    engine.load(model_filename)
+    temp_dir.cleanup()
+
+
 if __name__ == "__main__":
     train(fetch=True)
     train(fetch=False)
+    train_callable()

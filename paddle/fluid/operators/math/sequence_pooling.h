@@ -33,7 +33,7 @@ class SequencePoolFunctor {
                   const framework::LoDTensor& input,
                   framework::LoDTensor* output,
                   bool is_test = false,
-                  framework::Tensor* index = nullptr);
+                  phi::DenseTensor* index = nullptr);
 };
 
 template <typename DeviceContext, typename T>
@@ -44,7 +44,7 @@ class SequencePoolGradFunctor {
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
                   /* max pool has index */
-                  const framework::Tensor* index = nullptr);
+                  const phi::DenseTensor* index = nullptr);
 };
 
 }  // namespace math

@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
@@ -151,7 +151,7 @@ template <typename T>
 class LookupTableV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const auto *ids = context.Input<Tensor>("Ids");
+    const auto *ids = context.Input<phi::DenseTensor>("Ids");
     LookupTableV2CPUFunctor<T> functor(context, ids);
     framework::VisitIntDataType(framework::TransToProtoVarType(ids->dtype()),
                                 functor);
@@ -272,7 +272,7 @@ template <typename T>
 class LookupTableV2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const auto *ids = context.Input<Tensor>("Ids");
+    const auto *ids = context.Input<phi::DenseTensor>("Ids");
     LookupTableV2GradCPUFunctor<T> functor(context, ids);
     framework::VisitIntDataType(framework::TransToProtoVarType(ids->dtype()),
                                 functor);
