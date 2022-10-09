@@ -253,4 +253,3 @@ class Gumbel(TransformedDistribution):
             exp_transform.inverse(
                 affine_tf1.forward(
                     exp_transform.inverse(self._base.sample(shape)))))
-
