@@ -239,6 +239,7 @@ from .math import heaviside  # noqa: F401
 from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
+from .math import frexp  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -517,6 +518,7 @@ tensor_method_func = [  # noqa
     'take',
     'bucketize',
     'sgn',
+    'frexp',
 ]
 
 # this list used in math_op_patch.py for magic_method bind
