@@ -362,21 +362,6 @@ __global__ void KernelMaxPool2DGrad(const int nthreads,
   }
 }
 
-template <typename T>
-__global__ void print_float_gpu(const T* src,
-                                int begin,
-                                int len,
-                                int lenPerLine,
-                                int stride){
-  for (int i=begin;i<begin+len*stride;i+=stride){
-    printf("%f, ", static_cast<float>(src[i]));
-    if((i-begin)/stride%lenPerLine==(lenPerLine-1)){
-      printf("\n");
-    }
-  }
-  printf("\n");
-}
-
 template <typename PoolProcess, typename T>
 void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
     const T* input,
@@ -390,15 +375,6 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
     T* output,
     gpuStream_t stream,
     PoolProcess pool_compute) {
-
-    VLOG(1)<<"@@@ Pool2dDirectCUDAFunctor para:"
-          <<"\n input_shape:"<<input_shape[0]<<","<<input_shape[1]<<","<<input_shape[2]<<","<<input_shape[3]
-          <<"\n output_shape:"<<output_shape[0]<<","<<output_shape[1]<<","<<output_shape[2]<<","<<output_shape[3]
-          <<"\n ksize:"<<ksize[0]<<","<<ksize[1]
-          <<"\n strides:"<<strides[0]<<","<<strides[1]
-          <<"\n padding:"<<paddings[0]<<","<<paddings[1]
-          <<"\n exclusive:"<<exclusive
-          <<"\n adaptive:"<<adaptive;
   const int batch_size = input_shape[0];
   const int input_channels = input_shape[1];
   const int input_height = input_shape[2];
@@ -412,12 +388,6 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int stride_width = strides[1];
   const int padding_height = paddings[0];
   const int padding_width = paddings[1];
-  // printf("@@@ pooling input\n");
-  // cudaDeviceSynchronize();
-  // print_float_gpu<T><<<1,1>>>(input,0,
-  //                             batch_size*input_channels*input_height*input_width,
-  //                             20,1);
-  // cudaDeviceSynchronize();
   int nthreads = batch_size * output_channels * output_height * output_width;
   int thread_num = 1024;
 #ifdef WITH_NV_JETSON
