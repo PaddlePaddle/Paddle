@@ -85,11 +85,6 @@ class TestGumbel(unittest.TestCase):
 
     def test_sample(self):
         self.assertEqual(self.samples.dtype, self.scale.dtype)
-        self.assertEqual(tuple(self.samples.shape),
-                         tuple(self._dist._extend_shape(self.sample_shape)))
-
-        self.assertEqual(self.samples.shape, self.sample_shape + self.loc.shape)
-        self.assertEqual(self.samples.shape, self.sample_shape + self.loc.shape)
 
         tolerance = 1e-3
         np.testing.assert_allclose(self.samples.mean(axis=0),
@@ -147,9 +142,10 @@ class TestGumbelPDF(unittest.TestCase):
         self.feeds = {'loc': self.loc, 'scale': self.scale, 'value': self.value}
 
         executor.run(startup_program)
-        [self.prob, self.log_prob, self.cdf] = executor.run(main_program,
-                                                            feed=self.feeds,
-                                                            fetch_list=fetch_list)
+        [self.prob, self.log_prob,
+         self.cdf] = executor.run(main_program,
+                                  feed=self.feeds,
+                                  fetch_list=fetch_list)
 
     def test_prob(self):
         np.testing.assert_allclose(
