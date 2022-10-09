@@ -40,6 +40,25 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
             self.assertEqual(xinfo.min, xninfo.min)
             self.assertEqual(xinfo.dtype, xninfo.dtype)
 
+    def test_finfo(self):
+        for paddle_dtype, np_dtype in [(paddle.int64, np.int64),
+                                       (paddle.int32, np.int32),
+                                       (paddle.int16, np.int16),
+                                       (paddle.int8, np.int8),
+                                       (paddle.uint8, np.uint8),
+                                       (paddle.float16, np.float16),
+                                       (paddle.float32,np.float32) ,
+                                       (paddle.float64,np.float64)]:
+            xinfo = paddle.finfo(paddle_dtype)
+            xninfo = np.finfo(np_dtype)
+            self.assertEqual(xinfo.bits, xninfo.bits)
+            self.assertEqual(xinfo.max, xninfo.max)
+            self.assertEqual(xinfo.min, xninfo.min)
+            self.assertEqual(xinfo.eps, xninfo.eps)
+            self.assertEqual(xinfo.tiny, xninfo.tiny)
+            self.assertEqual(xinfo.resolution, xninfo.resolution)
+
+
 
 if __name__ == '__main__':
     unittest.main()

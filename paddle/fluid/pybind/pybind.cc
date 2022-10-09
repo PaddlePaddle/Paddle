@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.1
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -419,6 +419,72 @@ struct iinfo {
   }
 };
 
+struct finfo {
+  int64_t min, max;
+  int bits;
+  std::string dtype;
+  float eps,tiny,resolution;
+
+  explicit finfo(const framework::proto::VarType::Type &type) {
+    switch (type) {
+      case framework::proto::VarType::INT16:
+        min = std::numeric_limits<int16_t>::min();
+        max = std::numeric_limits<int16_t>::max();
+        bits = 16;
+        dtype = "int16";
+        break;
+      case framework::proto::VarType::INT32:
+        min = std::numeric_limits<int32_t>::min();
+        max = std::numeric_limits<int32_t>::max();
+        bits = 32;
+        dtype = "int32";
+        break;
+      case framework::proto::VarType::INT64:
+        min = std::numeric_limits<int64_t>::min();
+        max = std::numeric_limits<int64_t>::max();
+        bits = 64;
+        dtype = "int64";
+        break;
+      case framework::proto::VarType::INT8:
+        min = std::numeric_limits<int8_t>::min();
+        max = std::numeric_limits<int8_t>::max();
+        bits = 8;
+        dtype = "int8";
+        break;
+      case framework::proto::VarType::UINT8:
+        min = std::numeric_limits<uint8_t>::min();
+        max = std::numeric_limits<uint8_t>::max();
+        bits = 8;
+        dtype = "uint8";
+        break;
+      case framework::proto::VarType::FP32:
+        eps = std::numeric_limits<float32_t>::epsilon();
+        tiny = std::numeric_limits<float32_t>::tinyness_before();
+        resolution = std::numeric_limits<float32_t>::resolution();
+        bits = 8;
+        dtype = "float32";
+        break;
+      case framework::proto::VarType::FP64:
+        eps = std::numeric_limits<float64_t>::epsilon();
+        tiny = std::numeric_limits<float64_t>::tinyness_before();
+        resolution = std::numeric_limits<float64_t>::resolution();
+        bits = 64;
+        dtype = "float64";
+        break;
+      default:
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "the argument of paddle.finfo can only be paddle.int8, "
+            "paddle.int16, paddle.int32, paddle.int64, or paddle.uint8"));
+        break;
+    }
+  }
+};
+
+
+
+
+
+
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
   // is not inside obj, but it would also set the error flag of Python.
@@ -637,6 +703,28 @@ PYBIND11_MODULE(libpaddle, m) {
         oss << ", dtype=" << a.dtype << ")";
         return oss.str();
       });
+
+  py::class_<finfo>(m, "finfo")
+      .def(py::init<const framework::proto::VarType::Type &>())
+      .def_readonly("min", &finfo::min)
+      .def_readonly("max", &finfo::max)
+      .def_readonly("bits", &finfo::bits)
+      .def_readonly("dtype", &finfo::dtype)
+      .def_readonly("eps", &finfo::eps)
+      .def_readonly("tiny", &finfo::tiny)
+      .def_readonly("resolution", &finfo::reresolution)
+      .def("__repr__", [](const iinfo &a) {
+        std::ostringstream oss;
+        oss << "paddle.finfo(min=" << a.min;
+        oss << ", max=" << a.max;
+        oss << ", bits=" << a.bits;
+        oss << ", dtype=" << a.dtype << ")";
+        oss << ", eps=" << a.eps << ")";
+        oss << ", tiny=" << a.tiny << ")";
+        oss << ", resolution=" << a.resolution << ")";
+        return oss.str();
+      });
+
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
