@@ -78,20 +78,20 @@ inline void ModulatedDeformableIm2colCPUKernel(
 
         const T offset_h = data_offset_ptr[data_offset_h_ptr];
         const T offset_w = data_offset_ptr[data_offset_w_ptr];
-        T val = 0;
+        T val = static_cast<T>(0);
         const T h_im = h_in + i * dilation_h + offset_h;
         const T w_im = w_in + j * dilation_w + offset_w;
         if (h_im > -1 && w_im > -1 && h_im < height && w_im < width) {
           val = DmcnIm2colBilinear<T, T>(
               data_im_ptr, width, height, width, h_im, w_im);
         }
+        *data_col_ptr = val;
         if (data_mask_ptr) {
           const int data_mask_hw_ptr =
               ((i * kernel_w + j) * height_col + h_col) * width_col + w_col;
           const T mask = data_mask_ptr[data_mask_hw_ptr];
-          val *= mask;
+          *data_col_ptr *= mask;
         }
-        *data_col_ptr = static_cast<T>(val);
         data_col_ptr += batch_size * height_col * width_col;
       }
     }

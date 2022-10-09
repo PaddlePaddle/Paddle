@@ -248,7 +248,7 @@ void ModulatedDeformableCol2imCoordCPUKernel(
       }
       cnt += 1;
     }
-    grad_offset[i] = static_cast<T>(val);
+    grad_offset[i] = val;
     if (grad_mask && offset_c % 2 == 0)
       grad_mask[(((b * deformable_group + deformable_group_index) * kernel_h *
                       kernel_w +
