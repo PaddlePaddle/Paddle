@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import os
 import unittest
 import tempfile
@@ -45,11 +47,6 @@ class TestCumsumOp(unittest.TestCase):
         z = np.cumsum(data_np, axis=-1)
         np.testing.assert_array_equal(z, y.numpy())
 
-        y = paddle.cumsum(data, dtype='float16')
-        z = np.cumsum(data_np)
-        self.assertTrue(y.dtype == core.VarDesc.VarType.FP16)
-        np.testing.assert_array_equal(z, y.numpy())
-
         y = paddle.cumsum(data, dtype='float64')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
 
@@ -70,16 +67,12 @@ class TestCumsumOp(unittest.TestCase):
             y4 = paddle.cumsum(x, dtype='float64')
             y5 = paddle.cumsum(x, dtype=np.int32)
             y6 = paddle.cumsum(x, axis=-2)
-            y7 = paddle.cumsum(x, dtype='float16')
 
+            fetch_list = [y.name, y2.name, y3.name, y4.name, y5.name, y6.name]
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            out = exe.run(feed={'X': data_np},
-                          fetch_list=[
-                              y.name, y2.name, y3.name, y4.name, y5.name,
-                              y6.name, y7.name
-                          ])
+            out = exe.run(feed={'X': data_np}, fetch_list=fetch_list)
 
             z = np.cumsum(data_np)
             np.testing.assert_allclose(z, out[0], rtol=1e-05)
@@ -89,9 +82,6 @@ class TestCumsumOp(unittest.TestCase):
             np.testing.assert_allclose(z, out[2], rtol=1e-05)
             self.assertTrue(out[3].dtype == np.float64)
             self.assertTrue(out[4].dtype == np.int32)
-            z = np.cumsum(data_np, axis=-2)
-            np.testing.assert_allclose(z, out[5], rtol=1e-05)
-            self.assertTrue(out[6].dtype == np.float16)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
@@ -103,6 +93,7 @@ class TestCumsumOp(unittest.TestCase):
     def test_gpu(self):
         if not fluid.core.is_compiled_with_cuda():
             return
+
         paddle.disable_static(paddle.fluid.CUDAPlace(0))
         self.run_cases()
         paddle.enable_static()
@@ -207,6 +198,8 @@ class TestSumOp7(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSumOp8(OpTest):
 
     def setUp(self):
@@ -394,9 +387,6 @@ class TestTensorAxis(unittest.TestCase):
             relu_out = paddle.nn.functional.relu(linear_out)
             axis = paddle.full([1], 2, dtype='int64')
             out = paddle.cumsum(relu_out, axis=axis)
-            loss = paddle.mean(out)
-            sgd = paddle.optimizer.SGD(learning_rate=0.)
-            sgd.minimize(paddle.mean(out))
 
             exe = paddle.static.Executor(self.place)
             exe.run(starup_prog)

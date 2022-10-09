@@ -15,8 +15,6 @@
 #include "paddle/phi/kernels/cum_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -134,46 +132,6 @@ void ScanKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T>
-struct CumSumReducer {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void reduce(const T t, T* accum) const {
-    Eigen::internal::scalar_sum_op<MT> sum_op;
-    *accum =
-        static_cast<T>(sum_op(static_cast<MT>(*accum), static_cast<MT>(t)));
-  }
-  template <typename Packet>
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void reducePacket(const Packet& p,
-                                                          Packet* accum) const {
-    (*accum) = Eigen::internal::padd<Packet>(*accum, p);
-  }
-
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T initialize() const {
-    Eigen::internal::scalar_cast_op<int, MT> conv;
-    return static_cast<T>(conv(0));
-  }
-  template <typename Packet>
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Packet initializePacket() const {
-    return Eigen::internal::pset1<Packet>(initialize());
-  }
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T finalize(const T accum) const {
-    return accum;
-  }
-  template <typename Packet>
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Packet
-  finalizePacket(const Packet& vaccum) const {
-    return vaccum;
-  }
-  template <typename Packet>
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T
-  finalizeBoth(const T saccum, const Packet& vaccum) const {
-    Eigen::internal::scalar_sum_op<MT> sum_op;
-    return static_cast<T>(
-        sum_op(static_cast<MT>(saccum),
-               static_cast<MT>(Eigen::internal::predux(vaccum))));
-  }
-};
-
 template <typename T, typename Context>
 void CumsumKernel(const Context& dev_ctx,
                   const DenseTensor& x,
@@ -182,7 +140,7 @@ void CumsumKernel(const Context& dev_ctx,
                   bool exclusive,
                   bool reverse,
                   DenseTensor* out) {
-  using Reducer = CumSumReducer<T>;
+  using Reducer = Eigen::internal::SumReducer<T>;
   auto reducer = Reducer();
   ScanKernel<T, Context, Reducer>(
       dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, reducer, out);
@@ -190,22 +148,20 @@ void CumsumKernel(const Context& dev_ctx,
 
 template <typename T>
 struct LogSumExp {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T operator()(const T& a,
                                                      const T& b) const {
-    auto mi = Eigen::internal::scalar_min_op<MT>()(a, b);
-    auto ma = Eigen::internal::scalar_max_op<MT>()(a, b);
+    auto mi = Eigen::internal::scalar_min_op<T>()(a, b);
+    auto ma = Eigen::internal::scalar_max_op<T>()(a, b);
 
-    auto sub = Eigen::internal::scalar_difference_op<MT>();
-    auto add = Eigen::internal::scalar_sum_op<MT>();
-    auto exp = Eigen::internal::scalar_exp_op<MT>();
-    auto log1p = Eigen::internal::scalar_log1p_op<MT>();
+    auto sub = Eigen::internal::scalar_difference_op<T>();
+    auto add = Eigen::internal::scalar_sum_op<T>();
+    auto exp = Eigen::internal::scalar_exp_op<T>();
+    auto log1p = Eigen::internal::scalar_log1p_op<T>();
     auto cmp_lt =
-        Eigen::internal::scalar_cmp_op<MT, MT, Eigen::internal::cmp_LT>();
+        Eigen::internal::scalar_cmp_op<T, T, Eigen::internal::cmp_LT>();
 
     auto logsumexp = add(log1p(exp(sub(mi, ma))), ma);
-    return static_cast<T>(
-        cmp_lt(ma, Eigen::NumTraits<T>::lowest()) ? ma : logsumexp);
+    return cmp_lt(ma, Eigen::NumTraits<T>::lowest()) ? ma : logsumexp;
   }
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T packetOp(const T& a,
                                                    const T& b) const {
@@ -307,15 +263,9 @@ PD_REGISTER_KERNEL(cumsum,
                    phi::CumsumKernel,
                    float,
                    double,
-                   phi::dtype::float16,
                    int16_t,
                    int,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(logcumsumexp,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::LogcumsumexpKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    logcumsumexp, CPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}

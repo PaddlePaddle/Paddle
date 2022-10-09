@@ -149,9 +149,9 @@ struct LogAddExp {
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    T _min = a > b ? b : a;
-    T _max = a > b ? a : b;
-    return static_cast<T>(__logf(1 + __expf(_min - _max))) + _max;
+    T min_val = a > b ? b : a;
+    T max_val = a > b ? a : b;
+    return static_cast<T>(__logf(1 + __expf(min_val - max_val))) + max_val;
   }
 };
 
@@ -160,12 +160,12 @@ struct Identity;
 
 template <typename T>
 struct Identity<T, cub::Sum> {
-  T value = static_cast<T>(0);
+  static constexpr T value = static_cast<T>(0);
 };
 
 template <typename T>
 struct Identity<T, LogAddExp> {
-  T value = std::numeric_limits<T>::lowest();
+  static constexpr T value = std::numeric_limits<T>::lowest();
 };
 
 template <typename T, int BLOCK_THREADS, int ITEMS_PER_THREAD, typename Op>
@@ -192,8 +192,7 @@ __global__ void BlockScanKernel(T* d_out,
   } temp_storage;
 
   int bx = blockIdx.x;
-
-  BlockPrefixCallbackOp<T, Op> prefix_op(Identity<T, Op>().value, op);
+  BlockPrefixCallbackOp<T, Op> prefix_op(Identity<T, Op>::value, op);
 
   // Obtain this block's segment of consecutive keys (blocked across threads)
   int item_per_block = BLOCK_THREADS * ITEMS_PER_THREAD;
@@ -408,15 +407,21 @@ PD_REGISTER_KERNEL(cumsum,
                    phi::CumsumKernel,
                    float,
                    double,
+#ifdef PADDLE_WITH_HIP
                    phi::dtype::float16,
+#endif
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t) {
+}
 
 PD_REGISTER_KERNEL(logcumsumexp,
                    GPU,
                    ALL_LAYOUT,
                    phi::LogcumsumexpKernel,
+#ifdef PADDLE_WITH_HIP
+                   phi::dtype::float16,
+#endif
                    float,
-                   double,
-                   phi::dtype::float16) {}
+                   double) {
+}
