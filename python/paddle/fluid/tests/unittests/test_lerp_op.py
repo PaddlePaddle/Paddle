@@ -101,9 +101,9 @@ class TestLerpBroadWToXY(TestLerp):
         self.python_api = paddle.lerp
         self.init_dtype()
         self.init_shape()
-        x = np.full(600, 2.5).astype(self.dtype).reshape([3, 2, 2, 50])
-        y = np.full(600, 1.).astype(self.dtype).reshape([3, 2, 2, 50])
-        w = np.full(200, 0.5).astype(self.dtype).reshape([2, 2, 50])
+        x = np.full(600, 2.5).astype(self.dtype).reshape([50, 2, 2, 3])
+        y = np.full(600, 1.).astype(self.dtype).reshape([50, 2, 2, 3])
+        w = np.random.random([3]).astype(self.dtype)
         self.inputs = {'X': x, 'Y': y, 'Weight': w}
         self.outputs = {'Out': x + w * (y - x)}
 

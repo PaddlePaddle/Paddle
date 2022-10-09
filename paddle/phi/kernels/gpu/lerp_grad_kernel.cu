@@ -101,13 +101,12 @@ void SwitchKernel(const Context& ctx,
                   const int y_grad_size,
                   T* x_grad_data,
                   T* y_grad_data) {
-  if (weight.dims().size() == 1) {
+  if (weight.numel() == 1) {
     //    condition when weight is a scalar
     const T* weight_data = weight.data<T>();
-    // const T weight_scalar = weight_data[0];
     const T* out_grad_data = out_grad.data<T>();
-    const int out_size = out_grad.numel();
-    const int weight_size = weight.numel();
+    const int64_t out_size = out_grad.numel();
+    const int64_t weight_size = weight.numel();
     auto gpu_config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, out_size);
     LerpGradScalarKernelImpl<T><<<gpu_config.GetGridSize(),
                                   gpu_config.GetBlockSize(),
