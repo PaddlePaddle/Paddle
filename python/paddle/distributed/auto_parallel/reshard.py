@@ -283,7 +283,13 @@ class Inserter:
         return out
 
     @staticmethod
-    def insert_send_op(block, idx, tensor, src, dst, op_role):
+    def insert_send_op(block,
+                       idx,
+                       tensor,
+                       src,
+                       dst,
+                       op_role,
+                       dynamic_shape=False):
         """Insert send op into block at the given index."""
         op_type = 'send_v2'
         # use pair comm group
@@ -296,12 +302,18 @@ class Inserter:
                                        'peer': process_group.ranks.index(dst),
                                        'use_calc_stream': True,
                                        'op_role': op_role,
-                                       'dynamic_shape': True
+                                       'dynamic_shape': dynamic_shape
                                    })
         send_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
     @staticmethod
-    def insert_recv_op(block, idx, tensor, src, dst, op_role):
+    def insert_recv_op(block,
+                       idx,
+                       tensor,
+                       src,
+                       dst,
+                       op_role,
+                       dynamic_shape=False):
         """Insert recv op into block at the given index."""
         op_type = 'recv_v2'
         # use pair group
@@ -317,7 +329,7 @@ class Inserter:
                                        'dtype': tensor.dtype,
                                        'use_calc_stream': True,
                                        'op_role': op_role,
-                                       'dynamic_shape': True
+                                       'dynamic_shape': dynamic_shape
                                    })
         recv_op._set_attr('op_namescope', "/auto_parallel/reshard")
 
@@ -859,7 +871,7 @@ class Resharder:
                  rank_id,
                  dist_context,
                  dist_params_grads,
-                 batch_size=None):
+                 batch_size=1):
         assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_main_prog should be Program, " \
                                             "but got {}.".format(type(auto_parallel_main_prog))
         if auto_parallel_startup_prog is not None:
@@ -870,9 +882,8 @@ class Resharder:
         assert isinstance(dist_context, DistributedContext), "The type of dist_context should be DistributedContext, " \
                                             "but got {}.".format(type(dist_context))
 
-        if batch_size is not None:
-            assert isinstance(batch_size, int), "The type of batch_size should be int, " \
-                                                "but got {}.".format(type(batch_size))
+        assert isinstance(batch_size, int), "The type of batch_size should be int, " \
+                                            "but got {}.".format(type(batch_size))
 
         self._auto_parallel_main_prog = auto_parallel_main_prog
         self._auto_parallel_startup_prog = auto_parallel_startup_prog
@@ -885,6 +896,17 @@ class Resharder:
         self._has_allgather = {}
         # to avoid reshard repeatly
         self._has_resharded = {}
+        # use dynamic shape send/recv
+        self._dynamic_shape = False
+        self._batch_dim_not_fixed = False
+
+    @property
+    def dynamic_shape(self):
+        return self._dynamic_shape
+
+    @property
+    def batch_dim_not_fixed(self):
+        return self._batch_dim_not_fixed
 
     @property
     def auto_parallel_main_prog(self):
@@ -1230,7 +1252,11 @@ class Resharder:
             assert source_tensor.shape[0] == -1
             new_shape = list(source_tensor.shape)
             new_shape[0] = self.batch_size
+            self._dynamic_shape = True
+            self._batch_dim_not_fixed = True
             source_tensor.desc.set_shape(new_shape)
+
+        # NOTE: Whether use dynamic shape will be updated in the future by dynamic shape infer
 
         complete_shape = Resharder.compute_complete_shape(
             source_tensor.shape, source_process_shape,
@@ -1479,12 +1505,14 @@ class Resharder:
                             reshard_op.attr('op_role'), paddle.int64)
                         Inserter.insert_send_op(block, idx + 1, out_cast,
                                                 op_desc.src, op_desc.dst,
-                                                reshard_op.attr('op_role'))
+                                                reshard_op.attr('op_role'),
+                                                self.dynamic_shape)
                         idx += 2
                     else:
                         Inserter.insert_send_op(block, idx, source_tensor,
                                                 op_desc.src, op_desc.dst,
-                                                reshard_op.attr('op_role'))
+                                                reshard_op.attr('op_role'),
+                                                self.dynamic_shape)
                         idx += 1
                     self.has_sent[var_name].append(op_desc.dst)
 
@@ -1506,7 +1534,8 @@ class Resharder:
                             type=source_tensor.type)
                         Inserter.insert_recv_op(block, idx, recv_tensor,
                                                 op_desc.src, op_desc.dst,
-                                                reshard_op.attr('op_role'))
+                                                reshard_op.attr('op_role'),
+                                                self.dynamic_shape)
                         out_cast = Inserter.insert_cast_op(
                             block, idx + 1, recv_tensor,
                             reshard_op.attr('op_role'), paddle.bool)
@@ -1577,6 +1606,9 @@ class Resharder:
                     new_var_name=new_name,
                     op_role=reshard_op.attr('op_role'))
 
+                if self.batch_dim_not_fixed:
+                    new_shape = [-1] + target_tensor.shape[1:]
+                    target_tensor.desc.set_shape(new_shape)
                 process_mesh = dist_attr[0]
                 dims_mapping = dist_attr[1]
 
@@ -1867,7 +1899,8 @@ class Resharder:
                                     dist_tensor.dist_attr.process_mesh.processes
                             ):
                                 continue
-
+                        self._dynamic_shape = False
+                        self._batch_dim_not_fixed = False
                         if dist_tensor is not None and self.need_reshard(
                                 dist_tensor, input_attr):
                             reshard_op_desc = self.find_op_desc_seq(
@@ -1893,7 +1926,7 @@ class Resharder:
                     type=var.type)
                 Inserter.insert_recv_op(block, idx + 1,
                                         recv_cast_out, send_rank, recv_rank,
-                                        op.attr('op_role'))
+                                        op.attr('op_role'), self.dynamic_shape)
                 reset_lod_out = None
                 if var.lod_level != 0:
                     set_lod = False
@@ -1946,7 +1979,8 @@ class Resharder:
                         dtype=var.int64,
                         type=var.type)
                     Inserter.insert_recv_op(block, idx + 1, recv_out, send_rank,
-                                            recv_rank, op.attr('op_role'))
+                                            recv_rank, op.attr('op_role'),
+                                            self.dynamic_shape)
                     set_lod = False
                     for tmp_block in self.auto_parallel_main_prog.blocks:
                         for tmp_var_name in tmp_block.vars:
@@ -1969,17 +2003,19 @@ class Resharder:
                     assert set_lod is True
                 else:
                     Inserter.insert_recv_op(block, idx + 1, var, send_rank,
-                                            recv_rank, op.attr('op_role'))
+                                            recv_rank, op.attr('op_role'),
+                                            self.dynamic_shape)
 
     def _handle_send(self, block, idx, var, op, send_rank, recv_rank):
         if var.dtype == paddle.bool:
             cast_out = Inserter.insert_cast_op(block, idx + 1, var,
                                                op.attr('op_role'), paddle.int64)
-            Inserter.insert_send_op(block, idx + 2, cast_out, send_rank,
-                                    recv_rank, op.attr('op_role'))
+            Inserter.insert_send_op(block, idx + 2,
+                                    cast_out, send_rank, recv_rank,
+                                    op.attr('op_role'), self.dynamic_shape)
         else:
             Inserter.insert_send_op(block, idx + 1, var, send_rank, recv_rank,
-                                    op.attr('op_role'))
+                                    op.attr('op_role'), self.dynamic_shape)
 
     def _reshard_output(self, block):
         # insert send and recv op if output process mesh is different from tensor process mesh
@@ -2007,6 +2043,8 @@ class Resharder:
                         dist_op.dist_attr.process_mesh,
                         dist_op.dist_attr.get_output_dims_mapping(var_name)
                     ]
+                    # NOTE: Whether use dynamic shape for output will be updated in the future by dynamic shape infer.
+                    self.dynamic_shape = True
                     if dist_tensor is not None and self.need_reshard(
                             dist_tensor, output_attr, False):
                         tensor_processes = set(
