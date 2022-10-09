@@ -43,7 +43,6 @@ inline void ModulatedDeformableCol2imCPUKernel(
     const int height_col,
     const int width_col,
     T* grad_im) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int thread = 0; thread < num_kernels; thread++) {
     const int j = (thread / width_col / height_col / batch_size) % kernel_w;
     const int i =
@@ -68,17 +67,17 @@ inline void ModulatedDeformableCol2imCPUKernel(
         ((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col + w_out;
     const int data_mask_hw_ptr =
         ((i * kernel_w + j) * height_col + h_out) * width_col + w_out;
-    const MT offset_h = static_cast<MT>(data_offset_ptr[data_offset_h_ptr]);
-    const MT offset_w = static_cast<MT>(data_offset_ptr[data_offset_w_ptr]);
-    const MT cur_inv_h_data = h_in + i * dilation_h + offset_h;
-    const MT cur_inv_w_data = w_in + j * dilation_w + offset_w;
+    const T offset_h = data_offset_ptr[data_offset_h_ptr];
+    const T offset_w = data_offset_ptr[data_offset_w_ptr];
+    const T cur_inv_h_data = h_in + i * dilation_h + offset_h;
+    const T cur_inv_w_data = w_in + j * dilation_w + offset_w;
 
-    MT cur_top_grad = static_cast<MT>(data_col[thread]);
+    T cur_top_grad = data_col[thread];
     if (data_mask) {
       const T* data_mask_ptr =
           data_mask + (b * deformable_group + deformable_group_index) *
                           kernel_h * kernel_w * height_col * width_col;
-      const MT mask = static_cast<MT>(data_mask_ptr[data_mask_hw_ptr]);
+      const T mask = data_mask_ptr[data_mask_hw_ptr];
       cur_top_grad *= mask;
     }
     const int cur_h = static_cast<int>(cur_inv_h_data);
@@ -90,16 +89,15 @@ inline void ModulatedDeformableCol2imCPUKernel(
             abs(cur_inv_w_data - (cur_w + dx)) < 1) {
           int cur_bottom_grad_pos =
               ((b * channels + c) * height + cur_h + dy) * width + cur_w + dx;
-          MT weight = DmcnGetGradientWeight(cur_inv_h_data,
-                                            cur_inv_w_data,
-                                            cur_h + dy,
-                                            cur_w + dx,
-                                            height,
-                                            width);
+          T weight = DmcnGetGradientWeight(cur_inv_h_data,
+                                           cur_inv_w_data,
+                                           cur_h + dy,
+                                           cur_w + dx,
+                                           height,
+                                           width);
 
           *(grad_im + cur_bottom_grad_pos) =
-              *(grad_im + cur_bottom_grad_pos) +
-              static_cast<T>(weight * cur_top_grad);
+              *(grad_im + cur_bottom_grad_pos) + (weight * cur_top_grad);
         }
       }
     }
@@ -171,9 +169,8 @@ void ModulatedDeformableCol2imCoordCPUKernel(
     const int width_col,
     T* grad_offset,
     T* grad_mask) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (int i = 0; i < num_kernels; i++) {
-    MT val = 0, mval = 0;
+    T val = 0, mval = 0;
     const int w = i % width_col;
     const int h = (i / width_col) % height_col;
     const int c = (i / width_col / height_col) % offset_channels;
@@ -218,37 +215,36 @@ void ModulatedDeformableCol2imCoordCPUKernel(
       const int data_offset_w_ptr =
           (((2 * (i * kernel_w + j) + 1) * height_col + h_out) * width_col +
            w_out);
-      const MT offset_h = static_cast<MT>(data_offset_ptr[data_offset_h_ptr]);
-      const MT offset_w = static_cast<MT>(data_offset_ptr[data_offset_w_ptr]);
-      MT inv_h = h_in + i * dilation_h + offset_h;
-      MT inv_w = w_in + j * dilation_w + offset_w;
+      const T offset_h = data_offset_ptr[data_offset_h_ptr];
+      const T offset_w = data_offset_ptr[data_offset_w_ptr];
+      T inv_h = h_in + i * dilation_h + offset_h;
+      T inv_w = w_in + j * dilation_w + offset_w;
       if (inv_h <= -1 || inv_w <= -1 || inv_h >= height || inv_w >= width) {
         inv_h = inv_w = -2;
       } else {
-        mval +=
-            static_cast<MT>(data_col_ptr[col_pos]) *
-            funcs::DmcnIm2colBilinear<T, MT>(data_im_ptr + cnt * height * width,
-                                             width,
-                                             height,
-                                             width,
-                                             inv_h,
-                                             inv_w);
+        mval += data_col_ptr[col_pos] * funcs::DmcnIm2colBilinear<T, T>(
+                                            data_im_ptr + cnt * height * width,
+                                            width,
+                                            height,
+                                            width,
+                                            inv_h,
+                                            inv_w);
       }
-      const MT weight =
-          DmcnGetCoordinateWeight<T, MT>(inv_h,
-                                         inv_w,
-                                         height,
-                                         width,
-                                         data_im_ptr + cnt * height * width,
-                                         width,
-                                         bp_dir);
+      const T weight =
+          DmcnGetCoordinateWeight<T, T>(inv_h,
+                                        inv_w,
+                                        height,
+                                        width,
+                                        data_im_ptr + cnt * height * width,
+                                        width,
+                                        bp_dir);
       if (data_mask_ptr) {
         const int data_mask_hw_ptr =
             (((i * kernel_w + j) * height_col + h_out) * width_col + w_out);
-        const MT mask = static_cast<MT>(data_mask_ptr[data_mask_hw_ptr]);
-        val += weight * static_cast<MT>(data_col_ptr[col_pos]) * mask;
+        const T mask = data_mask_ptr[data_mask_hw_ptr];
+        val += weight * data_col_ptr[col_pos] * mask;
       } else {
-        val += weight * static_cast<MT>(data_col_ptr[col_pos]);
+        val += weight * data_col_ptr[col_pos];
       }
       cnt += 1;
     }
