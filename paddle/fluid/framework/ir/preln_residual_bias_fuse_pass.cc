@@ -169,9 +169,9 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *graph) {
     my_found_subgraph_count++;
-      if (my_found_subgraph_count >= 2) {
-        return;
-      }
+    if (my_found_subgraph_count >= 2) {
+      return;
+    }
     if (subgraph.count(x) <= 0 || subgraph.count(y) <= 0) {
       LOG(WARNING) << "The subgraph is empty.";
       return;
@@ -202,15 +202,6 @@ int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(
         layer_norm_variance, layer_norm_variance, fused_pattern);
-
-    // We can not accept that two or more layer_norm is connected to
-    // elementwise1_out. This will lead to two or more PrelnResidualBias
-    // patterns is found near elementwise1_out, and these patterns will interact
-    // on each other, so we make below check to ensure only one
-    // PrelnResidualBias pattern is delalted with.
-    for (auto op : elementwise1_out->inputs) {
-      if (op->Name() == "preln_residual_bias") return;
-    }
 
     if (!IsCompat(subgraph, graph)) {
       LOG(WARNING) << "preln_residual_bias pass in op compat failed.";
