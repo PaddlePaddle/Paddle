@@ -185,8 +185,8 @@ void LerpGradKernel(const Context& ctx,
   bool reduce_flag = XYNeedReduce(x, y, out);
   if (!reduce_flag) {
     int x_grad_size = 0, y_grad_size = 0;
-    T* x_grad_data;
-    T* y_grad_data;
+    T* x_grad_data = NULL;
+    T* y_grad_data = NULL;
 
     if (x_grad) {
       x_grad_data = ctx.template Alloc<T>(x_grad);
@@ -210,8 +210,8 @@ void LerpGradKernel(const Context& ctx,
     int x_grad_size = 0, y_grad_size = 0;
     DenseTensor b_xgrad = phi::EmptyLike<T, Context>(ctx, out_grad);
     DenseTensor b_ygrad = phi::EmptyLike<T, Context>(ctx, out_grad);
-    T* x_grad_data;
-    T* y_grad_data;
+    T* x_grad_data = NULL;
+    T* y_grad_data = NULL;
 
     if (x_grad) {
       x_grad_data = ctx.template Alloc<T>(&b_xgrad);
