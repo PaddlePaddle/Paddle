@@ -119,7 +119,7 @@ using ReluOneDNNFunctor =
 
 template <typename T>
 using Relu6OneDNNFunctor =
-    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_bounded_relu>;
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_clip_v2>;
 
 template <typename T>
 using RoundOneDNNFunctor =
@@ -154,7 +154,6 @@ DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundOneDNNFunctor)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluOneDNNFunctor, alpha)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishOneDNNFunctor, threshold)
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Relu6, Relu6OneDNNFunctor, threshold)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Swish, SwishOneDNNFunctor, beta)
 
 template <typename T, typename Context>
@@ -182,13 +181,22 @@ void GeluKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void Relu6Kernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 float threshold,
+                 DenseTensor* out) {
+  Relu6OneDNNFunctor<T> functor;
+  functor(dev_ctx, x, 0, threshold, out);
+}
+
 }  // namespace phi
 
-PD_REGISTER_KERNEL(round, OneDNN, ALL_LAYOUT, phi::RoundKernel, float) {}
+PD_REGISTER_KERNEL(round, OneDNN, ONEDNN, phi::RoundKernel, float) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(                             \
-      name, OneDNN, ALL_LAYOUT, phi::func, float, phi::dtype::bfloat16) {}
+      name, OneDNN, ONEDNN, phi::func, float, phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_KERNEL(abs, AbsKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)

@@ -37,7 +37,7 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = framework::DataLayout;
 
 // math: dx = scale * ((x - mean) * inv_var / NxHxW * (np.mean(ddx,

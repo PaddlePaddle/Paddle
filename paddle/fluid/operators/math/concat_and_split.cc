@@ -41,9 +41,9 @@ template <typename T>
 class ConcatFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
-                  const std::vector<framework::Tensor>& input,
+                  const std::vector<phi::DenseTensor>& input,
                   int axis,
-                  framework::Tensor* output) {
+                  phi::DenseTensor* output) {
     phi::funcs::ConcatFunctor<phi::CPUContext, T> functor;
     functor(context, input, axis, output);
   }
@@ -57,10 +57,10 @@ template <typename T>
 class SplitFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
-                  const framework::Tensor& input,
-                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const phi::DenseTensor& input,
+                  const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
-                  std::vector<framework::Tensor*>* outputs) {
+                  std::vector<phi::DenseTensor*>* outputs) {
     phi::funcs::SplitFunctor<phi::CPUContext, T> functor;
     functor(context, input, ref_inputs, axis, outputs);
   }
@@ -75,9 +75,9 @@ template <typename T>
 class ConcatFunctor<platform::XPUDeviceContext, T> {
  public:
   void operator()(const platform::XPUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input,
+                  const std::vector<phi::DenseTensor>& input,
                   int axis,
-                  framework::Tensor* output) {
+                  phi::DenseTensor* output) {
     int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
@@ -115,10 +115,10 @@ template <typename T>
 class SplitFunctor<platform::XPUDeviceContext, T> {
  public:
   void operator()(const platform::XPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const phi::DenseTensor& input,
+                  const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
-                  std::vector<framework::Tensor*>* outputs) {
+                  std::vector<phi::DenseTensor*>* outputs) {
     int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
@@ -168,9 +168,9 @@ template <typename T>
 class ConcatFunctor<platform::NPUDeviceContext, T> {
  public:
   void operator()(const platform::NPUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input,
+                  const std::vector<phi::DenseTensor>& input,
                   int axis,
-                  framework::Tensor* output) {
+                  phi::DenseTensor* output) {
     int dev_id = context.GetPlace().GetDeviceId();
     platform::NPUDeviceGuard guard(dev_id);
 
@@ -192,10 +192,10 @@ template <typename T>
 class SplitFunctor<platform::NPUDeviceContext, T> {
  public:
   void operator()(const platform::NPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const phi::DenseTensor& input,
+                  const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
-                  std::vector<framework::Tensor*>* outputs) {
+                  std::vector<phi::DenseTensor*>* outputs) {
     if (input.numel() == 0) {
       return;
     }
@@ -246,9 +246,9 @@ template <typename T>
 class ConcatFunctor<platform::MLUDeviceContext, T> {
  public:
   void operator()(const platform::MLUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input,
+                  const std::vector<phi::DenseTensor>& input,
                   int axis,
-                  framework::Tensor* output) {
+                  phi::DenseTensor* output) {
     int dev_id = context.GetPlace().GetDeviceId();
     platform::MLUDeviceGuard guard(dev_id);
 
@@ -287,10 +287,10 @@ template <typename T>
 class SplitFunctor<platform::MLUDeviceContext, T> {
  public:
   void operator()(const platform::MLUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const phi::DenseTensor& input,
+                  const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
-                  std::vector<framework::Tensor*>* outputs) {
+                  std::vector<phi::DenseTensor*>* outputs) {
     if (input.numel() == 0) {
       return;
     }

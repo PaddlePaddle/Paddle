@@ -271,10 +271,12 @@ class OptimizationTuner:
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply([main_program], [startup_program],
                                               pass_context)
+                dist_context.serial_loss = auto_parallel_fp16_pass.get_loss()
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply([main_program], [startup_program],
                                              pass_context)
+                dist_context.serial_loss = auto_parallel_amp_pass.get_loss()
 
         if new_strategy.recompute.enable:
             config = copy.deepcopy(new_strategy.recompute.to_dict())

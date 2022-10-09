@@ -32,7 +32,7 @@ namespace operators {
 bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
   if (ctx.Attr<bool>("adaptive") == false) return true;
   // (jczaja): oneDNN is supporting only unchangable in size pool window
-  auto src_tz = phi::vectorize(ctx.Input<Tensor>("X")->dims());
+  auto src_tz = phi::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
   std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
   // Fast but not exhustive check
   return ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
@@ -63,7 +63,7 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
 
 framework::OpKernelType PoolOp::GetKernelTypeForVar(
     const std::string& var_name,
-    const Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -110,7 +110,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
 
 framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
     const std::string& var_name,
-    const Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&

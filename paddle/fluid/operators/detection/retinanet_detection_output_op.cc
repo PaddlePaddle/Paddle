@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
@@ -413,7 +413,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
                                 const std::vector<Tensor>& scores,
                                 const std::vector<Tensor>& bboxes,
                                 const std::vector<Tensor>& anchors,
-                                const Tensor& im_info,
+                                const phi::DenseTensor& im_info,
                                 std::vector<std::vector<T>>* nmsed_out,
                                 int* num_nmsed_out) const {
     int64_t nms_top_k = ctx.Attr<int>("nms_top_k");
@@ -471,7 +471,7 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
 
   void MultiClassOutput(const platform::DeviceContext& ctx,
                         const std::vector<std::vector<T>>& nmsed_out,
-                        Tensor* outs) const {
+                        phi::DenseTensor* outs) const {
     auto* odata = outs->data<T>();
     int count = 0;
     int64_t out_dim = 6;
@@ -487,9 +487,9 @@ class RetinanetDetectionOutputKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto boxes = ctx.MultiInput<Tensor>("BBoxes");
-    auto scores = ctx.MultiInput<Tensor>("Scores");
-    auto anchors = ctx.MultiInput<Tensor>("Anchors");
+    auto boxes = ctx.MultiInput<phi::DenseTensor>("BBoxes");
+    auto scores = ctx.MultiInput<phi::DenseTensor>("Scores");
+    auto anchors = ctx.MultiInput<phi::DenseTensor>("Anchors");
     auto* im_info = ctx.Input<LoDTensor>("ImInfo");
     auto* outs = ctx.Output<LoDTensor>("Out");
 

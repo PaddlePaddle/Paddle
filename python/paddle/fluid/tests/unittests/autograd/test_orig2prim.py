@@ -17,8 +17,7 @@ import unittest
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.utils import flatten
-from paddle.incubate.autograd.primrules import _orig2prim, _prim2orig, _jvp, _transpose
-import paddle.fluid.core as core
+from paddle.incubate.autograd.primrules import _orig2prim
 
 paddle.enable_static()
 
@@ -462,9 +461,7 @@ class TestPNormOrig2Prim1(TestElementWiseAddOrig2Prim):
         }
 
         self.orig2prim_args = (X, )
-        self.all_ops = [
-            'p_norm', 'reshape_p', 'sqrt_p', 'reduce_sum_p', 'mul_p'
-        ]
+        self.all_ops = ['p_norm', 'reshape_p', 'abs_p', 'reduce_sum_p']
         self.out_map = {0: self.output['Out']}
 
 
@@ -766,10 +763,120 @@ class TestGeluApproximateOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestDropoutOrig2PrimCase1(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'dropout'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Mask':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.uint8),
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+        }
+        self.attrs = {
+            'dropout_prob': 0.5,
+            'is_test': False,
+            'dropout_implementation': 'upscale_in_train'
+        }
+
+        self.orig2prim_args = (None, X)
+        self.all_ops = [
+            'bernoulli_p', 'mul_p', 'fill_constant_p', 'div_p', 'cast_p',
+            'dropout'
+        ]
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Mask'], 1: self.output['Out']}
+
+
+class TestDropoutOrig2PrimCase2(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'dropout'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Mask':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.uint8),
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+        }
+        self.attrs = {
+            'dropout_prob': 0.5,
+            'is_test': False,
+            'dropout_implementation': 'downgrade_in_infer'
+        }
+
+        self.orig2prim_args = (None, X)
+        self.all_ops = ['bernoulli_p', 'mul_p', 'cast_p', 'dropout']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Mask'], 1: self.output['Out']}
+
+
+class TestDropoutOrig2PrimCase3(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'dropout'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Mask':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.uint8),
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+        }
+        self.attrs = {
+            'dropout_prob': 0.5,
+            'is_test': True,
+            'dropout_implementation': 'upscale_in_train'
+        }
+
+        self.orig2prim_args = (None, X)
+        self.all_ops = ['bernoulli_p', 'cast_p', 'dropout']
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Mask'], 1: self.output['Out']}
+
+
+class TestDropoutOrig2PrimCase4(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'dropout'
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
+
+        self.input = {'X': X}
+        self.output = {
+            'Mask':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.uint8),
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype),
+        }
+        self.attrs = {
+            'dropout_prob': 0.5,
+            'is_test': True,
+            'dropout_implementation': 'downgrade_in_infer'
+        }
+
+        self.orig2prim_args = (None, X)
+        self.all_ops = [
+            'bernoulli_p', 'fill_constant_p', 'mul_p', 'cast_p', 'dropout'
+        ]
+        # { prim_op_output_index: orig_op_output_var }
+        self.out_map = {0: self.output['Mask'], 1: self.output['Out']}
+
+
 class TestReduceSumOrig2Prim(TestElementWiseAddOrig2Prim):
 
     def init_data(self):
         self.op_type = 'reduce_sum'
+
         X = paddle.static.data(name='X', shape=[5, 8], dtype='float')
 
         self.input = {'X': X}

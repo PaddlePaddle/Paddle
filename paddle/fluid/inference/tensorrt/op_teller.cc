@@ -2090,6 +2090,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "lookup_table") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the lookup_table does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2208,7 +2216,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
-      "layernorm_shift_partition"};
+      "layernorm_shift_partition",
+      "lookup_table"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2320,7 +2329,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
-      "merge_layernorm"};
+      "merge_layernorm",
+      "lookup_table"};
 };
 
 struct GenericPluginTeller : public Teller {

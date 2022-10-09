@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
 import unittest
 import paddle
 from paddle.fluid import core, framework
-from paddle.fluid.core import StandaloneExecutor
-import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
 import paddle.fluid.layers as layers
 

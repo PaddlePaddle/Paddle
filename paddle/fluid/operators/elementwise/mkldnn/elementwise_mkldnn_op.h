@@ -28,10 +28,9 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::stream;
 using framework::DataLayout;
-using framework::Tensor;
 
-inline std::vector<int64_t> CalculateBroadcastedDims(const Tensor* x,
-                                                     const Tensor* y) {
+inline std::vector<int64_t> CalculateBroadcastedDims(
+    const phi::DenseTensor* x, const phi::DenseTensor* y) {
   const auto src_tz = phi::vectorize(x->dims());
   const auto dst_tz = phi::vectorize(y->dims());
 
@@ -60,9 +59,9 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* z = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* z = ctx.Output<phi::DenseTensor>("Out");
 
     float scale_x = ctx.Attr<float>("Scale_x");
     float scale_y = ctx.Attr<float>("Scale_y");
@@ -136,19 +135,19 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
-    using Tensor = framework::Tensor;
+    using Tensor = phi::DenseTensor;
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Input<phi::DenseTensor>("Out");
 
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     VLOG(4) << "element sub: dx " << dx << " dy " << dy << " dout " << dout;
 
     // oneDNN's binary is optimized for broadcasting y into x, so in other case

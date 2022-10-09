@@ -18,7 +18,6 @@ os.environ['FLAGS_enable_eager_mode'] = '1'
 
 import os
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
