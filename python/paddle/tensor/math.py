@@ -3305,7 +3305,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
                                               flatten)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-      "logcumsumexp")
+                             "logcumsumexp")
 
     helper = LayerHelper('logcumsumexp', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
