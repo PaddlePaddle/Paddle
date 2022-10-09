@@ -330,8 +330,8 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
     Shard the ipu with the given call function. Set every ops in call function to the given ipu sharding.
 
     Note:
-        Only when enable_manual_shard=True to set the index to a value other than -1. please refer to :ref:`api_fluid_IpuStrategy` .
-        Only when enable_pipelining=True to set stage to a value other than -1. please refer to :ref:`api_fluid_IpuStrategy` .
+        Only when enable_manual_shard=True to set the index to a value other than -1. please refer to :ref:`api_paddle_static_IpuStrategy` .
+        Only when enable_pipelining=True to set stage to a value other than -1. please refer to :ref:`api_paddle_static_IpuStrategy` .
         An index supports a corresponding None stage or a stage, and a stage only supports a new index or a duplicate index.
 
     Args:
