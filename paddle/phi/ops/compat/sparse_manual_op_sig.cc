@@ -82,6 +82,29 @@ KernelSignature SparseAddOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
 }
 
+KernelSignature SparseBatchNormOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if (ctx.IsSparseCooTensorInput("x")) {
+    return KernelSignature("batch_norm_coo",
+                           {"x", "scale", "bias", "mean", "variance"},
+                           {"momentum",
+                            "epsilon",
+                            "data_layout",
+                            "is_test",
+                            "use_global_stats",
+                            "trainable_statistics",
+                            "fuse_with_relu"},
+                           {"y",
+                            "mean_out",
+                            "variance_out",
+                            "saved_mean",
+                            "saved_variance",
+                            "reserve_space"});
+  } else {
+    return KernelSignature("unregistered", {}, {}, {});
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_BASE_KERNEL_NAME(sparse_sparse_coo_tensor, sparse_coo_tensor);
@@ -106,3 +129,7 @@ PD_REGISTER_ARG_MAPPING_FN(sparse_conv3d, phi::SparseConv3dOpArgumentMapping);
 
 PD_REGISTER_BASE_KERNEL_NAME(sparse_add, add_coo_coo);
 PD_REGISTER_ARG_MAPPING_FN(sparse_add, phi::SparseAddOpArgumentMapping);
+
+PD_REGISTER_BASE_KERNEL_NAME(sparse_batch_norm, batch_norm_coo);
+PD_REGISTER_ARG_MAPPING_FN(sparse_batch_norm,
+                           phi::SparseBatchNormOpArgumentMapping);
