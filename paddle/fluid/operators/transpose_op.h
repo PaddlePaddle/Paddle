@@ -90,13 +90,13 @@ class DimsSimplifier {
     SimplifyPermAndDims(rank, dims, perm);
     if (rank_ > 1) {
       vec_size_ = GetPermVecSize(sm_count, src, dst);
-      perm_.resize(rank_);
-      src_dims.resize(rank_);
-      dst_dims.resize(rank_);
+    }
+    perm_.resize(rank_);
+    src_dims.resize(rank_);
+    dst_dims.resize(rank_);
 
-      for (auto i = 0; i < rank_; ++i) {
-        dst_dims[i] = src_dims[perm_[i]];
-      }
+    for (auto i = 0; i < rank_; ++i) {
+      dst_dims[i] = src_dims[perm_[i]];
     }
   }
 

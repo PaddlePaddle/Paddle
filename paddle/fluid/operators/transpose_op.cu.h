@@ -1075,7 +1075,7 @@ template <typename T>
 inline void PermuteWithEigen(const phi::GPUContext& ctx,
                              phi::DenseTensor* in,
                              phi::DenseTensor* out,
-                             const DimsSimplifier<T> simplifier) {
+                             const DimsSimplifier<T>& simplifier) {
   phi::DDim src_dims, dst_dims;
   const bool not_same_dims =
       static_cast<int>(in->dims().size()) != simplifier.GetRank();
@@ -1085,7 +1085,6 @@ inline void PermuteWithEigen(const phi::GPUContext& ctx,
     in->ResizeAndAllocate(phi::make_ddim(simplifier.GetSrcDims()));
     out->ResizeAndAllocate(phi::make_ddim(simplifier.GetDstDims()));
   }
-
   TransCompute<phi::GPUContext, T>(
       simplifier.GetRank(), ctx, *in, out, simplifier.GetPerm());
 
@@ -1099,7 +1098,7 @@ template <typename T, typename IndexType = int>
 inline void TransposeSimple(const phi::GPUContext& ctx,
                             phi::DenseTensor* in,
                             phi::DenseTensor* out,
-                            const DimsSimplifier<T> simplifier) {
+                            const DimsSimplifier<T>& simplifier) {
   const std::vector<int> new_perm = simplifier.GetPerm();
   std::vector<int> new_dims = simplifier.GetSrcDims();
   auto in_data = in->data<T>();
@@ -1125,7 +1124,7 @@ template <typename T>
 inline void TransposeWithSimple(const phi::GPUContext& ctx,
                                 phi::DenseTensor* in,
                                 phi::DenseTensor* out,
-                                const DimsSimplifier<T> simplifier) {
+                                const DimsSimplifier<T>& simplifier) {
   if (simplifier.GetCount() < std::numeric_limits<int32_t>::max()) {
     TransposeSimple<T>(ctx, in, out, simplifier);
   } else {
@@ -1137,7 +1136,7 @@ template <typename T>
 inline void PermuteAndTranspose(const phi::GPUContext& ctx,
                                 phi::DenseTensor* in,
                                 phi::DenseTensor* out,
-                                const DimsSimplifier<T> simplifier) {
+                                const DimsSimplifier<T>& simplifier) {
   if (simplifier.GetPermType() == PermuteType::kCopy) {
     // If perm is [0,1,2,3], then just operate a DtoD copy.
     phi::Copy(ctx, *in, ctx.GetPlace(), false, out);
@@ -1179,6 +1178,33 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                                       phi::vectorize<int>(in.dims()),
                                       in.data<T>(),
                                       out->data<T>());
+  // std::cout << "Origin Perm: [ ";
+  // for (auto i = 0; i < perm.size(); ++i) {
+  //   std::cout << perm[i] << ", ";
+  // }
+  // std::cout << " ]" << std::endl;
+  // std::cout << "Origin Dims: [ ";
+  // for (auto i = 0; i < perm.size(); ++i) {
+  //   std::cout << in.dims()[i] << ", ";
+  // }
+  // std::cout << " ]" << std::endl << std::endl;
+
+  // std::cout << "Merged Type= " << simplifier.GetPermType() << std::endl;
+  // std::cout << "Merged Perm: [ ";
+  // for (auto i = 0; i < simplifier.GetRank(); ++i) {
+  //   std::cout << simplifier.GetPerm()[i] << ", ";
+  // }
+  // std::cout << " ]" << std::endl;
+  // std::cout << "Merged Dims: [ ";
+  // for (auto i = 0; i < simplifier.GetRank(); ++i) {
+  //   std::cout << simplifier.GetSrcDims()[i] << ", ";
+  // }
+  // std::cout << " ]" << std::endl;
+  // std::cout << "Merged DstDims: [ ";
+  // for (auto i = 0; i < simplifier.GetRank(); ++i) {
+  //   std::cout << simplifier.GetDstDims()[i] << ", ";
+  // }
+  // std::cout << " ]" << std::endl << std::endl;
 
   auto* tuner = phi::autotune::MakeTransposeTuner<T>(TransposeWithSimple<T>);
   tuner->AddCallBack(PermuteWithEigen<T>);
