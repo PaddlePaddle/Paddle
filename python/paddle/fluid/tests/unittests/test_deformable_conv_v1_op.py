@@ -285,6 +285,7 @@ class TestWithDouble(TestModulatedDeformableConvOp):
     def init_type(self):
         self.dtype = np.float64
 
+
 class TestFP16(unittest.TestCase):
 
     def check_main(self, input_np, offset_np, filter_np, dtype):
@@ -333,8 +334,8 @@ class TestFP16(unittest.TestCase):
         offset = 10 * np.random.random(self.offset_size)
         filter = np.random.random(self.filter_size)
 
-        y_np_1, input_g_np_1, offset_g_np_1, filter_g_np_1 = self.check_main(input,offset,filter, 'float16')
-        y_np_2, input_g_np_2, offset_g_np_2, filter_g_np_2 = self.check_main(input,offset,filter, 'float32')
+        y_np_1, input_g_np_1, offset_g_np_1, filter_g_np_1 = self.check_main(input, offset, filter, 'float16')
+        y_np_2, input_g_np_2, offset_g_np_2, filter_g_np_2 = self.check_main(input, offset, filter, 'float32')
 
         def assert_equal(x, y):
             np.testing.assert_allclose(x, y, atol=3e-2)
@@ -343,6 +344,7 @@ class TestFP16(unittest.TestCase):
         assert_equal(input_g_np_1, input_g_np_2)
         assert_equal(offset_g_np_1, offset_g_np_2)
         assert_equal(filter_g_np_1, filter_g_np_2)
+
 
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
 
