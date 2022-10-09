@@ -303,7 +303,8 @@ class TestFP16(unittest.TestCase):
         filter.stop_gradient = False
 
         y = paddle.vision.ops.deform_conv2d(input, offset, filter)
-        input_grad, offset_grad, filter_grad = paddle.grad(y, [input, offset, filter])
+        input_grad, offset_grad, filter_grad = paddle.grad(
+            y, [input, offset, filter])
         y_np = y.numpy().astype('float32')
         input_grad_np = input_grad.numpy().astype('float32')
         offset_grad_np = offset_grad.numpy().astype('float32')
@@ -334,8 +335,10 @@ class TestFP16(unittest.TestCase):
         offset = 10 * np.random.random(self.offset_size)
         filter = np.random.random(self.filter_size)
 
-        y_np_1, input_g_np_1, offset_g_np_1, filter_g_np_1 = self.check_main(input, offset, filter, 'float16')
-        y_np_2, input_g_np_2, offset_g_np_2, filter_g_np_2 = self.check_main(input, offset, filter, 'float32')
+        y_np_1, input_g_np_1, offset_g_np_1, filter_g_np_1 = self.check_main(
+            input, offset, filter, 'float16')
+        y_np_2, input_g_np_2, offset_g_np_2, filter_g_np_2 = self.check_main(
+            input, offset, filter, 'float32')
 
         def assert_equal(x, y):
             np.testing.assert_allclose(x, y, atol=3e-2)
