@@ -45,6 +45,26 @@ class ForwardAPI(BaseAPI):
         else:
             return self.api
 
+    def gene_input(self, kernel_tensor_type=None, code_indent=''):
+        kernel_param = self.kernel['param']
+        input_name_tensor_map, input_tensor_code = super().gene_input(
+            kernel_tensor_type, code_indent)
+
+        # generate the input that is in view list
+        for i, input_name in enumerate(self.inputs['names']):
+            if input_name in self.view_map.values(
+            ) and input_name not in input_name_tensor_map.keys():
+                if kernel_tensor_type is None or kernel_tensor_type[0][
+                        kernel_param.index(input_name)] == 'dense':
+                    trans_flag = self.gene_trans_flag(input_name)
+                    input_tensor_code = input_tensor_code + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag});"""
+                else:
+                    # do nothing
+                    pass
+
+        return input_name_tensor_map, input_tensor_code
+
     def parse_intermediate(self, api_item_yaml):
         if 'intermediate' in api_item_yaml:
             intermediate_outs = [
@@ -215,11 +235,16 @@ class ForwardAPI(BaseAPI):
 
                 if not inplace_flag and self.view_map is not None and self.outputs[
                         'names'][i] in self.view_map:
-                    output_create = output_create + f"""
-{code_indent}  kernel_out_{i}->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
-{code_indent}  kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
-{code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
-
+                    if out_dtype_list[i] == 'std::vector<Tensor>':
+                        output_create = output_create + f"""
+    {code_indent}  ShareVectorTensorBuffer(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]},kernel_out_{i});
+    {code_indent}  ShareVectorTensorInplaceVersionCounter(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]},kernel_out_{i});
+    {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
+                    elif out_dtype_list[i] == 'Tensor':
+                        output_create = output_create + f"""
+    {code_indent}  kernel_out_{i}->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
+    {code_indent}  kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
+    {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(

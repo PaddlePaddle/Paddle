@@ -1928,6 +1928,18 @@
   output : Tensor(x_grad)
   invoke : reverse(out_grad, axis)
 
+- backward_op : rnn_grad
+  forward : rnn (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, Tensor[] state_components, float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test) -> Tensor(out), Tensor(dropout_state_out), Tensor[](state), Tensor(reserve)
+  args : (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor out, Tensor dropout_state_out, Tensor reserve, Tensor out_grad, Tensor[] state_grad, float dropout_prob, bool is_bidirec, int input_size, int hidden_size, int num_layers, str mode, int seed, bool is_test)
+  output : Tensor(x_grad), Tensor[](pre_state_grad){pre_state.size()}, Tensor[](weight_list_grad){weight_list.size()}
+  infer_meta :
+    func : RnnGradInferMeta
+    param : [x, pre_state, weight_list]
+  kernel :
+    func : rnn_grad
+    data_type: out_grad
+  optional : sequence_length
+
 - backward_op : roi_align_grad
   forward : roi_align (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned) -> Tensor(out)
   args : (Tensor x, Tensor boxes, Tensor boxes_num, Tensor out_grad, int pooled_height, int pooled_width, float spatial_scale, int sampling_ratio, bool aligned)
