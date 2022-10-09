@@ -37,7 +37,6 @@ void BindWorkerInfo(py::module* m) {
 }
 void BindFuture(py::module* m) {
   py::class_<FutureWrapper, std::shared_ptr<FutureWrapper>>(*m, "Future")
-      // .def(py::init<std::future<std::string>>())
       .def(py::init<>())
       .def("wait",
            &FutureWrapper::wait,
