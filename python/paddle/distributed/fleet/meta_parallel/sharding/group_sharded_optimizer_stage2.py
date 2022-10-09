@@ -25,7 +25,6 @@
 import logging
 import warnings
 
-import numpy as np
 from collections import OrderedDict
 
 import paddle
