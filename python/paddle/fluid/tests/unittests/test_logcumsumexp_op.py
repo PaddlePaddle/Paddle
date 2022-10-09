@@ -264,6 +264,8 @@ class TestLogcumsumexpOp4(BaseTestCases.BaseOpTest):
         }
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestLogcumsumexpOp5(BaseTestCases.BaseOpTest):
 
     def input_and_attrs(self):
@@ -273,6 +275,8 @@ class TestLogcumsumexpOp5(BaseTestCases.BaseOpTest):
         }
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestLogcumsumexpOp6(BaseTestCases.BaseOpTest):
 
     def input_and_attrs(self):
