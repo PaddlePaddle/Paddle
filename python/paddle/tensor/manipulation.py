@@ -641,6 +641,9 @@ def crop(x, shape=None, offsets=None, name=None):
     if offsets is None:
         offsets = [0] * len(x.shape)
 
+    if shape is None:
+        shape = x.shape
+
     if in_dygraph_mode():
         return _C_ops.crop_tensor(x, shape, offsets)
 
