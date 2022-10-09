@@ -147,7 +147,7 @@ class Gumbel(TransformedDistribution):
             Tensor: The variance value.
 
         """
-        temp = paddle.full(shape=(), fill_value=math.pi * math.pi, dtype=self.scale.dtype)
+        temp = paddle.full(shape=(), fill_value=math.pi * math.pi, dtype='float32')
 
         return paddle.pow(self.scale, 2) * temp / 6
 
