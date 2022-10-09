@@ -14,14 +14,12 @@
 
 import os
 import unittest
-from multiprocessing import Process, Queue
-import subprocess
 
 import paddle
 import paddle.distributed as dist
 import numpy as np
+from test_rpc_base import RpcTestBase, RpcLaunchTestBase
 
-MASTER_ENDPOINT = "127.0.0.1:8765"
 paddle.device.set_device("cpu")
 
 
@@ -34,144 +32,6 @@ def paddle_add(a, b):
     b = paddle.to_tensor(b)
     res = paddle.add(a, b).numpy()
     return res
-
-
-def run_rpc_sync(
-    rank,
-    world_size,
-    master_endpoint,
-    queue,
-    fn,
-    args=None,
-    kwargs=None,
-):
-    dist.rpc.init_rpc(
-        worker_name(rank),
-        rank,
-        world_size,
-        master_endpoint,
-    )
-    res = dist.rpc.rpc_sync(worker_name(0), fn, args=args, kwargs=kwargs)
-    queue.put(res)
-    dist.rpc.shutdown()
-
-
-def run_rpc_sync_master_working(
-    rank,
-    world_size,
-    master_endpoint,
-    queue,
-    fn,
-    args=None,
-    kwargs=None,
-):
-    dist.rpc.init_rpc(
-        worker_name(rank),
-        rank,
-        world_size,
-        master_endpoint,
-    )
-    if dist.get_rank() == 0:
-        for i in range(1, dist.get_rank()):
-            res = dist.rpc.rpc_sync(worker_name(i),
-                                    fn,
-                                    args=args,
-                                    kwargs=kwargs)
-            queue.put(res)
-    dist.rpc.shutdown()
-
-
-def run_rpc_async(
-    rank,
-    world_size,
-    master_endpoint,
-    queue,
-    fn,
-    args=None,
-    kwargs=None,
-):
-    dist.rpc.init_rpc(
-        worker_name(rank),
-        rank,
-        world_size,
-        master_endpoint,
-    )
-    res = dist.rpc.rpc_async(worker_name(0), fn, args=args, kwargs=kwargs)
-    queue.put(res.wait())
-    dist.rpc.shutdown()
-
-
-def run_rpc_async_master_working(
-    rank,
-    world_size,
-    master_endpoint,
-    queue,
-    fn,
-    args=None,
-    kwargs=None,
-):
-    dist.rpc.init_rpc(
-        worker_name(rank),
-        rank,
-        world_size,
-        master_endpoint,
-    )
-    if dist.get_rank() == 0:
-        for i in range(1, dist.get_rank()):
-            res = dist.rpc.rpc_async(worker_name(i),
-                                     fn,
-                                     args=args,
-                                     kwargs=kwargs)
-            queue.put(res.wait())
-    dist.rpc.shutdown()
-
-
-class RpcTestBase(unittest.TestCase):
-
-    def setUp(self):
-        print("RPC setUp...")
-
-    def tearDown(self):
-        if len(self.processes) != 0:
-            [p.join() for p in self.processes]
-        print("RPC tearDown...")
-
-    def run_rpc(self, sync, world_size, fn, fn_args=None, fn_kwargs=None):
-        self.processes = []
-        queues = []
-        for rank in range(world_size):
-            q = Queue()
-            queues.append(q)
-            if sync:
-                self.processes.append(
-                    Process(
-                        target=run_rpc_sync,
-                        args=(
-                            rank,
-                            world_size,
-                            MASTER_ENDPOINT,
-                            q,
-                            fn,
-                            fn_args,
-                            fn_kwargs,
-                        ),
-                    ))
-            else:
-                self.processes.append(
-                    Process(
-                        target=run_rpc_async,
-                        args=(
-                            rank,
-                            world_size,
-                            MASTER_ENDPOINT,
-                            q,
-                            fn,
-                            fn_args,
-                            fn_kwargs,
-                        ),
-                    ))
-        [p.start() for p in self.processes]
-        return queues
 
 
 class TestMultiProcessRpc(RpcTestBase):
@@ -217,10 +77,12 @@ class TestMultiProcessRpc(RpcTestBase):
         np.testing.assert_allclose(out2, res, rtol=1e-05)
 
 
-class TestSingleProcessRpc(unittest.TestCase):
+class TestSingleProcessRpc(RpcTestBase):
 
     def setUp(self):
-        dist.rpc.init_rpc(worker_name(0), 0, 1, MASTER_ENDPOINT)
+        self._port_set = set()
+        master_endpoint = "127.0.0.1:{}".format(self._find_free_port())
+        dist.rpc.init_rpc(worker_name(0), 0, 1, master_endpoint)
         print("Single Process RPC setUp...")
 
     def tearDown(self):
@@ -260,57 +122,7 @@ class TestSingleProcessRpc(unittest.TestCase):
         self.assertEqual(info.rank, 0)
 
 
-class RpcLaunchTest(unittest.TestCase):
-
-    def setUp(self):
-        print("Launch RPC setUp...")
-
-    def tearDown(self):
-        print("Launch RPC tearDown...")
-
-    def create_data(self, nnodes, nproc_per_node):
-        mmap_data1 = np.memmap(
-            "rpc_launch_data1.npy",
-            dtype=np.float32,
-            mode="w+",
-            shape=(10 * nnodes * nproc_per_node, 100),
-        )
-        mmap_data2 = np.memmap(
-            "rpc_launch_data2.npy",
-            dtype=np.float32,
-            mode="w+",
-            shape=(10 * nnodes * nproc_per_node, 100),
-        )
-        for i in range(nnodes * nproc_per_node):
-            a = np.random.random((10, 100)).astype(np.float32)
-            b = np.random.random((10, 100)).astype(np.float32)
-            mmap_data1[i * 10:(i + 1) * 10, :] = a
-            mmap_data2[i * 10:(i + 1) * 10, :] = b
-        return mmap_data1, mmap_data2
-
-    def remove_data(self):
-        os.remove("rpc_launch_data1.npy")
-        os.remove("rpc_launch_data2.npy")
-
-    def launch_rpc(self, master, nnodes, nproc_per_node, model_file):
-        log_dir = "log"
-        tr_cmd = "python -m paddle.distributed.launch --master {} --rank {} --nnodes {} --nproc_per_node {} --run_mode rpc {} --log_dir {}"
-        cmds = [
-            tr_cmd.format(master, rank, nnodes, nproc_per_node, model_file,
-                          log_dir) for rank in range(nnodes)
-        ]
-        processes = [subprocess.Popen(cmd.strip().split()) for cmd in cmds]
-        [proc.communicate() for proc in processes]
-        out = np.memmap(
-            "rpc_launch_result.npy",
-            dtype=np.float32,
-            mode="r",
-            shape=(10 * nnodes * nproc_per_node, 100),
-        )
-        os.remove("rpc_launch_result.npy")
-        import shutil
-        shutil.rmtree(log_dir)
-        return out
+class RpcLaunchTest(RpcLaunchTestBase):
 
     def test_sync_rpc_paddle_add1(self):
         nnodes = 2
@@ -319,10 +131,8 @@ class RpcLaunchTest(unittest.TestCase):
         model_file = os.path.join(pwd, "rpc_launch_sync_add.py")
         a, b = self.create_data(nnodes, nproc_per_node)
         res = np.add(a, b)
-        out = self.launch_rpc(MASTER_ENDPOINT, nnodes, nproc_per_node,
-                              model_file)
+        out = self.launch_rpc(nnodes, nproc_per_node, model_file)
         np.testing.assert_allclose(out, res, rtol=1e-05)
-        self.remove_data()
 
     def test_sync_rpc_paddle_add2(self):
         nnodes = 2
@@ -331,10 +141,8 @@ class RpcLaunchTest(unittest.TestCase):
         model_file = os.path.join(pwd, "rpc_launch_sync_add.py")
         a, b = self.create_data(nnodes, nproc_per_node)
         res = np.add(a, b)
-        out = self.launch_rpc(MASTER_ENDPOINT, nnodes, nproc_per_node,
-                              model_file)
+        out = self.launch_rpc(nnodes, nproc_per_node, model_file)
         np.testing.assert_allclose(out, res, rtol=1e-05)
-        self.remove_data()
 
 
 if __name__ == "__main__":

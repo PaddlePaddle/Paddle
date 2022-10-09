@@ -21,6 +21,7 @@
 #include <string>
 
 #include "paddle/fluid/distributed/rpc/python_rpc_handler.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace py = pybind11;
@@ -33,7 +34,13 @@ class FutureWrapper {
   py::object wait() {
     // GIL must be released, otherwise fut_.get() blocking will cause the
     // service to fail to process RPC requests, leading to deadlock
-    assert(!PyGILState_Check());
+    PADDLE_ENFORCE_EQ(
+        PyGILState_Check(),
+        false,
+        platform::errors::Fatal(
+            "GIL must be released before fut.wait(), otherwise fut_.get() "
+            "blocking will cause the service to fail to "
+            "process RPC requests, leading to deadlock"));
     auto s = fut_.get();
     py::gil_scoped_acquire ag;
     std::shared_ptr<PythonRpcHandler> python_handler =

@@ -141,7 +141,7 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
         timeout (int, optional): timeout in seconds to use for this RPC. If
                                    the RPC does not complete in this amount of
                                    time, an exception indicating it has
-                                   timed out will be raised. A value of 0
+                                   timed out will be raised. A value less than or equal to 0
                                    indicates an infinite timeout, i.e. a timeout
                                    error will never be raised. The default value is -1.
 
@@ -179,7 +179,7 @@ def rpc_async(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
         timeout (int, optional): timeout in seconds to use for this RPC. If
                                    the RPC does not complete in this amount of
                                    time, an exception indicating it has
-                                   timed out will be raised. A value of 0
+                                   timed out will be raised. A value less than or equal to 0
                                    indicates an infinite timeout, i.e. a timeout
                                    error will never be raised. The default value is -1.
 
