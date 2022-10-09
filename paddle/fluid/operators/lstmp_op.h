@@ -30,7 +30,7 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using platform::Transform;
 
 template <typename T,
@@ -71,9 +71,9 @@ class _ClipGradFunctor {
 
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
-                             const framework::Tensor& src,
+                             const phi::DenseTensor& src,
                              framework::Vector<size_t> index,
-                             framework::Tensor* dst,
+                             phi::DenseTensor* dst,
                              bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
@@ -108,12 +108,12 @@ class LSTMPKernel : public framework::OpKernel<T> {
 
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<LoDTensor>("Input");
-    auto* weight = ctx.Input<Tensor>("Weight");
-    auto* proj_weight = ctx.Input<Tensor>("ProjWeight");
-    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* weight = ctx.Input<phi::DenseTensor>("Weight");
+    auto* proj_weight = ctx.Input<phi::DenseTensor>("ProjWeight");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
 
-    auto* hidden_t0 = ctx.Input<Tensor>("H0");
-    auto* cell_t0 = ctx.Input<Tensor>("C0");
+    auto* hidden_t0 = ctx.Input<phi::DenseTensor>("H0");
+    auto* cell_t0 = ctx.Input<phi::DenseTensor>("C0");
 
     auto proj_clip = static_cast<T>(ctx.Attr<float>("proj_clip"));
     auto cell_clip = static_cast<T>(ctx.Attr<float>("cell_clip"));
@@ -306,9 +306,9 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* weight = ctx.Input<Tensor>("Weight");
-    auto* proj_weight = ctx.Input<Tensor>("ProjWeight");
-    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* weight = ctx.Input<phi::DenseTensor>("Weight");
+    auto* proj_weight = ctx.Input<phi::DenseTensor>("ProjWeight");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
 
     auto* proj_out = ctx.Input<LoDTensor>("Projection");
     auto* cell_out = ctx.Input<LoDTensor>("Cell");
@@ -324,16 +324,17 @@ class LSTMPGradKernel : public framework::OpKernel<T> {
         ctx.Input<LoDTensor>(framework::GradVarName("Projection"));
 
     auto* in_g = ctx.Output<LoDTensor>(framework::GradVarName("Input"));
-    auto* weight_g = ctx.Output<Tensor>(framework::GradVarName("Weight"));
+    auto* weight_g =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Weight"));
     auto* proj_weight_g =
-        ctx.Output<Tensor>(framework::GradVarName("ProjWeight"));
-    auto* bias_g = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("ProjWeight"));
+    auto* bias_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
-    auto* h0 = ctx.Input<Tensor>("H0");
-    auto* c0 = ctx.Input<Tensor>("C0");
+    auto* h0 = ctx.Input<phi::DenseTensor>("H0");
+    auto* c0 = ctx.Input<phi::DenseTensor>("C0");
 
-    auto* h0_g = ctx.Output<Tensor>(framework::GradVarName("H0"));
-    auto* c0_g = ctx.Output<Tensor>(framework::GradVarName("C0"));
+    auto* h0_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("H0"));
+    auto* c0_g = ctx.Output<phi::DenseTensor>(framework::GradVarName("C0"));
 
     auto& device_ctx = ctx.template device_context<DeviceContext>();
     phi::funcs::SetConstant<DeviceContext, T> zero;

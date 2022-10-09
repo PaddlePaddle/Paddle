@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 #if CUDNN_VERSION >= 7100
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
@@ -40,12 +40,12 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    auto* input = ctx.Input<Tensor>("Input");
-    auto filters = ctx.MultiInput<framework::Tensor>("Filter");
-    auto bias = ctx.MultiInput<framework::Tensor>("Bias");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto filters = ctx.MultiInput<phi::DenseTensor>("Filter");
+    auto bias = ctx.MultiInput<phi::DenseTensor>("Bias");
 
-    auto* output = ctx.Output<Tensor>("Output");
-    auto temp_outs = ctx.MultiOutput<framework::Tensor>("TempOutput");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
+    auto temp_outs = ctx.MultiOutput<phi::DenseTensor>("TempOutput");
 
     const std::string pool_type = ctx.Attr<std::string>("pooling_type");
     const std::string activation = ctx.Attr<std::string>("activation");

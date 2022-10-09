@@ -248,7 +248,7 @@ class EagerVariable final {
     // Construct allocation only once.
     if (var_.IsInitialized()) {
       if (var_.IsType<paddle::framework::LoDTensor>() ||
-          var_.IsType<paddle::framework::Tensor>()) {
+          var_.IsType<phi::DenseTensor>()) {
         return SetImplWithLegacyTensor<phi::DenseTensor>();
       } else if (var_.IsType<phi::SelectedRows>()) {
         return SetImplWithLegacyTensor<phi::SelectedRows>();
@@ -286,7 +286,7 @@ class EagerVariable final {
   template <typename VarType>
   void ConstructVariableFromTensor(const paddle::experimental::Tensor& tensor) {
     auto* framework_tensor = var_.GetMutable<VarType>();
-    // Contruct framework::Tensor from egr::EagerVariable
+    // Contruct phi::DenseTensor from egr::EagerVariable
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
     PADDLE_ENFORCE_EQ(
         (tensor_dense.get() && tensor_dense),
@@ -303,7 +303,7 @@ class EagerVariable final {
   void ConstructVariableFromCompatTensor(
       const paddle::experimental::Tensor& tensor) {
     auto* framework_holder = var_.GetMutable<VarType>();
-    // Contruct framework::Tensor from egr::EagerVariable
+    // Contruct phi::DenseTensor from egr::EagerVariable
     auto* compat_tensor =
         static_cast<VariableCompatTensor*>(tensor.impl().get());
     PADDLE_ENFORCE_NOT_NULL(compat_tensor,

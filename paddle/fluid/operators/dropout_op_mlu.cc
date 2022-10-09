@@ -18,18 +18,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class DropoutMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto is_test = ctx.Attr<bool>("is_test");
     auto* seed_tensor =
-        ctx.HasInput("Seed") ? ctx.Input<Tensor>("Seed") : nullptr;
+        ctx.HasInput("Seed") ? ctx.Input<phi::DenseTensor>("Seed") : nullptr;
     auto dropout_implementation =
         ctx.Attr<std::string>("dropout_implementation");
 
@@ -65,7 +65,7 @@ class DropoutMLUKernel : public framework::OpKernel<T> {
         seed_data = ctx.Attr<bool>("fix_seed") ? ctx.Attr<int>("seed") : 0;
       }
 
-      auto* mask = ctx.Output<Tensor>("Mask");
+      auto* mask = ctx.Output<phi::DenseTensor>("Mask");
       mask->mutable_data<uint8_t>(ctx.GetPlace());
       MLUCnnlTensorDesc mask_desc(*mask);
       // Special case when dropout_prob is 1.0
@@ -137,9 +137,9 @@ class DropoutGradMLUKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::InvalidArgument(
                           "GradOp is only callable when is_test is false"));
-    auto* grad_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* grad_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* mask = ctx.Input<Tensor>("Mask");
+    auto* grad_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* grad_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* mask = ctx.Input<phi::DenseTensor>("Mask");
     auto dropout_prob = ctx.Attr<float>("dropout_prob");
     auto dropout_impl = ctx.Attr<std::string>("dropout_implementation");
 

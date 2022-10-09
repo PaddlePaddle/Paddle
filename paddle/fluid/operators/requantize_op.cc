@@ -24,14 +24,11 @@ namespace operators {
 
 framework::OpKernelType ReQuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
-  framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
-
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
       ctx.GetPlace(),
-      layout_,
-      library_);
+      framework::DataLayout::kMKLDNN,
+      framework::LibraryType::kMKLDNN);
 }
 
 void ReQuantOpMaker::Make() {

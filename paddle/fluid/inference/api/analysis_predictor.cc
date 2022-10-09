@@ -1099,6 +1099,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtAllowBuildAtRuntime(
         config_.trt_allow_build_at_runtime());
     argument_.SetTensorRtUseInspector(config_.trt_use_inspector_);
+    argument_.SetTrtEngineMemorySharing(config_.trt_engine_memory_sharing());
   }
 
   if (config_.dlnne_enabled()) {
@@ -1164,6 +1165,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuAvailableMemoryProportion(
       config_.ipu_available_memory_proportion_);
   argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
+  argument_.SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
+  argument_.SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
 
   argument_.SetUseNpu(config_.use_npu_);
@@ -1192,7 +1195,6 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetQuantizeEnabledOpTypes(config_.quantize_enabled_op_types_);
     argument_.SetQuantizeExcludedOpIds(config_.quantize_excluded_op_ids_);
     argument_.SetQuantVarScales({});
-    argument_.SetCalibrationFilePath(config_.calibration_file_path_);
   }
 #endif
 
@@ -1248,6 +1250,16 @@ void AnalysisPredictor::PrepareArgument() {
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE_EQ(
@@ -2019,6 +2031,13 @@ AnalysisPredictor::~AnalysisPredictor() {
     memory::Release(place_);
   }
   device_contexts_.clear();
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.trt_engine_memory_sharing()) {
+    inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+        .releaseContextMemory(predictor_id_);
+  }
+#endif
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
@@ -2139,7 +2158,6 @@ USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
 USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
-USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(skip_layernorm);
 USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
@@ -2168,7 +2186,11 @@ USE_TRT_CONVERTER(conv3d_transpose);
 USE_TRT_CONVERTER(mish);
 USE_TRT_CONVERTER(deformable_conv);
 USE_TRT_CONVERTER(pool3d)
+#ifdef _WIN32
+#else
 USE_TRT_CONVERTER(fused_preln_embedding_eltwise_layernorm)
+USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
+#endif
 USE_TRT_CONVERTER(preln_skip_layernorm)
 USE_TRT_CONVERTER(preln_residual_bias)
 USE_TRT_CONVERTER(c_allreduce_sum)
@@ -2192,6 +2214,7 @@ USE_TRT_CONVERTER(fused_token_prune)
 USE_TRT_CONVERTER(layernorm_shift_partition)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
+USE_TRT_CONVERTER(lookup_table)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)

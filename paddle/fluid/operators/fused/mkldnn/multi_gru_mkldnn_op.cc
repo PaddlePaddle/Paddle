@@ -16,7 +16,7 @@ limitations under the License. */
 #include <iostream>
 #include <memory>
 
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/multi_gru_op.h"
@@ -27,7 +27,7 @@ namespace paddle {
 namespace operators {
 
 using paddle::framework::LoDTensor;
-using paddle::framework::Tensor;
+
 using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
@@ -64,9 +64,9 @@ class MultiGRUHandler {
         layers_(ctx.Attr<int>("layers")),
         concat_pds_(layers_, std::shared_ptr<dnnl::concat::primitive_desc>()),
         x_(ctx.Input<LoDTensor>("X")),
-        weights_x_(ctx.MultiInput<Tensor>("WeightX")),
-        weights_h_(ctx.MultiInput<Tensor>("WeightH")),
-        biases_(ctx.MultiInput<Tensor>("Bias")),
+        weights_x_(ctx.MultiInput<phi::DenseTensor>("WeightX")),
+        weights_h_(ctx.MultiInput<phi::DenseTensor>("WeightH")),
+        biases_(ctx.MultiInput<phi::DenseTensor>("Bias")),
         hidden_(ctx.Output<LoDTensor>("Hidden")),
         x_lod_(x_->lod()[0]) {
     PADDLE_ENFORCE_EQ(
@@ -672,9 +672,9 @@ class MultiGRUHandler {
   std::string memory_key_;
 
   const LoDTensor* x_;
-  const std::vector<const Tensor*> weights_x_;
-  const std::vector<const Tensor*> weights_h_;
-  const std::vector<const Tensor*> biases_;
+  const std::vector<const phi::DenseTensor*> weights_x_;
+  const std::vector<const phi::DenseTensor*> weights_h_;
+  const std::vector<const phi::DenseTensor*> biases_;
   LoDTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
   const paddle::framework::Vector<size_t>& x_lod_;

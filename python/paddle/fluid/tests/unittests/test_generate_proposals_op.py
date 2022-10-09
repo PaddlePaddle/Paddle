@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -213,7 +211,7 @@ def filter_boxes(boxes, min_size, im_info, pixel_offset=True):
 
 def iou(box_a, box_b, pixel_offset=True):
     """
-	Apply intersection-over-union overlap between box_a and box_b
+    Apply intersection-over-union overlap between box_a and box_b
     """
     xmin_a = min(box_a[0], box_a[2])
     ymin_a = min(box_a[1], box_a[3])
