@@ -638,6 +638,7 @@ void BatchNormInferMeta(const MetaTensor& x,
     saved_variance->set_dims({C});
   }
   y->share_lod(x);
+  y->set_dtype(x.dtype());
 }
 
 void BatchNormInferInferMeta(const MetaTensor& x,

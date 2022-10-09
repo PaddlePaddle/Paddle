@@ -97,7 +97,7 @@ class GroupShardedStage2(nn.Layer):
             self._all_params.extend(list(optim.local_params))
 
         # sharing stage 2 comm overlap flag
-        self._comm_overlap = False
+        self._reduce_overlap = False
 
         self._trainable_params = []
         self._grad_reduced = []
@@ -305,17 +305,17 @@ class GroupShardedStage2(nn.Layer):
             for grad_storage in self._grad_storage_list:
                 grad_storage.reset_checked_in()
 
-    def _set_comm_overlap(self, comm_overlap):
+    def _set_reduce_overlap(self, reduce_overlap):
         # Hacky way to not add an extra parameter to the `group_sharded_parallel` funct.
         # User should use this like:
         # model, optimizer, scaler = group_sharded_parallel(...)
-        # model._set_comm_overlap(True)
-        self._comm_overlap = comm_overlap
-        if self._comm_overlap:
+        # model._set_reduce_overlap(True)
+        self._reduce_overlap = reduce_overlap
+        if self._reduce_overlap:
             assert len(
                 self._sharding_optimizers
             ) == 1, "Only support comm overlap strategy for single optimizer"
-        self._sharding_optimizers[0]._set_comm_overlap(comm_overlap)
+        self._sharding_optimizers[0]._set_reduce_overlap(reduce_overlap)
 
     def _get_reduce_fn(self, index, param, dst_rank):
         """
@@ -353,7 +353,7 @@ class GroupShardedStage2(nn.Layer):
                         collective.reduce(tensor=param.grad,
                                           dst=self._group.ranks[dst_rank],
                                           group=self._group,
-                                          sync_op=not self._comm_overlap))
+                                          sync_op=not self._reduce_overlap))
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     # self._clear_task_flow()
@@ -403,7 +403,7 @@ class GroupShardedStage2(nn.Layer):
                                 tensor=grad_storage.buffer,
                                 dst=self._group.ranks[grad_storage.destination],
                                 group=self._group,
-                                sync_op=not self._comm_overlap))
+                                sync_op=not self._reduce_overlap))
 
                         cleanup()
 
@@ -541,7 +541,7 @@ class GroupShardedStage2(nn.Layer):
             opt_step = opt.step
 
             def _opt_step(self):
-                if self._comm_overlap:
+                if self._reduce_overlap:
                     # Wait for the last reduce task. This wait must before grad scale function.
                     assert self._comm_task is not None
                     self._comm_task.wait()

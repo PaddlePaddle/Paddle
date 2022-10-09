@@ -21,10 +21,7 @@
 #include <vector>
 
 #include "NvInfer.h"
-#include "common/bertCommon.h"
-#include "common/common.cuh"
-#include "common/plugin.h"
-#include "common/serialize.h"
+#include "paddle/fluid/inference/tensorrt/plugin/common/common.cuh"
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_varseqlen_plugin.h"
 
 namespace paddle {
