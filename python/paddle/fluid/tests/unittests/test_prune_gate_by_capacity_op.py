@@ -115,8 +115,6 @@ class TestPruneGateByCapacityAPI1(unittest.TestCase):
         assert_allclose(out.numpy(), self.out, self.n_expert)
 
     def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.func_dygraph_api()
         self.func_dygraph_api()
 
 

@@ -98,8 +98,6 @@ class TestCustomTanhDoubleGradJit(unittest.TestCase):
 
     def test_func_double_grad_dynamic(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_double_grad_dynamic()
         self.func_double_grad_dynamic()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 

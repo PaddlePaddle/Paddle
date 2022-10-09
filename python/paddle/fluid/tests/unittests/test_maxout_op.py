@@ -151,8 +151,6 @@ class TestMaxoutAPI(unittest.TestCase):
             self.assertRaises(ValueError, F.maxout, x_float32, 2, 2)
 
     def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.func_test_dygraph_api()
         self.func_test_dygraph_api()
 
 

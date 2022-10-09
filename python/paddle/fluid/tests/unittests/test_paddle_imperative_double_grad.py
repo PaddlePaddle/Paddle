@@ -95,8 +95,6 @@ class TestDygraphDoubleGrad(TestCase):
             self.grad([random_var(shape)], [random_var(shape)], no_grad_vars=1)
 
     def test_exception(self):
-        with _test_eager_guard():
-            self.func_exception()
         self.func_exception()
 
     @dygraph_guard
@@ -133,8 +131,6 @@ class TestDygraphDoubleGrad(TestCase):
                                 create_graph)
 
     def test_simple_example(self):
-        with _test_eager_guard():
-            self.func_simple_example()
         self.func_simple_example()
 
     @dygraph_guard
@@ -205,8 +201,6 @@ class TestDygraphDoubleGrad(TestCase):
                                                       original_random_grad_z)
 
     def test_none_one_initial_gradient(self):
-        with _test_eager_guard():
-            self.func_none_one_initial_gradient()
         self.func_none_one_initial_gradient()
 
     @dygraph_guard
@@ -249,8 +243,6 @@ class TestDygraphDoubleGrad(TestCase):
                                        rtol=1e-05)
 
     def test_example_with_gradient_accumulation_and_create_graph(self):
-        with _test_eager_guard():
-            self.func_example_with_gradient_accumulation_and_create_graph()
         self.func_example_with_gradient_accumulation_and_create_graph()
 
     @dygraph_guard
@@ -295,8 +287,6 @@ class TestDygraphDoubleGrad(TestCase):
                                        rtol=1e-05)
 
     def test_example_with_gradient_accumulation_and_no_grad_vars(self):
-        with _test_eager_guard():
-            self.func_example_with_gradient_accumulation_and_no_grad_vars()
         self.func_example_with_gradient_accumulation_and_no_grad_vars()
 
     @dygraph_guard
@@ -336,8 +326,6 @@ class TestDygraphDoubleGrad(TestCase):
                                        rtol=1e-05)
 
     def test_example_with_gradient_accumulation_and_not_create_graph(self):
-        with _test_eager_guard():
-            self.func_example_with_gradient_accumulation_and_not_create_graph()
         self.func_example_with_gradient_accumulation_and_not_create_graph()
 
 

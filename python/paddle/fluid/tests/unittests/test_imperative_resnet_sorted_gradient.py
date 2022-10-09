@@ -238,8 +238,6 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             self.assertFalse(np.isnan(value.any()))
 
     def test_resnet_sort_gradient_float32(self):
-        with _test_eager_guard():
-            self.func_test_resnet_sort_gradient_float32()
         self.func_test_resnet_sort_gradient_float32()
 
 

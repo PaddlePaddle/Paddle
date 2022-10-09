@@ -92,8 +92,6 @@ class TestTensorDataset(unittest.TestCase):
             self.run_main(num_workers=0, places=p)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -118,8 +116,6 @@ class TestComposeDataset(unittest.TestCase):
             assert np.allclose(label2, label2_t)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -145,8 +141,6 @@ class TestRandomSplitApi(unittest.TestCase):
         self.assertTrue(len(elements_list) == 0)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -161,8 +155,6 @@ class TestRandomSplitError(unittest.TestCase):
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [])
 
     def test_errors(self):
-        with _test_eager_guard():
-            self.func_test_errors()
         self.func_test_errors()
 
 
@@ -231,8 +223,6 @@ class TestSubsetDataset(unittest.TestCase):
             self.run_main(num_workers=0, places=p)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -269,8 +259,6 @@ class TestChainDataset(unittest.TestCase):
             self.run_main(num_workers=0, places=p)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -374,8 +362,6 @@ class TestComplextDataset(unittest.TestCase):
             self.run_main(num_workers)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -419,8 +405,6 @@ class TestSingleFieldDataset(unittest.TestCase):
             self.run_main(num_workers)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -456,8 +440,6 @@ class TestDataLoaderGenerateStates(unittest.TestCase):
             assert out == outp
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -482,8 +464,6 @@ class TestDatasetWithDropLast(unittest.TestCase):
         self.run_main(dataset, 10, 3)
 
     def test_map_dataset(self):
-        with _test_eager_guard():
-            self.func_test_map_dataset()
         self.func_test_map_dataset()
 
     def func_test_iterable_dataset(self):
@@ -491,8 +471,6 @@ class TestDatasetWithDropLast(unittest.TestCase):
         self.run_main(dataset, 10, 3)
 
     def test_iterable_dataset(self):
-        with _test_eager_guard():
-            self.func_test_iterable_dataset()
         self.func_test_iterable_dataset()
 
 

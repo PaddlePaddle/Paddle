@@ -102,8 +102,6 @@ class TestImperativeContainer(unittest.TestCase):
         self.layer_list(False)
 
     def test_layer_list(self):
-        with _test_eager_guard():
-            self.func_test_layer_list()
         self.func_test_layer_list()
 
 

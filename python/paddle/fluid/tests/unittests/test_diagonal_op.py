@@ -125,12 +125,11 @@ class TestDiagonalAPI(unittest.TestCase):
 
     def test_api_eager(self):
         paddle.disable_static(self.place)
-        with _test_eager_guard():
-            x_tensor = paddle.to_tensor(self.x)
-            out = paddle.diagonal(x_tensor)
-            out2 = paddle.diagonal(x_tensor, offset=0, axis1=2, axis2=1)
-            out3 = paddle.diagonal(x_tensor, offset=1, axis1=0, axis2=1)
-            out4 = paddle.diagonal(x_tensor, offset=0, axis1=1, axis2=2)
+        x_tensor = paddle.to_tensor(self.x)
+        out = paddle.diagonal(x_tensor)
+        out2 = paddle.diagonal(x_tensor, offset=0, axis1=2, axis2=1)
+        out3 = paddle.diagonal(x_tensor, offset=1, axis1=0, axis2=1)
+        out4 = paddle.diagonal(x_tensor, offset=0, axis1=1, axis2=2)
         out_ref = np.diagonal(self.x)
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         out2_ref = np.diagonal(self.x, offset=0, axis1=2, axis2=1)
@@ -141,10 +140,6 @@ class TestDiagonalAPI(unittest.TestCase):
         np.testing.assert_allclose(out4.numpy(), out4_ref, rtol=1e-08)
 
         paddle.enable_static()
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_dygraph()
 
 
 if __name__ == '__main__':

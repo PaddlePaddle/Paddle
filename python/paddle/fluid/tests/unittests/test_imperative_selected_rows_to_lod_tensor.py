@@ -90,8 +90,6 @@ class TestDygraphSimpleNet(unittest.TestCase):
                 self.simple_net_float(is_sparse, dtype)
 
     def test_simple_net(self):
-        with _test_eager_guard():
-            self.func_simple_net()
         self.func_simple_net()
 
     def simple_net_float(self, is_sparse, dtype):

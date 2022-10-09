@@ -59,11 +59,6 @@ class TestComplexReshape(unittest.TestCase):
                                                y_np,
                                                rtol=1e-05)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_shape_norm_dims()
-            self.test_shape_omit_dims()
-
 
 if __name__ == "__main__":
     unittest.main()

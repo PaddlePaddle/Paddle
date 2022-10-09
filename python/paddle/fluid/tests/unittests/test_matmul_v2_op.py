@@ -549,11 +549,6 @@ class TestMatMulV2API(unittest.TestCase):
                     paddle.set_flags(
                         {'FLAGS_gemm_use_half_precision_compute_type': False})
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_dygraph_fp16()
-
 
 class TestComplexMatMulOp(OpTest):
 

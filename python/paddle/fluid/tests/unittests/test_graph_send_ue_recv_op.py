@@ -1001,16 +1001,6 @@ class API_GeometricSendUERecvTest(unittest.TestCase):
             err_msg='two value is                        {}\n{}, check diff!'.
             format(np_sum, ret[0]))
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_compute_all_with_sum()
-            self.test_compute_all_with_mean()
-            self.test_compute_all_with_max()
-            self.test_compute_all_with_max_fp16()
-            self.test_compute_all_with_min()
-            self.test_compute_all_with_min_fp16()
-            self.test_reshape_lhs_rhs()
-
 
 if __name__ == "__main__":
     unittest.main()

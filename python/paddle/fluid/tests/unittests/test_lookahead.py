@@ -145,8 +145,6 @@ class TestLookAhead(unittest.TestCase):
         train(layer, loader, loss_fn, lookahead)
 
     def test_look_ahead_dygraph(self):
-        with _test_eager_guard():
-            self.func_test_look_ahead_dygraph()
         self.func_test_look_ahead_dygraph()
 
 

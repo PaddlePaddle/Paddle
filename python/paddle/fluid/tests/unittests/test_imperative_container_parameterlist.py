@@ -73,9 +73,6 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             loss.backward()
 
     def test_paramter_list(self):
-        with _test_eager_guard():
-            self.paramter_list(False)
-            self.paramter_list(True)
         self.paramter_list(False)
         self.paramter_list(True)
 

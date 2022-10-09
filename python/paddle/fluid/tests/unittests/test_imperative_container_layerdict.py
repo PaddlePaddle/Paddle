@@ -90,8 +90,6 @@ class TestLayerDict(unittest.TestCase):
         check_layer_dict()
 
     def test_layer_dict(self):
-        with _test_eager_guard():
-            self.func_layer_dict()
         self.func_layer_dict()
 
     def func_layer_dict_error_inputs(self):
@@ -106,8 +104,6 @@ class TestLayerDict(unittest.TestCase):
         self.assertRaises(AssertionError, layers_dicts.update, 1)
 
     def test_layer_dict_error_inputs(self):
-        with _test_eager_guard():
-            self.func_layer_dict_error_inputs()
         self.func_layer_dict_error_inputs()
 
 

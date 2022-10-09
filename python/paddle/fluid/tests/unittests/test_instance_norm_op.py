@@ -275,10 +275,6 @@ class TestElasticNormOp(unittest.TestCase):
                                            rtol=1e-05,
                                            atol=1e-06)
 
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_norm()
-
 
 class TestElasticNormOpCase2(unittest.TestCase):
 
@@ -313,10 +309,6 @@ class TestElasticNormOpCase2(unittest.TestCase):
                                            out_np,
                                            rtol=1e-05,
                                            atol=1e-06)
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_norm()
 
 
 if __name__ == '__main__':

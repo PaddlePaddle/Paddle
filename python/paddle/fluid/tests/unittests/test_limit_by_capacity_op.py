@@ -91,8 +91,6 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
         assert all_close(self.out, out.numpy(), self.n_worker)
 
     def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.func_dygraph_api()
         self.func_dygraph_api()
 
 

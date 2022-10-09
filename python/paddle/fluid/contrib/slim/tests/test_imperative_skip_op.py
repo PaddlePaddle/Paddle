@@ -129,8 +129,6 @@ class TestImperativeOutSclae(unittest.TestCase):
             self.assertTrue(matmul_skip_count == 1)
 
     def test_out_scale_acc(self):
-        with _test_eager_guard():
-            self.func_out_scale_acc()
         self.func_out_scale_acc()
 
 

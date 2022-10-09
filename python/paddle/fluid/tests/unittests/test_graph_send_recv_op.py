@@ -365,12 +365,6 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
                           fetch_list=[res_sum])
         np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_int32_input()
-            self.test_set_outsize_gpu()
-
 
 class API_GeometricSendURecvTest(unittest.TestCase):
 
@@ -505,12 +499,6 @@ class API_GeometricSendURecvTest(unittest.TestCase):
             },
                           fetch_list=[res_sum])
         np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-            self.test_int32_input()
-            self.test_set_outsize_gpu()
 
 
 if __name__ == '__main__':

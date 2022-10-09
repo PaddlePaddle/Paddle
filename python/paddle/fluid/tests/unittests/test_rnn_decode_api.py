@@ -596,8 +596,6 @@ class TestDynamicDecode(unittest.TestCase):
         paddle.enable_static()
 
     def test_dynamic_basic_decoder(self):
-        with _test_eager_guard():
-            self.func_dynamic_basic_decoder()
         self.func_dynamic_basic_decoder()
 
 
@@ -755,8 +753,6 @@ class TestBeamSearch(ModuleApiTest):
         self.check_output()
 
     def test_check_output(self):
-        with _test_eager_guard():
-            self.func_check_output()
         self.func_check_output()
 
 

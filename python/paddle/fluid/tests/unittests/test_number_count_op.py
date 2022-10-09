@@ -76,8 +76,6 @@ class TestNumberCountAPI(unittest.TestCase):
         assert np.allclose(out.numpy(), self.out)
 
     def test_api_dygraph(self):
-        with _test_eager_guard():
-            self.func_api_dygraph()
         self.func_api_dygraph()
 
 

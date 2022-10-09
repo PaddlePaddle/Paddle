@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 import six
 import paddle
-from paddle.fluid.framework import _enable_legacy_dygraph
 
 
 class TensorFillDiagTensor_Test(unittest.TestCase):
@@ -182,10 +181,6 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
                 self.assertEqual((ny == expected_pred).all(), True)
                 self.assertEqual((y.grad == expected_grad).all(), True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
-
-
-class TensorFillDiagTensor_Test_legacy(TensorFillDiagTensor_Test):
-    _enable_legacy_dygraph()
 
 
 if __name__ == '__main__':

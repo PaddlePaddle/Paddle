@@ -318,10 +318,6 @@ class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
 
         self.assertRaises(TypeError, test_invalid_offset)
 
-    def test_error_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_error()
-
 
 if __name__ == '__main__':
     unittest.main()

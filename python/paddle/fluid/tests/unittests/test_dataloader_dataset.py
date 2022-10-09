@@ -40,8 +40,6 @@ class TestDatasetAbstract(unittest.TestCase):
             pass
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_test_main()
         self.func_test_main()
 
 
@@ -83,8 +81,6 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
                 break
 
     def test_single_process(self):
-        with _test_eager_guard():
-            self.func_test_single_process()
         self.func_test_single_process()
 
     def func_test_multi_process(self):
@@ -102,8 +98,6 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
                     break
 
     def test_multi_process(self):
-        with _test_eager_guard():
-            self.func_test_multi_process()
         self.func_test_multi_process()
 
 

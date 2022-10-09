@@ -301,38 +301,35 @@ class TestDygraphDeepCF(unittest.TestCase):
                                      (slice, dy_loss2))
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                paddle.seed(seed)
-                paddle.framework.random._manual_program_seed(seed)
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
+            paddle.seed(seed)
+            paddle.framework.random._manual_program_seed(seed)
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
 
-                deepcf = DeepCF(num_users, num_items, matrix)
-                adam = fluid.optimizer.AdamOptimizer(
-                    0.01, parameter_list=deepcf.parameters())
+            deepcf = DeepCF(num_users, num_items, matrix)
+            adam = fluid.optimizer.AdamOptimizer(
+                0.01, parameter_list=deepcf.parameters())
 
-                for e in range(self.num_epoches):
-                    sys.stderr.write('epoch %d\n' % e)
-                    for slice in range(0, self.batch_size * self.num_batches,
-                                       self.batch_size):
-                        if slice + self.batch_size >= users_np.shape[0]:
-                            break
-                        prediction = deepcf(
-                            to_variable(users_np[slice:slice +
-                                                 self.batch_size]),
-                            to_variable(items_np[slice:slice +
-                                                 self.batch_size]))
-                        loss = fluid.layers.reduce_sum(
-                            fluid.layers.log_loss(
-                                prediction,
-                                to_variable(labels_np[slice:slice +
-                                                      self.batch_size])))
-                        loss.backward()
-                        adam.minimize(loss)
-                        deepcf.clear_gradients()
-                        eager_loss = loss.numpy()
-                        sys.stderr.write('eager loss: %s %s\n' %
-                                         (slice, eager_loss))
+            for e in range(self.num_epoches):
+                sys.stderr.write('epoch %d\n' % e)
+                for slice in range(0, self.batch_size * self.num_batches,
+                                   self.batch_size):
+                    if slice + self.batch_size >= users_np.shape[0]:
+                        break
+                    prediction = deepcf(
+                        to_variable(users_np[slice:slice + self.batch_size]),
+                        to_variable(items_np[slice:slice + self.batch_size]))
+                    loss = fluid.layers.reduce_sum(
+                        fluid.layers.log_loss(
+                            prediction,
+                            to_variable(labels_np[slice:slice +
+                                                  self.batch_size])))
+                    loss.backward()
+                    adam.minimize(loss)
+                    deepcf.clear_gradients()
+                    eager_loss = loss.numpy()
+                    sys.stderr.write('eager loss: %s %s\n' %
+                                     (slice, eager_loss))
 
         self.assertEqual(static_loss, dy_loss)
         self.assertEqual(static_loss, dy_loss2)

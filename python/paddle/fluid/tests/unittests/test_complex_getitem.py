@@ -95,15 +95,6 @@ class TestComplexGetitemLayer(unittest.TestCase):
 
             np.testing.assert_allclose(x_var_slice.numpy(), x_np_slice)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_case1()
-            self.test_case2()
-            self.test_case3()
-            self.test_case4()
-            self.test_case5()
-            self.test_case6()
-
 
 if __name__ == '__main__':
     unittest.main()

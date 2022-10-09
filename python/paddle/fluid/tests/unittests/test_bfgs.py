@@ -148,8 +148,6 @@ class TestBfgs(unittest.TestCase):
         np.testing.assert_allclose(minimum, results[2], rtol=1e-05, atol=1e-8)
 
     def test_rosenbrock(self):
-        with _test_eager_guard():
-            self.func_rosenbrock()
         self.func_rosenbrock()
 
     def test_exception(self):

@@ -1152,9 +1152,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 dy_param_init, dy_param_updated = run_dygraph()
 
         with guard():
-            with _test_eager_guard():
-                eager_avg_cost_value, eager_sum_cost_value, eager_predict_value, eager_token_num_value, \
-                    eager_param_init, eager_param_updated = run_dygraph()
+            eager_avg_cost_value, eager_sum_cost_value, eager_predict_value, eager_token_num_value, \
+                eager_param_init, eager_param_updated = run_dygraph()
         np.testing.assert_allclose(dy_avg_cost_value,
                                    eager_avg_cost_value,
                                    rtol=1e-05)

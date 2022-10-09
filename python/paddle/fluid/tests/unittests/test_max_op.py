@@ -81,10 +81,6 @@ class ApiMaxTest(unittest.TestCase):
         z_expected = np.array(np.max(np_x, axis=0))
         self.assertEqual((np_z == z_expected).all(), True)
 
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_imperative_api()
-
     def test_big_dimension(self):
         paddle.disable_static()
         x = paddle.rand(shape=[2, 2, 2, 2, 2, 2, 2])

@@ -51,10 +51,6 @@ class TestGaussianRandomOp(OpTest):
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
-
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
         hist, _ = np.histogram(outs[0], range=(-3, 5))
@@ -96,10 +92,6 @@ class TestGaussianRandomBF16Op(OpTest):
     def test_check_output(self):
         self.check_output_with_place_customized(self.verify_output,
                                                 place=core.CUDAPlace(0))
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
 
     def verify_output(self, outs):
         outs = convert_uint16_to_float(outs)

@@ -62,8 +62,6 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
                 [model] + expected_sublayers)
 
     def test_named_sublayers(self):
-        with _test_eager_guard():
-            self.func_test_named_sublayers()
         self.func_test_named_sublayers()
 
 
@@ -87,8 +85,6 @@ class TestImperativeNamedParameters(unittest.TestCase):
             self.assertListEqual(expected_named_parameters, named_parameters)
 
     def test_named_parameters(self):
-        with _test_eager_guard():
-            self.func_test_named_parameters()
         self.func_test_named_parameters()
 
     def func_test_dir_layer(self):
@@ -127,8 +123,6 @@ class TestImperativeNamedParameters(unittest.TestCase):
                             "model should contain parameter: weight")
 
     def test_dir_layer(self):
-        with _test_eager_guard():
-            self.func_test_dir_layer()
         self.func_test_dir_layer()
 
 

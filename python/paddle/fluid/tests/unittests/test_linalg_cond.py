@@ -100,8 +100,6 @@ class API_TestDygraphCond(unittest.TestCase):
         test_dygraph_assert_true(self, x_list_m_n, p_list_m_n)
 
     def test_out(self):
-        with _test_eager_guard():
-            self.func_out()
         self.func_out()
 
 
@@ -123,8 +121,6 @@ class TestCondAPIError(unittest.TestCase):
                 self.assertRaises(ValueError, paddle.linalg.cond, x_tensor, p)
 
     def test_dygraph_api_error(self):
-        with _test_eager_guard():
-            self.func_dygraph_api_error()
         self.func_dygraph_api_error()
 
     def test_static_api_error(self):
@@ -172,8 +168,6 @@ class TestCondEmptyTensorInput(unittest.TestCase):
         test_dygraph_assert_true(self, x_list_m_n, p_list_m_n)
 
     def test_dygraph_empty_tensor_input(self):
-        with _test_eager_guard():
-            self.func_dygraph_empty_tensor_input()
         self.func_dygraph_empty_tensor_input()
 
 

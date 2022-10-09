@@ -45,8 +45,6 @@ class TestImperativeLayerTrainable(unittest.TestCase):
                 linear.weight.trainable = "1"
 
     def test_set_trainable(self):
-        with _test_eager_guard():
-            self.func_set_trainable()
         self.func_set_trainable()
 
 

@@ -1910,11 +1910,6 @@ class TestHardswishAPI(unittest.TestCase):
                                        dtype='float16')
             F.hardswish(x_fp16)
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph_api()
-            self.test_errors()
-
 
 class TestSoftRelu(TestActivation):
 
@@ -2158,11 +2153,6 @@ class TestCELUAPI(unittest.TestCase):
                                        shape=[10, 12],
                                        dtype='float16')
             self.celu(x_fp16)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_dygraph_api()
-            self.test_errors()
 
 
 class TestReciprocal(TestActivation):
@@ -3127,8 +3117,6 @@ class TestSwishAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.func_test_dygraph_api()
         self.func_test_dygraph_api()
 
     def test_fluid_api(self):

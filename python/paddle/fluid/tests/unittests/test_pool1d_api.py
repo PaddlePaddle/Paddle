@@ -277,10 +277,6 @@ class TestPool1D_API(unittest.TestCase):
             self.check_avg_dygraph_padding_same(place)
             self.check_max_dygraph_return_index_results(place)
 
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_pool1d()
-
 
 class TestPool2DError_API(unittest.TestCase):
 
@@ -408,10 +404,6 @@ class TestPool2DError_API(unittest.TestCase):
                                       ceil_mode=True)
 
         self.assertRaises(ValueError, run_stride_out_of_range)
-
-    def test_dygraph_api(self):
-        with _test_eager_guard():
-            self.test_error_api()
 
 
 if __name__ == '__main__':

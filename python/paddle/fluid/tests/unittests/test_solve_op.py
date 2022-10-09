@@ -310,8 +310,6 @@ class TestSolveOpError(unittest.TestCase):
             self.assertRaises(ValueError, paddle.linalg.solve, x7, y7)
 
     def test_dygraph(self):
-        with _test_eager_guard():
-            self.func_errors()
         self.func_errors()
 
 
@@ -378,8 +376,6 @@ class TestSolveOpAPI_1(unittest.TestCase):
             run(place)
 
     def test_dygraph(self):
-        with _test_eager_guard():
-            self.func_dygraph()
         self.func_dygraph()
 
 
@@ -446,8 +442,6 @@ class TestSolveOpAPI_2(unittest.TestCase):
             run(place)
 
     def test_dygraph(self):
-        with _test_eager_guard():
-            self.func_dygraph()
         self.func_dygraph()
 
 
@@ -515,8 +509,6 @@ class TestSolveOpAPI_3(unittest.TestCase):
             run(place)
 
     def test_dygraph(self):
-        with _test_eager_guard():
-            self.func_dygraph()
         self.func_dygraph()
 
 
@@ -583,8 +575,6 @@ class TestSolveOpAPI_4(unittest.TestCase):
             run(place)
 
     def test_dygraph(self):
-        with _test_eager_guard():
-            self.func_dygraph()
         self.func_dygraph()
 
 
@@ -643,8 +633,6 @@ class TestSolveOpSingularAPI(unittest.TestCase):
                     pass
 
     def test_dygraph(self):
-        with _test_eager_guard():
-            self.func_dygraph()
         self.func_dygraph()
 
 

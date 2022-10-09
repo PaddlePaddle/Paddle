@@ -64,8 +64,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.Adam)
 
     def test_adam_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_adam_with_varbase_list_input()
         self.func_test_adam_with_varbase_list_input()
 
     def func_test_sgd_with_varbase_list_input(self):
@@ -73,8 +71,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.SGD)
 
     def test_sgd_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_sgd_with_varbase_list_input()
         self.func_test_sgd_with_varbase_list_input()
 
     def func_test_adagrad_with_varbase_list_input(self):
@@ -82,8 +78,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.Adagrad)
 
     def test_adagrad_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_adagrad_with_varbase_list_input()
         self.func_test_adagrad_with_varbase_list_input()
 
     def func_test_adamw_with_varbase_list_input(self):
@@ -91,8 +85,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.AdamW)
 
     def test_adamw_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_adamw_with_varbase_list_input()
         self.func_test_adamw_with_varbase_list_input()
 
     def func_test_adamax_with_varbase_list_input(self):
@@ -100,8 +92,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.Adamax)
 
     def test_adamax_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_adamax_with_varbase_list_input()
         self.func_test_adamax_with_varbase_list_input()
 
     def func_test_momentum_with_varbase_list_input(self):
@@ -109,8 +99,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         self.run_optimizer_minimize_with_varbase_list_input(optimizer.Momentum)
 
     def test_momentum_with_varbase_list_input(self):
-        with _test_eager_guard():
-            self.func_test_momentum_with_varbase_list_input()
         self.func_test_momentum_with_varbase_list_input()
 
     def func_test_optimizer_with_varbase_input(self):
@@ -119,8 +107,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
             optimizer.Adam(learning_rate=self.lr, parameters=x)
 
     def test_optimizer_with_varbase_input(self):
-        with _test_eager_guard():
-            self.func_test_optimizer_with_varbase_input()
         self.func_test_optimizer_with_varbase_input()
 
     def func_test_create_param_lr_with_1_for_coverage(self):
@@ -149,8 +135,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         opt.step()
 
     def test_create_param_lr_with_1_for_coverage(self):
-        with _test_eager_guard():
-            self.func_test_create_param_lr_with_1_for_coverage()
         self.func_test_create_param_lr_with_1_for_coverage()
 
     def func_test_create_param_lr_with_no_1_value_for_coverage(self):
@@ -179,8 +163,6 @@ class TestOptimizerForVarBase(unittest.TestCase):
         opt.step()
 
     def func_test_create_param_lr_with_no_1_value_for_coverage(self):
-        with _test_eager_guard():
-            self.func_test_create_param_lr_with_1_for_coverage()
         self.func_test_create_param_lr_with_1_for_coverage()
 
 

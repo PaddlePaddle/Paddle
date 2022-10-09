@@ -113,33 +113,6 @@ def test_dygraph(place,
     return dygraph_ret
 
 
-def test_legacy_dygraph(place,
-                        x_np,
-                        y_np,
-                        p=2.0,
-                        epsilon=1e-6,
-                        keepdim=False,
-                        functional=False):
-    paddle.fluid.framework._enable_legacy_dygraph()
-    x = paddle.to_tensor(x_np)
-    y = paddle.to_tensor(y_np)
-    if functional:
-        legacy_distance = call_pairwise_distance_functional(x=x,
-                                                            y=y,
-                                                            p=p,
-                                                            epsilon=epsilon,
-                                                            keepdim=keepdim)
-    else:
-        legacy_distance = call_pairwise_distance_layer(x=x,
-                                                       y=y,
-                                                       p=p,
-                                                       epsilon=epsilon,
-                                                       keepdim=keepdim)
-    legacy_ret = legacy_distance.numpy()
-    paddle.fluid.framework._disable_legacy_dygraph()
-    return legacy_ret
-
-
 class TestPairwiseDistance(unittest.TestCase):
 
     def test_pairwise_distance(self):

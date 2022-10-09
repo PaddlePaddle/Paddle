@@ -42,10 +42,6 @@ class TestComplexSumLayer(unittest.TestCase):
                     target = np.sum(input, axis=(1, 2))
                     np.testing.assert_allclose(result, target, rtol=1e-05)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_complex_basic_api()
-
 
 if __name__ == '__main__':
     unittest.main()

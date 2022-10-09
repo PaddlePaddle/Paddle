@@ -74,10 +74,6 @@ class TestRandpermOp(OpTest):
         self.assertTrue(check_randperm_out(self.n, out_np),
                         msg=error_msg(out_np))
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
-
 
 class TestRandpermOpN(TestRandpermOp):
 
@@ -148,12 +144,11 @@ class TestRandpermEager(unittest.TestCase):
     def test_out(self):
         paddle.disable_static()
         n = 10
-        with _test_eager_guard():
-            for dtype in ['int32', np.int64, 'float32', 'float64']:
-                data_p = paddle.randperm(n, dtype)
-                data_np = data_p.numpy()
-                self.assertTrue(check_randperm_out(n, data_np),
-                                msg=error_msg(data_np))
+        for dtype in ['int32', np.int64, 'float32', 'float64']:
+            data_p = paddle.randperm(n, dtype)
+            data_np = data_p.numpy()
+            self.assertTrue(check_randperm_out(n, data_np),
+                            msg=error_msg(data_np))
         paddle.enable_static()
 
 

@@ -74,9 +74,6 @@ class TestDiffOp(unittest.TestCase):
             self.assertTrue((out.numpy() == self.output).all(), True)
 
     def test_dygraph(self):
-        with _test_eager_guard():
-            self.setUp()
-            self.func_dygraph()
         self.setUp()
         self.func_dygraph()
 
@@ -138,9 +135,6 @@ class TestDiffOp(unittest.TestCase):
                 raise RuntimeError("Check Diff Gradient Failed")
 
     def test_grad(self):
-        with _test_eager_guard():
-            self.setUp()
-            self.func_grad()
         self.setUp()
         self.func_grad()
 

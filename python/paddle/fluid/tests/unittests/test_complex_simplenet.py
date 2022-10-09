@@ -69,10 +69,6 @@ class TestComplexSimpleNet(unittest.TestCase):
         for dev in self.devices:
             self.train(dev)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_train_success()
-
 
 if __name__ == '__main__':
     unittest.main()

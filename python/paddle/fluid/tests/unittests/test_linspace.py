@@ -132,11 +132,6 @@ class TestLinspaceAPI(unittest.TestCase):
         self.assertEqual((out2.numpy() == np_out2).all(), True)
         self.assertEqual((out3.numpy() == np_out3).all(), True)
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_variable_input2()
-            self.test_imperative()
-
 
 class TestLinspaceOpError(unittest.TestCase):
 

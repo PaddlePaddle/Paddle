@@ -725,8 +725,6 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph_add(self):
-        with _test_eager_guard():
-            self.func_dygraph_add()
         self.func_dygraph_add()
 
 

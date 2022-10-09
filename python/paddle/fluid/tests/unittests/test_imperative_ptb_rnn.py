@@ -224,8 +224,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             self.ptb_rnn_cpu_float32(is_sparse)
 
     def test_ptb_rnn(self):
-        with _test_eager_guard():
-            self.func_test_ptb_rnn()
         self.func_test_ptb_rnn()
 
     def ptb_rnn_cpu_float32(self, is_sparse):

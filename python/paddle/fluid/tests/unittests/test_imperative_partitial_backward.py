@@ -49,8 +49,6 @@ class TestImperativePartitialBackward(unittest.TestCase):
             linear2.clear_gradients()
 
     def test_partitial_backward(self):
-        with _test_eager_guard():
-            self.func_partitial_backward()
         self.func_partitial_backward()
 
 

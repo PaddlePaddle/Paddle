@@ -959,17 +959,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
         self.func_testOnlyLoadParams()
         self.func_test_no_state_in_input_dict()
         self.func_test_state_shape_mismatch()
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_testLoadAndSetVarBase()
-            self.func_testSetVariable()
-            self.func_testSetNumpy()
-            self.func_testSetVariableBeforeTrain()
-            self.func_testLoadAndSetVarBaseBeforeTrain()
-            self.func_testSetNumpyBeforeTrain()
-            self.func_testOnlyLoadParams()
-            self.func_test_no_state_in_input_dict()
-            self.func_test_state_shape_mismatch()
 
 
 if __name__ == '__main__':

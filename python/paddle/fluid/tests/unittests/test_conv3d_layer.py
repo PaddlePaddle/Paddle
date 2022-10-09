@@ -161,8 +161,7 @@ class Conv3DTestCase(unittest.TestCase):
         result2 = self.functional(place)
         with dg.guard(place):
             result3, g1 = self.paddle_nn_layer()
-            with _test_eager_guard():
-                res_eager, g2 = self.paddle_nn_layer()
+            res_eager, g2 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
         np.testing.assert_allclose(result3, res_eager, rtol=1e-05)

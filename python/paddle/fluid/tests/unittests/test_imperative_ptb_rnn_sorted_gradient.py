@@ -173,8 +173,6 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             np.testing.assert_array_equal(value, dy_param_updated[key])
 
     def test_ptb_rnn_sort_gradient(self):
-        with _test_eager_guard():
-            self.func_ptb_rnn_sort_gradient()
         self.func_ptb_rnn_sort_gradient()
 
 

@@ -131,8 +131,6 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
                     self.check_output(x_grad, pd_x_grad, "x_grad")
 
     def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
         self.func_dynamic()
 
     def test_static(self):
@@ -163,8 +161,6 @@ class TestCustomConcatDynamicAxisJit(unittest.TestCase):
                     self.check_output(x_grad, pd_x_grad, "x_grad")
 
     def test_dynamic_with_attr(self):
-        with _test_eager_guard():
-            self.func_dynamic_with_attr()
         self.func_dynamic_with_attr()
 
     def test_static_with_attr(self):

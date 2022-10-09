@@ -86,8 +86,6 @@ class TestLayerApply(unittest.TestCase):
                     np.testing.assert_allclose(layer.bias.numpy(), -0.2)
 
     def test_apply_init_weight(self):
-        with _test_eager_guard():
-            self.func_apply_init_weight()
         self.func_apply_init_weight()
 
 

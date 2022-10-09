@@ -194,8 +194,6 @@ class TestAllcloseLayer(unittest.TestCase):
             self.assertEqual(ret_5.numpy()[0], True)
 
     def test_dygraph_mode(self):
-        with _test_eager_guard():
-            self.func_dygraph_mode()
         self.func_dygraph_mode()
 
 

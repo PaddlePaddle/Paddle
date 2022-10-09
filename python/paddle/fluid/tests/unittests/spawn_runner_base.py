@@ -52,9 +52,6 @@ class TestDistSpawnRunner(unittest.TestCase):
         return result_list
 
     def check_dist_result_with_spawn(self, test_class, delta=1e-3):
-        with _test_eager_guard():
-            self.check_dist_result_with_spawn_func(test_class=test_class,
-                                                   delta=delta)
         self.check_dist_result_with_spawn_func(test_class=test_class,
                                                delta=delta)
 

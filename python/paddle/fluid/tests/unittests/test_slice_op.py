@@ -19,7 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle
-from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 import gradient_checker
 from decorator_helper import prog_scope
 import paddle.fluid.layers as layers
@@ -651,27 +651,26 @@ class TestSliceApiEager(unittest.TestCase):
 
     def test_slice_api(self):
         with paddle.fluid.dygraph.guard():
-            with _test_eager_guard():
-                a = paddle.rand(shape=[4, 5, 6], dtype='float32')
-                a.stop_gradient = False
-                axes = [0, 1, 2]
-                starts = [-3, 0, 2]
-                ends = [3, 2, 4]
-                a_1 = paddle.slice(a, axes=axes, starts=starts, ends=ends)
+            a = paddle.rand(shape=[4, 5, 6], dtype='float32')
+            a.stop_gradient = False
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            a_1 = paddle.slice(a, axes=axes, starts=starts, ends=ends)
 
-                a_2 = paddle.slice(a,
-                                   axes=axes,
-                                   starts=paddle.to_tensor(starts),
-                                   ends=paddle.to_tensor(ends))
-                np.testing.assert_array_equal(a_1.numpy(), a_2.numpy())
-                a_1.backward()
-                grad_truth = paddle.zeros_like(a)
-                grad_truth[-3:3, 0:2, 2:4] = 1
-                np.testing.assert_array_equal(grad_truth, a.gradient())
+            a_2 = paddle.slice(a,
+                               axes=axes,
+                               starts=paddle.to_tensor(starts),
+                               ends=paddle.to_tensor(ends))
+            np.testing.assert_array_equal(a_1.numpy(), a_2.numpy())
+            a_1.backward()
+            grad_truth = paddle.zeros_like(a)
+            grad_truth[-3:3, 0:2, 2:4] = 1
+            np.testing.assert_array_equal(grad_truth, a.gradient())
 
-                np.testing.assert_allclose(a_1.numpy(),
-                                           a[-3:3, 0:2, 2:4],
-                                           rtol=1e-05)
+            np.testing.assert_allclose(a_1.numpy(),
+                                       a[-3:3, 0:2, 2:4],
+                                       rtol=1e-05)
 
 
 class TestSliceApiWithLoDTensorArray(unittest.TestCase):
@@ -849,23 +848,6 @@ class TestInferShape(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 paddle.slice(x, 0, starts, ends)
-
-
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestImperativeCUDAPinnedInput(unittest.TestCase):
-
-    def test_input_cuda_pinned_var(self):
-        _enable_legacy_dygraph()
-        with fluid.dygraph.guard():
-            data = np.random.random((2, 80, 16128)).astype('float32')
-            var = core.VarBase(value=data,
-                               name='',
-                               persistable=False,
-                               place=fluid.CUDAPinnedPlace(),
-                               zero_copy=False)
-            sliced = var[:, 10:, :var.shape[1]]
-            self.assertEqual(sliced.shape, [2, 70, 80])
 
 
 class TestSliceDoubleGradCheck(unittest.TestCase):

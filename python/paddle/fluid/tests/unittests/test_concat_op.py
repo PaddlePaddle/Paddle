@@ -358,12 +358,6 @@ class TestConcatAPI(unittest.TestCase):
         self.assertEqual((out1.numpy() == np_out1).all(), True)
         self.assertEqual((out2.numpy() == np_out2).all(), True)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_api()
-            self.test_fluid_api()
-            self.test_imperative()
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The item in input must be Variable.

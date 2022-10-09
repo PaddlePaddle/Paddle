@@ -125,10 +125,6 @@ class TestDygraphGroupNormv2(unittest.TestCase):
                 y2 = compute_v2(x)
                 np.testing.assert_allclose(y1, y2, rtol=1e-05, atol=1e-05)
 
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-
 
 class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
 
@@ -158,10 +154,6 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 result2 = gn2(data_pd).numpy()
                 self.assertTrue(np.allclose(result1, expect_res1, atol=1e-5))
                 self.assertTrue(np.allclose(result2, expect_res2, atol=1e-5))
-
-    def test_eager_api(self):
-        with _test_eager_guard():
-            self.test_numerical_accuracy()
 
 
 class TestGroupNormDimException(unittest.TestCase):

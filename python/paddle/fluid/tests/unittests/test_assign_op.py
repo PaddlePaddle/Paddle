@@ -42,7 +42,6 @@ class TestAssignOp(op_test.OpTest):
         self.check_output(check_eager=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
-        framework._disable_legacy_dygraph()
 
     def test_backward(self):
         paddle.enable_static()
@@ -50,7 +49,6 @@ class TestAssignOp(op_test.OpTest):
         self.check_grad(['X'], 'Out', check_eager=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
-        framework._disable_legacy_dygraph()
 
 
 class TestAssignFP16Op(op_test.OpTest):
@@ -68,7 +66,6 @@ class TestAssignFP16Op(op_test.OpTest):
         self.check_output(check_eager=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
-        framework._disable_legacy_dygraph()
 
     def test_backward(self):
         paddle.enable_static()
@@ -76,7 +73,6 @@ class TestAssignFP16Op(op_test.OpTest):
         self.check_grad(['X'], 'Out', check_eager=True)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
         paddle.disable_static()
-        framework._disable_legacy_dygraph()
 
 
 class TestAssignOpWithLoDTensorArray(unittest.TestCase):

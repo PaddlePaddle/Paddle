@@ -58,8 +58,6 @@ class TestCases(unittest.TestCase):
             t.join()
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_main()
         self.func_main()
 
 

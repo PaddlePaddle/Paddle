@@ -109,8 +109,6 @@ class TestMultiplyApi(unittest.TestCase):
         np.testing.assert_allclose(res, np.inner(x_data, y_data), rtol=1e-05)
 
     def test_multiply(self):
-        with _test_eager_guard():
-            self.func_test_multiply()
         self.func_test_multiply()
 
 
@@ -171,8 +169,6 @@ class TestMultiplyError(unittest.TestCase):
         self.assertRaises(ValueError, paddle.inner, x_data, y_data)
 
     def test_errors(self):
-        with _test_eager_guard():
-            self.func_test_errors()
         self.func_test_errors()
 
 

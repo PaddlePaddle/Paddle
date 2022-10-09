@@ -71,8 +71,6 @@ class ParameterChecks(unittest.TestCase):
             self.assertEqual(id(param_copy), id(pram_copy2))
 
     def test_parambase(self):
-        with _test_eager_guard():
-            self.func_parambase()
         self.func_parambase()
 
     def func_exception(self):
@@ -122,8 +120,6 @@ class ParameterChecks(unittest.TestCase):
             self.assertTrue(linear2.bias.is_leaf, True)
 
     def test_parambase_to_vector(self):
-        with _test_eager_guard():
-            self.func_parambase_to_vector()
         self.func_parambase_to_vector()
 
 

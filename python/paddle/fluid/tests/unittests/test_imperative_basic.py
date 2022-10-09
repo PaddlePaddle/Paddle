@@ -163,8 +163,6 @@ class TestImperative(unittest.TestCase):
         np.testing.assert_array_equal(dy_grad1, dy_grad2)
 
     def test_functional_dygraph_context(self):
-        with _test_eager_guard():
-            self.functional_dygraph_context()
         self.functional_dygraph_context()
 
     def functional_paddle_imperative_dygraph_context(self):
@@ -194,8 +192,6 @@ class TestImperative(unittest.TestCase):
         np.testing.assert_array_equal(dy_grad1, dy_grad2)
 
     def test_functional_paddle_imperative_dygraph_context(self):
-        with _test_eager_guard():
-            self.functional_paddle_imperative_dygraph_context()
         self.functional_paddle_imperative_dygraph_context()
 
     def func_isinstance(self):
@@ -211,8 +207,6 @@ class TestImperative(unittest.TestCase):
                 self.assertTrue(isinstance(var_base, fluid.Variable))
 
     def test_isinstance(self):
-        with _test_eager_guard():
-            self.func_isinstance()
         self.func_isinstance()
 
     def func_create_varbase(self):
@@ -252,8 +246,6 @@ class TestImperative(unittest.TestCase):
 
     def test_create_varbase(self):
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                self.func_create_varbase()
             self.func_create_varbase()
 
     def test_no_grad_guard(self):
@@ -350,8 +342,6 @@ class TestImperative(unittest.TestCase):
             np.testing.assert_allclose(inputs2[0].gradient(), x, rtol=1e-05)
 
     def test_sum_op(self):
-        with _test_eager_guard():
-            self.func_sum_op()
         self.func_sum_op()
 
     def func_empty_var(self):
@@ -382,8 +372,6 @@ class TestImperative(unittest.TestCase):
                 assert type(e) == core.EnforceNotMet
 
     def test_empty_var(self):
-        with _test_eager_guard():
-            self.func_empty_var()
         self.func_empty_var()
 
     def func_empty_grad(self):
@@ -414,8 +402,6 @@ class TestImperative(unittest.TestCase):
                 assert type(e) == ValueError
 
     def test_empty_grad(self):
-        with _test_eager_guard():
-            self.func_empty_grad()
         self.func_empty_grad()
 
     def func_set_persistable(self):
@@ -427,8 +413,6 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(new_var.persistable)
 
     def test_set_persistable(self):
-        with _test_eager_guard():
-            self.func_set_persistable()
         self.func_set_persistable()
 
     def func_layer(self):
@@ -437,8 +421,6 @@ class TestImperative(unittest.TestCase):
             self.assertRaises(NotImplementedError, l.forward, [])
 
     def test_layer(self):
-        with _test_eager_guard():
-            self.func_layer()
         self.func_layer()
 
     def func_layer_in_out(self):
@@ -486,8 +468,6 @@ class TestImperative(unittest.TestCase):
 
     def test_layer_in_out(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_layer_in_out()
         self.func_layer_in_out()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -544,8 +524,6 @@ class TestImperative(unittest.TestCase):
         self.assertEqual(len(sublayers), 2)
 
     def test_mlp(self):
-        with _test_eager_guard():
-            self.func_mlp()
         self.func_mlp()
 
     def test_gradient_accumulation(self):
@@ -737,8 +715,6 @@ class TestImperative(unittest.TestCase):
         np.testing.assert_allclose(dygraph_result, static_result, rtol=1e-05)
 
     def test_dygraph_vs_static(self):
-        with _test_eager_guard():
-            self.func_dygraph_vs_static()
         self.func_dygraph_vs_static()
 
     def func_rnn(self):
@@ -795,8 +771,6 @@ class TestImperative(unittest.TestCase):
         np.testing.assert_array_equal(dy_grad_i2h2, static_grad_i2h)
 
     def test_rnn(self):
-        with _test_eager_guard():
-            self.func_rnn()
         self.func_rnn()
 
     def func_layer_attrs(self):
@@ -820,8 +794,6 @@ class TestImperative(unittest.TestCase):
         self.assertEqual(len(my_layer.sublayers()), 0)
 
     def test_layer_attrs(self):
-        with _test_eager_guard():
-            self.func_layer_attrs()
         self.func_layer_attrs()
 
 
@@ -835,8 +807,6 @@ class TestDygraphUtils(unittest.TestCase):
             self.assertRaises(AssertionError, func, a, act="sigmoid")
 
     def test_append_activation_in_dygraph_exception(self):
-        with _test_eager_guard():
-            self.func_append_activation_in_dygraph_exception()
         self.func_append_activation_in_dygraph_exception()
 
     def func_append_activation_in_dygraph1(self):
@@ -849,8 +819,6 @@ class TestDygraphUtils(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph1(self):
-        with _test_eager_guard():
-            self.func_append_activation_in_dygraph1()
         self.func_append_activation_in_dygraph1()
 
     def func_append_activation_in_dygraph2(self):
@@ -863,8 +831,6 @@ class TestDygraphUtils(unittest.TestCase):
             np.testing.assert_allclose(res1.numpy(), res2.numpy(), rtol=1e-05)
 
     def test_append_activation_in_dygraph2(self):
-        with _test_eager_guard():
-            self.func_append_activation_in_dygraph2()
         self.func_append_activation_in_dygraph2()
 
     def func_append_activation_in_dygraph3(self):
@@ -878,8 +844,6 @@ class TestDygraphUtils(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph3(self):
-        with _test_eager_guard():
-            self.func_append_activation_in_dygraph3()
         self.func_append_activation_in_dygraph3()
 
     def func_append_activation_in_dygraph_use_mkldnn(self):
@@ -895,8 +859,6 @@ class TestDygraphUtils(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph_use_mkldnn(self):
-        with _test_eager_guard():
-            self.func_append_activation_in_dygraph_use_mkldnn()
         self.func_append_activation_in_dygraph_use_mkldnn()
 
     def func_append_activation_in_dygraph_global_use_mkldnn(self):
@@ -914,8 +876,6 @@ class TestDygraphUtils(unittest.TestCase):
         np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph_global_use_mkldnn(self):
-        with _test_eager_guard():
-            self.func_append_activation_in_dygraph_global_use_mkldnn()
         self.func_append_activation_in_dygraph_global_use_mkldnn()
 
     def func_append_bias_in_dygraph_exception(self):
@@ -926,8 +886,6 @@ class TestDygraphUtils(unittest.TestCase):
             self.assertRaises(AssertionError, func, a)
 
     def test_append_bias_in_dygraph_exception(self):
-        with _test_eager_guard():
-            self.func_append_bias_in_dygraph_exception()
         self.func_append_bias_in_dygraph_exception()
 
     def func_append_bias_in_dygraph(self):
@@ -940,8 +898,6 @@ class TestDygraphUtils(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_bias_in_dygraph(self):
-        with _test_eager_guard():
-            self.func_append_bias_in_dygraph()
         self.func_append_bias_in_dygraph()
 
 
@@ -955,8 +911,6 @@ class TestDygraphGuardWithError(unittest.TestCase):
             y = fluid.layers.matmul(x, x)
 
     def test_without_guard(self):
-        with _test_eager_guard():
-            self.func_without_guard()
         self.func_without_guard()
 
 
@@ -973,8 +927,6 @@ class TestMetaclass(unittest.TestCase):
                 type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')
 
     def test_metaclass(self):
-        with _test_eager_guard():
-            self.func_metaclass()
         self.func_metaclass()
 
 

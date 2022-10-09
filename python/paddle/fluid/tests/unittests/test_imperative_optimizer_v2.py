@@ -257,8 +257,6 @@ class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -281,8 +279,6 @@ class TestImperativeOptimizerNaturalExpDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -305,8 +301,6 @@ class TestImperativeOptimizerExponentialDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -329,8 +323,6 @@ class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_adam(self):
-        with _test_eager_guard():
-            self.func_test_adam()
         self.func_test_adam()
 
 
@@ -355,8 +347,6 @@ class TestImperativeOptimizerPolynomialDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd_cycle(self):
-        with _test_eager_guard():
-            self.func_test_sgd_cycle()
         self.func_test_sgd_cycle()
 
     def func_test_sgd(self):
@@ -364,8 +354,6 @@ class TestImperativeOptimizerPolynomialDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -388,8 +376,6 @@ class TestImperativeOptimizerCosineAnnealingDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -413,8 +399,6 @@ class TestImperativeOptimizerNoamDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -437,8 +421,6 @@ class TestImperativeOptimizerLambdaDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -466,8 +448,6 @@ class TestImperativeOptimizerLinearWarmup(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -490,8 +470,6 @@ class TestImperativeOptimizerMultiStepDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -515,8 +493,6 @@ class TestImperativeOptimizerStepLR(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -539,8 +515,6 @@ class TestImperativeOptimizerReduceOnPlateau(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_sgd(self):
-        with _test_eager_guard():
-            self.func_test_sgd()
         self.func_test_sgd()
 
 
@@ -572,8 +546,6 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 np.testing.assert_allclose(lr, 0.001, rtol=1e-06, atol=0.0)
 
     def test_constant_lr(self):
-        with _test_eager_guard():
-            self.func_test_constant_lr()
         self.func_test_constant_lr()
 
     def func_test_lr_decay(self):
@@ -605,8 +577,6 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 scheduler.step()
 
     def test_lr_decay(self):
-        with _test_eager_guard():
-            self.func_test_lr_decay()
         self.func_test_lr_decay()
 
     def func_test_lr_scheduler_natural_exp(self):
@@ -634,8 +604,6 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 scheduler.step()
 
     def test_lr_scheduler_natural_exp(self):
-        with _test_eager_guard():
-            self.func_test_lr_scheduler_natural_exp()
         self.func_test_lr_scheduler_natural_exp()
 
     def func_test_set_lr(self):
@@ -673,8 +641,6 @@ class TestOptimizerLearningRate(unittest.TestCase):
                 adam.set_lr(0.01)
 
     def test_set_lr(self):
-        with _test_eager_guard():
-            self.func_test_set_lr()
         self.func_test_set_lr()
 
 
@@ -694,8 +660,6 @@ class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_momentum(self):
-        with _test_eager_guard():
-            self.func_test_momentum()
         self.func_test_momentum()
 
 
@@ -715,8 +679,6 @@ class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_larsmomentum(self):
-        with _test_eager_guard():
-            self.func_test_larsmomentum()
         self.func_test_larsmomentum()
 
 
@@ -735,8 +697,6 @@ class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_adagrad(self):
-        with _test_eager_guard():
-            self.func_test_adagrad()
         self.func_test_adagrad()
 
 
@@ -755,8 +715,6 @@ class TestImperativeAdamaxOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_adamax(self):
-        with _test_eager_guard():
-            self.func_test_adamax()
         self.func_test_adamax()
 
 
@@ -783,8 +741,6 @@ class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
         self._check_mlp(place=fluid.CPUPlace())
 
     def test_dpsgd(self):
-        with _test_eager_guard():
-            self.func_test_dpsgd()
         self.func_test_dpsgd()
 
 
@@ -803,8 +759,6 @@ class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_decayadagrad(self):
-        with _test_eager_guard():
-            self.func_test_decayadagrad()
         self.func_test_decayadagrad()
 
 
@@ -827,8 +781,6 @@ class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_adadelta(self):
-        with _test_eager_guard():
-            self.func_test_adadelta()
         self.func_test_adadelta()
 
 
@@ -847,8 +799,6 @@ class TestImperativeRMSPropOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_rmsprop(self):
-        with _test_eager_guard():
-            self.func_test_rmsprop()
         self.func_test_rmsprop()
 
 
@@ -867,8 +817,6 @@ class TestImperativeFtrlOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
     def test_ftrl(self):
-        with _test_eager_guard():
-            self.func_test_ftrl()
         self.func_test_ftrl()
 
 
@@ -908,8 +856,6 @@ class TestImperativeModelAverage(TestImperativeOptimizerBase):
         self._check_exception(exception_message)
 
     def test_modelaverage(self):
-        with _test_eager_guard():
-            self.func_test_modelaverage()
         self.func_test_modelaverage()
 
 
@@ -928,8 +874,6 @@ class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
         self._check_exception(exception_message)
 
     def test_dgcmomentum(self):
-        with _test_eager_guard():
-            self.func_test_dgcmomentum()
         self.func_test_dgcmomentum()
 
 
@@ -944,8 +888,6 @@ class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
         self._check_exception(exception_message)
 
     def test_exponentialmoving(self):
-        with _test_eager_guard():
-            self.func_test_exponentialmoving()
         self.func_test_exponentialmoving()
 
 
@@ -962,8 +904,6 @@ class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
         self._check_exception(exception_message)
 
     def test_pipline(self):
-        with _test_eager_guard():
-            self.func_test_pipline()
         self.func_test_pipline()
 
 
@@ -980,8 +920,6 @@ class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
         self._check_exception(exception_message)
 
     def test_lookahead(self):
-        with _test_eager_guard():
-            self.func_test_lookahead()
         self.func_test_lookahead()
 
 
@@ -998,8 +936,6 @@ class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
         self._check_exception(exception_message)
 
     def test_recompute(self):
-        with _test_eager_guard():
-            self.func_test_recompute()
         self.func_test_recompute()
 
 
@@ -1029,8 +965,6 @@ class TestImperativeOptimizerList(unittest.TestCase):
                                                 linear_2.parameters()))
 
     def test_parameter_list(self):
-        with _test_eager_guard():
-            self.func_test_parameter_list()
         self.func_test_parameter_list()
 
 

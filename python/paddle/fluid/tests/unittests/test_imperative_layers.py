@@ -350,8 +350,6 @@ class TestLayerPrint(unittest.TestCase):
         )
 
     def test_layer_str(self):
-        with _test_eager_guard():
-            self.func_test_layer_str()
         self.func_test_layer_str()
 
 

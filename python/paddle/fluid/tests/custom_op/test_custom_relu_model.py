@@ -140,8 +140,6 @@ class TestDygraphModel(unittest.TestCase):
                                           custom_relu_eval_out)
 
     def test_train_eval(self):
-        with _test_eager_guard():
-            self.func_train_eval()
         self.func_train_eval()
 
     def train_model(self, use_custom_op=False, dy2stat=False):

@@ -69,8 +69,6 @@ class TestJitCustomAttrs(unittest.TestCase):
         np.testing.assert_array_equal(x.numpy(), out.numpy())
 
     def test_attr_value(self):
-        with _test_eager_guard():
-            self.func_attr_value()
         self.func_attr_value()
 
     def func_const_attr_value(self):
@@ -88,8 +86,6 @@ class TestJitCustomAttrs(unittest.TestCase):
         np.testing.assert_array_equal(x.numpy(), out.numpy())
 
     def test_const_attr_value(self):
-        with _test_eager_guard():
-            self.func_const_attr_value()
         self.func_const_attr_value()
 
 

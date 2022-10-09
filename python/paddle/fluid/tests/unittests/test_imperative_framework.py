@@ -63,8 +63,6 @@ class TestDygraphFramework(unittest.TestCase):
                 self.assertTrue((e is not None))
 
     def test_dygraph_backward(self):
-        with _test_eager_guard():
-            self.func_test_dygraph_backward()
         self.func_test_dygraph_backward()
 
     def func_test_dygraph_to_string(self):
@@ -74,6 +72,4 @@ class TestDygraphFramework(unittest.TestCase):
             print(str(var_inp))
 
     def test_dygraph_to_string(self):
-        with _test_eager_guard():
-            self.func_test_dygraph_to_string()
         self.func_test_dygraph_to_string()

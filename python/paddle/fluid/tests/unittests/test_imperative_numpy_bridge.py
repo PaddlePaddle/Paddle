@@ -51,8 +51,6 @@ class TestImperativeNumpyBridge(unittest.TestCase):
             self.assertFalse(np.array_equal(var2.numpy(), data_np))
 
     def test_func_tensor_from_numpy(self):
-        with _test_eager_guard():
-            self.func_tensor_from_numpy()
         self.func_tensor_from_numpy()
 
 

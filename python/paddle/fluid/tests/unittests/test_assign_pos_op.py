@@ -131,8 +131,6 @@ class TestAssignPosAPI(unittest.TestCase):
         assert_allclose(out.numpy(), self.out, self.cum_count)
 
     def test_api_dygraph(self):
-        with _test_eager_guard():
-            self.func_api_dygraph()
         self.func_api_dygraph()
 
 

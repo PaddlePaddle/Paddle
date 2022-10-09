@@ -51,8 +51,6 @@ class TestInplaceAndClearGradient(unittest.TestCase):
         assert w.grad[0] == 0.15
 
     def test(self):
-        with _test_eager_guard():
-            self.func_test()
         self.func_test()
 
 
@@ -102,8 +100,6 @@ class TestInplaceClearGradAccumulation(unittest.TestCase):
             c.num_calls = 0
 
     def test(self):
-        with _test_eager_guard():
-            self.func_test()
         self.func_test()
 
 
@@ -121,8 +117,6 @@ class TestInplaceClearGradAccumulationAlt(unittest.TestCase):
         assert w.grad._inplace_version() == 1
 
     def test(self):
-        with _test_eager_guard():
-            self.func_test()
         self.func_test()
 
 

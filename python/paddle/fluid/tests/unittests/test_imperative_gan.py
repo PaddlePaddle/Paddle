@@ -239,8 +239,6 @@ class TestDygraphGAN(unittest.TestCase):
             np.testing.assert_allclose(v, static_params[k], rtol=1e-05)
 
     def test_gan_float32(self):
-        with _test_eager_guard():
-            self.func_test_gan_float32()
         self.func_test_gan_float32()
 
 

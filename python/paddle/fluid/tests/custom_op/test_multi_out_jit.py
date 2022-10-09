@@ -97,8 +97,6 @@ class TestMultiOutputDtypes(unittest.TestCase):
                 self.check_multi_outputs(outs, True)
 
     def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
         self.func_dynamic()
 
 

@@ -36,8 +36,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
     def test_add(self):
-        with _test_eager_guard():
-            self.func_test_add()
         self.func_test_add()
 
     def func_test_sub(self):
@@ -50,8 +48,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np - b_np)
 
     def test_sub(self):
-        with _test_eager_guard():
-            self.func_test_sub()
         self.func_test_sub()
 
     def func_test_mul(self):
@@ -64,8 +60,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np * b_np)
 
     def test_mul(self):
-        with _test_eager_guard():
-            self.func_test_mul()
         self.func_test_mul()
 
     def func_test_div(self):
@@ -79,8 +73,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_allclose(res.numpy(), a_np / b_np, rtol=1e-05)
 
     def test_div(self):
-        with _test_eager_guard():
-            self.func_test_div()
         self.func_test_div()
 
     def func_test_add_scalar(self):
@@ -92,8 +84,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np + b)
 
     def test_add_scalar(self):
-        with _test_eager_guard():
-            self.func_test_add_scalar()
         self.func_test_add_scalar()
 
     def func_test_add_scalar_reverse(self):
@@ -105,8 +95,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), b + a_np)
 
     def test_add_scalar_reverse(self):
-        with _test_eager_guard():
-            self.func_test_add_scalar_reverse()
         self.func_test_add_scalar_reverse()
 
     def func_test_sub_scalar(self):
@@ -118,8 +106,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np - b)
 
     def test_sub_scalar(self):
-        with _test_eager_guard():
-            self.func_test_sub_scalar()
         self.func_test_sub_scalar()
 
     def func_test_sub_scalar_reverse(self):
@@ -131,8 +117,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), b - a_np)
 
     def test_sub_scalar_reverse(self):
-        with _test_eager_guard():
-            self.func_test_sub_scalar_reverse()
         self.func_test_sub_scalar_reverse()
 
     def func_test_mul_scalar(self):
@@ -144,8 +128,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np * b)
 
     def test_mul_scalar(self):
-        with _test_eager_guard():
-            self.func_test_mul_scalar()
         self.func_test_mul_scalar()
 
     # div_scalar, not equal
@@ -158,8 +140,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_allclose(res.numpy(), a_np / b, rtol=1e-05)
 
     def test_div_scalar(self):
-        with _test_eager_guard():
-            self.func_test_div_scalar()
         self.func_test_div_scalar()
 
     # pow of float type, not equal
@@ -173,8 +153,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_allclose(res.numpy(), a_np**b_np, rtol=1e-05)
 
     def test_pow(self):
-        with _test_eager_guard():
-            self.func_test_pow()
         self.func_test_pow()
 
     def func_test_floor_div(self):
@@ -187,8 +165,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np // b_np)
 
     def test_floor_div(self):
-        with _test_eager_guard():
-            self.func_test_floor_div()
         self.func_test_floor_div()
 
     def func_test_mod(self):
@@ -201,8 +177,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np % b_np)
 
     def test_mod(self):
-        with _test_eager_guard():
-            self.func_test_mod()
         self.func_test_mod()
 
     # for bitwise and/or/xor/not
@@ -231,8 +205,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         np.testing.assert_array_equal(out.numpy(), out_np)
 
     def test_bitwise(self):
-        with _test_eager_guard():
-            self.func_test_bitwise()
         self.func_test_bitwise()
 
     # for logical compare
@@ -250,8 +222,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res2.numpy(), a_np == c_np)
 
     def test_equal(self):
-        with _test_eager_guard():
-            self.func_test_equal()
         self.func_test_equal()
 
     def func_test_not_equal(self):
@@ -268,8 +238,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res2.numpy(), a_np != c_np)
 
     def test_not_equal(self):
-        with _test_eager_guard():
-            self.func_test_not_equal()
         self.func_test_not_equal()
 
     def func_test_less_than(self):
@@ -282,8 +250,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np < b_np)
 
     def test_less_than(self):
-        with _test_eager_guard():
-            self.func_test_less_than()
         self.func_test_less_than()
 
     def func_test_less_equal(self):
@@ -296,8 +262,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np <= b_np)
 
     def test_less_equal(self):
-        with _test_eager_guard():
-            self.func_test_less_equal()
         self.func_test_less_equal()
 
     def func_test_greater_than(self):
@@ -310,8 +274,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np > b_np)
 
     def test_greater_than(self):
-        with _test_eager_guard():
-            self.func_test_greater_than()
         self.func_test_greater_than()
 
     def func_test_greater_equal(self):
@@ -324,8 +286,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np >= b_np)
 
     def test_greater_equal(self):
-        with _test_eager_guard():
-            self.func_test_greater_equal()
         self.func_test_greater_equal()
 
     def func_test_neg(self):
@@ -336,8 +296,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), -a_np)
 
     def test_neg(self):
-        with _test_eager_guard():
-            self.func_test_neg()
         self.func_test_neg()
 
     def func_test_float_int_long(self):
@@ -348,8 +306,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             self.assertTrue(int(a) == 100)
 
     def test_float_int_long(self):
-        with _test_eager_guard():
-            self.func_test_float_int_long()
         self.func_test_float_int_long()
 
     def func_test_len(self):
@@ -359,8 +315,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             self.assertTrue(len(a) == 10)
 
     def test_len(self):
-        with _test_eager_guard():
-            self.func_test_len()
         self.func_test_len()
 
     def func_test_index(self):
@@ -376,8 +330,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             self.assertTrue(str1[var1] == 's')
 
     def test_index(self):
-        with _test_eager_guard():
-            self.func_test_index()
         self.func_test_index()
 
     def func_test_np_left_mul(self):
@@ -392,8 +344,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
                                        atol=0.0)
 
     def test_np_left_mul(self):
-        with _test_eager_guard():
-            self.func_test_np_left_mul()
         self.func_test_np_left_mul()
 
     def func_test_add_different_dtype(self):
@@ -406,8 +356,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np + b_np)
 
     def test_add_different_dtype(self):
-        with _test_eager_guard():
-            self.func_test_add_different_dtype()
         self.func_test_add_different_dtype()
 
     def func_test_floordiv_different_dtype(self):
@@ -420,8 +368,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), a_np // b_np)
 
     def test_floordiv_different_dtype(self):
-        with _test_eager_guard():
-            self.func_test_floordiv_different_dtype()
         self.func_test_floordiv_different_dtype()
 
     def func_test_astype(self):
@@ -439,8 +385,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res1.numpy(), res3.numpy())
 
     def test_astype(self):
-        with _test_eager_guard():
-            self.func_test_astype()
         self.func_test_astype()
 
     def func_test_conpare_op_broadcast(self):
@@ -454,8 +398,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal((a != b).numpy(), a_np != b_np)
 
     def test_conpare_op_broadcast(self):
-        with _test_eager_guard():
-            self.func_test_conpare_op_broadcast()
         self.func_test_conpare_op_broadcast()
 
     def func_test_tensor_patch_method(self):
@@ -716,8 +658,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         self.assertTrue(inspect.ismethod(a.numel))
 
     def test_tensor_patch_method(self):
-        with _test_eager_guard():
-            self.func_test_tensor_patch_method()
         self.func_test_tensor_patch_method()
 
     def func_test_complex_scalar(self):
@@ -728,8 +668,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_array_equal(res.numpy(), 1j * a_np)
 
     def test_complex_scalar(self):
-        with _test_eager_guard():
-            self.func_test_complex_scalar()
         self.func_test_complex_scalar()
 
     def func_test_matmul(self):
@@ -744,8 +682,6 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), except_out, atol=1e-03)
 
     def test_matmul(self):
-        with _test_eager_guard():
-            self.func_test_matmul()
         self.func_test_matmul()
 
 

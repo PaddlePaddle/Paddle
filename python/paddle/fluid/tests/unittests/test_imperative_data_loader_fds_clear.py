@@ -87,8 +87,6 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
                 break
 
     def test_data_loader_break(self):
-        with _test_eager_guard():
-            self.func_test_data_loader_break()
         self.func_test_data_loader_break()
 
     def func_test_data_loader_continue_break(self):
@@ -98,8 +96,6 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
                 self.run_one_epoch_with_break(loader)
 
     def test_data_loader_continue_break(self):
-        with _test_eager_guard():
-            self.func_test_data_loader_continue_break()
         self.func_test_data_loader_continue_break()
 
 

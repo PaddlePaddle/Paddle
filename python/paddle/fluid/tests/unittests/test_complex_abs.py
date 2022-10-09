@@ -105,10 +105,6 @@ class TestAbs(unittest.TestCase):
                     y = paddle.abs(paddle.to_tensor(x))
                     np.testing.assert_allclose(np.abs(x), y.numpy(), rtol=1e-05)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_all_positive()
-
 
 class TestRealAbsOp(OpTest):
 

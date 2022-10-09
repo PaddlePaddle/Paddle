@@ -65,8 +65,6 @@ class TestDygraphDataLoader(unittest.TestCase):
             self.iter_loader_data(loader)
 
     def test_single_process_loader(self):
-        with _test_eager_guard():
-            self.func_test_single_process_loader()
         self.func_test_single_process_loader()
 
     def func_test_multi_process_loader(self):
@@ -80,8 +78,6 @@ class TestDygraphDataLoader(unittest.TestCase):
             self.iter_loader_data(loader)
 
     def test_multi_process_loader(self):
-        with _test_eager_guard():
-            self.func_test_multi_process_loader()
         self.func_test_multi_process_loader()
 
     def func_test_generator_no_places(self):
@@ -93,8 +89,6 @@ class TestDygraphDataLoader(unittest.TestCase):
             self.iter_loader_data(loader)
 
     def test_generator_no_places(self):
-        with _test_eager_guard():
-            self.func_test_generator_no_places()
         self.func_test_generator_no_places()
 
     def func_test_set_pin_memory(self):
@@ -111,8 +105,6 @@ class TestDygraphDataLoader(unittest.TestCase):
             use_pinned_memory(True)
 
     def test_set_pin_memory(self):
-        with _test_eager_guard():
-            self.func_test_set_pin_memory()
         self.func_test_set_pin_memory()
 
 

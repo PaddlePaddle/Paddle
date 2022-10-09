@@ -54,8 +54,6 @@ class TestContextPool(unittest.TestCase):
         np.testing.assert_array_equal(x.numpy(), out.numpy())
 
     def test_using_context_pool(self):
-        with _test_eager_guard():
-            self.use_context_pool()
         self.use_context_pool()
 
 

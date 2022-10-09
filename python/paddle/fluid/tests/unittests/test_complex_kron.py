@@ -47,10 +47,6 @@ class ComplexKronTestCase(unittest.TestCase):
                                        self.ref_result,
                                        rtol=1e-05)
 
-    def test_eager(self, place):
-        with _test_eager_guard():
-            self.test_kron_api(place)
-
 
 def load_tests(loader, standard_tests, pattern):
     suite = unittest.TestSuite()

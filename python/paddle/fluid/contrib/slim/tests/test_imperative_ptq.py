@@ -234,8 +234,6 @@ class TestImperativePTQ(unittest.TestCase):
             print("total time: %ss \n" % (end_time - start_time))
 
     def test_ptq(self):
-        with _test_eager_guard():
-            self.func_ptq()
         self.func_ptq()
 
 
@@ -301,8 +299,6 @@ class TestImperativePTQfuse(TestImperativePTQ):
             print("total time: %ss \n" % (end_time - start_time))
 
     def test_ptq(self):
-        with _test_eager_guard():
-            self.func_ptq()
         self.func_ptq()
 
 

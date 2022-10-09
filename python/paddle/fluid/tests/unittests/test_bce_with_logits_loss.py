@@ -166,12 +166,11 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                                              reduction=reduction,
                                              functional=True)
 
-                with _test_eager_guard():
-                    eager_functional = test_dygraph(place,
-                                                    logit_np,
-                                                    label_np,
-                                                    reduction=reduction,
-                                                    functional=True)
+                eager_functional = test_dygraph(place,
+                                                logit_np,
+                                                label_np,
+                                                reduction=reduction,
+                                                functional=True)
 
                 np.testing.assert_allclose(static_functional,
                                            expected,

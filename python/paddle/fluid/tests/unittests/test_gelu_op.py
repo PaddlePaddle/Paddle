@@ -92,10 +92,6 @@ class TestGeluOp(unittest.TestCase):
                                    rtol=1e-05,
                                    atol=0.0005)
 
-    def test_fast_math_eager(self):
-        with _test_eager_guard():
-            self.test_fast_math()
-
 
 if __name__ == '__main__':
     unittest.main()

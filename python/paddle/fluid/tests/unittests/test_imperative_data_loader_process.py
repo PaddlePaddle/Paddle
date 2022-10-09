@@ -83,8 +83,6 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
             clear_process.start()
 
     def test_reader_process_loop(self):
-        with _test_eager_guard():
-            self.func_test_reader_process_loop()
         self.func_test_reader_process_loop()
 
     def func_test_reader_process_loop_simple_none(self):
@@ -111,8 +109,6 @@ class TestDygraphDataLoaderProcess(unittest.TestCase):
             self.assertIsNotNone(exception)
 
     def test_reader_process_loop_simple_none(self):
-        with _test_eager_guard():
-            self.func_test_reader_process_loop_simple_none()
         self.func_test_reader_process_loop_simple_none()
 
 

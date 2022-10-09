@@ -43,8 +43,6 @@ class EmbeddingDygraph(unittest.TestCase):
         adam.step()
 
     def test_1(self):
-        with _test_eager_guard():
-            self.func_1()
         self.func_1()
 
     def func_2(self):
@@ -64,8 +62,6 @@ class EmbeddingDygraph(unittest.TestCase):
             embedding = paddle.nn.Embedding(10, -3, sparse=True)
 
     def test_2(self):
-        with _test_eager_guard():
-            self.func_2()
         self.func_2()
 
 

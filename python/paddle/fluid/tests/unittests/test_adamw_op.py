@@ -246,11 +246,6 @@ class TestAdamWOp(unittest.TestCase):
                                           epsilon=-1,
                                           parameters=linear.parameters())
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_adamw_op_dygraph()
-            self.test_adamw_op_invalid_input()
-
 
 class TestAdamWOpGroup(TestAdamWOp):
 

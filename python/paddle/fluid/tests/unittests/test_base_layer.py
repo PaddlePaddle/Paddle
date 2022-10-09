@@ -80,8 +80,6 @@ class TestBaseLayer(unittest.TestCase):
                                        rtol=1e-05)
 
     def test_one_level(self):
-        with _test_eager_guard():
-            self.func_test_one_level()
         self.func_test_one_level()
 
     def func_test_three_level(self):
@@ -107,8 +105,6 @@ class TestBaseLayer(unittest.TestCase):
                                        rtol=1e-05)
 
     def test_three_level(self):
-        with _test_eager_guard():
-            self.func_test_three_level()
         self.func_test_three_level()
 
     def func_test_add_parameter_with_error(self):
@@ -137,8 +133,6 @@ class TestBaseLayer(unittest.TestCase):
             net.add_parameter("load_param", load_param)
 
     def test_add_parameter_with_error(self):
-        with _test_eager_guard():
-            self.func_test_add_parameter_with_error()
         self.func_test_add_parameter_with_error()
 
 
@@ -194,8 +188,6 @@ class TestBuffer(unittest.TestCase):
                              ['net_buffer', 'new_buffer'])
 
     def test_buffers_and_named_buffers(self):
-        with _test_eager_guard():
-            self.func_test_buffers_and_named_buffers()
         self.func_test_buffers_and_named_buffers()
 
     def func_test_register_buffer_with_error(self):
@@ -237,8 +229,6 @@ class TestBuffer(unittest.TestCase):
                 net.register_buffer("attr_name", var)
 
     def test_register_buffer_with_error(self):
-        with _test_eager_guard():
-            self.func_test_register_buffer_with_error()
         self.func_test_register_buffer_with_error()
 
     def func_test_register_buffer_same_name(self):
@@ -256,8 +246,6 @@ class TestBuffer(unittest.TestCase):
             self.assert_var_base_equal(net.buffer_name, var3)
 
     def test_register_buffer_same_name(self):
-        with _test_eager_guard():
-            self.func_test_register_buffer_same_name()
         self.func_test_register_buffer_same_name()
 
     def func_test_buffer_not_persistable(self):
@@ -270,8 +258,6 @@ class TestBuffer(unittest.TestCase):
             self.assertEqual(len(net.state_dict()), 0)
 
     def test_buffer_not_persistable(self):
-        with _test_eager_guard():
-            self.func_test_buffer_not_persistable()
         self.func_test_buffer_not_persistable()
 
     def func_test_buffer_not_persistable_del(self):
@@ -283,8 +269,6 @@ class TestBuffer(unittest.TestCase):
             self.assertEqual(len(net.buffers()), 0)
 
     def test_buffer_not_persistable_del(self):
-        with _test_eager_guard():
-            self.func_test_buffer_not_persistable_del()
         self.func_test_buffer_not_persistable_del()
 
     def func_test_buffer_not_persistable_overwrite(self):
@@ -304,8 +288,6 @@ class TestBuffer(unittest.TestCase):
             self.assertEqual(len(net.state_dict()), 0)
 
     def test_buffer_not_persistable_overwrite(self):
-        with _test_eager_guard():
-            self.func_test_buffer_not_persistable_overwrite()
         self.func_test_buffer_not_persistable_overwrite()
 
     def func_test_buffer_not_persistable_assign(self):
@@ -333,8 +315,6 @@ class TestBuffer(unittest.TestCase):
             self.assertEqual(len(net.state_dict()), 1)
 
     def test_buffer_not_persistable_assign(self):
-        with _test_eager_guard():
-            self.func_test_buffer_not_persistable_assign()
         self.func_test_buffer_not_persistable_assign()
 
     def func_test_buffer_not_persistable_load(self):
@@ -345,8 +325,6 @@ class TestBuffer(unittest.TestCase):
             net.load_dict({})
 
     def test_buffer_not_persistable_load(self):
-        with _test_eager_guard():
-            self.func_test_buffer_not_persistable_load()
         self.func_test_buffer_not_persistable_load()
 
     def func_test_buffer_state_dict(self):
@@ -370,8 +348,6 @@ class TestBuffer(unittest.TestCase):
             self.assert_var_base_equal(net_load.buffer_var1, var1)
 
     def test_buffer_state_dict(self):
-        with _test_eager_guard():
-            self.func_test_buffer_state_dict()
         self.func_test_buffer_state_dict()
 
     def assert_var_base_equal(self, var1, var2):
@@ -422,8 +398,6 @@ class TestModifiedBuffer(unittest.TestCase):
                                           st_outs[i].numpy())
 
     def test_modified(self):
-        with _test_eager_guard():
-            self.func_test_modified()
         self.func_test_modified()
 
 
@@ -577,12 +551,6 @@ class TestLayerTo(unittest.TestCase):
         self.assertEqual(model._buffers['buf_name'], None)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.funcsetUp()
-            self.func_test_to_api()
-            self.func_test_to_api_paddle_dtype()
-            self.func_test_to_api_numpy_dtype()
-            self.func_test_to_api_none_buffer()
         self.funcsetUp()
         self.func_test_to_api()
         self.func_test_to_api_paddle_dtype()

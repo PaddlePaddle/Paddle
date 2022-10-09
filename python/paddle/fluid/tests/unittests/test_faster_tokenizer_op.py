@@ -297,8 +297,6 @@ class TestBertTokenizerOp(unittest.TestCase):
                                    atol=0.01)
 
     def test_padding(self):
-        with _test_eager_guard():
-            self.run_padding()
         self.run_padding()
 
     def run_no_padding(self):
@@ -358,8 +356,6 @@ class TestBertTokenizerOp(unittest.TestCase):
                                    atol=0.01)
 
     def test_no_padding(self):
-        with _test_eager_guard():
-            self.run_no_padding()
         self.run_no_padding()
 
     def run_is_split_into_words(self):
@@ -384,8 +380,6 @@ class TestBertTokenizerOp(unittest.TestCase):
                                    atol=0.01)
 
     def test_is_split_into_words(self):
-        with _test_eager_guard():
-            self.run_is_split_into_words()
         self.run_is_split_into_words()
 
     def test_inference(self):

@@ -51,8 +51,6 @@ class TestTensorBackward(unittest.TestCase):
                                                rtol=1e-05)
 
     def test_tensor_backward(self):
-        with _test_eager_guard():
-            self.func_tensor_backward()
         self.func_tensor_backward()
 
 
@@ -88,8 +86,6 @@ class TestBackwardAPI(unittest.TestCase):
                                                rtol=1e-05)
 
     def test_backward_api(self):
-        with _test_eager_guard():
-            self.func_backward_api()
         self.func_backward_api()
 
     def func_backward_single_tensor(self):
@@ -114,8 +110,6 @@ class TestBackwardAPI(unittest.TestCase):
                                                rtol=1e-05)
 
     def test_backward_single_tensor(self):
-        with _test_eager_guard():
-            self.func_backward_single_tensor()
         self.func_backward_single_tensor()
 
     def func_backward_none_grad_tensor(self):
@@ -139,8 +133,6 @@ class TestBackwardAPI(unittest.TestCase):
                                                rtol=1e-05)
 
     def test_backward_none_grad_tensor(self):
-        with _test_eager_guard():
-            self.func_backward_none_grad_tensor()
         self.func_backward_none_grad_tensor()
 
     def func_backward_accumulator_with_init_grad(self):
@@ -175,8 +167,6 @@ class TestBackwardAPI(unittest.TestCase):
                                                rtol=1e-05)
 
     def test_backward_accumulator_with_init_grad(self):
-        with _test_eager_guard():
-            self.func_backward_accumulator_with_init_grad()
         self.func_backward_accumulator_with_init_grad()
 
 

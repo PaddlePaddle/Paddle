@@ -77,8 +77,6 @@ class TestSimpleNet(unittest.TestCase):
 
     def test_selectedrows_gradient1(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_selectedrows_gradient1()
         self.func_selectedrows_gradient1()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -118,8 +116,6 @@ class TestSimpleNet(unittest.TestCase):
 
     def test_selectedrows_gradient2(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_selectedrows_gradient2()
         self.func_selectedrows_gradient2()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 

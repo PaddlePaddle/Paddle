@@ -69,8 +69,6 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
         self.assertIsNotNone(exception)
 
     def test_child_process_exit_with_error(self):
-        with _test_eager_guard():
-            self.func_child_process_exit_with_error()
         self.func_child_process_exit_with_error()
 
     def func_child_process_killed_by_sigsegv(self):
@@ -103,8 +101,6 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
         self.assertIsNotNone(exception)
 
     def test_child_process_killed_by_sigsegv(self):
-        with _test_eager_guard():
-            self.func_child_process_killed_by_sigsegv()
         self.func_child_process_killed_by_sigsegv()
 
     def func_child_process_killed_by_sigbus(self):
@@ -136,8 +132,6 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
         self.assertIsNotNone(exception)
 
     def test_child_process_killed_by_sigbus(self):
-        with _test_eager_guard():
-            self.func_child_process_killed_by_sigbus()
         self.func_child_process_killed_by_sigbus()
 
     def func_child_process_killed_by_sigterm(self):
@@ -154,8 +148,6 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
         time.sleep(1)
 
     def test_child_process_killed_by_sigterm(self):
-        with _test_eager_guard():
-            self.func_child_process_killed_by_sigterm()
         self.func_child_process_killed_by_sigterm()
 
 

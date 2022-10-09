@@ -193,8 +193,6 @@ class TestAdaptiveMaxPool3DAPI(unittest.TestCase):
             assert np.allclose(out_5.numpy(), self.res_5_np)
 
     def test_dynamic_graph(self):
-        with paddle.fluid.framework._test_eager_guard():
-            self.func_dynamic_graph()
         self.func_dynamic_graph()
 
 

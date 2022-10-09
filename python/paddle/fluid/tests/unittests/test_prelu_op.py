@@ -78,10 +78,6 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.dygraph_check(self.weight_np_0)
         self.dygraph_check(self.weight_np_1)
 
-    def test_dygraph_api_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph_api()
-
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             weight_fp32 = paddle.fluid.data(name='weight_fp32',

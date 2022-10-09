@@ -59,16 +59,11 @@ class TestFracAPI(unittest.TestCase):
 
     def test_api_eager(self):
         paddle.disable_static(self.place)
-        with _test_eager_guard():
-            x_tensor = paddle.to_tensor(self.x_np)
-            out = paddle.frac(x_tensor)
+        x_tensor = paddle.to_tensor(self.x_np)
+        out = paddle.frac(x_tensor)
         out_ref = ref_frac(self.x_np)
         np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_api_dygraph()
 
 
 class TestFracInt32(TestFracAPI):

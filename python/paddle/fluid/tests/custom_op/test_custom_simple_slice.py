@@ -53,8 +53,6 @@ class TestCustomSimpleSliceJit(unittest.TestCase):
                                                         custom_op_out.numpy()))
 
     def test_slice_output(self):
-        with _test_eager_guard():
-            self.func_slice_output()
         self.func_slice_output()
 
 

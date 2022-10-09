@@ -112,6 +112,4 @@ def run_check():
 
 
 if __name__ == '__main__':
-    with _test_eager_guard():
-        run_check()
     run_check()

@@ -127,15 +127,14 @@ class TestCastOpEager(unittest.TestCase):
 
     def test_eager(self):
         with paddle.fluid.dygraph.base.guard():
-            with _test_eager_guard():
-                x = paddle.ones([2, 2], dtype="float16")
-                x.stop_gradient = False
-                out = paddle.cast(x, "float32")
-                np.testing.assert_array_equal(out,
-                                              np.ones([2, 2]).astype('float32'))
-                out.backward()
-                np.testing.assert_array_equal(x.gradient(), x.numpy())
-                self.assertTrue(x.gradient().dtype == np.float16)
+            x = paddle.ones([2, 2], dtype="float16")
+            x.stop_gradient = False
+            out = paddle.cast(x, "float32")
+            np.testing.assert_array_equal(out,
+                                          np.ones([2, 2]).astype('float32'))
+            out.backward()
+            np.testing.assert_array_equal(x.gradient(), x.numpy())
+            self.assertTrue(x.gradient().dtype == np.float16)
 
 
 class TestCastDoubleGradCheck(unittest.TestCase):

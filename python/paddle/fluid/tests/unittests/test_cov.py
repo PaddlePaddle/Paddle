@@ -62,8 +62,6 @@ class Cov_Test(unittest.TestCase):
                 np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_default(self):
-        with _test_eager_guard():
-            self.func_test_tensor_cov_default()
         self.func_test_tensor_cov_default()
 
     def func_test_tensor_cov_rowvar(self):
@@ -94,8 +92,6 @@ class Cov_Test(unittest.TestCase):
                 np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_rowvar(self):
-        with _test_eager_guard():
-            self.func_test_tensor_cov_rowvar()
         self.func_test_tensor_cov_rowvar()
 
     def func_test_tensor_cov_ddof(self):
@@ -126,8 +122,6 @@ class Cov_Test(unittest.TestCase):
                 np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_ddof(self):
-        with _test_eager_guard():
-            self.func_test_tensor_cov_ddof()
         self.func_test_tensor_cov_ddof()
 
     def func_test_tensor_cov_fweights(self):
@@ -161,8 +155,6 @@ class Cov_Test(unittest.TestCase):
                 np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_fweights(self):
-        with _test_eager_guard():
-            self.func_test_tensor_cov_fweights()
         self.func_test_tensor_cov_fweights()
 
     def func_test_tensor_cov_aweights(self):
@@ -196,8 +188,6 @@ class Cov_Test(unittest.TestCase):
                 np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_aweights(self):
-        with _test_eager_guard():
-            self.func_test_tensor_cov_aweights()
         self.func_test_tensor_cov_aweights()
 
     def func_test_tensor_cov_weights(self):
@@ -233,8 +223,6 @@ class Cov_Test(unittest.TestCase):
                 np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_weights(self):
-        with _test_eager_guard():
-            self.func_test_tensor_cov_weights()
         self.func_test_tensor_cov_weights()
 
 
@@ -259,10 +247,10 @@ class Cov_Test3(unittest.TestCase):
 
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
-            np_fw = self.fw_s * np.random.rand(
-                *self.fweightshape).astype('int32')
-            np_aw = self.aw_s * np.random.rand(
-                *self.aweightshape).astype('float64')
+            np_fw = self.fw_s * np.random.rand(*self.fweightshape).astype(
+                'int32')
+            np_aw = self.aw_s * np.random.rand(*self.aweightshape).astype(
+                'float64')
             tensor = paddle.to_tensor(np_arr)
             fweights = paddle.to_tensor(np_fw)
             aweights = paddle.to_tensor(np_aw)
@@ -275,8 +263,6 @@ class Cov_Test3(unittest.TestCase):
         self.assertRaises(ValueError, test_err)
 
     def test_errors(self):
-        with _test_eager_guard():
-            self.func_test_errors()
         self.func_test_errors()
 
 

@@ -1508,14 +1508,6 @@ class TestDistBase(unittest.TestCase):
                          need_envs={},
                          log_name=""):
         if self._dygraph and (self._gloo_mode or self._nccl2_mode):
-            need_envs.update({"FLAGS_enable_eager_mode": "1"})
-            with _test_eager_guard():
-                self.check_with_place_func(model_file=model_file,
-                                           delta=delta,
-                                           check_error_log=check_error_log,
-                                           need_envs=need_envs,
-                                           log_name=log_name)
-            need_envs.update({"FLAGS_enable_eager_mode": "0"})
             self.check_with_place_func(model_file=model_file,
                                        delta=delta,
                                        check_error_log=check_error_log,

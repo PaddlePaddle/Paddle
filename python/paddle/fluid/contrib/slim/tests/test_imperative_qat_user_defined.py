@@ -251,8 +251,6 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
         test(lenet)
 
     def test_quant_aware_training(self):
-        with _test_eager_guard():
-            self.func_quant_aware_training()
         self.func_quant_aware_training()
 
 

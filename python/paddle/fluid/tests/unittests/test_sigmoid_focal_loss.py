@@ -148,10 +148,9 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                             dy_result = test_dygraph(place, logit_np, label_np,
                                                      normalizer_np, alpha,
                                                      gamma, reduction)
-                            with _test_eager_guard():
-                                eager_result = test_dygraph(
-                                    place, logit_np, label_np, normalizer_np,
-                                    alpha, gamma, reduction)
+                            eager_result = test_dygraph(place, logit_np,
+                                                        label_np, normalizer_np,
+                                                        alpha, gamma, reduction)
                             expected = calc_sigmoid_focal_loss(
                                 logit_np, label_np, normalizer_np, alpha, gamma,
                                 reduction)

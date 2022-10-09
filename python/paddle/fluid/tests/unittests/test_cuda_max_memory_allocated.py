@@ -38,8 +38,6 @@ class TestMaxMemoryAllocated(unittest.TestCase):
                              max_memory_allocated(device))
 
     def test_max_memory_allocated(self):
-        with _test_eager_guard():
-            self.func_test_max_memory_allocated()
         self.func_test_max_memory_allocated()
 
     def func_test_max_memory_allocated_for_all_places(self):
@@ -52,8 +50,6 @@ class TestMaxMemoryAllocated(unittest.TestCase):
                 self.func_test_max_memory_allocated("gpu:" + str(i))
 
     def test_max_memory_allocated_for_all_places(self):
-        with _test_eager_guard():
-            self.func_test_max_memory_allocated_for_all_places()
         self.func_test_max_memory_allocated_for_all_places()
 
     def func_test_max_memory_allocated_exception(self):
@@ -70,8 +66,6 @@ class TestMaxMemoryAllocated(unittest.TestCase):
                 max_memory_allocated()
 
     def test_max_memory_allocated_exception(self):
-        with _test_eager_guard():
-            self.func_test_max_memory_allocated_exception()
         self.func_test_max_memory_allocated_exception()
 
 

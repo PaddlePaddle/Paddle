@@ -36,8 +36,6 @@ class TestAdamaxAPI(unittest.TestCase):
         adam.clear_gradients()
 
     def test_adamax_api_dygraph(self):
-        with _test_eager_guard():
-            self.func_adamax_api_dygraph()
         self.func_adamax_api_dygraph()
 
     def func_adamax_api(self):
@@ -67,8 +65,6 @@ class TestAdamaxAPI(unittest.TestCase):
         assert rets[0] is not None
 
     def test_adamax_api(self):
-        with _test_eager_guard():
-            self.func_adamax_api()
         self.func_adamax_api()
 
 
@@ -103,8 +99,6 @@ class TestAdamaxAPIGroup(TestAdamaxAPI):
         adam.clear_gradients()
 
     def test_adamax_api_dygraph(self):
-        with _test_eager_guard():
-            self.func_adamax_api_dygraph()
         self.func_adamax_api_dygraph()
 
 

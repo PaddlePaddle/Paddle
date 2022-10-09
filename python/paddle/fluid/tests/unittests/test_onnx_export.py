@@ -53,8 +53,6 @@ class TestExportWithTensor(unittest.TestCase):
         paddle.onnx.export(model, 'linear_net', input_spec=[self.x_spec])
 
     def test_with_tensor(self):
-        with _test_eager_guard():
-            self.func_with_tensor()
         self.func_with_tensor()
 
 
@@ -66,8 +64,6 @@ class TestExportWithTensor1(unittest.TestCase):
         paddle.onnx.export(model, 'linear_net', input_spec=[self.x])
 
     def test_with_tensor(self):
-        with _test_eager_guard():
-            self.func_with_tensor()
         self.func_with_tensor()
 
 
@@ -85,9 +81,6 @@ class TestExportPrunedGraph(unittest.TestCase):
                            output_spec=[out])
 
     def test_prune_graph(self):
-        # test eager
-        with _test_eager_guard():
-            self.func_prune_graph()
         self.func_prune_graph()
 
 

@@ -57,12 +57,6 @@ class TestComplexVariable(unittest.TestCase):
         self.assertEqual(convert_dtype(core.VarDesc.VarType.COMPLEX128),
                          "complex128")
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_attrs()
-            self.test_convert_np_dtype_to_dtype()
-            self.test_convert_dtype()
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -213,8 +213,6 @@ class TestImperativeQatAmp(unittest.TestCase):
 
     def test_ptq(self):
         self.ptq()
-        with _test_eager_guard():
-            self.ptq()
 
 
 if __name__ == '__main__':

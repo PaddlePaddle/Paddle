@@ -53,8 +53,6 @@ class TestJitDispatch(unittest.TestCase):
             err_msg='custom op x: {},\n custom op out: {}'.format(np_x, np_out))
 
     def run_dispatch_test(self, func, dtype):
-        with _test_eager_guard():
-            self.run_dispatch_test_impl(func, dtype)
         self.run_dispatch_test_impl(func, dtype)
 
     def test_dispatch_integer(self):

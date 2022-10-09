@@ -56,8 +56,6 @@ class TestImperativeContainerSequential(unittest.TestCase):
             loss2.backward()
 
     def test_sequential(self):
-        with _test_eager_guard():
-            self.func_sequential()
         self.func_sequential()
 
     def func_sequential_list_params(self):
@@ -96,8 +94,6 @@ class TestImperativeContainerSequential(unittest.TestCase):
             loss2.backward()
 
     def test_sequential_list_params(self):
-        with _test_eager_guard():
-            self.func_sequential_list_params()
         self.func_sequential_list_params()
 
 

@@ -922,16 +922,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
         self.func_testSetNumpyBeforeTrain()
         self.func_testOnlyLoadParams()
         self.func_test_load_compatible_with_keep_name_table()
-        with _test_eager_guard():
-            self.func_setUp()
-            self.func_testLoadAndSetVarBase()
-            self.func_testSetVariable()
-            self.func_testSetNumpy()
-            self.func_testSetVariableBeforeTrain()
-            self.func_testLoadAndSetVarBaseBeforeTrain()
-            self.func_testSetNumpyBeforeTrain()
-            self.func_testOnlyLoadParams()
-            self.func_test_load_compatible_with_keep_name_table()
 
 
 if __name__ == '__main__':

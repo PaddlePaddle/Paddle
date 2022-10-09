@@ -252,9 +252,6 @@ class TestDiagV2API(unittest.TestCase):
     def test_cpu(self):
         paddle.disable_static(place=paddle.fluid.CPUPlace())
         self.run_imperative()
-        with _test_eager_guard():
-            self.run_imperative()
-
         paddle.enable_static()
 
         with fluid.program_guard(fluid.Program()):
@@ -266,8 +263,6 @@ class TestDiagV2API(unittest.TestCase):
 
         paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
         self.run_imperative()
-        with _test_eager_guard():
-            self.run_imperative()
         paddle.enable_static()
 
         with fluid.program_guard(fluid.Program()):

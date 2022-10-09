@@ -83,8 +83,6 @@ class TestSetValueApi(TestSetValueBase):
                         msg=error_msg.format("dynamic", self.data, dynamic_out))
 
     def test_api(self):
-        with _test_eager_guard():
-            self.func_test_api()
         self.func_test_api()
 
 
@@ -1097,8 +1095,6 @@ class TestBackward(unittest.TestCase):
 
     def test_dynamic(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            self.func_test_dynamic()
         self.func_test_dynamic()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
@@ -1292,8 +1288,6 @@ class TestGradientTruncated(unittest.TestCase):
         self.assertTrue(not x.is_leaf)
 
     def test_consistent_with_competitor(self):
-        with _test_eager_guard():
-            self.func_test_consistent_with_competitor()
         self.func_test_consistent_with_competitor()
 
     def test_static_graph(self):

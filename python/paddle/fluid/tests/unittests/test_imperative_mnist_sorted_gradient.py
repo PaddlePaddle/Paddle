@@ -156,8 +156,6 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                                        atol=1e-05)
 
     def test_mnist_sort_gradient_float32(self):
-        with _test_eager_guard():
-            self.func_test_mnist_sort_gradient_float32()
         self.func_test_mnist_sort_gradient_float32()
 
 

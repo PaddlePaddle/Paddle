@@ -107,11 +107,6 @@ class TestKronLayer(unittest.TestCase):
         c, = exe.run(main, feed={'a': a, 'b': b}, fetch_list=[out_var])
         np.testing.assert_allclose(c, np.kron(a, b))
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_case()
-            self.test_case_with_output()
-
 
 class TestComplexKronOp(OpTest):
 

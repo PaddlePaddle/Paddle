@@ -43,8 +43,6 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                 fluid.io.DataLoader.from_generator()
 
     def test_not_capacity(self):
-        with _test_eager_guard():
-            self.func_test_not_capacity()
         self.func_test_not_capacity()
 
     def func_test_single_process_with_thread_expection(self):
@@ -74,8 +72,6 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             self.assertIsNotNone(exception)
 
     def test_single_process_with_thread_expection(self):
-        with _test_eager_guard():
-            self.func_test_single_process_with_thread_expection()
         self.func_test_single_process_with_thread_expection()
 
     def func_test_multi_process_with_process_expection(self):
@@ -102,8 +98,6 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             self.assertIsNotNone(exception)
 
     def test_multi_process_with_process_expection(self):
-        with _test_eager_guard():
-            self.func_test_multi_process_with_process_expection()
         self.func_test_multi_process_with_process_expection()
 
     def func_test_multi_process_with_get_timeout(self):
@@ -137,8 +131,6 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             self.assertIsNotNone(exception)
 
     def test_multi_process_with_get_timeout(self):
-        with _test_eager_guard():
-            self.func_test_multi_process_with_get_timeout()
         self.func_test_multi_process_with_get_timeout()
 
 

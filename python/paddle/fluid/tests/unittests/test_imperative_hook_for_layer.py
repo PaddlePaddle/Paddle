@@ -186,9 +186,6 @@ class Test_Forward_Hook(unittest.TestCase):
                 self.assertFalse(call_forward_pre_hook)
 
     def test_forward_hook_return_value(self):
-        with _test_eager_guard():
-            self.func_forward_hook()
-            self.func_forward_hook_return_value()
         self.func_forward_hook()
         self.func_forward_hook_return_value()
 

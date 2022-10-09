@@ -42,8 +42,6 @@ class TestSaveLoadAPIError(unittest.TestCase):
             fluid.io._get_valid_program("program")
 
     def test_get_valid_program_error(self):
-        with _test_eager_guard():
-            self.func_test_get_valid_program_error()
         self.func_test_get_valid_program_error()
 
     def func_test_load_vars_error(self):
@@ -63,8 +61,6 @@ class TestSaveLoadAPIError(unittest.TestCase):
                                vars="vars")
 
     def test_load_vars_error(self):
-        with _test_eager_guard():
-            self.func_test_load_vars_error()
         self.func_test_load_vars_error()
 
 
@@ -96,8 +92,6 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
                                           main_program=main_prog)
 
     def test_useless_feeded_var_names(self):
-        with _test_eager_guard():
-            self.func_test_useless_feeded_var_names()
         self.func_test_useless_feeded_var_names()
 
 
@@ -126,8 +120,6 @@ class TestWhenTrainWithNoGrad(unittest.TestCase):
             net(x)
 
     def test_when_train_with_no_grad(self):
-        with _test_eager_guard():
-            self.func_test_when_train_with_no_grad()
         self.func_test_when_train_with_no_grad()
 
 

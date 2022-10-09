@@ -60,9 +60,6 @@ class TestBakcwardFunctionHookError(unittest.TestCase):
         assert test_cap.list == [1, 2, 1]
 
     def test_hook(self):
-        # _register_void_function_post_hook do not support in eager mode
-        with _test_eager_guard():
-            pass
         self.func_hook()
 
 

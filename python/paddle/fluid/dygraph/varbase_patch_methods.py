@@ -903,14 +903,12 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                from paddle.fluid.framework import _test_eager_guard
-                with _test_eager_guard():
-                    indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
-                    values = [1, 2, 3, 4, 5]
-                    dense_shape = [3, 4]
-                    sparse_x = paddle.incubate.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
-                    print(sparse_x.values())
-                    #[1, 2, 3, 4, 5]
+                indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                values = [1, 2, 3, 4, 5]
+                dense_shape = [3, 4]
+                sparse_x = paddle.incubate.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                print(sparse_x.values())
+                #[1, 2, 3, 4, 5]
         """
         return _C_ops.sparse_values(self)
 
@@ -928,16 +926,14 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                from paddle.fluid.framework import _test_eager_guard
-                with _test_eager_guard():
-                    indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
-                    values = [1, 2, 3, 4, 5]
-                    dense_shape = [3, 4]
-                    sparse_x = paddle.incubate.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
-                    dense_x = sparse_x.to_dense()
-                    #[[0., 1., 0., 2.],
-                    # [0., 0., 3., 0.],
-                    # [4., 5., 0., 0.]]
+                indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                values = [1, 2, 3, 4, 5]
+                dense_shape = [3, 4]
+                sparse_x = paddle.incubate.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                dense_x = sparse_x.to_dense()
+                #[[0., 1., 0., 2.],
+                # [0., 0., 3., 0.],
+                # [4., 5., 0., 0.]]
         """
 
         return _C_ops.sparse_to_dense(self)
@@ -956,14 +952,12 @@ def monkey_patch_varbase():
             .. code-block:: python
 
                 import paddle
-                from paddle.fluid.framework import _test_eager_guard
-                with _test_eager_guard():
-                    dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
-                    dense_x = paddle.to_tensor(dense_x, dtype='float32')
-                    sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
-                    #indices=[[0, 0, 1, 1],
-                    #         [1, 3, 2, 3]],
-                    #values=[1., 2., 3., 4.]
+                dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
+                dense_x = paddle.to_tensor(dense_x, dtype='float32')
+                sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
+                #indices=[[0, 0, 1, 1],
+                #         [1, 3, 2, 3]],
+                #values=[1., 2., 3., 4.]
         """
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)

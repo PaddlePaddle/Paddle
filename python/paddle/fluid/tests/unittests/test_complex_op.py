@@ -159,10 +159,6 @@ class TestComplexAPI(unittest.TestCase):
                            fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-
 
 if __name__ == "__main__":
     unittest.main()

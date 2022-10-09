@@ -175,8 +175,6 @@ class TestDygraphGNN(unittest.TestCase):
         sys.stderr.write('%s %s\n' % (static_loss, loss_value))
 
     def test_gnn_float32(self):
-        with _test_eager_guard():
-            self.func_gnn_float32()
         self.func_gnn_float32()
 
 

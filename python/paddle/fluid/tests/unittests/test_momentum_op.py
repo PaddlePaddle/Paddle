@@ -536,11 +536,6 @@ class TestMomentumV2(unittest.TestCase):
                           learning_rate=None)
         self.assertRaises(ValueError, paddle.optimizer.Momentum, momentum=None)
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_momentum_dygraph()
-            self.test_raise_error()
-
 
 class TestMomentumOpWithDecay(OpTest):
 
@@ -943,10 +938,6 @@ class TestMultiTensorMomentumDygraph(unittest.TestCase):
                 self._check_with_place_amp(place, use_amp)
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
-
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_main()
 
 
 class TestMultiTensorMomentumStatic(unittest.TestCase):

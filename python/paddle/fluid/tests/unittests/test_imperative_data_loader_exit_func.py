@@ -46,8 +46,6 @@ class TestDygraphDataLoaderCleanUpFunc(unittest.TestCase):
         _cleanup()
 
     def test_clear_queue_set(self):
-        with _test_eager_guard():
-            self.func_test_clear_queue_set()
         self.func_test_clear_queue_set()
 
 
@@ -66,8 +64,6 @@ class TestRegisterExitFunc(unittest.TestCase):
         self.assertIsNotNone(exception)
 
     def test_not_callable_func(self):
-        with _test_eager_guard():
-            self.func_test_not_callable_func()
         self.func_test_not_callable_func()
 
     def func_test_old_handler_for_sigint(self):
@@ -75,8 +71,6 @@ class TestRegisterExitFunc(unittest.TestCase):
                                       signals=[signal.SIGINT])
 
     def test_old_handler_for_sigint(self):
-        with _test_eager_guard():
-            self.func_test_old_handler_for_sigint()
         self.func_test_old_handler_for_sigint()
 
     def func_test_signal_wrapper_by_sigchld(self):
@@ -97,8 +91,6 @@ class TestRegisterExitFunc(unittest.TestCase):
         self.assertIsNotNone(exception)
 
     def test_signal_wrapper_by_sigchld(self):
-        with _test_eager_guard():
-            self.func_test_signal_wrapper_by_sigchld()
         self.func_test_signal_wrapper_by_sigchld()
 
 

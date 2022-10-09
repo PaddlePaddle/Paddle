@@ -432,8 +432,6 @@ class TestFloatElementwiseSubop(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph_sub(self):
-        with _test_eager_guard():
-            self.func_dygraph_sub()
         self.func_dygraph_sub()
 
 

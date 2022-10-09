@@ -51,10 +51,6 @@ class TestRandintOp(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
-    def test_check_output_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
-
 
 class TestRandintOpError(unittest.TestCase):
 
@@ -71,10 +67,6 @@ class TestRandintOpError(unittest.TestCase):
                               paddle.randint,
                               5,
                               shape=[shape_tensor])
-
-    def test_errors_eager(self):
-        with _test_eager_guard():
-            self.test_errors()
 
 
 class TestRandintOp_attr_tensorlist(OpTest):
@@ -101,10 +93,6 @@ class TestRandintOp_attr_tensorlist(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
-    def test_check_output_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
-
 
 class TestRandint_attr_tensor(OpTest):
 
@@ -124,10 +112,6 @@ class TestRandint_attr_tensor(OpTest):
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
-
-    def test_check_output_eager(self):
-        with _test_eager_guard():
-            self.test_check_output()
 
 
 # Test python API
@@ -170,10 +154,6 @@ class TestRandintAPI(unittest.TestCase):
                 feed={'var_shape': np.array([100, 100]).astype('int64')},
                 fetch_list=[out1, out2, out3, out4, out5])
 
-    def test_api_eager(self):
-        with _test_eager_guard():
-            self.test_api()
-
 
 class TestRandintImperative(unittest.TestCase):
 
@@ -181,9 +161,6 @@ class TestRandintImperative(unittest.TestCase):
         paddle.disable_static()
 
         self.run_test_case()
-
-        with _test_eager_guard():
-            self.run_test_case()
 
         paddle.enable_static()
 
@@ -212,9 +189,6 @@ class TestRandomValue(unittest.TestCase):
         paddle.disable_static()
 
         self.run_test_case()
-
-        with _test_eager_guard():
-            self.run_test_case()
 
         paddle.enable_static()
 

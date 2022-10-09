@@ -73,8 +73,6 @@ class TestTracerMode(unittest.TestCase):
             self.check_not_support_rlt(True)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_main()
         self.func_main()
 
 
@@ -128,8 +126,6 @@ class TestNoGradClass(unittest.TestCase):
         self.assertEqual(a, b)
 
     def test_main(self):
-        with _test_eager_guard():
-            self.func_main()
         self.func_main()
 
 

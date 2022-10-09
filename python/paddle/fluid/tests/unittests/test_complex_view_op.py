@@ -103,10 +103,6 @@ class TestViewAsComplexAPI(unittest.TestCase):
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
-
 
 class TestViewAsRealAPI(unittest.TestCase):
 
@@ -130,10 +126,6 @@ class TestViewAsRealAPI(unittest.TestCase):
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
-
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_dygraph()
 
 
 if __name__ == "__main__":

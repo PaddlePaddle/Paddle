@@ -269,8 +269,6 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         format(x_grad, pd_x_grad))
 
     def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
         self.func_dynamic()
 
     def test_static_save_and_load_inference_model(self):

@@ -80,12 +80,6 @@ class TestComplexCastOp(unittest.TestCase):
                                    c_64.numpy(),
                                    rtol=1e-05)
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_complex64_complex128()
-            self.test_real_to_complex()
-            self.test_complex_to_real()
-
 
 if __name__ == '__main__':
     unittest.main()

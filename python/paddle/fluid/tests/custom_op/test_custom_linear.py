@@ -134,8 +134,6 @@ class TestCustomLinearJit(unittest.TestCase):
                 self.check_output(phi_bias_grad, pd_bias_grad, "bias_grad")
 
     def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
         self.func_dynamic()
 
 

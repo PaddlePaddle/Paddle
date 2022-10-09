@@ -100,8 +100,6 @@ class TestJITLoad(unittest.TestCase):
                         format(x_grad, pd_x_grad))
 
     def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
         self.func_dynamic()
 
     def func_exception(self):
@@ -130,8 +128,6 @@ class TestJITLoad(unittest.TestCase):
         self.assertTrue(caught_exception)
 
     def test_exception(self):
-        with _test_eager_guard():
-            self.func_exception()
         self.func_exception()
 
     def test_load_multiple_module(self):

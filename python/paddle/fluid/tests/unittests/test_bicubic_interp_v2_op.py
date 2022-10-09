@@ -348,8 +348,6 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
 class TestBicubicInterpOpAPI(unittest.TestCase):
 
     def test_imperative_case(self):
-        with _test_eager_guard():
-            self.func_case()
         self.func_case()
 
     def func_case(self):

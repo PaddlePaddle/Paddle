@@ -93,10 +93,6 @@ class TestDeterminantAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_api_dygraph()
-
 
 class TestSlogDeterminantOp(OpTest):
 

@@ -1265,11 +1265,6 @@ class TestOptimizerDtype(unittest.TestCase):
     def test_float32(self):
         self.check_with_dtype('float32')
 
-    def test_api_eager_dygraph(self):
-        with _test_eager_guard():
-            self.test_float64()
-            self.test_float32()
-
 
 class TestMasterWeightSaveForFP16(unittest.TestCase):
     '''

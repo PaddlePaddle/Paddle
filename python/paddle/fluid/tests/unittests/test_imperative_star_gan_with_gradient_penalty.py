@@ -612,14 +612,12 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
                 fluid_dygraph_loss.append(loss)
 
         eager_dygraph_loss = []
-        with _test_eager_guard():
-            with fluid.dygraph.guard(cfg.place):
-                eager_dygraph_model = DyGraphTrainModel(cfg)
-                for batch_id, (image_real, label_org,
-                               label_trg) in enumerate(dataset()):
-                    loss = eager_dygraph_model.run(image_real, label_org,
-                                                   label_trg)
-                    eager_dygraph_loss.append(loss)
+        with fluid.dygraph.guard(cfg.place):
+            eager_dygraph_model = DyGraphTrainModel(cfg)
+            for batch_id, (image_real, label_org,
+                           label_trg) in enumerate(dataset()):
+                loss = eager_dygraph_model.run(image_real, label_org, label_trg)
+                eager_dygraph_loss.append(loss)
 
         for (g_loss_f, d_loss_f), (g_loss_e,
                                    d_loss_e) in zip(fluid_dygraph_loss,

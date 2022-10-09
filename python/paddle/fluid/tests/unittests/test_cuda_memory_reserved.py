@@ -30,8 +30,6 @@ class TestMemoryreserved(unittest.TestCase):
             self.assertEqual(memory_reserved_size, alloc_size)
 
     def test_memory_reserved(self):
-        with _test_eager_guard():
-            self.func_test_memory_reserved()
         self.func_test_memory_reserved()
 
     def func_test_memory_reserved_for_all_places(self):
@@ -44,8 +42,6 @@ class TestMemoryreserved(unittest.TestCase):
                 self.func_test_memory_reserved("gpu:" + str(i))
 
     def test_memory_reserved_for_all_places(self):
-        with _test_eager_guard():
-            self.func_test_memory_reserved_for_all_places()
         self.func_test_memory_reserved_for_all_places()
 
     def func_test_memory_reserved_exception(self):
@@ -62,8 +58,6 @@ class TestMemoryreserved(unittest.TestCase):
                 memory_reserved()
 
     def test_memory_reserved_exception(self):
-        with _test_eager_guard():
-            self.func_test_memory_reserved_exception()
         self.func_test_memory_reserved_exception()
 
 

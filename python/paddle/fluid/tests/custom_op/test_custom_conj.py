@@ -125,8 +125,6 @@ class TestCustomConjJit(unittest.TestCase):
             self.run_dynamic(dtype, np_input)
 
     def test_dynamic(self):
-        with _test_eager_guard():
-            self.func_dynamic()
         self.func_dynamic()
 
     def test_static(self):

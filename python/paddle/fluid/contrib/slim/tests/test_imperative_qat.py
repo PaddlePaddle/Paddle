@@ -211,8 +211,6 @@ class TestImperativeQat(unittest.TestCase):
             self.assertLessEqual(delta_value, self.diff_threshold)
 
     def test_qat(self):
-        with _test_eager_guard():
-            self.func_qat()
         self.func_qat()
 
 

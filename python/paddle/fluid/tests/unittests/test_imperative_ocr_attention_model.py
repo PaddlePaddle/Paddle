@@ -483,9 +483,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                eager_out, eager_param_init_value, eager_param_value = run_dygraph(
-                )
+            eager_out, eager_param_init_value, eager_param_value = run_dygraph()
 
         with new_program_scope():
             paddle.seed(seed)

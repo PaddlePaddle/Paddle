@@ -184,10 +184,6 @@ class TestDeformConv2D(TestCase):
             self.place = paddle.CUDAPlace(0)
             self._test_identity()
 
-    def test_identity_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_identity()
-
 
 class TestDeformConv2DFunctional(TestCase):
     batch_size = 4
@@ -427,10 +423,6 @@ class TestDeformConv2DFunctional(TestCase):
         if paddle.is_compiled_with_cuda():
             self.place = paddle.CUDAPlace(0)
             self._test_identity()
-
-    def test_identity_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_identity()
 
 
 # testcases for DeformConv2D

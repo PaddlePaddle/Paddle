@@ -39,8 +39,6 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
             self.run_main(np_arr, fluid.CUDAPlace(0))
 
     def test_non_zero_gpu(self):
-        with _test_eager_guard():
-            self.func_non_zero_gpu()
         self.func_non_zero_gpu()
 
 

@@ -303,11 +303,6 @@ class TestSGDV2(unittest.TestCase):
         adam.step()
         adam.clear_gradients()
 
-    def test_eager(self):
-        with _test_eager_guard():
-            self.test_sgd_dygraph()
-            self.test_sgd_group_dygraph()
-
 
 class TestSGDMultiPrecision2_0(unittest.TestCase):
 

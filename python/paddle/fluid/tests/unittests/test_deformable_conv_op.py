@@ -368,10 +368,6 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
         self.assertRaises(ValueError, test_invalid_filter)
 
-    def test_error_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_error()
-
 
 class TestDeformConv2DAPI(unittest.TestCase):
 
@@ -415,10 +411,6 @@ class TestDeformConv2DAPI(unittest.TestCase):
             assert (out.shape == (-1, 4, 32, 32))
 
         test_deform_conv2d_v2()
-
-    def test_api_with_eager_guard(self):
-        with _test_eager_guard():
-            self.test_api()
 
 
 if __name__ == '__main__':

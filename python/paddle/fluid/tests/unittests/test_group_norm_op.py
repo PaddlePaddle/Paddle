@@ -313,16 +313,14 @@ class TestGroupNormEager(unittest.TestCase):
             groupNorm = fluid.dygraph.nn.GroupNorm(channels=32, groups=4)
             ret1 = groupNorm(tensor_1)
             ret1.backward()
-            with _test_eager_guard():
-                tensor_eager_1 = fluid.dygraph.to_variable(input)
-                tensor_eager_1.stop_gradient = False
-                groupNorm_eager = fluid.dygraph.nn.GroupNorm(channels=32,
-                                                             groups=4)
-                ret2 = groupNorm_eager(tensor_eager_1)
-                ret2.backward()
-                self.assertEqual((
-                    tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()).all(),
-                                 True)
+            tensor_eager_1 = fluid.dygraph.to_variable(input)
+            tensor_eager_1.stop_gradient = False
+            groupNorm_eager = fluid.dygraph.nn.GroupNorm(channels=32, groups=4)
+            ret2 = groupNorm_eager(tensor_eager_1)
+            ret2.backward()
+            self.assertEqual(
+                (tensor_1.grad.numpy() == tensor_eager_1.grad.numpy()).all(),
+                True)
 
 
 if __name__ == '__main__':

@@ -78,8 +78,6 @@ class TestSortDygraph(unittest.TestCase):
         paddle.enable_static()
 
     def test_api_0(self):
-        with _test_eager_guard():
-            self.func_api_0()
         self.func_api_0()
 
     def func_api_1(self):
@@ -91,6 +89,4 @@ class TestSortDygraph(unittest.TestCase):
         paddle.enable_static()
 
     def test_api_1(self):
-        with _test_eager_guard():
-            self.func_api_1()
         self.func_api_1()
