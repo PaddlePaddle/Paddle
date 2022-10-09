@@ -259,8 +259,8 @@ class TestPriorBoxAPI(unittest.TestCase):
         box_dy_np = box_dy.numpy()
         var_dy_np = var_dy.numpy()
 
-        self.assertTrue(np.array_equal(box_np, box_dy_np))
-        self.assertTrue(np.array_equal(var_np, var_dy_np))
+        np.testing.assert_allclose(box_np, box_dy_np)
+        np.testing.assert_allclose(var_np, var_dy_np)
         paddle.enable_static()
 
 
