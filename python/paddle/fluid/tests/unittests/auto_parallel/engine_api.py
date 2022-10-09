@@ -191,16 +191,15 @@ def train_low_level():
     for feed_var, shape in my_feed_vars:
         feed_dict[feed_var.name] = np.zeros(shape, dtype="float32")
 
-    # Build normal dataloader
+    # Build normal normal dataloader
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     train_dataloader = engine.dataloader(train_dataset,
-                                         return_list=False,
                                          batch_size=batch_size,
                                          mode="train")
     engine.prepare(mode="train")
     for data in train_dataloader:
-        outs = engine.run(data, feeds=feed_dict, mode="train")
+        outs = engine.run(data, feed=feed_dict, mode="train")
 
     # eval
     eval_dataset2 = MyDataset(batch_size)
@@ -209,7 +208,7 @@ def train_low_level():
                                         mode="eval")
     engine.prepare(mode="eval")
     for data in eval_dataloader:
-        outs = engine.run(data, feeds=feed_dict, mode="eval")
+        outs = engine.run(data, feed=feed_dict, mode="eval")
 
     # predict
     engine.to_mode("predict")
@@ -217,7 +216,7 @@ def train_low_level():
     predict_dataloader = engine.dataloader(test_dataset, batch_size=batch_size)
     engine.prepare()
     for data in predict_dataloader:
-        outs = engine.run(data, feeds=feed_dict)
+        outs = engine.run(data, feed=feed_dict)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
@@ -234,7 +233,7 @@ def train_low_level():
                                                         mode="train")
     engine.prepare(mode="train")
     for data in train_dataloader:
-        outs = engine.run(data, feeds=feed_dict, mode="train")
+        outs = engine.run(data, feed=feed_dict, mode="train")
 
     # eval
     eval_dataset2 = MyDataset(batch_size)
@@ -243,7 +242,7 @@ def train_low_level():
                                                        batch_size=batch_size)
     engine.prepare()
     for data in eval_dataloader:
-        outs = engine.run(data, feeds=feed_dict, mode="eval")
+        outs = engine.run(data, feed=feed_dict)
 
     # predict
     test_dataset = MyDataset(batch_size)
@@ -252,7 +251,7 @@ def train_low_level():
                                                           mode="predict")
     engine.prepare(mode="predict")
     for data in predict_dataloader:
-        outs = engine.run(data, feeds=feed_dict, mode="predict")
+        outs = engine.run(data, feed=feed_dict, mode="predict")
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
@@ -291,7 +290,6 @@ def train_within_static():
                                                  iterable=True)
     places = static.cuda_places()
     loader.set_batch_generator(batch_generator_creator(), places=places)
-    print(main_program)
 
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
@@ -302,8 +300,7 @@ def train_within_static():
     engine.to_mode("train")
     engine.prepare(main_program=main_program, startup_program=startup_program)
     for data in loader:
-        print(data)
-        outs = engine.run(feed=data)
+        outs = engine.run(data)
 
 
 if __name__ == "__main__":

@@ -185,7 +185,6 @@ class Engine:
         self._dist_main_progs = defaultdict(dict)  # dist main programs
         self._dist_startup_progs = defaultdict(dict)  # dist startup programs
         self._feed_vars = {}
-        self._feed_vars_list = {}
         self._fetch_vars = {}
         self._planners = {}
         self._has_prepared = {"train": False, "eval": False, "predict": False}
@@ -207,36 +206,82 @@ class Engine:
         self._initialize(mode)
         self._has_prepared[mode] = True
 
-    def _prepare_feed(self, sample=None, user_feeds=None, mode="train"):
+    def _prepare_data_spec(self, data, split, batch_size):
+        self.inputs_spec = []
+        self.labels_spec = []
+        if isinstance(data, paddle.io.IterableDataset):
+            if split is None:
+                inputs, labels = next(iter(data))
+            else:
+                sample = next(iter(data))
+                inputs = sample[:split]
+                labels = sample[split:]
+        elif isinstance(data, paddle.io.Dataset):
+            if split is None:
+                inputs, labels = data[0]
+            else:
+                sample = data[0]
+                inputs = sample[:split]
+                labels = sample[split:]
+        else:
+            raise ValueError(
+                "Data should be a Dataset or IterableDatset, but received {}.".
+                format(type(data).__name__))
+        inputs = to_list(inputs)
+        labels = to_list(labels)
+
+        num_shards = self._strategy.dataset.num_shards
+
+        def _adjust_item_spec(num_shards, spec):
+            if num_shards > 1 and len(spec.shape) > 1:
+                spec.shape[0] = spec.shape[0] * num_shards
+
+        def _infer_item_spec(item, name, batch_size, specs):
+            if isinstance(item, np.ndarray):
+                spec = InputSpec.from_numpy(item, name)
+                if batch_size is None:
+                    _adjust_item_spec(num_shards, spec)
+                    specs.append(spec)
+                else:
+                    specs.append(spec.batch(batch_size))
+            elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
+                _adjust_item_spec(num_shards, spec)
+                spec = InputSpec.from_tensor(item, name)
+                if batch_size is None:
+                    specs.append(spec)
+                else:
+                    specs.append(spec.batch(batch_size))
+            else:
+                specs.append(InputSpec([batch_size], type(item), name))
+
+        if inputs is not None:
+            for i, item in enumerate(inputs):
+                assert item is not None, "Receive None input."
+                name = "input" + str(i)
+                _infer_item_spec(item, name, batch_size, self.inputs_spec)
+        if labels is not None:
+            for i, item in enumerate(labels):
+                assert item is not None, "Receive None input."
+                name = "label" + str(i)
+                _infer_item_spec(item, name, batch_size, self.labels_spec)
+
+        self.inputs_spec = self._validate_spec(self.inputs_spec)
+        self.labels_spec = self._validate_spec(self.labels_spec)
+
+    def _prepare_feed(self, data, user_feeds, mode):
         feeds = {}
-        feed_vars_name = [var.name for var in self._feed_vars_list[mode]]
-        if sample is not None:
-            if isinstance(sample, list):
-                if len(sample) == 1 and isinstance(sample[0], dict):
-                    assert len(sample[0]) == len(feed_vars_name), \
-                        "The length of sample {} should be the same as the length of feed vars {} ".format(
-                            sample[0].keys(), feed_vars_name)
-                    for name, data in sample[0].items():
-                        assert name in feed_vars_name, "Cannot find the name {} in feed data {}".format(
-                            name, feed_vars_name)
+        if data is not None:
+            if isinstance(data, (list, tuple)):
+                if len(data) == 1 and isinstance(data[0], dict):
+                    for name, data in data[0].items():
                         feeds[name] = data
                 else:
-                    assert len(sample) == len(feed_vars_name), \
-                        "The length of sample {} should be the same as the length of feed vars {} ".format(
-                            len(sample), len(feed_vars_name))
-                    for name, data in zip(feed_vars_name, sample):
-                        feeds[name] = data
-            elif isinstance(sample, dict):
-                assert len(sample) == len(feed_vars_name), \
-                    "The length of sample {} should be the same as the length of feed vars {} ".format(
-                        sample.keys(), feed_vars_name)
-                for name, data in sample.items():
-                    assert name in feed_vars_name, "Cannot find the name {} in feed data {}".format(
-                        name, feed_vars_name)
+                    raise ValueError("Unsupported data {}".format(data))
+            elif isinstance(data, dict):
+                for name, data in data.items():
                     feeds[name] = data
             else:
-                raise ValueError("Unsupported sample type {}".format(
-                    type(sample).__name__))
+                raise ValueError("Unsupported data {}".format(data))
         if user_feeds is not None:
             assert isinstance(user_feeds, dict), \
                 "user_feeds must be a dict, but receive {}".format(type(user_feeds).__name__)
@@ -279,13 +324,13 @@ class Engine:
 
     def _prepare_logger(self,
                         outs,
-                        mode,
                         epoch=None,
                         step=None,
                         lr=None,
                         fetch_names=None,
                         fetch_indices=None,
-                        profiler_log=""):
+                        profiler_log="",
+                        mode=None):
         logs = "[{}] ".format(mode)
         if epoch is not None:
             logs += "epoch: {:d} ".format(epoch)
@@ -323,9 +368,10 @@ class Engine:
                 idx = fetch_names.index(var.name)
                 # Use the user defined name for logging
                 logs += "{}: {} ".format(name, outs[idx])
+        logs += profiler_log
         self._logger.info(logs)
 
-    def _prepare_history(self, outs, mode, fetch_indices=None):
+    def _prepare_history(self, outs, fetch_indices=None, mode=None):
         history = {}
         group_idx = 0
         # store loss
@@ -594,70 +640,6 @@ class Engine:
             dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
             self._executor.run(dist_startup_prog)
 
-    def _split_sample_item(self, data, split):
-        if isinstance(data, paddle.io.IterableDataset):
-            if split is None:
-                inputs, labels = next(iter(data))
-            else:
-                sample = next(iter(data))
-                inputs = sample[:split]
-                labels = sample[split:]
-        elif isinstance(data, paddle.io.Dataset):
-            if split is None:
-                inputs, labels = data[0]
-            else:
-                sample = data[0]
-                inputs = sample[:split]
-                labels = sample[split:]
-        else:
-            raise ValueError(
-                "Data should be a Dataset or IterableDatset, but received {}.".
-                format(type(data).__name__))
-        inputs = to_list(inputs)
-        labels = to_list(labels)
-        return inputs, labels
-
-    def _infer_sample_spec(self, inputs, labels, batch_size):
-        self.inputs_spec = []
-        self.labels_spec = []
-        num_shards = self._strategy.dataset.num_shards
-
-        def _adjust_item_spec(num_shards, spec):
-            if num_shards > 1 and len(spec.shape) > 1:
-                spec.shape[0] = spec.shape[0] * num_shards
-
-        def _infer_item_spec(item, name, batch_size, specs):
-            if isinstance(item, np.ndarray):
-                spec = InputSpec.from_numpy(item, name)
-                if batch_size is None:
-                    _adjust_item_spec(num_shards, spec)
-                    specs.append(spec)
-                else:
-                    specs.append(spec.batch(batch_size))
-            elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
-                _adjust_item_spec(num_shards, spec)
-                spec = InputSpec.from_tensor(item, name)
-                if batch_size is None:
-                    specs.append(spec)
-                else:
-                    specs.append(spec.batch(batch_size))
-            else:
-                specs.append(InputSpec([batch_size], type(item), name))
-
-        if inputs is not None:
-            for i, item in enumerate(inputs):
-                assert item is not None, "Receive None input."
-                name = "input" + str(i)
-                _infer_item_spec(item, name, batch_size, self.inputs_spec)
-        if labels is not None:
-            for i, item in enumerate(labels):
-                assert item is not None, "Receive None input."
-                name = "label" + str(i)
-                _infer_item_spec(item, name, batch_size, self.labels_spec)
-
-        self.inputs_spec = self._validate_spec(self.inputs_spec)
-        self.labels_spec = self._validate_spec(self.labels_spec)
-
     def fit(self,
             train_data,
             train_sample_split=None,
@@ -737,12 +719,11 @@ class Engine:
                            batch_size=64)
         """
         self.mode = 'train'
-        inputs, labels = self._split_sample_item(train_data, train_sample_split)
-        self._infer_sample_spec(inputs, labels, batch_size)
+        self._prepare_data_spec(train_data, train_sample_split, batch_size)
         if not self._has_prepared[self.mode]:
             self._prepare_program(self.mode)
         else:
-            self._switch_mode("train")
+            self._switch_mode(self.mode)
 
         assert self.mode in self._dist_main_progs, \
             "train model is not ready, please call `engine._prepare_program('train')` first."
@@ -779,11 +760,11 @@ class Engine:
 
                     prof.step()
 
-                    self._prepare_logger(outs, self.mode, epoch, step, lr,
+                    self._prepare_logger(outs, epoch, step, lr,
                                          fetch_names, fetch_indices,
-                                         prof.step_info())
-                    history = self._prepare_history(outs, self.mode,
-                                                    fetch_indices)
+                                         prof.step_info(), self.mode)
+                    history = self._prepare_history(outs, fetch_indices,
+                                                    self.mode)
 
                 if valid_data and epoch % valid_freq == 0:
                     self.evaluate(valid_data, valid_sample_split, batch_size,
@@ -847,12 +828,11 @@ class Engine:
 
         """
         self.mode = 'eval'
-        inputs, labels = self._split_sample_item(valid_data, valid_sample_split)
-        self._infer_sample_spec(inputs, labels, batch_size)
+        self._prepare_data_spec(valid_data, valid_sample_split, batch_size)
         if not self._has_prepared[self.mode]:
             self._prepare_program(self.mode)
         else:
-            self._switch_mode("eval")
+            self._switch_mode(self.mode)
 
         assert self.mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine._prepare_program('eval')` first."
@@ -881,9 +861,9 @@ class Engine:
                     return_numpy=self._strategy.return_numpy)
             except core.EOFException:
                 break
-            self._prepare_logger(outs, self.mode, None, step, None, fetch_names,
-                                 fetch_indices)
-            history = self._prepare_history(outs, self.mode, fetch_indices)
+            self._prepare_logger(outs, None, step, None, fetch_names,
+                                 fetch_indices, "", self.mode)
+            history = self._prepare_history(outs, fetch_indices, self.mode)
         self._reset_metrics()
         return history
 
@@ -938,12 +918,11 @@ class Engine:
                 engine.predict(valid_dataset, batch_size=64)
         """
         self.mode = 'predict'
-        inputs, labels = self._split_sample_item(test_data, test_sample_split)
-        self._infer_sample_spec(inputs, labels, batch_size)
+        self._prepare_data_spec(test_data, test_sample_split, batch_size)
         if not self._has_prepared[self.mode]:
             self._prepare_program(self.mode)
         else:
-            self._switch_mode("predict")
+            self._switch_mode(self.mode)
 
         assert self.mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine._prepare_program('predict')` first."
@@ -973,38 +952,39 @@ class Engine:
                     return_numpy=self._strategy.return_numpy)
             except core.EOFException:
                 break
-            self._prepare_logger(outs, self.mode, None, step, None, fetch_names,
-                                 fetch_indices)
-            history = self._prepare_history(outs, self.mode, fetch_indices)
+            self._prepare_logger(outs, None, step, None, fetch_names,
+                                 fetch_indices, "", self.mode)
+            history = self._prepare_history(outs, fetch_indices, self.mode)
 
         return history
 
-    def dataloader(self,
-                   dataset,
-                   return_list=True,
-                   batch_size=1,
-                   shuffle=False,
-                   drop_last=False,
-                   collate_fn=None,
-                   num_workers=0,
-                   use_buffer_reader=True,
-                   use_shared_memory=True,
-                   timeout=0,
-                   worker_init_fn=None,
-                   epochs=1,
-                   steps_per_epoch=None,
-                   sample_split=1,
-                   mode="train"):
-        self.mode = mode
-        inputs, labels = self._split_sample_item(dataset, sample_split)
-        self._infer_sample_spec(inputs, labels, batch_size)
+    def dataloader(
+            self,
+            dataset,
+            # return_list=True,
+            batch_size=1,
+            shuffle=False,
+            drop_last=False,
+            collate_fn=None,
+            num_workers=0,
+            use_buffer_reader=True,
+            use_shared_memory=True,
+            timeout=0,
+            worker_init_fn=None,
+            epochs=1,
+            steps_per_epoch=None,
+            sample_split=1,
+            mode=None):
+        if mode is not None:
+            self.to_mode(mode)
+        self._prepare_data_spec(dataset, sample_split, batch_size)
         if not self._has_prepared[self.mode]:
             self._prepare_program(self.mode)
         else:
-            self._switch_mode("train")
+            self._switch_mode(self.mode)
         dataloader = self._prepare_dataloader(
             dataset,
-            return_list=return_list,
+            return_list=False,
             batch_size=batch_size,
             shuffle=shuffle,
             drop_last=drop_last,
@@ -1018,34 +998,35 @@ class Engine:
             steps_per_epoch=steps_per_epoch)
         return dataloader
 
-    def dataloader_from_generator(self,
-                                  dataset,
-                                  capacity=70,
-                                  use_double_buffer=True,
-                                  iterable=True,
-                                  return_list=False,
-                                  use_multiprocess=False,
-                                  drop_last=True,
-                                  batch_size=1,
-                                  epochs=1,
-                                  steps_per_epoch=None,
-                                  collate_fn=None,
-                                  sample_split=1,
-                                  mode="train"):
-        self.mode = mode
-        inputs, labels = self._split_sample_item(dataset, sample_split)
-        self._infer_sample_spec(inputs, labels, batch_size)
+    def dataloader_from_generator(
+            self,
+            dataset,
+            capacity=70,
+            use_double_buffer=True,
+            iterable=True,
+            # return_list=False,
+            use_multiprocess=False,
+            drop_last=True,
+            batch_size=1,
+            epochs=1,
+            steps_per_epoch=None,
+            collate_fn=None,
+            sample_split=1,
+            mode=None):
+        if mode is not None:
+            self.to_mode(mode)
+        self._prepare_data_spec(dataset, sample_split, batch_size)
         if not self._has_prepared[self.mode]:
             self._prepare_program(self.mode)
         else:
-            self._switch_mode("train")
+            self._switch_mode(self.mode)
         dataloader = self._prepare_dataloader_from_generator(
             dataset=dataset,
             # feed_list=feed_list,
             capacity=capacity,
             use_double_buffer=use_double_buffer,
             iterable=iterable,
-            return_list=return_list,
+            return_list=False,
             use_multiprocess=use_multiprocess,
             drop_last=drop_last,
             # places=places,
@@ -1062,7 +1043,7 @@ class Engine:
                 startup_program=None,
                 mode=None):
         if mode is not None:
-            self.mode = mode
+            self.to_mode(mode)
         self._orig_main_prog = main_program
         if self._orig_main_prog is None:
             self._orig_main_prog = static.default_main_program()
@@ -1080,7 +1061,7 @@ class Engine:
 
     def run(
         self,
-        sample=None,
+        data=None,
         # program=None,
         feed=None,
         fetch_list=None,
@@ -1093,8 +1074,8 @@ class Engine:
         # use_prune=False,
         mode=None):
         if mode is not None:
-            self.mode = mode
-        feed_dict = self._prepare_feed(sample, feed, self.mode)
+            self.to_mode(mode)
+        feed_dict = self._prepare_feed(data, feed, self.mode)
         fetch_names, fetch_indices = self._prepare_fetch(fetch_list, self.mode)
         try:
             outs = self._executor.run(
@@ -1105,9 +1086,9 @@ class Engine:
                 return_numpy=self._strategy.return_numpy)
         except core.EOFException:
             pass
-        self._prepare_logger(outs, self.mode, None, None, None, fetch_names,
-                             fetch_indices)
-        history = self._prepare_history(outs, self.mode, fetch_indices)
+        self._prepare_logger(outs, None, None, None, fetch_names, fetch_indices,
+                             "", self.mode)
+        history = self._prepare_history(outs, fetch_indices, self.mode)
         return history
 
     def _prepare_dataloader(self,
@@ -1149,7 +1130,6 @@ class Engine:
                 copy_var = dist_main_block._clone_variable(var, var.persistable)
                 copy_var.desc.set_original_id(var.desc.original_id())
                 feed_list.append(copy_var)
-        self._feed_vars_list[self.mode] = feed_list
 
         # insert read op at the end of program
         places = paddle.static.cuda_places()
@@ -1261,8 +1241,7 @@ class Engine:
 
     def _tune(self, tune_data, tune_sample_split=None, batch_size=1):
         self.mode = 'train'
-        inputs, labels = self._split_sample_item(tune_data, tune_sample_split)
-        self._infer_sample_spec(inputs, labels, batch_size)
+        self._prepare_data_spec(tune_data, tune_sample_split, batch_size)
         self._optimization_tuning(self.mode, tune_data, batch_size)
 
     def _validate_spec(self, specs):
@@ -1374,7 +1353,7 @@ class Engine:
                 is 'dirname/file_prefix' or 'file_prefix'. if empty str.
                 A exception will be raised.
             training (bool, optional): Whether to save for training. If not, save
-                for inference only. If `training` is set to True, the optimzer state
+                for inference only. If `training` is set to True, the optimizer state
                 will be saved. Otherwise, only the model and parameters are saved.
                 This function will silently overwrite existing file at the target
                 location. Default: True.
