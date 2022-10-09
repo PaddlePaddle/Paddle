@@ -87,7 +87,7 @@ int GroupNormPlugin::enqueue(int batch_size,
   float *variance_d =
       variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
-  framework::Tensor temp_variance_t;
+  phi::DenseTensor temp_variance_t;
   temp_variance_t.Resize(phi::make_ddim(variance_shape_));
   float *temp_variance_d =
       temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
@@ -220,7 +220,7 @@ int GroupNormPluginDynamic::enqueue(
     float *variance_d =
         variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
-    framework::Tensor temp_variance_t;
+    phi::DenseTensor temp_variance_t;
     temp_variance_t.Resize(phi::make_ddim(batched_variance_shape));
     float *temp_variance_d =
         temp_variance_t.mutable_data<float>(platform::CUDAPlace(device_id));

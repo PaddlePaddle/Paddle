@@ -22,7 +22,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 const int CUDA_NUM_THREADS = 1024;
 static inline int GET_BLOCKS(const int N) {
@@ -95,8 +94,8 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     // b.dim = slot_pairs_num * out_dim
     // output.dim = slot_pairs_num * ins_num * out_dim
     auto* input = ctx.Input<framework::LoDTensor>("Input");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
     auto* output = ctx.Output<framework::LoDTensor>("Out");
     auto input_dims = input->dims();
     auto w_dims = w->dims();
@@ -154,13 +153,13 @@ template <typename DeviceContext, typename T>
 class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    auto* dw = ctx.Output<Tensor>(framework::GradVarName("W"));
-    auto* db = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    auto* dw = ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
+    auto* db = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     auto input_dims = input->dims();
     auto w_dims = w->dims();

@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace phi {
 namespace sr {
@@ -27,7 +27,7 @@ template <typename T, typename Context>
 void MergeSelectedRowsKernel(const Context& dev_ctx,
                              const SelectedRows& x,
                              SelectedRows* out) {
-  paddle::operators::math::scatter::MergeAdd<Context, T> merge_func;
+  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, x, out);
 }
 

@@ -29,7 +29,7 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename Tx, typename Ty>
 struct SequenceMaskForRangeFunctor {
@@ -75,17 +75,17 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<Tensor>("X");
-    auto *y = ctx.Output<Tensor>("Y");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *y = ctx.Output<phi::DenseTensor>("Y");
     int maxlen = ctx.Attr<int>("maxlen");
     if (ctx.HasInput("MaxLenTensor")) {
-      auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
+      auto max_len_tensor = ctx.Input<phi::DenseTensor>("MaxLenTensor");
       PADDLE_ENFORCE_NOT_NULL(max_len_tensor,
                               platform::errors::InvalidArgument(
                                   "Input(MaxLenTensor) should not be NULL."
                                   "But received Input(MaxLenTensor) is NULL"));
       if (platform::is_gpu_place(max_len_tensor->place())) {
-        framework::Tensor temp;
+        phi::DenseTensor temp;
         paddle::framework::TensorCopySync(
             *max_len_tensor, platform::CPUPlace(), &temp);
         maxlen = *temp.data<int32_t>();

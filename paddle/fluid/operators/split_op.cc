@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using framework::LoDTensor;
-using framework::Tensor;
+
 using framework::Variable;
 
 class SplitOp : public framework::OperatorWithKernel {
@@ -120,7 +120,7 @@ class SplitOp : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      const auto x_md = ctx.Input<Tensor>("X")->mem_desc();
+      const auto x_md = ctx.Input<phi::DenseTensor>("X")->mem_desc();
       if (x_md.data.format_desc.blocking.inner_nblks == 0)
         return framework::OpKernelType(input_data_type,
                                        ctx.GetPlace(),
@@ -133,7 +133,7 @@ class SplitOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxisTensor" || var_name == "SectionsTensorList") {
       return expected_kernel_type;

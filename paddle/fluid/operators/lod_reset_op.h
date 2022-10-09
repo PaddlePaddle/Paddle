@@ -53,7 +53,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
         return;  // early return, since lod already set
       } else {
         auto* lod = lod_t->data<int>();
-        framework::Tensor lod_cpu;
+        phi::DenseTensor lod_cpu;
         if (platform::is_gpu_place(lod_t->place())) {
           framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
@@ -115,8 +115,8 @@ template <typename DeviceContext, typename T>
 class LoDResetGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     framework::TensorCopy(*d_out, d_out->place(), d_x);
   }

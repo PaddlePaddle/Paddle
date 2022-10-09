@@ -338,14 +338,6 @@ class MaxPool1D(Layer):
     Returns:
         A callable object of MaxPool1D.
 
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ValueError: If `padding` is a list or tuple but its length greater than 1.
-        ShapeError: If the input is not a 3-D.
-        ShapeError: If the output's shape calculated is not greater than 0.
-
-
     Shape:
         - x(Tensor): The input tensor of max pool1d operator, which is a 3-D tensor.
           The data type can be float32, float64.
@@ -442,10 +434,6 @@ class MaxPool2D(Layer):
 
     Returns:
         A callable object of MaxPool2D.
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
         - x(Tensor): The input tensor of max pool2d operator, which is a 4-D tensor.
@@ -539,10 +527,6 @@ class MaxPool3D(Layer):
 
     Returns:
         A callable object of MaxPool3D.
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
 
     Shape:
         - x(Tensor): The input tensor of max pool3d operator, which is a 5-D tensor.
@@ -870,9 +854,6 @@ class AdaptiveMaxPool1D(Layer):
             Usually name is no need to set and None by default.
     Returns:
         A callable object of AdaptiveMaxPool1D.
-
-    Raises:
-        ValueError: 'pool_size' should be a integer or list or tuple with length as 1.
 
     Shape:
         - x(Tensor): The input tensor of adaptive max pool1d operator, which is a 3-D tensor.

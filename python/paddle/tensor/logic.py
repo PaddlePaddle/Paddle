@@ -91,7 +91,7 @@ def logical_and(x, y, out=None, name=None):
 
         out = x \&\& y
 
-    .. note::
+    Note:
         ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -134,7 +134,7 @@ def logical_or(x, y, out=None, name=None):
 
         out = x || y
 
-    .. note::
+    Note:
         ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -179,7 +179,7 @@ def logical_xor(x, y, out=None, name=None):
 
         out = (x || y) \&\& !(x \&\& y)
 
-    .. note::
+    Note:
         ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -956,13 +956,6 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 
     Returns:
         Tensor: ${out_comment}.
-
-    Raises:
-        TypeError: The data type of ``x`` must be one of float32, float64.
-        TypeError: The data type of ``y`` must be one of float32, float64.
-        TypeError: The type of ``rtol`` must be float.
-        TypeError: The type of ``atol`` must be float.
-        TypeError: The type of ``equal_nan`` must be bool.
 
     Examples:
         .. code-block:: python
