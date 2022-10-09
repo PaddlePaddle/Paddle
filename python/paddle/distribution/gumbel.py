@@ -88,8 +88,7 @@ class Gumbel(TransformedDistribution):
             scale = paddle.full(shape=(), fill_value=scale)
 
         if loc.shape != scale.shape:
-            self.loc, self.scale = paddle.broadcast_tensors(
-                [loc, scale])
+            self.loc, self.scale = paddle.broadcast_tensors([loc, scale])
         else:
             self.loc, self.scale = loc, scale
 
