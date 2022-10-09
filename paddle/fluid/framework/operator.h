@@ -327,9 +327,10 @@ class ExecutionContext {
       PADDLE_ENFORCE_NE(
           iter,
           op_.RuntimeAttrs().end(),
-          platform::errors::NotFound(
-              "(%s) is not found in AttributeMap and RuntimeAttributeMap.",
-              name));
+          platform::errors::NotFound("(%s) is not found in AttributeMap and "
+                                     "RuntimeAttributeMap of (%s) operator.",
+                                     name,
+                                     op_.Type()));
     }
     return iter->second;
   }

@@ -1395,12 +1395,19 @@ bool OperatorWithKernel::SupportsKernelType(
 // NOTE(jiahy0825): If MKLDNN can be used, the function SupportsKernelType needs
 // to check whether current op supports MKLDNN kernel
 #ifdef PADDLE_WITH_MKLDNN
-  if (!paddle::platform::in_mkldnn_white_list(type_)) {
-    if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
+  if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
+    if (paddle::platform::in_mkldnn_black_list(type_)) {
       auto tmp_kernel_type = kernel_type;
       tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
       tmp_kernel_type.data_layout_ = framework::DataLayout::kMKLDNN;
       return kernels.find(tmp_kernel_type) != kernels.end();
+    } else {
+      PADDLE_ENFORCE_EQ(paddle::platform::in_mkldnn_white_list(type_),
+                        true,
+                        platform::errors::Unimplemented(
+                            "%s operator neither in mkldnn_black_list nor in "
+                            "mkldnn_white_list.",
+                            type_));
     }
   }
 #endif
@@ -1569,10 +1576,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // values are kPlain, so we need to modify the library_type and data_layout_
 // here, otherwise it cannot work.
 #ifdef PADDLE_WITH_MKLDNN
-      if (!paddle::platform::in_mkldnn_white_list(type_)) {
-        if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
+      if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
+        if (paddle::platform::in_mkldnn_black_list(type_)) {
           kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
           kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
+        } else {
+          PADDLE_ENFORCE_EQ(paddle::platform::in_mkldnn_white_list(type_),
+                            true,
+                            platform::errors::Unimplemented(
+                                "%s operator neither in mkldnn_black_list nor "
+                                "in mkldnn_white_list.",
+                                type_));
         }
       }
 #endif
@@ -1657,10 +1671,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // use library_type[LibraryType::kMKLDNN] and data_layout_[DataLayout::kMKLDNN],
 // so modify it here.
 #ifdef PADDLE_WITH_MKLDNN
-      if (!paddle::platform::in_mkldnn_white_list(type_)) {
-        if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
+      if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
+        if (paddle::platform::in_mkldnn_black_list(type_)) {
           kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
           kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
+        } else {
+          PADDLE_ENFORCE_EQ(paddle::platform::in_mkldnn_white_list(type_),
+                            true,
+                            platform::errors::Unimplemented(
+                                "%s operator neither in mkldnn_black_list nor "
+                                "in mkldnn_white_list.",
+                                type_));
         }
       }
 #endif
@@ -1822,10 +1843,17 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 // GetExpectedKernelType, so that if MKLDNN can be used, the library_type_ and
 // data_layout_ of expected_kernel_key need to be adjusted.
 #ifdef PADDLE_WITH_MKLDNN
-  if (!paddle::platform::in_mkldnn_white_list(type_)) {
-    if (this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+  if (this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+    if (paddle::platform::in_mkldnn_black_list(type_)) {
       expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
       expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+    } else {
+      PADDLE_ENFORCE_EQ(paddle::platform::in_mkldnn_white_list(type_),
+                        true,
+                        platform::errors::Unimplemented(
+                            "%s operator neither in mkldnn_black_list nor in "
+                            "mkldnn_white_list.",
+                            type_));
     }
   }
 #endif

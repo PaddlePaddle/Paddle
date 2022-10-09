@@ -194,10 +194,17 @@ PreparedOp PrepareImpl(
 // values are kPlain, so we need to modify the library_type and data_layout_
 // here.
 #ifdef PADDLE_WITH_MKLDNN
-  if (!paddle::platform::in_mkldnn_white_list(op.Type())) {
-    if (op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
+  if (op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
+    if (paddle::platform::in_mkldnn_black_list(op.Type())) {
       expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
       expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+    } else {
+      PADDLE_ENFORCE_EQ(paddle::platform::in_mkldnn_white_list(op.Type()),
+                        true,
+                        platform::errors::Unimplemented(
+                            "%s operator neither in mkldnn_black_list nor in "
+                            "mkldnn_white_list.",
+                            op.Type()));
     }
   }
 #endif
