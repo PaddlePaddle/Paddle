@@ -964,11 +964,15 @@ void BindImperative(py::module *m_ptr) {
                              framework::proto::VarType::BOOL) {
                     attrs["bool_values"] =
                         std::vector<int>{value_obj.cast<bool>()};
+                  } else if (self->DataType() ==
+                             framework::proto::VarType::FP16) {
+                    attrs["fp16_values"] =
+                        std::vector<float>{value_obj.cast<float>()};
                   } else {
                     PADDLE_THROW(platform::errors::InvalidArgument(
                         "When assign a value to a paddle.Tensor, "
                         "the data type of the paddle.Tensor must be bool, "
-                        "float32, int32 or int64, "
+                        "float32, int32, int64 or float16, "
                         "please check the type of tensor."));
                   }
                   attrs["shape"] = std::vector<int64_t>{1};
