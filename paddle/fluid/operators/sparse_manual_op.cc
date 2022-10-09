@@ -213,7 +213,7 @@ class SparseBatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("fuse_with_relu",
                   "(bool), attribute 4 for sparse_batch_norm op.");
     AddComment(R"DOC(
-TODO: Documentation of sparse_conv3d op.
+TODO: Documentation of sparse_batch_norm op.
 )DOC");
   }
 };
