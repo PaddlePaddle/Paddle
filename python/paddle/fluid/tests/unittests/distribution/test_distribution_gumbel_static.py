@@ -153,5 +153,6 @@ class TestGumbelPDF(unittest.TestCase):
                                    rtol=config.RTOL.get(str(self.loc.dtype)),
                                    atol=config.ATOL.get(str(self.loc.dtype)))
 
+
 if __name__ == '__main__':
     unittest.main()

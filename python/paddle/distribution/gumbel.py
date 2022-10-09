@@ -89,7 +89,8 @@ class Gumbel(TransformedDistribution):
             self.scale = paddle.full(shape=(), fill_value=scale)
 
         if self.loc.shape != self.scale.shape:
-            self.loc, self.scale = paddle.broadcast_tensors([self.loc, self.scale])
+            self.loc, self.scale = paddle.broadcast_tensors(
+                [self.loc, self.scale])
 
         finfo = np.finfo(self.loc.dtype)
         self.base_dist = paddle.distribution.Uniform(
@@ -97,7 +98,8 @@ class Gumbel(TransformedDistribution):
             paddle.full_like(self.loc, float(1 - finfo.eps)))
 
         self.transforms = (ExpTransform(),
-                           AffineTransform(loc=paddle.full(0, dtype=self.loc.dtype),
+                           AffineTransform(loc=paddle.full(
+                               0, dtype=self.loc.dtype),
                                            scale=-paddle.ones_like(self.scale)),
                            ExpTransform(),
                            AffineTransform(loc=self.loc, scale=-self.scale))
@@ -244,11 +246,11 @@ class Gumbel(TransformedDistribution):
         """
         exp_transform = paddle.distribution.ExpTransform()
         affine_tf1 = paddle.distribution.AffineTransform(
-            paddle.full(0),
-            -paddle.ones_like(self.scale))
-        affine_tf2 = paddle.distribution.AffineTransform(
-            self.loc, -self.scale)
+            paddle.full(0), -paddle.ones_like(self.scale))
+        affine_tf2 = paddle.distribution.AffineTransform(self.loc, -self.scale)
 
-        return affine_tf2.forward(exp_transform.inverse(affine_tf1.forward(exp_transform.inverse(
-            self._base.sample(shape)))))
+        return affine_tf2.forward(
+            exp_transform.inverse(
+                affine_tf1.forward(
+                    exp_transform.inverse(self._base.sample(shape)))))
 
