@@ -17,11 +17,11 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 
 namespace phi {
 
@@ -302,43 +302,43 @@ void DeformableConvGradKernel(const Context& dev_ctx,
           mask_grad_data_ptr);
     }
     if (dx) {
-      if (x.dtype() == DataType::FLOAT16){
+      if (x.dtype() == DataType::FLOAT16) {
         DenseTensor mt_dx = phi::EmptyLike<MT, Context>(dev_ctx, *dx);
         MT* mt_dx_ptr = dev_ctx.template Alloc<MT>(&mt_dx);
 
-        ModulatedDeformableCol2im(dev_ctx,
-                                  col_buffer_ptr,
-                                  offset_ptr + i * im2col_step * input_offset_dim,
-                                  mask_data_ptr,
-                                  input_shape_vec,
-                                  col_buffer_shape_vec,
-                                  filter_shape_vec,
-                                  paddings,
-                                  strides,
-                                  dilations,
-                                  deformable_groups,
-                                  mt_dx_ptr + i * im2col_step * input_dim);
+        ModulatedDeformableCol2im(
+            dev_ctx,
+            col_buffer_ptr,
+            offset_ptr + i * im2col_step * input_offset_dim,
+            mask_data_ptr,
+            input_shape_vec,
+            col_buffer_shape_vec,
+            filter_shape_vec,
+            paddings,
+            strides,
+            dilations,
+            deformable_groups,
+            mt_dx_ptr + i * im2col_step * input_dim);
 
         DenseTensor t_dx = phi::Cast<MT, Context>(dev_ctx, mt_dx, x.dtype());
         dx->ShareDataWith(t_dx);
       } else {
         MT* mt_dx_ptr = dev_ctx.template Alloc<MT>(dx);
-        ModulatedDeformableCol2im(dev_ctx,
-                                  col_buffer_ptr,
-                                  offset_ptr + i * im2col_step * input_offset_dim,
-                                  mask_data_ptr,
-                                  input_shape_vec,
-                                  col_buffer_shape_vec,
-                                  filter_shape_vec,
-                                  paddings,
-                                  strides,
-                                  dilations,
-                                  deformable_groups,
-                                  mt_dx_ptr + i * im2col_step * input_dim);
-
+        ModulatedDeformableCol2im(
+            dev_ctx,
+            col_buffer_ptr,
+            offset_ptr + i * im2col_step * input_offset_dim,
+            mask_data_ptr,
+            input_shape_vec,
+            col_buffer_shape_vec,
+            filter_shape_vec,
+            paddings,
+            strides,
+            dilations,
+            deformable_groups,
+            mt_dx_ptr + i * im2col_step * input_dim);
       }
       dx->Resize(x.dims());
-
     }
 
     funcs::ModulatedDeformableIm2col(
