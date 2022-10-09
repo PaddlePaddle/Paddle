@@ -101,7 +101,7 @@ class Gumbel(TransformedDistribution):
         self.transforms = (ExpTransform(),
                            AffineTransform(loc=paddle.to_tensor(
                                0, dtype='float32'),
-                               scale=-paddle.ones_like(self.scale)),
+                                           scale=-paddle.ones_like(self.scale)),
                            ExpTransform(),
                            AffineTransform(loc=self.loc, scale=-self.scale))
 
