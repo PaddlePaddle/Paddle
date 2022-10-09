@@ -285,25 +285,64 @@ class TestWithDouble(TestModulatedDeformableConvOp):
     def init_type(self):
         self.dtype = np.float64
 
+class TestFP16(unittest.TestCase):
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-@skip_check_grad_ci(
-    reason="Grad check for deform-fp16 need to be compared with fp32, will be included in another PR")
-class TestWithFloat16(TestModulatedDeformableConvOp):
+    def check_main(self, input_np, offset_np, filter_np, dtype):
+        paddle.disable_static()
+        input_np = input_np.astype(dtype)
+        offset_np = offset_np.astype(dtype)
+        filter_np = filter_np.astype(dtype)
 
-    def init_type(self):
-        self.dtype = np.float16
+        input = paddle.to_tensor(input_np)
+        offset = paddle.to_tensor(offset_np)
+        filter = paddle.to_tensor(filter_np)
 
-    def test_check_output(self):
-        self.check_output(check_eager=True, atol=1e-3)
+        input.stop_gradient = False
+        offset.stop_gradient = False
+        filter.stop_gradient = False
 
-    def test_check_grad(self):
-        pass
+        y = paddle.vision.ops.deform_conv2d(input, offset, filter)
+        input_grad, offset_grad, filter_grad = paddle.grad(y, [input, offset, filter])
+        y_np = y.numpy().astype('float32')
+        input_grad_np = input_grad.numpy().astype('float32')
+        offset_grad_np = offset_grad.numpy().astype('float32')
+        filter_grad_np = filter_grad.numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, input_grad_np, offset_grad_np, filter_grad_np
 
-    def test_check_grad_no_filter(self):
-        pass
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        self.groups = 1
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [40, f_c, 1, 1]
+        self.im2col_step = 1
+        self.deformable_groups = 1
+        offset_c = 2 * self.deformable_groups * self.filter_size[
+            2] * self.filter_size[3]
+        self.offset_size = [
+            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+        ]
 
+        input = np.random.random(self.input_size)
+        offset = 10 * np.random.random(self.offset_size)
+        filter = np.random.random(self.filter_size)
+
+        y_np_1, input_g_np_1, offset_g_np_1, filter_g_np_1 = self.check_main(input,offset,filter, 'float16')
+        y_np_2, input_g_np_2, offset_g_np_2, filter_g_np_2 = self.check_main(input,offset,filter, 'float32')
+
+        def assert_equal(x, y):
+            np.testing.assert_allclose(x, y, atol=3e-2)
+
+        assert_equal(y_np_1, y_np_2)
+        assert_equal(input_g_np_1, input_g_np_2)
+        assert_equal(offset_g_np_1, offset_g_np_2)
+        assert_equal(filter_g_np_1, filter_g_np_2)
 
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
 
