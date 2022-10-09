@@ -72,11 +72,7 @@ per-file-ignores =
     python/paddle/metric/*:F401
     python/paddle/fluid/tests/custom_kernel/*:F401
     python/paddle/fluid/tests/custom_runtime/*:F401
-    python/paddle/fluid/tests/unittests/interpreter/*:F401
-    python/paddle/fluid/tests/unittests/asp/*:F401
-    python/paddle/fluid/tests/unittests/autograd/*:F401
     python/paddle/fluid/tests/unittests/ir/*:F401
-    python/paddle/fluid/tests/unittests/collective/*:F401
     python/paddle/fluid/tests/unittests/tokenizer/*:F401
     python/paddle/fluid/tests/unittests/xpu/*:F401
     python/paddle/fluid/tests/unittests/distribution/*:F401
