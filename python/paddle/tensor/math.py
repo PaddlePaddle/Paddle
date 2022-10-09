@@ -538,7 +538,7 @@ def add(x, y, name=None):
     For case 2:
 
     1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
-    2. If $axis$ is -1 (default), $axis$=rank($X$)−rank($Y$).
+    2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
     3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
 
         For example:
@@ -558,7 +558,7 @@ def add(x, y, name=None):
         name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It’s dimension equals with x.
+        N-D Tensor. A location into which the result is stored. It's dimension equals with x.
 
     Examples:
 
