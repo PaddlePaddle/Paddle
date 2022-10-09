@@ -478,7 +478,8 @@ def is_initialized():
 
     Check whether the distributed environment has been initialized
 
-    Returns (bool): `True` if distributed environment has been initialized, otherwise `False`.
+    Returns:
+        `True` if distributed environment has been initialized, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -1594,7 +1595,7 @@ def batch_isend_irecv(p2p_op_list):
     corresponding tasks. NCCL are currently supported.
 
     Args:
-        p2p_op_list: A list of point-to-point operations(type of each operator is
+        p2p_op_list (List[P2POp]): A list of point-to-point operations(type of each operator is
             ``paddle.distributed.P2POp``). The order of the isend/irecv in the list
             matters and it needs to match with corresponding isend/irecv on the
             remote end.
@@ -1737,7 +1738,7 @@ def _reduce_scatter_base(output,
 
     Args:
         output (Tensor): Output tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
-        input (Tensor): Input tensor that is of size output tensor size times world size. Its data type 
+        input (Tensor): Input tensor that is of size output tensor size times world size. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,
