@@ -4334,7 +4334,7 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
             and need to broadcast against arr. Supported data type are int and int64.
         axis (int) : The axis to put 1d slices along.
         reduce (string, optinal) : The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
-    
+
     Returns:
         Tensor: The indexed element, same dtype with arr
 
