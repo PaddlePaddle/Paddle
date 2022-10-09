@@ -1241,12 +1241,9 @@ def flip(x, axis, name=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
           image_shape=(3, 2, 2)
-          x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
-          x = x.astype('float32')
-          img = paddle.to_tensor(x)
+          img = paddle.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           tmp = paddle.flip(img, [0,1])
           print(tmp) # [[[10,11],[8, 9]], [[6, 7],[4, 5]], [[2, 3],[0, 1]]]
 
@@ -2849,6 +2846,7 @@ def chunk(x, chunks, axis=0, name=None):
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
         list(Tensor): The list of segmented Tensors.
+<<<<<<< HEAD
     
     Example:
         .. code-block:: python
@@ -2859,6 +2857,15 @@ def chunk(x, chunks, axis=0, name=None):
             # x is a Tensor which shape is [3, 9, 5]
             x_np = np.random.random([3, 9, 5]).astype("int32")
             x = paddle.to_tensor(x_np)
+=======
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand([3, 9, 5])
+>>>>>>> 912be4f897 (fix numpy issue in codeblock examples for operators under python/paddle/tensor folder (#46765))
 
             out0, out1, out2 = paddle.chunk(x, chunks=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -4443,10 +4450,11 @@ def index_add(x, index, axis, value, name=None):
             index = paddle.to_tensor([0, 2], dtype="int32")
             value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
             outplace_res = paddle.index_add(input_tensor, index, 0, value)
-            print(outplace_res.numpy())
-            # [[2 2 2]
-            #  [1 1 1]
-            #  [2 2 2]]
+            print(outplace_res)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2., 2., 2.],
+            #         [1., 1., 1.],
+            #         [2., 2., 2.]])
     """
     _index_add_params_check(x, index, axis, value)
 
@@ -4492,10 +4500,11 @@ def index_add_(x, index, axis, value, name=None):
             index = paddle.to_tensor([0, 2], dtype="int32")
             value = paddle.to_tensor([[1, 1], [1, 1], [1, 1]], dtype="float32")
             inplace_res = paddle.index_add_(input_tensor, index, 1, value)
-            print(inplace_res.numpy())
-            # [[2, 1, 2]
-            #  [2, 1, 2]
-            #  [2, 1, 2]]
+            print(inplace_res)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2., 1., 2.],
+            #         [2., 1., 2.],
+            #         [2., 1., 2.]])
     """
 
     _index_add_params_check(x, index, axis, value)
