@@ -18,6 +18,7 @@ import math
 import numpy as np
 
 from paddle.distribution.transformed_distribution import TransformedDistribution
+from paddle.distribution.transform import AffineTransform, ExpTransform
 from paddle.fluid import framework as framework
 
 try:
@@ -97,7 +98,14 @@ class Gumbel(TransformedDistribution):
             paddle.full_like(self.loc, float(finfo.tiny)),
             paddle.full_like(self.loc, float(1 - finfo.eps)))
 
-        super(Gumbel, self).__init__(self.base_dist, ())
+        self.transforms = (ExpTransform(),
+                           AffineTransform(loc=paddle.to_tensor(
+                               0, dtype='float32'),
+                               scale=-paddle.ones_like(self.scale)),
+                           ExpTransform(),
+                           AffineTransform(loc=self.loc, scale=-self.scale))
+
+        super(Gumbel, self).__init__(self.base_dist, self.transforms)
 
     @property
     def mean(self):
