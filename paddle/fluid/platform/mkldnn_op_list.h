@@ -55,11 +55,15 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "elementwise_mul",
     "elementwise_mul_grad",
     "elementwise_div",
-    "elementwise_div_grad"
+    "elementwise_div_grad",
     "gelu",
     "gelu_grad",
     "prelu",
-    "prelu_grad"};
+    "prelu_grad",
+    "nearest_interp",
+    "bilinear_interp",
+    "nearest_interp_v2",
+    "bilinear_interp_v2"};
 
 inline bool in_mkldnn_white_list(const std::string& op_name) {
   return mkldnn_white_list.find(op_name) == mkldnn_white_list.end();
