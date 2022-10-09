@@ -42,7 +42,7 @@ class TestGumbel(unittest.TestCase):
             scale = paddle.static.data('scale', self.scale.shape,
                                        self.scale.dtype)
             self._dist = Gumbel(loc=loc, scale=scale)
-            self.sample_shape = (50000, )
+            self.sample_shape = [50000]
             mean = self._dist.mean
             var = self._dist.variance
             stddev = self._dist.stddev
@@ -129,8 +129,27 @@ class TestGumbel(unittest.TestCase):
 class TestGumbelPDF(unittest.TestCase):
 
     def setUp(self):
-        self._dist = Gumbel(loc=paddle.to_tensor(self.loc),
-                            scale=paddle.to_tensor(self.scale))
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        executor = paddle.static.Executor(self.place)
+
+        with paddle.static.program_guard(main_program, startup_program):
+            loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
+            scale = paddle.static.data('scale', self.scale.shape,
+                                       self.scale.dtype)
+            value = paddle.static.data('value', self.value.shape,
+                                       self.value.dtype)
+            self._dist = Gumbel(loc=loc, scale=scale)
+            prob = self._dist.prob(value)
+            log_prob = self._dist.log_prob(value)
+            cdf = self._dist.cdf(value)
+        fetch_list = [prob, log_prob, cdf]
+        self.feeds = {'loc': self.loc, 'scale': self.scale, 'value': self.value}
+
+        executor.run(startup_program)
+        [self.prob, self.log_prob, self.cdf] = executor.run(main_program,
+                                                            feed=self.feeds,
+                                                            fetch_list=fetch_list)
 
     def test_prob(self):
         np.testing.assert_allclose(
