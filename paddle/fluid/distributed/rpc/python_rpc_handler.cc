@@ -26,26 +26,26 @@ py::object getFunction(const py::object& module, const char* name) {
 PythonRpcHandler::PythonRpcHandler() {
   py::gil_scoped_acquire ag;
   // import python module
-  py::object rpcInternal = py::module::import(kInternalModule);
-  pyRunFunction_ = getFunction(rpcInternal, "_run_py_func");
-  pySerialize_ = getFunction(rpcInternal, "_serialize");
-  pyDeserialize_ = getFunction(rpcInternal, "_deserialize");
+  py::object rpc_internal = py::module::import(kInternalModule);
+  py_run_function_ = getFunction(rpc_internal, "_run_py_func");
+  py_serialize_ = getFunction(rpc_internal, "_serialize");
+  py_deserialize_ = getFunction(rpc_internal, "_deserialize");
 }
 
-py::object PythonRpcHandler::RunPythonFunc(const py::object& pythonFunc) {
+py::object PythonRpcHandler::RunPythonFunc(const py::object& python_func) {
   py::gil_scoped_acquire ag;
-  return pyRunFunction_(pythonFunc);
+  return py_run_function_(python_func);
 }
 
 std::string PythonRpcHandler::Serialize(const py::object& obj) {
   py::gil_scoped_acquire ag;
-  py::object res = pySerialize_(obj);
+  py::object res = py_serialize_(obj);
   return res.cast<std::string>();
 }
 
 py::object PythonRpcHandler::Deserialize(const std::string& obj) {
   py::gil_scoped_acquire ag;
-  return pyDeserialize_(py::bytes(obj));
+  return py_deserialize_(py::bytes(obj));
 }
 
 std::shared_ptr<PythonRpcHandler> PythonRpcHandler::python_rpc_handler_ =

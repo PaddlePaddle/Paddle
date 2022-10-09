@@ -33,7 +33,7 @@ class PYBIND11_EXPORT PythonRpcHandler {
   ~PythonRpcHandler() = default;
   static std::shared_ptr<PythonRpcHandler> GetInstance();
   // Run a pickled Python function and return the result py::object
-  py::object RunPythonFunc(const py::object& pythonFunc);
+  py::object RunPythonFunc(const py::object& python_func);
 
   // Serialized a py::object into a string
   std::string Serialize(const py::object& obj);
@@ -45,14 +45,14 @@ class PYBIND11_EXPORT PythonRpcHandler {
   DISABLE_COPY_AND_ASSIGN(PythonRpcHandler);
 
   static std::shared_ptr<PythonRpcHandler> python_rpc_handler_;
-  // Ref to `paddle.distributed.fleet.rpc.internal.run_py_func`.
-  py::object pyRunFunction_;
+  // Ref to `paddle.distributed.rpc.internal.run_py_func`.
+  py::object py_run_function_;
 
-  // Ref to `paddle.distributed.fleet.rpc.internal.serialize`.
-  py::object pySerialize_;
+  // Ref to `paddle.distributed.rpc.internal.serialize`.
+  py::object py_serialize_;
 
-  // Ref to `paddle.distributed.fleet.rpc.internal.deserialize`.
-  py::object pyDeserialize_;
+  // Ref to `paddle.distributed.rpc.internal.deserialize`.
+  py::object py_deserialize_;
 
   // Lock to protect initialization.
   static std::mutex lock_;

@@ -22,10 +22,10 @@
 
 #include "brpc/channel.h"
 #include "brpc/server.h"
-#include "glog/logging.h"
 #include "paddle/fluid/distributed/rpc/python_rpc_handler.h"
 #include "paddle/fluid/distributed/rpc/rpc.pb.h"
 #include "paddle/fluid/distributed/rpc/rpc_service.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace distributed {
@@ -66,15 +66,13 @@ class RpcAgent {
   // init RpcAgent instance and get information of all services
   RpcAgent(std::string name, std::vector<WorkerInfo> infos);
   ~RpcAgent() {}
-  RpcAgent(const RpcAgent &) = delete;
-  RpcAgent &operator=(const RpcAgent &) = delete;
 
   const WorkerInfo &GetWorkerInfo(const std::string &name) const {
-    auto it = nameToInfos_.find(name);
+    auto it = name_to_infos_.find(name);
     return it->second;
   }
   const WorkerInfo &GetWorkerInfoById(uint32_t id) const {
-    auto it = idToInfos_.find(id);
+    auto it = id_to_infos_.find(id);
     return it->second;
   }
   const WorkerInfo &GetCurrentWorkerInfo() const {
@@ -88,26 +86,25 @@ class RpcAgent {
 
   uint32_t WorldSize() { return infos_.size(); }
 
-  int StartServer();
+  int StartWorker();
   // build connection from client to all servers
   int StartClient();
   int Stop();
-
-  std::string Send(const std::string &msg, const std::string &to);
 
   std::future<std::string> InvokeRpc(const std::string &msg,
                                      const std::string &to,
                                      int timeout_ms);
 
  private:
-  static std::shared_ptr<RpcAgent> rpcAgentInstance_;
+  DISABLE_COPY_AND_ASSIGN(RpcAgent);
+  static std::shared_ptr<RpcAgent> rpc_agent_instance_;
   brpc::Server server_;
-  std::shared_ptr<RpcService> rpcService_;
+  std::shared_ptr<RpcService> rpc_service_;
   std::vector<std::shared_ptr<brpc::Channel>> channels_;
   std::string name_;
   uint32_t rank_;
-  std::unordered_map<std::string, WorkerInfo> nameToInfos_;
-  std::unordered_map<uint32_t, WorkerInfo> idToInfos_;
+  std::unordered_map<std::string, WorkerInfo> name_to_infos_;
+  std::unordered_map<uint32_t, WorkerInfo> id_to_infos_;
   std::vector<WorkerInfo> infos_;
 };
 }  // namespace distributed

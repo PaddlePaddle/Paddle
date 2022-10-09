@@ -78,7 +78,7 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
         rank (int, optional): worker id, default is None.
         world_size (int, optional): number of workers, default is None.
         master_endpoint (str, optional): id address of master, other nodes communicate with the master to
-            get the information of all service nodes, default is None.
+            get the information of all worker nodes, default is None.
 
     Returns:
         None.
@@ -96,10 +96,10 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     rank = int(os.environ["PADDLE_TRAINER_ID"]) if rank is None else rank
     world_size = int(
         os.environ["PADDLE_TRAINERS_NUM"]) if world_size is None else world_size
-    server_endpoint = os.getenv("PADDLE_SERVER_ENDPOINT", None)
-    if server_endpoint is None:
-        server_endpoint = _gen_endpoint()
-    logger.info("Trainer {}: server endpoint: {}".format(rank, server_endpoint))
+    worker_endpoint = os.getenv("PADDLE_WORKER_ENDPOINT", None)
+    if worker_endpoint is None:
+        worker_endpoint = _gen_endpoint()
+    logger.info("Trainer {}: worker endpoint: {}".format(rank, worker_endpoint))
     master_endpoint = (master_endpoint if master_endpoint != None else
                        os.environ["PADDLE_MASTER_ENDPOINT"])
     master_addr, master_port = master_endpoint.split(":")
@@ -111,7 +111,7 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
                           world_size,
                           timeout=stop_check_timeout)
     _set_barrier_store(store)
-    ip, port = server_endpoint.split(":")
+    ip, port = worker_endpoint.split(":")
     port = int(port)
     _set_self_info(name, rank, ip, port)
     all_infos = _exchange_all_service_infos(world_size)
@@ -121,7 +121,8 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
                                node_info.port)
         c_infos.append(info)
     core.init_and_set_agent_instance(name, c_infos)
-    core.rpc_start_server()
+    core.rpc_start_worker()
+    # ensure that all the workers are started
     _barrier_never_timeout(rank, world_size)
     core.rpc_start_client()
     logger.info("Trainer {}: Init RPC done!".format(rank))
@@ -129,10 +130,10 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
 
 def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     """
-    Make a blocking RPC call to run function ``fn`` on server ``to``.
+    Make a blocking RPC call to run function ``fn`` on worker ``to``.
 
     Args:
-        to (str): name of the destination server.
+        to (str): name of the destination worker.
         fn (fn): a callable function, such as Python callables.
         args (tuple, optional): the argument tuple for the ``fn`` invocation, default is None.
         kwargs (dict, optional): is a dictionary of keyword arguments for the ``fn``
@@ -167,10 +168,10 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
 
 def rpc_async(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     """
-    Make a non-blocking RPC call to run function ``fn`` on server ``to``.
+    Make a non-blocking RPC call to run function ``fn`` on worker ``to``.
 
     Args:
-        to (str): name of the destination server.
+        to (str): name of the destination worker.
         fn (fn): a callable function, such as Python callables.
         args (tuple, optional): the argument tuple for the ``fn`` invocation, default is None.
         kwargs (dict, optional): is a dictionary of keyword arguments for the ``fn``
@@ -256,7 +257,7 @@ def _barrier_never_timeout(global_rank, global_world_size):
 
 def shutdown():
     """
-    Perform a shutdown of the RPC agent, stop the server and destroy the agent.
+    Perform a shutdown of the RPC agent, stop the worker and destroy the agent.
     This will block until all local and remote RPC processes reach this method
     and wait for all outstanding work to complete.
 
@@ -278,7 +279,7 @@ def shutdown():
     world_size = len(get_all_worker_infos())
     # master will exit in the end
     _barrier_never_timeout(rank, world_size)
-    core.rpc_stop_server()
+    core.rpc_stop_worker()
     _del_barrier_store()
     logger.info("Trainer {}: rpc shutdown!".format(rank))
 
@@ -299,7 +300,7 @@ def get_worker_info(name):
             import paddle.distributed.rpc as rpc
             import os
 
-            os.environ["PADDLE_SERVER_ENDPOINT"] = "127.0.0.1:9002"
+            os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9002"
             rpc.init_rpc("worker0", rank=0, world_size=1,
                         master_endpoint="127.0.0.1:8005")
 
@@ -325,7 +326,7 @@ def get_all_worker_infos():
             import paddle.distributed.rpc as rpc
             import os
 
-            os.environ["PADDLE_SERVER_ENDPOINT"] = "127.0.0.1:9003"
+            os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9003"
             rpc.init_rpc("worker0", rank=0, world_size=1,
                     master_endpoint="127.0.0.1:8006")
 
@@ -351,7 +352,7 @@ def get_current_worker_info():
             import paddle.distributed.rpc as rpc
             import os
 
-            os.environ["PADDLE_SERVER_ENDPOINT"] = "127.0.0.1:9004"
+            os.environ["PADDLE_WORKER_ENDPOINT"] = "127.0.0.1:9004"
             rpc.init_rpc("worker0", rank=0, world_size=1,
                         master_endpoint="127.0.0.1:8007")
 

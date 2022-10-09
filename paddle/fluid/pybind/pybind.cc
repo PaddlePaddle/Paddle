@@ -2615,9 +2615,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindFuture(&m);
   InitAndSetAgentInstance(&m);
   InvokeRpc(&m);
-  StartServer(&m);
+  StartWorker(&m);
   StartClient(&m);
-  StopServer(&m);
+  StopWorker(&m);
   GetWorkerInfo(&m);
   GetWorkerInfoByRank(&m);
   GetCurrentWorkerInfo(&m);

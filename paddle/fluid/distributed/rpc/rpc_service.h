@@ -15,7 +15,6 @@
 #pragma once
 
 #include <brpc/server.h>
-#include <glog/logging.h>
 
 #include <string>
 
@@ -28,27 +27,13 @@ class RpcService : public RpcBaseService {
  public:
   RpcService() {}
   virtual ~RpcService() {}
-  virtual void Send(google::protobuf::RpcController *cntl_base,
-                    const RpcRequest *request,
-                    RpcResponse *response,
-                    google::protobuf::Closure *done) {
-    // This object helps you to call done->Run() in RAII style. If you need
-    // to process the request asynchronously, pass done_guard.release().
-    brpc::ClosureGuard done_guard(done);
-
-    brpc::Controller *cntl = static_cast<brpc::Controller *>(cntl_base);
-    LOG(INFO) << "Received request[log_id=" << cntl->log_id() << "] from "
-              << cntl->remote_side() << " to " << cntl->local_side() << ": "
-              << request->message()
-              << " (attached=" << cntl->request_attachment() << ")";
-    // Fill response.
-    response->set_message(request->message());
-  }
 
   virtual void InvokeRpc(google::protobuf::RpcController *cntl_base,
                          const RpcRequest *request,
                          RpcResponse *response,
                          google::protobuf::Closure *done) {
+    // This object helps you to call done->Run() in RAII style. If you need
+    // to process the request asynchronously, pass done_guard.release().
     brpc::ClosureGuard done_guard(done);
 
     brpc::Controller *cntl = static_cast<brpc::Controller *>(cntl_base);

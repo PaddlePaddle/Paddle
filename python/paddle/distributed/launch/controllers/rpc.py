@@ -76,12 +76,11 @@ class RpcController(Controller):
         rank_offset = sum([i["replicas"] for i in peer_list[:rank]])
 
         rpc_master = peer_list[0]["candidate"]
-        # job_endpoints = [i["endpoints"] for i in peer_list]
         self.pod.reset()
         for i in range(self.pod.replicas):
             e = {
                 "PADDLE_MASTER_ENDPOINT": rpc_master,
-                "PADDLE_SERVER_ENDPOINT": endpoints[i],
+                "PADDLE_WORKER_ENDPOINT": endpoints[i],
                 "PADDLE_TRAINER_ID": "{}".format(i + rank_offset),
                 "PADDLE_TRAINERS_NUM": "{}".format(global_size),
             }

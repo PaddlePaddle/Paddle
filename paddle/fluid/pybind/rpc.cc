@@ -67,12 +67,12 @@ void InvokeRpc(py::module* m) {
       py::arg("py_func"),
       py::arg("timeout_ms"));
 }
-void StartServer(py::module* m) {
+void StartWorker(py::module* m) {
   m->def(
-      "rpc_start_server",
+      "rpc_start_worker",
       []() {
         auto instance = RpcAgent::RpcAgentInstance();
-        instance->StartServer();
+        instance->StartWorker();
       },
       py::call_guard<py::gil_scoped_release>());
 }
@@ -85,9 +85,9 @@ void StartClient(py::module* m) {
       },
       py::call_guard<py::gil_scoped_release>());
 }
-void StopServer(py::module* m) {
+void StopWorker(py::module* m) {
   m->def(
-      "rpc_stop_server",
+      "rpc_stop_worker",
       []() {
         auto instance = RpcAgent::RpcAgentInstance();
         instance->Stop();
