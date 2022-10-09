@@ -159,6 +159,12 @@ def _enable_legacy_dygraph():
     _update_monkey_methods(is_eager=False)
 
 
+def _disable_legacy_dygraph():
+    global _in_eager_mode_
+    _in_eager_mode_ = True
+    _update_monkey_methods(is_eager=True)
+
+
 def _in_eager_without_dygraph_check():
     global _in_eager_mode_
     return _in_eager_mode_
@@ -233,6 +239,20 @@ def _in_legacy_dygraph():
 
 def _non_static_mode():
     return _dygraph_tracer_ is not None
+
+
+@signature_safe_contextmanager
+def _test_eager_guard(place=None):
+    # FIXME(dev): We haven't fully verified eager mode on NPU et.al but
+    # only GPU/CPU/XPU. Remove this after we improve this feature.
+    already_fallback = _fallback_legacy_dygraph()
+    if not already_fallback:
+        _disable_legacy_dygraph()
+    try:
+        yield
+    finally:
+        if not already_fallback:
+            _enable_legacy_dygraph()
 
 
 global_ipu_index = -1
