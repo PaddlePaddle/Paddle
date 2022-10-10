@@ -2992,7 +2992,7 @@
   backward: overlap_add_grad
 
 - op: rnn
-  args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, Tensor[] state_components, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
+  args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
   output: Tensor(out), Tensor(dropout_state_out), Tensor[](state){pre_state.size()}, Tensor(reserve)
   infer_meta:
     func: RnnInferMeta
@@ -3004,7 +3004,7 @@
   backward: rnn_grad
   optional : sequence_length
   intermediate : reserve
-  view : (dropout_state_in -> dropout_state_out), (state_components -> state)
+  view : (dropout_state_in -> dropout_state_out)
 
 - op: uniform_random_inplace
   args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)

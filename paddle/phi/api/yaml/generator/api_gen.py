@@ -235,16 +235,15 @@ class ForwardAPI(BaseAPI):
 
                 if not inplace_flag and self.view_map is not None and self.outputs[
                         'names'][i] in self.view_map:
-                    if out_dtype_list[i] == 'std::vector<Tensor>':
-                        output_create = output_create + f"""
-    {code_indent}  ShareVectorTensorBuffer(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]},kernel_out_{i});
-    {code_indent}  ShareVectorTensorInplaceVersionCounter(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]},kernel_out_{i});
-    {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
-                    elif out_dtype_list[i] == 'Tensor':
+                    if out_dtype_list[i] == 'Tensor':
                         output_create = output_create + f"""
     {code_indent}  kernel_out_{i}->ShareBufferWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
     {code_indent}  kernel_out_{i}->ShareInplaceVersionCounterWith(*{PREFIX_TENSOR_NAME}{self.view_map[self.outputs['names'][i]]});
     {code_indent}  VLOG(3) << "Perform View between Output and Input Tensor, share allocation and inplace version.";"""
+                    else:
+                        raise ValueError(
+                            "{} : Output error: only support Tensor type when use view in yaml. But get {}"
+                            .format(self.api, out_dtype_list[i]))
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(

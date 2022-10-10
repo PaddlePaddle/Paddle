@@ -289,34 +289,5 @@ phi::TensorBase* SetStringsKernelOutput(Tensor* out, TensorType type) {
   return out->impl().get();
 }
 
-void ShareVectorTensorBuffer(const std::vector<phi::DenseTensor>& ins,
-                             const std::vector<phi::DenseTensor*>& outs) {
-  PADDLE_ENFORCE_EQ(ins.size(),
-                    outs.size(),
-                    phi::errors::InvalidArgument(
-                        "The input's size should be equal with out's size, but "
-                        "recieve input size is %d, out size is %d",
-                        ins.size(),
-                        outs.size()));
-  for (size_t i = 0; i < outs.size(); i++) {
-    outs[i]->ShareBufferWith(ins[i]);
-  }
-}
-
-void ShareVectorTensorInplaceVersionCounter(
-    const std::vector<phi::DenseTensor>& ins,
-    const std::vector<phi::DenseTensor*>& outs) {
-  PADDLE_ENFORCE_EQ(ins.size(),
-                    outs.size(),
-                    phi::errors::InvalidArgument(
-                        "The input's size should be equal with out's size, but "
-                        "recieve input size is %d, out size is %d",
-                        ins.size(),
-                        outs.size()));
-  for (size_t i = 0; i < outs.size(); i++) {
-    outs[i]->ShareInplaceVersionCounterWith(ins[i]);
-  }
-}
-
 }  // namespace experimental
 }  // namespace paddle
