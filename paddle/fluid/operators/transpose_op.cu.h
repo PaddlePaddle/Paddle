@@ -651,64 +651,6 @@ struct SwapDim0And2InTranspose {
   }
 };
 
-// This function is to combine dimension. fox example:
-// (0, 1, 3, 2) --> (0, 2, 1)
-inline void CombineTransposeDim3(const framework::DDim& shape,
-                                 const std::vector<int>& perm,
-                                 std::vector<int>* new_perm,
-                                 framework::DDim* new_dims) {
-  PADDLE_ENFORCE_EQ(shape.size(),
-                    perm.size(),
-                    platform::errors::InvalidArgument(
-                        " shape should have the save dim with perm, but"
-                        " received shape size is:%d, perm size is:%d.",
-                        shape.size(),
-                        perm.size()));
-
-  std::vector<int> dim_vec;
-  if (shape.size() == 1) {
-    // If input dimension is already 1, no need to combine dim.
-    new_perm->resize(1);
-    (*new_perm)[0] = perm[0];
-    dim_vec.push_back(shape[0]);
-    *new_dims = phi::make_ddim(dim_vec);
-    return;
-  }
-  std::vector<int> new_dim_pos(shape.size(), -1);
-  std::vector<int64_t> combined_dims(shape.size(), 0);
-  int cur_head = perm[0];
-  new_dim_pos[cur_head] = 0;
-  combined_dims[0] = shape[cur_head];
-  int dim_idx = 0;
-  for (int perm_idx = 1; perm_idx < shape.size(); ++perm_idx) {
-    // combine consecutive dimensions.
-    if (cur_head + 1 == perm[perm_idx]) {
-      cur_head = perm[perm_idx];
-      combined_dims[dim_idx] *= shape[cur_head];
-    } else {
-      // Else start a new dimension.
-      cur_head = perm[perm_idx];
-      dim_idx++;
-      new_dim_pos[cur_head] = dim_idx;
-      combined_dims[dim_idx] = shape[cur_head];
-    }
-  }
-
-  new_perm->resize(dim_idx + 1);
-
-  dim_idx = 0;
-  for (int i = 0; i < new_dim_pos.size(); ++i) {
-    if (new_dim_pos[i] >= 0) {
-      int new_perm_idx = new_dim_pos[i];
-      (*new_perm)[dim_idx] = new_perm_idx;
-      dim_vec.push_back(combined_dims[new_perm_idx]);
-      dim_idx++;
-    }
-  }
-
-  *new_dims = phi::make_ddim(dim_vec);
-}
-
 template <int N, typename T>
 class IdxHelper {
  public:
@@ -1137,11 +1079,16 @@ inline void PermuteAndTranspose(const phi::GPUContext& ctx,
                                 phi::DenseTensor* in,
                                 phi::DenseTensor* out,
                                 const DimsSimplifier<T>& simplifier) {
+  auto count = simplifier.GetCount();
   if (simplifier.GetPermType() == PermuteType::kCopy) {
     // If perm is [0,1,2,3], then just operate a DtoD copy.
-    phi::Copy(ctx, *in, ctx.GetPlace(), false, out);
+    paddle::memory::Copy(ctx.GetPlace(),
+                         out->data<T>(),
+                         ctx.GetPlace(),
+                         in->data<T>(),
+                         count * sizeof(T),
+                         ctx.stream());
   } else {
-    auto count = simplifier.GetCount();
     if (count < std::numeric_limits<int>::max()) {
       LaunchWithDispatchVecSize<T, int>(ctx,
                                         simplifier.GetVecSize(),
@@ -1178,34 +1125,6 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                                       phi::vectorize<int>(in.dims()),
                                       in.data<T>(),
                                       out->data<T>());
-  // std::cout << "Origin Perm: [ ";
-  // for (auto i = 0; i < perm.size(); ++i) {
-  //   std::cout << perm[i] << ", ";
-  // }
-  // std::cout << " ]" << std::endl;
-  // std::cout << "Origin Dims: [ ";
-  // for (auto i = 0; i < perm.size(); ++i) {
-  //   std::cout << in.dims()[i] << ", ";
-  // }
-  // std::cout << " ]" << std::endl << std::endl;
-
-  // std::cout << "Merged Type= " << simplifier.GetPermType() << std::endl;
-  // std::cout << "Merged Perm: [ ";
-  // for (auto i = 0; i < simplifier.GetRank(); ++i) {
-  //   std::cout << simplifier.GetPerm()[i] << ", ";
-  // }
-  // std::cout << " ]" << std::endl;
-  // std::cout << "Merged Dims: [ ";
-  // for (auto i = 0; i < simplifier.GetRank(); ++i) {
-  //   std::cout << simplifier.GetSrcDims()[i] << ", ";
-  // }
-  // std::cout << " ]" << std::endl;
-  // std::cout << "Merged DstDims: [ ";
-  // for (auto i = 0; i < simplifier.GetRank(); ++i) {
-  //   std::cout << simplifier.GetDstDims()[i] << ", ";
-  // }
-  // std::cout << " ]" << std::endl << std::endl;
-
   auto* tuner = phi::autotune::MakeTransposeTuner<T>(TransposeWithSimple<T>);
   tuner->AddCallBack(PermuteWithEigen<T>);
   tuner->AddCallBack(PermuteAndTranspose<T>);
