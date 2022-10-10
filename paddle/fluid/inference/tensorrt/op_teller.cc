@@ -534,6 +534,16 @@ struct SimpleOpTypeSetTeller : public Teller {
                      "the pass.";
           return false;
         }
+
+        auto index_var_name = desc.Input("Index")[0];
+        auto* index_var_desc = block->FindVar(index_var_name);
+
+        // The index input must be int32 datatype.
+        if (index_var_desc->GetDataType() !=
+            paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+          VLOG(3) << "gather op Index input data type must be int32";
+          return false;
+        }
 #if !IS_TRT_VERSION_GE(7000)
         auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
         const auto x_shape = x_var_desc->GetShape();
