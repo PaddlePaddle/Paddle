@@ -15,7 +15,8 @@
 import paddle
 import paddle.distributed as dist
 import paddle.fluid.framework as framework
-from paddle.distributed import collective
+from paddle.distributed.communication.group import _get_global_group
+from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
 
 
 def _check_tensor_shape(tensor, shape, nranks=1):
@@ -43,8 +44,8 @@ def _reduce_scatter_tensor_in_dygraph(out_tensor,
                                       sync_op,
                                       use_calc_stream,
                                       caller="reduce_scatter"):
-    op_type = collective._get_reduce_op(op, caller)
-    group = collective._get_default_group() if group is None else group
+    op_type = _get_reduce_op(op, caller)
+    group = _get_global_group() if group is None else group
 
     _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
@@ -62,8 +63,8 @@ def _reduce_scatter_tensor_in_dygraph(out_tensor,
 
 def _reduce_scatter_in_dygraph(tensor, tensor_list, op, group, sync_op,
                                use_calc_stream):
-    op_type = collective._get_reduce_op(op, "reduce_scatter")
-    group = collective._get_default_group() if group is None else group
+    op_type = _get_reduce_op(op, "reduce_scatter")
+    group = _get_global_group() if group is None else group
 
     _check_tensor_list_shape(tensor_list, tensor.shape, group.nranks)
 
@@ -81,7 +82,7 @@ def _reduce_scatter_in_dygraph(tensor, tensor_list, op, group, sync_op,
 
 def reduce_scatter(tensor,
                    tensor_or_tensor_list,
-                   op=collective.ReduceOp.SUM,
+                   op=ReduceOp.SUM,
                    group=None,
                    sync_op=True,
                    use_calc_stream=False):
@@ -151,7 +152,7 @@ def reduce_scatter(tensor,
 
 def _reduce_scatter_base(out_tensor,
                          in_tensor,
-                         op=collective.ReduceOp.SUM,
+                         op=ReduceOp.SUM,
                          group=None,
                          sync_op=True,
                          use_calc_stream=False):
