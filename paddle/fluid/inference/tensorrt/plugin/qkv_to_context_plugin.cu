@@ -386,7 +386,7 @@ int QkvToContextPluginDynamic::enqueue(
   // input[0], (B, S, 3 * N * H, 1, 1)
   int batch = input_dims.d[0];
   int seq_len = input_dims.d[1];
-  framework::Tensor multihead_temp_tensor;
+  phi::DenseTensor multihead_temp_tensor;
   //masks
   int scratch_size = batch * head_number_ * seq_len * seq_len * 1;
 
@@ -394,22 +394,11 @@ int QkvToContextPluginDynamic::enqueue(
   cudaGetDevice(&device_id);
   multihead_temp_tensor.Resize({scratch_size + input_num});
   //for roformer
-  framework::Tensor temp_roformer_tensor;
+  phi::DenseTensor temp_roformer_tensor;
   temp_roformer_tensor.Resize({input_num});
 
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
-    std::cout<<"**********intput0 float type *************"<<std::endl;
-    if (input_desc[1].type == nvinfer1::DataType::kFLOAT) {
-      std::cout<<"cos mat float type"<<std::endl;
-    } else {
-      std::cout<<"cos mat half type"<<std::endl;
-    }
-    if (input_desc[2].type == nvinfer1::DataType::kFLOAT) {
-      std::cout<<"sin mat float type"<<std::endl;
-    } else {
-      std::cout<<"sin mat half type"<<std::endl;
-    }
 
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp32";
     auto *multihead_temp_data = multihead_temp_tensor.mutable_data<float>(
@@ -423,7 +412,7 @@ int QkvToContextPluginDynamic::enqueue(
 
     const float *input0_data = static_cast<const float *>(inputs[0]);
     // fit to [batch, head_num, length, length] + [batch, 1, 1, length]
-    framework::Tensor temp_qk_bias_tensor;
+    phi::DenseTensor temp_qk_bias_tensor;
     float *qk_bias = const_cast<float *>(static_cast<const float *>(inputs[3]));
     if (ProductDim(input_desc[3].dims) == (batch * seq_len)) {
       temp_qk_bias_tensor.Resize({batch, head_number_, seq_len, seq_len});
@@ -471,18 +460,6 @@ int QkvToContextPluginDynamic::enqueue(
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-
-    std::cout<<"**********intput0 half type *************"<<std::endl;
-    if (input_desc[1].type == nvinfer1::DataType::kFLOAT) {
-      std::cout<<"cos mat float type"<<std::endl;
-    } else {
-      std::cout<<"cos mat half type"<<std::endl;
-    }
-    if (input_desc[2].type == nvinfer1::DataType::kFLOAT) {
-      std::cout<<"sin mat float type"<<std::endl;
-    } else {
-      std::cout<<"sin mat half type"<<std::endl;
-    }
     VLOG(1) << "TRT Plugin DataType selected. QkvToContext-->fp16";
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
