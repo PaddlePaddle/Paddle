@@ -16,14 +16,14 @@ ignore =
     E701,E711,E712,E713,E714,E721,E722,E731,E741,
 
     # F, see https://flake8.pycqa.org/en/latest/user/error-codes.html
-    F402,F403,F405,
+    F403,F405,
     F522,F524,F541,
-    F601,F631,F632,
+    F631,F632,
     F811,F821,F841,
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     W503,W504
-    W601,W605
+    W605
 per-file-ignores =
     # These files need tabs for testing.
     python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py:E101,W191
@@ -40,38 +40,25 @@ per-file-ignores =
     python/paddle/check_import_scipy.py:F401
     python/paddle/fft.py:F401
     python/paddle/_C_ops.py:F401
-    python/paddle/framework/*:F401
     python/paddle/reader/*:F401
     python/paddle/nn/*:F401
     python/paddle/distributed/*:F401
-    python/paddle/proto/*:F401
-    python/paddle/onnx/*:F401
-    python/paddle/optimizer/*:F401
-    python/paddle/hapi/*:F401
-    python/paddle/autograd/*:F401
     python/paddle/dataset/*:F401
-    python/paddle/io/*:F401
-    python/paddle/cost_model/*:F401
     python/paddle/tests/*:F401
     python/paddle/distribution/*:F401
-    python/paddle/geometric/*:F401
     python/paddle/utils/*:F401
-    python/paddle/vision/*:F401
     python/paddle/quantization/*:F401
     python/paddle/libs/*:F401
     python/paddle/audio/*:F401
     python/paddle/incubate/*:F401
     python/paddle/amp/*:F401
     python/paddle/jit/*:F401
-    python/paddle/static/*:F401
     python/paddle/inference/*:F401
     python/paddle/device/*:F401
     python/paddle/profiler/*:F401
     python/paddle/tensor/*:F401
     python/paddle/text/*:F401
     python/paddle/metric/*:F401
-    python/paddle/fluid/tests/custom_kernel/*:F401
-    python/paddle/fluid/tests/custom_runtime/*:F401
     python/paddle/fluid/tests/unittests/ir/*:F401
     python/paddle/fluid/tests/unittests/tokenizer/*:F401
     python/paddle/fluid/tests/unittests/xpu/*:F401
@@ -88,8 +75,5 @@ per-file-ignores =
     python/paddle/fluid/tests/unittests/sequence/*:F401
     python/paddle/fluid/tests/unittests/mkldnn/*:F401
     python/paddle/fluid/tests/unittests/rnn/*:F401
-    python/paddle/fluid/tests/book/*:F401
-    python/paddle/fluid/tests/custom_op/*:F401
     python/paddle/fluid/tests/unittests/test_*:F401
-    python/paddle/fluid/tests/test_*:F401
     python/paddle/fluid/tests/*:F401
