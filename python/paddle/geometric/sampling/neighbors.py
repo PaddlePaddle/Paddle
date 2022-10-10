@@ -90,7 +90,7 @@ def sample_neighbors(row,
     if return_eids:
         if eids is None:
             raise ValueError(
-                f"`eids` should not be None if `return_eids` is True.")
+                "`eids` should not be None if `return_eids` is True.")
 
     use_perm_buffer = True if perm_buffer is not None else False
 

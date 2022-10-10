@@ -48,7 +48,7 @@ def append_backward_new(loss_list,
     assert program.num_blocks == 1, "The append_backward_new interface is designed to process only one block."
     block = program.current_block()
     for el in loss_list:
-        assert el.block == block, f'variable in loss_list should be in current block of main program'
+        assert el.block == block, 'variable in loss_list should be in current block of main program'
 
     orig2prim(block)
     ad = Transform(block)
