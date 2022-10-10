@@ -24,7 +24,7 @@ import pickle
 import time
 import paddle
 from paddle.fluid.backward import append_backward
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
 from paddle.fluid import program_guard
@@ -110,10 +110,12 @@ class AutoParallelizer:
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply([main_program], [startup_program],
                                               self._pass_context)
+                loss = auto_parallel_fp16_pass.get_loss()
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply([main_program], [startup_program],
                                              self._pass_context)
+                loss = auto_parallel_amp_pass.get_loss()
 
         # apply recompute pass
         if self._dist_strategy.recompute:

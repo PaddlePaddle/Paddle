@@ -26,8 +26,8 @@ namespace operators {
 namespace math {
 
 template <typename T>
-void CopyValidData(framework::Tensor* dst_tensor,
-                   const framework::Tensor* src_tensor,
+void CopyValidData(phi::DenseTensor* dst_tensor,
+                   const phi::DenseTensor* src_tensor,
                    const framework::Vector<size_t>& seq_offsets,
                    int pad_seq_len,
                    int step_width,

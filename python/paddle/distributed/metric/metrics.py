@@ -16,7 +16,7 @@ import sys
 import yaml
 import paddle.fluid as fluid
 import logging
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 
 __all__ = []
 logger = get_logger(logging.INFO, name="metrics")

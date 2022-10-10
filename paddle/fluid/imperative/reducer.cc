@@ -34,7 +34,7 @@ namespace imperative {
     defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_CNCL)
 // div the nranks
 void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
-  framework::Tensor *tensor =
+  phi::DenseTensor *tensor =
       is_sparse_
           ? sparse_contents_->GetMutable<phi::SelectedRows>()->mutable_value()
           : dense_contents_.GetMutable<framework::LoDTensor>();
@@ -76,7 +76,7 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
 template <typename DeviceContext, typename T>
 static void ConcatTensorsForAllReduce(
     const DeviceContext &context,
-    const std::vector<framework::Tensor> &dense_tensors_,
+    const std::vector<phi::DenseTensor> &dense_tensors_,
     framework::Variable *p_dense_contents) {
   operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
   concat_functor_(context,
@@ -89,10 +89,10 @@ template <typename DeviceContext, typename T>
 static void SplitTensorsForAllReduce(
     const DeviceContext &context,
     framework::Variable *p_dense_contents,
-    std::vector<framework::Tensor> *p_dense_tensors) {
+    std::vector<phi::DenseTensor> *p_dense_tensors) {
   auto *in = p_dense_contents->GetMutable<framework::LoDTensor>();
-  std::vector<framework::Tensor *> outs;
-  std::vector<const framework::Tensor *> shape_refer;
+  std::vector<phi::DenseTensor *> outs;
+  std::vector<const phi::DenseTensor *> shape_refer;
 
   outs.reserve(p_dense_tensors->size());
   shape_refer.reserve(p_dense_tensors->size());
@@ -114,7 +114,7 @@ static void SplitTensorsForAllReduce(
 template <typename DeviceContext>
 static void ConcatTensorsWithType(
     const DeviceContext &context,
-    const std::vector<framework::Tensor> &dense_tensors_,
+    const std::vector<phi::DenseTensor> &dense_tensors_,
     framework::Variable *p_dense_contents,
     framework::proto::VarType::Type type) {
   switch (type) {
@@ -140,11 +140,10 @@ static void ConcatTensorsWithType(
 
 // context is used to select the stream for split
 template <typename DeviceContext>
-static void SplitTensorsWithType(
-    const DeviceContext &context,
-    framework::Variable *p_dense_contents,
-    std::vector<framework::Tensor> *p_dense_tensors,
-    framework::proto::VarType::Type type) {
+static void SplitTensorsWithType(const DeviceContext &context,
+                                 framework::Variable *p_dense_contents,
+                                 std::vector<phi::DenseTensor> *p_dense_tensors,
+                                 framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP16:
       SplitTensorsForAllReduce<DeviceContext, platform::float16>(
@@ -171,10 +170,10 @@ template <>
 void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
     const platform::XPUDeviceContext &context,
     framework::Variable *p_dense_contents,
-    std::vector<framework::Tensor> *p_dense_tensors) {
+    std::vector<phi::DenseTensor> *p_dense_tensors) {
   auto *in = p_dense_contents->GetMutable<framework::LoDTensor>();
-  std::vector<framework::Tensor *> outs;
-  std::vector<const framework::Tensor *> shape_refer;
+  std::vector<phi::DenseTensor *> outs;
+  std::vector<const phi::DenseTensor *> shape_refer;
 
   outs.reserve(p_dense_tensors->size());
   shape_refer.reserve(p_dense_tensors->size());
@@ -192,7 +191,7 @@ void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
 template <>
 void ConcatTensorsWithType<platform::XPUDeviceContext>(
     const platform::XPUDeviceContext &context,
-    const std::vector<framework::Tensor> &dense_tensors_,
+    const std::vector<phi::DenseTensor> &dense_tensors_,
     framework::Variable *p_dense_contents,
     framework::proto::VarType::Type type) {
   switch (type) {
@@ -213,7 +212,7 @@ template <>
 void SplitTensorsWithType<platform::XPUDeviceContext>(
     const platform::XPUDeviceContext &context,
     framework::Variable *p_dense_contents,
-    std::vector<framework::Tensor> *p_dense_tensors,
+    std::vector<phi::DenseTensor> *p_dense_tensors,
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP32:
@@ -234,7 +233,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 template <>
 void ConcatTensorsWithType<platform::MLUDeviceContext>(
     const platform::MLUDeviceContext &context,
-    const std::vector<framework::Tensor> &dense_tensors_,
+    const std::vector<phi::DenseTensor> &dense_tensors_,
     framework::Variable *p_dense_contents,
     framework::proto::VarType::Type type) {
   switch (type) {
@@ -259,7 +258,7 @@ template <>
 void SplitTensorsWithType<platform::MLUDeviceContext>(
     const platform::MLUDeviceContext &context,
     framework::Variable *p_dense_contents,
-    std::vector<framework::Tensor> *p_dense_tensors,
+    std::vector<phi::DenseTensor> *p_dense_tensors,
     framework::proto::VarType::Type type) {
   switch (type) {
     case framework::proto::VarType::FP16:
@@ -479,7 +478,7 @@ void Reducer::InitializeDenseGroups(
     p_group->length_.push_back(size);
 
     // for concat operator
-    p_group->dense_tensors_.push_back(framework::Tensor());
+    p_group->dense_tensors_.push_back(phi::DenseTensor());
 
     // check the dtype and place, it must be same.
     const auto &dtype = var->DataType();

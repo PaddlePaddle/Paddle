@@ -160,11 +160,11 @@ void SaveMixedModel(
   for (const auto& param_name : parameters) {
     auto* var = scope->FindLocalVar(param_name);
     if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<framework::Tensor>()) {
+        var->IsType<phi::DenseTensor>()) {
       auto* t = var->GetMutable<framework::LoDTensor>();
       if (t->dtype() != phi::DataType::FLOAT32) continue;
 
-      framework::Tensor mixed_tensor;
+      phi::DenseTensor mixed_tensor;
       mixed_tensor.Resize(t->dims());
       auto* data = t->mutable_data<float>(platform::CPUPlace());
 

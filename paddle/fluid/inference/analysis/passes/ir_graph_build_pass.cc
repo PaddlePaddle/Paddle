@@ -92,6 +92,10 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
           &argument->ipu_available_memory_proportion());
       argument->main_graph().SetNotOwned("enable_half_partial",
                                          &argument->ipu_enable_half_partial());
+      argument->main_graph().SetNotOwned("custom_ops_info",
+                                         &argument->ipu_custom_ops_info());
+      argument->main_graph().SetNotOwned("custom_patterns",
+                                         &argument->ipu_custom_patterns());
     }
   }
 #endif

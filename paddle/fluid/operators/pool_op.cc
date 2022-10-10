@@ -32,7 +32,7 @@ namespace operators {
 bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
   if (ctx.Attr<bool>("adaptive") == false) return true;
   // (jczaja): oneDNN is supporting only unchangable in size pool window
-  auto src_tz = phi::vectorize(ctx.Input<Tensor>("X")->dims());
+  auto src_tz = phi::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
   std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
   // Fast but not exhustive check
   return ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
@@ -42,8 +42,7 @@ bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = "AnyLayout";
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -64,7 +63,7 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
 
 framework::OpKernelType PoolOp::GetKernelTypeForVar(
     const std::string& var_name,
-    const Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -88,8 +87,7 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = "AnyLayout";
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -112,7 +110,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
 
 framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
     const std::string& var_name,
-    const Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&

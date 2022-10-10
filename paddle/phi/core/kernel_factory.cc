@@ -16,6 +16,10 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+#include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#endif
 
 DECLARE_bool(enable_api_kernel_fallback);
 
@@ -112,7 +116,6 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
                  << "] is not registered.";
   }
 #endif
-
   auto kernel_iter = iter->second.find(kernel_key);
   // TODO(chenweihang): polish refind impl here
   if (kernel_iter == iter->second.end() &&
@@ -130,7 +133,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_key,
           kernel_name));
 
-  if (FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) {
+  if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
+#if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
+      || paddle::platform::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
+
+#endif
+  ) {
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());

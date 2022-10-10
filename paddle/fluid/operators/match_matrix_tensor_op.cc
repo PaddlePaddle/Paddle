@@ -24,7 +24,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
@@ -244,7 +244,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<LoDTensor>("X");
     auto* y = ctx.Input<LoDTensor>("Y");
-    auto* w = ctx.Input<Tensor>("W");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
     auto* out = ctx.Output<LoDTensor>("Out");
     auto* tmp = ctx.Output<LoDTensor>("Tmp");
 
@@ -324,7 +324,7 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<LoDTensor>("X");
     auto* y = ctx.Input<LoDTensor>("Y");
-    auto* w = ctx.Input<Tensor>("W");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
     auto* tmp = ctx.Input<LoDTensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
@@ -391,7 +391,7 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
 
     auto* t_data = w->data<T>();
-    auto* d_w = ctx.Output<Tensor>(framework::GradVarName("W"));
+    auto* d_w = ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
     auto* t_diff = d_w->mutable_data<T>(ctx.GetPlace());
     memset(t_diff, 0.0, w->dims()[0] * w->dims()[1] * w->dims()[2] * sizeof(T));
     // bottom_diff

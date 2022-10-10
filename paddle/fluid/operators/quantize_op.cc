@@ -15,23 +15,17 @@
 #include "paddle/fluid/operators/quantize_op.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
 
 framework::OpKernelType QuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
-  framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
-
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
       ctx.GetPlace(),
-      layout_,
-      library_);
+      framework::DataLayout::kMKLDNN,
+      framework::LibraryType::kMKLDNN);
 }
 
 void QuantOpMaker::Make() {

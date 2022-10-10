@@ -31,7 +31,7 @@ class OpBase;
 }  // namespace paddle
 
 using LoDTensor = paddle::framework::LoDTensor;
-using Tensor = paddle::framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 namespace paddle {
 namespace operators {
@@ -66,7 +66,7 @@ class CopyCrossScopeOp : public framework::OperatorBase {
         platform::errors::NotFound("No variable with name %s found.", id_name));
     auto id_tensor = id_var->GetMutable<LoDTensor>();
     auto it = scope.kids().begin();
-    framework::Tensor cpu_id_tensor;
+    phi::DenseTensor cpu_id_tensor;
     paddle::framework::TensorCopySync(
         *id_tensor, platform::CPUPlace(), &cpu_id_tensor);
     auto id_value = cpu_id_tensor.data<int64_t>();

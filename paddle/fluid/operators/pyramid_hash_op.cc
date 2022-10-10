@@ -28,7 +28,7 @@ extern "C" {
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
@@ -276,9 +276,9 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
 
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* bottom = ctx.Input<LoDTensor>("X");
-    auto* _blobs_0 = ctx.Input<Tensor>("W");
-    auto* _blobs_1 = ctx.Input<Tensor>("WhiteList");
-    auto* _blobs_2 = ctx.Input<Tensor>("BlackList");
+    auto* _blobs_0 = ctx.Input<phi::DenseTensor>("W");
+    auto* _blobs_1 = ctx.Input<phi::DenseTensor>("WhiteList");
+    auto* _blobs_2 = ctx.Input<phi::DenseTensor>("BlackList");
     auto* top = ctx.Output<LoDTensor>("Out");
     auto* drop_pos = ctx.Output<LoDTensor>("DropPos");
 
@@ -513,7 +513,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
 
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* bottom = ctx.Input<LoDTensor>("X");
-    auto* _blobs = ctx.Input<Tensor>("W");
+    auto* _blobs = ctx.Input<phi::DenseTensor>("W");
     auto* drop_pos = ctx.Input<LoDTensor>("DropPos");
     auto* top = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
 

@@ -19,7 +19,7 @@ from enum import Enum
 import paddle
 
 from paddle.optimizer import Optimizer
-from paddle.distributed.utils import get_logger
+from paddle.distributed.utils.log_utils import get_logger
 from paddle.fluid.framework import in_dygraph_mode
 
 # Old version
@@ -177,7 +177,7 @@ def save_group_sharded_model(model, output, optimizer=None):
     """
     Group sharded encapsulated model and optimizer state saving module.
 
-    .. note::
+    Note:
         If using save_group_sharded_model saves the model. When loading again, you need to set the model or optimizer state before using group_sharded_parallel.
 
     Args:

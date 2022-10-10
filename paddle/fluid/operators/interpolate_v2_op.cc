@@ -25,7 +25,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
@@ -463,7 +462,7 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -713,7 +712,7 @@ class InterpolateV2OpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;

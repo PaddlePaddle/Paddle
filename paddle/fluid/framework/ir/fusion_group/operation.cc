@@ -141,7 +141,8 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   // scale
   //  out = (bias_after_scale) ? scale * X +  bias : scale(X + bias)
   //  here we use '=' operator to separate th default value
-  // TODO(wangchaochaohu): Later we need to support Tensor input for scale and
+  // TODO(wangchaochaohu): Later we need to support phi::DenseTensor input for
+  // scale and
   //  bias.
   insert_handler(
       "scale",

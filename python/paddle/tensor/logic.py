@@ -91,7 +91,7 @@ def logical_and(x, y, out=None, name=None):
 
         out = x \&\& y
 
-    .. note::
+    Note:
         ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -134,7 +134,7 @@ def logical_or(x, y, out=None, name=None):
 
         out = x || y
 
-    .. note::
+    Note:
         ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -150,14 +150,14 @@ def logical_or(x, y, out=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x_data = np.array([True, False], dtype=np.bool_).reshape(2, 1)
-            y_data = np.array([True, False, True, False], dtype=np.bool_).reshape(2, 2)
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
+            x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
+            y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
             res = paddle.logical_or(x, y)
-            print(res) # [[ True  True] [ True False]]
+            print(res)
+            # Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            #        [[True , True ],
+            #         [True , False]])
     """
     if in_dygraph_mode():
         return _C_ops.logical_or(x, y)
@@ -179,7 +179,7 @@ def logical_xor(x, y, out=None, name=None):
 
         out = (x || y) \&\& !(x \&\& y)
 
-    .. note::
+    Note:
         ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
 
     Args:
@@ -195,14 +195,14 @@ def logical_xor(x, y, out=None, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x_data = np.array([True, False], dtype=np.bool_).reshape([2, 1])
-            y_data = np.array([True, False, True, False], dtype=np.bool_).reshape([2, 2])
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
+            x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
+            y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
             res = paddle.logical_xor(x, y)
-            print(res) # [[False,  True], [ True, False]]
+            print(res)
+            # Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            #        [[False, True ],
+            #         [True , False]])
     """
     if in_dygraph_mode():
         return _C_ops.logical_xor(x, y)
@@ -373,32 +373,25 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           y = paddle.to_tensor([10000.1, 1e-08])
           result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
-          np_result1 = result1.numpy()
           # [False]
+
           result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
-          np_result2 = result2.numpy()
           # [False]
 
           x = paddle.to_tensor([1.0, float('nan')])
           y = paddle.to_tensor([1.0, float('nan')])
           result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
-          np_result1 = result1.numpy()
           # [False]
+
           result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
-          np_result2 = result2.numpy()
           # [True]
     """
 
     if in_dygraph_mode():
-        # NOTE(dev): Pass tol as Tensor to fix precision loss problem, because
-        # C++ backend will cast it into float32 if passing float from python.
-        as_tensor = lambda x: paddle.to_tensor(
-            [x], dtype='float64', place='cpu')
-        return _C_ops.allclose(x, y, as_tensor(rtol), as_tensor(atol),
-                               equal_nan)
+        return _C_ops.allclose(x, y, rtol, atol, equal_nan)
     if _in_legacy_dygraph():
         return _legacy_C_ops.allclose(x, y, 'rtol', str(rtol), 'atol',
                                       str(atol), 'equal_nan', equal_nan)
@@ -962,13 +955,6 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     Returns:
         Tensor: ${out_comment}.
 
-    Raises:
-        TypeError: The data type of ``x`` must be one of float32, float64.
-        TypeError: The data type of ``y`` must be one of float32, float64.
-        TypeError: The type of ``rtol`` must be float.
-        TypeError: The type of ``atol`` must be float.
-        TypeError: The type of ``equal_nan`` must be bool.
-
     Examples:
         .. code-block:: python
 
@@ -978,31 +964,23 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           y = paddle.to_tensor([10000.1, 1e-08])
           result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
-          np_result1 = result1.numpy()
           # [True, False]
           result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
-          np_result2 = result2.numpy()
           # [True, False]
 
           x = paddle.to_tensor([1.0, float('nan')])
           y = paddle.to_tensor([1.0, float('nan')])
           result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
-          np_result1 = result1.numpy()
           # [True, False]
           result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
-          np_result2 = result2.numpy()
           # [True, True]
     """
 
     if in_dygraph_mode():
-        # NOTE(dev): Pass tol as Tensor to fix precision loss problem, because
-        # C++ backend will cast it into float32 if passing float from python.
-        as_tensor = lambda x: paddle.to_tensor(
-            [x], dtype='float64', place='cpu')
-        return _C_ops.isclose(x, y, as_tensor(rtol), as_tensor(atol), equal_nan)
+        return _C_ops.isclose(x, y, rtol, atol, equal_nan)
     if _in_legacy_dygraph():
         return _legacy_C_ops.isclose(x, y, 'rtol', str(rtol), 'atol', str(atol),
                                      'equal_nan', equal_nan)
