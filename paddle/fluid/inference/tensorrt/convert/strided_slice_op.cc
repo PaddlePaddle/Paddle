@@ -20,9 +20,7 @@ class StridedSliceOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    // This OP is implemented by trt dynamic shpae plugin.
-    // Dynamic shape plugin requires TRT version greater than 6.0.
-    VLOG(4) << "convert slice op to tensorrt layer";
+    VLOG(4) << "convert strided_slice op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
@@ -37,6 +35,12 @@ class StridedSliceOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
     std::vector<int> decrease_axises =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
+
+    // for (size_t i = 0; i < axes.size(); i++) {
+    //   if (axes[i] < 0) {
+    //     axes[i] += ;
+    //   }
+    // }
 
     auto input_dims = input->getDimensions();
     if (!engine_->with_dynamic_shape()) {
@@ -152,7 +156,9 @@ class StridedSliceOpConverter : public OpConverter {
       for (size_t i = 0; i < axes.size(); i++) {
         int trt_axis = axes[i] - 1;
         trt_start_dims.d[trt_axis] = starts[i];
-        trt_size_dims.d[trt_axis] = ends[i] - starts[i];
+        trt_size_dims.d[trt_axis] =
+            (ends[i] - starts[i] + strides[i] - 1) / strides[i];
+        trt_step_dims.d[trt_axis] = strides[i];
       }
       layer = TRT_ENGINE_ADD_LAYER(
           engine_, Slice, *input, trt_start_dims, trt_size_dims, trt_step_dims);
