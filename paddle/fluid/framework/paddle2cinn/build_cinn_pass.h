@@ -21,8 +21,6 @@ limitations under the License. */
 #include <unordered_set>
 
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {

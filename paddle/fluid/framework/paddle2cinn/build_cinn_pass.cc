@@ -565,21 +565,24 @@ void SearchAllSubgraphs(Graph* graph) {
     if (trans_info.dynamic_op_cond.count(node_name)) {
       is_dynamic = trans_info.dynamic_op_cond.at(node_name)(node);
     }
+
+    bool is_support =
+        registered && !trans_info.default_deny_ops.count(node_name) &&
+        !is_dynamic && (node->IsOp() && !IsInplaceOp(*node->Op()));
     // if the op type is registered in CINN and allow_ops is not empty, return
     // true only when it is in allow_ops
     if (!allow_ops.empty()) {
-      return registered && !is_dynamic && allow_ops.count(node_name);
+      return is_support && allow_ops.count(node_name);
     }
     // if the op type is registered in CINN and deny_ops is not empty, return
     // true only when it is not in deny_ops
     if (!deny_ops.empty()) {
-      return registered && !is_dynamic && !deny_ops.count(node_name);
+      return is_support && !deny_ops.count(node_name);
     }
 
     // if the user doesn't set FLAGS_allow_cinn_ops and FLAGS_deny_cinn_ops,
     // return true only when it is registered in CINN
-    return registered && !trans_info.default_deny_ops.count(node_name) &&
-           !is_dynamic && (node->IsOp() && !IsInplaceOp(*node->Op()));
+    return is_support;
   };
   VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
   VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
