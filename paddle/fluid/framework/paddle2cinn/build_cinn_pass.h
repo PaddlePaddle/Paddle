@@ -67,7 +67,8 @@ struct OpTransInfo {
              }
              return false;
            }},
-          {"expand", [](const ir::Node* node) -> bool {
+          {"expand",
+           [](const ir::Node* node) -> bool {
              if (!node->IsOp()) {
                return false;
              }
@@ -78,6 +79,19 @@ struct OpTransInfo {
                      expand_times.begin(), expand_times.end(), [](int v) {
                        return v < 0;
                      }) != expand_times.end()) {
+               return true;
+             }
+             return false;
+           }},
+          {"reshape2", [](const ir::Node* node) -> bool {
+             if (!node->IsOp()) {
+               return false;
+             }
+             auto* op_desc = node->Op();
+             auto shape = op_desc->GetAttrIfExists<std::vector<int>>("shape");
+             if (std::find_if(shape.begin(), shape.end(), [](int v) {
+                   return v < 0;
+                 }) != shape.end()) {
                return true;
              }
              return false;
