@@ -290,6 +290,22 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool adaptive_seqlen = false);
 
   ///
+  /// \brief configs of IPU
+  ///
+  enum class ipu_config_code {
+    ipu_device_num,
+    ipu_micro_batch_size,
+    ipu_enable_pipelining,
+    ipu_batches_per_step,
+    ipu_enable_fp16,
+    ipu_replica_num,
+    ipu_available_memory_proportion,
+    ipu_enable_half_partial,
+    ipu_custom_ops_info,
+    ipu_custom_patterns
+  };
+
+  ///
   /// \brief Turn on IPU.
   ///
   /// \param ipu_device_num the number of IPUs.
@@ -317,6 +333,25 @@ struct PD_INFER_DECL AnalysisConfig {
                     int ipu_replica_num = 1,
                     float ipu_available_memory_proportion = 1.0,
                     bool ipu_enable_half_partial = false);
+
+  ///
+  /// \brief Set IPU custom ops and patterns.
+  ///
+  /// \param custom_ops_info the mapper of paddle custom ops and popart ops.
+  /// e.g. {{paddle_op_name, popart_op_name, op_domain, op_version}}.
+  /// \param custom_patterns the names of popart patterns. e.g. {{pattern_name,
+  /// enable_pattern}}}
+  ///
+  void SetIpuCustomInfo(
+      const std::vector<std::vector<std::string>>& ipu_custom_ops_info = {},
+      const std::map<std::string, bool>& ipu_custom_patterns = {});
+
+  ///
+  /// \brief Load IPU config from configuration file.
+  ///
+  /// \param config_path configure file path for ipu.
+  ///
+  void LoadIpuConfig(const std::string& config_path);
 
   ///
   /// \brief Set XPU device id.
@@ -1112,6 +1147,22 @@ struct PD_INFER_DECL AnalysisConfig {
   int ipu_replica_num_{1};
   float ipu_available_memory_proportion_{1.0};
   bool ipu_enable_half_partial_{false};
+
+  std::vector<std::vector<std::string>> ipu_custom_ops_info_;
+  std::vector<std::vector<std::string>> ipu_custom_patterns_;
+
+  const std::unordered_map<std::string, ipu_config_code> ipu_config_mapper_ = {
+      {"ipu_device_num", ipu_config_code::ipu_device_num},
+      {"ipu_micro_batch_size", ipu_config_code::ipu_micro_batch_size},
+      {"ipu_enable_pipelining", ipu_config_code::ipu_enable_pipelining},
+      {"ipu_batches_per_step", ipu_config_code::ipu_batches_per_step},
+      {"ipu_enable_fp16", ipu_config_code::ipu_enable_fp16},
+      {"ipu_replica_num", ipu_config_code::ipu_replica_num},
+      {"ipu_available_memory_proportion",
+       ipu_config_code::ipu_available_memory_proportion},
+      {"ipu_enable_half_partial", ipu_config_code::ipu_enable_half_partial},
+      {"ipu_custom_ops_info", ipu_config_code::ipu_custom_ops_info},
+      {"ipu_custom_patterns", ipu_config_code::ipu_custom_patterns}};
 
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.

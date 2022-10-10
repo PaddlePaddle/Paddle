@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import random
 import numpy as np
 
 import unittest
 import paddle
-import paddle.nn as nn
 import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet import auto
-from paddle.distributed.passes import new_pass, PassManager
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 

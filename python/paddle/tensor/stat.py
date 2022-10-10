@@ -605,32 +605,35 @@ def quantile(x, q, axis=None, keepdim=False):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.arange(0, 8, dtype=np.float32).reshape(4, 2)
-            # [[0 1]
-            #  [2 3]
-            #  [4 5]
-            #  [6 7]]
-            y = paddle.to_tensor(x)
+            y = paddle.arange(0, 8 ,dtype="float32").reshape([4, 2])
+            # Tensor(shape=[4, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0., 1.],
+            #         [2., 3.],
+            #         [4., 5.],
+            #         [6., 7.]])
+
             y1 = paddle.quantile(y, q=0.5, axis=[0, 1])
-            # 3.5
+            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        3.50000000)
 
             y2 = paddle.quantile(y, q=0.5, axis=1)
-            # [0.5 2.5 4.5 6.5]
+            # Tensor(shape=[4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [0.50000000, 2.50000000, 4.50000000, 6.50000000])
 
             y3 = paddle.quantile(y, q=[0.3, 0.5], axis=0)
-            # [[1.8 2.8]
-            #  [3.  4. ]]
+            # Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[1.80000000, 2.80000000],
+            #         [3.        , 4.        ]])
 
-            x[0][0] = np.nan
-            y = paddle.to_tensor(x)
+            y[0,0] = float("nan")
             y4 = paddle.quantile(y, q=0.8, axis=1, keepdim=True)
-            # [[nan]
-            #  [2.8]
-            #  [4.8]
-            #  [6.8]]
+            # Tensor(shape=[4, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[nan       ],
+            #         [2.80000000],
+            #         [4.80000000],
+            #         [6.80000000]])
 
     """
     return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=False)
@@ -665,35 +668,37 @@ def nanquantile(x, q, axis=None, keepdim=False):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.array(
+            x = paddle.to_tensor(
                 [[0, 1, 2, 3, 4],
-                 [5, 6, 7, 8, 9]],
-                dtype=np.float32
-            )
-            x[0][0] = np.nan
+                    [5, 6, 7, 8, 9]],
+                dtype="float32")
+            x[0,0] = float("nan")
 
-            x = paddle.to_tensor(x)
             y1 = paddle.nanquantile(x, q=0.5, axis=[0, 1])
-            # 5.0
+            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        5.)
 
             y2 = paddle.nanquantile(x, q=0.5, axis=1)
-            # [2.5 7. ]
+            # Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [2.50000000, 7.        ])
 
             y3 = paddle.nanquantile(x, q=[0.3, 0.5], axis=0)
-            # [[5.  2.5 3.5 4.5 5.5]
-            #  [5.  3.5 4.5 5.5 6.5]
+            # Tensor(shape=[2, 5], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[5.        , 2.50000000, 3.50000000, 4.50000000, 5.50000000],
+            #         [5.        , 3.50000000, 4.50000000, 5.50000000, 6.50000000]])
 
             y4 = paddle.nanquantile(x, q=0.8, axis=1, keepdim=True)
-            # [[3.4]
-            #  [8.2]]
+            # Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[3.40000000],
+            #         [8.20000000]])
 
-            nan = paddle.full(shape=[2, 3], fill_value=np.nan)
+            nan = paddle.full(shape=[2, 3], fill_value=float("nan"))
             y5 = paddle.nanquantile(nan, q=0.8, axis=1, keepdim=True)
-            # [[nan]
-            #  [nan]]
+            # Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[nan],
+            #         [nan]])
 
     """
     return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=True)
