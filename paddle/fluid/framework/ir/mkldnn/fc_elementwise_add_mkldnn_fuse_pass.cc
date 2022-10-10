@@ -62,11 +62,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope};
-  bool fc_has_bias = true;
-  auto fc_output = fc_pattern(
-      gpd.mutable_pattern()->NewNode("fc")->AsInput()->assert_is_op_input(
-          "fc", "Input"),
-      fc_has_bias);
+  auto fc_output = fc_pattern(false /* with residual */);
 
   patterns::ResidualElementwise elementwise_pattern{
       pattern, name_scope, fc_as_x};

@@ -5418,5 +5418,94 @@ MLURNNDesc::~MLURNNDesc() {
                                                               diff_x));
 }
 
+/* static */ void MLUOP::OpYoloBox(const ExecutionContext& ctx,
+                                   const mluOpTensorDescriptor_t x_desc,
+                                   const void* x,
+                                   const mluOpTensorDescriptor_t img_size_desc,
+                                   const void* img_size,
+                                   const mluOpTensorDescriptor_t anchors_desc,
+                                   const void* anchors,
+                                   const int class_num,
+                                   const float conf_thresh,
+                                   const int downsample_ratio,
+                                   const bool clip_bbox,
+                                   const float scale,
+                                   const bool iou_aware,
+                                   const float iou_aware_factor,
+                                   const mluOpTensorDescriptor_t boxes_desc,
+                                   void* boxes,
+                                   const mluOpTensorDescriptor_t scores_desc,
+                                   void* scores) {
+  mluOpHandle_t handle = GetMLUOpHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpYoloBox(handle,
+                                          x_desc,
+                                          x,
+                                          img_size_desc,
+                                          img_size,
+                                          anchors_desc,
+                                          anchors,
+                                          class_num,
+                                          conf_thresh,
+                                          downsample_ratio,
+                                          clip_bbox,
+                                          scale,
+                                          iou_aware,
+                                          iou_aware_factor,
+                                          boxes_desc,
+                                          boxes,
+                                          scores_desc,
+                                          scores));
+}
+
+/* static */ void MLUOP::OpPriorBox(
+    const ExecutionContext& ctx,
+    const mluOpTensorDescriptor_t min_sizes_desc,
+    const void* min_sizes,
+    const mluOpTensorDescriptor_t aspect_ratios_desc,
+    const void* aspect_ratios,
+    const mluOpTensorDescriptor_t variances_desc,
+    const void* variances,
+    const mluOpTensorDescriptor_t max_sizes_desc,
+    const void* max_sizes,
+    const int height,
+    const int width,
+    const int im_height,
+    const int im_width,
+    const float step_h,
+    const float step_w,
+    const float offset,
+    const bool clip,
+    const bool min_max_aspect_ratios_order,
+    const mluOpTensorDescriptor_t output_desc,
+    void* output,
+    const mluOpTensorDescriptor_t var_desc,
+    void* var) {
+  mluOpHandle_t handle = GetMLUOpHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpPriorBox(handle,
+                                           min_sizes_desc,
+                                           min_sizes,
+                                           aspect_ratios_desc,
+                                           aspect_ratios,
+                                           variances_desc,
+                                           variances,
+                                           max_sizes_desc,
+                                           max_sizes,
+                                           height,
+                                           width,
+                                           im_height,
+                                           im_width,
+                                           step_h,
+                                           step_w,
+                                           offset,
+                                           clip,
+                                           min_max_aspect_ratios_order,
+                                           output_desc,
+                                           output,
+                                           var_desc,
+                                           var));
+}
+
 }  // namespace operators
 }  // namespace paddle

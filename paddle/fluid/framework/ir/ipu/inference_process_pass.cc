@@ -93,6 +93,33 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
   // Set tiles_per_ipu for IPUMODEL
   ipu_strategy_instance_->tiles_per_ipu = 128;
 
+  // Set Cache path
+  auto* ipu_cache_path = getenv("IPU_CACHE_PATH");
+  if (ipu_cache_path) {
+    ipu_strategy_instance_->popart_options.enableEngineCaching = true;
+    ipu_strategy_instance_->popart_options.cachePath =
+        std::string{ipu_cache_path};
+  }
+
+  // custom ops and patterns
+  std::unordered_set<std::string> custom_op_names;
+  auto custom_ops_info =
+      graph->Get<std::vector<std::vector<std::string>>>("custom_ops_info");
+  for (auto custom_op : custom_ops_info) {
+    ipu_strategy_instance_->AddCustomOp(
+        custom_op[0], custom_op[1], custom_op[2], atoi(custom_op[3].c_str()));
+    custom_op_names.insert(custom_op[0]);
+  }
+  auto patterns =
+      graph->Get<std::vector<std::vector<std::string>>>("custom_patterns");
+  for (auto pattern : patterns) {
+    if (pattern[1] == "True") {
+      ipu_strategy_instance_->EnablePattern(pattern[0]);
+    } else if (pattern[1] == "False") {
+      ipu_strategy_instance_->DisablePattern(pattern[0]);
+    }
+  }
+
   ipu_backend->SetIpuStrategy(*(ipu_strategy_instance_.get()));
 
   // Get feed_list and fetch list
@@ -139,6 +166,11 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
       pass->Set(
           "feed_list",
           new std::vector<std::string>(feed_list.begin(), feed_list.end()));
+    }
+    if (pass_name == "popart_canonicalization_pass") {
+      pass->Set("custom_ops",
+                new std::unordered_set<std::string>(custom_op_names.begin(),
+                                                    custom_op_names.end()));
     }
     pass->Apply(graph);
   }

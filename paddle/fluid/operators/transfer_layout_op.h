@@ -93,8 +93,13 @@ class TransferLayoutFunctor {
           paddle::platform::MKLDNNDeviceContext::tls()
               .set_cur_paddle_data_layout(in_layout);
         }
-        out_tensor.set_layout(DataLayout::kMKLDNN);
-        out_tensor.set_format(out_format);
+
+        auto out_tz = phi::vectorize<int64_t>(out_tensor.dims());
+        dnnl::memory::data_type in_type = framework::ToMKLDNNDataType(
+            framework::TransToProtoVarType(in_tensor.dtype()));
+
+        dnnl::memory::desc out_mem_desc(out_tz, in_type, out_format);
+        out_tensor.set_mem_desc(out_mem_desc);
       } else {
         auto target_layout = paddle::platform::MKLDNNDeviceContext::tls()
                                  .get_cur_paddle_data_layout();

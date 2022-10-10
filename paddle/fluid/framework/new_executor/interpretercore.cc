@@ -321,7 +321,6 @@ std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
     async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
         execution_config_.host_num_threads,
         execution_config_.deivce_num_threads,
-        execution_config_.prepare_num_threads,
         &main_thread_blocker_);
   }
   return async_work_queue_;
@@ -601,17 +600,13 @@ void InterpreterCore::Convert(
     BuildInplace();
   }
 
-  // prepare for the first time.
-  std::promise<std::unique_ptr<AtomicVectorSizeT>> deps_promise =
-      std::promise<std::unique_ptr<AtomicVectorSizeT>>();
-  atomic_deps_ = deps_promise.get_future();
-  deps_promise.set_value(interpreter::PrepareAtomicDeps(dependecy_count_));
-
-  std::promise<std::unique_ptr<AtomicVectorSizeT>> var_ref_promise =
-      std::promise<std::unique_ptr<AtomicVectorSizeT>>();
-  atomic_var_ref_ = var_ref_promise.get_future();
-  var_ref_promise.set_value(
-      interpreter::PrepareAtomicVarRef(var_scope_.VecMetaInfo()));
+  for (auto& dep : dependecy_count_) {
+    deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
+  }
+  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+    refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
+        vec_meta_info[i].var_ref_count_, var_scope_.VarRef(i)));
+  }
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
@@ -804,45 +799,19 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
   unfinished_op_numer_ = vec_instr.size();
   if (unfinished_op_numer_ == 0) {
     VLOG(4) << "No op to run, return";
     return;
   }
 
-  platform::RecordEvent record_prepare(
-      "PrepareAtomic", platform::TracerEventType::UserDefined, 1);
-
-  std::unique_ptr<std::vector<std::atomic<size_t>>> atomic_deps = nullptr;
-  std::unique_ptr<std::vector<std::atomic<size_t>>> atomic_var_ref = nullptr;
-
-  if (async_work_queue_->QueueNumThreads(kPrepareWorkQueueIdx)) {
-    // NOTE(zhiqiu): get the prepared deps from std::future, and async prepare
-    // those for the next step
-    atomic_deps = atomic_deps_.get();
-    atomic_var_ref = atomic_var_ref_.get();
-
-    atomic_deps_ = async_work_queue_->PrepareAtomicDeps(dependecy_count_);
-    atomic_var_ref_ =
-        async_work_queue_->PrepareAtomicVarRef(var_scope_.VecMetaInfo());
-  } else {
-    atomic_deps = interpreter::PrepareAtomicDeps(dependecy_count_);
-    atomic_var_ref = interpreter::PrepareAtomicVarRef(var_scope_.VecMetaInfo());
-  }
-  record_prepare.End();
-
   exception_holder_.Clear();
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
-                                 [this,
-                                  i,
-                                  atomic_deps = atomic_deps.get(),
-                                  atomic_var_ref = atomic_var_ref.get()] {
-                                   RunInstructionAsync(
-                                       i, atomic_deps, atomic_var_ref);
-                                 });
+                                 [this, i] { RunInstructionAsync(i); });
     }
   }
 
@@ -869,19 +838,15 @@ void InterpreterCore::ExecuteInstructionList(
 }
 
 void InterpreterCore::RunNextInstructions(
-    const Instruction& instr,
-    std::queue<size_t>* reserved_next_ops,
-    std::vector<std::atomic<size_t>>* atomic_deps,
-    std::vector<std::atomic<size_t>>* atomic_var_ref) {
+    const Instruction& instr, std::queue<size_t>* reserved_next_ops) {
   platform::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
-  VLOG(4) << "atomic 1:" << atomic_deps;
   auto& next_instr = instr.NextInstructions();
 
-  auto IsReady = [atomic_deps](size_t next_id) {
-    VLOG(4) << "atomic:" << atomic_deps << " op_id: " << next_id
-            << ", remain deps: " << (*atomic_deps)[next_id];
-    return (*atomic_deps)[next_id].fetch_sub(1, std::memory_order_relaxed) == 1;
+  auto IsReady = [this](size_t next_id) {
+    VLOG(4) << "op_id: " << next_id
+            << ", remain deps: " << deps_[next_id]->DynamicDep();
+    return deps_[next_id]->CheckAndDecrease();
   };
 
   if (instr.KernelType() == OpFuncType::kQueueAsync) {
@@ -890,9 +855,7 @@ void InterpreterCore::RunNextInstructions(
       if (IsReady(next_id)) {
         async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
-            [this, next_id, atomic_deps, atomic_var_ref]() {
-              RunInstructionAsync(next_id, atomic_deps, atomic_var_ref);
-            });
+            [this, next_id]() { RunInstructionAsync(next_id); });
       }
     }
     // keep all async_ops running in current thread
@@ -912,9 +875,7 @@ void InterpreterCore::RunNextInstructions(
       if (IsReady(next_id)) {
         async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
-            [this, next_id, atomic_deps, atomic_var_ref] {
-              RunInstructionAsync(next_id, atomic_deps, atomic_var_ref);
-            });
+            [this, next_id] { RunInstructionAsync(next_id); });
       }
     }
     auto direct_run_ops = interpreter::merge_vector(next_instr.SyncRunIds(),
@@ -930,19 +891,14 @@ void InterpreterCore::RunNextInstructions(
         // move rest ops into other threads
         async_work_queue_->AddTask(
             vec_instruction_[next_id].KernelType(),
-            [this, next_id, atomic_deps, atomic_var_ref] {
-              RunInstructionAsync(next_id, atomic_deps, atomic_var_ref);
-            });
+            [this, next_id] { RunInstructionAsync(next_id); });
       }
     }
     if (first_op != -1) reserved_next_ops->push(first_op);
   }
 }
 
-void InterpreterCore::RunInstructionAsync(
-    size_t instr_id,
-    std::vector<std::atomic<size_t>>* atomic_deps,
-    std::vector<std::atomic<size_t>>* atomic_var_ref) {
+void InterpreterCore::RunInstructionAsync(size_t instr_id) {
   std::queue<size_t> ready_ops;
   ready_ops.push(instr_id);
   while (!ready_ops.empty()) {
@@ -965,7 +921,7 @@ void InterpreterCore::RunInstructionAsync(
 
       RunInstruction(instr_node);
 
-      CheckGC(instr_node, atomic_var_ref);
+      CheckGC(instr_node);
 
       interpreter::LogDeviceMemoryStats(place_);
 
@@ -1001,7 +957,7 @@ void InterpreterCore::RunInstructionAsync(
       }
     }
 
-    RunNextInstructions(instr_node, &ready_ops, atomic_deps, atomic_var_ref);
+    RunNextInstructions(instr_node, &ready_ops);
   }
 }
 
@@ -1100,9 +1056,7 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
 }
 #endif
 
-void InterpreterCore::CheckGC(
-    const Instruction& instr,
-    std::vector<std::atomic<size_t>>* atomic_var_ref) {
+void InterpreterCore::CheckGC(const Instruction& instr) {
   platform::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -1111,12 +1065,9 @@ void InterpreterCore::CheckGC(
   auto& var_scope = var_scope_;
 
   for (auto var_id : instr.GCCheckVars()) {
-    VLOG(4) << "GC " << var_scope_.GetNameById(var_id) << " "
-            << var_scope.VarDesc(var_id);
-    VLOG(4) << "atomic:" << atomic_var_ref << " " << &(*atomic_var_ref)[var_id]
-            << " " << var_id;
-    bool is_ready =
-        (*atomic_var_ref)[var_id].fetch_sub(1, std::memory_order_relaxed) == 1;
+    VLOG(4) << "GC:" << var_scope_.GetNameById(var_id) << ", id:" << var_id
+            << ", ref:" << refs_[var_id]->DynamicRef();
+    bool is_ready = refs_[var_id]->CheckAndDecrease();
     // ignore all persistable var while GC
     if (var_scope.VarDesc(var_id) && var_scope.VarDesc(var_id)->Persistable()) {
       continue;
@@ -1124,7 +1075,7 @@ void InterpreterCore::CheckGC(
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
               << var_scope.GetNameById(var_id);
-      gc_->Add(var_scope_.VarRef(var_id), instr);
+      gc_->Add(refs_[var_id]->Var(), instr);
     }
   }
 }

@@ -23,4 +23,5 @@ PD_REGISTER_KERNEL(deformable_conv,
                    ALL_LAYOUT,
                    phi::DeformableConvKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}

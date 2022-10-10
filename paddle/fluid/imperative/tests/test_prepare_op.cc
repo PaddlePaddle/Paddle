@@ -258,5 +258,5 @@ TEST(test_prepare_op, test_prepare_data_cpu_mkldnn) {
 USE_OP_ITSELF(split);
 USE_OP_ITSELF(relu);
 #ifdef PADDLE_WITH_MKLDNN
-PD_DECLARE_KERNEL(relu, OneDNN, ALL_LAYOUT);
+PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 #endif

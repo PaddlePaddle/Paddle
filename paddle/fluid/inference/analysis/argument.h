@@ -341,6 +341,12 @@ struct Argument {
                       IpuAvailableMemoryProportion,
                       float);
   DECL_ARGUMENT_FIELD(ipu_enable_half_partial, IpuEnableHalfPartial, bool);
+  DECL_ARGUMENT_FIELD(ipu_custom_ops_info,
+                      IpuCustomOpsInfo,
+                      std::vector<std::vector<std::string>>);
+  DECL_ARGUMENT_FIELD(ipu_custom_patterns,
+                      IpuCustomPatterns,
+                      std::vector<std::vector<std::string>>);
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);

@@ -458,6 +458,7 @@ void DeviceWorker::DumpField(const Scope& scope,
     }
     writer_ << ars[i];
   }
+  writer_.Flush();
 }
 
 }  // namespace framework
