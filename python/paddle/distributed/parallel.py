@@ -76,7 +76,7 @@ def _is_cpuonly(backend):
     if (backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'] and
         (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
          or core.is_compiled_with_npu()
-         or core.is_compiled_with_mlu())) or backend is 'xccl':
+         or core.is_compiled_with_mlu())) or backend == 'xccl':
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False

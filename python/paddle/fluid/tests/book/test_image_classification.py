@@ -21,7 +21,6 @@ import numpy
 import unittest
 import os
 import tempfile
-import numpy as np
 
 paddle.enable_static()
 

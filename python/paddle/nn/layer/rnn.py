@@ -1012,7 +1012,13 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
-        if in_dynamic_mode():
+        if in_dygraph_mode():
+            out, _, state = _C_ops.rnn(
+                inputs, initial_states, self._all_weights, sequence_length,
+                self._dropout_state, self.dropout, self.num_directions == 2,
+                self.input_size, self.hidden_size, self.num_layers, self.mode,
+                0, not self.training)
+        elif in_dynamic_mode():
             _, _, out, state = _legacy_C_ops.rnn(
                 inputs, initial_states, self._all_weights, sequence_length,
                 self._dropout_state, self.state_components, 'dropout_prob',
