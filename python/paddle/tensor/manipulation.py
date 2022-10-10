@@ -4305,9 +4305,16 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         arr (Tensor) : The Destination Tensor. Supported data types are float32 and float64.
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr. Supported data type are int and int64.
+<<<<<<< HEAD
         axis (int) : The axis to put 1d slices along. 
         reduce (string | optinal) : The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
     Returns : 
+=======
+        axis (int) : The axis to put 1d slices along.
+        reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
+
+    Returns:
+>>>>>>> 60d5a912f3 ([docs] add ipustrategy Hyperlink (#46422))
         Tensor: The indexed element, same dtype with arr
     
     Examples:
