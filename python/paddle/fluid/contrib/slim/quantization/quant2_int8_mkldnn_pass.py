@@ -64,7 +64,7 @@ class Quant2Int8MkldnnPass(object):
             [-1])
         self._scale_immutable_ops = [
             'transpose2', 'reshape2', 'pool2d', 'slice', 'shape',
-            'nearest_interp', 'nearest_interp_v2'
+            'nearest_interp', 'nearest_interp_v2', 'split'
         ]
         self._scale_ops = ['scale']
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
