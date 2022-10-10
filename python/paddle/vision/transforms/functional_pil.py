@@ -13,14 +13,11 @@
 # limitations under the License.
 
 import sys
-import math
 import numbers
-import warnings
 import collections
 from PIL import Image, ImageOps, ImageEnhance
 
 import numpy as np
-from numpy import sin, cos, tan
 import paddle
 
 if sys.version_info < (3, 3):

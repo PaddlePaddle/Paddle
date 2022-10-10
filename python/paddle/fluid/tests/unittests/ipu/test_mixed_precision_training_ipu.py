@@ -55,12 +55,6 @@ class TestBase(IPUOpTest):
         self.enable_manual_shard = False
         self.batches_per_step = 1
 
-    def dtype_check(self, program, to_fp16_var_names):
-        block = program.global_block()
-        assert len(to_fp16_var_names) > 0
-        for var_name in to_fp16_var_names:
-            assert (block.var(var_name).dtype, paddle.float16)
-
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(name=self.feed_list[0],
@@ -94,7 +88,6 @@ class TestBase(IPUOpTest):
             amp_list.unsupported_list = {}
             to_fp16_var_names = paddle.static.amp.cast_model_to_fp16(
                 self.main_prog, amp_list)
-            self.dtype_check(self.main_prog, to_fp16_var_names)
 
         if self.is_ipu_mode(exec_mode):
             place = paddle.CPUPlace()
