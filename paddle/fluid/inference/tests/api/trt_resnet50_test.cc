@@ -22,6 +22,7 @@ namespace paddle {
 namespace inference {
 
 TEST(resnet50, compare_continuous_input) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   std::string model_dir = FLAGS_infer_model + "/resnet50";
   compare_continuous_input(model_dir, /* use_tensorrt */ true);
 }
