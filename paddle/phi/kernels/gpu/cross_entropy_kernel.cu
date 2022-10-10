@@ -186,7 +186,7 @@ __global__ void CrossEntropyHardLabel(T* loss,
   if (ids < n * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
     PADDLE_ENFORCE(lbl >= 0 && lbl < dim || lbl == ignore_idx,
-                   "The value of label expected >= 0 and < %ld, or == %ld, "
+                   "The value of label expected >= 0 and < %d, or == %d, "
                    "but got %ld. Please check label value.",
                    dim,
                    ignore_idx,
@@ -222,7 +222,7 @@ __global__ void CrossEntropyExpHardLabel(T* loss,
   if (idx < n * dim * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
     PADDLE_ENFORCE(lbl >= 0 && lbl < dim || lbl == ignore_idx,
-                   "The value of label expected >= 0 and < %ld, or == %ld, "
+                   "The value of label expected >= 0 and < %d, or == %d, "
                    "but got %ld. Please check label value.",
                    dim,
                    ignore_idx,
@@ -315,7 +315,7 @@ __device__ __forceinline__ void VectorizedSoftmaxForwardImpl(
   auto label_value = static_cast<int64_t>(label[label_id]);
   PADDLE_ENFORCE(
       label_value >= 0 && label_value < size || label_value == ignore_index,
-      "The value of label expected >= 0 and < %ld, or == %ld, "
+      "The value of label expected >= 0 and < %d, or == %d, "
       "but got %ld. Please check label value.",
       size,
       ignore_index,
@@ -411,7 +411,7 @@ __device__ __forceinline__ void ScalarSoftmaxForwardImpl(
   auto label_value = static_cast<int64_t>(label[label_id]);
   PADDLE_ENFORCE(
       label_value >= 0 && label_value < size || label_value == ignore_index,
-      "The value of label expected >= 0 and < %ld, or == %ld, "
+      "The value of label expected >= 0 and < %d, or == %d, "
       "but got %ld. Please check label value.",
       size,
       ignore_index,
@@ -993,7 +993,7 @@ __global__ void WarpSoftmaxForward(T* loss,
             auto lbl = static_cast<int64_t>(label[first_batch + i]);
             PADDLE_ENFORCE(
                 lbl >= 0 && lbl < element_count || lbl == ignore_index,
-                "The value of label expected >= 0 and < %ld, or == %ld, "
+                "The value of label expected >= 0 and < %d, or == %d, "
                 "but got %ld. Please check label value.",
                 element_count,
                 ignore_index,
@@ -1031,7 +1031,7 @@ __global__ void WarpSoftmaxForward(T* loss,
             auto lbl = static_cast<int64_t>(label[first_batch + i]);
             PADDLE_ENFORCE(
                 lbl >= 0 && lbl < element_count || lbl == ignore_index,
-                "The value of label expected >= 0 and < %ld, or == %ld, "
+                "The value of label expected >= 0 and < %d, or == %d, "
                 "but got %ld. Please check label value.",
                 element_count,
                 ignore_index,
