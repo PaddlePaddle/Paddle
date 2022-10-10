@@ -13,15 +13,22 @@
 # limitations under the License.
 
 from paddle.fluid import core
+from .fluid import framework
 
 __all__ = []
 
 _already_switch_to_eager_ = False
 
-for name in dir(core.eager.ops.legacy):
-    globals()[name] = getattr(core.eager.ops.legacy, name)
-    __all__.append(name)
-_already_switch_to_eager_ = True
+if not framework._in_eager_mode_:
+    for name in dir(core.ops):
+        globals()[name] = getattr(core.ops, name)
+        __all__.append(name)
+    _already_switch_to_eager_ = False
+else:
+    for name in dir(core.eager.ops.legacy):
+        globals()[name] = getattr(core.eager.ops.legacy, name)
+        __all__.append(name)
+    _already_switch_to_eager_ = True
 
 
 def switch_to_core_ops():
@@ -30,12 +37,18 @@ def switch_to_core_ops():
         for name in dir(core.eager.ops.legacy):
             del globals()[name]
             __all__.remove(name)
+        for name in dir(core.ops):
+            globals()[name] = getattr(core.ops, name)
+            __all__.append(name)
         _already_switch_to_eager_ = False
 
 
 def switch_to_eager_ops():
     global _already_switch_to_eager_
     if not _already_switch_to_eager_:
+        for name in dir(core.ops):
+            del globals()[name]
+            __all__.remove(name)
         for name in dir(core.eager.ops.legacy):
             globals()[name] = getattr(core.eager.ops.legacy, name)
             __all__.append(name)
