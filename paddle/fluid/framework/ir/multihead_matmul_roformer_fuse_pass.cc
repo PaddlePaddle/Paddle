@@ -449,7 +449,7 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
       Node* mul1_out, Node* mul2_out, Node* mul0_w, Node* mul1_w, Node* mul2_w,
       Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
       Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out, Node* matmul_qk) {
-    auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
+    auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
@@ -533,7 +533,7 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
 
     auto reshape_desc = reshape2->Op();
     int head_number =
-        BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
 
     OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul_roformer");
