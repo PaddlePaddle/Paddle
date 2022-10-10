@@ -1046,5 +1046,69 @@ class ClipOneDNNHandler
                                             to_void_cast<T>(input_data));
   }
 };
+template <typename T>
+class TransposeOneDNNHandler {
+ public:
+  TransposeOneDNNHandler(const OneDNNContext& dev_ctx,
+                         std::vector<int64_t>& dims,  // NOLINT
+                         std::vector<int>& axis,      // NOLINT
+                         dnnl::engine engine)
+      : dev_ctx_(dev_ctx),
+        dims_(dims),
+        axis_(axis),
+        logical_axis_(dims.size(), 0),
+        engine_(engine) {}
+
+  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const OneDNNMemoryFormat& fmt,
+                                                 void* ptr) {
+    // Make memory descriptor using input format, unless it
+    // cannot be trusted (nchw) then make up memory fmt manually
+    for (size_t i = 0; i < this->logical_axis_.size(); ++i) {
+      this->logical_axis_[i] = i;
+    }
+
+    auto src_md = fmt != OneDNNMemoryFormat::nchw
+                      ? OneDNNMemDesc(dims_, OneDNNGetDataType<T>(), fmt)
+                      : Axis2MemoryDesc(dims_, logical_axis_);
+    return std::make_shared<dnnl::memory>(src_md, engine_, ptr);
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(DenseTensor* output,
+                                                 Place place) {
+    auto dst_md = Axis2MemoryDesc(dims_, axis_);
+    auto dst_data = dev_ctx_.Alloc<T>(output);
+    return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
+  }
+
+  std::shared_ptr<dnnl::reorder> AcquireTranspose(
+      std::shared_ptr<dnnl::memory> dst_memory_p,
+      std::shared_ptr<dnnl::memory> src_memory_p) {
+    return std::make_shared<dnnl::reorder>(*(src_memory_p), *(dst_memory_p));
+  }
+
+ protected:
+  dnnl::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
+                                     std::vector<int>& axis          // NOLINT
+  ) {
+    size_t ndims = axis.size();
+
+    std::vector<int64_t> strides(ndims);
+    unsigned int total_stride = 1;
+    for (int i = ndims - 1; i >= 0; --i) {
+      strides[axis[i]] = total_stride;
+      total_stride *= nchw_tz[axis[i]];
+    }
+    dnnl::memory::desc mem_d(nchw_tz, OneDNNGetDataType<T>(), strides);
+
+    return mem_d;
+  }
+
+ private:
+  const OneDNNContext& dev_ctx_;
+  std::vector<int64_t> dims_;
+  std::vector<int> axis_;
+  std::vector<int> logical_axis_;
+  dnnl::engine engine_;
+};
 }  // namespace funcs
 }  // namespace phi
