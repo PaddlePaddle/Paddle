@@ -40,17 +40,7 @@ per-file-ignores =
     python/paddle/check_import_scipy.py:F401
     python/paddle/fft.py:F401
     python/paddle/_C_ops.py:F401
-    python/paddle/framework/*:F401
     python/paddle/distributed/*:F401
-    python/paddle/proto/*:F401
-    python/paddle/onnx/*:F401
-    python/paddle/optimizer/*:F401
-    python/paddle/hapi/*:F401
-    python/paddle/autograd/*:F401
-    python/paddle/io/*:F401
-    python/paddle/cost_model/*:F401
-    python/paddle/geometric/*:F401
-    python/paddle/vision/*:F401
     python/paddle/quantization/*:F401
     python/paddle/libs/*:F401
     python/paddle/audio/*:F401
