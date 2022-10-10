@@ -332,7 +332,7 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
     }
   }
 
-  result.ResolveHazard(created);
+  // result.ResolveHazard(created);
 }
 
 }  // namespace ir

@@ -75,7 +75,7 @@ Graph::Graph(const ProgramDesc &program,
     }
   } else {
     auto var_nodes = InitFromProgram(program_, start_op_index, end_op_index);
-    ResolveHazard(var_nodes);
+    // ResolveHazard(var_nodes);
   }
 }
 
@@ -88,7 +88,7 @@ Graph::Graph(const BlockDesc &block,
              const int64_t end_op_index)
     : main_graph_(main_graph) {
   auto var_nodes = InitFromBlock(block, start_op_index, end_op_index);
-  ResolveHazard(var_nodes);
+  // ResolveHazard(var_nodes);
 }
 
 // TODO(levi): delete this interface after when we can convert all
@@ -169,20 +169,8 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromBlock(
       var->outputs.push_back(node);
     }
     // For output args, always create a new var.
-    std::unordered_set<std::string> out_arg_set;
     for (auto &each_var_name : op->OutputArgumentNames()) {
       not_visited_vars.erase(each_var_name);
-      if (each_var_name != kEmptyVarName) {
-        PADDLE_ENFORCE_EQ(out_arg_set.count(each_var_name),
-                          0,
-                          platform::errors::InvalidArgument(
-                              "The input Program is invalid. Variable %s occurs"
-                              " in output of %s multiple times.",
-                              each_var_name,
-                              op->Type()));
-        out_arg_set.insert(each_var_name);
-      }
-
       ir::Node *var = nullptr;
       if (name_to_desc_block_id.count(each_var_name) != 0) {
         auto desc_and_block_id = name_to_desc_block_id.at(each_var_name);
