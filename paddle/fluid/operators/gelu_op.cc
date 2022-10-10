@@ -40,7 +40,7 @@ class GeluOp : public framework::OperatorWithKernel {
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       return framework::OpKernelType(data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -80,7 +80,7 @@ class GeluGradOp : public framework::OperatorWithKernel {
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       return framework::OpKernelType(data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif

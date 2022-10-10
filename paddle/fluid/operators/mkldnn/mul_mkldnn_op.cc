@@ -24,10 +24,10 @@ class DenseTensor;
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
 using framework::DDim;
 using framework::ExecutionContext;
 using framework::LoDTensor;
+using phi::DataLayout;
 
 using platform::MatMulV2MKLDNNHandler;
 using platform::MKLDNNDeviceContext;

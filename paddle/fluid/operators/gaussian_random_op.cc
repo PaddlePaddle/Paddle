@@ -65,7 +65,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       return framework::OpKernelType(data_type,
                                      ctx.device_context(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif

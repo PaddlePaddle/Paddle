@@ -588,7 +588,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     bool channelwise_onednn =
         context->IsRunMKLDNNKernel() &&
         (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
-         framework::DataLayout::kNHWC);
+         phi::DataLayout::kNHWC);
     if (channelwise_onednn) {
       std::swap(dim_x, dim_y);
     }
@@ -702,7 +702,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -724,15 +724,13 @@ class MatMulOp : public framework::OperatorWithKernel {
       // When matmul is first oneDNN op in a chain (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ ==
-           framework::DataLayout::kMKLDNN) &&
-          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+          (tensor.layout() != phi::DataLayout::kMKLDNN) &&
           paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() ==
-              framework::DataLayout::kNHWC) {
+                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
-                                       framework::DataLayout::kNHWC);
+                                       phi::DataLayout::kNHWC);
       }
 #endif
       return framework::OpKernelType(
@@ -894,7 +892,7 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif

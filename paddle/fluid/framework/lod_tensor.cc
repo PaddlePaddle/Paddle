@@ -338,7 +338,7 @@ void MergeLoDTensor(LoDTensor *target,
 
   framework::DDim new_dim = lod_tensors[0]->dims();
   proto::VarType::Type new_type = proto::VarType::FP32;
-  framework::DataLayout new_layout = lod_tensors[0]->layout();
+  phi::DataLayout new_layout = lod_tensors[0]->layout();
   for (auto *t : lod_tensors) {
     if (t->numel() && t->IsInitialized()) {
       new_dim = t->dims();
@@ -367,8 +367,8 @@ void MergeLoDTensor(LoDTensor *target,
           platform::errors::InvalidArgument(
               "LoDTensor layout does not match, expected layout is %s, "
               "actual layout is %s.",
-              DataLayoutToString(new_layout),
-              DataLayoutToString(t->layout())));
+              phi::DataLayoutToString(new_layout),
+              phi::DataLayoutToString(t->layout())));
       PADDLE_ENFORCE_EQ(
           phi::product(new_dim) / new_dim[0],
           phi::product(t->dims()) / t->dims()[0],

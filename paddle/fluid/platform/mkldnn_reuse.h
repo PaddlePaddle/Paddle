@@ -30,7 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using framework::DataLayout;
+using phi::DataLayout;
 
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;

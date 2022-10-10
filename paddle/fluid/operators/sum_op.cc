@@ -40,7 +40,7 @@ class SumOp : public framework::OperatorWithKernel {
     auto x_vars_name = ctx.InputNames("X");
 
     framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+    phi::DataLayout layout{phi::DataLayout::kAnyLayout};
 
     PADDLE_ENFORCE_GT(
         x_vars.size(),
@@ -91,7 +91,7 @@ class SumOp : public framework::OperatorWithKernel {
                 })) {
           return framework::OpKernelType(data_type,
                                          ctx.GetPlace(),
-                                         framework::DataLayout::kMKLDNN,
+                                         phi::DataLayout::kMKLDNN,
                                          framework::LibraryType::kMKLDNN);
         }
       }

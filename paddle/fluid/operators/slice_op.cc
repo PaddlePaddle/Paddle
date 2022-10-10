@@ -168,7 +168,7 @@ class SliceOp : public framework::OperatorWithKernel {
         if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
           return framework::OpKernelType(input_data_type,
                                          ctx.GetPlace(),
-                                         framework::DataLayout::kMKLDNN,
+                                         phi::DataLayout::kMKLDNN,
                                          framework::LibraryType::kMKLDNN);
       }
 #endif
@@ -345,7 +345,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
         return framework::OpKernelType(input_data_type,
                                        ctx.GetPlace(),
-                                       framework::DataLayout::kMKLDNN,
+                                       phi::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
     }
 #endif

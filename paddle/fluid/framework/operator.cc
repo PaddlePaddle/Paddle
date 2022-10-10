@@ -1001,7 +1001,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
       return ((op_with_kernel.kernel_type()) &&
               (op_with_kernel.kernel_type()->data_layout_ ==
-               framework::DataLayout::kMKLDNN));
+               phi::DataLayout::kMKLDNN));
     } catch (const std::bad_cast& exp) {
       return false;
     }

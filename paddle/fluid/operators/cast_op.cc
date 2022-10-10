@@ -112,7 +112,7 @@ class CastOp : public framework::OperatorWithKernel {
       return framework::OpKernelType(
           framework::TransToProtoVarType(tensor->dtype()),
           ctx.GetPlace(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           framework::LibraryType::kMKLDNN);
     }
 #endif

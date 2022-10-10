@@ -51,7 +51,7 @@ class SGDOp : public framework::OperatorWithKernel {
       if (dense_param_sparse_grad || dense_param_and_grad)
         return framework::OpKernelType(data_type,
                                        ctx.GetPlace(),
-                                       framework::DataLayout::kMKLDNN,
+                                       phi::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
     }
 #endif

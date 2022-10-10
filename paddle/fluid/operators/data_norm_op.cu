@@ -28,7 +28,7 @@ namespace operators {
 
 using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 using platform::PADDLE_CUDA_NUM_THREADS;
 
 inline int GET_BLOCKS(const int N) {

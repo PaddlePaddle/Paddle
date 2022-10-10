@@ -35,7 +35,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 /*
  * \brief Compute the depthwise convolution which include

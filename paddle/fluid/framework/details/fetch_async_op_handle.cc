@@ -78,8 +78,8 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
             "(th) fetched variable. Please set the "
             "parameter `return_merged = False` when you "
             "call the `Executor.run()` method.",
-            DataLayoutToString(layout),
-            DataLayoutToString(tensor->layout()),
+            phi::DataLayoutToString(layout),
+            phi::DataLayoutToString(tensor->layout()),
             offset));
   }
 
@@ -149,7 +149,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     LoDTensor *dst_lodtensor) {
   // calc dst type,layout,dim,lod and calc check dim
   proto::VarType::Type new_type = proto::VarType::FP32;
-  framework::DataLayout new_layout;
+  phi::DataLayout new_layout;
   framework::DDim new_dim;
   LoD new_lod = src_lodtensors[0]->lod();
 

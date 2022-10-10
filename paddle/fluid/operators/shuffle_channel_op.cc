@@ -44,7 +44,7 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif

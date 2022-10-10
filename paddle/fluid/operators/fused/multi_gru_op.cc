@@ -146,7 +146,7 @@ framework::OpKernelType MultiGRUOp::GetExpectedKernelType(
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"),
       ctx.GetPlace(),
-      framework::DataLayout::kMKLDNN,
+      phi::DataLayout::kMKLDNN,
       framework::LibraryType::kMKLDNN);
 }
 

@@ -594,7 +594,7 @@ class ReduceOp : public framework::OperatorWithKernel {
         HasOptimizedOneDNNKernel(ctx)) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -686,7 +686,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
         CanMKLDNNReduceGradBeUsed()) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif

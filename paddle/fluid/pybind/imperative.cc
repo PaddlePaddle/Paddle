@@ -2067,7 +2067,7 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::VarBase &self) {
             if (self.Var().IsType<framework::LoDTensor>()) {
               auto layout = self.Var().Get<framework::LoDTensor>().layout();
-              return paddle::framework::DataLayoutToString(layout);
+              return phi::DataLayoutToString(layout);
             }
             return std::string("");
           })

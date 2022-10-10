@@ -29,7 +29,7 @@ namespace operators {
 
 using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 using EigenArrayMap =

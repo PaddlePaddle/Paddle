@@ -41,7 +41,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     framework::LibraryType library_{framework::LibraryType::kPlain};
     std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -53,7 +53,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     if (library_ == framework::LibraryType::kPlain &&
         this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+      layout_ = phi::DataLayout::kMKLDNN;
     }
 #endif
 
@@ -138,7 +138,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     framework::LibraryType library_{framework::LibraryType::kPlain};
     std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -150,7 +150,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
     if (library_ == framework::LibraryType::kPlain &&
         this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       library_ = framework::LibraryType::kMKLDNN;
-      layout_ = framework::DataLayout::kMKLDNN;
+      layout_ = phi::DataLayout::kMKLDNN;
     }
 #endif
     if (input_data_type == framework::proto::VarType::FP16) {

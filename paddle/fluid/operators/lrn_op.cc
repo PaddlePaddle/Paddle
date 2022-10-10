@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 struct LRNFunctor<phi::CPUContext, T> {
@@ -231,7 +231,7 @@ class LRNOp : public framework::OperatorWithKernel {
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       return framework::OpKernelType(data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -243,15 +243,15 @@ class LRNOp : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+        (tensor.layout() != phi::DataLayout::kMKLDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
-      auto dl = framework::StringToDataLayout(data_format);
+      auto dl = phi::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
-      if (dl != framework::DataLayout::kAnyLayout) {
+      if (dl != phi::DataLayout::kAnyLayout) {
         return framework::OpKernelType(
             expected_kernel_type.data_type_, tensor.place(), dl);
       }
@@ -365,7 +365,7 @@ class LRNOpGrad : public framework::OperatorWithKernel {
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       return framework::OpKernelType(data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -377,15 +377,15 @@ class LRNOpGrad : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+        (tensor.layout() != phi::DataLayout::kMKLDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
-      auto dl = framework::StringToDataLayout(data_format);
+      auto dl = phi::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for lrn
       // op. Treat this as NCHW (default data_format value)
-      if (dl != framework::DataLayout::kAnyLayout) {
+      if (dl != phi::DataLayout::kAnyLayout) {
         return framework::OpKernelType(
             expected_kernel_type.data_type_, tensor.place(), dl);
       }

@@ -24,7 +24,7 @@ namespace operators {
 
 using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 class InstanceNormOp : public framework::OperatorWithKernel {
  public:

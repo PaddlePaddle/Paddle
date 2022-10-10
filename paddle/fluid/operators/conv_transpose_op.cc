@@ -32,7 +32,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
@@ -44,7 +44,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
         dev_ctx.cudnn_handle() != nullptr) {
       return framework::OpKernelType(data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kAnyLayout,
+                                     phi::DataLayout::kAnyLayout,
                                      framework::LibraryType::kCUDNN);
     }
   }
@@ -53,7 +53,7 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   if (this->CanMKLDNNBeUsed(ctx, data_type)) {
     return framework::OpKernelType(data_type,
                                    ctx.GetPlace(),
-                                   framework::DataLayout::kMKLDNN,
+                                   phi::DataLayout::kMKLDNN,
                                    framework::LibraryType::kMKLDNN);
   }
 #endif
@@ -69,15 +69,15 @@ framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
-    auto dl = framework::StringToDataLayout(data_format);
+    auto dl = phi::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != phi::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -293,7 +293,7 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
     library_ = framework::LibraryType::kPlain;
   }
 
-  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
       ctx.GetPlace(),
@@ -380,7 +380,7 @@ framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
     library_ = framework::LibraryType::kPlain;
   }
 
-  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
       ctx.GetPlace(),

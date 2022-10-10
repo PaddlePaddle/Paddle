@@ -199,8 +199,7 @@ PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
     VLOG(3) << "VariableCompatTensor does not support `layout` method.";
     return ToPyObject(layout);
   } else {
-    return ToPyObject(
-        paddle::framework::DataLayoutToString(self->tensor.layout()));
+    return ToPyObject(phi::DataLayoutToString(self->tensor.layout()));
   }
 
   return ToPyObject(layout);
