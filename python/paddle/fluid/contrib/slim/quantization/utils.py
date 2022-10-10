@@ -12,11 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import sys
 import numpy as np
 from ....framework import IrNode
 from ....framework import Operator
-
+from paddleslim.core import GraphWrapper
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.initializer import MSRA
+from paddle.fluid.param_attr import ParamAttr
 _weight_supported_quantizable_op_type = [
     'conv2d', 'depthwise_conv2d', 'conv2d_transpose', 'mul', 'matmul',
     'matmul_v2'
@@ -38,7 +43,6 @@ _act_supported_quantizable_op_type = [
     "mean",
     "not_equal",
     "reshape",
-    "reshape2",
     "dropout",
     "bilinear_interp",
     "nearest_interp",
@@ -113,11 +117,9 @@ _act_supported_quantizable_op_type = [
     "scale",
 ]
 
-QUANT_SUPPORTED_OP_TYPE_LIST = list(
+_out_scale_op_list = list(
     set(_weight_supported_quantizable_op_type +
         _act_supported_quantizable_op_type))
-
-_out_scale_op_list = QUANT_SUPPORTED_OP_TYPE_LIST
 
 _channelwise_quant_axis1_ops = [
     'conv2d_transpose', 'mul', 'matmul', 'matmul_v2'
@@ -433,10 +435,6 @@ def calculate_quant_cos_error(orig_tensor, qdq_tensor):
     return cos_sim
 
 
-def l2_loss(gt, pred):
-    return ((gt - pred)**2).mean()
-
-
 class tqdm(object):
 
     def __init__(self, total, bar_format='Loading|{bar}', ncols=80):
@@ -459,3 +457,265 @@ class tqdm(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stderr.write('\n')
+
+
+
+
+def soft_rounding(weight, scale, alpha,  weight_quantize_type, zeta=1.1, gamma=-0.1, weight_bits=8):
+    """
+    Define network of soft rounding.
+    Args:
+      weight: The quanted weight with dtype=float32
+    """
+
+    bnt = (1 << (weight_bits - 1)) - 1
+
+    def _dequant(x, scale):
+        s = (scale+1e-8)/bnt
+        dequant_x = s * x 
+        return dequant_x
+
+    quantized_weight = paddle.static.data(shape=weight.shape,
+                                        dtype=weight.dtype,
+                                        name=weight.name+'_quant')
+
+    v = paddle.static.create_parameter(shape=weight.shape,
+                                        dtype=weight.dtype,
+                                        name=weight.name+".alpha",
+                                        default_initializer=fluid.initializer.NumpyArrayInitializer(alpha))
+
+    h_v = paddle.clip(paddle.nn.functional.sigmoid(v) * (zeta - gamma) + gamma, 0, 1)
+
+    if weight_quantize_type=='channel_wise_abs_max':
+        scale_var = paddle.static.create_parameter(
+                dtype=weight.dtype,
+                shape=weight.shape,
+                name=weight.name+'.scale',
+                default_initializer=fluid.initializer.NumpyArrayInitializer(scale),
+            )
+    else:
+        scale_var = scale
+    w = _dequant(quantized_weight+h_v, scale_var)
+    return w
+
+def insert_soft_rounding(program, weight_names, scales, scope, weight_quantize_type, ZETA=1.1, GAMMA=-0.1):
+    graph = GraphWrapper(program)
+
+    for name_ in weight_names:
+        weight = graph.var(name_)
+        scale = scales[name_]
+        shape = weight.shape()
+        _tensor = load_variable_data(scope, "teacher_"+name_)
+        tensor_scale = quant_tensor(_tensor, scale)
+        tensor_floor = np.floor(tensor_scale)
+        tensor = tensor_scale - tensor_floor
+        alpha = -np.log((ZETA - GAMMA) / (tensor - GAMMA) - 1)
+
+        if weight_quantize_type=='channel_wise_abs_max':
+            scale = np.array(scale)
+            scale = scale.reshape(scale.shape[0], 1)
+            scale = scale.repeat(shape[1]*shape[2]*shape[3],axis=1)
+            scale = scale.reshape(shape)
+        insert_func(var=weight, scale=scale, func="soft_rounding", alpha=alpha, weight_quantize_type=weight_quantize_type)
+
+def drop_quant_dequant(inputs, scale, weight_bits=8):
+
+    x = paddle.static.data(shape=inputs.shape,
+                            dtype=inputs.dtype,
+                            name=inputs.name+'.tmp')
+    bnt = (1 << (weight_bits - 1)) - 1
+    scale = scale / bnt
+    dequantized_tensor = paddle.round(x / scale) * scale
+    quant_noise = x - dequantized_tensor
+    random_noise = paddle.nn.functional.dropout(quant_noise, p=0.5)
+    return x + random_noise
+
+def insert_drop_quant_deqaunt(program, scale):
+    graph = GraphWrapper(program)
+    for op in graph.ops():
+        if op.type() in ['conv2d', 'depthwise_conv2d', 'mul']:
+            if op.type() in ['conv2d', 'depthwise_conv2d'] and op.inputs("Filter")[0].name().startswith("teacher"):
+                break
+            else:
+                input = op.inputs("Input")[0]
+            if op.type() in ['mul'] and op.inputs("Y")[0].name().startswith("teacher"):
+                break
+            else:
+                input = op.inputs("X")[0]
+            if input.name() in scale.keys():
+                insert_func(var=input, scale=scale[input.name()], func="drop_quant_dequant")
+
+def insert_func(var, scale, func, alpha=None, weight_quantize_type="channel_wise_abs_max"):
+    program = var._graph.program
+    ops = var.outputs()
+    inputs = var._var
+    startup_program = paddle.static.Program()
+    new_program = paddle.static.Program()
+    with paddle.static.program_guard(new_program, startup_program):
+        if func=="soft_rounding":
+            out = soft_rounding(inputs, scale, alpha, weight_quantize_type)
+        elif func=="drop_quant_dequant":
+            out = drop_quant_dequant(inputs, scale)
+    exe = paddle.static.Executor(paddle.CPUPlace())
+    exe.run(startup_program)
+    #create var in program
+    for new_var in new_program.list_vars():
+        if new_var.name == var._var.name+'_quant' or  new_var.name == var._var.name+'.tmp':
+            continue
+        elif new_var.name == var._var.name+'.alpha':
+            program.global_block().create_parameter(
+            name=new_var.name,
+            shape=new_var.shape,
+            dtype=new_var.dtype,
+            type=new_var.type,
+            stop_gradient=new_var.stop_gradient)
+        elif new_var.name == var._var.name+'.scale':
+            program.global_block().create_parameter(
+            name=new_var.name,
+            shape=new_var.shape,
+            dtype=new_var.dtype,
+            type=new_var.type,
+            stop_gradient=True,
+            trainable=False)
+        else:
+            if func=="soft_rounding":
+                program.global_block().create_var(
+                name=new_var.name+'.rounding',
+                shape=new_var.shape,
+                dtype=new_var.dtype,
+                type=new_var.type,
+                persistable=new_var.persistable,
+                stop_gradient=new_var.stop_gradient)
+            else:
+                program.global_block().create_var(
+                name=new_var.name,
+                shape=new_var.shape,
+                dtype=new_var.dtype,
+                type=new_var.type,
+                persistable=new_var.persistable,
+                stop_gradient=new_var.stop_gradient)
+    op_list = new_program.global_block().ops
+    op_list = list(reversed(op_list))
+    block = var._var.block
+    #prepend new_program's op in program
+    for _op in ops:
+        if _op.type() not in ['conv2d', 'depthwise_conv2d', 'mul']:
+            continue
+        idx = block.ops.index(_op._op)
+        for op in op_list:
+            # _attrs = op.all_attrs()
+            _type = op.type
+            _attrs={
+                'use_mkldnn': False,
+                'with_quant_attr' :False}
+            if _type=='clip':
+                _attrs={
+                    'use_mkldnn': False,
+                    'with_quant_attr' :False,
+                    'max':op.attr('max'),
+                    'min':op.attr('min')}
+            elif _type=='scale':
+                _attrs={
+                    'use_mkldnn': False,
+                    'with_quant_attr' :False,
+                    'scale': op.attr('scale'),
+                    'bias_after_scale':op.attr('bias_after_scale')}
+            elif _type=='elementwise_mul':
+                _attrs={
+                    'use_mkldnn': False,
+                    'with_quant_attr' :False,
+                    'Scale_out':op.attr('Scale_out'),
+                    'Scale_x':op.attr('Scale_x'),
+                    'Scale_y':op.attr('Scale_y'),
+                    'axis':op.attr('axis')}
+            
+            if func=="soft_rounding":
+                _outputs = {'Out':op.output('Out')[0]+'.rounding'}
+                if _type=="elementwise_add":
+                    _inputs = {
+                        'X': var._var,     #replace tmp var conv.weight_quant with var conv.weight
+                        'Y': op.input('Y')[0]+'.rounding',
+                        }
+                elif _type=="elementwise_mul":
+                    _inputs = {
+                        'X':op.input('X')[0]+'.rounding',
+                        'Y':op.input('Y')[0]+'.rounding',
+                        }
+                elif (_type=='scale' and op.input('X')[0].endswith('scale')) or _type=='sigmoid':
+                    _inputs = {'X':op.input('X')[0]}
+                else:
+                    _inputs = {'X':op.input('X')[0]+'.rounding'}
+            elif func=="drop_quant_dequant":
+                if _type=='dropout':
+                    _outputs = {'Out':op.output('Out')[0],
+                                'Mask':op.output('Mask')[0]}
+                else:
+                    _outputs = {'Out':op.output('Out')[0]}
+
+                if _type=='elementwise_add' or _type=='elementwise_sub':
+                    _inputs = {
+                        'X': var._var,     #replace tmp var conv.weight_quant with var conv.weight
+                        'Y': op.input('Y'),
+                        }
+                elif _type=='scale' and op.input('X')[0]==inputs.name+'.tmp':
+                    _inputs = {'X': var._var}
+                else:
+                    _inputs = {'X':op.input('X')[0]}
+
+            block._insert_op(
+                idx,
+                type=_type,
+                attrs=_attrs,
+                inputs=_inputs,
+                outputs=_outputs,
+            )
+    for op in ops:
+        if op.type() not in ['conv2d', 'depthwise_conv2d', 'mul']:
+            continue
+        if op.type() in ['conv2d', 'depthwise_conv2d'] and op.inputs('Filter')[0].name().startswith('teacher'):
+            continue
+        if op.type() in ['mul'] and op.inputs('Y')[0].name().startswith('teacher'):
+            continue        
+        if func=='soft_rounding':
+            op._op._rename_input(inputs.name, out.name+'.rounding')
+        else:
+            op._op._rename_input(inputs.name, out.name)
+            
+
+def duplicate_var(var):
+    vars = []
+    block = var._var.block
+    index = 0
+    for op in var.outputs():
+        var_ = var._var
+        op_ = op._op
+        duplicated_var = block.create_var(name=var_.name+".assign"+str(index),
+                                       type=var_.type,
+                                       shape=var_.shape,
+                                       dtype=var_.dtype)
+        vars.append(duplicated_var)
+        index += 1
+        idx = block.ops.index(op_)
+        block._insert_op(idx,
+                         type="assign",
+                         inputs={"X": var_},
+                         outputs={"Out": duplicated_var})
+        op_._rename_input(var_.name, duplicated_var.name)
+    return vars
+
+def duplicate_vars(program, var_names):
+    result = {}
+    graph = GraphWrapper(program)
+    for var_name in var_names:
+        var = graph.var(var_name)
+        result[var_name] = duplicate_var(var)
+    return result
+
+def isolate_blocks(program, blocks):
+    starts = [block[0] for block in blocks]
+    var2duplications = duplicate_vars(program, starts)
+    for vars_ in var2duplications.values():
+        for var_ in vars_:
+            var_.stop_gradients = True
+
+
