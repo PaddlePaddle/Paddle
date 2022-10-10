@@ -427,7 +427,6 @@ int QkvToContextPluginDynamic::enqueue(
     }
     const float *input3_data = static_cast<const float *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
-    //合并fc之后的输出
     TransposeQKV_v2(batch, seq_len, head_size_, head_number_, input0_data, tptr, tmp_roformer_ptr,
                  stream);
 
