@@ -35,7 +35,10 @@ void ReshapeCooKernel(const Context& dev_ctx,
                       SparseCooTensor* out) {
   // TODO: Currently, reshape is only applicable to sparse dims                   
   int64_t x_nnz = x.nnz();
-  DDim out_dims = phi::make_ddim(shape.GetData());
+  
+  // DDim out_dims = phi::make_ddim(shape.GetData());
+  // Use DDim::reshape to handle -1 and 0 in the argument "shape" 
+  DDim out_dims = x.dims().reshape(std::vector<int>(shape.GetData().begin(), shape.GetData().end()));
   // get sparse part dimensions of x and out
   std::vector<int64_t> x_sparse_part_dims;
   std::vector<int64_t> out_sparse_part_dims;

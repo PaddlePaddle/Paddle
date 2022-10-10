@@ -78,5 +78,20 @@ class TestReshape(unittest.TestCase):
         self.check_result([8, 3, 4, 4, 5, 3], [24, 8, 10, 3], 'coo')
         self.check_result([3, 4, 4, 5, 7], [1, 12, 2, 5, 14], 'coo')
 
+    def test_reshape_with_zero_or_minus_one_in_new_shape(self):
+        self.check_result([6, 2, 3], [-1, 0, 3], 'coo')
+        self.check_result([6, 2, 3], [2, 3, 0, -1], 'coo')
+        self.check_result([6, 2, 3], [1, -1, 2], 'coo')
+        self.check_result([6, 2, 3], [-1, 9, 2], 'coo')
+        self.check_result([6, 2, 3], [2, -1, 18], 'coo')
+        self.check_result([6, 2, 3], [1, 0, 2, -1, 3], 'coo')
+
+        self.check_result([6, 2, 3], [0, 0, -1], 'csr')
+        self.check_result([6, 2, 3], [-1, 3, 2], 'csr')
+        self.check_result([6, 2, 3], [2, -1, 0], 'csr')
+        self.check_result([6, 2, 3], [-1, 6, 2], 'csr')
+        self.check_result([6, 2, 3], [-1, 9, 1], 'csr')
+        self.check_result([6, 2, 3], [-1, 1, 3], 'csr')
+
 if __name__ == "__main__":
     unittest.main()
