@@ -19,6 +19,7 @@ import paddle
 import paddle.fluid as fluid
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 import pickle
+from paddle.fluid.framework import _enable_legacy_dygraph
 import paddle.distributed.utils.moe_utils as moe_utils
 
 paddle.enable_static()
@@ -77,6 +78,8 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
         tot_expert = n_expert * world_size
         paddle.disable_static()
 
+        # Call paddle.distributed.alltoall() under legacy dygraph
+        _enable_legacy_dygraph()
         np.random.seed(os.getpid())
         local_expert_count = np.random.randint(1, 4,
                                                size=tot_expert).astype("int64")
