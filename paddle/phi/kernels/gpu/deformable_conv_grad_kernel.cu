@@ -54,7 +54,6 @@ __global__ void ModulatedDeformableCol2imGpuKernel(
     MT* grad_im) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  // using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   for (size_t thread = index; thread < nthreads; thread += offset) {
     const int j = (thread / width_col / height_col / batch_size) % kernel_w;
     const int i =
