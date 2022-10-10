@@ -46,6 +46,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
+    int8_teller_set.insert("flatten_contiguous_range");
     teller_set.insert("rnn");
     int8_teller_set.insert("rnn");
     teller_set.insert("fill_constant_batch_size_like");
