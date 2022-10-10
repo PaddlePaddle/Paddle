@@ -24,7 +24,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
-from paddle.fluid.framework import _test_eager_guard
 try:
     from collections.abc import Sequence
 except:
@@ -758,9 +757,7 @@ def double_grad_check_for_dygraph(func,
     x_init = _as_list(x_init)
 
     paddle.disable_static()
-    with _test_eager_guard():
-        eager_double_grad = get_eager_double_grad(func, x_init, y_grads_init,
-                                                  place)
+    eager_double_grad = get_eager_double_grad(func, x_init, y_grads_init, place)
     paddle.enable_static()
 
     static_double_grad = get_static_double_grad(x, y, x_init, y_grads_init,
@@ -927,9 +924,7 @@ def triple_grad_check_for_dygraph(func,
     x_init = _as_list(x_init)
 
     paddle.disable_static()
-    with _test_eager_guard():
-        eager_triple_grad = get_eager_triple_grad(func, x_init, y_grads_init,
-                                                  place)
+    eager_triple_grad = get_eager_triple_grad(func, x_init, y_grads_init, place)
     paddle.enable_static()
 
     static_triple_grad = get_static_triple_grad(x, y, x_init, y_grads_init,

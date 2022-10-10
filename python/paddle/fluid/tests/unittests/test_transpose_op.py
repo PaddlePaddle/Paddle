@@ -184,6 +184,7 @@ class TestTransposeBF16Op(OpTest):
         }
 
     def init_op_type(self):
+        self.python_api = paddle.transpose
         self.op_type = "transpose2"
         self.use_mkldnn = False
 
