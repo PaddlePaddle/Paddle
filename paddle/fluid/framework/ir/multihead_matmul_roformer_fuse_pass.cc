@@ -42,7 +42,6 @@ static void ReplaceOutputVar(Node* op, Node* old_var, Node* new_var) {
   }
 }
 
-
 PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   std::unordered_set<std::string> matmul_ops{"matmul", "matmul_v2"};
   auto* input0 = pattern->NewNode(input0_repr());
@@ -86,30 +85,38 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
       pattern->NewNode(transpose2_0_repr())->assert_is_op("transpose2");
   auto* transpose2_0_out_var = pattern->NewNode(transpose2_0_out_repr())
                                    ->assert_is_op_output("transpose2");
-  transpose2_0_out_var->AsIntermediate()->assert_is_op_input("elementwise_mul", "X")->assert_is_op_input("split", "X");
-  
-  auto* eltmul_cos_q = pattern->NewNode(eltmul_cos_q_repr())->assert_is_op("elementwise_mul");
+  transpose2_0_out_var->AsIntermediate()
+      ->assert_is_op_input("elementwise_mul", "X")
+      ->assert_is_op_input("split", "X");
+
+  auto* eltmul_cos_q =
+      pattern->NewNode(eltmul_cos_q_repr())->assert_is_op("elementwise_mul");
   auto* eltmul_cos_q_out_var = pattern->NewNode(eltmul_cos_q_out_repr())
                                    ->assert_is_op_output("elementwise_mul");
-  eltmul_cos_q_out_var->AsIntermediate()->assert_is_op_input("elementwise_add", "X");
+  eltmul_cos_q_out_var->AsIntermediate()->assert_is_op_input("elementwise_add",
+                                                             "X");
 
   auto* split_q = pattern->NewNode(split_q_repr())->assert_is_op("split");
-  auto* split_q_out_var = pattern->NewNode(split_q_out_repr())
-                                   ->assert_is_op_output("split");
+  auto* split_q_out_var =
+      pattern->NewNode(split_q_out_repr())->assert_is_op_output("split");
   split_q_out_var->AsIntermediate()->assert_is_op_input("concat", "X");
   auto* concat_q = pattern->NewNode(concat_q_repr())->assert_is_op("concat");
-  auto* concat_q_out_var = pattern->NewNode(concat_q_out_repr())
-                                   ->assert_is_op_output("concat");
-  concat_q_out_var->AsIntermediate()->assert_is_op_input("elementwise_mul", "X");
+  auto* concat_q_out_var =
+      pattern->NewNode(concat_q_out_repr())->assert_is_op_output("concat");
+  concat_q_out_var->AsIntermediate()->assert_is_op_input("elementwise_mul",
+                                                         "X");
 
-  auto* eltmul_sin_q = pattern->NewNode(eltmul_sin_q_repr())->assert_is_op("elementwise_mul");
+  auto* eltmul_sin_q =
+      pattern->NewNode(eltmul_sin_q_repr())->assert_is_op("elementwise_mul");
   auto* eltmul_sin_q_out_var = pattern->NewNode(eltmul_sin_q_out_repr())
                                    ->assert_is_op_output("elementwise_mul");
-  eltmul_sin_q_out_var->AsIntermediate()->assert_is_op_input("elementwise_add", "Y");
+  eltmul_sin_q_out_var->AsIntermediate()->assert_is_op_input("elementwise_add",
+                                                             "Y");
 
-  auto* eltadd_q = pattern->NewNode(eltadd_q_repr())->assert_is_op("elementwise_add");
+  auto* eltadd_q =
+      pattern->NewNode(eltadd_q_repr())->assert_is_op("elementwise_add");
   auto* eltadd_q_out_var = pattern->NewNode(eltadd_q_out_repr())
-                                   ->assert_is_op_output("elementwise_add");
+                               ->assert_is_op_output("elementwise_add");
   eltadd_q_out_var->AsIntermediate()->assert_is_op_input("scale");
 
   auto* matmul_qk =
@@ -156,7 +163,6 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
       pattern->NewNode(scale_out_repr())->assert_is_op_output("scale");
   scale_out_var->AsIntermediate()->assert_is_ops_input(matmul_ops);
 
-
   // Second path to matmul
   auto* mul1 = pattern->NewNode(mul1_repr())->assert_is_ops(matmul_ops);
   auto* mul1_w_var = pattern->NewNode(mul1_w_repr())
@@ -190,30 +196,38 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
       pattern->NewNode(transpose2_1_repr())->assert_is_op("transpose2");
   auto* transpose2_1_out_var = pattern->NewNode(transpose2_1_out_repr())
                                    ->assert_is_op_output("transpose2");
-  transpose2_1_out_var->AsIntermediate()->assert_is_op_input("elementwise_mul", "X")->assert_is_op_input("split", "X");  // link to matmul qk
+  transpose2_1_out_var->AsIntermediate()
+      ->assert_is_op_input("elementwise_mul", "X")
+      ->assert_is_op_input("split", "X");  // link to matmul qk
 
-  auto* eltmul_cos_k = pattern->NewNode(eltmul_cos_k_repr())->assert_is_op("elementwise_mul");
+  auto* eltmul_cos_k =
+      pattern->NewNode(eltmul_cos_k_repr())->assert_is_op("elementwise_mul");
   auto* eltmul_cos_k_out_var = pattern->NewNode(eltmul_cos_k_out_repr())
                                    ->assert_is_op_output("elementwise_mul");
-  eltmul_cos_k_out_var->AsIntermediate()->assert_is_op_input("elementwise_add", "X");
+  eltmul_cos_k_out_var->AsIntermediate()->assert_is_op_input("elementwise_add",
+                                                             "X");
 
   auto* split_k = pattern->NewNode(split_k_repr())->assert_is_op("split");
-  auto* split_k_out_var = pattern->NewNode(split_k_out_repr())
-                                   ->assert_is_op_output("split");
+  auto* split_k_out_var =
+      pattern->NewNode(split_k_out_repr())->assert_is_op_output("split");
   split_k_out_var->AsIntermediate()->assert_is_op_input("concat", "X");
   auto* concat_k = pattern->NewNode(concat_k_repr())->assert_is_op("concat");
-  auto* concat_k_out_var = pattern->NewNode(concat_k_out_repr())
-                                   ->assert_is_op_output("concat");
-  concat_k_out_var->AsIntermediate()->assert_is_op_input("elementwise_mul", "X");
+  auto* concat_k_out_var =
+      pattern->NewNode(concat_k_out_repr())->assert_is_op_output("concat");
+  concat_k_out_var->AsIntermediate()->assert_is_op_input("elementwise_mul",
+                                                         "X");
 
-  auto* eltmul_sin_k = pattern->NewNode(eltmul_sin_k_repr())->assert_is_op("elementwise_mul");
+  auto* eltmul_sin_k =
+      pattern->NewNode(eltmul_sin_k_repr())->assert_is_op("elementwise_mul");
   auto* eltmul_sin_k_out_var = pattern->NewNode(eltmul_sin_k_out_repr())
                                    ->assert_is_op_output("elementwise_mul");
-  eltmul_sin_k_out_var->AsIntermediate()->assert_is_op_input("elementwise_add", "Y");
+  eltmul_sin_k_out_var->AsIntermediate()->assert_is_op_input("elementwise_add",
+                                                             "Y");
 
-  auto* eltadd_k = pattern->NewNode(eltadd_k_repr())->assert_is_op("elementwise_add");
+  auto* eltadd_k =
+      pattern->NewNode(eltadd_k_repr())->assert_is_op("elementwise_add");
   auto* eltadd_k_out_var = pattern->NewNode(eltadd_k_out_repr())
-                                   ->assert_is_op_output("elementwise_add");
+                               ->assert_is_op_output("elementwise_add");
   eltadd_k_out_var->AsIntermediate()->assert_is_ops_input(matmul_ops);
 
   // Third path to matmul
@@ -252,7 +266,6 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   transpose2_2_out_var->AsIntermediate()->assert_is_ops_input(
       matmul_ops);  // link to matmul qkv
 
-  
   // Q path
   mul0->LinksFrom({input0, mul0_w_var}).LinksTo({mul0_out_var});
   eltadd0->LinksFrom({mul0_out_var, eltadd0_b_var}).LinksTo({eltadd0_out_var});
@@ -261,9 +274,12 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   transpose2_0->LinksFrom({reshape2_0_out_var}).LinksTo({transpose2_0_out_var});
   split_q->LinksFrom({transpose2_0_out_var}).LinksTo({split_q_out_var});
   concat_q->LinksFrom({split_q_out_var}).LinksTo({concat_q_out_var});
-  eltmul_sin_q->LinksFrom({concat_q_out_var, input_sin}).LinksTo({eltmul_sin_q_out_var});
-  eltmul_cos_q->LinksFrom({transpose2_0_out_var, input_cos}).LinksTo({eltmul_cos_q_out_var});
-  eltadd_q->LinksFrom({eltmul_cos_q_out_var, eltmul_sin_q_out_var}).LinksTo({eltadd_q_out_var});
+  eltmul_sin_q->LinksFrom({concat_q_out_var, input_sin})
+      .LinksTo({eltmul_sin_q_out_var});
+  eltmul_cos_q->LinksFrom({transpose2_0_out_var, input_cos})
+      .LinksTo({eltmul_cos_q_out_var});
+  eltadd_q->LinksFrom({eltmul_cos_q_out_var, eltmul_sin_q_out_var})
+      .LinksTo({eltadd_q_out_var});
   scale->LinksFrom({eltadd_q_out_var}).LinksTo({scale_out_var});
   // K path
   mul1->LinksFrom({input0, mul1_w_var}).LinksTo({mul1_out_var});
@@ -272,9 +288,12 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   transpose2_1->LinksFrom({reshape2_1_out_var}).LinksTo({transpose2_1_out_var});
   split_k->LinksFrom({transpose2_1_out_var}).LinksTo({split_k_out_var});
   concat_k->LinksFrom({split_k_out_var}).LinksTo({concat_k_out_var});
-  eltmul_sin_k->LinksFrom({concat_k_out_var, input_sin}).LinksTo({eltmul_sin_k_out_var});
-  eltmul_cos_k->LinksFrom({transpose2_1_out_var, input_cos}).LinksTo({eltmul_cos_k_out_var});
-  eltadd_k->LinksFrom({eltmul_cos_k_out_var, eltmul_sin_k_out_var}).LinksTo({eltadd_k_out_var});
+  eltmul_sin_k->LinksFrom({concat_k_out_var, input_sin})
+      .LinksTo({eltmul_sin_k_out_var});
+  eltmul_cos_k->LinksFrom({transpose2_1_out_var, input_cos})
+      .LinksTo({eltmul_cos_k_out_var});
+  eltadd_k->LinksFrom({eltmul_cos_k_out_var, eltmul_sin_k_out_var})
+      .LinksTo({eltadd_k_out_var});
 
   // compute q*k
   matmul_qk->LinksFrom({scale_out_var, eltadd_k_out_var})
@@ -298,9 +317,6 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   return transpose2_2_out_var;
 }
 }  // namespace patterns
-
-
-
 
 MultiHeadMatmulRoformerFusePass::MultiHeadMatmulRoformerFusePass() {
   AddOpCompat(OpCompat("mul"))
@@ -434,21 +450,38 @@ MultiHeadMatmulRoformerFusePass::MultiHeadMatmulRoformerFusePass() {
 }
 
 int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
-                                             const std::string& name_scope,
-                                             Scope* scope) const {
+                                                 const std::string& name_scope,
+                                                 Scope* scope) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
   // Create pattern.
-  patterns::MultiHeadMatmulRoformerPattern multihead_pattern(pattern, name_scope);
+  patterns::MultiHeadMatmulRoformerPattern multihead_pattern(pattern,
+                                                             name_scope);
 
   multihead_pattern();
   // Create New OpDesc
-  auto fuse_creater = [&](
-      Node* input0, Node* input_cos, Node* input_sin, Node* mul0, Node* mul1, Node* mul2, Node* mul0_out,
-      Node* mul1_out, Node* mul2_out, Node* mul0_w, Node* mul1_w, Node* mul2_w,
-      Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
-      Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out, Node* matmul_qk) {
+  auto fuse_creater = [&](Node* input0,
+                          Node* input_cos,
+                          Node* input_sin,
+                          Node* mul0,
+                          Node* mul1,
+                          Node* mul2,
+                          Node* mul0_out,
+                          Node* mul1_out,
+                          Node* mul2_out,
+                          Node* mul0_w,
+                          Node* mul1_w,
+                          Node* mul2_w,
+                          Node* eltadd0_b,
+                          Node* eltadd1_b,
+                          Node* eltadd2_b,
+                          Node* eltadd_qk_b,
+                          Node* reshape2,
+                          Node* reshape2_qkv_out,
+                          Node* scale,
+                          Node* scale_out,
+                          Node* matmul_qk) {
     auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
@@ -506,7 +539,8 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     wq_tensor->Resize(combined_w_dims);
     auto* new_combined_w_data =
         wq_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_combined_w_data, tmp_combined_w_data,
+    memcpy(new_combined_w_data,
+           tmp_combined_w_data,
            sizeof(float) * wq_tensor->numel());
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
@@ -518,22 +552,25 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
 
     size_t bias_size = bq_tensor->numel();
     memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
-    memcpy(tmp_combined_bias_data + bias_size, bk_data,
-           sizeof(float) * bias_size);
-    memcpy(tmp_combined_bias_data + 2 * bias_size, bv_data,
+    memcpy(
+        tmp_combined_bias_data + bias_size, bk_data, sizeof(float) * bias_size);
+    memcpy(tmp_combined_bias_data + 2 * bias_size,
+           bv_data,
            sizeof(float) * bias_size);
 
     bq_tensor->Resize(combined_bias_dims);
     auto* new_combined_bias_data =
         bq_tensor->mutable_data<float>(platform::CPUPlace());
-    memcpy(new_combined_bias_data, tmp_combined_bias_data,
+    memcpy(new_combined_bias_data,
+           tmp_combined_bias_data,
            sizeof(float) * bq_tensor->numel());
 
     scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
 
     auto reshape_desc = reshape2->Op();
     int head_number =
-        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
+        PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
+            .at(2);
 
     OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul_roformer");
@@ -572,76 +609,57 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(mul0_out, mul0_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul0_w, mul0_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_0, reshape2_0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_0_out, reshape2_0_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_0_out, reshape2_0_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_0, transpose2_0, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_0_out, transpose2_0_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_0_out, transpose2_0_out, multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(eltmul_cos_q, eltmul_cos_q,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltmul_cos_q_out, eltmul_cos_q_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltmul_sin_q, eltmul_sin_q,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltmul_sin_q_out, eltmul_sin_q_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(split_q, split_q,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(split_q_out, split_q_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(concat_q, concat_q,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(concat_q_out, concat_q_out,
-                              multihead_pattern);   
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd_q, eltadd_q,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd_q_out, eltadd_q_out,
-                              multihead_pattern);
-                                             
+    GET_IR_NODE_FROM_SUBGRAPH(eltmul_cos_q, eltmul_cos_q, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltmul_cos_q_out, eltmul_cos_q_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltmul_sin_q, eltmul_sin_q, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltmul_sin_q_out, eltmul_sin_q_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(split_q, split_q, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(split_q_out, split_q_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(concat_q, concat_q, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(concat_q_out, concat_q_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd_q, eltadd_q, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd_q_out, eltadd_q_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(mul1, mul1, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul1_out, mul1_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul1_w, mul1_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_1, reshape2_1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_1_out, reshape2_1_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_1_out, reshape2_1_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_1, transpose2_1, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_1_out, transpose2_1_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_1_out, transpose2_1_out, multihead_pattern);
 
-    GET_IR_NODE_FROM_SUBGRAPH(eltmul_cos_k, eltmul_cos_k,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltmul_cos_k_out, eltmul_cos_k_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltmul_sin_k, eltmul_sin_k,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltmul_sin_k_out, eltmul_sin_k_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(split_k, split_k,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(split_k_out, split_k_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(concat_k, concat_k,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(concat_k_out, concat_k_out,
-                              multihead_pattern);   
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd_k, eltadd_k,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(eltadd_k_out, eltadd_k_out,
-                              multihead_pattern);
-
+    GET_IR_NODE_FROM_SUBGRAPH(eltmul_cos_k, eltmul_cos_k, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltmul_cos_k_out, eltmul_cos_k_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltmul_sin_k, eltmul_sin_k, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        eltmul_sin_k_out, eltmul_sin_k_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(split_k, split_k, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(split_k_out, split_k_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(concat_k, concat_k, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(concat_k_out, concat_k_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd_k, eltadd_k, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltadd_k_out, eltadd_k_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(mul2, mul2, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul2_out, mul2_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul2_w, mul2_w, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_2, reshape2_2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_2_out, reshape2_2_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_2_out, reshape2_2_out, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose2_2, transpose2_2, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_2_out, transpose2_2_out,
-                              multihead_pattern);
-
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_2_out, transpose2_2_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(scale, scale, multihead_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, multihead_pattern);
@@ -666,20 +684,20 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(eltadd_qk_out, eltadd_qk_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(softmax_qk, softmax_qk, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(softmax_qk_out, softmax_qk_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        softmax_qk_out, softmax_qk_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv, matmul_qkv, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(matmul_qkv_out, matmul_qkv_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        matmul_qkv_out, matmul_qkv_out, multihead_pattern);
 
     GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv, reshape2_qkv, multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(reshape2_qkv_out, reshape2_qkv_out,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv, transpose2_qkv,
-                              multihead_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(transpose2_qkv_out, transpose2_qkv_out,
-                              multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        reshape2_qkv_out, reshape2_qkv_out, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_qkv, transpose2_qkv, multihead_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        transpose2_qkv_out, transpose2_qkv_out, multihead_pattern);
 
     // If weights or biases in qkv's fc are shared by multiple multihead_matmul
     // patterns, we do not support this kind of fusion, this pass will not take
@@ -691,9 +709,27 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
     if (is_fc_params_shared) {
       return;
     }
-    fuse_creater(input0, input_cos, input_sin, mul0, mul1, mul2, mul0_out, mul1_out, mul2_out, mul0_w,
-                 mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b, eltadd_qk_b,
-                 reshape2_0, reshape2_qkv_out, scale, scale_out, matmul_qk);
+    fuse_creater(input0,
+                 input_cos,
+                 input_sin,
+                 mul0,
+                 mul1,
+                 mul2,
+                 mul0_out,
+                 mul1_out,
+                 mul2_out,
+                 mul0_w,
+                 mul1_w,
+                 mul2_w,
+                 eltadd0_b,
+                 eltadd1_b,
+                 eltadd2_b,
+                 eltadd_qk_b,
+                 reshape2_0,
+                 reshape2_qkv_out,
+                 scale,
+                 scale_out,
+                 matmul_qk);
 
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,
@@ -782,7 +818,6 @@ void MultiHeadMatmulRoformerFusePass::ApplyImpl(Graph* graph) const {
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
-
 
 REGISTER_PASS(multihead_matmul_roformer_fuse_pass,
               paddle::framework::ir::MultiHeadMatmulRoformerFusePass);

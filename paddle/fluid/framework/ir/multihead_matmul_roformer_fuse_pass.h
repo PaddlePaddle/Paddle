@@ -25,7 +25,8 @@ namespace ir {
 namespace patterns {
 
 struct MultiHeadMatmulRoformerPattern : public PatternBase {
-  MultiHeadMatmulRoformerPattern(PDPattern* pattern, const std::string& name_scope)
+  MultiHeadMatmulRoformerPattern(PDPattern* pattern,
+                                 const std::string& name_scope)
       : PatternBase(pattern, name_scope, "multihead_matmul_roformer") {}
 
   PDNode* operator()();
@@ -89,7 +90,6 @@ struct MultiHeadMatmulRoformerPattern : public PatternBase {
   PATTERN_DECL_NODE(concat_k);
   PATTERN_DECL_NODE(concat_k_out);
 
-
   PATTERN_DECL_NODE(eltadd_q);
   PATTERN_DECL_NODE(eltadd_q_out);
   PATTERN_DECL_NODE(eltadd_k);
@@ -109,7 +109,6 @@ struct MultiHeadMatmulRoformerPattern : public PatternBase {
 
 }  // namespace patterns
 
-
 class MultiHeadMatmulRoformerFusePass : public FusePassBase {
  public:
   MultiHeadMatmulRoformerFusePass();
@@ -120,8 +119,9 @@ class MultiHeadMatmulRoformerFusePass : public FusePassBase {
   const std::string name_scope_{"multihead_matmul_roformer_fuse"};
 
  private:
-  int BuildFusion(Graph* graph, const std::string& name_scope,
-                    Scope* scope) const;
+  int BuildFusion(Graph* graph,
+                  const std::string& name_scope,
+                  Scope* scope) const;
 };
 
 }  // namespace ir
