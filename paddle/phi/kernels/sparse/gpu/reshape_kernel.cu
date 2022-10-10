@@ -59,7 +59,9 @@ void ReshapeCooKernel(const Context& dev_ctx,
   int64_t x_nnz = x.nnz();
   // TODO: consider using "DDim DDim::reshape(std::vector<int>& shape)"
   // DDim out_dims = phi::make_ddim(shape.GetData());
-  DDim out_dims = x.dims().reshape(std::vector<int>(shape.GetData().begin(), shape.GetData().end()));
+  // DDim out_dims = x.dims().reshape(std::vector<int>(shape.GetData().begin(), shape.GetData().end()));
+  std::vector<int> new_shape(shape.GetData().begin(), shape.GetData().end());
+  phi::DDim out_dims = x.dims().reshape(new_shape);
   //  get sparse part dimensions of x and out
   std::vector<int64_t> x_sparse_part_dims;
   std::vector<int64_t> out_sparse_part_dims;
