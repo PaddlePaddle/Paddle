@@ -678,6 +678,7 @@ EOF
             echo "========================================="
         fi
         bash $PADDLE_ROOT/tools/check_added_ut.sh
+        check_approvals_of_unittest 2
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
             ctest -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
@@ -1152,36 +1153,12 @@ function check_diff_file_for_coverage() {
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
 }
 
-function check_change_of_unittest() {
-    generate_unittest_spec "PR"
-    check_approvals_of_unittest 2
-}
+
 
 function check_sequence_op_unittest(){
     /bin/bash ${PADDLE_ROOT}/tools/check_sequence_op.sh
 }
 
-function generate_unittest_spec() {
-    spec_kind=$1
-    if [ "$spec_kind" == "DEV" ]; then
-        cat <<EOF
-        ============================================
-        Generate unit tests.spec of develop.
-        ============================================
-EOF
-    elif [ "$spec_kind" == "PR" ]; then
-        cat <<EOF
-        ============================================
-        Generate unit tests.spec of this PR.
-        ============================================
-EOF
-    else
-        echo "Not supported $1"
-        exit 1
-    fi
-    spec_path=${PADDLE_ROOT}/paddle/fluid/UNITTEST_${spec_kind}.spec
-    ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' > ${spec_path}
-}
 
 
 function assert_api_spec_approvals() {
@@ -1833,14 +1810,10 @@ EOF
 }
 
 function insert_pile_to_h_cu_diff {
-    # TODO get develop h/cu md5
+    # get all .cu files of develop branch
     cd ${PADDLE_ROOT}
     find ${PADDLE_ROOT} -name '*.cu'| grep -v ${PADDLE_ROOT}/build >> ${PADDLE_ROOT}/tools/h_cu_files.log
-    python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'get_h_file_md5' ${PADDLE_ROOT}
-    
-    # TODO insert pile to diff h/cu file 
-
-    #insert pile to full h/cu file 
+    #insert pile to all .cu files
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'insert_pile_to_h_file' ${PADDLE_ROOT}
 }
 
@@ -1882,12 +1855,11 @@ function parallel_card_test_single {
     num=$2
     for case in $(echo $testcases | tr "$|^" "\n")
     do
-        cd ${PADDLE_ROOT}/build
-        precise_card_test "^${case}$" $num
+        cd ${PADDLE_ROOT}/build 
+        parallel_card_test "^${case}$" $num 
     done
 }
-
-function precise_card_test() {
+function parallel_card_test() {
     set -m
     testcases=$1
     if (( $# > 1 )); then
@@ -1923,13 +1895,42 @@ function precise_card_test() {
     set +m
 }
 
+function precise_card_test() {
+    set -m
+    testcases=$1
+    if (( $# > 1 )); then
+        cardnumber=$2
+        cuda_list="0"
+        if [ $cardnumber -eq 2 ]; then
+            cuda_list=${CUDA_VISIBLE_DEVICES}
+        else
+            cuda_list="0"
+        fi
+    else
+        cardnumber=2
+        cuda_list=${CUDA_VISIBLE_DEVICES}
+    fi
+
+    if [[ "$testcases" == "" ]]; then
+        return 0
+    fi
+
+    echo "****************************************************************"
+    echo "***Running ut: $testcases***"
+    echo "****************************************************************"
+    
+    tmpfile=$tmp_dir/$testcases".log"
+    env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
+    set +m
+}
+
 function get_precise_tests_map_file {
     cd ${PADDLE_ROOT}/build
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     ut_total_startTime_s=`date +%s`
     EXIT_CODE=0;
     test_cases=$(ctest -N -V) # get all test cases
-    single_card_tests='' # all cases list which would take one graph card
+    single_card_tests=''      # all cases list which would take one graph card
     exclusive_tests=''        # cases list which would be run exclusively
     multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
     is_exclusive=''           # indicate whether the case is exclusive type
@@ -1996,18 +1997,20 @@ set +x
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
-
+    #run all unittest to get the coverage information of .c and .h files
     precise_card_test_single "$single_card_tests" 1
     precise_card_test_single "$single_card_tests_1" 1
     precise_card_test_single "$multiple_card_tests" 2
     precise_card_test_single "$exclusive_tests"
     wait;
+    #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
     
-    #analy h/cu to Map file
+    #analyze the mapping between unit tests and .cu files
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
 
     wait;
+    #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
     get_failedUts_precise_map_file
 
     #generate python coverage and generate python file to tests_map_file
@@ -2510,6 +2513,8 @@ set -x
         export TEST_NUM_PERCENT_CASES=0.15
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
+        #check change of pr_unnitests and dev_unnitests
+        check_approvals_of_unittest 2
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
             python3.7 $PADDLE_ROOT/tools/get_pr_ut.py
         fi
@@ -3552,7 +3557,6 @@ function main() {
         enable_unused_var_check
         parallel_test
         check_coverage
-        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cpu_cicheck_coverage)
         check_diff_file_for_coverage
@@ -3563,7 +3567,6 @@ function main() {
       gpu_cicheck_coverage)
         parallel_test
         check_coverage
-        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       check_coverage_build)
         check_coverage_build
@@ -3626,7 +3629,6 @@ function main() {
       maccheck_py35)
         cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       macbuild)
         cmake_gen ${PYTHON_ABI:-""}

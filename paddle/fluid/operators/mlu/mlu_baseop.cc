@@ -206,7 +206,7 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const int tensor_dim,
       cnnlSetTensorDescriptorPosition(raw_tensor_desc, position));
 }
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                                      const cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype) {
   auto dims = phi::vectorize<int>(tensor.dims());
@@ -227,11 +227,11 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
   }
 }
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor)
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor)
     : MLUCnnlTensorDesc(
           tensor, CNNL_LAYOUT_ARRAY, ToCnnlDataType(tensor.dtype())) {}
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                                      cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype,
                                      int position)
@@ -240,7 +240,7 @@ MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
       cnnlSetTensorDescriptorPosition(raw_tensor_desc, position));
 }
 
-MLUCnnlTensorDesc::MLUCnnlTensorDesc(const Tensor& tensor,
+MLUCnnlTensorDesc::MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                                      cnnlTensorLayout_t layout,
                                      const cnnlDataType_t tensor_dtype,
                                      int position,
@@ -4725,6 +4725,78 @@ MLURNNDesc::~MLURNNDesc() {
                                                  output));
 }
 
+/* static */ void MLUCnnl::SmoothL1LossForward(
+    const ExecutionContext& ctx,
+    const cnnlTensorDescriptor_t x_desc,
+    const void* x,
+    const cnnlTensorDescriptor_t t_desc,
+    const void* target,
+    const float beta,
+    const cnnlSmoothL1LossAlgorithm_t algorithm,
+    const cnnlTensorDescriptor_t y_desc,
+    void* y) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetSmoothL1LossForwardWorkspaceSize(
+      handle, x_desc, algorithm, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSmoothL1LossForward_v2(handle,
+                                                        x_desc,
+                                                        x,
+                                                        t_desc,
+                                                        target,
+                                                        beta,
+                                                        algorithm,
+                                                        workspace_ptr,
+                                                        workspace_size,
+                                                        y_desc,
+                                                        y));
+}
+
+/* static */ void MLUCnnl::SmoothL1LossBackward(
+    const ExecutionContext& ctx,
+    const cnnlTensorDescriptor_t x_desc,
+    const void* x,
+    const cnnlTensorDescriptor_t target_desc,
+    const void* target,
+    const cnnlTensorDescriptor_t dy_desc,
+    const void* dy,
+    const float beta,
+    const cnnlSmoothL1LossAlgorithm_t algorithm,
+    const cnnlTensorDescriptor_t dx_desc,
+    void* dx) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetSmoothL1LossBackwardWorkspaceSize(
+      handle, x_desc, algorithm, &workspace_size));
+
+  auto& dev_ctx = GetDevCtxFromCTX(ctx);
+  Tensor workspace = ctx.AllocateTmpTensor<int8_t, MLUDeviceContext>(
+      {static_cast<int64_t>(workspace_size)}, dev_ctx);
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSmoothL1LossBackward_v2(handle,
+                                                         x_desc,
+                                                         x,
+                                                         target_desc,
+                                                         target,
+                                                         dy_desc,
+                                                         dy,
+                                                         beta,
+                                                         algorithm,
+                                                         workspace_ptr,
+                                                         workspace_size,
+                                                         dx_desc,
+                                                         dx));
+}
+
 /* static */ void MLUCnnl::EmbeddingForward(
     const ExecutionContext& ctx,
     const int padding_idx,
@@ -5344,6 +5416,95 @@ MLURNNDesc::~MLURNNDesc() {
                                                               count,
                                                               diff_x_desc,
                                                               diff_x));
+}
+
+/* static */ void MLUOP::OpYoloBox(const ExecutionContext& ctx,
+                                   const mluOpTensorDescriptor_t x_desc,
+                                   const void* x,
+                                   const mluOpTensorDescriptor_t img_size_desc,
+                                   const void* img_size,
+                                   const mluOpTensorDescriptor_t anchors_desc,
+                                   const void* anchors,
+                                   const int class_num,
+                                   const float conf_thresh,
+                                   const int downsample_ratio,
+                                   const bool clip_bbox,
+                                   const float scale,
+                                   const bool iou_aware,
+                                   const float iou_aware_factor,
+                                   const mluOpTensorDescriptor_t boxes_desc,
+                                   void* boxes,
+                                   const mluOpTensorDescriptor_t scores_desc,
+                                   void* scores) {
+  mluOpHandle_t handle = GetMLUOpHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpYoloBox(handle,
+                                          x_desc,
+                                          x,
+                                          img_size_desc,
+                                          img_size,
+                                          anchors_desc,
+                                          anchors,
+                                          class_num,
+                                          conf_thresh,
+                                          downsample_ratio,
+                                          clip_bbox,
+                                          scale,
+                                          iou_aware,
+                                          iou_aware_factor,
+                                          boxes_desc,
+                                          boxes,
+                                          scores_desc,
+                                          scores));
+}
+
+/* static */ void MLUOP::OpPriorBox(
+    const ExecutionContext& ctx,
+    const mluOpTensorDescriptor_t min_sizes_desc,
+    const void* min_sizes,
+    const mluOpTensorDescriptor_t aspect_ratios_desc,
+    const void* aspect_ratios,
+    const mluOpTensorDescriptor_t variances_desc,
+    const void* variances,
+    const mluOpTensorDescriptor_t max_sizes_desc,
+    const void* max_sizes,
+    const int height,
+    const int width,
+    const int im_height,
+    const int im_width,
+    const float step_h,
+    const float step_w,
+    const float offset,
+    const bool clip,
+    const bool min_max_aspect_ratios_order,
+    const mluOpTensorDescriptor_t output_desc,
+    void* output,
+    const mluOpTensorDescriptor_t var_desc,
+    void* var) {
+  mluOpHandle_t handle = GetMLUOpHandleFromCTX(ctx);
+
+  PADDLE_ENFORCE_MLU_SUCCESS(mluOpPriorBox(handle,
+                                           min_sizes_desc,
+                                           min_sizes,
+                                           aspect_ratios_desc,
+                                           aspect_ratios,
+                                           variances_desc,
+                                           variances,
+                                           max_sizes_desc,
+                                           max_sizes,
+                                           height,
+                                           width,
+                                           im_height,
+                                           im_width,
+                                           step_h,
+                                           step_w,
+                                           offset,
+                                           clip,
+                                           min_max_aspect_ratios_order,
+                                           output_desc,
+                                           output,
+                                           var_desc,
+                                           var));
 }
 
 }  // namespace operators

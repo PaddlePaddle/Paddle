@@ -200,7 +200,7 @@ static PyObject* eager_api_read_next_tensor_list(PyObject* self,
   {
     eager_gil_scoped_release guard;
     tensor_list.reserve(tensor_base_list.size());
-    auto func = [](framework::Tensor& tensor_base) {
+    auto func = [](phi::DenseTensor& tensor_base) {
       paddle::experimental::Tensor tensor(
           egr::Controller::Instance().GenerateUniqueName());
       auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);

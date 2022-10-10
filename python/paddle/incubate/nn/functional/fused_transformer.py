@@ -674,6 +674,7 @@ def fused_multi_transformer(x,
                             pre_layer_norm=True,
                             epsilon=1e-05,
                             cache_kvs=None,
+                            pre_caches=None,
                             time_step=None,
                             attn_mask=None,
                             dropout_rate=0.0,
@@ -739,6 +740,7 @@ def fused_multi_transformer(x,
         pre_layer_norm (bool, optional): whether it is pre_layer_norm(True) or post_layer_norm(False). Default True.
         epsilon (float, optional): Small float value added to denominator of the layer_norm to avoid dividing by zero. Default is 1e-5.
         cache_kvs (list(Tensor)|tuple(Tensor), optional): The cache structure tensors for the generation model. The shape is `[2, bsz, num\_head, max\_seq\_len, head\_dim]`. Default None.
+        pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
         time_step (Tensor, optional): The time step tensor for the generation model. Which used in decode stage, to represent the time step, that is, the real seq_len of CacheKV. The shape is `[1]`, must be in CPUPlace. Default None.
         attn_mask (Tensor, optional):  A tensor used in multi-head attention to prevents attention to
             some unwanted positions, usually the paddings or the subsequent positions. It is a tensor
@@ -826,12 +828,13 @@ def fused_multi_transformer(x,
     if _non_static_mode():
         cache_kv_out, final_out = _legacy_C_ops.fused_multi_transformer(
             x, ln_scales, ln_biases, qkv_weights, qkv_biases, cache_kvs,
-            time_step, attn_mask, linear_weights, linear_biases, ffn_ln_scales,
-            ffn_ln_biases, ffn1_weights, ffn1_biases, ffn2_weights, ffn2_biases,
-            cache_kvs, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
-            'dropout_rate', dropout_rate, 'is_test', not training,
-            'dropout_implementation', mode, 'act_method', activation,
-            'trans_qkvw', trans_qkvw, 'ring_id', ring_id)
+            pre_caches, time_step, attn_mask, linear_weights, linear_biases,
+            ffn_ln_scales, ffn_ln_biases, ffn1_weights, ffn1_biases,
+            ffn2_weights, ffn2_biases, cache_kvs, 'pre_layer_norm',
+            pre_layer_norm, 'epsilon', epsilon, 'dropout_rate', dropout_rate,
+            'is_test', not training, 'dropout_implementation', mode,
+            'act_method', activation, 'trans_qkvw', trans_qkvw, 'ring_id',
+            ring_id)
         if cache_kvs is not None:
             return final_out, cache_kv_out
         return final_out
@@ -857,6 +860,8 @@ def fused_multi_transformer(x,
             inputs['CacheKV'] = cache_kvs
             if time_step is not None:
                 inputs['TimeStep'] = time_step
+        if pre_caches is not None:
+            inputs['PreCaches'] = pre_caches
         inputs['SrcMask'] = attn_mask
         inputs['OutLinearW'] = linear_weights
         if linear_biases is not None:

@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 using framework::LoDTensor;
-using framework::Tensor;
+
 using platform::Communicator;
 
 template <typename Type>
