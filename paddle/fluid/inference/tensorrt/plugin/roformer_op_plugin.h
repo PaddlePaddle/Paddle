@@ -68,7 +68,7 @@ public:
     // Method inherited from IPluginV2Ext
     nvinfer1::DataType getOutputDataType(int32_t index, nvinfer1::DataType const *inputTypes, int32_t nbInputs) const noexcept override;
 
-    //Method inherited from IPluginV2DynamicExt
+    // Method inherited from IPluginV2DynamicExt
     nvinfer1::IPluginV2DynamicExt *clone() const noexcept override;
     nvinfer1::DimsExprs            getOutputDimensions(int32_t outputIndex, const nvinfer1::DimsExprs *inputs, int32_t nbInputs, nvinfer1::IExprBuilder &exprBuilder) noexcept override;
     bool                 supportsFormatCombination(int32_t pos, const nvinfer1::PluginTensorDesc *inOut, int32_t nbInputs, int32_t nbOutputs) noexcept override;
@@ -87,7 +87,6 @@ private:
 
 public:
     RoformerPluginCreator() {}
-    //~RoformerPluginCreator() {}
     const char* getPluginName() const noexcept override {
         return "roformerplugin";
     }
