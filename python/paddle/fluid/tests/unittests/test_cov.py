@@ -247,10 +247,10 @@ class Cov_Test3(unittest.TestCase):
 
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
-            np_fw = self.fw_s * np.random.rand(*self.fweightshape).astype(
-                'int32')
-            np_aw = self.aw_s * np.random.rand(*self.aweightshape).astype(
-                'float64')
+            np_fw = self.fw_s * np.random.rand(
+                *self.fweightshape).astype('int32')
+            np_aw = self.aw_s * np.random.rand(
+                *self.aweightshape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
             fweights = paddle.to_tensor(np_fw)
             aweights = paddle.to_tensor(np_aw)
