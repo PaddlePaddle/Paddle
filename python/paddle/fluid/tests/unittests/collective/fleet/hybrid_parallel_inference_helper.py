@@ -17,12 +17,8 @@ import unittest
 import os
 import paddle
 import numpy as np
-import random
 import paddle.fluid.layers as layers
-import paddle.distributed as dist
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-from paddle import framework
 from paddle.distributed.fleet.utils.hybrid_parallel_inference import HybridParallelInferenceHelper
 
 paddle.enable_static()

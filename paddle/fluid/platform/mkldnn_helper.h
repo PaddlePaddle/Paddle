@@ -21,7 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -76,7 +76,7 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e,
   return tf_pd<Type>(desc, e, p);
 }
 
-inline void MatchShapeToLayout(framework::Tensor* tensor_in,
+inline void MatchShapeToLayout(phi::DenseTensor* tensor_in,
                                framework::DataLayout from,
                                framework::DataLayout to) {
   auto print_dims = [](const std::vector<int>& dims) {
@@ -577,7 +577,7 @@ inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
 }
 
 inline void RegisterModelLayout(
-    std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
+    std::vector<std::unique_ptr<framework::OperatorBase>>& ops,  // NOLINT
     const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
     // If there is already registered NHWC then quit this call
@@ -632,4 +632,22 @@ bool constexpr is_int8() {
 }
 
 }  // namespace platform
+
+inline std::string FindInputNameByVarName(framework::OpDesc* op,
+                                          const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->InputNames())
+    for (const auto& input_name : op->Input(name))
+      if (input_name == searched_name) ret = name;
+  return ret;
+}
+
+inline std::string FindOutputNameByVarName(framework::OpDesc* op,
+                                           const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->OutputNames())
+    for (const auto& output_name : op->Output(name))
+      if (output_name == searched_name) ret = name;
+  return ret;
+}
 }  // namespace paddle

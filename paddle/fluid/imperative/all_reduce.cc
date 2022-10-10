@@ -53,8 +53,8 @@ static const platform::Place &GetVarPlace(const framework::Variable &src) {
   }
 }
 
-static void AllReduce(const framework::Tensor &src,
-                      framework::Tensor *dst,
+static void AllReduce(const phi::DenseTensor &src,
+                      phi::DenseTensor *dst,
                       const gpuStream_t stream,
                       const platform::NCCLComm *comm) {
   const auto &place = src.place();

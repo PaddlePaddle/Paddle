@@ -29,7 +29,7 @@ TEST(Variable, GetMutable) {
   EXPECT_EQ("1234", tt);
 
   try {
-    v->GetMutable<Tensor>();
+    v->GetMutable<phi::DenseTensor>();
   } catch (std::exception& e) {
     return;
   }

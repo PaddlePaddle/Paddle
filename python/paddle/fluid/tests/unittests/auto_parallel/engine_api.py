@@ -29,6 +29,7 @@ from paddle.fluid import layers
 from paddle.io import Dataset, IterableDataset, DataLoader
 
 from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.interface import get_collection, CollectionNames
 from paddle.optimizer.lr import CosineAnnealingDecay
 from paddle.fluid.dataloader.collate import default_collate_fn
 
@@ -97,7 +98,7 @@ class MLPLayer(nn.Layer):
         out = self.dropout(out)
         out = self.linear2(out)
         if is_fetch:
-            auto.fetch(out, "my_out")
+            auto.fetch(out, "my_out", logging=True)
         return out
 
 

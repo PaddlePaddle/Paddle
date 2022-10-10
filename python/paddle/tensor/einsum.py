@@ -884,7 +884,7 @@ def einsum(equation, *operands):
                 the sum over the original output.
                 - Non-input labels are invalid.
                 - Duplicate labels are invalid.
-                - For any dummmy label which is present for the output, it's promoted to
+                - For any dummy label which is present for the output, it's promoted to
                 a free label.
                 - For any free label which is not present for the output, it's lowered to
                 a dummy label.

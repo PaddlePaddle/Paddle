@@ -425,7 +425,7 @@ class FusedSeqpoolCVMCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto inputs = ctx.MultiInput<LoDTensor>("X");
-    auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
+    auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     const auto slot_size = inputs.size();
     std::vector<const float *> input_data(slot_size);

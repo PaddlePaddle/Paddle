@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
