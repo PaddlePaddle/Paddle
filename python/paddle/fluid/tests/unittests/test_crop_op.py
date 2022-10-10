@@ -61,6 +61,11 @@ class TestCropOp(OpTest):
             self.inputs['Offsets'] = np.array(self.offsets).astype('int32')
         else:
             self.attrs['offsets'] = self.offsets
+        if self.offsets is None:
+            self.offsets = [0] * len(self.crop_shape)
+        if self.crop_shape is None:
+            self.crop_shape = self.x_shape
+
         self.outputs = {
             'Out': crop(self.inputs['X'], self.offsets, self.crop_shape)
         }
@@ -128,6 +133,22 @@ class TestCase6(TestCropOp):
         self.offsets = [3, 5, 4]
         self.crop_by_input = True
         self.offset_by_input = True
+
+
+class TestCase7NoneShape(TestCropOp):
+
+    def initTestCase(self):
+        self.x_shape = (10, 9, 14)
+        self.crop_shape = None
+        self.offsets = [0, 0, 0]
+
+
+class TestCase8NoneOffset(TestCropOp):
+
+    def initTestCase(self):
+        self.x_shape = (10, 9, 14)
+        self.crop_shape = [3, 3, 5]
+        self.offsets = None
 
 
 if __name__ == '__main__':
