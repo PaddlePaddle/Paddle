@@ -169,6 +169,16 @@ void AnalysisConfig::EnableNpu(int device_id) {
   Update();
 }
 
+void AnalysisConfig::EnableMlu(int device_id) {
+#ifdef PADDLE_WITH_MLU
+  use_mlu_ = true;
+  mlu_device_id_ = device_id;
+#else
+  LOG(ERROR) << "Please compile with mlu to EnableMlu()";
+  use_mlu_ = false;
+#endif
+}
+
 void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
                                         int device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

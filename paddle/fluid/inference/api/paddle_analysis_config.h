@@ -359,6 +359,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableNpu(int device_id = 0);
   ///
+  /// \brief Turn on MLU.
+  ///
+  /// \param device_id device_id the MLU card to use (default is 0).
+  ///
+  void EnableMlu(int device_id = 0);
+  ///
   /// \brief Turn on CustomDevice.
   ///
   /// \param device_type device_type the custom device to use.
@@ -396,6 +402,12 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the NPU is turned on.
   ///
   bool use_npu() const { return use_npu_; }
+  ///
+  /// \brief A boolean state telling whether the MLU is turned on.
+  ///
+  /// \return bool Whether the MLU is turned on.
+  ///
+  bool use_mlu() const { return use_mlu_; }
   /// \brief A boolean state telling whether the IPU is turned on.
   ///
   /// \return bool Whether the IPU is turned on.
@@ -993,6 +1005,10 @@ struct PD_INFER_DECL AnalysisConfig {
   // NPU related
   bool use_npu_{false};
   int npu_device_id_{0};
+
+  // NPU related
+  bool use_mlu_{false};
+  int mlu_device_id_{0};
 
   // CustomDevice related
   bool use_custom_device_{false};

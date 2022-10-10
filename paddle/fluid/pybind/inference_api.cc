@@ -654,6 +654,7 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SetXpuDeviceId,
            py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
+      .def("enable_mlu", &AnalysisConfig::EnableMlu, py::arg("device_id") = 0)
       .def("enable_ipu",
            &AnalysisConfig::EnableIpu,
            py::arg("ipu_device_num") = 1,
