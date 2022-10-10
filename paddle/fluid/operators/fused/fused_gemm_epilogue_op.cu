@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/scope_guard.h"
+#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -62,6 +63,9 @@ class FusedGemmEpilogueKernel : public framework::OpKernel<T> {
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
+    }
+    if (std::is_same<T, platform::bfloat16>::value) {
+      mat_type = CUDA_R_16BF;
     }
     if (std::is_same<T, double>::value) {
       mat_type = CUDA_R_64F;
@@ -353,6 +357,9 @@ class FusedGemmEpilogueGradKernel : public framework::OpKernel<T> {
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
     if (std::is_same<T, paddle::platform::float16>::value) {
       mat_type = CUDA_R_16F;
+    }
+    if (std::is_same<T, platform::bfloat16>::value) {
+      mat_type = CUDA_R_16BF;
     }
     if (std::is_same<T, double>::value) {
       mat_type = CUDA_R_64F;
@@ -688,12 +695,14 @@ REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue,
     ops::FusedGemmEpilogueKernel<phi::GPUContext, float>,
     ops::FusedGemmEpilogueKernel<phi::GPUContext, double>,
-    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::float16>);
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::float16>,
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::bfloat16>);
 
 REGISTER_OP_CUDA_KERNEL(
     fused_gemm_epilogue_grad,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext, float>,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext, double>,
     ops::FusedGemmEpilogueGradKernel<phi::GPUContext,
-                                     paddle::platform::float16>);
+                                     paddle::platform::float16>,
+    ops::FusedGemmEpilogueKernel<phi::GPUContext, paddle::platform::bfloat16>);
 #endif

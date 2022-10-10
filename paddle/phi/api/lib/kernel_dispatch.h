@@ -100,7 +100,9 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     key_set.backend_set =
         key_set.backend_set | detail::GetTensorBackendSet(tensor);
     // TODO(chenweihang): select multi layout and dtype
-    key_set.layout = tensor.layout();
+    phi::DataLayout tensor_layout = tensor.layout();
+    key_set.layout =
+        tensor_layout > key_set.layout ? tensor_layout : key_set.layout;
     key_set.dtype = tensor.dtype();
     dtype_set = dtype_set | DataTypeSet(key_set.dtype);
     auto promote_result = PromoteTypes(dtype_set);

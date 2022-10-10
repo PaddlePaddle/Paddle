@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import datetime
 import paddle
 import os
 
