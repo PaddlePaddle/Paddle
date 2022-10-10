@@ -60,14 +60,14 @@ class TransformedDistribution(distribution.Distribution):
         if not all(isinstance(t, transform.Transform) for t in transforms):
             raise TypeError("All element of transforms must be Transform type.")
 
+        chain = transform.ChainTransform(transforms)
+        base_shape = base.batch_shape + base.event_shape
         self._base = base
         self._transforms = transforms
-
         if (len(transforms) > 0):
-            chain = transform.ChainTransform(transforms)
-            if len(base.batch_shape + base.event_shape) < chain._domain.event_rank:
+            if len(base_shape) < chain._domain.event_rank:
                 raise ValueError(
-                    f"'base' needs to have shape with size at least {chain._domain.event_rank}, bug got {len(base_shape)}."
+                    f"'base' needs to have shape with size at least {chain._domain.event_rank}, but got {len(base_shape)}."
                 )
             if chain._domain.event_rank > len(base.event_shape):
                 base = independent.Independent(
@@ -76,23 +76,37 @@ class TransformedDistribution(distribution.Distribution):
             transformed_shape = chain.forward_shape(base.batch_shape +
                                                     base.event_shape)
             transformed_event_rank = chain._codomain.event_rank + \
-                max(len(base.event_shape)-chain._domain.event_rank, 0)
+                max(len(base.event_shape) - chain._domain.event_rank, 0)
             super(TransformedDistribution, self).__init__(
                 transformed_shape[:len(transformed_shape) - transformed_event_rank],
                 transformed_shape[len(transformed_shape) - transformed_event_rank:])
-
-        super(TransformedDistribution, self).__init__(base.batch_shape,base.event_shape)
+        else:
+            super(TransformedDistribution, self).__init__(base.batch_shape, base.event_shape)
 
     def sample(self, shape=()):
         """Sample from ``TransformedDistribution``.
 
         Args:
-            shape (tuple, optional): The sample shape. Defaults to ().
+            shape (Sequence[int], optional): The sample shape. Defaults to ().
 
         Returns:
             [Tensor]: The sample result.
         """
         x = self._base.sample(shape)
+        for t in self._transforms:
+            x = t.forward(x)
+        return x
+
+    def rsample(self, shape=()):
+        """Reparameterized sample from ``TransformedDistribution``.
+
+        Args:
+            shape (Sequence[int], optional): The sample shape. Defaults to ().
+
+        Returns:
+            [Tensor]: The sample result.
+        """
+        x = self._base.rsample(shape)
         for t in self._transforms:
             x = t.forward(x)
         return x
@@ -114,7 +128,7 @@ class TransformedDistribution(distribution.Distribution):
             event_rank += t._domain.event_rank - t._codomain.event_rank
             log_prob = log_prob - \
                 _sum_rightmost(t.forward_log_det_jacobian(
-                    x), event_rank-t._domain.event_rank)
+                    x), event_rank - t._domain.event_rank)
             y = x
         log_prob += _sum_rightmost(self._base.log_prob(y),
                                    event_rank - len(self._base.event_shape))
