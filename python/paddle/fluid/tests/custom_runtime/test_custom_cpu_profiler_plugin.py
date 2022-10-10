@@ -14,9 +14,7 @@
 
 import os
 import sys
-import site
 import unittest
-import numpy as np
 import tempfile
 
 
