@@ -534,6 +534,16 @@ struct SimpleOpTypeSetTeller : public Teller {
                      "the pass.";
           return false;
         }
+
+        auto index_var_name = desc.Input("Index")[0];
+        auto* index_var_desc = block->FindVar(index_var_name);
+
+        // The index input must be int32 datatype.
+        if (index_var_desc->GetDataType() !=
+            paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+          VLOG(3) << "gather op Index input data type must be int32";
+          return false;
+        }
 #if !IS_TRT_VERSION_GE(7000)
         auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
         const auto x_shape = x_var_desc->GetShape();
@@ -2083,6 +2093,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "lookup_table") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the lookup_table does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2201,7 +2219,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
-      "layernorm_shift_partition"};
+      "layernorm_shift_partition",
+      "lookup_table"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2312,7 +2331,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "fused_token_prune",
-      "layernorm_shift_partition"};
+      "layernorm_shift_partition",
+      "lookup_table"};
 };
 
 struct GenericPluginTeller : public Teller {
