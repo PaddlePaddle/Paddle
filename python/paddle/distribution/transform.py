@@ -142,7 +142,7 @@ class Transform(object):
                 input, [self])
         if isinstance(input, Transform):
             return ChainTransform([self, input])
-        return self.forward(x)
+        return self.forward(input)
 
     def forward(self, x):
         """Forward transformation with mapping :math:`y = f(x)`.
@@ -285,7 +285,7 @@ class Transform(object):
         if hasattr(self, '_forward_log_det_jacobian'):
             return self._forward_log_det_jacobian(x)
         if hasattr(self, '_inverse_log_det_jacobian'):
-            return -self._inverse_log_det_jacobian(self.forward(y))
+            return -self._inverse_log_det_jacobian(self.forward(x))
         raise NotImplementedError(
             'Neither _forward_log_det_jacobian nor _inverse_log_det_jacobian'
             'is implemented. One of them is required.')
@@ -1133,8 +1133,8 @@ class StickBreakingTransform(Transform):
         offset = x.shape[-1] + 1 - paddle.ones([x.shape[-1]]).cumsum(-1)
         z = F.sigmoid(x - offset.log())
         z_cumprod = (1 - z).cumprod(-1)
-        return F.pad(z, [0]*2*(len(x.shape)-1) + [0, 1], value=1) * \
-            F.pad(z_cumprod, [0]*2*(len(x.shape)-1) + [1, 0], value=1)
+        return F.pad(z, [0] * 2 * (len(x.shape) - 1) + [0, 1], value=1) * \
+            F.pad(z_cumprod, [0] * 2 * (len(x.shape) - 1) + [1, 0], value=1)
 
     def _inverse(self, y):
         y_crop = y[..., :-1]

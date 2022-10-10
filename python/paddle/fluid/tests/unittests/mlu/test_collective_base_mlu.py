@@ -258,63 +258,63 @@ class TestDistBase(unittest.TestCase):
         input2 = np.random.random((10, 1000)).astype(np_data_type)
         if col_type == "broadcast":
             need_result = input2
-            np.testing.assert_allclose(tr0_out, need_result)
-            np.testing.assert_allclose(tr1_out, need_result)
+            np.testing.assert_allclose(tr0_out[0], need_result)
+            np.testing.assert_allclose(tr1_out[0], need_result)
         elif col_type == "allreduce_sum":
             need_result = input1 + input2
-            np.testing.assert_allclose(tr0_out,
+            np.testing.assert_allclose(tr0_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
-            np.testing.assert_allclose(tr1_out,
+            np.testing.assert_allclose(tr1_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
         elif col_type == "allreduce_prod":
             need_result = input1 * input2
-            np.testing.assert_allclose(tr0_out,
+            np.testing.assert_allclose(tr0_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
-            np.testing.assert_allclose(tr1_out,
+            np.testing.assert_allclose(tr1_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
         elif col_type == "allreduce_max":
             need_result = np.maximum(input1, input2)
-            np.testing.assert_allclose(tr0_out,
+            np.testing.assert_allclose(tr0_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
-            np.testing.assert_allclose(tr1_out,
+            np.testing.assert_allclose(tr1_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
         elif col_type == "allreduce_min":
             need_result = np.minimum(input1, input2)
-            np.testing.assert_allclose(tr0_out,
+            np.testing.assert_allclose(tr0_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
-            np.testing.assert_allclose(tr1_out,
+            np.testing.assert_allclose(tr1_out[0],
                                        need_result,
                                        rtol=1e-05,
                                        atol=1e-05)
         elif col_type == "reduce_sum":
             need_result = input1 + input2
-            np.testing.assert_allclose(tr1_out, need_result)
+            np.testing.assert_allclose(tr1_out[0], need_result)
         elif col_type == "reduce_prod":
             need_result = input1 * input2
-            np.testing.assert_allclose(tr1_out, need_result)
+            np.testing.assert_allclose(tr1_out[0], need_result)
         elif col_type == "reduce_max":
             need_result = np.maximum(input1, input2)
-            np.testing.assert_allclose(tr1_out, need_result)
+            np.testing.assert_allclose(tr1_out[0], need_result)
         elif col_type == "reduce_min":
             need_result = np.minimum(input1, input2)
-            np.testing.assert_allclose(tr1_out, need_result)
+            np.testing.assert_allclose(tr1_out[0], need_result)
         elif col_type == "allgather":
             need_result = np.vstack((input1, input2))
-            np.testing.assert_allclose(tr0_out, need_result)
-            np.testing.assert_allclose(tr1_out, need_result)
+            np.testing.assert_allclose(tr0_out[0], need_result)
+            np.testing.assert_allclose(tr1_out[0], need_result)
         else:
             pass

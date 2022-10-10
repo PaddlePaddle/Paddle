@@ -100,7 +100,7 @@ class FileReader(object):
         self._logger.info(self._minTimeStamp)
 
     def _checkArgsKey(self, key, type):
-        if not self._args.has_key(key):
+        if key not in self._args:
             raise KeyError("args should has key [%s]!" % key)
 
         if not isinstance(self._args[key], type):

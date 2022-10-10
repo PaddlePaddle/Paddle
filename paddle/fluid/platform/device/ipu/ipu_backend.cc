@@ -52,9 +52,20 @@ void IpuBackend::Compile(framework::ir::Graph* graph,
   if (ipu_strategy_->is_training) {
     compiler_->LowerOptimizer(scope_);
   }
+
+  // environment variable IPU_ONNX_DUMP_PATH have higher priority
+  std::string onnx_dump_path;
   if (!ipu_strategy_->onnx_dump_path.empty()) {
-    SaveModelProto(ipu_strategy_->onnx_dump_path);
+    onnx_dump_path = ipu_strategy_->onnx_dump_path;
   }
+  auto* ipu_onnx_dump_path = getenv("IPU_ONNX_DUMP_PATH");
+  if (ipu_onnx_dump_path) {
+    onnx_dump_path = std::string{ipu_onnx_dump_path};
+  }
+  if (!onnx_dump_path.empty()) {
+    SaveModelProto(onnx_dump_path);
+  }
+
   executor_->SetCompilerResources(compiler_->GetResources());
   executor_->Prepare(compiler_->GetModelProto());
   is_compiled_ = true;
