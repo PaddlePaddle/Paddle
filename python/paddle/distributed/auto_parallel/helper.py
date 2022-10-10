@@ -139,7 +139,7 @@ class ProxyLayer(Layer):
         """
         outs = []
         for metric in self.metrics:
-            outs.extend(metric.compute(*inputs))
+            outs.append(to_list(metric.compute(*inputs)))
 
         return outs
 
