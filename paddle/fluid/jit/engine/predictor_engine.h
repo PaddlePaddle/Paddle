@@ -150,6 +150,7 @@ class PredictorEngine : public BaseEngine {
     config.EnableMKLDNN();
     config.EnableMkldnnInt8();
     config.SwitchIrOptim(true);
+    config.EnableProfile();
     // config.SwitchIrDebug(true);
 
     predictor_.reset(new AnalysisPredictor(config));

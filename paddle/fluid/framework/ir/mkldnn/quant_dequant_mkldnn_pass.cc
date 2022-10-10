@@ -693,6 +693,35 @@ void QuantDequantMkldnnPass::UpdateActivations(ir::Graph* graph) const {
   }
 }
 
+void QuantDequantMkldnnPass::DropoutScale(
+    ir::Graph* graph,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
+    const {
+  VLOG(3) << "gather output scales from op's attr";
+  for (auto* op_node :
+       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+    if (!op_node->IsOp()) continue;
+
+    const auto op_name = op_node->Name();
+    if (op_name != "dropout") {
+      continue;
+    }
+
+    const std::string input_name = op_node->Op()->Input("X")[0];
+    const std::string output_name = op_node->Op()->Output("Out")[0];
+    auto in_iter = var_quant_scales->find(input_name);
+    auto out_iter = var_quant_scales->find(output_name);
+    if (in_iter == var_quant_scales->end() &&
+        out_iter == var_quant_scales->end()) {
+      continue;
+    } else if (in_iter != var_quant_scales->end()) {
+      (*var_quant_scales)[output_name] = in_iter->second;
+    } else if (out_iter != var_quant_scales->end()) {
+      (*var_quant_scales)[input_name] = out_iter->second;
+    }
+  }
+}
+
 void QuantDequantMkldnnPass::RemoveCtrlVars(ir::Graph* graph) const {
   VLOG(3) << "remove control flow variable";
   std::unordered_set<const Node*> nodes2rm = {};
@@ -750,6 +779,9 @@ void QuantDequantMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   DequantizeWeights(
       graph, scope, weight_thresholds, onnx_format_quantize_model);
   UpdateActivations(graph);
+
+  DropoutScale(graph, &var_quant_scales);
+
   RemoveCtrlVars(graph);
 
   // save var_quant_scales in the first op's attr
