@@ -178,10 +178,10 @@ class ElasticManager(object):
         if self.min_np == self.max_np or \
                 (self.min_np > 0 and self.max_np == 0):
             self.elastic_level = ElasticLevel.FAULT_TOLERANCE
-            logger.info(f'start job with ElasticLevel.FAULT_TOLERANCE')
+            logger.info('start job with ElasticLevel.FAULT_TOLERANCE')
         if self.min_np > 0 and self.max_np > self.min_np:
             self.elastic_level = ElasticLevel.ELASTIC
-            logger.info(f'start job with ElasticLevel.ELASTIC')
+            logger.info('start job with ElasticLevel.ELASTIC')
 
         # compatible with kuberntes service discovery
         if not server and os.getenv(

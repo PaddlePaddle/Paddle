@@ -131,7 +131,7 @@ class TestRealAPI(unittest.TestCase):
                     res = paddle_apis[self.api](input_t).numpy()
                     np.testing.assert_array_equal(np_res, res)
                     res_t = input_t.real().numpy(
-                    ) if self.api is "real" else input_t.imag().numpy()
+                    ) if self.api == "real" else input_t.imag().numpy()
                     np.testing.assert_array_equal(np_res, res_t)
 
     def test_name_argument(self):

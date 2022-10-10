@@ -126,19 +126,11 @@ class TestMKLDNNSwishDim2(TestSwish):
         self.dtype = np.float32
 
 
-@skip_check_grad_ci(reason="not implemented yet")
 class TestMKLDNNHardSwishDim2(TestHardSwish):
 
     def setUp(self):
         super(TestMKLDNNHardSwishDim2, self).setUp()
-
-        self.attrs["use_mkldnn"] = True
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def test_check_grad(self):
-        pass
+        self.attrs = {"use_mkldnn": True}
 
 
 class TestMKLDNNSigmoidDim2(TestSigmoid):
@@ -315,11 +307,14 @@ class TestMKLDNNSwishDim4(TestSwish):
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
+    x_dtype = x.dtype
+    if x_dtype == 'float16':
+        x_dtype = 'float16'
+        x = x.astype('float32')
     return (x * np.minimum(np.maximum(x + offset, 0.), threshold) /
-            scale).astype(x.dtype)
+            scale).astype(x_dtype)
 
 
-@skip_check_grad_ci(reason="not implemented yet")
 class TestMKLDNNHardSwishDim4(TestHardSwish):
 
     def setUp(self):
@@ -340,9 +335,6 @@ class TestMKLDNNHardSwishDim4(TestHardSwish):
 
     def init_dtype(self):
         self.dtype = np.float32
-
-    def test_check_grad(self):
-        pass
 
 
 class TestMKLDNNMish(TestActivation):
