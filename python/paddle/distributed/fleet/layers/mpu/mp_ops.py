@@ -22,7 +22,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.dygraph import layers
 from paddle.distributed import collective
-from ....communication.comm_utils import ReduceOp
+from ....communication.reduce import ReduceOp
 from paddle.fluid.data_feeder import check_dtype
 import paddle.fluid.dygraph_utils as dygraph_utils
 
