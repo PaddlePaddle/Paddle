@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/memcpy_kernel.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
@@ -129,6 +130,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
              dst_layout != DataLayout::ONEDNN) {
     // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
     // Do transform via MKLDNN lib
+    VLOG(10) << "tmp infer debug";
     funcs::innerTransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());
   } else if (src_layout == DataLayout::ONEDNN &&
@@ -157,6 +159,13 @@ void TransferLayoutKernel(const Context& dev_ctx,
   VLOG(10) << "TransDataLayout from " << static_cast<DataLayout>(src_layout)
            << " -> " << static_cast<DataLayout>(dst_layout);
 
+  VLOG_IF(10, x.initialized()) << "TransDataLayout from " << x.layout();
+  if (x.layout() == static_cast<DataLayout>(dst_layout)) {
+    VLOG(10) << "No need to transform, already is " << x.layout();
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
+
 #ifdef PADDLE_WITH_MKLDNN
   TransferLayoutMKLDNN<Context>(dev_ctx,
                                 x,
@@ -167,6 +176,12 @@ void TransferLayoutKernel(const Context& dev_ctx,
   TransferLayoutGeneral<Context>(
       dev_ctx, x, static_cast<DataLayout>(dst_layout), out);
 #endif
+  //   out->set_lod(x.lod());
+  //   out->set_layout(x.layout());
+  // #ifdef PADDLE_WITH_MKLDNN
+  // todo
+  //   out->set_mem_desc(x.mem_desc());
+  // #endif
 }
 
 }  // namespace phi
