@@ -14,44 +14,47 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 namespace funcs {
 
-template <typename T>
-HOSTDEVICE T DmcnIm2colBilinear(const T* bottom_data,
-                                const int data_width,
-                                const int height,
-                                const int width,
-                                T h,
-                                T w) {
+template <typename T, typename MT>
+HOSTDEVICE MT DmcnIm2colBilinear(const T* bottom_data,
+                                 const int data_width,
+                                 const int height,
+                                 const int width,
+                                 MT h,
+                                 MT w) {
   int h_low = floor(h);
   int w_low = floor(w);
   int h_high = h_low + 1;
   int w_high = w_low + 1;
 
-  T lh = h - h_low;
-  T lw = w - w_low;
-  T hh = 1 - lh;
-  T hw = 1 - lw;
+  MT lh = h - h_low;
+  MT lw = w - w_low;
+  MT hh = 1 - lh;
+  MT hw = 1 - lw;
 
-  T v1 =
-      (h_low >= 0 && w_low >= 0) ? bottom_data[h_low * data_width + w_low] : 0;
-  T v2 = (h_low >= 0 && w_high <= width - 1)
-             ? bottom_data[h_low * data_width + w_high]
-             : 0;
-  T v3 = (h_high <= height - 1 && w_low >= 0)
-             ? bottom_data[h_high * data_width + w_low]
-             : 0;
-  T v4 = (h_high <= height - 1 && w_high <= width - 1)
-             ? bottom_data[h_high * data_width + w_high]
-             : 0;
+  MT v1 = (h_low >= 0 && w_low >= 0)
+              ? static_cast<MT>(bottom_data[h_low * data_width + w_low])
+              : 0;
+  MT v2 = (h_low >= 0 && w_high <= width - 1)
+              ? static_cast<MT>(bottom_data[h_low * data_width + w_high])
+              : 0;
+  MT v3 = (h_high <= height - 1 && w_low >= 0)
+              ? static_cast<MT>(bottom_data[h_high * data_width + w_low])
+              : 0;
+  MT v4 = (h_high <= height - 1 && w_high <= width - 1)
+              ? static_cast<MT>(bottom_data[h_high * data_width + w_high])
+              : 0;
 
-  T w1 = hh * hw;
-  T w2 = hh * lw;
-  T w3 = lh * hw;
-  T w4 = lh * lw;
+  MT w1 = hh * hw;
+  MT w2 = hh * lw;
+  MT w3 = lh * hw;
+  MT w4 = lh * lw;
 
   return w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4;
 }
