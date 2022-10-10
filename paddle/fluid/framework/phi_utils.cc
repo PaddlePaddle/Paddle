@@ -157,7 +157,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
   }
 #endif
 
-// NOTE(jiahy0825): If current kernel_key is MKLDNN, we need to fallback to
+// NOTE(jiahongyu): If current kernel_key is MKLDNN, we need to fallback to
 // normal CPU kernel_key
 #ifdef PADDLE_WITH_MKLDNN
   if (platform::is_cpu_place(expected_kernel_key.place_) &&

@@ -189,23 +189,19 @@ PreparedOp PrepareImpl(
   phi::KernelKey phi_kernel_key;
   std::string phi_kernel_name;
 
-// NOTE(jiahy0825): The registered MKLDNN kernel have library_type =
+// NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
 // LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
-// here.
+// here. There are three statements in if condition: The first statement checks
+// whether mkldnn kernel can be used; the second checks whether this op has
+// specific implementation; the third checks whether library_type_ are changed
+// by other high priority backends.
 #ifdef PADDLE_WITH_MKLDNN
-  if (op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
-    if (paddle::platform::in_mkldnn_black_list(op.Type())) {
-      expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
-      expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
-    } else {
-      PADDLE_ENFORCE_EQ(paddle::platform::in_mkldnn_white_list(op.Type()),
-                        true,
-                        platform::errors::Unimplemented(
-                            "%s operator neither in mkldnn_black_list nor in "
-                            "mkldnn_white_list.",
-                            op.Type()));
-    }
+  if (op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_) &&
+      !paddle::platform::in_mkldnn_white_list(op.Type()) &&
+      expected_kernel_key.library_type_ == framework::LibraryType::kPlain) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
+    expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
   }
 #endif
 
