@@ -872,7 +872,7 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       src0_md = src0_md.reshape(dims0_ex);
     }
     const auto dst_md =
-        memory::desc(dst_tz, oneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
+        memory::desc(dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
 
     auto attributes =
         CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
@@ -947,7 +947,7 @@ class BroadcastDataOneDNNHandler
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
     const auto src0_tz = vectorize(out->dims());
     const auto src0_md = dnnl::memory::desc(
-        src0_tz, oneDNNGetDataType<T>(), GetPlainOneDNNFormat(src0_tz.size()));
+        src0_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(src0_tz.size()));
     const auto src1_md = x->mem_desc().reshape(extended_x_dims);
 
     dnnl::primitive_attr attributes;
@@ -982,7 +982,7 @@ class ReductionOneDNNHandler
                          const dnnl::primitive_attr& attrs = NULL)
       : OneDNNHandlerNoCachingT<T, dnnl::reduction>(engine, cpu_place) {
     const auto out_md = memory::desc(
-        out_tz, oneDNNGetDataType<T>(), dnnl::memory::format_tag::any);
+        out_tz, OneDNNGetDataType<T>(), dnnl::memory::format_tag::any);
 
     if (attrs)
       this->AcquireForwardPrimitiveDescriptor(
@@ -1186,7 +1186,7 @@ class PoolingOneDNNHandler
     const auto dt = ToOneDNNDataType(in_x->dtype());
     auto dst_md = dnnl::memory::desc(diff_dst_tz, dt, OneDNNMemoryFormat::any);
     auto diff_src_md = dnnl::memory::desc(
-        diff_src_tz, oneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
+        diff_src_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
 
     auto onednn_paddings = ToOneDNNPadding(copied_paddings);
 
