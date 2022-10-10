@@ -16,6 +16,7 @@ import math
 import warnings
 
 import numpy as np
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
 from paddle.fluid import core
@@ -25,6 +26,10 @@ from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
 from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
                                  elementwise_mul, elementwise_sub, nn, ops,
                                  tensor)
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
 
 
 class Normal(distribution.Distribution):
@@ -128,21 +133,42 @@ class Normal(distribution.Distribution):
                 self.scale = tensor.cast(self.scale, dtype=self.dtype)
         super(Normal, self).__init__(self.loc.shape)
 
-    def sample(self, shape, seed=0):
+    @property
+    def mean(self):
+        """Mean of multinomial distribuion.
+
+        Returns:
+            Tensor: mean value.
+        """
+        return self.loc
+
+    @property
+    def variance(self):
+        """Variance of lognormal distribution.
+
+        Returns:
+            Tensor: variance value.
+        """
+        return self.scale.pow(2)
+
+    def sample(self, shape=(), seed=0):
         """Generate samples of the specified shape.
 
         Args:
-            shape (list): 1D `int32`. Shape of the generated samples.
+            shape (Sequence[int], optional): Shape of the generated samples.
             seed (int): Python integer number.
 
         Returns:
             Tensor, A tensor with prepended dimensions shape.The data type is float32.
 
         """
+        if not isinstance(shape, Iterable):
+            raise TypeError('sample shape must be Iterable object.')
+
         if not _non_static_mode():
-            check_type(shape, 'shape', (list), 'sample')
             check_type(seed, 'seed', (int), 'sample')
 
+        shape = list(shape)
         batch_shape = list((self.loc + self.scale).shape)
         name = self.name + '_sample'
 
@@ -162,13 +188,31 @@ class Normal(distribution.Distribution):
             return output
         else:
             output_shape = shape + batch_shape
-            output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed, dtype=self.dtype) * \
-                     (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
+            output = nn.gaussian_random(
+                output_shape, mean=0., std=1., seed=seed, dtype=self.dtype) * (
+                    tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
             else:
                 return output
+
+    def rsample(self, shape=()):
+        """Generate reparameterized samples of the specified shape.
+
+        Args:
+          shape (Sequence[int], optional): Shape of the generated samples.
+
+        Returns:
+          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+
+        """
+        if not isinstance(shape, Iterable):
+            raise TypeError('sample shape must be Iterable object.')
+
+        shape = self._extend_shape(tuple(shape))
+        eps = paddle.normal(shape=shape)
+        return (self.loc + eps * self.scale)
 
     def entropy(self):
         r"""Shannon entropy in nats.
@@ -204,7 +248,7 @@ class Normal(distribution.Distribution):
           value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability.The data type is same with value.
+          Tensor: log probability.The data type is same with :attr:`value` .
 
         """
         name = self.name + '_log_prob'
@@ -224,7 +268,7 @@ class Normal(distribution.Distribution):
             value (Tensor): The input tensor.
 
         Returns:
-            Tensor, probability. The data type is same with value.
+            Tensor, probability. The data type is same with :attr:`value` .
 
         """
         name = self.name + '_probs'

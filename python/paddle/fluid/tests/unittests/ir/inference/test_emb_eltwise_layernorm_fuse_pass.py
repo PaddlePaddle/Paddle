@@ -228,7 +228,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
             max_batch_size=4,
             workspace_size=102400,
             min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Float32,
+            precision_mode=paddle_infer.PrecisionType.Half,
             use_static=False,
             use_calib_mode=False)
         yield config, ['fused_embedding_eltwise_layernorm'], (1e-5, 1e-5)
@@ -238,7 +238,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
             max_batch_size=4,
             workspace_size=102400,
             min_subgraph_size=0,
-            precision_mode=paddle_infer.PrecisionType.Float32,
+            precision_mode=paddle_infer.PrecisionType.Half,
             use_static=False,
             use_calib_mode=False)
         if program_config.ops[0].type == 'lookup_table':

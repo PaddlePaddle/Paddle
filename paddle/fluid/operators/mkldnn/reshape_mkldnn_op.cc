@@ -35,7 +35,7 @@ using platform::GetMKLDNNFormat;
 using platform::to_void_cast;
 
 static std::vector<int> extract_shape(
-    const std::vector<const Tensor*>& list_new_shape_tensor) {
+    const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
   std::vector<int> vec_new_shape;
   vec_new_shape.reserve(list_new_shape_tensor.size());
 
@@ -158,7 +158,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
       const framework::ExecutionContext& ctx,
       framework::DDim& x_dims,            // NOLINT
       framework::DDim& out_dims) const {  // NOLINT
-    auto list_new_shape_tensor = ctx.MultiInput<Tensor>("ShapeTensor");
+    auto list_new_shape_tensor =
+        ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
     if (list_new_shape_tensor.size() > 0) {
       auto new_shape = extract_shape(list_new_shape_tensor);
       out_dims = ValidateShape(new_shape, x_dims);
@@ -202,7 +203,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   }
 
  protected:
-  static dnnl::memory::format_tag getPlainFormatTag(const Tensor* tensor) {
+  static dnnl::memory::format_tag getPlainFormatTag(
+      const phi::DenseTensor* tensor) {
     auto tensor_dims_size = tensor->dims().size();
     PADDLE_ENFORCE_EQ(
         tensor_dims_size <= 6 && tensor_dims_size >= 1,
