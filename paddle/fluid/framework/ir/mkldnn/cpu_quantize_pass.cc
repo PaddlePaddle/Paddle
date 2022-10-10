@@ -873,7 +873,7 @@ void CPUQuantizePass::QuantizeElementwise(
 
     auto x_name = elementwise_op->Op()->Input("X");
     auto y_name = elementwise_op->Op()->Input("Y");
-    Node *elementwise_x, *elementwise_y;
+    Node *elementwise_x{nullptr}, *elementwise_y{nullptr};
 
     for (auto& input : elementwise_op->inputs) {
       if (input->Name() == x_name[0]) elementwise_x = input;
