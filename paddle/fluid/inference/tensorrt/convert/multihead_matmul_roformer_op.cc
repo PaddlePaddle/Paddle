@@ -13,7 +13,7 @@ the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/roformer_novarlen_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/roformer_op_plugin.h"
 
 namespace paddle {
@@ -23,8 +23,10 @@ namespace tensorrt {
 class MultiheadMatMulRoformerOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid multihead_mamul_roformer op to a corresponding tensorrt "
+                  const framework::Scope& scope,
+                  bool test_mode) override {
+    VLOG(3) << "convert a fluid multihead_mamul_roformer op to a corresponding "
+               "tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -54,8 +56,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
     float* bias_data = engine_->GetWeightCPUData(bias_name, bias_t);
     std::vector<float> weight_data_tmp;
     weight_data_tmp.reserve(weight_t->numel());
-    memcpy(weight_data_tmp.data(), weight_data,
-           weight_t->numel() * sizeof(float));
+    memcpy(
+        weight_data_tmp.data(), weight_data, weight_t->numel() * sizeof(float));
 
     // (hidden_in, 3, hidden_out)
     auto weight_dims = weight_t->dims();
@@ -65,7 +67,6 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
     int hidden_out = weight_dims[2];  // channels_out
     int m = hidden_in;
     int n = three * hidden_out;
-    //行优先矩阵转换为列优先矩阵
     auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
       for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
@@ -101,14 +102,15 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           nvinfer1::ILayer* fc_layer = nullptr;
           float dp_probs = 1.0 / 127.0;
           nvinfer1::DimsHW nv_ksize(1, 1);
-          fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution, *input, n,
-                                          nv_ksize, weight, bias);
+          fc_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Convolution, *input, n, nv_ksize, weight, bias);
           fc_layer->setName(
               ("Multihead: Convolution/FullyConnected: (Output: " +
                output_name + ")")
                   .c_str());
           PADDLE_ENFORCE_EQ(
-              op_desc.HasAttr("fc_out_threshold"), true,
+              op_desc.HasAttr("fc_out_threshold"),
+              true,
               platform::errors::InvalidArgument(
                   "must have out_threshold in multihead layers in int8 mode"));
           float out_scale =
@@ -122,13 +124,19 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
               "CustomQKVToContextPluginDynamic", "3");
           assert(creator != nullptr);
           std::vector<nvinfer1::PluginField> fields{
-              {"hidden_size", &hidden_out, nvinfer1::PluginFieldType::kINT32,
+              {"hidden_size",
+               &hidden_out,
+               nvinfer1::PluginFieldType::kINT32,
                1},
-              {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32,
+              {"num_heads",
+               &head_number,
+               nvinfer1::PluginFieldType::kINT32,
                1}};
           if (qkv2context_plugin_int8) {
-            fields.push_back({"dq_probs", &dp_probs,
-                              nvinfer1::PluginFieldType::kFLOAT32, 1});
+            fields.push_back({"dq_probs",
+                              &dp_probs,
+                              nvinfer1::PluginFieldType::kFLOAT32,
+                              1});
           }
           nvinfer1::PluginFieldCollection* plugin_collection =
               static_cast<nvinfer1::PluginFieldCollection*>(malloc(
@@ -157,7 +165,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
               engine_->GetITensor(engine_->network()->getInput(3)->getName());
           engine_->SetTensorDynamicRange(max_seqlen_tensor, 1.0f);
           auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Shuffle,
+              engine_,
+              Shuffle,
               *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
           nvinfer1::Dims shape_dim;
           shape_dim.nbDims = 1;
@@ -173,9 +182,13 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           layer = plugin_layer;
         } else {
           int head_size = hidden_out / head_number;
-          // [3, head_number, head_size, hidden_in] -> [head_number, 3, head_size, hidden_in]
-          auto transpose_weight_v2 = [](const float* src, float* dst, int three,
-                                        int head_number, int head_size,
+          // [3, head_number, head_size, hidden_in] -> [head_number, 3,
+          // head_size, hidden_in]
+          auto transpose_weight_v2 = [](const float* src,
+                                        float* dst,
+                                        int three,
+                                        int head_number,
+                                        int head_size,
                                         int hidden_in) {
             const int HH = head_size * hidden_in;
             for (int i = 0; i < three; ++i) {
@@ -188,41 +201,47 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
             }
           };
           // [3, head_number, head_size] -> [head_number, 3, head_size]
-          auto transpose_bias_v2 = [](const float* src, float* dst, int N,
-                                      int H) {
-            for (int i = 0; i < 3; ++i) {
-              for (int n = 0; n < N; ++n) {
-                for (int h = 0; h < H; ++h) {
-                  dst[n * 3 * H + i * H + h] = src[i * N * H + n * H + h];
+          auto transpose_bias_v2 =
+              [](const float* src, float* dst, int N, int H) {
+                for (int i = 0; i < 3; ++i) {
+                  for (int n = 0; n < N; ++n) {
+                    for (int h = 0; h < H; ++h) {
+                      dst[n * 3 * H + i * H + h] = src[i * N * H + n * H + h];
+                    }
+                  }
                 }
-              }
-            }
-          };
-          memcpy(weight_data_tmp.data(), weight_data,
+              };
+          memcpy(weight_data_tmp.data(),
+                 weight_data,
                  weight_t->numel() * sizeof(float));
-          transpose_weight_v2(weight_data_tmp.data(), weight_data, three,
-                              head_number, head_size, hidden_in);
+          transpose_weight_v2(weight_data_tmp.data(),
+                              weight_data,
+                              three,
+                              head_number,
+                              head_size,
+                              hidden_in);
 
           std::vector<float> bias_data_tmp;
           bias_data_tmp.reserve(bias_t->numel());
-          memcpy(bias_data_tmp.data(), bias_data,
-                 bias_t->numel() * sizeof(float));
-          transpose_bias_v2(bias_data_tmp.data(), bias_data, head_number,
-                            head_size);
+          memcpy(
+              bias_data_tmp.data(), bias_data, bias_t->numel() * sizeof(float));
+          transpose_bias_v2(
+              bias_data_tmp.data(), bias_data, head_number, head_size);
 
           nvinfer1::ILayer* fc_layer = nullptr;
           float dp_probs = 1.0 / 127.0;
           if (op_desc.HasAttr("Input_scale")) {
             nvinfer1::DimsHW nv_ksize(1, 1);
-            fc_layer = TRT_ENGINE_ADD_LAYER(engine_, Convolution, *input, n,
-                                            nv_ksize, weight, bias);
+            fc_layer = TRT_ENGINE_ADD_LAYER(
+                engine_, Convolution, *input, n, nv_ksize, weight, bias);
           } else {
-            fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *input, n,
-                                            weight, bias);
+            fc_layer = TRT_ENGINE_ADD_LAYER(
+                engine_, FullyConnected, *input, n, weight, bias);
           }
 
           if (op_desc.HasAttr("fc_out_threshold")) {
-            PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"), true,
+            PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
+                              true,
                               platform::errors::InvalidArgument(
                                   "must have out threshold in multihead layers "
                                   "in int8 mode"));
@@ -235,21 +254,23 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
             }
           }
 
-          //where to insert roformer kernel
-          std::cout<<"****************************************"<<std::endl;
-          std::cout<<"begin to add roformer layer"<<std::endl;
+          // where to insert roformer kernel
+          // std::cout<<"****************************************"<<std::endl;
+          // std::cout<<"begin to add roformer layer"<<std::endl;
           std::vector<nvinfer1::ITensor*> roformerplugin_inputs;
           roformerplugin_inputs.push_back(fc_layer->getOutput(0));
           roformerplugin_inputs.push_back(input_cos);
           roformerplugin_inputs.push_back(input_sin);
           plugin::DynamicPluginTensorRT* roformerplugin =
-            new plugin::RoformerPlugin("roformerplugin", head_number, head_size);
-          auto roformerlayer = engine_->AddDynamicPlugin(roformerplugin_inputs.data(), 3, roformerplugin);
+              new plugin::RoformerPlugin(
+                  "roformerplugin", head_number, head_size);
+          auto roformerlayer = engine_->AddDynamicPlugin(
+              roformerplugin_inputs.data(), 3, roformerplugin);
           roformerlayer->setName(
-            ("roformerlayer(Output: " + output_name + ")").c_str());
+              ("roformerlayer(Output: " + output_name + ")").c_str());
           roformerlayer->setPrecision(nvinfer1::DataType::kHALF);
-          std::cout<<"****************************************"<<std::endl;
-          std::cout<<"print add roformer layer success"<<std::endl;
+          std::cout << "****************************************" << std::endl;
+          std::cout << "print add roformer layer success" << std::endl;
 
           auto mask_tensor = engine_->GetITensor("qkv_plugin_mask");
 
@@ -265,15 +286,21 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           int var_seqlen = 1;
           std::vector<nvinfer1::PluginField> fields{
               {"type_id", &type, nvinfer1::PluginFieldType::kINT32, 1},
-              {"hidden_size", &hidden_out, nvinfer1::PluginFieldType::kINT32,
+              {"hidden_size",
+               &hidden_out,
+               nvinfer1::PluginFieldType::kINT32,
                1},
               {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32, 1},
               {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32, 1},
-              {"var_seqlen", &var_seqlen, nvinfer1::PluginFieldType::kINT32,
+              {"var_seqlen",
+               &var_seqlen,
+               nvinfer1::PluginFieldType::kINT32,
                1}};
           if (qkv2context_plugin_int8) {
-            fields.push_back({"dq_probs", &dp_probs,
-                              nvinfer1::PluginFieldType::kFLOAT32, 1});
+            fields.push_back({"dq_probs",
+                              &dp_probs,
+                              nvinfer1::PluginFieldType::kFLOAT32,
+                              1});
           }
           nvinfer1::PluginFieldCollection* plugin_collection =
               static_cast<nvinfer1::PluginFieldCollection*>(malloc(
@@ -288,7 +315,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           free(plugin_collection);
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
-          //remeber to modify
+          // remeber to modify
           plugin_inputs.emplace_back(roformerlayer->getOutput(0));
           plugin_inputs.emplace_back(mask_tensor);
           if (engine_->Has("ernie_pos_name")) {
@@ -303,7 +330,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           auto max_seqlen_tensor =
               engine_->GetITensor(engine_->network()->getInput(3)->getName());
           auto* shuffle_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Shuffle,
+              engine_,
+              Shuffle,
               *const_cast<nvinfer1::ITensor*>(max_seqlen_tensor));
           nvinfer1::Dims shape_dim;
           shape_dim.nbDims = 1;
@@ -319,7 +347,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         }
       } else {
         PADDLE_ENFORCE_EQ(
-            input->getDimensions().nbDims, 3,
+            input->getDimensions().nbDims,
+            3,
             platform::errors::InvalidArgument(
                 "The Input dim of the MultiheadMatMul should be 3, "
                 "but it's (%d) now.",
@@ -360,18 +389,28 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         nvinfer1::ILayer* fc_layer = nullptr;
         if (op_desc.HasAttr("Input_scale")) {
           nvinfer1::DimsHW nv_ksize(1, 1);
-          fc_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Convolution, *reshape_before_fc_layer->getOutput(0), n,
-              nv_ksize, weight.get(), bias.get());
+          fc_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   Convolution,
+                                   *reshape_before_fc_layer->getOutput(0),
+                                   n,
+                                   nv_ksize,
+                                   weight.get(),
+                                   bias.get());
         } else {
-          fc_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, FullyConnected, *reshape_before_fc_layer->getOutput(0),
-              n, weight.get(), bias.get());
+          fc_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   FullyConnected,
+                                   *reshape_before_fc_layer->getOutput(0),
+                                   n,
+                                   weight.get(),
+                                   bias.get());
         }
 
         if (op_desc.HasAttr("fc_out_threshold")) {
           PADDLE_ENFORCE_EQ(
-              op_desc.HasAttr("fc_out_threshold"), true,
+              op_desc.HasAttr("fc_out_threshold"),
+              true,
               platform::errors::InvalidArgument(
                   "must have out threshold in multihead layers in int8 mode"));
           float out_scale =
@@ -400,8 +439,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           with_fp16 = true;
         }
         plugin::DynamicPluginTensorRT* plugin =
-            new plugin::QkvToContextPluginDynamic(hidden_in, head_number,
-                                                  head_size, scale, with_fp16);
+            new plugin::RoformerNovarlenPlugin(
+                hidden_in, head_number, head_size, scale, with_fp16);
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 4, plugin);
       }
     } else {
@@ -411,8 +450,8 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(layer, "multihead_matmul", {output_name},
-                             test_mode);
+    RreplenishLayerAndOutput(
+        layer, "multihead_matmul", {output_name}, test_mode);
   }
 };
 
@@ -420,4 +459,5 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(multihead_matmul_roformer, MultiheadMatMulRoformerOpConverter);
+REGISTER_TRT_OP_CONVERTER(multihead_matmul_roformer,
+                          MultiheadMatMulRoformerOpConverter);
