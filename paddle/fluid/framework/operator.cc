@@ -1401,7 +1401,7 @@ bool OperatorWithKernel::SupportsKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_) &&
       !paddle::platform::in_mkldnn_white_list(type_) &&
-      &&kernel_type.library_type_ == framework::LibraryType::kPlain) {
+      kernel_type.library_type_ == framework::LibraryType::kPlain) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
     tmp_kernel_type.data_layout_ = framework::DataLayout::kMKLDNN;
