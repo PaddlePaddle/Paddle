@@ -13,9 +13,8 @@
 # limitations under the License.
 
 from .optimizer import Optimizer
-from ..fluid import core
 from ..fluid import framework
-from ..fluid.framework import Variable, name_scope
+from ..fluid.framework import name_scope
 from paddle import _C_ops, _legacy_C_ops
 from ..fluid.dygraph import no_grad
 

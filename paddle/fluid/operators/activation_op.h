@@ -32,9 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 

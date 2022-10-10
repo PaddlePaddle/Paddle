@@ -739,9 +739,9 @@ class HybridParallelInferenceHelper(object):
         startup_block = self._startup_program.global_block()
 
         if debug:
-            with open(f'main_program.txt', 'w') as f:
+            with open('main_program.txt', 'w') as f:
                 f.write(str(self._main_program))
-            with open(f'startup_program.txt', 'w') as f:
+            with open('startup_program.txt', 'w') as f:
                 f.write(str(self._startup_program))
 
         # step1: add op_device attribute for all ops

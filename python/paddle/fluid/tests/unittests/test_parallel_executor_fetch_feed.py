@@ -100,7 +100,7 @@ class TestFetchAndFeed(unittest.TestCase):
 
         for k, v in all_vars.items():
             if ('tmp' not in k) and (
-                    k[0] is not '_' or v.persistable
+                    k[0] != '_' or v.persistable
             ) and v.type == core.VarDesc.VarType.LOD_TENSOR:
                 fetch_list.append(k)
 
