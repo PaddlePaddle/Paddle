@@ -1688,7 +1688,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "multihead_matmul_roformer") {
       if (!with_dynamic_shape) {
-        VLOG(3) << "the multihead_matmul_roformer does not support static shape yet";
+        VLOG(3) << "the multihead_matmul_roformer does not support static "
+                   "shape yet";
         return false;
       }
 
