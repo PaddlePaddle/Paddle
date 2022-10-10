@@ -634,7 +634,7 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')
-    check_type(shape, 'shape', (list, tuple, Variable), 'crop_tensor')
+    check_type(shape, 'shape', (list, tuple, Variable, type(None)), 'crop_tensor')
     check_type(offsets, 'offsets', (list, tuple, Variable, type(None)),
                'crop_tensor')
 

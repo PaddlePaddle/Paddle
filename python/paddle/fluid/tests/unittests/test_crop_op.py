@@ -140,18 +140,18 @@ class TestCase6(TestCropOp):
 class TestCropNoneOffset(unittest.TestCase):
 
     def test_crop_none_offset(self):
-        x = fluid.data(name="input1", shape=[2, 3, 6, 6], dtype="float32")
-        crop_shape = [2, 2]
+        x = fluid.data(name="input1", shape=[3, 6, 6], dtype="float32")
+        crop_shape = [2, 2, 2]
         crop = paddle.crop(x, crop_shape, None)
-        self.assertEqual(crop.shape, (2, 2))
+        self.assertEqual(crop.shape, (2, 2, 2))
 
 
 class TestCropNoneShape(unittest.TestCase):
 
     def test_crop_none_shape(self):
-        x = fluid.data(name="input1", shape=[2, 3, 6, 6], dtype="float32")
-        crop = paddle.crop(x, None)
-        self.assertEqual(crop.shape, (2, 3, 6, 6))
+        x = fluid.data(name="input1", shape=[3, 6, 6], dtype="float32")
+        crop = paddle.crop(x)
+        self.assertEqual(crop.shape, (3, 6, 6))
 
 
 if __name__ == '__main__':
