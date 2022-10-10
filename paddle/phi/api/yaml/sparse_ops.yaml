@@ -489,3 +489,15 @@
     func : sync_batch_norm_coo{sparse_coo, dense, dense, dense, dense -> sparse_coo, dense, dense, dense, dense, dense}
     data_type : x
   backward : sync_batch_norm_grad
+
+- op : reshape
+  args : (Tensor x,  IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+  kernel :
+    func : reshape_coo{sparse_coo -> sparse_coo},
+           reshape_csr{sparse_csr -> sparse_csr}
+    layout : x
+  backward : reshape_grad
+  
