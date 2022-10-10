@@ -2036,12 +2036,6 @@ struct ReverseRollPattern : public PatternBase{
       : PatternBase(pattern, name_scope, "reverse_roll") {}
 
   PDNode* operator()(PDNode* in);
-  PATTERN_DECL_NODE(window_mha_i00_op);
-  PATTERN_DECL_NODE(window_mha_i00_out);
-  PATTERN_DECL_NODE(matmul_i10_op);
-  PATTERN_DECL_NODE(matmul_i10_out);
-  PATTERN_DECL_NODE(elw_add_i20_op);
-  PATTERN_DECL_NODE(elw_add_i20_out);
   PATTERN_DECL_NODE(reshape2_00_op);
   PATTERN_DECL_NODE(reshape2_00_out);
   PATTERN_DECL_NODE(reshape2_10_op);
@@ -2062,12 +2056,6 @@ struct ReverseRoll2Pattern : public PatternBase{
       : PatternBase(pattern, name_scope, "reverse_roll2") {}
 
   PDNode* operator()(PDNode* in);
-  PATTERN_DECL_NODE(window_mha_i00_op);
-  PATTERN_DECL_NODE(window_mha_i00_out);
-  PATTERN_DECL_NODE(matmul_i10_op);
-  PATTERN_DECL_NODE(matmul_i10_out);
-  PATTERN_DECL_NODE(elw_add_i20_op);
-  PATTERN_DECL_NODE(elw_add_i20_out);
   PATTERN_DECL_NODE(reshape2_00_op);
   PATTERN_DECL_NODE(reshape2_00_out);
   PATTERN_DECL_NODE(reshape2_10_op);

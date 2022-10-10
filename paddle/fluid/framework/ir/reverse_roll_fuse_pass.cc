@@ -21,12 +21,6 @@
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, reverse_roll_pattern);
 #define GET_NODES   \
-  GET_IR_NODE(window_mha_i00_op);       \
-  GET_IR_NODE(window_mha_i00_out);      \
-  GET_IR_NODE(matmul_i10_op);           \
-  GET_IR_NODE(matmul_i10_out);          \
-  GET_IR_NODE(elw_add_i20_op);          \
-  GET_IR_NODE(elw_add_i20_out);         \
   GET_IR_NODE(reshape2_00_op);          \
   GET_IR_NODE(reshape2_00_out);         \
   GET_IR_NODE(reshape2_10_op);          \
@@ -51,7 +45,7 @@ namespace ir {
         // auto* scope = param_scope();
         PDNode* x = gpd.mutable_pattern()
                     ->NewNode("x")
-                    ->assert_is_op_input("multihead_matmul", "Input")
+                    ->assert_is_op_input("reshape2", "X")
                     ->AsInput();
         patterns::ReverseRollPattern reverse_roll_pattern(
             gpd.mutable_pattern(), scope_name_);
@@ -59,36 +53,54 @@ namespace ir {
         int fuse_count = 0;
         auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+            VLOG(0)<<"@@@ reverse roll fuse pass";
             GET_NODES;
-            int window_number = PADDLE_GET_CONST(int, window_mha_i00_op->Op()->GetAttr("window_number"));
-            int head_number = PADDLE_GET_CONST(int, window_mha_i00_op->Op()->GetAttr("head_number"));
-            std::vector<int> shape_attr =
-                PADDLE_GET_CONST(std::vector<int>, reshape2_00_op->Op()->GetAttr("shape"));
-            int window_size_h=shape_attr[1];
-            if(window_size_h<0){
+            std::vector<int32_t> reshape2_10_attr_shape = 
+                PADDLE_GET_CONST(std::vector<int32_t>,
+                                 reshape2_10_op->Op()->GetAttr("shape"));
+            if(reshape2_10_attr_shape[1]<=0){
+
                 return;
             }
-            int window_size_w=shape_attr[2];
+            if(reshape2_10_attr_shape[1]!=reshape2_10_attr_shape[2]){
+                return;
+            }
+            int window_number = reshape2_10_attr_shape[1]*reshape2_10_attr_shape[2];
+            std::vector<int> reshape_2_00_attr_shape =
+                PADDLE_GET_CONST(std::vector<int>, reshape2_00_op->Op()->GetAttr("shape"));
+            int window_size_h=reshape_2_00_attr_shape[1];
+            if(window_size_h<=0){
+                return;
+            }
+            int window_size_w=reshape_2_00_attr_shape[2];
             if(window_size_h!=window_size_w){
                 return;
             }
             int window_size=window_size_h;
             int window_len=window_size_h*window_size_w;
-            int input_resolution = static_cast<int>(std::sqrt(window_number))*window_size_h;
+            int input_resolution = reshape2_10_attr_shape[1]*window_size_h;
+            // do some check
+            // TODO(wangbojun)
 
+            std::vector<int64_t> roll_40_op_attr_shifts = 
+                PADDLE_GET_CONST(std::vector<int64_t>, roll_40_op->Op()->GetAttr("shifts"));
+            if(roll_40_op_attr_shifts[0]!=roll_40_op_attr_shifts[1]){
+                return;
+            }
+            auto shift_size = (roll_40_op_attr_shifts[0]);
             OpDesc reverse_roll_desc(reshape2_00_op->Op()->Block());
             reverse_roll_desc.SetType("reverse_roll");
-            reverse_roll_desc.SetInput("X",{elw_add_i20_out->Name()});
+            reverse_roll_desc.SetInput("X",{subgraph.at(x)->Name()});
             reverse_roll_desc.SetOutput("Out",{reshaep2_50_out->Name()});
             reverse_roll_desc.SetAttr("window_number", window_number);
-            reverse_roll_desc.SetAttr("head_number", head_number);
             reverse_roll_desc.SetAttr("window_size",window_size);
             reverse_roll_desc.SetAttr("window_len", window_len);
             // do reverse circlic shift, shift_size window_size / 2
-            reverse_roll_desc.SetAttr("shift_size", window_size/2);
+            // TODO(wangbojun)
+            reverse_roll_desc.SetAttr("shift_size", static_cast<int>(shift_size));
             reverse_roll_desc.SetAttr("input_resolution",input_resolution);
             auto reverse_roll_node = graph->CreateOpNode(&reverse_roll_desc);
-            IR_NODE_LINK_TO(elw_add_i20_out,reverse_roll_node);
+            IR_NODE_LINK_TO(subgraph.at(x),reverse_roll_node);
             IR_NODE_LINK_TO(reverse_roll_node,reshaep2_50_out);
             GraphSafeRemoveNodes(graph,{
                 reshape2_00_op,   
