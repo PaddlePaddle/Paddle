@@ -1894,7 +1894,14 @@ function parallel_card_test() {
     echo "****************************************************************"
     
     tmpfile=$tmp_dir/$testcases".log"
+    tmpfile1=$tmp_dir/$testcases"-gpu.log"
+    nvidia-smi --id=0 --query-compute-apps=used_memory --format=csv -lms 10 > $tmpfile1 2>&1 &
+    gpu_memory_pid=$!
     env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
+    kill ${gpu_memory_pid}
+    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {max = 0} {if(NR>1){if ($1 > max) max=$1}} END {print "MAX_GPU_MEMORY_USE=", max}' >> $tmpfile 
+    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {sum = 0} {if(NR>1){sum = sum + $1 }} END {print "AVG_GPU_MEMORY_USE=", sum / (NR-2)}' >> $tmpfile 
+    rm -rf $tmpfile1
     set +m
 }
 
@@ -2013,10 +2020,9 @@ set -x
 
     #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
     get_failedUts_precise_map_file
-    
+
     #analyze the mapping between unit tests and .cu files
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
-
     wait;
 
     #generate python coverage and generate python file to tests_map_file
