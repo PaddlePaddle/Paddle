@@ -98,12 +98,7 @@ class Gumbel(TransformedDistribution):
             paddle.full_like(self.loc, float(finfo.tiny)),
             paddle.full_like(self.loc, float(1 - finfo.eps)))
 
-        self.transforms = (ExpTransform(),
-                           AffineTransform(loc=paddle.to_tensor(
-                               0, dtype='float32'),
-                                           scale=-paddle.ones_like(self.scale)),
-                           ExpTransform(),
-                           AffineTransform(loc=self.loc, scale=-self.scale))
+        self.transforms = ()
 
         super(Gumbel, self).__init__(self.base_dist, self.transforms)
 
@@ -147,7 +142,7 @@ class Gumbel(TransformedDistribution):
             Tensor: The variance value.
 
         """
-        temp = paddle.to_tensor(math.pi * math.pi, dtype='float32')
+        temp = paddle.full(shape=self.loc.shape,fill_value=math.pi * math.pi,dtype=self.scale.dtype)
 
         return paddle.pow(self.scale, 2) * temp / 6
 
@@ -169,6 +164,29 @@ class Gumbel(TransformedDistribution):
         """
         return paddle.sqrt(self.variance)
 
+    def _validate_value(self, value):
+        """Argument dimension check for distribution methods such as `log_prob`,
+        `cdf`.
+
+        Args:
+          value (Tensor|Scalar): The input value, which can be a scalar or a tensor.
+
+        Returns:
+          loc, scale, value: The broadcasted loc, scale and value, with the same dimension and data type.
+        """
+        if isinstance(value, numbers.Real):
+            value = paddle.full(shape=(), fill_value=value)
+        if value.dtype != self.scale.dtype:
+            value = paddle.cast(value, self.scale.dtype)
+        if len(self.scale.shape) > 0 or len(self.loc.shape) > 0 or len(
+                value.shape) > 0:
+            loc, scale, value = paddle.broadcast_tensors(
+                [self.loc, self.scale, value])
+        else:
+            loc, scale = self.loc, self.scale
+
+        return loc, scale, value
+
     def prob(self, value):
         """Probability density/mass function
 
@@ -179,8 +197,8 @@ class Gumbel(TransformedDistribution):
             Tensor: probability.The data type is same with value.
 
         """
-        if type(value) != type(self.loc):
-            raise TypeError('value type must be Tensor')
+
+        loc, scale, value = self._validate_value(value)
 
         y = (self.loc - value) / self.scale
         return paddle.exp(y - paddle.exp(y)) / self.scale
@@ -195,6 +213,8 @@ class Gumbel(TransformedDistribution):
             Tensor: log probability.The data type is same with value.
 
         """
+        loc, scale, value = self._validate_value(value)
+
         return paddle.log(self.prob(value))
 
     def cdf(self, value):
@@ -206,8 +226,7 @@ class Gumbel(TransformedDistribution):
             Tensor: cumulative probability of value.
 
         """
-        if value.dtype != self.loc.dtype:
-            value = paddle.cast(value, self.loc.dtype)
+        loc, scale, value = self._validate_value(value)
 
         return paddle.exp(-paddle.exp(-(value - self.loc) / self.scale))
 
@@ -245,12 +264,15 @@ class Gumbel(TransformedDistribution):
             Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-        exp_transform = paddle.distribution.ExpTransform()
-        affine_tf1 = paddle.distribution.AffineTransform(
-            paddle.to_tensor(0, dtype='float32'), -paddle.ones_like(self.scale))
-        affine_tf2 = paddle.distribution.AffineTransform(self.loc, -self.scale)
+        if not isinstance(shape, list):
+            raise TypeError('rsample shape should be list')
 
-        return affine_tf2.forward(
-            exp_transform.inverse(
-                affine_tf1.forward(
-                    exp_transform.inverse(self._base.sample(shape)))))
+        exp_trans = paddle.distribution.ExpTransform()
+        affine_trans_1 = paddle.distribution.AffineTransform(
+            paddle.full(shape=self.scale.shape,fill_value=0, dtype='float32'), -paddle.ones_like(self.scale))
+        affine_trans_2 = paddle.distribution.AffineTransform(self.loc, -self.scale)
+
+        return affine_trans_2.forward(
+            exp_trans.inverse(
+                affine_trans_1.forward(
+                    exp_trans.inverse(self._base.sample(shape)))))
