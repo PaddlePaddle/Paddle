@@ -24,12 +24,17 @@ from paddle.fluid import Program, program_guard
 from test_attribute_var import UnittestBase
 
 
+def pad(X, paddings, pad_value):
+    return paddle._C_ops.pad(X, paddings, pad_value)
+
+
 class TestPadOp(OpTest):
 
     def setUp(self):
         self.initTestCase()
         self.dtype = self.get_dtype()
         self.op_type = "pad"
+        self.python_api = pad
         self.inputs = {
             'X': np.random.random(self.shape).astype(self.dtype),
         }
