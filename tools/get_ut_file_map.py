@@ -128,6 +128,17 @@ def notsuccessfuc(rootPath):
             count = count + 1
             utNotSuccess = utNotSuccess + '^%s$|' % ut
 
+    # ut not exec
+    get_all_uts(rootPath)
+    with open("/paddle/build/all_uts_paddle", "r") as f:
+        data = f.readlines()
+    for ut in data:
+        ut = ut.replace('\n', '').strip()
+        if ut not in files:
+            print(ut)
+            count = count + 1
+            utNotSuccess = utNotSuccess + '^%s$|' % ut
+
     if utNotSuccess != '':
         print("utNotSuccess count: %s" % count)
         f = open('%s/build/utNotSuccess' % rootPath, 'w')
@@ -144,9 +155,17 @@ def ut_file_map_supplement(rootPath):
     ut_file_map_old = "/pre_test_tmp/ut_file_map.json"
     with open(ut_file_map_new, 'r') as load_f:
         load_dict_new = json.load(load_f)
+
     with open("/pre_test_tmp/ut_file_map.json", "w") as f:
         json.dump(load_dict_new, f, indent=4)
         print("load_dict_new success!!")
+
+    all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
+    with open(all_uts_paddle, 'r') as f:
+        all_uts_paddle_list = []
+        for ut in f.readlines():
+            all_uts_paddle_list.append(ut.strip())
+        f.close()
 
     os.system(
         'cd /pre_test_tmp && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta --no-check-certificate'
@@ -158,11 +177,19 @@ def ut_file_map_supplement(rootPath):
         for ut in f.readlines():
             prec_delta_old_list.append(ut.strip())
         f.close()
+
     with open(prec_delta_new, 'r') as f:
         prec_delta_new_list = []
         for ut in f.readlines():
             prec_delta_new_list.append(ut.strip())
         f.close()
+
+    for ut in prec_delta_old_list:
+        filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, ut)
+        if ut in all_uts_paddle_list:
+            if not os.path.exists(filename) and ut not in prec_delta_new_list:
+                prec_delta_new_list.append(ut)
+
     prec_delta_new_list.append(
         'test_py_reader_error_msg')  #add a python case for pycoverage
     prec_delta_file = open("/pre_test_tmp/prec_delta", 'w')
