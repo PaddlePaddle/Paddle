@@ -67,16 +67,16 @@ std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
   };
 
   for (auto* op : cluster) {
-    if (deny_param_cond.count(op->Name())) {
+    if (deny_param_cond_.count(op->Name())) {
       const auto* desc = op->Op();
       PADDLE_ENFORCE_NE(desc,
                         nullptr,
                         platform::errors::PreconditionNotMet(
                             "The Op %s's OpDesc should not be NULL, which has "
-                            "a parameter in deny_param_cond.",
+                            "a parameter in deny_param_cond_.",
                             op->Name().c_str()));
 
-      auto deny_param_names = deny_param_cond.at(op->Name());
+      auto deny_param_names = deny_param_cond_.at(op->Name());
       VLOG(4) << "We found deny param " << get_debug_info(deny_param_names)
               << " in op [" << op->Name() << "].";
 
@@ -105,6 +105,15 @@ std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
   VLOG(4) << "All deny var names are " << get_debug_info(deny_var_set);
 
   return deny_var_set;
+}
+
+bool OpTransInfo::IsInplaceOp(const OpDesc& op_desc) {
+  auto inputs = op_desc.InputArgumentNames();
+  std::unordered_set<std::string> input_set(inputs.begin(), inputs.end());
+  for (auto& name : op_desc.OutputArgumentNames()) {
+    if (input_set.count(name) > 0) return true;
+  }
+  return false;
 }
 
 namespace {
@@ -539,15 +548,6 @@ void ReplaceSubGraphWithCinnOpNode(
   RemoveSubGraphFromGraph(cluster, cluster_internals, graph);
 }
 
-static bool IsInplaceOp(const OpDesc& op_desc) {
-  auto inputs = op_desc.InputArgumentNames();
-  std::unordered_set<std::string> input_set(inputs.begin(), inputs.end());
-  for (auto& name : op_desc.OutputArgumentNames()) {
-    if (input_set.count(name) > 0) return true;
-  }
-  return false;
-}
-
 // Search all subgraphs which all op node supported by CINN,
 // Here we using SubgraphDetector to detecte the subgraph that
 // all of op node supported by CINN. We using OpMapperRegistry
@@ -562,13 +562,13 @@ void SearchAllSubgraphs(Graph* graph) {
                           node_name) != nullptr;
     // skip the dynamic ops
     bool is_dynamic = false;
-    if (trans_info.dynamic_op_cond.count(node_name)) {
-      is_dynamic = trans_info.dynamic_op_cond.at(node_name)(node);
+    if (trans_info.dynamic_op_cond().count(node_name)) {
+      is_dynamic = trans_info.dynamic_op_cond().at(node_name)(node);
     }
 
     bool is_support =
-        registered && !trans_info.default_deny_ops.count(node_name) &&
-        !is_dynamic && (node->IsOp() && !IsInplaceOp(*node->Op()));
+        registered && !trans_info.default_deny_ops().count(node_name) &&
+        !is_dynamic && (node->IsOp() && !trans_info.IsInplaceOp(*node->Op()));
     // if the op type is registered in CINN and allow_ops is not empty, return
     // true only when it is in allow_ops
     if (!allow_ops.empty()) {
