@@ -1207,7 +1207,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
-        op_type == "elementwise_pow") {
+        op_type == "elementwise_pow" || op_type == "elementwise_min" ||
+        op_type == "elementwise_max") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1744,13 +1745,13 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "reshape" || op_type == "reshape2") {
-      if (with_dynamic_shape) {
-        return true;
-      }
       if (!desc.HasAttr("shape")) {
         return false;
       }
-      // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
+      if (with_dynamic_shape) {
+        return true;
+      }
+      // Static shape does not support the input tensors: Shape and ShapeTensor
       auto reshape_inputs = desc.Inputs();
       if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
         if (desc.Input("Shape").size() >= 1) {
@@ -2144,6 +2145,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "elementwise_min",
+      "elementwise_max",
       "equal",
       "dropout",
       "prelu",
@@ -2255,6 +2258,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "elementwise_min",
+      "elementwise_max",
       "equal",
       "dropout",
       "prelu",
