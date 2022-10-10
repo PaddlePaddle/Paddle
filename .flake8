@@ -5,7 +5,11 @@ exclude =
     # A trick to exclude fluid/ but keep fluid/tests/, see more at
     # https://github.com/PaddlePaddle/Paddle/pull/46290#discussion_r976392010
     ./python/paddle/fluid/[!t]**,
-    ./python/paddle/fluid/tra**
+    ./python/paddle/fluid/tra**,
+    # Exclude auto-generated files
+    *_pb2.py,
+    # Exclude third-party libraries
+    ./python/paddle/utils/gast/**
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     E121,E122,E123,E125,E126,E127,E128,E129,E131,
