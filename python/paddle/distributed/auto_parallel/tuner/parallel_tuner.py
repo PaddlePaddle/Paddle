@@ -23,7 +23,6 @@ from collections import defaultdict
 import numpy as np
 import paddle
 from ..process_mesh import ProcessMesh
-from ..process_mesh import _flatten_nested_list
 from ..completion import Completer
 from ..parallelizer_v2 import Parallelizer
 from ..dist_context import _node_id
@@ -82,13 +81,13 @@ class ParallelTuner:
         self._tried_values = set()
         self._num_trials = 0
         self._rng = np.random.default_rng(self._seed)
-        self._materialized_for_all_ranks = False
 
         # Search the op types in the include_op_types,
         # and will search all op types if it is empty.
         # Exclude the op types in the exclude_op_types
         # from the search list.
         self._exclude_op_types = []
+        self._include_op_types = []
         # The final dist ops will be searched after considering
         # the include_op_types and exclude_op_types.
         self._concerned_dist_ops = {}
