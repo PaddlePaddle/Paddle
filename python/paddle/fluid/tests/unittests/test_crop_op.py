@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
 
 
 def crop(data, offsets, crop_shape):
@@ -135,20 +136,21 @@ class TestCase6(TestCropOp):
         self.offset_by_input = True
 
 
-class TestCase7NoneShape(TestCropOp):
+class TestCropNoneOffset(unittest.TestCase):
 
-    def initTestCase(self):
-        self.x_shape = (10, 9, 14)
-        self.crop_shape = None
-        self.offsets = [0, 0, 0]
+    def test_crop_none_offset(self):
+        x = fluid.data(name="input1", shape=[2, 3, 6, 6], dtype="float32")
+        crop_shape = [2, 2]
+        crop = paddle.crop(x, crop_shape, None)
+        self.assertEqual(crop.shape, (2, 2))
 
 
-class TestCase8NoneOffset(TestCropOp):
+class TestCropNoneShape(unittest.TestCase):
 
-    def initTestCase(self):
-        self.x_shape = (10, 9, 14)
-        self.crop_shape = [3, 3, 5]
-        self.offsets = None
+    def test_crop_none_shape(self):
+        x = fluid.data(name="input1", shape=[2, 3, 6, 6], dtype="float32")
+        crop = paddle.crop(x, None)
+        self.assertEqual(crop.shape, (2, 3, 6, 6))
 
 
 if __name__ == '__main__':
