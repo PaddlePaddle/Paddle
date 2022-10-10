@@ -138,6 +138,7 @@ def create_dataloader(main_program,
         dataloader = DistributedDataLoaderFromGenerator(
             dataset=dataset,
             feed_list=feed_list,
+            capacity=70,
             places=places,
             batch_size=dataset.batch_size,
             epochs=epochs,
