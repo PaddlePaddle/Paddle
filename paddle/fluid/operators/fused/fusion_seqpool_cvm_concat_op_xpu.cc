@@ -29,39 +29,54 @@ public:
     const Tensor* cvm = ctx.Input<Tensor>("CVM");
     auto dxs = ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
     auto use_cvm = ctx.Attr<bool>("use_cvm");//TODO:
-    size_t n = dxs.size();
+    int n = dxs.size();
     auto xpu_context =
-          ctx.template device_context<DeviceContext>().x_context();
-    auto cvm_offset = use_cvm ? 0 : 2;
-
-    for (size_t k = 0; k < n; k++) {
+        ctx.template device_context<DeviceContext>().x_context();
+    T* dy_data = const_cast<T*>(dOut->data<T>());
+    T* cvm_data = const_cast<T*>(cvm->data<T>());
+    int batch_size = dOut->dims()[0];
+    int dy_offset = dOut->dims()[1];
+    auto item_size = dxs[0]->dims()[1];
+    std::unique_ptr<unsigned long long[]> cpu_dx_list(new unsigned long long[n]);
+    std::unique_ptr<unsigned long long[]> xpu_lod_list(new unsigned long long[n]);
+    xpu::VectorParam<unsigned long long> dx_vec_param = {&cpu_dx_list[0], n, nullptr};
+    xpu::VectorParam<unsigned long long> lod_vec_param = {nullptr, n, nullptr};
+    unsigned int sum_size = 0;
+    for (int k = 0; k < n; k++) {
+        auto dx = dxs[k];
+        auto lod_level_0 = dx->lod()[0];
+        int lod_size = lod_level_0.size();
+	sum_size += lod_size;
+    }
+    xpu::ctx_guard RAII_GUARD(xpu_context);
+    unsigned long long lod_addr = reinterpret_cast<unsigned long long>(RAII_GUARD.alloc_l3_or_gm<unsigned int>(sum_size));
+    std::vector<unsigned int> cpu_lodx(sum_size);
+    unsigned int start_index = 0;
+    for (int k = 0; k < n; k++) {
         auto dx = dxs[k];
         T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
-        int tmp_cvm_dx_bs = dOut->dims()[0];
         auto lod = dx->lod();
-        auto batch_size = dx->dims()[0];
-        dx->mutable_data<T>(ctx.GetPlace());
-        const T* cvm_data = cvm->data<T>();
+        cpu_dx_list[k] = reinterpret_cast<unsigned long long>(dx_data);
         auto lod_level_0 = dx->lod()[0];
-        auto item_size = dx->numel() / batch_size;
-        const T* dout_data = dOut->data<T>() + k * (item_size-cvm_offset);
         int lod_size = lod_level_0.size();
-        std::vector<unsigned int> cpu_lodx(lod_size);
+	xpu_lod_list[k] = lod_addr + start_index * sizeof(unsigned int);
         for (int i = 0; i < lod_size; i++) {
-            cpu_lodx[i] = lod_level_0[i];
-        }
-        const xpu::VectorParam<unsigned int> lodx = {reinterpret_cast<const unsigned int*>(cpu_lodx.data()),
-                    static_cast<int>(cpu_lodx.size()), nullptr};
-        xpu::ctx_guard RAII_GUARD(xpu_context);
-        auto dy_offset = dOut->dims()[1];
-        // use_cvm 0 item_size 11batch_size 4096*2  tmp_cvm_dx_bs 4096dout_offset 765
-        auto lodx_xpu = lodx.to_xpu(RAII_GUARD);
-        int r = xpu::sequence_sum_pool_cvm_grad<float, unsigned int>(xpu_context, dout_data, dx_data, cvm_data, lodx_xpu.xpu, item_size, tmp_cvm_dx_bs, dy_offset, use_cvm);
-        PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-              platform::errors::External(
-                "The sequence_pool_cvm_grad XPU OP return wrong value[%d %s]",
-                r, XPUAPIErrorMsg[r]));
+	    cpu_lodx[i + start_index] = lod_level_0[i];
+	}
+	start_index += lod_size;
     }
+    xpu_memcpy(reinterpret_cast<void*>(lod_addr), cpu_lodx.data(), sum_size * sizeof(unsigned int), XPU_HOST_TO_DEVICE);
+    dx_vec_param.xpu = reinterpret_cast<unsigned long long*>(RAII_GUARD.alloc_l3_or_gm<unsigned long long>(n));
+    xpu_memcpy(dx_vec_param.xpu, &cpu_dx_list[0], n * sizeof(uint64_t), XPU_HOST_TO_DEVICE);
+    lod_vec_param.xpu = reinterpret_cast<unsigned long long*>(RAII_GUARD.alloc_l3_or_gm<unsigned long long>(n));
+    xpu_memcpy(lod_vec_param.xpu, &xpu_lod_list[0], n * sizeof(unsigned long long), XPU_HOST_TO_DEVICE);
+    int r = xpu::sequence_sum_pool_cvm_grad<T>(xpu_context, dy_data, cvm_data, 
+                               dx_vec_param, lod_vec_param,
+                               item_size, batch_size, n, dy_offset, use_cvm);
+     PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+            platform::errors::External(
+               "The sequence_pool_cvm_grad XPU OP return wrong value[%d %s]",
+               r, XPUAPIErrorMsg[r]));
   }
 };
 
@@ -109,21 +124,25 @@ public:
 
     xpu::VectorParam<uint64_t> lod_VP_list = {nullptr, slot_num, nullptr};
     std::vector<uint64_t> xpu_lod_addr_vec(slot_num, 0);
+    unsigned int sum_lod_size = 0;
+    unsigned int lod_index = 0;
+    for (int i = 0; i < slot_num; i++) {
+        auto x_lod = ins[i]->lod()[0];
+	sum_lod_size += x_lod.size();
+    }
+    int* xpu_lod_ptr = RAII_GUARD.alloc_l3_or_gm<int>(sum_lod_size);
+    std::vector<int> cpu_lodx(sum_lod_size);
 
     for (int i = 0; i < slot_num; i++) {
         xpu_x_addr_vec[i] = reinterpret_cast<uint64_t>(ins[i]->data<T>());
-
         auto x_lod = ins[i]->lod()[0];
-        std::vector<int> cpu_lodx(x_lod.size());
         for (size_t j = 0; j < x_lod.size(); j++) {
-           cpu_lodx[j] = x_lod[j];
+           cpu_lodx[lod_index + j] = x_lod[j];
         }
-
-        int* xpu_lod_ptr = RAII_GUARD.alloc_l3_or_gm<int>(x_lod.size());
-        xpu_memcpy(xpu_lod_ptr, cpu_lodx.data(), cpu_lodx.size() * sizeof(int), XPU_HOST_TO_DEVICE);
-        xpu_lod_addr_vec[i] = reinterpret_cast<uint64_t>(xpu_lod_ptr);
+        xpu_lod_addr_vec[i] = reinterpret_cast<uint64_t>(xpu_lod_ptr + lod_index);
+	lod_index += x_lod.size();
     }
-
+    xpu_memcpy(xpu_lod_ptr, cpu_lodx.data(), sum_lod_size * sizeof(int), XPU_HOST_TO_DEVICE);
     uint64_t* xpu_x_addr_ptr = RAII_GUARD.alloc_l3_or_gm<uint64_t>(slot_num);
     xpu_memcpy(xpu_x_addr_ptr, xpu_x_addr_vec.data(), slot_num * sizeof(uint64_t), XPU_HOST_TO_DEVICE);
     x_addr_VP_list.xpu = reinterpret_cast<uint64_t*>(xpu_x_addr_ptr);
