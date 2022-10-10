@@ -91,13 +91,15 @@ def train_mlp(model,
         optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
     if sharding_stage == 2:
+        origin_model = model
         optimizer = GroupShardedOptimizerStage2(
             params=optimizer._parameter_list, optim=optimizer, group=group)
         model = GroupShardedStage2(model,
                                    optimizer,
                                    group=group,
                                    buffer_max_size=2**21)
-        model._set_comm_overlap(True)
+        model._set_reduce_overlap(True)
+        optimizer._set_broadcast_overlap(True, model)
     else:
         model = paddle.DataParallel(model)
 
@@ -147,6 +149,8 @@ def train_mlp(model,
         if accumulate_grad:
             optimizer.step()
             optimizer.clear_grad()
+
+    paddle.device.cuda.synchronize()
 
     if save_model:
         return model, optimizer
