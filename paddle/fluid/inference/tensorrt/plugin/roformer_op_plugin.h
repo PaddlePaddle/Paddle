@@ -22,7 +22,7 @@
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
-//#define DEBUG
+// #define DEBUG
 #ifdef DEBUG
     #define WHERE_AM_I()                               \
         do                                             \
@@ -105,7 +105,6 @@ public:
         return new RoformerPlugin(name, serialData, serialLength);
     }
     void setPluginNamespace(const char *pluginNamespace) noexcept override {
-        WHERE_AM_I()
         namespace_ = pluginNamespace;
     }
     const char* getPluginNamespace() const noexcept override {
