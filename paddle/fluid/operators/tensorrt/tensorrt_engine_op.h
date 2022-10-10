@@ -505,6 +505,19 @@ class TensorRTEngineOp : public framework::OperatorBase {
         framework::TransDataDevice(t, dst_place, &out);
         t.ShareDataWith(out);
       }
+
+      PADDLE_ENFORCE_GT(
+          t.numel(),
+          0,
+          phi::errors::InvalidArgument(
+              "The input tensor named %s of trt-subgraph must "
+              "have >0 elements, but now have %d elements. "
+              "There is a high probability that this tensor is "
+              "connected to a concat op inside a trt-subgraph, "
+              "try to ues API to forbid this op into trt-subgraph.",
+              x,
+              t.numel()));
+
       auto t_shape = phi::vectorize<int64_t>(t.dims());
       // const int bind_index = engine->engine()->getBindingIndex(x.c_str());
       // Get index of profile 0 first, then plus binding offset
