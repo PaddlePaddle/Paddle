@@ -65,12 +65,12 @@ class ExpandOpConverter : public OpConverter {
     std::vector<int> start_vec(nbDims_num, 0);
     nvinfer1::Dims start;
     start.nbDims = nbDims_num;
-    for (int i = 0; i < nbDims_num - 1; ++i) {
+    for (int i = 0; i < nbDims_num; ++i) {
       start.d[i] = start_vec[i];
     }
-    nvinfer1::Dims size{-1, {}};
+    nvinfer1::Dims size;
     size.nbDims = nbDims_num;
-    nvinfer1::Dims stride{-1, {}};
+    nvinfer1::Dims stride;
     stride.nbDims = nbDims_num;
 
     auto starts_tensor =
