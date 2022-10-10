@@ -1729,7 +1729,7 @@ class MultiMarginLoss(Layer):
 
             label: 1-D Tensor, the shape is [N,].
 
-            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the input.
+            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the label.
 
         Returns:
             A callable object of MultiMarginLoss.
