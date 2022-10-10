@@ -165,10 +165,11 @@ class GroupShardedOptimizerStage2(Optimizer):
                       group=self._group,
                       sync_op=True)
 
-            broadcast(p,
-                      src=self._dp_group.ranks[0],
-                      group=self._dp_group,
-                      sync_op=True)
+            if self._dp_group:
+                broadcast(p,
+                          src=self._dp_group.ranks[0],
+                          group=self._dp_group,
+                          sync_op=True)
 
     def _update_task(self, task):
         if self._comm_overlap:
