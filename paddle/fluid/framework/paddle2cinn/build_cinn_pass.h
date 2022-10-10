@@ -44,13 +44,17 @@ using Name2VarInfoMap =
                        std::shared_ptr<framework::ir::MemOptVarInfo>>;
 using GraphNodeSet = std::unordered_set<ir::Node*>;
 
+// OpTransInfo contains informations used to detect subgraphs
+// supported by the CINN compiler.
 class OpTransInfo {
   using DyOpCondT =
-      std::unordered_map<std::string, std::function<bool(const ir::Node*)>>;
+      std::unordered_map<std::string, std::function<bool(const ir::Node&)>>;
   using DeParamCondT =
       std::unordered_map<std::string, std::unordered_set<std::string>>;
 
  public:
+  OpTransInfo();
+
   const DyOpCondT& dynamic_op_cond() const { return dynamic_op_cond_; }
 
   const DeParamCondT& deny_param_cond() const { return deny_param_cond_; }
@@ -65,21 +69,7 @@ class OpTransInfo {
   static bool IsInplaceOp(const OpDesc& op_desc);
 
  private:
-  DyOpCondT dynamic_op_cond_{
-      {"slice", [](const ir::Node* node) -> bool {
-         if (!node->IsOp()) {
-           return false;
-         }
-         auto* op_desc = node->Op();
-         auto infer_flags =
-             op_desc->GetAttrIfExists<std::vector<int>>("infer_flags");
-         if (std::find_if(infer_flags.begin(), infer_flags.end(), [](int v) {
-               return v < 0;
-             }) != infer_flags.end()) {
-           return true;
-         }
-         return false;
-       }}};
+  DyOpCondT dynamic_op_cond_;
 
   DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
                                 {"batch_norm_grad", {"ReserveSpace"}}};

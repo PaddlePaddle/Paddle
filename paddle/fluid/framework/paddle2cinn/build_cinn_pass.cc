@@ -52,6 +52,37 @@ using framework::ir::Node;
 using GraphNodeVec = std::vector<Node*>;
 using GraphNodeMap = std::unordered_map<Node*, Node*>;
 
+OpTransInfo::OpTransInfo() {
+  // judgment condition for the dynamic slice
+  dynamic_op_cond_.emplace("slice", [](const ir::Node& node) -> bool {
+    if (!node.IsOp()) {
+      return false;
+    }
+    auto* op_desc = node.Op();
+    auto infer_flags =
+        op_desc->GetAttrIfExists<std::vector<int>>("infer_flags");
+    return std::find_if(infer_flags.begin(), infer_flags.end(), [](int v) {
+             return v < 0;
+           }) != infer_flags.end();
+  });
+
+  // judgment condition for the dynamic reshape
+  dynamic_op_cond_.emplace("reshape", [](const ir::Node& node) -> bool {
+    if (!node.IsOp()) {
+      return false;
+    }
+    auto* op_desc = node.Op();
+    bool has_shape_tensor = op_desc->Inputs().count("ShapeTensor") &&
+                            op_desc->Inputs().at("ShapeTensor").size();
+    bool has_shape = op_desc->Inputs().count("Shape") &&
+                     op_desc->Inputs().at("Shape").size();
+    return has_shape_tensor || has_shape;
+  });
+
+  // judgment condition for the dynamic reshape2
+  dynamic_op_cond_.emplace("reshape2", dynamic_op_cond_.at("reshape"));
+}
+
 std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
     const GraphNodeSet& cluster) const {
   std::unordered_set<std::string> deny_var_set;
@@ -563,7 +594,7 @@ void SearchAllSubgraphs(Graph* graph) {
     // skip the dynamic ops
     bool is_dynamic = false;
     if (trans_info.dynamic_op_cond().count(node_name)) {
-      is_dynamic = trans_info.dynamic_op_cond().at(node_name)(node);
+      is_dynamic = trans_info.dynamic_op_cond().at(node_name)(*node);
     }
 
     bool is_support =
