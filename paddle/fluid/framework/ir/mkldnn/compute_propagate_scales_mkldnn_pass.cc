@@ -107,12 +107,15 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
     if (ops.count(op_desc->Type())) {
       auto var_name = op_desc->Input(weight_name)[0];
       auto* var = scope->FindVar(var_name);
-      PADDLE_ENFORCE_NOT_NULL(
-          var,
-          platform::errors::NotFound(
-              "The input persistable var [%s] of [%s] op is not found.",
-              var_name,
-              op_desc->Type()));
+      if (var == nullptr) {
+        return;
+      }
+      // PADDLE_ENFORCE_NOT_NULL(
+      //     var,
+      //     platform::errors::NotFound(
+      //         "The input persistable var [%s] of [%s] op is not found.",
+      //         var_name,
+      //         op_desc->Type()));
       auto* weight_tensor = var->GetMutable<LoDTensor>();
       const auto dims = weight_tensor->dims();
       int volume = 1;

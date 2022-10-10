@@ -148,6 +148,7 @@ class PredictorEngine : public BaseEngine {
       config.DisableGpu();
     }
     config.EnableMKLDNN();
+    config.EnableMkldnnInt8();
     config.SwitchIrOptim(true);
     // config.SwitchIrDebug(true);
 
