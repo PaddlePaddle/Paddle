@@ -44,6 +44,7 @@ class InferApiTesterUtils {
 };
 
 TEST(Tensor, copy_to_cpu_async_stream) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   LOG(INFO) << GetVersion();
   UpdateDllFlag("conv_workspace_size_limit", "4000");
   std::string model_dir = FLAGS_infer_model + "/model";
@@ -109,6 +110,7 @@ TEST(Tensor, copy_to_cpu_async_stream) {
 }
 
 TEST(Tensor, copy_to_cpu_async_callback) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   LOG(INFO) << GetVersion();
   UpdateDllFlag("conv_workspace_size_limit", "4000");
   std::string model_dir = FLAGS_infer_model + "/model";
@@ -205,17 +207,20 @@ static void test_copy_tensor(PlaceType src_place, PlaceType dst_place) {
 }
 
 TEST(CopyTensor, float32) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   test_copy_tensor<float>(PlaceType::kCPU, PlaceType::kCPU);
   test_copy_tensor<float>(PlaceType::kCPU, PlaceType::kGPU);
   test_copy_tensor<float>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, int32) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   test_copy_tensor<int32_t>(PlaceType::kCPU, PlaceType::kCPU);
   test_copy_tensor<int32_t>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, int64) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   test_copy_tensor<int64_t>(PlaceType::kCPU, PlaceType::kCPU);
   test_copy_tensor<int64_t>(PlaceType::kGPU, PlaceType::kGPU);
 }
@@ -226,11 +231,13 @@ TEST(CopyTensor, int8) {
 }
 
 TEST(CopyTensor, uint8) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   test_copy_tensor<uint8_t>(PlaceType::kCPU, PlaceType::kCPU);
   test_copy_tensor<uint8_t>(PlaceType::kGPU, PlaceType::kGPU);
 }
 
 TEST(CopyTensor, float16) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   paddle::framework::Scope scope;
   auto tensor_src = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
@@ -261,6 +268,7 @@ TEST(CopyTensor, float16) {
 }
 
 TEST(CopyTensor, float16_gpu) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   paddle::framework::Scope scope;
   auto tensor_src = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
@@ -291,6 +299,7 @@ TEST(CopyTensor, float16_gpu) {
 }
 
 TEST(CopyTensor, async_stream) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   paddle::framework::Scope scope;
   auto tensor_src = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_src", PlaceType::kGPU, static_cast<void *>(&scope));
@@ -324,6 +333,7 @@ TEST(CopyTensor, async_stream) {
 }
 
 TEST(CopyTensor, async_callback) {
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
   paddle::framework::Scope scope;
   auto tensor_src = paddle_infer::InferApiTesterUtils::CreateInferTensorForTest(
       "tensor_src", PlaceType::kCPU, static_cast<void *>(&scope));
