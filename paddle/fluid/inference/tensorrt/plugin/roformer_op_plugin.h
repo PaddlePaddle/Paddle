@@ -101,7 +101,6 @@ public:
         return nullptr;
     }
     nvinfer1::IPluginV2* deserializePlugin(const char *name, const void *serialData, size_t serialLength) noexcept override {
-        WHERE_AM_I()
         return new RoformerPlugin(name, serialData, serialLength);
     }
     void setPluginNamespace(const char *pluginNamespace) noexcept override {
