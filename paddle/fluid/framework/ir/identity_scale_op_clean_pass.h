@@ -30,6 +30,14 @@ class IdentityScaleOpCleanPass : public FusePassBase {
   virtual ~IdentityScaleOpCleanPass() = default;
 };
 
+class DequantizeLinearOpCleanPass : public FusePassBase {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+
+ private:
+  virtual ~DequantizeLinearOpCleanPass() = default;
+};
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

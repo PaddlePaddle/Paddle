@@ -97,6 +97,97 @@ void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
+void DequantizeLinearOpCleanPass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init("dequantize_linear_op_clean", graph);
+
+  // pre_op -> scale_in -> scale_op -> scale_out
+  // ->
+  // pre_op -> scale_out
+  GraphPatternDetector detector;
+  auto dequantize_linear_in =
+      detector.mutable_pattern()
+          ->NewNode("dequantize_linear_in_in")
+          ->assert_is_op_input("dequantize_linear")
+          ->assert_has_n_outputs(1)
+          ->assert_var_not_persistable()
+          ->assert_more([](Node* x) {
+            for (auto* op : x->inputs) {
+              auto op_type = op->Op()->Type();
+              if (op_type == "conditional_block" || op_type == "while") {
+                return false;
+              }
+            }
+            return true;
+          });
+
+  auto dequantize_linear_scale =
+      detector.mutable_pattern()
+          ->NewNode("dequantize_linear_scale")
+          ->assert_is_op_input("dequantize_linear", "Scale");
+
+  auto dequantize_linear_zeropoint =
+      detector.mutable_pattern()
+          ->NewNode("dequantize_linear_zeropoint")
+          ->assert_is_op_input("dequantize_linear", "ZeroPoint");
+
+  auto dequantize_linear_op = detector.mutable_pattern()
+                                  ->NewNode("dequantize_linear_op")
+                                  ->assert_is_op("dequantize_linear");
+  auto dequantize_linear_out = detector.mutable_pattern()
+                                   ->NewNode("dequantize_linear_out")
+                                   ->assert_is_op_output("dequantize_linear");
+
+  dequantize_linear_op
+      ->LinksFrom({dequantize_linear_in,
+                   dequantize_linear_scale,
+                   dequantize_linear_zeropoint})
+      .LinksTo({dequantize_linear_out});
+
+  int found_subgraph_count = 0;
+  GraphPatternDetector::handle_t handler =
+      [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+        Node* dequantize_linear_op_var = subgraph.at(dequantize_linear_op);
+        Node* dequantize_linear_in_var = subgraph.at(dequantize_linear_in);
+        Node* dequantize_linear_out_var = subgraph.at(dequantize_linear_out);
+        const std::string dequantize_linear_in_name =
+            dequantize_linear_in_var->Name();
+        const std::string dequantize_linear_out_name =
+            dequantize_linear_out_var->Name();
+        // Remove links in graph
+        GraphSafeRemoveNodes(
+            graph, {dequantize_linear_in_var, dequantize_linear_op_var});
+        // Modify pre_op_desc
+        // Link pre_op directly to scale_out
+        for (auto& node : graph->Nodes()) {
+          if (node->IsOp()) {
+            auto* op_desc = node->Op();
+            auto out_vars_map = op_desc->Outputs();
+            for (auto out_var_map : out_vars_map) {
+              auto names = out_var_map.second;
+              bool reset = false;
+              for (size_t i = 0; i < names.size(); i++) {
+                if (names[i] == dequantize_linear_in_name) {
+                  reset = true;
+                  names[i] = dequantize_linear_out_name;
+                  break;
+                }
+              }
+              if (reset) {
+                op_desc->SetOutput(out_var_map.first, names);
+                op_desc->Flush();
+                IR_NODE_LINK_TO(node, dequantize_linear_out_var);
+                break;
+              }
+            }
+          }
+        }
+        found_subgraph_count++;
+      };
+
+  detector(graph, handler);
+  AddStatis(found_subgraph_count);
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
@@ -107,3 +198,5 @@ REGISTER_PASS_CAPABILITY(identity_scale_op_clean_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
             "scale", 0));
+REGISTER_PASS(dequantize_linear_op_clean_pass,
+              paddle::framework::ir::DequantizeLinearOpCleanPass);

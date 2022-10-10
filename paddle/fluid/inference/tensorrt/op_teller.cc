@@ -1635,6 +1635,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "quantize_linear") {
+      return true;
+    }
+    if (op_type == "dequantize_linear") {
+      return true;
+    }
     if (op_type == "preln_skip_layernorm") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the preln_skip_layernorm does not support static shape yet";
@@ -2201,6 +2207,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
       "skip_layernorm",
+      "quantize_linear",
+      "dequantize_linear",
       "slice",
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",
@@ -2312,6 +2320,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
       "skip_layernorm",
+      "quantize_linear",
+      "dequantize_linear",
       "slice",
       "strided_slice",
       "fused_preln_embedding_eltwise_layernorm",

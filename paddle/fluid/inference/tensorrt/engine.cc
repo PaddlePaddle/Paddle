@@ -204,6 +204,24 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
+  for (int i = 0; i < network()->getNbLayers(); i++) {
+    auto layer = network()->getLayer(i);
+    if (layer->getType() == nvinfer1::LayerType::kELEMENTWISE && 0) {
+      bool all_float = true;
+      for (int j = 0; j < layer->getNbInputs(); j++) {
+        auto *temp_in = layer->getInput(j);
+        if (temp_in->getType() != nvinfer1::DataType::kFLOAT) {
+          all_float = false;
+        }
+      }
+      all_float = all_float && layer->getNbInputs();
+      if (all_float) {
+        layer->setPrecision(nvinfer1::DataType::kFLOAT);
+        std::cout << "floatfloat" << std::endl;
+      }
+    }
+  }
+
   // If model is mixed precision, then we should cast all float output to
   // float32 precision. Otherwise, we can not confirm the output precision of
   // the trt engine.
@@ -292,11 +310,12 @@ void TensorRTEngine::FreezeNetwork() {
   }
 #endif
 
+// infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
 #if IS_TRT_VERSION_LT(8000)
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
-  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
+  // infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
   ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));

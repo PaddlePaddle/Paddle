@@ -28,6 +28,14 @@
 
 namespace paddle {
 namespace framework {
+
+template <typename T>
+void print(T *cpu_data, int num, std::string var_name) {
+  for (int i = 0; i < num; i++) {
+    std::cout << cpu_data[i] << std::endl;
+  }
+}
+
 void NaiveExecutor::Prepare(Scope *scope,
                             const ProgramDesc &program_desc,
                             int block_id,
@@ -51,6 +59,47 @@ void NaiveExecutor::Run() {
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
+    if (0) {
+      for (auto name : op->InputVars()) {
+        std::cout << name << ": ";
+        auto tensor = FindTensor(name);
+        auto dims = tensor->dims();
+        if (tensor->dtype() == paddle::experimental::DataType::FLOAT32) {
+          float *cpu_data = new float[tensor->numel()];
+          float *tensor_data = tensor->data<float>();
+          if (tensor->place() == platform::CPUPlace()) {
+            memcpy(cpu_data, tensor_data, sizeof(float) * tensor->numel());
+          } else {
+            cudaMemcpy(cpu_data,
+                       tensor_data,
+                       sizeof(float) * tensor->numel(),
+                       cudaMemcpyDeviceToHost);
+          }
+          if (0) print(cpu_data, tensor->numel(), name);
+          for (int64_t i = 0; i < dims.size(); i++) {
+            std::cout << dims[i] << " ";
+          }
+          delete[] cpu_data;
+        } else if (tensor->dtype() == paddle::experimental::DataType::INT32) {
+          int *cpu_data = new int[tensor->numel()];
+          int *tensor_data = tensor->data<int>();
+          if (tensor->place() == platform::CPUPlace()) {
+            memcpy(cpu_data, tensor_data, sizeof(int) * tensor->numel());
+          } else {
+            cudaMemcpy(cpu_data,
+                       tensor_data,
+                       sizeof(int) * tensor->numel(),
+                       cudaMemcpyDeviceToHost);
+          }
+          for (int64_t i = 0; i < dims.size(); i++) {
+            std::cout << dims[i] << " ";
+          }
+          std::cout << std::endl;
+          print(cpu_data, tensor->numel(), name);
+          delete[] cpu_data;
+        }
+      }
+    }
     op->SetIsCalledByExecutor(false);
     op->Run(*scope_, place_);
   }

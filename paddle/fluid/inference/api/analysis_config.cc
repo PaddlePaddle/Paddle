@@ -661,7 +661,7 @@ void AnalysisConfig::EnableTensorRtEngine(
   // createExecutionContextWithoutDeviceMemory() has bug.
   // so, we cannot enable engine context memory sharing.
 #if IS_TRT_VERSION_GE(7200)
-  trt_engine_memory_sharing_ = true;
+  trt_engine_memory_sharing_ = false;
 #else
   LOG(WARNING)
       << "TensorRT engine context memory sharing needs version 7.2 and after.";

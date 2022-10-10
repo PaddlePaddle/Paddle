@@ -257,6 +257,18 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     }
     desc.SetAttr("support_int8", inscale_flag && outscale_flag);
 
+    if (elementwise_add_op_desc->HasAttr("Out") &&
+        elementwise_add_op_desc->HasAttr("X") && 0) {
+      float in_range =
+          PADDLE_GET_CONST(float, elementwise_add_op_desc->GetAttr("X"));
+      float out_range =
+          PADDLE_GET_CONST(float, elementwise_add_op_desc->GetAttr("Out"));
+      if (std::abs(in_range - out_range) > 0.1) {
+        desc.SetAttr("support_int8", false);
+        std::cout << bias->Name() << std::endl;
+      }
+    }
+
     // if we can find out_threshold in elementwise_add, then set it as the
     // out_thrshold of fc
     auto out_threshold_attr =

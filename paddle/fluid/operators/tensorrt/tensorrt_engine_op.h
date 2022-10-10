@@ -668,8 +668,15 @@ class TensorRTEngineOp : public framework::OperatorBase {
               runtime_batch,
               max_batch_size_));
     }
-    // Execute the engine.
+    // auto success = cudaStreamSynchronize(stream);
+    // PADDLE_ENFORCE_GPU_SUCCESS(success);
+    //  std::cout << "111111" << std::endl;
+    //  Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);
+    // success = cudaStreamSynchronize(stream);
+    // std::cout << "success = cudaStreamSynchronize(stream);" << std::endl;
+    // PADDLE_ENFORCE_GPU_SUCCESS(success);
+    // std::cout << "888888888999999" << std::endl;
   }
 
   TensorRTEngine *GetEngine(const framework::Scope &scope,

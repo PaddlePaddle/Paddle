@@ -31,6 +31,8 @@ list(
   flatten_op.cc
   flatten_contiguous_range_op.cc
   skip_layernorm.cc
+  quantize_linear_op.cc
+  dequantize_linear_op.cc
   scale_op.cc
   slice_op.cc
   hard_sigmoid_op.cc

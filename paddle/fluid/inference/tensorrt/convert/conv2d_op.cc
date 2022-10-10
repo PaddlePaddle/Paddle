@@ -45,11 +45,43 @@ void ConvertConv2d(TensorRTEngine* engine,
   auto* X = engine->GetITensor(op_desc.Input("Input").front());
   std::string filter_var_name = op_desc.Input("Filter").front();
   auto* Y_v = scope.FindVar(filter_var_name);
-  PADDLE_ENFORCE_NOT_NULL(
-      Y_v,
-      platform::errors::NotFound("Can not find %s presistale var in scope.",
-                                 filter_var_name));
-  auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+  // PADDLE_ENFORCE_NOT_NULL(
+  //     Y_v,
+  //     platform::errors::NotFound("Can not find %s presistale var in scope.",
+  //                                filter_var_name));
+  framework::LoDTensor* Y_t;
+  nvinfer1::ITensor* filter;
+  int n_output;
+  int n_input;
+  int filter_h;
+  int filter_w;
+  if (Y_v) {
+    Y_t = Y_v->GetMutable<framework::LoDTensor>();
+
+    PADDLE_ENFORCE_EQ(
+        Y_t->dims().size(),
+        4UL,
+        platform::errors::InvalidArgument(
+            "The conv2d filter's dims size should be 4, but got %d",
+            Y_t->dims().size()));
+
+    n_output = Y_t->dims()[0];
+    n_input = Y_t->dims()[1];
+    filter_h = Y_t->dims()[2];
+    filter_w = Y_t->dims()[3];
+  } else {
+    filter = engine->GetITensor(op_desc.Input("Filter").front());
+    PADDLE_ENFORCE_EQ(
+        filter->getDimensions().nbDims,
+        4UL,
+        platform::errors::InvalidArgument(
+            "The conv2d filter's dims size should be 4, but got %d",
+            filter->getDimensions().nbDims));
+    n_output = filter->getDimensions().d[0];
+    n_input = filter->getDimensions().d[1];
+    filter_h = filter->getDimensions().d[2];
+    filter_w = filter->getDimensions().d[3];
+  }
 
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
@@ -60,16 +92,6 @@ void ConvertConv2d(TensorRTEngine* engine,
 #endif
   }
 
-  PADDLE_ENFORCE_EQ(Y_t->dims().size(),
-                    4UL,
-                    platform::errors::InvalidArgument(
-                        "The conv2d filter's dims size should be 4, but got %d",
-                        Y_t->dims().size()));
-
-  const int n_output = Y_t->dims()[0];
-  const int n_input = Y_t->dims()[1];
-  const int filter_h = Y_t->dims()[2];
-  const int filter_w = Y_t->dims()[3];
   const int groups = PADDLE_GET_CONST(int, op_desc.GetAttr("groups"));
   const std::vector<int> dilations =
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
@@ -109,8 +131,8 @@ void ConvertConv2d(TensorRTEngine* engine,
     nv_post_paddings.d[0] = paddings[1];
     nv_post_paddings.d[1] = paddings[3];
   }
-
-  auto weight = engine->GetTrtWeight(op_desc.Input("Filter").front(), *Y_t);
+  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, nullptr, 0);
+  if (Y_v) weight = engine->GetTrtWeight(op_desc.Input("Filter").front(), *Y_t);
 
   TensorRTEngine::Weight bias;
   bias.SetDataType(weight.get().type);
@@ -144,6 +166,9 @@ void ConvertConv2d(TensorRTEngine* engine,
                               " layer failed."));
   layer->setStride(nv_strides);
   layer->setPrePadding(nv_pre_paddings);
+
+  if (!Y_v) layer->setInput(1, *filter);
+
   if (output_padding.size() > 0) {
     nv_post_paddings.d[0] -= output_padding[0];
     nv_post_paddings.d[1] -= output_padding[1];
