@@ -171,4 +171,3 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
 
 if __name__ == "__main__":
     unittest.main()
-python / paddle / fluid / tests / unittests / ir / inference / test_trt_convert_expand.py
