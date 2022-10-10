@@ -14,9 +14,7 @@
 
 import paddle.fluid as fluid
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, Program, program_guard
-import paddle.fluid.core as core
 import numpy as np
-import copy
 import unittest
 import sys
 
