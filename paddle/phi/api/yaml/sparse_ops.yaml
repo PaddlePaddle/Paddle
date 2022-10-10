@@ -393,7 +393,7 @@
   infer_meta :
     func : UnchangedInferMeta
   kernel :
-    func: coalesce{sparse_coo -> sparse_coo}
+    func: coalesce_coo{sparse_coo -> sparse_coo}
     layout : x
 
 - op: full_like
@@ -403,8 +403,8 @@
     func : CreateLikeInferMeta
     param : [x, dtype]
   kernel :
-    func : coo_full_like{sparse_coo -> sparse_coo},
-           csr_full_like{sparse_csr -> sparse_csr}
+    func : full_like_coo{sparse_coo -> sparse_coo},
+           full_like_csr{sparse_csr -> sparse_csr}
     layout : x
     data_type : dtype
 
