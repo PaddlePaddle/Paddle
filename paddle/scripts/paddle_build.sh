@@ -1832,7 +1832,14 @@ function precise_card_test_single {
         fi
         set -x
         find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
+
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/phi -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
+        
+
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
         
         # python
@@ -1844,7 +1851,10 @@ function precise_card_test_single {
             fi
             mv python-coverage.data.* ${PADDLE_ROOT}/build/pytest/$case
         fi
-        find paddle/fluid -name *.gcda | xargs rm -f #delete gcda
+        find paddle/fluid -name *.gcda | xargs rm -f 
+        find paddle/phi -name *.gcda | xargs rm -f 
+        find paddle/utils -name *.gcda | xargs rm -f 
+
     done
 }
 
@@ -1884,14 +1894,7 @@ function parallel_card_test() {
     echo "****************************************************************"
     
     tmpfile=$tmp_dir/$testcases".log"
-    tmpfile1=$tmp_dir/$testcases"-gpu.log"
-    nvidia-smi --id=0 --query-compute-apps=used_memory --format=csv -lms 10 > $tmpfile1 2>&1 &
-    gpu_memory_pid=$!
     env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I 0,,1 -R "($testcases)" --timeout 500 --output-on-failure -V -j 1 > $tmpfile 
-    kill ${gpu_memory_pid}
-    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {max = 0} {if(NR>1){if ($1 > max) max=$1}} END {print "MAX_GPU_MEMORY_USE=", max}' >> $tmpfile 
-    cat $tmpfile1 | tr -d ' MiB' | awk 'BEGIN {sum = 0} {if(NR>1){sum = sum + $1 }} END {print "AVG_GPU_MEMORY_USE=", sum / (NR-2)}' >> $tmpfile 
-    rm -rf $tmpfile1
     set +m
 }
 
@@ -1930,6 +1933,7 @@ function get_precise_tests_map_file {
     ut_total_startTime_s=`date +%s`
     EXIT_CODE=0;
     test_cases=$(ctest -N -V) # get all test cases
+    
     single_card_tests=''      # all cases list which would take one graph card
     exclusive_tests=''        # cases list which would be run exclusively
     multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
@@ -1997,21 +2001,24 @@ set +x
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
+
     #run all unittest to get the coverage information of .c and .h files
     precise_card_test_single "$single_card_tests" 1
     precise_card_test_single "$single_card_tests_1" 1
     precise_card_test_single "$multiple_card_tests" 2
     precise_card_test_single "$exclusive_tests"
     wait;
+
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
+
+    #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
+    get_failedUts_precise_map_file
     
     #analyze the mapping between unit tests and .cu files
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
 
     wait;
-    #rerun the notSuccessut and get the mapping between notSuccessut and .cu files
-    get_failedUts_precise_map_file
 
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
@@ -2087,9 +2094,11 @@ set +x
             is_exclusive=''
             is_multicard=''
             is_nightly=''
+            
             matchstr=''
             testcase=''
     done <<< "$test_cases";
+
 
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
@@ -2113,16 +2122,8 @@ set -x
 function get_failedUts_precise_map_file {
     if [[ -f "${PADDLE_ROOT}/build/utNotSuccess" ]]; then
         rerun_tests=`cat ${PADDLE_ROOT}/build/utNotSuccess`
-        #remove pile to full h/cu file
-        python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'remove_pile_from_h_file' ${PADDLE_ROOT}
-        cd ${PADDLE_ROOT}/build
-        cmake_base ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        pip uninstall -y paddlepaddle-gpu
-        pip install ${PADDLE_ROOT}/build/python/dist/*whl
         precise_card_test_single "$rerun_tests"
         wait;
-        
     fi
 }
 
