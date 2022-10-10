@@ -126,4 +126,19 @@ PD_REGISTER_KERNEL(empty,
                    int64_t,
                    bool,
                    phi::dtype::float16) {}
+PD_REGISTER_KERNEL(empty_like,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::EmptyLikeKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::float16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 #endif

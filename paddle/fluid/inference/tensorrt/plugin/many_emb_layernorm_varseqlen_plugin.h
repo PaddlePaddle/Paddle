@@ -18,7 +18,10 @@
 #include <cuda.h>
 #include "NvInferPlugin.h"
 #include "NvInferRuntime.h"
-#include "common/bertCommon.h"
+
+#include "paddle/fluid/inference/tensorrt/plugin/common/bertCommon.h"
+#include "paddle/fluid/inference/tensorrt/plugin/common/plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/common/serialize.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/platform/enforce.h"
 
