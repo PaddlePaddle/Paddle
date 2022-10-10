@@ -40,7 +40,7 @@ from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
 from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
 from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
 from .communication.group import Group, _add_new_group
-from .communication.all_reduce import all_reduce
+from .communication.all_reduce import all_reduce  # noqa: F401
 from .communication.reduce import _get_reduce_op, ReduceOp
 
 __all__ = []
