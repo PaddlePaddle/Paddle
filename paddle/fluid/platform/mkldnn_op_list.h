@@ -64,6 +64,10 @@ static const std::unordered_set<std::string> mkldnn_black_list = {
     "bilinear_interp",
     "nearest_interp_v2",
     "bilinear_interp_v2",
+    // return mkldnn ExpectedKernelType directly
+    "quantize",  // need mkldnn kernel, trigger assert error
+    "requantize",
+    "dequantize",
     // activation mkldnn operator
     "soft_relu",
     "soft_relu_grad",
@@ -204,6 +208,16 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "squeeze_grad",
     "squeeze2",
     "squeeze2_grad",
+    // NOTE(jiahy0825): reshape and flatten has attribute use_mkldnn, but they
+    // didn't change the ExpectedKernelType of tensor
+    "reshape",
+    "reshape_grad",
+    "reshape2",  // need mkldnn kernel, trigger assert error
+    "reshape2_grad",
+    "flatten",
+    "flatten_grad",
+    "flatten2",
+    "flatten2_grad",
     // NOTE(jiahy0825): After fixing GetExpectedKernelType in ReduceOp, reduce
     // series hard code can be deleted together.
     "frobenius_norm",
