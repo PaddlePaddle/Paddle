@@ -61,6 +61,13 @@ class TestIndependent(unittest.TestCase):
         self.assertEqual(tuple(data.shape), expected_shape)
         self.assertEqual(data.dtype, self.base.loc.dtype)
 
+    def test_rsample(self):
+        shape = [5, 10, 8]
+        expected_shape = (5, 10, 8, 1)
+        data = self._t.rsample(shape)
+        self.assertEqual(tuple(data.shape), expected_shape)
+        self.assertEqual(data.dtype, self.base.loc.dtype)
+
 
 if __name__ == '__main__':
     unittest.main()

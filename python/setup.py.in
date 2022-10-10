@@ -233,7 +233,7 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 write_cuda_env_config_py(filename='@PADDLE_BINARY_DIR@/python/paddle/cuda_env.py')
 
 def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
-    cnt = '''from __future__ import print_function
+    cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
