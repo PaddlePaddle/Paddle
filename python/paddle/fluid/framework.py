@@ -237,6 +237,10 @@ def _in_legacy_dygraph():
     return False
 
 
+def _in_legacy_dygraph2():
+    return (not _in_eager_mode_) and (_dygraph_tracer_ is not None)
+
+
 def _non_static_mode():
     return _dygraph_tracer_ is not None
 

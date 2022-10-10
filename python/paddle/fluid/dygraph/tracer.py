@@ -298,7 +298,7 @@ class Tracer(core.Tracer):
                  attrs,
                  stop_gradient=False,
                  inplace_map=None):
-        if not framework._in_legacy_dygraph():
+        if not framework._in_legacy_dygraph2():
             # inputs : {"sum": [tensor], ...}
             # outputs : {"sum": [tensor], ...}
             if type in name_mapping.keys():

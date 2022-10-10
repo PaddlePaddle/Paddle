@@ -30,7 +30,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _dygraph_tracer
 import paddle.fluid.core as core
-from paddle.fluid.framework import _in_legacy_dygraph, _enable_legacy_dygraph, _in_eager_without_dygraph_check, _disable_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph2, _enable_legacy_dygraph, _in_eager_without_dygraph_check, _disable_legacy_dygraph
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
@@ -653,7 +653,7 @@ class OpTest(unittest.TestCase):
 
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
-                    if not _in_legacy_dygraph():
+                    if not _in_legacy_dygraph2():
                         v.retain_grads()
 
                 if has_lod:
@@ -2180,7 +2180,7 @@ class OpTest(unittest.TestCase):
                 for no_grad_val in no_grad_set:
                     del (inputs[no_grad_val])
 
-                if not _in_legacy_dygraph():
+                if not _in_legacy_dygraph2():
                     core.eager.run_backward(fluid.layers.utils.flatten(outputs),
                                             grad_outputs, False)
                     grad_inputs = []
