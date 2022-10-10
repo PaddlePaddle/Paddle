@@ -246,9 +246,9 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                int numel = (*dense).numel();
-                int send_numel = numel / nranks;
-                int offset = send_numel * rank_id;
+                int64_t numel = (*dense).numel();
+                int64_t send_numel = numel / nranks;
+                int64_t offset = send_numel * rank_id;
                 return self.Send_Partial(*dense, dst_rank, offset, send_numel);
               },
               py::arg("tensor"),
@@ -268,9 +268,9 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                int numel = (*dense).numel();
-                int send_numel = numel / nranks;
-                int offset = send_numel * rank_id;
+                int64_t numel = (*dense).numel();
+                int64_t send_numel = numel / nranks;
+                int64_t offset = send_numel * rank_id;
                 return self.Send_Partial(
                     *dense, dst_rank, offset, send_numel, sync_op);
               },
@@ -323,9 +323,9 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                int numel = (*dense).numel();
-                int recv_numel = numel / nranks;
-                int offset = recv_numel * rank_id;
+                int64_t numel = (*dense).numel();
+                int64_t recv_numel = numel / nranks;
+                int64_t offset = recv_numel * rank_id;
                 return self.Recv_Partial(*dense, src_rank, offset, recv_numel);
               },
               py::arg("tensor"),
@@ -345,9 +345,9 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                int numel = (*dense).numel();
-                int recv_numel = numel / nranks;
-                int offset = recv_numel * rank_id;
+                int64_t numel = (*dense).numel();
+                int64_t recv_numel = numel / nranks;
+                int64_t offset = recv_numel * rank_id;
                 return self.Recv_Partial(
                     *dense, src_rank, offset, recv_numel, sync_op);
               },
@@ -443,9 +443,9 @@ void BindDistributed(py::module *m) {
                     out_tensor.impl());
                 std::vector<phi::DenseTensor> in_tensors = {*in_dense};
                 std::vector<phi::DenseTensor> out_tensors = {*out_dense};
-                int numel = (*in_dense).numel();
-                int send_numel = numel / nranks;
-                int offset = send_numel * rank_id;
+                int64_t numel = (*in_dense).numel();
+                int64_t send_numel = numel / nranks;
+                int64_t offset = send_numel * rank_id;
                 return self.AllGather_Partial(
                     in_tensors, out_tensors, offset, send_numel);
               },
@@ -848,9 +848,9 @@ void BindDistributed(py::module *m) {
                     out_tensor.impl());
                 std::vector<phi::DenseTensor> in_tensors = {*in_dense};
                 std::vector<phi::DenseTensor> out_tensors = {*out_dense};
-                int numel = (*in_dense).numel();
-                int send_numel = numel / nranks;
-                int offset = send_numel * rank_id;
+                int64_t numel = (*in_dense).numel();
+                int64_t send_numel = numel / nranks;
+                int64_t offset = send_numel * rank_id;
                 return self.AllGather_Partial(in_tensors,
                                               out_tensors,
                                               offset,
@@ -1158,9 +1158,9 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                int numel = (*dense).numel();
-                int send_numel = numel / nranks;
-                int offset = send_numel * rank_id;
+                int64_t numel = (*dense).numel();
+                int64_t send_numel = numel / nranks;
+                int64_t offset = send_numel * rank_id;
                 return self.Send_Partial(*dense,
                                          dst_rank,
                                          offset,
@@ -1202,9 +1202,9 @@ void BindDistributed(py::module *m) {
                 auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
                 auto dense =
                     std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
-                int numel = (*dense).numel();
-                int recv_numel = numel / nranks;
-                int offset = recv_numel * rank_id;
+                int64_t numel = (*dense).numel();
+                int64_t recv_numel = numel / nranks;
+                int64_t offset = recv_numel * rank_id;
                 return self.Recv_Partial(*dense,
                                          src_rank,
                                          offset,

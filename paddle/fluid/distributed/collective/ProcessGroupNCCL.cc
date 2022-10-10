@@ -816,7 +816,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send_Partial(
-    phi::DenseTensor& tensors, int dst_rank, int offset, int length) {
+    phi::DenseTensor& tensors, int dst_rank, int64_t offset, int64_t length) {
   // CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
 
   phi::DenseTensor flatten_tensor;
@@ -847,8 +847,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send_Partial(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send_Partial(
     phi::DenseTensor& tensors,
     int dst_rank,
-    int offset,
-    int length,
+    int64_t offset,
+    int64_t length,
     bool sync_op,
     bool use_calc_stream) {
   phi::DenseTensor flatten_tensor;
@@ -879,7 +879,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send_Partial(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv_Partial(
-    phi::DenseTensor& tensors, int src_rank, int offset, int length) {
+    phi::DenseTensor& tensors, int src_rank, int64_t offset, int64_t length) {
   // phi::DenseTensor shared_input = tensors.Slice(offset, offset+length);
 
   phi::DenseTensor flatten_tensor;
@@ -910,8 +910,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv_Partial(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv_Partial(
     phi::DenseTensor& tensors,
     int src_rank,
-    int offset,
-    int length,
+    int64_t offset,
+    int64_t length,
     bool sync_op,
     bool use_calc_stream) {
   phi::DenseTensor flatten_tensor;
@@ -1040,8 +1040,8 @@ void* GetPointerByOffset(void* raw_pointer,
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather_Partial(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
-    int offset,
-    int length) {
+    int64_t offset,
+    int64_t length) {
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCudaPlace(in_tensors),
       true,
@@ -1071,8 +1071,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather_Partial(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather_Partial(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
-    int offset,
-    int length,
+    int64_t offset,
+    int64_t length,
     bool sync_op,
     bool use_calc_stream) {
   PADDLE_ENFORCE_EQ(

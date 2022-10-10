@@ -173,15 +173,15 @@ class ProcessGroupStream : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Send_Partial(
       phi::DenseTensor& tensors,  // NOLINT
       int dst_rank,
-      int offset,
-      int length,
+      int64_t offset,
+      int64_t length,
       bool sync_op) override;
 
   virtual std::shared_ptr<ProcessGroup::Task> Send_Partial(
       phi::DenseTensor& tensors,  // NOLINT
       int dst_rank,
-      int offset,
-      int length,
+      int64_t offset,
+      int64_t length,
       bool sync_op,
       bool use_calc_stream);
 
@@ -199,30 +199,30 @@ class ProcessGroupStream : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Recv_Partial(
       phi::DenseTensor& tensors,  // NOLINT
       int src_rank,
-      int offset,
-      int length,
+      int64_t offset,
+      int64_t length,
       bool sync_op) override;
 
   virtual std::shared_ptr<ProcessGroup::Task> Recv_Partial(
       phi::DenseTensor& tensors,  // NOLINT
       int src_rank,
-      int offset,
-      int length,
+      int64_t offset,
+      int64_t length,
       bool sync_op,
       bool use_calc_stream);
 
   std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
-      int offset,
-      int length,
+      int64_t offset,
+      int64_t length,
       bool sync_op) override;
 
   virtual std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
       std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
-      int offset,
-      int length,
+      int64_t offset,
+      int64_t length,
       bool sync_op,
       bool use_calc_stream);
 };

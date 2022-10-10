@@ -149,27 +149,27 @@ class ProcessGroupNCCL : public ProcessGroupStream {
 
   std::shared_ptr<ProcessGroup::Task> Send_Partial(phi::DenseTensor& tensors,
                                                    int dst_rank,
-                                                   int offset,
-                                                   int length) override;
+                                                   int64_t offset,
+                                                   int64_t length) override;
 
   std::shared_ptr<ProcessGroup::Task> Send_Partial(
       phi::DenseTensor& tensors,
       int dst_rank,
-      int offset,
-      int length,
+      int64_t offset,
+      int64_t length,
       bool sync_op,
       bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> Recv_Partial(phi::DenseTensor& tensors,
                                                    int src_rank,
-                                                   int offset,
-                                                   int length) override;
+                                                   int64_t offset,
+                                                   int64_t length) override;
 
   std::shared_ptr<ProcessGroup::Task> Recv_Partial(
       phi::DenseTensor& tensors,
       int src_rank,
-      int offset,
-      int length,
+      int64_t offset,
+      int64_t length,
       bool sync_op,
       bool use_calc_stream) override;
 
@@ -186,14 +186,14 @@ class ProcessGroupNCCL : public ProcessGroupStream {
   std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
-      int offset,
-      int length) override;
+      int64_t offset,
+      int64_t length) override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
-      int offset,
-      int length,
+      int64_t offset,
+      int64_t length,
       bool sync_op,
       bool use_calc_stream) override;
 

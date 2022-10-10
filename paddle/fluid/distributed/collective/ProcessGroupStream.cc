@@ -222,8 +222,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send_Partial(
     phi::DenseTensor& tensors,
     int dst_rank,
-    int offset,
-    int length,
+    int64_t offset,
+    int64_t length,
     bool sync_op) {
   return Send_Partial(tensors,
                       dst_rank,
@@ -236,8 +236,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send_Partial(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send_Partial(
     phi::DenseTensor& tensors,
     int dst_rank,
-    int offset,
-    int length,
+    int64_t offset,
+    int64_t length,
     bool sync_op,
     bool use_calc_stream) {
   PADDLE_THROW(platform::errors::InvalidArgument(
@@ -264,8 +264,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv_Partial(
     phi::DenseTensor& tensors,
     int src_rank,
-    int offset,
-    int length,
+    int64_t offset,
+    int64_t length,
     bool sync_op) {
   return Recv_Partial(tensors,
                       src_rank,
@@ -278,8 +278,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv_Partial(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv_Partial(
     phi::DenseTensor& tensors,
     int src_rank,
-    int offset,
-    int length,
+    int64_t offset,
+    int64_t length,
     bool sync_op,
     bool use_calc_stream) {
   PADDLE_THROW(platform::errors::InvalidArgument(
@@ -289,8 +289,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv_Partial(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather_Partial(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
-    int offset,
-    int length,
+    int64_t offset,
+    int64_t length,
     bool sync_op) {
   return AllGather_Partial(in_tensors,
                            out_tensors,
@@ -303,8 +303,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather_Partial(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllGather_Partial(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
-    int offset,
-    int length,
+    int64_t offset,
+    int64_t length,
     bool sync_op,
     bool use_calc_stream) {
   PADDLE_THROW(platform::errors::InvalidArgument(

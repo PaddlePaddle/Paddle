@@ -57,11 +57,8 @@ struct ConcatDenseTensor<platform::CustomDeviceContext, T> {
                   const std::vector<phi::DenseTensor> &in,
                   phi::DenseTensor *out,
                   int axis = 0) {
-    const auto &place = context->GetPlace();
-    phi::DeviceGuard guard(place);
-
     auto *out_data = out->data<T>();
-    auto *device = phi::DeviceManager::GetDeviceWithPlace(place);
+    auto *device = phi::DeviceManager::GetDeviceWithPlace(context->GetPlace());
     size_t offset = 0;
     for (const auto &tensor : in) {
       const auto *in_data = tensor.data<T>();
