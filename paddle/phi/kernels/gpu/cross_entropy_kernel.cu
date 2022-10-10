@@ -185,7 +185,12 @@ __global__ void CrossEntropyHardLabel(T* loss,
   // thread ids compute loss[ids] using softmax[idx]
   if (ids < n * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
-    assert(lbl >= 0 && lbl < dim || lbl == ignore_idx);
+    PADDLE_ENFORCE(lbl >= 0 && lbl < dim || lbl == ignore_idx,
+                   "The value of label expected >= 0 and < %d, or == %d, "
+                   "but got %ld. Please check label value.",
+                   dim,
+                   ignore_idx,
+                   lbl);
     if (lbl < 0 || lbl >= dim) {  // label is out of bound
       loss[ids] = static_cast<T>(0.0);
     } else {
@@ -226,7 +231,12 @@ __global__ void CrossEntropyExpHardLabel(T* loss,
 
   if (idx < n * dim * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
-    assert(lbl >= 0 && lbl < dim || lbl == ignore_idx);
+    PADDLE_ENFORCE(lbl >= 0 && lbl < dim || lbl == ignore_idx,
+                   "The value of label expected >= 0 and < %d, or == %d, "
+                   "but got %ld. Please check label value.",
+                   dim,
+                   ignore_idx,
+                   lbl);
     if (IgnoreIndex == true) {
       // IgnoreIndex is true
       if (idx_dim == lbl) {
@@ -335,7 +345,13 @@ __device__ __forceinline__ void VectorizedSoftmaxForwardImpl(
   int tid = threadIdx.x;
   int label_id = blockIdx.x;
   auto label_value = static_cast<int64_t>(label[label_id]);
-  assert(label_value >= 0 && label_value < size || label_value == ignore_index);
+  PADDLE_ENFORCE(
+      label_value >= 0 && label_value < size || label_value == ignore_index,
+      "The value of label expected >= 0 and < %d, or == %d, "
+      "but got %ld. Please check label value.",
+      size,
+      ignore_index,
+      label_value);
   const bool label_valid = label_value >= 0 && label_value < size;
   int loss_id_offset = 0;
 
@@ -441,7 +457,13 @@ __device__ __forceinline__ void ScalarSoftmaxForwardImpl(
   int remain = size % (VecSize * blockDim.x);
   int label_id = blockIdx.x;
   auto label_value = static_cast<int64_t>(label[label_id]);
-  assert(label_value >= 0 && label_value < size || label_value == ignore_index);
+  PADDLE_ENFORCE(
+      label_value >= 0 && label_value < size || label_value == ignore_index,
+      "The value of label expected >= 0 and < %d, or == %d, "
+      "but got %ld. Please check label value.",
+      size,
+      ignore_index,
+      label_value);
   const bool label_valid = label_value >= 0 && label_value < size;
 
   // main part
@@ -1033,7 +1055,13 @@ __global__ void WarpSoftmaxForward(T* loss,
             // label
             int loss_idx = (threadIdx.x + it * kWarpSize) * kVSize;
             auto lbl = static_cast<int64_t>(label[first_batch + i]);
-            assert(lbl >= 0 && lbl < element_count || lbl == ignore_index);
+            PADDLE_ENFORCE(
+                lbl >= 0 && lbl < element_count || lbl == ignore_index,
+                "The value of label expected >= 0 and < %d, or == %d, "
+                "but got %ld. Please check label value.",
+                element_count,
+                ignore_index,
+                lbl);
             if (IgnoreIndex == true) {
               // IgnoreIndex is true
               if (lbl == loss_idx) {
@@ -1077,7 +1105,13 @@ __global__ void WarpSoftmaxForward(T* loss,
             // label
             int loss_idx = (threadIdx.x + it * kWarpSize) * kVSize + s;
             auto lbl = static_cast<int64_t>(label[first_batch + i]);
-            assert(lbl >= 0 && lbl < element_count || lbl == ignore_index);
+            PADDLE_ENFORCE(
+                lbl >= 0 && lbl < element_count || lbl == ignore_index,
+                "The value of label expected >= 0 and < %d, or == %d, "
+                "but got %ld. Please check label value.",
+                element_count,
+                ignore_index,
+                lbl);
             if (IgnoreIndex == true) {
               // IgnoreIndex is true
               if (lbl == loss_idx && lbl != ignore_index) {
