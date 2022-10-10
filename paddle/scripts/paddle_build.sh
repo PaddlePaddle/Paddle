@@ -1939,7 +1939,6 @@ function get_precise_tests_map_file {
     multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
     is_exclusive=''           # indicate whether the case is exclusive type
     is_multicard=''           # indicate whether the case is multiple GPUs type
-
     single_card_test_num=0
 set +x
 
