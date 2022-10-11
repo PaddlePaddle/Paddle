@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -58,8 +56,9 @@ class TestGcdAPI(unittest.TestCase):
         x = paddle.to_tensor(self.x_np)
         y = paddle.to_tensor(self.y_np)
         result = paddle.gcd(x, y)
-        self.assertEqual(
-            np.allclose(np.gcd(self.x_np, self.y_np), result.numpy()), True)
+        np.testing.assert_allclose(np.gcd(self.x_np, self.y_np),
+                                   result.numpy(),
+                                   rtol=1e-05)
 
         paddle.enable_static()
 

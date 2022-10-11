@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
@@ -89,6 +88,23 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
             self.check_output(check_eager=False)
 
 
+class TestElementwiseModOpFp16(TestElementwiseModOp):
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def init_input_output(self):
+        self.x = np.random.uniform(-1000, 1000, [10, 10]).astype(self.dtype)
+        self.y = np.random.uniform(-100, 100, [10, 10]).astype(self.dtype)
+        self.out = np.mod(self.x, self.y)
+
+    def test_check_output(self):
+        if self.attrs['axis'] == -1:
+            self.check_output(check_eager=True)
+        else:
+            self.check_output(check_eager=False)
+
+
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
 
     def init_dtype(self):
@@ -97,12 +113,15 @@ class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
 
 class TestRemainderOp(unittest.TestCase):
 
+    def _executed_api(self, x, y, name=None):
+        return paddle.remainder(x, y, name)
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="int64")
             y = fluid.data(name='y', shape=[2, 3], dtype='int64')
 
-            y_1 = paddle.remainder(x, y, name='div_res')
+            y_1 = self._executed_api(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
 
     def test_dygraph(self):
@@ -111,7 +130,7 @@ class TestRemainderOp(unittest.TestCase):
             np_y = np.array([1, 5, 3, 3]).astype('int64')
             x = paddle.to_tensor(np_x)
             y = paddle.to_tensor(np_y)
-            z = paddle.remainder(x, y)
+            z = self._executed_api(x, y)
             np_z = z.numpy()
             z_expected = np.array([0, 3, 2, 1])
             self.assertEqual((np_z == z_expected).all(), True)
@@ -122,7 +141,7 @@ class TestRemainderOp(unittest.TestCase):
             y = paddle.to_tensor(np_y)
             z = x % y
             z_expected = np.array([-0.9, 1.5, 1.3, -1.1])
-            self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+            np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
             np_x = np.array([-3, 11, -2, 3])
             np_y = np.array([-1, 2, 3, -2])
@@ -130,7 +149,46 @@ class TestRemainderOp(unittest.TestCase):
             y = paddle.to_tensor(np_y, dtype="int64")
             z = x % y
             z_expected = np.array([0, 1, 1, -1])
-            self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+            np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
+
+
+class TestRemainderInplaceOp(TestRemainderOp):
+
+    def _executed_api(self, x, y, name=None):
+        return x.remainder_(y, name)
+
+
+class TestRemainderInplaceBroadcastSuccess(unittest.TestCase):
+
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 4).astype('float')
+        self.y_numpy = np.random.rand(3, 4).astype('float')
+
+    def test_broadcast_success(self):
+        paddle.disable_static()
+        self.init_data()
+        x = paddle.to_tensor(self.x_numpy)
+        y = paddle.to_tensor(self.y_numpy)
+        inplace_result = x.remainder_(y)
+        numpy_result = self.x_numpy % self.y_numpy
+        self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
+        paddle.enable_static()
+
+
+class TestRemainderInplaceBroadcastSuccess2(TestRemainderInplaceBroadcastSuccess
+                                            ):
+
+    def init_data(self):
+        self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
+        self.y_numpy = np.random.rand(3, 1).astype('float')
+
+
+class TestRemainderInplaceBroadcastSuccess3(TestRemainderInplaceBroadcastSuccess
+                                            ):
+
+    def init_data(self):
+        self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
+        self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
 
 
 if __name__ == '__main__':

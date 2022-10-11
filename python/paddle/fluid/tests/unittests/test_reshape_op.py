@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -488,7 +486,7 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
         expected_out = np.reshape(input_1, newshape=[5, 10])
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_out_uint8(self):
         paddle.disable_static()
@@ -497,7 +495,7 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
         expected_out = np.reshape(input_1, newshape=[5, 10])
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_out_float32(self):
         paddle.disable_static()
@@ -506,7 +504,7 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
         expected_out = np.reshape(input_1, newshape=[5, 10])
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
 
 class TestDygraphReshapeInplaceAPI(TestDygraphReshapeAPI):

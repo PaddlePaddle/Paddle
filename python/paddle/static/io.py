@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import errno
 import inspect
 import logging
@@ -35,7 +33,7 @@ from paddle.fluid import (
 )
 from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
 from paddle.fluid.framework import static_only, Parameter
-from paddle.fluid.executor import Executor, global_scope
+from paddle.fluid.executor import global_scope
 from paddle.fluid.log_helper import get_logger
 
 __all__ = []
@@ -131,11 +129,6 @@ def normalize_program(program, feed_vars, fetch_vars):
 
     Returns:
         Program: Normalized/Optimized program.
-
-    Raises:
-        TypeError: If `program` is not a Program, an exception is thrown.
-        TypeError: If `feed_vars` is not a Variable or a list of Variable, an exception is thrown.
-        TypeError: If `fetch_vars` is not a Variable or a list of Variable, an exception is thrown.
 
     Examples:
         .. code-block:: python
@@ -266,10 +259,6 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
     Returns:
         bytes: serialized program.
 
-    Raises:
-        ValueError: If `feed_vars` is not a Variable or a list of Variable, an exception is thrown.
-        ValueError: If `fetch_vars` is not a Variable or a list of Variable, an exception is thrown.
-
     Examples:
         .. code-block:: python
 
@@ -328,10 +317,6 @@ def serialize_persistables(feed_vars, fetch_vars, executor, **kwargs):
 
     Returns:
         bytes: serialized program.
-
-    Raises:
-        ValueError: If `feed_vars` is not a Variable or a list of Variable, an exception is thrown.
-        ValueError: If `fetch_vars` is not a Variable or a list of Variable, an exception is thrown.
 
     Examples:
         .. code-block:: python
@@ -454,8 +439,6 @@ def save_to_file(path, content):
 def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
                          **kwargs):
     """
-    :api_attr: Static Graph
-
     Save current model and its parameters to given path. i.e.
     Given path_prefix = "/path/to/modelname", after invoking
     save_inference_model(path_prefix, feed_vars, fetch_vars, executor),
@@ -472,14 +455,10 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
 
             - program(Program): specify a program if you don't want to use default main program.
 
-            - clip_extra(bool): set to True if you want to clip extra information for every operator.
+            - clip_extra(bool): the flag indicating whether to clip extra information for every operator. Default: True.
 
     Returns:
         None
-
-    Raises:
-        ValueError: If `feed_vars` is not a Variable or a list of Variable, an exception is thrown.
-        ValueError: If `fetch_vars` is not a Variable or a list of Variable, an exception is thrown.
 
     Examples:
         .. code-block:: python
@@ -534,7 +513,7 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
     _check_vars('fetch_vars', fetch_vars)
 
     program = _get_valid_program(kwargs.get('program', None))
-    clip_extra = kwargs.get('clip_extra', False)
+    clip_extra = kwargs.get('clip_extra', True)
     program = normalize_program(program, feed_vars, fetch_vars)
     # serialize and save program
     program_bytes = _serialize_program(
@@ -542,7 +521,9 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
     save_to_file(model_path, program_bytes)
     # serialize and save params
     params_bytes = _serialize_persistables(program, executor)
-    save_to_file(params_path, params_bytes)
+    # program may not contain any parameter and just compute operation
+    if params_bytes is not None:
+        save_to_file(params_path, params_bytes)
 
 
 @static_only
@@ -660,6 +641,12 @@ def deserialize_persistables(program, data, executor):
         check_vars.append(var)
         load_var_map[var_copy.name] = var_copy
 
+    if data is None:
+        assert len(
+            origin_shape_map
+        ) == 0, "Required 'data' shall be not None if program contains parameter, but received 'data' is None."
+        return
+
     # append load_combine op to load parameters,
     load_var_list = []
     for name in sorted(load_var_map.keys()):
@@ -751,9 +738,6 @@ def load_inference_model(path_prefix, executor, **kwargs):
         that need to feed data in the inference program. The `fetch_targets` is a list of
         ``Variable`` (refer to :ref:`api_guide_Program_en`). It contains variables from which
         we can get inference results.
-
-    Raises:
-        ValueError: If `path_prefix.pdmodel` or `path_prefix.pdiparams`  doesn't exist.
 
     Examples:
         .. code-block:: python
@@ -849,7 +833,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
         params_filename = os.path.basename(params_path)
         # load params data
         params_path = os.path.join(load_dirname, params_filename)
-        params_bytes = load_from_file(params_path)
+        params_bytes = None
+        if os.path.exists(params_path):
+            params_bytes = load_from_file(params_path)
 
     # deserialize bytes to program
     program = deserialize_program(program_bytes)

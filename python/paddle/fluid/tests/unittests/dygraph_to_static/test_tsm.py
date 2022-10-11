@@ -347,9 +347,7 @@ class TestTsm(unittest.TestCase):
         fake_data_reader = FakeDataReader("train", parse_config(args.config))
         dygraph_loss = train(args, fake_data_reader, to_static=False)
         static_loss = train(args, fake_data_reader, to_static=True)
-        self.assertTrue(np.allclose(dygraph_loss, static_loss),
-                        msg="dygraph_loss: {} \nstatic_loss: {}".format(
-                            dygraph_loss, static_loss))
+        np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
 
 
 if __name__ == '__main__':

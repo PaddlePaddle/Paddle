@@ -207,10 +207,111 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
   return task;
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All inputs should be in CustomPlace(%s).", device_type_));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(out_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All outputs should be in CustomPlace(%s).", device_type_));
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        return phi::DeviceManager::CCLAllGather(
+            device_type_,
+            input.data(),
+            output.data(),
+            input.numel(),
+            phi::ccl::ToCCLDataType(input.dtype()),
+            comm,
+            stream);
+      },
+      CommType::ALLGATHER);
+}
+
+void* XcclGetPointerByOffset(void* raw_pointer,
+                             size_t offset,
+                             experimental::DataType type) {
+  if (type == experimental::DataType::FLOAT32) {
+    return reinterpret_cast<void*>(reinterpret_cast<float*>(raw_pointer) +
+                                   offset);
+  } else if (type == experimental::DataType::FLOAT64) {
+    return reinterpret_cast<void*>(reinterpret_cast<double*>(raw_pointer) +
+                                   offset);
+  } else if (type == experimental::DataType::INT32) {
+    return reinterpret_cast<void*>(reinterpret_cast<int32_t*>(raw_pointer) +
+                                   offset);
+  } else if (type == experimental::DataType::INT64) {
+    return reinterpret_cast<void*>(reinterpret_cast<int64_t*>(raw_pointer) +
+                                   offset);
+  } else if (type == experimental::DataType::FLOAT16) {
+    return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
+                                   offset);
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This datatype in xccl is not supported."));
+  }
+  return nullptr;
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather_Partial(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    int offset,
+    int length) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All inputs should be in CustomPlace(%s).", device_type_));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(out_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All outputs should be in CustomPlace(%s).", device_type_));
+  return Collective(
+      in_tensors,
+      out_tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        return phi::DeviceManager::CCLAllGather(
+            device_type_,
+            XcclGetPointerByOffset(input.data(), offset, input.dtype()),
+            output.data(),
+            length,
+            phi::ccl::ToCCLDataType(input.dtype()),
+            comm,
+            stream);
+      },
+      CommType::ALLGATHER);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
     std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
     const AllreduceOptions& opts) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All inputs should be in CustomPlace(%s).", device_type_));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(out_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All outputs should be in CustomPlace(%s).", device_type_));
   return Collective(
       in_tensors,
       out_tensors,
@@ -235,6 +336,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
     std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
     const BroadcastOptions& opts) {
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All inputs should be in CustomPlace(%s).", device_type_));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(out_tensors, device_type_),
+      true,
+      platform::errors::InvalidArgument(
+          "All outputs should be in CustomPlace(%s).", device_type_));
   return Collective(
       in_tensors,
       out_tensors,

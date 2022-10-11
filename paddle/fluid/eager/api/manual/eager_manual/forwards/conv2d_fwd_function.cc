@@ -17,13 +17,14 @@
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
+#include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
 DECLARE_bool(check_nan_inf);
 
-paddle::experimental::Tensor conv2d_final_state_dygraph_function(
+paddle::experimental::Tensor conv2d_ad_func(
     const paddle::experimental::Tensor& input,
     const paddle::experimental::Tensor& filter,
     std::vector<int> strides,
@@ -50,27 +51,60 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
 
     auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
 
-    auto NEW_input =
+    auto new_input =
         egr::EagerAmpAutoCast("input", input, amp_dst_dtype, op_name);
-    auto NEW_filter =
+    auto new_filter =
         egr::EagerAmpAutoCast("filter", filter, amp_dst_dtype, op_name);
 
     {
       paddle::imperative::AutoCastGuard guard(
           egr::Controller::Instance().GetCurrentTracer(),
           paddle::imperative::AmpLevel::O0);
-      return conv2d_final_state_dygraph_function(NEW_input,
-                                                 NEW_filter,
-                                                 strides,
-                                                 paddings,
-                                                 paddding_algorithm,
-                                                 groups,
-                                                 dilations,
-                                                 data_format,
-                                                 use_addto,
-                                                 workspace_size_MB,
-                                                 exhaustive_search);
+      return conv2d_ad_func(new_input,
+                            new_filter,
+                            strides,
+                            paddings,
+                            paddding_algorithm,
+                            groups,
+                            dilations,
+                            data_format,
+                            use_addto,
+                            workspace_size_MB,
+                            exhaustive_search);
     }
+  }
+
+  // Layout autotune
+
+  if (egr::Controller::Instance().UseLayoutAutoTune()) {
+    VLOG(5) << "Check and Prepare For LAYOUT";
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        tensors_vector = {{input}, {filter}};
+
+    auto op_name = phi::TransToFluidOpName("conv2d");
+    auto transformer = egr::EagerLayoutAutotune<std::string>(
+        op_name, tensors_vector, &data_format);
+    auto new_input = transformer->TransInTensor("input", input);
+    bool need_tune = egr::Controller::Instance().UseLayoutAutoTune();
+    egr::Controller::Instance().DisableLayoutAutoTune();
+    auto out = conv2d_ad_func(new_input,
+                              filter,
+                              strides,
+                              paddings,
+                              paddding_algorithm,
+                              groups,
+                              dilations,
+                              data_format,
+                              use_addto,
+                              workspace_size_MB,
+                              exhaustive_search);
+    transformer->SetOutTensorLayout(&out);
+    if (need_tune) {
+      egr::Controller::Instance().EnableLayoutAutoTune();
+    }
+    // Returns
+    return out;
   }
 
   // Get Input AutoGradMeta
@@ -80,7 +114,7 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
       egr::EagerUtils::nullable_autograd_meta(filter);
   // Forward API Call
   VLOG(3) << "Final State Running: "
-          << "conv2d_final_state_dygraph_function";
+          << "conv2d_ad_func";
   auto api_result = paddle::experimental::conv2d(input,
                                                  filter,
                                                  strides,

@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 namespace phi {
 
@@ -300,6 +301,10 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   phi::DDim in_dim({0});
   for (size_t i = 0; i < x.size(); ++i) {
     auto x_dim = x[i]->dims();
+    // x_dim.size() == 1 means the real dim of selected rows is [0]
+    if (x[i]->is_selected_rows() && x_dim.size() == 1) {
+      continue;
+    }
     if (phi::product(x_dim) == 0) {
       continue;
     }
@@ -352,6 +357,31 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   }
   out->set_dims(in_dim);
   out->share_lod(*x[0]);
+}
+
+// TODO(YuanRisheng) This InferMeta is used in Fluid
+//                   and will be deleted in the future.
+void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  int64_t max_length = 0;
+  bool has_tensor_array = false;
+  for (auto input : x) {
+    if (input->is_tensor_array()) {
+      has_tensor_array = true;
+      // if input is lod_tensor_array, dims() will return its size (one element)
+      max_length =
+          input->dims()[0] > max_length ? input->dims()[0] : max_length;
+    }
+  }
+
+  if (has_tensor_array) {
+    if (out->is_tensor_array()) {
+      out->set_dims(make_ddim({max_length}));
+    }
+  } else {
+    AddNInferMeta(x, out, config);
+  }
 }
 
 void AucInferMeta(const MetaTensor& input,
@@ -608,6 +638,7 @@ void BatchNormInferMeta(const MetaTensor& x,
     saved_variance->set_dims({C});
   }
   y->share_lod(x);
+  y->set_dtype(x.dtype());
 }
 
 void BatchNormInferInferMeta(const MetaTensor& x,
@@ -761,6 +792,95 @@ void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
     out[i]->share_lod(*(x[i]));
     out[i]->set_dtype(x[i]->dtype());
   }
+}
+
+void CheckFiniteAndUnscaleInferMeta(const std::vector<const MetaTensor*>& xs,
+                                    const MetaTensor& scale,
+                                    std::vector<MetaTensor*> outs,
+                                    MetaTensor* found_infinite) {
+  PADDLE_ENFORCE_EQ(
+      xs.size(),
+      outs.size(),
+      phi::errors::InvalidArgument(
+          "The input(X) and output(Out) should have same size in "
+          "Operator(check_finite_and_unscale), size of input(X) is %d "
+          "and size of output(Out) is %d.",
+          xs.size(),
+          outs.size()));
+  for (size_t i = 0; i < xs.size(); ++i) {
+    outs[i]->set_dims(xs[i]->dims());
+    outs[i]->set_dtype(xs[i]->dtype());
+  }
+  found_infinite->set_dims({1});
+  found_infinite->set_dtype(DataType::BOOL);
+}
+
+void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
+                             DataType dtype,
+                             bool copy_data,
+                             bool set_constant,
+                             bool persist_output,
+                             float constant,
+                             bool use_align,
+                             int align_size,
+                             int size_of_dtype,
+                             const std::vector<int64_t>& concated_shapes,
+                             const std::vector<int64_t>& concated_ranks,
+                             std::vector<MetaTensor*> output,
+                             MetaTensor* fused_output,
+                             MetaConfig config) {
+  if (config.is_runtime) {
+    return;
+  }
+  if (size_of_dtype == -1) {
+    size_of_dtype = paddle::experimental::SizeOf(dtype);
+  }
+
+  auto alignment = [](size_t size, size_t align_size) {
+    size_t remaining = size % align_size;
+    auto aligned_size = remaining == 0 ? size : size + (align_size - remaining);
+    VLOG(4) << remaining << " " << size << " " << align_size << " "
+            << aligned_size;
+    return aligned_size;
+  };
+  VLOG(4) << "align_size: " << align_size;
+  if (use_align && align_size > 0) {
+    int64_t numel = 0;
+
+    for (size_t i = 0; i < input.size(); ++i) {
+      const auto& dim = input[i]->dims();
+      auto size = phi::product(dim);
+      auto len = use_align
+                     ? alignment(static_cast<size_t>(size) * size_of_dtype,
+                                 align_size) /
+                           size_of_dtype
+                     : static_cast<size_t>(size);
+      numel += len;
+    }
+    if (fused_output) {
+      fused_output->set_dims(phi::make_ddim({numel}));
+      fused_output->set_dtype(dtype);
+      VLOG(4) << "fused_output size:" << phi::make_ddim({numel});
+    }
+  }
+}
+
+void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
+                                  MetaTensor* output,
+                                  std::vector<MetaTensor*> xout,
+                                  MetaConfig config) {
+  if (config.is_runtime) {
+    return;
+  }
+  int64_t numel = 0;
+  for (size_t i = 0; i < input.size(); ++i) {
+    const auto& dim = input[i]->dims();
+    auto size = phi::product(dim);
+    auto len = size * paddle::experimental::SizeOf(input[i]->dtype());
+    numel += len;
+  }
+  output->set_dims(phi::make_ddim({numel}));
+  output->set_dtype(phi::DataType::INT8);
 }
 
 void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
@@ -1106,6 +1226,102 @@ void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   MetaTensor* rpn_rois_num) {
   rpn_rois->set_dims(phi::make_ddim({-1, 4}));
   rpn_roi_probs->set_dims(phi::make_ddim({-1, 1}));
+}
+
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           const MetaTensor& hashtable_value,
+                           const MetaTensor& hashtable_index,
+                           bool flag_buffer_hashtable,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes) {
+  auto GraphReindexShapeCheck = [](const phi::DDim& dims,
+                                   std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GraphReindexShapeCheck(x.dims(), "X");
+  GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
+  GraphReindexShapeCheck(count.dims(), "Count");
+  if (flag_buffer_hashtable) {
+    GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
+    GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
+  }
+
+  reindex_src->set_dims({-1});
+  reindex_src->set_dtype(neighbors.dtype());
+  reindex_dst->set_dims({-1});
+  reindex_dst->set_dtype(neighbors.dtype());
+  out_nodes->set_dims({-1});
+  out_nodes->set_dtype(x.dtype());
+}
+
+void GraphSampleNeighborsInferMeta(const MetaTensor& row,
+                                   const MetaTensor& col_ptr,
+                                   const MetaTensor& x,
+                                   const MetaTensor& eids,
+                                   const MetaTensor& perm_buffer,
+                                   int sample_size,
+                                   bool return_eids,
+                                   bool flag_perm_buffer,
+                                   MetaTensor* out,
+                                   MetaTensor* out_count,
+                                   MetaTensor* out_eids) {
+  // GSN: GraphSampleNeighbors
+  auto GSNShapeCheck = [](const phi::DDim& dims, std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GSNShapeCheck(row.dims(), "Row");
+  GSNShapeCheck(col_ptr.dims(), "Col_Ptr");
+  GSNShapeCheck(x.dims(), "X");
+  if (return_eids) {
+    GSNShapeCheck(eids.dims(), "Eids");
+    out_eids->set_dims({-1});
+    out_eids->set_dtype(row.dtype());
+  }
+  if (flag_perm_buffer) {
+    GSNShapeCheck(perm_buffer.dims(), "Perm_Buffer");
+  }
+
+  out->set_dims({-1});
+  out->set_dtype(row.dtype());
+  out_count->set_dims({-1});
+  out_count->set_dtype(DataType::INT32);
 }
 
 void HierarchicalSigmoidInferMeta(const MetaTensor& x,
@@ -2240,7 +2456,8 @@ void SgdInferMeta(const MetaTensor& param,
 
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
-                    MetaTensor* out) {
+                    MetaTensor* out,
+                    MetaConfig config) {
   PADDLE_ENFORCE_GT(x.size(),
                     0UL,
                     phi::errors::InvalidArgument(
@@ -2248,17 +2465,10 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
                         " received value is:%d.",
                         x.size()));
   const auto& input_dims = GetMetaTensorsDim(x);
-  for (size_t i = 1; i < input_dims.size(); ++i) {
-    PADDLE_ENFORCE_EQ(input_dims[i],
-                      input_dims[0],
-                      phi::errors::InvalidArgument(
-                          "Dims of all Inputs(X) must be the same, but"
-                          " received input %d dim is:%d not equal to input 0"
-                          " dim:%d.",
-                          i,
-                          input_dims[i],
-                          input_dims[0]));
-  }
+  // we reuse concat logic to compute out_dim. we set concat_axis==-1 to check
+  // every axis in input_tensors.
+  auto out_dim =
+      phi::funcs::ComputeAndCheckShape(config.is_runtime, input_dims, -1);
   int rank = input_dims[0].size();
   PADDLE_ENFORCE_GE(
       axis,
@@ -2277,7 +2487,7 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
           rank,
           axis));
   if (axis < 0) axis += (rank + 1);
-  auto vec = phi::vectorize<int>(input_dims[0]);
+  auto vec = phi::vectorize<int>(out_dim);
   vec.insert(vec.begin() + axis, input_dims.size());
   out->set_dims(phi::make_ddim(vec));
   out->set_dtype(x.at(0)->dtype());
@@ -2286,11 +2496,49 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
 
 void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out) {
+  PADDLE_ENFORCE_EQ(
+      x.size(),
+      out.size(),
+      phi::errors::InvalidArgument(
+          "Input's size should be equal to the output's size"
+          "but received input size: (%d) does not equals output_size: (%d)",
+          x.size(),
+          out.size()));
   for (size_t i = 0; i < x.size(); ++i) {
     if (out[i]) {
       out[i]->share_meta(*x[i]);
     }
   }
+}
+
+void UpdateLossScalingInferMeta(const std::vector<const MetaTensor*>& xs,
+                                const MetaTensor& found_infinite,
+                                const MetaTensor& prev_loss_scaling,
+                                const MetaTensor& in_good_steps,
+                                const MetaTensor& in_bad_steps,
+                                std::vector<MetaTensor*> outs,
+                                MetaTensor* loss_scaling,
+                                MetaTensor* out_good_steps,
+                                MetaTensor* out_bad_steps) {
+  PADDLE_ENFORCE_EQ(xs.size(),
+                    outs.size(),
+                    phi::errors::InvalidArgument(
+                        "The input(X) and output(Out) should have same size in "
+                        "Operator(update_loss_scaling), size of input(X) is %d "
+                        "and size of output(Out) is %d.",
+                        xs.size(),
+                        outs.size()));
+  for (size_t i = 0; i < xs.size(); ++i) {
+    if (xs[i] != nullptr && outs[i] != nullptr) {
+      outs[i]->set_dims(xs[i]->dims());
+      outs[i]->set_dtype(xs[i]->dtype());
+    }
+  }
+  loss_scaling->set_dims({1});
+  out_good_steps->set_dims({1});
+  out_good_steps->set_dtype(DataType::INT32);
+  out_bad_steps->set_dims({1});
+  out_bad_steps->set_dtype(DataType::INT32);
 }
 
 void WarpctcInferMeta(const MetaTensor& logits,
@@ -2353,102 +2601,6 @@ void WhereInferMeta(const MetaTensor& condition,
                         x_dims,
                         y_dims));
   out->share_meta(x);
-}
-
-void GraphReindexInferMeta(const MetaTensor& x,
-                           const MetaTensor& neighbors,
-                           const MetaTensor& count,
-                           const MetaTensor& hashtable_value,
-                           const MetaTensor& hashtable_index,
-                           bool flag_buffer_hashtable,
-                           MetaTensor* reindex_src,
-                           MetaTensor* reindex_dst,
-                           MetaTensor* out_nodes) {
-  auto GraphReindexShapeCheck = [](const phi::DDim& dims,
-                                   std::string tensor_name) {
-    if (dims.size() == 2) {
-      PADDLE_ENFORCE_EQ(
-          dims[1],
-          1,
-          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
-                                       "is 2D, but we get %d",
-                                       tensor_name,
-                                       dims[1]));
-    } else {
-      PADDLE_ENFORCE_EQ(
-          dims.size(),
-          1,
-          phi::errors::InvalidArgument(
-              "The %s should be 1D, when it is not 2D, but we get %d",
-              tensor_name,
-              dims.size()));
-    }
-  };
-
-  GraphReindexShapeCheck(x.dims(), "X");
-  GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
-  GraphReindexShapeCheck(count.dims(), "Count");
-  if (flag_buffer_hashtable) {
-    GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
-    GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
-  }
-
-  reindex_src->set_dims({-1});
-  reindex_src->set_dtype(neighbors.dtype());
-  reindex_dst->set_dims({-1});
-  reindex_dst->set_dtype(neighbors.dtype());
-  out_nodes->set_dims({-1});
-  out_nodes->set_dtype(x.dtype());
-}
-
-void GraphSampleNeighborsInferMeta(const MetaTensor& row,
-                                   const MetaTensor& col_ptr,
-                                   const MetaTensor& x,
-                                   const MetaTensor& eids,
-                                   const MetaTensor& perm_buffer,
-                                   int sample_size,
-                                   bool return_eids,
-                                   bool flag_perm_buffer,
-                                   MetaTensor* out,
-                                   MetaTensor* out_count,
-                                   MetaTensor* out_eids) {
-  // GSN: GraphSampleNeighbors
-  auto GSNShapeCheck = [](const phi::DDim& dims, std::string tensor_name) {
-    if (dims.size() == 2) {
-      PADDLE_ENFORCE_EQ(
-          dims[1],
-          1,
-          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
-                                       "is 2D, but we get %d",
-                                       tensor_name,
-                                       dims[1]));
-    } else {
-      PADDLE_ENFORCE_EQ(
-          dims.size(),
-          1,
-          phi::errors::InvalidArgument(
-              "The %s should be 1D, when it is not 2D, but we get %d",
-              tensor_name,
-              dims.size()));
-    }
-  };
-
-  GSNShapeCheck(row.dims(), "Row");
-  GSNShapeCheck(col_ptr.dims(), "Col_Ptr");
-  GSNShapeCheck(x.dims(), "X");
-  if (return_eids) {
-    GSNShapeCheck(eids.dims(), "Eids");
-    out_eids->set_dims({-1});
-    out_eids->set_dtype(row.dtype());
-  }
-  if (flag_perm_buffer) {
-    GSNShapeCheck(perm_buffer.dims(), "Perm_Buffer");
-  }
-
-  out->set_dims({-1});
-  out->set_dtype(row.dtype());
-  out_count->set_dims({-1});
-  out_count->set_dtype(DataType::INT32);
 }
 
 void Yolov3LossInferMeta(const MetaTensor& x,
@@ -2598,7 +2750,164 @@ void Yolov3LossInferMeta(const MetaTensor& x,
   gt_match_mask->set_dtype(x.dtype());
 }
 
+void GraphSendUERecvInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              const MetaTensor& src_index,
+                              const MetaTensor& dst_index,
+                              const std::string& message_op,
+                              const std::string& reduce_op,
+                              const IntArray& out_size,
+                              MetaTensor* out,
+                              MetaTensor* dst_count) {
+  auto src_index_dims = src_index.dims();
+  if (src_index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(src_index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of Src_index should be 1 when it "
+                          "is 2D, but we get %d",
+                          src_index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The Src_index should be 1D, when it is not 2D, but we get %d",
+            src_index_dims.size()));
+  }
+
+  auto dst_index_dims = dst_index.dims();
+  if (dst_index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(dst_index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of Dst_index should be 1 when it "
+                          "is 2D, but we get %d",
+                          dst_index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dst_index_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The Dst_index should be 1D, "
+                                     "when it is not 2D, but we get %d",
+                                     dst_index_dims.size()));
+  }
+
+  PADDLE_ENFORCE_EQ(src_index_dims[0],
+                    dst_index_dims[0],
+                    phi::errors::InvalidArgument(
+                        "Src_index and Dst_index should have the same shape."));
+
+  auto y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(
+      y_dims[0],
+      src_index_dims[0],
+      phi::errors::InvalidArgument(
+          "Expect Input Y to have size %d as Src_index on the first dimension, "
+          "but we get %d",
+          src_index_dims[0],
+          y_dims[0]));
+
+  auto x_dims = x.dims();
+  if (reduce_op == "MEAN") {
+    dst_count->set_dims({-1});
+    dst_count->set_dtype(DataType::INT32);
+  }
+
+  // Infer out's shape according to x and e(need broadcasting condition)
+  out->set_dtype(x.dtype());
+  auto x_dims1 = phi::vectorize<int>(x_dims);
+  auto y_dims1 = phi::vectorize<int>(y_dims);
+  std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
+  std::vector<int> y_dims2(y_dims1.begin() + 1, y_dims1.end());
+
+  int max_dim = std::max(x_dims2.size(), y_dims2.size());
+  int axis = std::abs(static_cast<int>(x_dims2.size() - y_dims2.size()));
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  // Only need to broadcast dimensions other than the 0th dimension.
+  phi::funcs::GetBroadcastDimsArrays(phi::make_ddim(x_dims2),
+                                     phi::make_ddim(y_dims2),
+                                     x_dims_array.data(),
+                                     y_dims_array.data(),
+                                     out_dims_array.data(),
+                                     max_dim,
+                                     axis);
+  out_dims_array.insert(out_dims_array.begin(), -1);
+  out->set_dims(phi::make_ddim(out_dims_array));
+}
+
+void GraphSendUVInferMeta(const MetaTensor& x,
+                          const MetaTensor& y,
+                          const MetaTensor& src_index,
+                          const MetaTensor& dst_index,
+                          const std::string& message_op,
+                          MetaTensor* out) {
+  auto src_index_dims = src_index.dims();
+  if (src_index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(src_index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of Src_index should be 1 when it "
+                          "is 2D, but we get %d",
+                          src_index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        src_index_dims.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The Src_index should be 1D, when it is not 2D, but we get %d",
+            src_index_dims.size()));
+  }
+
+  auto dst_index_dims = dst_index.dims();
+  if (dst_index_dims.size() == 2) {
+    PADDLE_ENFORCE_EQ(dst_index_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The last dim of Dst_index should be 1 when it "
+                          "is 2D, but we get %d",
+                          dst_index_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        dst_index_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The Dst_index should be 1D, "
+                                     "when it is not 2D, but we get %d",
+                                     dst_index_dims.size()));
+  }
+
+  PADDLE_ENFORCE_EQ(src_index_dims[0],
+                    dst_index_dims[0],
+                    phi::errors::InvalidArgument(
+                        "Src_index and Dst_index should have the same shape."));
+
+  // Infer out's shape according to x and y(need broadcasting condition)
+  out->set_dtype(x.dtype());
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  auto x_dims1 = phi::vectorize<int>(x_dims);
+  auto y_dims1 = phi::vectorize<int>(y_dims);
+  std::vector<int> x_dims2(x_dims1.begin() + 1, x_dims1.end());
+  std::vector<int> y_dims2(y_dims1.begin() + 1, y_dims1.end());
+  int max_dim = std::max(x_dims2.size(), y_dims2.size());
+  int axis = std::abs(static_cast<int>(x_dims2.size() - y_dims2.size()));
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  // Only need to broadcast dimensions other than the 0th dimension.
+  phi::funcs::GetBroadcastDimsArrays(phi::make_ddim(x_dims2),
+                                     phi::make_ddim(y_dims2),
+                                     x_dims_array.data(),
+                                     y_dims_array.data(),
+                                     out_dims_array.data(),
+                                     max_dim,
+                                     axis);
+  out_dims_array.insert(out_dims_array.begin(), src_index_dims[0]);
+  out->set_dims(phi::make_ddim(out_dims_array));
+}
+
 }  // namespace phi
 
-PD_REGISTER_INFER_META_FN(batch_norm, phi::BatchNormInferMeta);
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

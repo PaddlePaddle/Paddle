@@ -43,6 +43,7 @@ from paddle.distributed.collective import _set_default_store
 from paddle.distributed.collective import _new_process_group_impl
 from paddle.distributed.collective import Group
 from paddle.distributed.collective import _set_group_map_backend
+from paddle.distributed.communication.group import _add_new_group
 
 __all__ = []
 
@@ -75,7 +76,7 @@ def _is_cpuonly(backend):
     if (backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'] and
         (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
          or core.is_compiled_with_npu()
-         or core.is_compiled_with_mlu())) or backend is 'xccl':
+         or core.is_compiled_with_mlu())) or backend == 'xccl':
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
@@ -95,7 +96,7 @@ def init_parallel_env():
     """
     Initialize parallel training environment in dynamic graph mode.
 
-    .. note::
+    Note:
         Now initialize both `NCCL` and `GLOO` contexts for communication.
 
     Args:
@@ -105,7 +106,7 @@ def init_parallel_env():
 
     Returns:
         None
-        
+
     Examples:
         .. code-block:: python
             # required: gpu
@@ -119,7 +120,7 @@ def init_parallel_env():
                     super(LinearNet, self).__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
-                    
+
                 def forward(self, x):
                     return self._linear2(self._linear1(x))
 
@@ -140,7 +141,7 @@ def init_parallel_env():
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
                 loss = loss_fn(outputs, labels)
-                
+
                 loss.backward()
 
                 adam.step()
@@ -258,15 +259,11 @@ def init_parallel_env():
                                      _default_group_name,
                                      pg_options=None)
         ranks = list(range(world_size))
-        group = Group(rank,
-                      world_size,
-                      id=0,
-                      ranks=ranks,
-                      pg=pg,
-                      name=_default_group_name)
+        group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)
         _set_group_map_by_name(_default_group_name, group)
         _set_group_map(0, group)
         _set_group_map_backend(group, backend)
+        _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
 
         paddle.distributed.barrier(group=group)
@@ -359,47 +356,65 @@ def init_parallel_env():
     return group
 
 
-def get_rank():
+def get_rank(group=None):
     """
-    Returns the rank of current trainer.
+    Returns the rank of current trainer in the given group, ranks are consecutive integers in [0, ``world_size``).
+    If none of the group is given, the global group will be used as default.
 
-    Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` . 
-    The default value is 0.
+    Args:
+        group (Group, optional): The communication group you want to get rank of current trainer, use global group as default if group is None.
 
     Returns:
-        (int) The rank of current trainer.
+        (int) The rank of current trainer in the given group. Return -1 if the process is not part of the given group.
+
+    Warning:
+        Argument ``group`` only supports in dygraph mode.
 
     Examples:
         .. code-block:: python
 
+            # Execute this script using distributed launch with one card configs.
             import paddle
             import paddle.distributed as dist
 
-            # execute this command in terminal: export PADDLE_TRAINER_ID=0
+            dist.init_parallel_env()
             print("The rank is %d" % dist.get_rank())
             # The rank is 0
     """
+    if in_dygraph_mode() and group:
+        return group.rank
+
+    assert group is None, "Only support group argument in eager mode."
     return _get_global_parallel_env().rank
 
 
-def get_world_size():
+def get_world_size(group=None):
     """
-    Returns the number of trainers (number of processes participating in current job).
+    Returns the number of trainers (number of processes participating in current job) in the given group.
+    If none of the group is given, the global group will be used as default.
 
-    Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . 
-    The default value is 1.
+    Args:
+        group (Group, optional): The communication group you want to check world size, use global group as default if group is None.
 
     Returns:
-        (int) The number of trainers.
+        (int) The number of trainers in the given group. Return -1 if the process if not part of the given group.
+
+    Warning:
+        Argument ``group`` only supports in dygraph mode.
 
     Examples:
         .. code-block:: python
 
+            # Execute this script using distributed launch with one card configs.
             import paddle
             import paddle.distributed as dist
 
-            # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
+            dist.init_parallel_env()
             print("The world_size is %d" % dist.get_world_size())
-            # The world_size is 4
+            # The world_size is 1
     """
+    if in_dygraph_mode() and group:
+        return group.world_size
+
+    assert group is None, "Only support group argument in eager mode."
     return _get_global_parallel_env().world_size

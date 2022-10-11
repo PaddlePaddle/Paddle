@@ -25,11 +25,11 @@ from op_test import OpTest
 def graph_send_recv_wrapper(x,
                             src_index,
                             dst_index,
-                            pool_type="sum",
+                            reduce_op="sum",
                             out_size=None,
                             name=None):
     return paddle.geometric.send_u_recv(x, src_index, dst_index,
-                                        pool_type.lower(), out_size, name)
+                                        reduce_op.lower(), out_size, name)
 
 
 class TestGraphSendRecvMaxOp(OpTest):
@@ -46,7 +46,7 @@ class TestGraphSendRecvMaxOp(OpTest):
 
         self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
-        self.attrs = {'pool_type': 'MAX'}
+        self.attrs = {'reduce_op': 'MAX'}
 
         out, self.gradient = compute_graph_send_recv_for_min_max(
             self.inputs, self.attrs)
@@ -76,7 +76,7 @@ class TestGraphSendRecvMinOp(OpTest):
 
         self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
-        self.attrs = {'pool_type': 'MIN'}
+        self.attrs = {'reduce_op': 'MIN'}
 
         out, self.gradient = compute_graph_send_recv_for_min_max(
             self.inputs, self.attrs)
@@ -107,7 +107,7 @@ class TestGraphSendRecvSumOp(OpTest):
 
         self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
-        self.attrs = {'pool_type': 'SUM'}
+        self.attrs = {'reduce_op': 'SUM'}
 
         out, _ = compute_graph_send_recv_for_sum_mean(self.inputs, self.attrs)
 
@@ -134,7 +134,7 @@ class TestGraphSendRecvMeanOp(OpTest):
 
         self.inputs = {'X': x, 'Src_index': src_index, 'Dst_index': dst_index}
 
-        self.attrs = {'pool_type': 'MEAN'}
+        self.attrs = {'reduce_op': 'MEAN'}
 
         out, dst_count = compute_graph_send_recv_for_sum_mean(
             self.inputs, self.attrs)
@@ -153,15 +153,15 @@ def compute_graph_send_recv_for_sum_mean(inputs, attributes):
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
 
-    pool_type = attributes['pool_type']
+    reduce_op = attributes['reduce_op']
 
     gather_x = x[src_index]
     target_shape = list(x.shape)
     results = np.zeros(target_shape, dtype=x.dtype)
-    if pool_type == 'SUM':
+    if reduce_op == 'SUM':
         for index, s_id in enumerate(dst_index):
             results[s_id, :] += gather_x[index, :]
-    elif pool_type == 'MEAN':
+    elif reduce_op == 'MEAN':
         count = np.zeros(target_shape[0], dtype=np.int32)
         for index, s_id in enumerate(dst_index):
             results[s_id, :] += gather_x[index, :]
@@ -169,7 +169,7 @@ def compute_graph_send_recv_for_sum_mean(inputs, attributes):
         results = results / count.reshape([-1, 1])
         results[np.isnan(results)] = 0
     else:
-        raise ValueError("Invalid pool_type, only SUM, MEAN supported!")
+        raise ValueError("Invalid reduce_op, only SUM, MEAN supported!")
 
     count = np.zeros(target_shape[0], dtype=np.int32)
     for index, s_id in enumerate(dst_index):
@@ -183,7 +183,7 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
     src_index = inputs['Src_index']
     dst_index = inputs['Dst_index']
 
-    pool_type = attributes['pool_type']
+    reduce_op = attributes['reduce_op']
 
     gather_x = x[src_index]
     target_shape = list(x.shape)
@@ -191,7 +191,7 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
     gradient = np.zeros_like(x)
 
     # Calculate forward output
-    if pool_type == "MAX":
+    if reduce_op == "MAX":
         first_set = set()
         for index, s_id in enumerate(dst_index):
             if s_id not in first_set:
@@ -200,7 +200,7 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
             else:
                 results[s_id, :] = np.maximum(results[s_id, :],
                                               gather_x[index, :])
-    elif pool_type == "MIN":
+    elif reduce_op == "MIN":
         first_set = set()
         for index, s_id in enumerate(dst_index):
             if s_id not in first_set:
@@ -210,7 +210,7 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
                 results[s_id, :] = np.minimum(results[s_id, :],
                                               gather_x[index, :])
     else:
-        raise ValueError("Invalid pool_type, only MAX, MIN supported!")
+        raise ValueError("Invalid reduce_op, only MAX, MIN supported!")
 
     # Calculate backward gradient
     index_size = len(src_index)
@@ -263,9 +263,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
                           fetch_list=[res_sum, res_mean, res_max, res_min])
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -290,9 +288,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
         ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
 
     def test_int32_input(self):
         paddle.disable_static()
@@ -317,9 +313,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
         ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
 
     def test_set_outsize_gpu(self):
         paddle.disable_static()
@@ -335,14 +329,11 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
         np_res = np.array([[0, 2, 3], [1, 6, 8], [0, 0, 0]], dtype="float32")
         np_res_set_outsize = np.array([[0, 2, 3], [1, 6, 8]], dtype="float32")
 
-        self.assertTrue(
-            np.allclose(np_res, res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, res))
-        self.assertTrue(
-            np.allclose(np_res_set_outsize, res_set_outsize, atol=1e-6),
-            "two value is\
-                {}\n{}, check diff!".format(np_res_set_outsize,
-                                            res_set_outsize))
+        np.testing.assert_allclose(np_res, res, rtol=1e-05, atol=1e-06)
+        np.testing.assert_allclose(np_res_set_outsize,
+                                   res_set_outsize,
+                                   rtol=1e-05,
+                                   atol=1e-06)
 
     def test_out_size_tensor_static(self):
         paddle.enable_static()
@@ -372,9 +363,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
                 'out_size': data4,
             },
                           fetch_list=[res_sum])
-        self.assertTrue(
-            np.allclose(np_sum, ret[0], atol=1e-6), "two value is\
-                        {}\n{}, check diff!".format(np_sum, ret[0]))
+        np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
 
     def test_api_eager_dygraph(self):
         with _test_eager_guard():
@@ -423,9 +412,7 @@ class API_GeometricSendURecvTest(unittest.TestCase):
                           fetch_list=[res_sum, res_mean, res_max, res_min])
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -446,9 +433,7 @@ class API_GeometricSendURecvTest(unittest.TestCase):
         ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
 
     def test_int32_input(self):
         paddle.disable_static()
@@ -469,9 +454,7 @@ class API_GeometricSendURecvTest(unittest.TestCase):
         ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
-            self.assertTrue(
-                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, ret_res))
+            np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
 
     def test_set_outsize_gpu(self):
         paddle.disable_static()
@@ -487,14 +470,11 @@ class API_GeometricSendURecvTest(unittest.TestCase):
         np_res = np.array([[0, 2, 3], [1, 6, 8], [0, 0, 0]], dtype="float32")
         np_res_set_outsize = np.array([[0, 2, 3], [1, 6, 8]], dtype="float32")
 
-        self.assertTrue(
-            np.allclose(np_res, res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, res))
-        self.assertTrue(
-            np.allclose(np_res_set_outsize, res_set_outsize, atol=1e-6),
-            "two value is\
-                {}\n{}, check diff!".format(np_res_set_outsize,
-                                            res_set_outsize))
+        np.testing.assert_allclose(np_res, res, rtol=1e-05, atol=1e-06)
+        np.testing.assert_allclose(np_res_set_outsize,
+                                   res_set_outsize,
+                                   rtol=1e-05,
+                                   atol=1e-06)
 
     def test_out_size_tensor_static(self):
         paddle.enable_static()
@@ -524,9 +504,7 @@ class API_GeometricSendURecvTest(unittest.TestCase):
                 'out_size': data4,
             },
                           fetch_list=[res_sum])
-        self.assertTrue(
-            np.allclose(np_sum, ret[0], atol=1e-6), "two value is\
-                        {}\n{}, check diff!".format(np_sum, ret[0]))
+        np.testing.assert_allclose(np_sum, ret[0], rtol=1e-05, atol=1e-06)
 
     def test_api_eager_dygraph(self):
         with _test_eager_guard():

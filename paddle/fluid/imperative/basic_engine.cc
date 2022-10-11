@@ -150,7 +150,7 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
       }
 
       auto* inner_var = var->MutableVar();
-      framework::Tensor* tensor = nullptr;
+      phi::DenseTensor* tensor = nullptr;
       if (!inner_var->IsInitialized() ||
           inner_var->IsType<framework::LoDTensor>()) {
         tensor = inner_var->GetMutable<framework::LoDTensor>();
@@ -400,7 +400,7 @@ static void PerformBackwardInplace(const std::string& op_type,
 
 void BasicEngine::Execute() {
   platform::RecordEvent backward_record_event(
-      "backward", platform::TracerEventType::Operator, 1);
+      "backward", platform::TracerEventType::UserDefined, 1);
 
   if (init_nodes_.empty()) {
     return;

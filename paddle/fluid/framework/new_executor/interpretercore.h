@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/new_executor/event_manager.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
+#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
@@ -41,7 +42,8 @@ class InterpreterCore {
   InterpreterCore(const platform::Place& place,
                   const BlockDesc& block,
                   const std::set<std::string>& skip_gc_vars,
-                  Scope* scope);
+                  Scope* scope,
+                  bool used_for_jit = false);
 
   ~InterpreterCore();
 
@@ -59,8 +61,15 @@ class InterpreterCore {
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
+  void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
+
+  const VariableScope* GetVariableScope() const;
+
+  void reset_scope(Scope* new_scope);
+
  private:
-  bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
+  bool BuildInplaceCheckVarIsOnlyInput(
+      const std::vector<std::vector<size_t>>& input_var2op, size_t var_index);
 
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
@@ -86,28 +95,24 @@ class InterpreterCore {
   void RecordStreamForGC(const Instruction& instr);
 #endif
 
-  void CheckGC(const Instruction& instr,
-               std::vector<std::atomic<size_t>>* atomic_var_ref);
+  void CheckGC(const Instruction& instr);
 
-  void RunInstructionAsync(size_t instr_id,
-                           std::vector<std::atomic<size_t>>* atomic_deps,
-                           std::vector<std::atomic<size_t>>* atomic_var_ref);
+  void RunInstructionAsync(size_t instr_id);
   void RunNextInstructions(const Instruction& instr_id,
-                           std::queue<size_t>* reserved_next_ops,
-                           std::vector<std::atomic<size_t>>* atomic_deps,
-                           std::vector<std::atomic<size_t>>* atomic_var_ref);
+                           std::queue<size_t>* reserved_next_ops);
 
   void BuildSkipShareLoDInfo();
 
   void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
+ private:
   bool is_build_;
 
-  const platform::Place& place_;
+  platform::Place place_;
   const BlockDesc& block_;  // not owned
-  const std::set<std::string> skip_gc_vars_;
 
   interpreter::DependencyBuilder dependency_builder_;
+  interpreter::ExecutionConfig execution_config_;
 
   // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
   // copy a new program and block, the copy_program_ here is used to
@@ -122,20 +127,18 @@ class InterpreterCore {
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
-  // last_live_ops_[i] contains the id of operatos that last access var[i]
+  // last_live_ops_[i] contains the id of operators that last access var[i]
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
   std::vector<size_t> dependecy_count_;
   std::atomic<size_t> unfinished_op_numer_{0};
-  std::vector<std::vector<size_t>> input_var2op_info_;
-
   VariableScope var_scope_;
-  bool create_local_scope_{true};
   Scope* local_scope_{nullptr};  // not owned
 
   StreamAnalyzer stream_analyzer_;
   EventsWaiter main_thread_blocker_;
   std::shared_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
+
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
   std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
@@ -144,6 +147,9 @@ class InterpreterCore {
 
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_deps_;
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;
+
+  std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
+  std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

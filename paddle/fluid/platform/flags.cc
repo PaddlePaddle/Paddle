@@ -388,11 +388,7 @@ PADDLE_DEFINE_EXPORTED_int32(
  *       enable garbage collection strategy when training large networks.
  */
 // Disable gc by default when inference library is built
-#ifdef PADDLE_ON_INFERENCE
-static const double kDefaultEagerDeleteTensorGB = -1;
-#else
 static const double kDefaultEagerDeleteTensorGB = 0;
-#endif
 
 PADDLE_DEFINE_EXPORTED_double(
     eager_delete_tensor_gb,
@@ -663,7 +659,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
  * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
  * message summary will be shown.
  */
-#ifdef PADDLE_ON_INFERENCE
+#ifdef PADDLE_NO_PYTHON
 static const int32_t kDefaultCallStackLevel = 2;
 #else
 static const int32_t kDefaultCallStackLevel = 1;
@@ -985,6 +981,17 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 
 /**
+ * Conv Search cache max number related FLAG
+ * Name: FLAGS_search_cache_max_number
+ * Since Version: 2.3.0
+ * Value Range: int32, default=1000000
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_int32(search_cache_max_number,
+                             1000000,
+                             "search_cache_max_number.");
+
+/**
  * Preformance related FLAG
  * Name: einsum_opt
  * Since Version: 2.3.0
@@ -1008,6 +1015,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Note:
  * FLAGS_jit_engine_type == Executor, using ExecutorEngine by default
  * FLAGS_jit_engine_type == PE, using PEEngine by default
+ * FLAGS_jit_engine_type == New, using InterpreterEngine by default
  */
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "PE",

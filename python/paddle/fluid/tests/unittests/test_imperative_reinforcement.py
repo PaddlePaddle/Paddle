@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import contextlib
 import unittest
 import numpy as np
@@ -178,7 +176,7 @@ class TestImperativeMnist(unittest.TestCase):
             for i in range(1, len(out)):
                 static_param_value[static_param_name_list[i - 1]] = out[i]
 
-        #self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
+        # np.testing.assert_allclose(dy_x_data.all(), static_x_data.all(), rtol=1e-5)
 
         for key, value in six.iteritems(static_param_init_value):
             self.assertTrue(np.equal(value, dy_param_init_value[key]).all())

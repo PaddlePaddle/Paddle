@@ -15,6 +15,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -49,9 +50,9 @@ template <typename T>
 class EmbEltwiseLayernormPluginDynamicImpl
     : public EmbEltwiseLayernormPluginDynamicImplBase {
  public:
-  explicit EmbEltwiseLayernormPluginDynamicImpl(std::vector<float*> input_embs,
-                                                float* bias,
-                                                float* scale,
+  explicit EmbEltwiseLayernormPluginDynamicImpl(std::vector<T*> input_embs,
+                                                T* bias,
+                                                T* scale,
                                                 std::vector<int> emb_sizes,
                                                 int bias_size,
                                                 int scale_size,
@@ -66,7 +67,7 @@ class EmbEltwiseLayernormPluginDynamicImpl
         hidden_size_(hidden_size),
         eps_(eps) {}
 
-  ~EmbEltwiseLayernormPluginDynamicImpl();
+  ~EmbEltwiseLayernormPluginDynamicImpl() {}
 
   int initialize();
   void terminate();
@@ -79,13 +80,13 @@ class EmbEltwiseLayernormPluginDynamicImpl
   void shareGPUData(const EmbEltwiseLayernormPluginDynamicImplBase* anthor);
 
  private:
-  std::vector<float*> embs_;
-  float* bias_{nullptr};
-  float* scale_{nullptr};
+  std::vector<T*> embs_;
+  T* bias_{nullptr};
+  T* scale_{nullptr};
 
   // data on devices
-  float* bias_gpu_{nullptr};
-  float* scale_gpu_{nullptr};
+  T* bias_gpu_{nullptr};
+  T* scale_gpu_{nullptr};
   std::vector<T*> embs_gpu_;
 
   std::vector<int> emb_sizes_;
@@ -94,16 +95,16 @@ class EmbEltwiseLayernormPluginDynamicImpl
   int hidden_size_;
   float eps_;
 
-  framework::Tensor in_ptr_tensor_, emb_ptr_tensor_;
+  phi::DenseTensor in_ptr_tensor_, emb_ptr_tensor_;
   int device_id_{0};
   bool is_initialized_{false};
 };
 
 class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit EmbEltwiseLayernormPluginDynamic(std::vector<float*> input_embs,
-                                            float* bias,
-                                            float* scale,
+  explicit EmbEltwiseLayernormPluginDynamic(std::vector<void*> input_embs,
+                                            void* bias,
+                                            void* scale,
                                             std::vector<int> emb_sizes,
                                             int bias_size,
                                             int scale_size,
@@ -123,14 +124,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp16";
-      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(embs_,
-                                                             bias_,
-                                                             scale_,
-                                                             emb_sizes_,
-                                                             bias_size_,
-                                                             scale_size_,
-                                                             hidden_size_,
-                                                             eps_);
+      instantiateImpl<half>();
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "The Ernie(Bert) tensorRT plugin should be "
@@ -141,63 +135,74 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 #endif
     } else {
       VLOG(1) << "TRT Plugin DataType selected. EmbEltwiseLayerNorm-->fp32";
-      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(embs_,
-                                                              bias_,
-                                                              scale_,
-                                                              emb_sizes_,
-                                                              bias_size_,
-                                                              scale_size_,
-                                                              hidden_size_,
-                                                              eps_);
+      instantiateImpl<float>();
     }
   }
 
   EmbEltwiseLayernormPluginDynamic(void const* serial_data,
                                    size_t serial_length)
       : own_host_buff_(true) {
+    // the first var is  with_fp16, we will use it.
+    DeserializeValue(&serial_data, &serial_length, &with_fp16_);
     DeserializeValue(&serial_data, &serial_length, &emb_sizes_);
-
-    embs_.resize(emb_sizes_.size());
-    for (size_t i = 0; i < emb_sizes_.size(); i++) {
-      auto size = emb_sizes_[i];
-      auto ptr = new float[size];
-      memcpy(ptr, serial_data, sizeof(float) * size);
-      embs_[i] = ptr;
-      reinterpret_cast<char const*&>(serial_data) +=
-          emb_sizes_[i] * sizeof(float);
-      serial_length -= emb_sizes_[i] * sizeof(float);
-    }
     DeserializeValue(&serial_data, &serial_length, &bias_size_);
     DeserializeValue(&serial_data, &serial_length, &scale_size_);
 
-    if (bias_size_) {
-      bias_ = new float[bias_size_];
-      memcpy(bias_, serial_data, sizeof(float) * bias_size_);
-    }
-    reinterpret_cast<char const*&>(serial_data) += bias_size_ * sizeof(float);
-    serial_length -= bias_size_ * sizeof(float);
+    embs_.resize(emb_sizes_.size());
 
-    if (scale_size_) {
-      scale_ = new float[scale_size_];
-      memcpy(scale_, serial_data, sizeof(float) * scale_size_);
+    if (with_fp16_) {
+      for (size_t i = 0; i < emb_sizes_.size(); i++) {
+        auto size = emb_sizes_[i];
+        auto ptr = new half[size];
+        memcpy(ptr, serial_data, sizeof(half) * size);
+        embs_[i] = ptr;
+        reinterpret_cast<char const*&>(serial_data) += size * sizeof(half);
+        serial_length -= size * sizeof(half);
+      }
+      if (bias_size_) {
+        bias_ = new half[bias_size_];
+        memcpy(bias_, serial_data, sizeof(half) * bias_size_);
+      }
+      reinterpret_cast<char const*&>(serial_data) += bias_size_ * sizeof(half);
+      serial_length -= bias_size_ * sizeof(half);
+
+      if (scale_size_) {
+        scale_ = new half[scale_size_];
+        memcpy(scale_, serial_data, sizeof(half) * scale_size_);
+      }
+      reinterpret_cast<char const*&>(serial_data) += scale_size_ * sizeof(half);
+      serial_length -= scale_size_ * sizeof(half);
+    } else {
+      for (size_t i = 0; i < emb_sizes_.size(); i++) {
+        auto size = emb_sizes_[i];
+        auto ptr = new float[size];
+        memcpy(ptr, serial_data, sizeof(float) * size);
+        embs_[i] = ptr;
+        reinterpret_cast<char const*&>(serial_data) += size * sizeof(float);
+        serial_length -= size * sizeof(float);
+      }
+      if (bias_size_) {
+        bias_ = new float[bias_size_];
+        memcpy(bias_, serial_data, sizeof(float) * bias_size_);
+      }
+      reinterpret_cast<char const*&>(serial_data) += bias_size_ * sizeof(float);
+      serial_length -= bias_size_ * sizeof(float);
+
+      if (scale_size_) {
+        scale_ = new float[scale_size_];
+        memcpy(scale_, serial_data, sizeof(float) * scale_size_);
+      }
+      reinterpret_cast<char const*&>(serial_data) +=
+          scale_size_ * sizeof(float);
+      serial_length -= scale_size_ * sizeof(float);
     }
-    reinterpret_cast<char const*&>(serial_data) += scale_size_ * sizeof(float);
-    serial_length -= scale_size_ * sizeof(float);
 
     DeserializeValue(&serial_data, &serial_length, &hidden_size_);
     DeserializeValue(&serial_data, &serial_length, &eps_);
-    DeserializeValue(&serial_data, &serial_length, &with_fp16_);
 
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
-      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(embs_,
-                                                             bias_,
-                                                             scale_,
-                                                             emb_sizes_,
-                                                             bias_size_,
-                                                             scale_size_,
-                                                             hidden_size_,
-                                                             eps_);
+      instantiateImpl<half>();
 #else
       PADDLE_THROW(platform::errors::Fatal(
           "The Ernie(Bert) tensorRT plugin should be "
@@ -207,14 +212,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
           "AnalysisConfig::Precision::kFloat32, false, false) "));
 #endif
     } else {
-      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(embs_,
-                                                              bias_,
-                                                              scale_,
-                                                              emb_sizes_,
-                                                              bias_size_,
-                                                              scale_size_,
-                                                              hidden_size_,
-                                                              eps_);
+      instantiateImpl<float>();
     }
   }
 
@@ -241,50 +239,75 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
     int sum_num = 0;
+    sum_num += SerializedSize(with_fp16_);
     sum_num += SerializedSize(emb_sizes_);
 
-    for (size_t i = 0; i < emb_sizes_.size(); i++) {
-      sum_num += emb_sizes_[i] * sizeof(float);
+    if (with_fp16_) {
+      for (size_t i = 0; i < emb_sizes_.size(); i++) {
+        sum_num += emb_sizes_[i] * sizeof(half);
+      }
+      sum_num += (bias_size_ + scale_size_) * sizeof(half);
+    } else {
+      for (size_t i = 0; i < emb_sizes_.size(); i++) {
+        sum_num += emb_sizes_[i] * sizeof(float);
+      }
+      sum_num += (bias_size_ + scale_size_) * sizeof(float);
     }
 
     sum_num += SerializedSize(bias_size_);
     sum_num += SerializedSize(scale_size_);
 
-    sum_num += (bias_size_ + scale_size_) * sizeof(float);
     sum_num += SerializedSize(hidden_size_);
     sum_num += SerializedSize(eps_);
-    sum_num += SerializedSize(with_fp16_);
 
     return sum_num;
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT override {
+    // the first var is for with_fp16, we will use it later;
+    SerializeValue(&buffer, with_fp16_);
     SerializeValue(&buffer, emb_sizes_);
-    for (size_t i = 0; i < emb_sizes_.size(); i++) {
-      auto size = emb_sizes_[i];
-      for (int j = 0; j < size; ++j) {
-        SerializeValue(&buffer, embs_[i][j]);
-      }
-    }
     SerializeValue(&buffer, bias_size_);
     SerializeValue(&buffer, scale_size_);
-    for (int i = 0; i < bias_size_; ++i) {
-      SerializeValue(&buffer, bias_[i]);
-    }
+    if (with_fp16_) {
+      for (size_t i = 0; i < emb_sizes_.size(); i++) {
+        auto size = emb_sizes_[i];
+        for (int j = 0; j < size; ++j) {
+          SerializeValue(&buffer, reinterpret_cast<half*>(embs_[i])[j]);
+        }
+      }
+      for (int i = 0; i < bias_size_; ++i) {
+        SerializeValue(&buffer, reinterpret_cast<half*>(bias_)[i]);
+      }
 
-    for (int i = 0; i < scale_size_; ++i) {
-      SerializeValue(&buffer, scale_[i]);
+      for (int i = 0; i < scale_size_; ++i) {
+        SerializeValue(&buffer, reinterpret_cast<half*>(scale_)[i]);
+      }
+    } else {
+      for (size_t i = 0; i < emb_sizes_.size(); i++) {
+        auto size = emb_sizes_[i];
+        for (int j = 0; j < size; ++j) {
+          SerializeValue(&buffer, reinterpret_cast<float*>(embs_[i])[j]);
+        }
+      }
+      for (int i = 0; i < bias_size_; ++i) {
+        SerializeValue(&buffer, reinterpret_cast<float*>(bias_)[i]);
+      }
+
+      for (int i = 0; i < scale_size_; ++i) {
+        SerializeValue(&buffer, reinterpret_cast<float*>(scale_)[i]);
+      }
     }
 
     SerializeValue(&buffer, hidden_size_);
     SerializeValue(&buffer, eps_);
-    SerializeValue(&buffer, with_fp16_);
   }
 
-  nvinfer1::DimsExprs getOutputDimensions(int output_index,
-                                          const nvinfer1::DimsExprs* inputs,
-                                          int nb_inputs,
-                                          nvinfer1::IExprBuilder& expr_builder)
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
@@ -317,21 +340,28 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 
   void destroy() TRT_NOEXCEPT override {
     if (own_host_buff_) {
-      for (auto ptr : embs_) {
-        delete[] ptr;
+      if (with_fp16_) {
+        for (auto ptr : embs_) {
+          delete[] reinterpret_cast<half*>(ptr);
+        }
+        delete[] reinterpret_cast<half*>(bias_);
+        delete[] reinterpret_cast<half*>(scale_);
+      } else {
+        for (auto ptr : embs_) {
+          delete[] reinterpret_cast<float*>(ptr);
+        }
+        delete[] reinterpret_cast<float*>(bias_);
+        delete[] reinterpret_cast<float*>(scale_);
       }
-      delete[] bias_;
-      delete[] scale_;
     }
-
     delete impl_;
     delete this;
   }
 
  private:
-  std::vector<float*> embs_;
-  float* bias_;
-  float* scale_;
+  std::vector<void*> embs_;
+  void* bias_{nullptr};
+  void* scale_{nullptr};
 
   std::vector<int> emb_sizes_;
   int bias_size_;
@@ -344,6 +374,24 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 
   void shareGPUData(const EmbEltwiseLayernormPluginDynamic* anthor) {
     impl_->shareGPUData(anthor->impl_);
+  }
+
+  template <typename U>
+  void instantiateImpl() {
+    std::vector<U*> embs;
+    embs.resize(embs_.size());
+    for (size_t i = 0; i < embs_.size(); ++i) {
+      embs[i] = reinterpret_cast<U*>(embs_[i]);
+    }
+    impl_ = new EmbEltwiseLayernormPluginDynamicImpl<U>(
+        embs,
+        reinterpret_cast<U*>(bias_),
+        reinterpret_cast<U*>(scale_),
+        emb_sizes_,
+        bias_size_,
+        scale_size_,
+        hidden_size_,
+        eps_);
   }
 };
 

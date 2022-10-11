@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -96,15 +96,14 @@ class Conv2dDynamicSamePadding(nn.Conv2D):
                  dilation=1,
                  groups=1,
                  bias_attr=None):
-        super().__init__(
-            in_channels,
-            out_channels,
-            kernel_size,
-            stride,
-            0,
-            dilation,
-            groups,
-            bias_attr=bias_attr)
+        super().__init__(in_channels,
+                         out_channels,
+                         kernel_size,
+                         stride,
+                         0,
+                         dilation,
+                         groups,
+                         bias_attr=bias_attr)
         self.stride = self._stride if len(
             self._stride) == 2 else [self._stride[0]] * 2
 
@@ -113,10 +112,12 @@ class Conv2dDynamicSamePadding(nn.Conv2D):
         kh, kw = self.weight.shape[-2:]
         sh, sw = self.stride
         oh, ow = math.ceil(ih / sh), math.ceil(iw / sw)
-        pad_h = max((oh - 1) * self.stride[0] +
-                    (kh - 1) * self._dilation[0] + 1 - ih, 0)
-        pad_w = max((ow - 1) * self.stride[1] +
-                    (kw - 1) * self._dilation[1] + 1 - iw, 0)
+        pad_h = max(
+            (oh - 1) * self.stride[0] + (kh - 1) * self._dilation[0] + 1 - ih,
+            0)
+        pad_w = max(
+            (ow - 1) * self.stride[1] + (kw - 1) * self._dilation[1] + 1 - iw,
+            0)
         if pad_h > 0 or pad_w > 0:
             x = F.pad(x, [
                 pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2
@@ -142,15 +143,18 @@ class Conv2dStaticSamePadding(nn.Conv2D):
 
         # Calculate padding based on image size and save it
         assert image_size is not None
-        ih, iw = image_size if type(
-            image_size) == list else [image_size, image_size]
+        ih, iw = image_size if type(image_size) == list else [
+            image_size, image_size
+        ]
         kh, kw = self.weight.shape[-2:]
         sh, sw = self.stride
         oh, ow = math.ceil(ih / sh), math.ceil(iw / sw)
-        pad_h = max((oh - 1) * self.stride[0] +
-                    (kh - 1) * self._dilation[0] + 1 - ih, 0)
-        pad_w = max((ow - 1) * self.stride[1] +
-                    (kw - 1) * self._dilation[1] + 1 - iw, 0)
+        pad_h = max(
+            (oh - 1) * self.stride[0] + (kh - 1) * self._dilation[0] + 1 - ih,
+            0)
+        pad_w = max(
+            (ow - 1) * self.stride[1] + (kw - 1) * self._dilation[1] + 1 - iw,
+            0)
         if pad_h > 0 or pad_w > 0:
             self.static_padding = nn.Pad2D([
                 pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2
@@ -166,6 +170,7 @@ class Conv2dStaticSamePadding(nn.Conv2D):
 
 
 class Identity(nn.Layer):
+
     def __init__(self, ):
         super().__init__()
 
@@ -225,9 +230,12 @@ class BlockDecoder(object):
     def _encode_block_string(block):
         """Encodes a block to a string."""
         args = [
-            'r%d' % block.num_repeat, 'k%d' % block.kernel_size, 's%d%d' %
-            (block.strides[0], block.strides[1]), 'e%s' % block.expand_ratio,
-            'i%d' % block.input_filters, 'o%d' % block.output_filters
+            'r%d' % block.num_repeat,
+            'k%d' % block.kernel_size,
+            's%d%d' % (block.strides[0], block.strides[1]),
+            'e%s' % block.expand_ratio,
+            'i%d' % block.input_filters,
+            'o%d' % block.output_filters
         ]
         if 0 < block.se_ratio <= 1:
             args.append('se%s' % block.se_ratio)
@@ -291,7 +299,8 @@ def efficientnet(width_coefficient=None,
         depth_coefficient=depth_coefficient,
         depth_divisor=8,
         min_depth=None,
-        image_size=image_size, )
+        image_size=image_size,
+    )
 
     return blocks_args, global_params
 
@@ -300,11 +309,10 @@ def get_model_params(model_name, override_params):
     """ Get the block args and global params for a given model """
     if model_name.startswith('efficientnet'):
         w, d, s, p = efficientnet_params(model_name)
-        blocks_args, global_params = efficientnet(
-            width_coefficient=w,
-            depth_coefficient=d,
-            dropout_rate=p,
-            image_size=s)
+        blocks_args, global_params = efficientnet(width_coefficient=w,
+                                                  depth_coefficient=d,
+                                                  dropout_rate=p,
+                                                  image_size=s)
     else:
         raise NotImplementedError('model name is not pre-defined: %s' %
                                   model_name)

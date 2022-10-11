@@ -13,8 +13,6 @@
 # limitations under the License.
 """This is unit test of Test data_norm Op."""
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -71,7 +69,11 @@ class TestDataNormOpInference(unittest.TestCase):
         self.use_mkldnn = False
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=1e-05,
+                                   atol=atol,
+                                   err_msg=msg)
 
     def check_with_place(self,
                          place,

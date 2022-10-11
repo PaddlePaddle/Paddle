@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -150,7 +148,7 @@ class TestIdentityLossAPI(unittest.TestCase):
             self.identity_loss_ref(self.x, 2)
         ]
         for out, out_ref in zip(res, ref):
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-04), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.0001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
@@ -159,8 +157,7 @@ class TestIdentityLossAPI(unittest.TestCase):
             x_tensor = paddle.to_tensor(x)
             out = paddle.incubate.identity_loss(x_tensor, reduction)
             out_ref = self.identity_loss_ref(x, reduction)
-            self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-04),
-                             True)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
 
         test_case(self.x, 0)
         test_case(self.x, 1)

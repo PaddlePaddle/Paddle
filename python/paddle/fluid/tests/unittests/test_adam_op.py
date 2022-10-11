@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -904,9 +902,9 @@ class TestAdamOptimizer(unittest.TestCase):
                         preds.append(pred)
                         losses.append(loss)
         for pred in preds:
-            self.assertTrue(np.allclose(pred, preds[0]))
+            np.testing.assert_allclose(pred, preds[0], rtol=1e-05)
         for loss in losses:
-            self.assertTrue(np.allclose(loss, losses[0]))
+            np.testing.assert_allclose(loss, losses[0], rtol=1e-05)
 
     def test_adam_api(self):
         # NOTE(zhiqiu): cpu and gpu has different seed, so should compare separatly.
@@ -1177,13 +1175,11 @@ class TestMultiTensorAdam(unittest.TestCase):
             place=place, use_amp=use_amp, use_multi_tensor=True)
         output_dygraph2, params_dygraph2 = self._adam_optimize_dygraph(
             place=place, use_amp=use_amp, use_multi_tensor=False)
-        self.assertEqual(
-            np.allclose(output_dygraph1, output_dygraph2, rtol=1e-05), True)
+        np.testing.assert_allclose(output_dygraph1, output_dygraph2, rtol=1e-05)
         for idx in range(len(params_dygraph1)):
-            self.assertEqual(
-                np.allclose(params_dygraph1[idx],
-                            params_dygraph2[idx],
-                            rtol=1e-05), True)
+            np.testing.assert_allclose(params_dygraph1[idx],
+                                       params_dygraph2[idx],
+                                       rtol=1e-05)
         # test static mode
         output_static1 = self._adam_optimize_static(place=place,
                                                     use_amp=use_amp,
@@ -1192,10 +1188,9 @@ class TestMultiTensorAdam(unittest.TestCase):
                                                     use_amp=use_amp,
                                                     use_multi_tensor=False)
         for idx in range(len(output_static1)):
-            self.assertEqual(
-                np.allclose(output_static1[idx],
-                            output_static2[idx],
-                            rtol=1e-05), True)
+            np.testing.assert_allclose(output_static1[idx],
+                                       output_static2[idx],
+                                       rtol=1e-05)
 
     def _check_with_param_arrt(self, place, use_amp):
         output1, params1 = self._adam_optimize_dygraph(place=place,
@@ -1207,10 +1202,9 @@ class TestMultiTensorAdam(unittest.TestCase):
                                                        use_param_attr=True,
                                                        use_multi_tensor=False)
 
-        self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
+        np.testing.assert_allclose(output1, output2, rtol=1e-05)
         for idx in range(len(params1)):
-            self.assertEqual(
-                np.allclose(params1[idx], params2[idx], rtol=1e-05), True)
+            np.testing.assert_allclose(params1[idx], params2[idx], rtol=1e-05)
 
     def _check_with_param_group(self, place, use_amp):
         output1, params1 = self._adam_optimize_dygraph(place=place,
@@ -1222,10 +1216,9 @@ class TestMultiTensorAdam(unittest.TestCase):
                                                        use_param_group=True,
                                                        use_multi_tensor=False)
 
-        self.assertEqual(np.allclose(output1, output2, rtol=1e-05), True)
+        np.testing.assert_allclose(output1, output2, rtol=1e-05)
         for idx in range(len(params1)):
-            self.assertEqual(
-                np.allclose(params1[idx], params2[idx], rtol=1e-05), True)
+            np.testing.assert_allclose(params1[idx], params2[idx], rtol=1e-05)
 
     def test_main(self):
         for place in self._get_places():
@@ -1234,6 +1227,10 @@ class TestMultiTensorAdam(unittest.TestCase):
                 self._check_with_place_amp(place, use_amp)
                 self._check_with_param_arrt(place, use_amp)
                 self._check_with_param_group(place, use_amp)
+
+    def test_api_eager_dygraph(self):
+        with _test_eager_guard():
+            self.test_main()
 
 
 if __name__ == "__main__":

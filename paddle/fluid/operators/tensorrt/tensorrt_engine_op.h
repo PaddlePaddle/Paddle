@@ -476,12 +476,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
-    int num_inputs = 0;
-
-    num_inputs += runtime_input_names_.size();
-    //  const int num_bindings = num_inputs + Outputs("Ys").size();
-    //  std::vector<void *> buffers(num_bindings);
-    // This method returns the total over all profiles.
+    // Get the total over all profiles
     const int num_bindings = engine->GetNbBindings();
     std::vector<void *> buffers(num_bindings, nullptr);
 
@@ -495,14 +490,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     // Bind input tensor to TRT.
     for (const auto &x : runtime_input_names_) {
+#if IS_TRT_VERSION_LT(8000)
+      // trt may remove input tensor if it's unused or used only at compile-time
+      if (engine->engine()->getBindingIndex(x.c_str()) < 0) continue;
+#endif
+
       // convert input and copy to TRT engine's buffer
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
       // check the input_tensor
       if (!platform::is_gpu_place(t.place())) {
-        framework::Tensor out;
-        platform::CUDAPlace dst_place;
-        framework::TransDataDevice(t, dst_place, &out);
+        phi::DenseTensor out;
+        framework::TensorCopy(t, dev_place, dev_ctx, &out);
         t.ShareDataWith(out);
       }
       auto t_shape = phi::vectorize<int64_t>(t.dims());
@@ -562,6 +561,16 @@ class TensorRTEngineOp : public framework::OperatorBase {
       }
       runtime_batch = t_shape[0];
       VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
+
+      auto indata_type = inference::tensorrt::PhiType2NvType(t.dtype());
+      auto intrt_index = engine->engine()->getBindingIndex(x.c_str());
+      auto intrt_type = engine->engine()->getBindingDataType(intrt_index);
+      PADDLE_ENFORCE_EQ(indata_type,
+                        intrt_type,
+                        platform::errors::InvalidArgument(
+                            "The TRT Engine OP's input type should equal "
+                            "to the input data type"));
+
       auto type = framework::TransToProtoVarType(t.dtype());
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());

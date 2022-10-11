@@ -14,15 +14,19 @@
 
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 
+#include <string>
 #include <unordered_set>
 
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
@@ -57,7 +61,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
         platform::errors::PreconditionNotMet("The var should not be nullptr"));
 
     if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<framework::Tensor>()) {
+        var->IsType<phi::DenseTensor>()) {
       auto *t = var->GetMutable<framework::LoDTensor>();
 
       platform::CPUPlace cpu_place;
@@ -113,6 +117,29 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
     reserve_cpu_weights = true;
   }
 
+  int64_t params_total_bytes{0};
+  for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
+    if (!node->IsOp()) continue;
+    if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch") continue;
+    for (auto *var_node : node->inputs) {
+      if (!var_node->Var()->Persistable()) continue;
+      auto var_name = var_node->Var()->Name();
+      auto *var = scope->FindLocalVar(var_name);
+      if (var->IsType<framework::LoDTensor>() ||
+          var->IsType<phi::DenseTensor>()) {
+        auto *t = var->GetMutable<framework::LoDTensor>();
+        params_total_bytes += t->numel() * experimental::SizeOf(t->dtype());
+      }
+    }
+  }
+
+  {
+    // Alloc memory in pool to store all parameters.
+    phi::DenseTensor ts;
+    ts.mutable_data(place, params_total_bytes);
+  }
+
+  std::unordered_set<std::string> visited;
   for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
     if (!node->IsOp()) continue;
     if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch") continue;
@@ -126,18 +153,21 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
         }
         continue;
       }
+      if (visited.count(var_name)) continue;
+      visited.insert(var_name);
       auto *var = scope->FindLocalVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(var,
                               platform::errors::PreconditionNotMet(
                                   "The var should not be nullptr"));
       if (var->IsType<framework::LoDTensor>() ||
-          var->IsType<framework::Tensor>()) {
+          var->IsType<phi::DenseTensor>()) {
         auto *t = var->GetMutable<framework::LoDTensor>();
         auto var_data_type = var_node->Var()->GetDataType();
         VLOG(5) << "var_name is " << var_name << ", data type is "
                 << var_data_type;
-        if (var_data_type == paddle::framework::proto::VarType::FP16) {
-          framework::Tensor half_tensor;
+        if (var_data_type == paddle::framework::proto::VarType::FP16 &&
+            t->dtype() != paddle::experimental::DataType::FLOAT16) {
+          phi::DenseTensor half_tensor;
           half_tensor.set_type(paddle::experimental::DataType::FLOAT16);
           half_tensor.Resize(t->dims());
           auto *half_data =
@@ -149,7 +179,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
           t->clear();
           paddle::framework::TensorCopySync(half_tensor, place, t);
         } else if (var_data_type == paddle::framework::proto::VarType::BF16) {
-          framework::Tensor bf16_tensor;
+          phi::DenseTensor bf16_tensor;
           bf16_tensor.set_type(paddle::experimental::DataType::BFLOAT16);
           bf16_tensor.Resize(t->dims());
           auto *bf16_data = bf16_tensor.mutable_data<platform::bfloat16>(

@@ -19,6 +19,7 @@ typedef SSIZE_T ssize_t;
 
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/platform/place.h"
@@ -63,7 +64,7 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
 std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj, ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
-framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
+phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<framework::LoDTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                                ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
@@ -254,6 +255,13 @@ paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
                                                 PyObject* args,
                                                 ssize_t arg_idx,
                                                 bool dispensable = false);
+
+paddle::optional<std::vector<paddle::experimental::Tensor>>
+GetOptionalTensorListFromArgs(const std::string& op_type,
+                              const std::string& arg_name,
+                              PyObject* args,
+                              ssize_t arg_idx,
+                              bool dispensable = false);
 
 std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     const std::string& op_type,

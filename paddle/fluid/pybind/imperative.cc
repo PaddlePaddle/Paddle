@@ -282,7 +282,7 @@ static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
 }
 
 static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
-                                                const framework::Tensor &tensor,
+                                                const phi::DenseTensor &tensor,
                                                 const std::string &name) {
   VLOG(4) << "Init VarBase";
   auto place = imperative::GetCurrentTracer()->ExpectedPlace();
@@ -306,7 +306,7 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
 
 template <typename P>
 static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
-                                         const framework::Tensor &tensor,
+                                         const phi::DenseTensor &tensor,
                                          const P &place,
                                          const std::string &name) {
   VLOG(4) << "Init VarBase";
@@ -964,11 +964,15 @@ void BindImperative(py::module *m_ptr) {
                              framework::proto::VarType::BOOL) {
                     attrs["bool_values"] =
                         std::vector<int>{value_obj.cast<bool>()};
+                  } else if (self->DataType() ==
+                             framework::proto::VarType::FP16) {
+                    attrs["fp16_values"] =
+                        std::vector<float>{value_obj.cast<float>()};
                   } else {
                     PADDLE_THROW(platform::errors::InvalidArgument(
                         "When assign a value to a paddle.Tensor, "
                         "the data type of the paddle.Tensor must be bool, "
-                        "float32, int32 or int64, "
+                        "float32, int32, int64 or float16, "
                         "please check the type of tensor."));
                   }
                   attrs["shape"] = std::vector<int64_t>{1};
@@ -1231,7 +1235,7 @@ void BindImperative(py::module *m_ptr) {
           },
           R"DOC(
         Returns a numpy array shows the value of current Tensor.
-        
+
         Returns:
             ndarray: The numpy value of current Tensor.
 
@@ -1348,10 +1352,10 @@ void BindImperative(py::module *m_ptr) {
                 # Due to sharing of data with origin Tensor, There are some unsafe operations:
                 y = 2 * x
                 detach_x[:] = 5.0
-                y.backward() 
+                y.backward()
                 # It will raise Error:
                 #   one of the variables needed for gradient computation has been modified by an inplace operation.
-             
+
        )DOC")
       .def("clear_gradient",
            &imperative::VarBase::ClearGradient,
@@ -1618,7 +1622,7 @@ void BindImperative(py::module *m_ptr) {
               import paddle
               x = paddle.to_tensor(1.0, place=paddle.CUDAPlace(0))
               print(x.place)    # CUDAPlace(0)
-              
+
               y = x.cpu()
               print(y.place)    # CPUPlace
 
@@ -1708,12 +1712,12 @@ void BindImperative(py::module *m_ptr) {
           R"DOC(
         Returns a copy of this Tensor in GPU memory.
 
-        If this Tensor is already in GPU memory and device_id is default, 
+        If this Tensor is already in GPU memory and device_id is default,
         then no copy is performed and the original Tensor is returned.
-        
+
         Args:
             device_id(int, optional): The destination GPU device id. Default: None, means current device.
-            blocking(bool, optional): If False and the source is in pinned memory, the copy will be 
+            blocking(bool, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. Default: False.
 
         Examples:
@@ -1726,7 +1730,7 @@ void BindImperative(py::module *m_ptr) {
 
               y = x.cuda()
               print(y.place)        # Place(gpu:0)
-            
+
               y = x.cuda(None)
               print(y.place)        # Place(gpu:0)
 
@@ -2011,7 +2015,7 @@ void BindImperative(py::module *m_ptr) {
            })
       .def("element_size", &imperative::VarBase::ElementSize, R"DOC(
         Returns the size in bytes of an element in the Tensor.
-        
+
         Examples:
           .. code-block:: python
 
@@ -2044,8 +2048,49 @@ void BindImperative(py::module *m_ptr) {
           "shape",
           [](imperative::VarBase &self) {
             if (self.Var().IsType<framework::LoDTensor>()) {
-              return phi::vectorize<int>(
+              auto value = phi::vectorize<int>(
                   self.Var().Get<framework::LoDTensor>().dims());
+              auto tensor = self.Var().Get<framework::LoDTensor>();
+              auto tmp_value = value;
+              auto desired_layout =
+                  paddle::imperative::LayoutAutoTune::Instance()
+                      .GetDesiredLayout();
+              auto default_layout =
+                  paddle::imperative::LayoutAutoTune::Instance()
+                      .GetDefaultLayout();
+              bool change_dim =
+                  (desired_layout != default_layout &&
+                   tensor.layout() == desired_layout && value.size() == 4);
+              VLOG(6) << "'Shape' method, layout autotune,"
+                      << " desired_layout: " << desired_layout
+                      << " default_layout: " << default_layout
+                      << " tensor layout: " << tensor.layout()
+                      << " tensor's shape size is : " << value.size();
+
+              if (change_dim && paddle::framework::DataLayoutToString(
+                                    desired_layout) == "NCHW") {
+                VLOG(6) << "layout autotune get Shape from NHWC -> NCHW "
+                        << value[0] << " " << value[1] << " " << value[2] << " "
+                        << value[3] << " to " << tmp_value[3] << " "
+                        << tmp_value[1] << " " << tmp_value[2] << " "
+                        << tmp_value[1];
+                // NCHW -> NHWC
+                value[1] = tmp_value[2];
+                value[2] = tmp_value[3];
+                value[3] = tmp_value[1];
+              } else if (change_dim && paddle::framework::DataLayoutToString(
+                                           desired_layout) == "NHWC") {
+                VLOG(6) << "layout autotune get Shape from NHWC -> NCHW "
+                        << value[0] << " " << value[1] << " " << value[2] << " "
+                        << value[3] << " to " << tmp_value[0] << " "
+                        << tmp_value[3] << " " << tmp_value[1] << " "
+                        << tmp_value[2];
+                // NHWC -> NCHW
+                value[1] = tmp_value[3];
+                value[2] = tmp_value[1];
+                value[3] = tmp_value[2];
+              }
+              return value;
             } else if (self.Var().IsType<phi::SelectedRows>()) {
               return phi::vectorize<int>(
                   self.Var().Get<phi::SelectedRows>().value().dims());
@@ -2062,13 +2107,22 @@ void BindImperative(py::module *m_ptr) {
               return std::vector<int>();
             }
           })
+      .def_property_readonly(
+          "layout",
+          [](imperative::VarBase &self) {
+            if (self.Var().IsType<framework::LoDTensor>()) {
+              auto layout = self.Var().Get<framework::LoDTensor>().layout();
+              return paddle::framework::DataLayoutToString(layout);
+            }
+            return std::string("");
+          })
       .def_property_readonly("is_leaf",
                              &imperative::VarBase::IsLeaf,
                              R"DOC(
       Whether a Tensor is leaf Tensor.
 
-      For the Tensor whose stop_gradient is ``True`` , it will be leaf Tensor. 
-      
+      For the Tensor whose stop_gradient is ``True`` , it will be leaf Tensor.
+
       For the Tensor whose stop_gradient is ``False`` , it will be leaf Tensor too if it is created by user.
 
       Returns:
@@ -2712,7 +2766,7 @@ void BindImperative(py::module *m_ptr) {
 
   Returns:
 
-      new_tensor(paddle.Tensor): Return the UVA Tensor with the sample dtype and 
+      new_tensor(paddle.Tensor): Return the UVA Tensor with the sample dtype and
                                  shape with the input numpy array.
 
   Examples:
@@ -2721,7 +2775,7 @@ void BindImperative(py::module *m_ptr) {
         # required: gpu
         import numpy as np
         import paddle
-        
+
         data = np.random.randint(10, size=(3, 4))
         tensor = paddle.fluid.core.to_uva_tensor(data)
         print(tensor)
@@ -2825,38 +2879,38 @@ void BindImperative(py::module *m_ptr) {
         }
       },
       R"DOC(
-  This api provides a way to write pieces of source tensor to destination tensor 
-  inplacely and asynchronously. In which, we use `offset` and `count` to determine 
-  where to copy. `offset` means the begin points of the copy pieces of `src`, and 
-  `count` means the lengths of the copy pieces of `src`. To be noted, the copy process 
-  will run asynchronously from cuda to pin memory. We can simply remember this as 
+  This api provides a way to write pieces of source tensor to destination tensor
+  inplacely and asynchronously. In which, we use `offset` and `count` to determine
+  where to copy. `offset` means the begin points of the copy pieces of `src`, and
+  `count` means the lengths of the copy pieces of `src`. To be noted, the copy process
+  will run asynchronously from cuda to pin memory. We can simply remember this as
   "gpu async_write to pin_memory".
-  
+
   Arguments:
-  
-    src (Tensor): The source tensor, and the data type should be `float32` currently. 
+
+    src (Tensor): The source tensor, and the data type should be `float32` currently.
                   Besides, `src` should be placed on CUDAPlace.
 
-    dst (Tensor): The destination tensor, and the data type should be `float32` currently. 
-                  Besides, `dst` should be placed on CUDAPinnedPlace. The shape of `dst` 
-                  should be the same with `src` except for the first dimension. 
+    dst (Tensor): The destination tensor, and the data type should be `float32` currently.
+                  Besides, `dst` should be placed on CUDAPinnedPlace. The shape of `dst`
+                  should be the same with `src` except for the first dimension.
 
-    offset (Tensor): The offset tensor, and the data type should be `int64` currently. 
-                     Besides, `offset` should be placed on CPUPlace. The shape of `offset` 
-                     should be one-dimensional. 
-    
-    count (Tensor): The count tensor, and the data type should be `int64` currently. 
-                    Besides, `count` should be placed on CPUPlace. The shape of `count` 
-                    should be one-dimensinal. 
+    offset (Tensor): The offset tensor, and the data type should be `int64` currently.
+                     Besides, `offset` should be placed on CPUPlace. The shape of `offset`
+                     should be one-dimensional.
+
+    count (Tensor): The count tensor, and the data type should be `int64` currently.
+                    Besides, `count` should be placed on CPUPlace. The shape of `count`
+                    should be one-dimensinal.
 
   Examples:
       .. code-block:: python
 
           import numpy as np
           import paddle
-          from paddle.fluid import core  
+          from paddle.fluid import core
           from paddle.device import cuda
-          
+
           if core.is_compiled_with_cuda():
               src = paddle.rand(shape=[100, 50, 50])
               dst = paddle.emtpy(shape=[200, 50, 50]).pin_memory()
@@ -3022,9 +3076,9 @@ void BindImperative(py::module *m_ptr) {
         }
 
         // Select the index data to the buffer
-        auto index_select = [](const framework::Tensor &src_tensor,
-                               const framework::Tensor &index_tensor,
-                               framework::Tensor *buffer_tensor) {
+        auto index_select = [](const phi::DenseTensor &src_tensor,
+                               const phi::DenseTensor &index_tensor,
+                               phi::DenseTensor *buffer_tensor) {
           auto *src_data = src_tensor.data<float>();
           auto *index_data = index_tensor.data<int64_t>();
           auto *buffer_data =
@@ -3049,38 +3103,38 @@ void BindImperative(py::module *m_ptr) {
                         stream);
       },
       R"DOC(
-  This api provides a way to read from pieces of source tensor to destination tensor 
-  asynchronously. In which, we use `index`, `offset` and `count` to determine where 
-  to read. `index` means the index position of src tensor we want to read. `offset` 
-  and count means the begin points and length of pieces of src tensor we want to read. 
-  To be noted, the copy process will run asynchronously from pin memory to cuda place. 
+  This api provides a way to read from pieces of source tensor to destination tensor
+  asynchronously. In which, we use `index`, `offset` and `count` to determine where
+  to read. `index` means the index position of src tensor we want to read. `offset`
+  and count means the begin points and length of pieces of src tensor we want to read.
+  To be noted, the copy process will run asynchronously from pin memory to cuda place.
   We can simply remember this as "cuda async_read from pin_memory".
 
   Arguments:
-  
-    src (Tensor): The source tensor, and the data type should be `float32` currently. 
+
+    src (Tensor): The source tensor, and the data type should be `float32` currently.
                   Besides, `src` should be placed on CUDAPinnedPlace.
-  
-    dst (Tensor): The destination tensor, and the data type should be `float32` currently. 
-                  Besides, `dst` should be placed on CUDAPlace. The shape of `dst` should 
+
+    dst (Tensor): The destination tensor, and the data type should be `float32` currently.
+                  Besides, `dst` should be placed on CUDAPlace. The shape of `dst` should
                   be the same with `src` except for the first dimension.
 
-    index (Tensor): The index tensor, and the data type should be `int64` currently. 
-                    Besides, `index` should be on CPUplace. The shape of `index` should 
+    index (Tensor): The index tensor, and the data type should be `int64` currently.
+                    Besides, `index` should be on CPUplace. The shape of `index` should
                     be one-dimensional.
 
-    buffer (Tensor): The buffer tensor, used to buffer index copy tensor temporarily. 
-                     The data type should be `float32` currently, and should be placed 
+    buffer (Tensor): The buffer tensor, used to buffer index copy tensor temporarily.
+                     The data type should be `float32` currently, and should be placed
                      on CUDAPinnedPlace. The shape of `buffer` should be the same with `src` except for the first dimension.
 
-    offset (Tensor): The offset tensor, and the data type should be `int64` currently. 
-                     Besides, `offset` should be placed on CPUPlace. The shape of `offset` 
+    offset (Tensor): The offset tensor, and the data type should be `int64` currently.
+                     Besides, `offset` should be placed on CPUPlace. The shape of `offset`
                      should be one-dimensional.
 
-    count (Tensor): The count tensor, and the data type should be `int64` currently. 
-                    Besides, `count` should be placed on CPUPlace. The shape of `count` 
+    count (Tensor): The count tensor, and the data type should be `int64` currently.
+                    Besides, `count` should be placed on CPUPlace. The shape of `count`
                     should be one-dimensinal.
-    
+
   Examples:
       .. code-block:: python
 
@@ -3099,11 +3153,11 @@ void BindImperative(py::module *m_ptr) {
               buffer = paddle.empty(shape=[50, 50, 50], dtype="float32").pin_memory()
               index = paddle.to_tensor(
                   np.array([1, 3, 5, 7, 9], dtype="int64")).cpu()
-          
+
               stream = cuda.Stream()
               with cuda.stream_guard(stream):
                   core.async_read(src, dst, index, buffer, offset, count)
- 
+
 )DOC");
 #endif
 }

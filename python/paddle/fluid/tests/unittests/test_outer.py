@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
@@ -61,37 +60,37 @@ class TestMultiplyApi(unittest.TestCase):
         x_data = np.random.rand(2, 10, 10).astype(np.float64)
         y_data = np.random.rand(2, 5, 10).astype(np.float64)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test static computation graph: 2-d array
         x_data = np.random.rand(200, 5).astype(np.float64)
         y_data = np.random.rand(50, 5).astype(np.float64)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test static computation graph: 1-d array
         x_data = np.random.rand(50).astype(np.float64)
         y_data = np.random.rand(50).astype(np.float64)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: 3-d array
         x_data = np.random.rand(5, 10, 10).astype(np.float64)
         y_data = np.random.rand(2, 10).astype(np.float64)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: 2-d array
         x_data = np.random.rand(20, 50).astype(np.float64)
         y_data = np.random.rand(50).astype(np.float64)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: Scalar
         x_data = np.random.rand(20, 10).astype(np.float32)
         y_data = np.random.rand(1).astype(np.float32).item()
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data), rtol=1e4))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=10000.0)
 
         # test dynamic computation graph: 2-d array Complex
         x_data = np.random.rand(20, 50).astype(
@@ -99,7 +98,7 @@ class TestMultiplyApi(unittest.TestCase):
         y_data = np.random.rand(50).astype(
             np.float64) + 1J * np.random.rand(50).astype(np.float64)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: 3-d array Complex
         x_data = np.random.rand(5, 10, 10).astype(
@@ -107,7 +106,7 @@ class TestMultiplyApi(unittest.TestCase):
         y_data = np.random.rand(2, 10).astype(
             np.float64) + 1J * np.random.rand(2, 10).astype(np.float64)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
     def test_multiply(self):
         with _test_eager_guard():

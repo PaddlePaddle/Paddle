@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import tempfile
@@ -135,7 +133,9 @@ class TestProfiler(unittest.TestCase):
                                                                  record=2,
                                                                  repeat=1,
                                                                  skip_first=1),
-                               on_trace_ready=my_trace_back) as prof:
+                               on_trace_ready=my_trace_back,
+                               profile_memory=True,
+                               record_shapes=True) as prof:
             for i in range(5):
                 y = x / 2.0
                 paddle.grad(outputs=y, inputs=[x], grad_outputs=ones_like_y)

@@ -56,7 +56,7 @@ static void VisitVariable(const Variable& var, Func* func) {
 }
 
 struct TensorVisitor {
-  Tensor* result_{nullptr};
+  phi::DenseTensor* result_{nullptr};
 
   void operator()(LoDTensor* tensor) { result_ = tensor; }
 
@@ -71,7 +71,7 @@ struct TensorVisitor {
   }
 };
 
-Tensor& VariableVisitor::GetMutableTensor(Variable* var) {
+phi::DenseTensor& VariableVisitor::GetMutableTensor(Variable* var) {
   TensorVisitor vistor;
   VisitVariable(var, &vistor);
   return *vistor.result_;

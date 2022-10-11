@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import math
@@ -140,6 +138,30 @@ class TestRNNOp(OpTest):
         if not self.is_test:
             var_name_list = self.get_weight_names()
             grad_check_list = ['Input', 'init_h', 'init_c']
+            grad_check_list.extend(var_name_list)
+            self.check_grad(set(grad_check_list),
+                            ['Out', 'last_hidden', 'last_cell'])
+
+    def test_grad_only_input(self):
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['Input']
+            grad_check_list.extend(var_name_list)
+            self.check_grad(set(grad_check_list),
+                            ['Out', 'last_hidden', 'last_cell'])
+
+    def test_grad_only_h(self):
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['init_h']
+            grad_check_list.extend(var_name_list)
+            self.check_grad(set(grad_check_list),
+                            ['Out', 'last_hidden', 'last_cell'])
+
+    def test_grad_only_c(self):
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['init_c']
             grad_check_list.extend(var_name_list)
             self.check_grad(set(grad_check_list),
                             ['Out', 'last_hidden', 'last_cell'])

@@ -233,7 +233,7 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 write_cuda_env_config_py(filename='@PADDLE_BINARY_DIR@/python/paddle/cuda_env.py')
 
 def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
-    cnt = '''from __future__ import print_function
+    cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
@@ -270,6 +270,8 @@ packages=['paddle',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
+          'paddle.distributed.communication',
+          'paddle.distributed.communication.stream',
           'paddle.distributed.metric',
           'paddle.distributed.ps',
           'paddle.distributed.ps.utils',
@@ -285,6 +287,7 @@ packages=['paddle',
           'paddle.incubate.asp',
           'paddle.incubate.passes',
           'paddle.distribution',
+          'paddle.distributed.utils',
           'paddle.distributed.sharding',
           'paddle.distributed.fleet',
           'paddle.distributed.launch',
@@ -294,6 +297,7 @@ packages=['paddle',
           'paddle.distributed.launch.plugins',
           'paddle.distributed.launch.utils',
           'paddle.distributed.fleet.base',
+          'paddle.distributed.fleet.recompute',
           'paddle.distributed.fleet.elastic',
           'paddle.distributed.fleet.meta_optimizers',
           'paddle.distributed.fleet.meta_optimizers.sharding',
@@ -305,6 +309,8 @@ packages=['paddle',
           'paddle.distributed.fleet.metrics',
           'paddle.distributed.fleet.proto',
           'paddle.distributed.fleet.utils',
+          'paddle.distributed.fleet.layers',
+          'paddle.distributed.fleet.layers.mpu',
           'paddle.distributed.fleet.meta_parallel',
           'paddle.distributed.fleet.meta_parallel.pp_utils',
           'paddle.distributed.fleet.meta_parallel.sharding',
@@ -363,6 +369,9 @@ packages=['paddle',
           'paddle.vision.models',
           'paddle.vision.transforms',
           'paddle.vision.datasets',
+          'paddle.audio',
+	  'paddle.audio.functional',
+	  'paddle.audio.features',
           'paddle.text',
           'paddle.text.datasets',
           'paddle.incubate',
@@ -372,6 +381,7 @@ packages=['paddle',
           'paddle.incubate.optimizer.functional',
           'paddle.incubate.autograd',
           'paddle.incubate.distributed',
+          'paddle.incubate.distributed.fleet',
           'paddle.incubate.distributed.models',
           'paddle.incubate.distributed.models.moe',
           'paddle.incubate.distributed.models.moe.gate',
@@ -402,27 +412,15 @@ packages=['paddle',
           'paddle.profiler',
           'paddle.geometric',
           'paddle.geometric.message_passing',
+          'paddle.geometric.sampling',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
-# Note(wangzhongpu):
-# When compiling paddle under python36, the dependencies belonging to python2.7 will be imported, resulting in errors when installing paddle
-if sys.version_info >= (3,6) and sys.version_info < (3,7):
-    setup_requires_tmp = []
-    for setup_requires_i in setup_requires:
-        if "<\"3.6\"" in setup_requires_i or "<\"3.5\"" in setup_requires_i or "<=\"3.5\"" in setup_requires_i:
-            continue
-        setup_requires_tmp+=[setup_requires_i]
-    setup_requires = setup_requires_tmp
-if sys.version_info >= (3,5) and sys.version_info < (3,6):
-    setup_requires_tmp = []
-    for setup_requires_i in setup_requires:
-        if "<\"3.5\"" in setup_requires_i:
-            continue
-        setup_requires_tmp+=[setup_requires_i]
-    setup_requires = setup_requires_tmp
+if sys.version_info < (3,7):
+    raise RuntimeError("Paddle only support Python version>=3.7 now")
+
 if sys.version_info >= (3,7):
     setup_requires_tmp = []
     for setup_requires_i in setup_requires:
@@ -443,8 +441,6 @@ else:
     package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
 package_data['paddle.fluid'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
-if '${HAS_NOAVX_CORE}' == 'ON':
-    package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -486,7 +482,7 @@ else:
         package_data['paddle.libs'] += ['openblas' + ext_name]
     elif os.name == 'posix' and platform.machine() == 'aarch64' and '${OPENBLAS_LIB}'.endswith('so'):
         # copy the libopenblas.so on linux+aarch64
-        # special: core_noavx.so depends on 'libopenblas.so.0', not 'libopenblas.so'
+        # special: libpaddle.so without avx depends on 'libopenblas.so.0', not 'libopenblas.so'
         if os.path.exists('${OPENBLAS_LIB}' + '.0'):
             shutil.copy('${OPENBLAS_LIB}' + '.0', libs_path)
             package_data['paddle.libs'] += ['libopenblas.so.0']
@@ -581,8 +577,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
         else:
-            commands = ["patchelf --set-soname '${FLUID_CORE_NAME}.so' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
-            commands.append("patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
+            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
@@ -627,6 +622,8 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/kernels/primitive')) +  # phi kernel primitive api headers
     # capi headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/capi', recursive=True)) +  # phi capi headers
+    # profiler headers
+    list(find_files('trace_event.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform/profiler')) +  # phi profiler headers
     # utils api headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/utils', recursive=True))) # paddle utils headers
 
@@ -681,6 +678,9 @@ class InstallHeaders(Command):
             if 'fluid/jit' in install_dir:
                 install_dir = re.sub('fluid/jit', 'jit', install_dir)
                 print('fluid/jit install_dir: ', install_dir)
+            if 'trace_event.h' in install_dir:
+                install_dir = re.sub('fluid/platform/profiler', 'phi/backends/custom', install_dir)
+                print('trace_event.h install_dir: ', install_dir)
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
@@ -735,12 +735,8 @@ else:
         yield
 
 # Log for PYPI
-if sys.version_info > (3,0):
-    with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r", encoding='UTF-8') as f:
-        long_description = f.read()
-else:
-    with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r")as f:
-        long_description = unicode(f.read(), 'UTF-8')
+with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r", encoding='UTF-8') as f:
+    long_description = f.read()
 
 # strip *.so to reduce package size
 if '${WITH_STRIP}' == 'ON':

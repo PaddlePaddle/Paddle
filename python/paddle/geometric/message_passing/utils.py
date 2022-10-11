@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import paddle
 from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_dtype, convert_dtype
 from paddle.fluid.layers.tensor import cast
@@ -50,3 +51,35 @@ def get_out_size_tensor_inputs(inputs, attrs, out_size, op_type):
         inputs["Out_size"] = out_size
     else:
         raise TypeError("Out_size only supports Variable or int.")
+
+
+def reshape_lhs_rhs(x, y):
+    """
+    Expand dims to ensure there will be no broadcasting issues with different
+    number of dimensions.
+    """
+    if len(x.shape) == 1:
+        x = paddle.reshape(x, [-1, 1])
+    if len(y.shape) == 1:
+        y = paddle.reshape(y, [-1, 1])
+
+    x_shape = paddle.shape(x)
+    y_shape = paddle.shape(y)
+    if len(x.shape) != len(y.shape):
+        max_ndims = max(len(x.shape), len(y.shape))
+        x_pad_ndims = max_ndims - len(x.shape)
+        y_pad_ndims = max_ndims - len(y.shape)
+        new_x_shape = [
+            x_shape[0],
+        ] + [
+            1,
+        ] * x_pad_ndims + list(x_shape[1:])
+        new_y_shape = [
+            y_shape[0],
+        ] + [
+            1,
+        ] * y_pad_ndims + list(y_shape[1:])
+        x = paddle.reshape(x, new_x_shape)
+        y = paddle.reshape(y, new_y_shape)
+
+    return x, y

@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
 
+extern "C" {
+#include <xxhash.h>
+}
+
 #include <algorithm>
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/version.h"
@@ -247,6 +251,18 @@ void ProgramDesc::SetFetchHolderName(const std::string &fetch_holder_name) {
   auto *fetch_holder = global_block->Var(fetch_holder_name);
   fetch_holder->SetType(proto::VarType::FETCH_LIST);
   fetch_holder->SetPersistable(true);
+}
+
+std::string ProgramDesc::CachedHashString() {
+  std::string serialize_str;
+  if (cached_hash_str_.size() == 0 || NeedUpdate()) {
+    Flush();
+    desc_.SerializePartialToString(&serialize_str);
+    // non-cryptographic is enough
+    cached_hash_str_ =
+        std::to_string(XXH64(serialize_str.c_str(), serialize_str.size(), 1));
+  }
+  return cached_hash_str_;
 }
 
 bool ProgramDesc::NeedUpdate() const {

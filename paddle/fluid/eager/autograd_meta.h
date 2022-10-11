@@ -123,12 +123,6 @@ class AutogradMeta : public AbstractAutogradMeta {
     stop_gradient_ = static_cast<int>(stop_gradient);
   }
 
-  void WeakSetStopGradient(bool stop_gradient) {
-    if (stop_gradient_ == -1) {
-      stop_gradient_ = static_cast<int>(stop_gradient);
-    }
-  }
-
   bool Persistable() const { return persistable_; }
 
   void SetPersistable(bool persistable) { persistable_ = persistable; }

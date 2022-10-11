@@ -15,16 +15,16 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class ROIAlignNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<framework::Tensor>("X");              // (B,C,H,W）
-    auto* ROIs = ctx.Input<framework::Tensor>("ROIs");        // (N，4）
-    auto* ROIsNum = ctx.Input<framework::Tensor>("RoisNum");  // [0 1 1 2 2 2]
-    auto* Out = ctx.Output<framework::Tensor>("Out");
+    auto* X = ctx.Input<phi::DenseTensor>("X");              // (B,C,H,W）
+    auto* ROIs = ctx.Input<phi::DenseTensor>("ROIs");        // (N，4）
+    auto* ROIsNum = ctx.Input<phi::DenseTensor>("RoisNum");  // [0 1 1 2 2 2]
+    auto* Out = ctx.Output<phi::DenseTensor>("Out");
     Out->mutable_data<T>(ctx.GetPlace());
 
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
@@ -63,7 +63,7 @@ class ROIAlignNPUKernel : public framework::OpKernel<T> {
     runner_c.Run(stream);
 
     // concate to make (N, 5)
-    std::vector<paddle::framework::Tensor> x_list;
+    std::vector<phi::DenseTensor> x_list;
     x_list.push_back(ROIsNum_fp);
     x_list.push_back(*ROIs);
     auto axis = 1;
@@ -95,11 +95,10 @@ template <typename T>
 class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -137,7 +136,7 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
             "ROIAlignGradNPU only support ROIs type equaled to FP32."));
 
     // Cast RoisNum to fp32 tensor
-    auto* RoisNum = ctx.Input<framework::Tensor>("RoisNum");
+    auto* RoisNum = ctx.Input<phi::DenseTensor>("RoisNum");
     Tensor ROIs_N5;
     ROIs_N5.mutable_data<float>({rois_num, 5}, place);
     Tensor ROIsNum_fp;
@@ -150,15 +149,17 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     ROIsNum_fp.Resize({rois_num, 1});
 
     // Combine *ROIsNum with ROIs to get new ROIs
-    std::vector<paddle::framework::Tensor> x_list;
+    std::vector<phi::DenseTensor> x_list;
     x_list.push_back(ROIsNum_fp);
     x_list.push_back(*rois);
     const auto& runner_concat = NpuOpRunner(
         "ConcatD", {x_list}, {ROIs_N5}, {{"N", 2}, {"concat_dim", 1}});
     runner_concat.Run(stream);
 
-    //  By analysis, in order to match cpu grad version,
-    //  rois[:,3:5] should substrate 1 before call ascend grad function
+    //  If CANN version code is less than 504, by analysis, in order to match
+    //  cpu grad version, rois[:,3:5] should substrate 1 before call ascend grad
+    //  function
+#if (CANN_VERSION_CODE < 504000)
     std::vector<float> vec_dlt = {0, 0, 0, -1.0f, -1.0f};
     Tensor tsr_dlt;
     tsr_dlt.mutable_data<float>({5}, place);
@@ -167,6 +168,7 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
     const auto& runner_add =
         NpuOpRunner("AddV2", {ROIs_N5, tsr_dlt}, {ROIs_N5}, {});
     runner_add.Run(stream);
+#endif
 
     //  Call ascend RoiAlignGrad function
     int roi_end_mode = 0;

@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -29,7 +29,7 @@ class FillConstantBatchSizeLikeOpMLUKernel : public framework::OpKernel<T> {
     auto str_value = ctx.Attr<std::string>("str_value");
     auto force_cpu = ctx.Attr<bool>("force_cpu");
 
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("Input");
     if (in->lod().size() && ctx.Attr<int>("input_dim_idx") == 0) {
       // set the correct batch size for the LoDTensor.

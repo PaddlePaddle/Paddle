@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import io
 import os
 import unittest
@@ -24,7 +22,7 @@ import paddle.nn as nn
 from paddle.dataset.common import DATA_HOME
 from paddle.fluid.framework import core, _non_static_mode, _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 import sys
 import tempfile
@@ -36,8 +34,8 @@ from tokenizer.bert_tokenizer import BertTokenizer
 def to_string_tensor(string_values, name):
     """
     Create the tensor that the value holds the list of string.
-    NOTICE: The value will be holded in the cpu place. 
- 
+    NOTICE: The value will be holded in the cpu place.
+
     Args:
         string_values(list[string]): The value will be setted to the tensor.
         name(string): The name of the tensor.
@@ -51,9 +49,9 @@ def to_string_tensor(string_values, name):
 def to_map_tensor(string_dict, name):
     """
     Create the tensor that the value holds the map, the type of key is the string
-    and the value is the int. 
-    NOTICE: The value will be holded in the cpu place. 
- 
+    and the value is the int.
+    NOTICE: The value will be holded in the cpu place.
+
     Args:
         string_dict(dict): The value will be setted to the tensor.
         name(string): The name of the tensor.
@@ -79,7 +77,7 @@ class FasterTokenizer(nn.Layer):
                 is_split_into_words=False,
                 pad_to_max_seq_len=False):
         if _non_static_mode():
-            input_ids, seg_ids = _C_ops.faster_tokenizer(
+            input_ids, seg_ids = _legacy_C_ops.faster_tokenizer(
                 self.vocab, text, text_pair, "do_lower_case", do_lower_case,
                 "max_seq_len", max_seq_len, "pad_to_max_seq_len",
                 pad_to_max_seq_len, "is_split_into_words", is_split_into_words)
@@ -214,9 +212,11 @@ class TestBertTokenizerOp(unittest.TestCase):
         py_input_ids = np.array(encoded_inputs[0]["input_ids"]).reshape([1, -1])
         py_token_type_ids = np.array(
             encoded_inputs[0]["token_type_ids"]).reshape([1, -1])
-        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
-        self.assertTrue(
-            np.allclose(token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
+        np.testing.assert_allclose(input_ids, py_input_ids, rtol=0, atol=0.01)
+        np.testing.assert_allclose(token_type_ids,
+                                   py_token_type_ids,
+                                   rtol=0,
+                                   atol=0.01)
 
         # case 2: only one text and one text_pair (batch_size = 1)
         input_ids, token_type_ids = self.faster_tokenizer(
@@ -238,9 +238,11 @@ class TestBertTokenizerOp(unittest.TestCase):
         py_input_ids = np.array(encoded_inputs[0]["input_ids"]).reshape([1, -1])
         py_token_type_ids = np.array(
             encoded_inputs[0]["token_type_ids"]).reshape([1, -1])
-        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
-        self.assertTrue(
-            np.allclose(token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
+        np.testing.assert_allclose(input_ids, py_input_ids, rtol=0, atol=0.01)
+        np.testing.assert_allclose(token_type_ids,
+                                   py_token_type_ids,
+                                   rtol=0,
+                                   atol=0.01)
 
         # case 3: only texts (batch_size = 3)
         input_ids, token_type_ids = self.faster_tokenizer(
@@ -261,9 +263,11 @@ class TestBertTokenizerOp(unittest.TestCase):
         py_token_type_ids = [i["token_type_ids"] for i in encoded_inputs]
         py_input_ids = np.array(py_input_ids).reshape([3, -1])
         py_token_type_ids = np.array(py_token_type_ids).reshape([3, -1])
-        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
-        self.assertTrue(
-            np.allclose(token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
+        np.testing.assert_allclose(input_ids, py_input_ids, rtol=0, atol=0.01)
+        np.testing.assert_allclose(token_type_ids,
+                                   py_token_type_ids,
+                                   rtol=0,
+                                   atol=0.01)
 
         # case 4: texts and text pairs (batch_size = 3)
         input_ids, token_type_ids = self.faster_tokenizer(
@@ -286,9 +290,11 @@ class TestBertTokenizerOp(unittest.TestCase):
         py_token_type_ids = [i["token_type_ids"] for i in encoded_inputs]
         py_input_ids = np.array(py_input_ids).reshape([3, -1])
         py_token_type_ids = np.array(py_token_type_ids).reshape([3, -1])
-        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
-        self.assertTrue(
-            np.allclose(token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
+        np.testing.assert_allclose(input_ids, py_input_ids, rtol=0, atol=0.01)
+        np.testing.assert_allclose(token_type_ids,
+                                   py_token_type_ids,
+                                   rtol=0,
+                                   atol=0.01)
 
     def test_padding(self):
         with _test_eager_guard():
@@ -319,9 +325,11 @@ class TestBertTokenizerOp(unittest.TestCase):
         py_input_ids = np.array(encoded_inputs[0]["input_ids"]).reshape([1, -1])
         py_token_type_ids = np.array(
             encoded_inputs[0]["token_type_ids"]).reshape([1, -1])
-        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
-        self.assertTrue(
-            np.allclose(token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
+        np.testing.assert_allclose(input_ids, py_input_ids, rtol=0, atol=0.01)
+        np.testing.assert_allclose(token_type_ids,
+                                   py_token_type_ids,
+                                   rtol=0,
+                                   atol=0.01)
 
         # case 2: only one text and one text_pair (batch_size = 1)
         input_ids, token_type_ids = self.faster_tokenizer(
@@ -343,9 +351,11 @@ class TestBertTokenizerOp(unittest.TestCase):
         py_input_ids = np.array(encoded_inputs[0]["input_ids"]).reshape([1, -1])
         py_token_type_ids = np.array(
             encoded_inputs[0]["token_type_ids"]).reshape([1, -1])
-        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
-        self.assertTrue(
-            np.allclose(token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
+        np.testing.assert_allclose(input_ids, py_input_ids, rtol=0, atol=0.01)
+        np.testing.assert_allclose(token_type_ids,
+                                   py_token_type_ids,
+                                   rtol=0,
+                                   atol=0.01)
 
     def test_no_padding(self):
         with _test_eager_guard():
@@ -367,9 +377,11 @@ class TestBertTokenizerOp(unittest.TestCase):
         py_input_ids = np.array(encoded_inputs["input_ids"]).reshape([1, -1])
         py_token_type_ids = np.array(encoded_inputs["token_type_ids"]).reshape(
             [1, -1])
-        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
-        self.assertTrue(
-            np.allclose(token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
+        np.testing.assert_allclose(input_ids, py_input_ids, rtol=0, atol=0.01)
+        np.testing.assert_allclose(token_type_ids,
+                                   py_token_type_ids,
+                                   rtol=0,
+                                   atol=0.01)
 
     def test_is_split_into_words(self):
         with _test_eager_guard():
@@ -399,9 +411,11 @@ class TestBertTokenizerOp(unittest.TestCase):
         py_input_ids = np.array(encoded_inputs[0]["input_ids"]).reshape([1, -1])
         py_token_type_ids = np.array(
             encoded_inputs[0]["token_type_ids"]).reshape([1, -1])
-        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
-        self.assertTrue(
-            np.allclose(token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
+        np.testing.assert_allclose(input_ids, py_input_ids, rtol=0, atol=0.01)
+        np.testing.assert_allclose(token_type_ids,
+                                   py_token_type_ids,
+                                   rtol=0,
+                                   atol=0.01)
 
     def test_feed_string_var(self):
         self.init_data()

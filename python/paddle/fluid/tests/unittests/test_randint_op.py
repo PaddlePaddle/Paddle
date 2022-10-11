@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import paddle
 import unittest
@@ -51,8 +49,7 @@ class TestRandintOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.001),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
     def test_check_output_eager(self):
         with _test_eager_guard():
@@ -102,8 +99,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.001),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
     def test_check_output_eager(self):
         with _test_eager_guard():
@@ -127,8 +123,7 @@ class TestRandint_attr_tensor(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.001),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
     def test_check_output_eager(self):
         with _test_eager_guard():
@@ -210,7 +205,7 @@ class TestRandomValue(unittest.TestCase):
             return
 
         # Different GPU generatte different random value. Only test V100 here.
-        if not "V100" in paddle.device.cuda.get_device_name():
+        if "V100" not in paddle.device.cuda.get_device_name():
             return
 
         print("Test Fixed Random number on GPU------>")

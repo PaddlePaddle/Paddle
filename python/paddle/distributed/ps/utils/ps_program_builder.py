@@ -118,6 +118,49 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
         return
 
 
+class NuPsProgramBuilder(PsProgramBuilder):
+
+    def __init__(self, pass_ctx):
+        super(NuPsProgramBuilder, self).__init__(pass_ctx)
+        if not self.attrs['local_sparse']:
+            raise ValueError("No local sparse params")
+
+    def _build_trainer_programs(self):
+        add_lr_decay_table_pass = new_pass("add_lr_decay_table_pass",
+                                           self.attrs)
+        add_lr_decay_table_pass.apply([], [], self.pass_ctx)
+
+        distributed_ops_pass = new_pass("distributed_ops_pass", self.attrs)
+        distributed_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
+
+        delete_optimizer_pass = new_pass("delete_optimizer_pass", self.attrs)
+        delete_optimizer_pass.apply([self.cloned_main], [None], self.pass_ctx)
+
+        append_send_ops_pass = new_pass("append_send_ops_pass",
+                                        self.attrs)  # fleet->PushDenseVarsAsync
+        append_send_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
+
+        delete_extra_optimizer_pass = new_pass("delete_extra_optimizer_pass",
+                                               self.attrs)
+        delete_extra_optimizer_pass.apply([self.attrs['origin_main_program']],
+                                          [self.cloned_startup], self.pass_ctx)
+
+        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.attrs)
+        fake_init_ops_pass.apply([None], [self.cloned_startup], self.pass_ctx)
+
+        append_send_ops_pass = new_pass("append_send_ops_pass",
+                                        self.attrs)  # communicator->Send
+        append_send_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
+
+        self.attrs['origin_main_program'] = self.cloned_main
+        self.attrs['origin_startup_program'] = self.cloned_startup
+
+        if self.launch_barrier and self.launch_barrier_flag:
+            wait_server_ready(self.server_endpoints)
+
+        return
+
+
 class CpuSyncPsProgramBuilder(PsProgramBuilder):
 
     def __init__(self, pass_ctx):
@@ -330,8 +373,8 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
         _main_file = ps_log_root_dir + '4_fl_worker_main_program.prototxt'
         #debug_program(_main_file, self.cloned_main)
 
-        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.attrs)
-        fake_init_ops_pass.apply([None], [self.cloned_startup], self.pass_ctx)
+        #fake_init_ops_pass = new_pass("fake_init_ops_pass", self.attrs)
+        #fake_init_ops_pass.apply([None], [self.cloned_startup], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '5_fl_worker_main_program.prototxt'
         #debug_program(_main_file, self.cloned_main)

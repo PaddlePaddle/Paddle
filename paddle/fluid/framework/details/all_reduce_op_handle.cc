@@ -248,7 +248,7 @@ void AllReduceOpHandle::AllReduceFunc(
                      ->FindVar(out_var_names[0])
                      ->GetMutable<LoDTensor>();
 
-    // Reduce All Tensor to trg in CPU
+    // Reduce All phi::DenseTensor to trg in CPU
     ReduceBufferData func(lod_tensor_data, trg.data(), numel);
     VisitDataType(framework::TransToProtoVarType(trg.dtype()), func);
 
@@ -276,19 +276,26 @@ void AllReduceOpHandle::BKCLAllReduceFunc(
     if (all_reduce_calls.size() == 1UL) {
       all_reduce_calls[0]();
     } else {
-      PADDLE_ENFORCE_EQ(
-          bkcl_group_start(),
-          BKCL_SUCCESS,
-          platform::errors::PreconditionNotMet("bkcl_group_start failed"));
+      platform::BKCLGroupGuard guard;
       for (auto &call : all_reduce_calls) {
         call();
       }
-      PADDLE_ENFORCE_EQ(
-          bkcl_group_end(),
-          BKCL_SUCCESS,
-          platform::errors::PreconditionNotMet("bkcl_group_end failed"));
     }
   });
+
+  SyncBKCLAllReduce();
+}
+
+void AllReduceOpHandle::SyncBKCLAllReduce() {
+  // bkcl always use async kernel
+  for (auto &p : places_) {
+    int dev_id = p.device;
+    platform::SetXPUDeviceId(dev_id);
+    auto *bkcl_ctxs =
+        bkcl_ctxs_->GetRunEnvBKCLCtx(run_order_, use_hierarchical_allreduce_);
+    auto &bkcl_ctx = bkcl_ctxs->at(dev_id);
+    platform::XPUStreamSync(bkcl_ctx.stream());
+  }
 }
 #endif
 

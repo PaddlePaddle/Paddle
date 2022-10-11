@@ -173,6 +173,17 @@ class TensorDistributedAttribute:
     def clear_annotated(self):
         self._is_annotated.clear()
 
+    def __eq__(self, other):
+        if not isinstance(other, TensorDistributedAttribute):
+            return False
+        if self.process_mesh != other.process_mesh:
+            return False
+        if self.dims_mapping != other.dims_mapping:
+            return False
+        if self._is_annotated != other._is_annotated:
+            return False
+        return True
+
     def __str__(self):
         str = "\n\ttensor_dist_attr = {"
         if self.is_annotated("process_mesh"):
@@ -276,8 +287,8 @@ class OperatorDistributedAttribute:
         dist_attr_object.init(dist_attr)
         self._inputs_dist_attrs[name] = dist_attr_object
 
-    # def del_input_dist_attr(self, name):
-    #     del self._inputs_dist_attrs[name]
+    def del_input_dist_attr(self, name):
+        del self._inputs_dist_attrs[name]
 
     def get_output_dist_attr(self, name):
         return self._outputs_dist_attrs.get(name, None)
@@ -287,8 +298,8 @@ class OperatorDistributedAttribute:
         dist_attr_object.init(dist_attr)
         self._outputs_dist_attrs[name] = dist_attr_object
 
-    # def del_output_dist_attr(self, name):
-    #     del self._inputs_dist_attrs[name]
+    def del_output_dist_attr(self, name):
+        del self._outputs_dist_attrs[name]
 
     def get_input_dims_mapping(self, name):
         input_dist_attr = self.get_input_dist_attr(name)
@@ -485,6 +496,27 @@ class OperatorDistributedAttribute:
             return output_dist_attr.is_annotated("dims_mapping")
         else:
             return False
+
+    def __eq__(self, other):
+        if not isinstance(other, OperatorDistributedAttribute):
+            return False
+        if self.process_mesh != other.process_mesh:
+            return False
+        if self.op_type != other.op_type:
+            return False
+        if self.impl_type != other.impl_type:
+            return False
+        if self.impl_idx != other.impl_idx:
+            return False
+        if self._is_annotated != other._is_annotated:
+            return False
+        if self._is_recompute != other._is_recompute:
+            return False
+        if self.inputs_dist_attrs != other.inputs_dist_attrs:
+            return False
+        if self.outputs_dist_attrs != other.outputs_dist_attrs:
+            return False
+        return True
 
     def __str__(self):
         str = "\n\top_dist_attr = {"

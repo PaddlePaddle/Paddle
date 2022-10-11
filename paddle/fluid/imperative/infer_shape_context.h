@@ -109,21 +109,14 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     if (it == var_map_out_->end() || it->second.empty()) {
       return false;
     }
-    if (allow_null) {
-      for (auto& output : it->second) {
-        if (output != nullptr) {
-          return true;
-        }
-      }
-      return false;
-    } else {
+    if (!allow_null) {
       for (auto& output : it->second) {
         if (output == nullptr) {
           return false;
         }
       }
-      return true;
     }
+    return true;
   }
 
   framework::AttrReader Attrs() const override {
@@ -169,6 +162,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
     return vec_res;
   }
+
   std::string GetInputNameByIdx(size_t idx) const override {
     auto& op_proto =
         paddle::framework::OpInfoMap::Instance().Get(op_type_).proto_;
@@ -287,7 +281,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         var_map_out_->end(),
         platform::errors::NotFound("Can not find [%s] in outputs.", name));
     for (auto& var : it->second) {
-      res.emplace_back(var->MutableVar());
+      if (var) {
+        res.emplace_back(var->MutableVar());
+      } else {
+        res.emplace_back(framework::InferShapeVarPtr());
+      }
     }
     return res;
   }

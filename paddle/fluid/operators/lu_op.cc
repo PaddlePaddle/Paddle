@@ -24,7 +24,7 @@ namespace operators {
 class LUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddComment(R"DOC(LU decomposition, 
+    AddComment(R"DOC(LU decomposition,
                 Computes the LU factorization of a matrix or batches of matrices A.
                 )DOC");
     AddInput("X", "(Tensor) The input tensor, shape of (*,m,n)");

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -301,7 +299,7 @@ for stype in support_types:
     create_test_class(globals(),
                       XPUTestHuberLossOp,
                       stype,
-                      ignore_deivce_version=[core.XPUVersion.XPU1])
+                      ignore_device_version=[core.XPUVersion.XPU1])
 
 if __name__ == '__main__':
     unittest.main()

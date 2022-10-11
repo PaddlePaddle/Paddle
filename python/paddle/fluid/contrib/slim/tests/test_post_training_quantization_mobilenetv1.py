@@ -146,8 +146,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
             os.system(cmd)
 
         self.batch_size = 1 if os.environ.get('DATASET') == 'full' else 50
-        self.sample_iterations = 50 if os.environ.get(
-            'DATASET') == 'full' else 2
         self.infer_iterations = 50000 if os.environ.get(
             'DATASET') == 'full' else 2
 
@@ -241,11 +239,13 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def generate_quantized_model(self,
                                  model_path,
                                  quantizable_op_type,
+                                 batch_size,
                                  algo="KL",
                                  round_type="round",
                                  is_full_quantize=False,
                                  is_use_cache_file=False,
                                  is_optimize_model=False,
+                                 batch_nums=10,
                                  onnx_format=False):
         try:
             os.system("mkdir " + self.int8_model)
@@ -262,6 +262,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         ptq = PostTrainingQuantization(executor=exe,
                                        sample_generator=val_reader,
                                        model_dir=model_path,
+                                       batch_size=batch_size,
+                                       batch_nums=batch_nums,
                                        algo=algo,
                                        quantizable_op_type=quantizable_op_type,
                                        round_type=round_type,
@@ -283,25 +285,26 @@ class TestPostTrainingQuantization(unittest.TestCase):
                  is_use_cache_file,
                  is_optimize_model,
                  diff_threshold,
-                 onnx_format=False):
+                 onnx_format=False,
+                 batch_nums=10):
         infer_iterations = self.infer_iterations
         batch_size = self.batch_size
-        sample_iterations = self.sample_iterations
 
         model_cache_folder = self.download_data(data_urls, data_md5s, model)
 
         print("Start FP32 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
-        (fp32_throughput, fp32_latency,
-         fp32_acc1) = self.run_program(model_cache_folder + "/model",
-                                       batch_size, infer_iterations)
+        (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
+            os.path.join(model_cache_folder, "model"), batch_size,
+            infer_iterations)
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
-              format(model, sample_iterations * batch_size))
-        self.generate_quantized_model(model_cache_folder + "/model",
-                                      quantizable_op_type, algo, round_type,
-                                      is_full_quantize, is_use_cache_file,
-                                      is_optimize_model, onnx_format)
+              format(model, batch_nums * batch_size))
+        self.generate_quantized_model(os.path.join(model_cache_folder, "model"),
+                                      quantizable_op_type, batch_size, algo,
+                                      round_type, is_full_quantize,
+                                      is_use_cache_file, is_optimize_model,
+                                      batch_nums, onnx_format)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
@@ -344,6 +347,7 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
         is_use_cache_file = False
         is_optimize_model = True
         diff_threshold = 0.025
+        batch_nums = 3
         self.run_test(model, algo, round_type, data_urls, data_md5s,
                       quantizable_op_type, is_full_quantize, is_use_cache_file,
                       is_optimize_model, diff_threshold)
@@ -392,9 +396,18 @@ class TestPostTraininghistForMobilenetv1(TestPostTrainingQuantization):
         is_use_cache_file = False
         is_optimize_model = True
         diff_threshold = 0.03
-        self.run_test(model, algo, round_type, data_urls, data_md5s,
-                      quantizable_op_type, is_full_quantize, is_use_cache_file,
-                      is_optimize_model, diff_threshold)
+        batch_nums = 3
+        self.run_test(model,
+                      algo,
+                      round_type,
+                      data_urls,
+                      data_md5s,
+                      quantizable_op_type,
+                      is_full_quantize,
+                      is_use_cache_file,
+                      is_optimize_model,
+                      diff_threshold,
+                      batch_nums=batch_nums)
 
 
 class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
@@ -441,6 +454,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
         is_optimize_model = True
         onnx_format = True
         diff_threshold = 0.05
+        batch_nums = 3
         self.run_test(model,
                       algo,
                       round_type,
@@ -451,7 +465,8 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1(TestPostTrainingQuantization):
                       is_use_cache_file,
                       is_optimize_model,
                       diff_threshold,
-                      onnx_format=onnx_format)
+                      onnx_format=onnx_format,
+                      batch_nums=batch_nums)
 
 
 if __name__ == '__main__':

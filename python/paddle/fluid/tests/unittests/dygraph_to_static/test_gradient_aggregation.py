@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -50,10 +48,9 @@ class TestGradientAggregationInDy2Static(unittest.TestCase):
             return net.linear1.weight.grad
 
         inp = paddle.to_tensor(np.random.randn(10, )).astype("float32")
-        self.assertTrue(
-            np.allclose(
-                simplenet_grad(inp, True).numpy(),
-                simplenet_grad(inp, False).numpy()))
+        np.testing.assert_allclose(simplenet_grad(inp, True).numpy(),
+                                   simplenet_grad(inp, False).numpy(),
+                                   rtol=1e-05)
 
 
 if __name__ == '__main__':

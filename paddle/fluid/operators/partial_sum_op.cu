@@ -24,7 +24,7 @@ namespace operators {
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
 using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <class T>
 __global__ void SumArrayPartialCUDAKernel(T **in,
@@ -77,8 +77,8 @@ template <typename T>
 class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto in_vars = ctx.MultiInput<Tensor>("X");
-    Tensor *out = ctx.Output<Tensor>("Out");
+    auto in_vars = ctx.MultiInput<phi::DenseTensor>("X");
+    Tensor *out = ctx.Output<phi::DenseTensor>("Out");
 
     PADDLE_ENFORCE_EQ(
         in_vars[0] != nullptr,
@@ -122,7 +122,10 @@ class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     if (!in_data.empty()) {
-      auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
+      auto tmp_in_array = memory::Alloc(
+          dev_ctx.GetPlace(),
+          in_data.size() * sizeof(T *),
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
       memory::Copy(dev_ctx.GetPlace(),
                    tmp_in_array->ptr(),
@@ -148,7 +151,8 @@ template <typename T>
 class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const Tensor *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    const Tensor *out_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto outs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
 
@@ -204,8 +208,10 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
     }
 
     if (!out_data.empty()) {
-      auto tmp_out_array =
-          memory::Alloc(dev_ctx, out_data.size() * sizeof(T *));
+      auto tmp_out_array = memory::Alloc(
+          dev_ctx.GetPlace(),
+          out_data.size() * sizeof(T *),
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
       memory::Copy(dev_ctx.GetPlace(),
                    tmp_out_array->ptr(),

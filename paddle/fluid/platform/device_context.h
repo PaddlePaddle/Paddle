@@ -117,8 +117,9 @@ enum DeviceType {
   XPU = 3,
   IPU = 4,
   MLU = 5,
+  CUSTOM_DEVICE = 6,
 
-  MAX_DEVICE_TYPES = 6,
+  MAX_DEVICE_TYPES = 7,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -129,6 +130,7 @@ constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
+constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
 
 using DeviceContext = phi::DeviceContext;
 
@@ -337,24 +339,14 @@ void EmplaceDeviceContexts(
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  static DeviceContextPool& Instance() {
-    PADDLE_ENFORCE_NOT_NULL(pool,
-                            platform::errors::PreconditionNotMet(
-                                "Need to Create DeviceContextPool firstly!"));
-    return *pool;
-  }
+  static DeviceContextPool& Instance();
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
-    if (pool == nullptr) {
-      pool = new DeviceContextPool(places);
-    }
-    return *pool;
-  }
+  static DeviceContextPool& Init(const std::vector<platform::Place>& places);
 
-  static bool IsInitialized() { return pool != nullptr; }
+  static bool IsInitialized();
 
-  static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
+  static void SetPool(DeviceContextPool* dev_pool);
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
@@ -378,7 +370,6 @@ class DeviceContextPool {
  private:
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
-  static DeviceContextPool* pool;
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
   static thread_local const std::

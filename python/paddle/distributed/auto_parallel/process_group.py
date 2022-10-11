@@ -151,7 +151,7 @@ class ProcessGroup:
             tmp = paddle.to_tensor(
                 [1], dtype="int32") if _non_static_mode() else fill_constant(
                     [0], dtype="int32", value="1")
-            paddle.distributed.all_reduce(tmp, use_calc_stream=True, group=self)
+            paddle.distributed.all_reduce(tmp, sync_op=True, group=self)
             paddle.distributed.wait(tmp, group=self)
             paddle.enable_static()
 
@@ -160,20 +160,23 @@ class ProcessGroup:
     def is_member(self):
         return True
 
-    # def __eq__(self, other):
-    #     if not isinstance(other, ProcessGroup):
-    #         return False
-    #     if self.id != other.id:
-    #         return False
-    #     return True
+    def __eq__(self, other):
+        if not isinstance(other, ProcessGroup):
+            return False
+        if self.id != other.id:
+            return False
+        return True
 
-    # def __ne__(self, other):
-    #     return not self.__eq__(other)
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __str__(self):
         string = "id: {}, nranks: {}, ranks: {}.".format(
             self.id, self.nranks, ", ".join(map(str, self.ranks)))
         return string
+
+    def __hash__(self):
+        return hash(self.__str__())
 
 
 # Note that Process group 0 is reserved for representing all ranks.

@@ -30,7 +30,7 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using LoDTensor = framework::LoDTensor;
 
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
@@ -301,7 +301,10 @@ static void NMS(const phi::GPUContext &ctx,
 
   const T *boxes = proposals.data<T>();
   auto place = ctx.GetPlace();
-  auto mask_ptr = memory::Alloc(ctx, boxes_num * col_blocks * sizeof(uint64_t));
+  auto mask_ptr =
+      memory::Alloc(ctx.GetPlace(),
+                    boxes_num * col_blocks * sizeof(uint64_t),
+                    phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   uint64_t *mask_dev = reinterpret_cast<uint64_t *>(mask_ptr->ptr());
 
   NMSKernel<<<blocks, threads, 0, ctx.stream()>>>(

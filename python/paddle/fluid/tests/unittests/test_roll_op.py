@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import numpy as np
@@ -78,7 +76,7 @@ class TestRollAPI(unittest.TestCase):
                            return_numpy=False)
             expect_out = np.array([[9.0, 1.0, 2.0], [3.0, 4.0, 5.0],
                                    [6.0, 7.0, 8.0]])
-            self.assertTrue(np.allclose(expect_out, np.array(res)))
+            np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
         with program_guard(Program(), Program()):
@@ -90,7 +88,7 @@ class TestRollAPI(unittest.TestCase):
                            return_numpy=False)
         expect_out = np.array([[7.0, 8.0, 9.0], [1.0, 2.0, 3.0],
                                [4.0, 5.0, 6.0]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
         self.input_data()
@@ -101,7 +99,7 @@ class TestRollAPI(unittest.TestCase):
             np_z = z.numpy()
         expect_out = np.array([[9.0, 1.0, 2.0], [3.0, 4.0, 5.0],
                                [6.0, 7.0, 8.0]])
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
         with fluid.dygraph.guard():
@@ -110,7 +108,7 @@ class TestRollAPI(unittest.TestCase):
             np_z = z.numpy()
         expect_out = np.array([[7.0, 8.0, 9.0], [1.0, 2.0, 3.0],
                                [4.0, 5.0, 6.0]])
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
     def test_roll_op_false(self):
         self.input_data()
@@ -134,7 +132,7 @@ class TestRollAPI(unittest.TestCase):
             axes = [0, 1]
             out = paddle.roll(x, shifts=shifts, axis=axes).numpy()
             expected_out = np.array([[8, 6, 7], [2, 0, 1], [5, 3, 4]])
-            self.assertTrue(np.allclose(out, expected_out))
+            np.testing.assert_allclose(out, expected_out, rtol=1e-05)
 
     def test_shifts_as_tensor_static(self):
         with program_guard(Program(), Program()):
@@ -147,12 +145,12 @@ class TestRollAPI(unittest.TestCase):
 
             exe = fluid.Executor(fluid.CPUPlace())
             [out_np] = exe.run(fetch_list=[out])
-            self.assertTrue(np.allclose(out_np, expected_out))
+            np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
 
             if paddle.is_compiled_with_cuda():
                 exe = fluid.Executor(fluid.CPUPlace())
                 [out_np] = exe.run(fetch_list=[out])
-                self.assertTrue(np.allclose(out_np, expected_out))
+                np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
 
 
 if __name__ == "__main__":

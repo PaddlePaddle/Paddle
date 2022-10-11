@@ -68,8 +68,8 @@ class EmbEltwiseLayerNormFunctor {
                   int seq_len,
                   int hidden,
                   const int64_t *ids,
-                  const float *scale,
-                  const float *bias,
+                  const T *scale,
+                  const T *bias,
                   const int64_t *embs,
                   T *output,
                   float eps,
@@ -125,10 +125,10 @@ class SkipLayerNormFunctor {
                   const int hidden,
                   const T *input1,
                   const T *input2,
-                  const float *scale,
-                  const float *bias,
+                  const T *scale,
+                  const T *bias,
                   T *output,
-                  T eps,
+                  float eps,
                   gpuStream_t stream);
 };
 #endif

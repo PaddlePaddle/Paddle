@@ -40,7 +40,7 @@ class TestComplexSumLayer(unittest.TestCase):
                     var_x = dg.to_variable(input)
                     result = tensor.sum(var_x, axis=[1, 2]).numpy()
                     target = np.sum(input, axis=(1, 2))
-                    self.assertTrue(np.allclose(result, target))
+                    np.testing.assert_allclose(result, target, rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():

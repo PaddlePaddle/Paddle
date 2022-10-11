@@ -33,8 +33,8 @@
 namespace paddle {
 namespace imperative {
 
-static void AllReduce(const framework::Tensor &src,
-                      framework::Tensor *dst,
+static void AllReduce(const phi::DenseTensor &src,
+                      phi::DenseTensor *dst,
                       const XPUStream stream,
                       const platform::BKCLComm *comm) {
   const auto &place = src.place();
@@ -181,7 +181,7 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
 
 void BKCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
-  framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  phi::DenseTensor *src_tensor = src->GetMutable<framework::LoDTensor>();
   const auto &place = src_tensor->place();
   platform::BKCLComm *comm =
       platform::BKCLCommContext::Instance().Get(ring_id, place);

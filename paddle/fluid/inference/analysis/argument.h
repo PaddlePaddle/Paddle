@@ -250,6 +250,22 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
   DECL_ARGUMENT_FIELD(dlnne_max_batch_size, DlnneMaxBatchSize, int);
+  DECL_ARGUMENT_FIELD(dlnne_use_static_batch, DlnneUseStaticBatch, bool);
+  DECL_ARGUMENT_FIELD(dlnne_weight_share_mode,
+                      DlnneWeightShareMode,
+                      std::string);
+  DECL_ARGUMENT_FIELD(dlnne_disable_nodes_by_outputs,
+                      DlnneDisableNodesByOutputs,
+                      std::unordered_set<std::string>);
+  DECL_ARGUMENT_FIELD(dlnne_use_calib_mode, DlnneUseCalibMode, bool);
+  DECL_ARGUMENT_FIELD(dlnne_precision_mode,
+                      DlnnePrecisionMode,
+                      AnalysisConfig::Precision);
+
+  using dlnne_input_shape_type = std::map<std::string, std::vector<int64_t>>;
+  DECL_ARGUMENT_FIELD(dlnne_input_shape_dict,
+                      DlnneInputShapeDict,
+                      dlnne_input_shape_type);
   DECL_ARGUMENT_FIELD(dlnne_workspace_size, DlnneWorkspaceSize, int);
 
   DECL_ARGUMENT_FIELD(lite_passes_filter,
@@ -295,6 +311,7 @@ struct Argument {
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
+  DECL_ARGUMENT_FIELD(trt_engine_memory_sharing, TrtEngineMemorySharing, bool);
 
   // Indicate which kind of sort algorithm is used for operators, the memory
   // optimization relays on the sort algorithm.
@@ -324,6 +341,12 @@ struct Argument {
                       IpuAvailableMemoryProportion,
                       float);
   DECL_ARGUMENT_FIELD(ipu_enable_half_partial, IpuEnableHalfPartial, bool);
+  DECL_ARGUMENT_FIELD(ipu_custom_ops_info,
+                      IpuCustomOpsInfo,
+                      std::vector<std::vector<std::string>>);
+  DECL_ARGUMENT_FIELD(ipu_custom_patterns,
+                      IpuCustomPatterns,
+                      std::vector<std::vector<std::string>>);
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);

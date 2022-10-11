@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import op_test
 import numpy as np
 import unittest
@@ -74,8 +72,8 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         gpu_, pinned_ = exe.run(main_program,
                                 feed={},
                                 fetch_list=[gpu_var.name, pinned_var.name])
-        self.assertTrue(np.allclose(gpu_, pinned_))
-        self.assertTrue(np.allclose(pinned_, np.ones((10, 10))))
+        np.testing.assert_allclose(gpu_, pinned_, rtol=1e-05)
+        np.testing.assert_allclose(pinned_, np.ones((10, 10)), rtol=1e-05)
 
     def test_pinned_copy_gpu(self):
         main_program, gpu_var, pinned_var = self.get_prog()
@@ -88,8 +86,8 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         gpu_, pinned_ = exe.run(main_program,
                                 feed={},
                                 fetch_list=[gpu_var.name, pinned_var.name])
-        self.assertTrue(np.allclose(gpu_, pinned_))
-        self.assertTrue(np.allclose(gpu_, np.zeros((10, 10))))
+        np.testing.assert_allclose(gpu_, pinned_, rtol=1e-05)
+        np.testing.assert_allclose(gpu_, np.zeros((10, 10)), rtol=1e-05)
 
     def test_hip_copy_bool_value(self):
         if core.is_compiled_with_rocm():
@@ -182,11 +180,12 @@ class TestMemcpyOPError(unittest.TestCase):
                                                   "value": 1.0,
                                                   "place_type": 1
                                               })
-        main_program.global_block().append_op(type='memcpy',
-                                              inputs={'X': selected_row_var},
-                                              outputs={'Out': pinned_var},
-                                              attrs={'dst_place_type': 2})
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(RuntimeError):
+            main_program.global_block().append_op(
+                type='memcpy',
+                inputs={'X': selected_row_var},
+                outputs={'Out': pinned_var},
+                attrs={'dst_place_type': 2})
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             selected_row_var_, pinned_ = exe.run(

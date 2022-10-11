@@ -18,7 +18,7 @@ from paddle.fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygr
 from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.fluid.layers.tensor import cast
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 import paddle.utils.deprecated as deprecated
 
 
@@ -37,9 +37,9 @@ def graph_send_recv(x,
 
     Graph Learning Send_Recv combine operator.
 
-    This operator is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory 
+    This operator is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory
     consumption in the process of message passing. Take `x` as the input tensor, we first use `src_index`
-    to gather the corresponding data, and then use `dst_index` to update the corresponding position of output tensor 
+    to gather the corresponding data, and then use `dst_index` to update the corresponding position of output tensor
     in different pooling types, like sum, mean, max, or min. Besides, we can set `out_size` to get necessary output shape.
 
     .. code-block:: text
@@ -67,20 +67,20 @@ def graph_send_recv(x,
     Args:
         x (Tensor): The input tensor, and the available data type is float32, float64, int32, int64.
         src_index (Tensor): An 1-D tensor, and the available data type is int32, int64.
-        dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`. 
-                            The available data type is int32, int64. 
-        pool_type (str): The pooling type of graph_send_recv, including `sum`, `mean`, `max`, `min`.
+        dst_index (Tensor): An 1-D tensor, and should have the same shape as `src_index`.
+                            The available data type is int32, int64.
+        pool_type (str): The pooling types of graph_send_recv, including `sum`, `mean`, `max`, `min`.
                          Default value is `sum`.
-        out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or 
+        out_size (int|Tensor|None): We can set `out_size` to get necessary output shape. If not set or
                                     out_size is smaller or equal to 0, then this input will not be used.
-                                    Otherwise, `out_size` should be equal with or larger than 
+                                    Otherwise, `out_size` should be equal with or larger than
                                     max(dst_index) + 1.
         name (str, optional): Name for the operation (optional, default is None).
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`. 
-                      If `out_size` is set correctly, then it should have the same shape as `x` except 
+        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`.
+                      If `out_size` is set correctly, then it should have the same shape as `x` except
                       the 0th dimension.
 
     Examples:
@@ -122,15 +122,15 @@ def graph_send_recv(x,
 
     if _in_legacy_dygraph():
         out_size = convert_out_size_to_list(out_size)
-        out, tmp = _C_ops.graph_send_recv(x, src_index,
-                                          dst_index, None, 'pool_type',
-                                          pool_type.upper(), 'out_size',
-                                          out_size)
+        out, tmp = _legacy_C_ops.graph_send_recv(x, src_index, dst_index,
+                                                 None, 'reduce_op',
+                                                 pool_type.upper(), 'out_size',
+                                                 out_size)
         return out
     if in_dygraph_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.final_state_graph_send_recv(x, src_index, dst_index,
-                                                  pool_type.upper(), out_size)
+        return _C_ops.graph_send_recv(x, src_index, dst_index,
+                                      pool_type.upper(), out_size)
 
     check_variable_and_dtype(x, "X", ("float32", "float64", "int32", "int64"),
                              "graph_send_recv")
@@ -151,7 +151,7 @@ def graph_send_recv(x,
                                                           stop_gradient=True)
 
     inputs = {"X": x, "Src_index": src_index, "Dst_index": dst_index}
-    attrs = {"pool_type": pool_type.upper()}
+    attrs = {"reduce_op": pool_type.upper()}
     get_out_size_tensor_inputs(inputs=inputs,
                                attrs=attrs,
                                out_size=out_size,

@@ -14,8 +14,9 @@
 
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import Variable
+from paddle.fluid.framework import Variable, in_dygraph_mode
 from paddle.fluid import core
+from paddle import _C_ops
 
 __all__ = ['check_finite_and_unscale', 'update_loss_scaling']
 
@@ -27,8 +28,8 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
     $$Out = X / scale$$
 
     If any tensor in X contains Inf or Nan, the Out will generate a indicator.
-    FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of 
-    Out should not be used, and its data may not be deterministic. 
+    FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of
+    Out should not be used, and its data may not be deterministic.
     Otherwise, FoundInfinite will be 0 (False).
 
     Args:
@@ -42,7 +43,12 @@ def check_finite_and_unscale(x, scale, name=None, float_status=None):
                                  'check_finite_and_unscale')
 
     helper = LayerHelper("check_finite_and_unscale", **locals())
+
     found_inf = helper.create_variable_for_type_inference(dtype='bool')
+
+    if in_dygraph_mode():
+        _C_ops.check_finite_and_unscale_(x, scale, found_inf)
+        return x, found_inf
 
     inputs = {'X': x, 'Scale': scale}
     if core.is_compiled_with_npu():
@@ -70,29 +76,29 @@ def update_loss_scaling(x,
                         stop_update=False,
                         name=None):
     """
-    Update loss scaling according to overall gradients. If all gradients is 
-    finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
+    Update loss scaling according to overall gradients. If all gradients is
+    finite after incr_every_n_steps, loss scaling will increase by incr_ratio.
     Otherwise, loss scaling will decrease by decr_ratio after
     decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 
     Args:
         x(list|tuple): The input tensors of update_loss_scaling operator.
-        found_inf (Variable): A boolean variable indicates whether 
+        found_inf (Variable): A boolean variable indicates whether
                                      there is any infinite gradient.
         prev_loss_scaling (Variable): Previous loss scaling.
-        num_good_steps (Variable): A variable accumulates good steps in which 
+        num_good_steps (Variable): A variable accumulates good steps in which
                                    all gradients are finite.
-        num_bad_steps (Variable): A variable accumulates bad steps in which 
+        num_bad_steps (Variable): A variable accumulates bad steps in which
                                   some gradients are infinite.
-        incr_every_n_steps (int): A variable represents increasing loss 
-                                       scaling every n consecutive steps with 
+        incr_every_n_steps (int): A variable represents increasing loss
+                                       scaling every n consecutive steps with
                                        finite gradients.
-        decr_every_n_nan_or_inf (int): A variable represents decreasing 
-                                            loss scaling every n accumulated 
+        decr_every_n_nan_or_inf (int): A variable represents decreasing
+                                            loss scaling every n accumulated
                                             steps with nan or inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
+        incr_ratio(float): The multiplier to use when increasing the loss
                            scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
+        decr_ratio(float): The less-than-one-multiplier to use when decreasing
                            loss scaling.
     """
 
@@ -107,6 +113,13 @@ def update_loss_scaling(x,
                 "The dtype of prev_loss_scaling should be float32 when the dtype of x is float16."
         else:
             assert prev_loss_scaling.dtype == e.dtype, "The dtype of prev_loss_scaling should be equal to the dtype of x."
+
+    if in_dygraph_mode():
+        _C_ops.update_loss_scaling_(x, found_inf, prev_loss_scaling,
+                                    num_good_steps, num_bad_steps,
+                                    incr_every_n_steps, decr_every_n_nan_or_inf,
+                                    incr_ratio, decr_ratio, stop_update)
+        return x
 
     helper = LayerHelper("update_loss_scaling", **locals())
 

@@ -108,8 +108,8 @@ void GLOOParallelContext::AllReduceByStream(const framework::Variable &src,
   }
 }
 
-void GLOOParallelContext::AllReduce(const framework::Tensor &src_tensor,
-                                    framework::Tensor *dst_tensor) {
+void GLOOParallelContext::AllReduce(const phi::DenseTensor &src_tensor,
+                                    phi::DenseTensor *dst_tensor) {
   auto gloo_wrapper = framework::GlooWrapper::GetInstance();
   dst_tensor->Resize(src_tensor.dims());
   switch (framework::TransToProtoVarType(src_tensor.dtype())) {

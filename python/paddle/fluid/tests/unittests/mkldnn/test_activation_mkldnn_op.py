@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from scipy.special import expit, erf
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_activation_op import TestActivation, TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu, TestSwish, TestHardSwish, TestRelu6, TestSigmoid
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
@@ -132,11 +130,7 @@ class TestMKLDNNHardSwishDim2(TestHardSwish):
 
     def setUp(self):
         super(TestMKLDNNHardSwishDim2, self).setUp()
-
-        self.attrs["use_mkldnn"] = True
-
-    def init_dtype(self):
-        self.dtype = np.float32
+        self.attrs = {"use_mkldnn": True}
 
 
 class TestMKLDNNSigmoidDim2(TestSigmoid):
@@ -313,8 +307,12 @@ class TestMKLDNNSwishDim4(TestSwish):
 
 
 def ref_hardswish(x, threshold=6.0, scale=6.0, offset=3.0):
+    x_dtype = x.dtype
+    if x_dtype == 'float16':
+        x_dtype = 'float16'
+        x = x.astype('float32')
     return (x * np.minimum(np.maximum(x + offset, 0.), threshold) /
-            scale).astype(x.dtype)
+            scale).astype(x_dtype)
 
 
 class TestMKLDNNHardSwishDim4(TestHardSwish):

@@ -22,7 +22,6 @@ import paddle.optimizer
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
                                                           np_dtype_to_fluid_str)
-from paddle.utils.cpp_extension import load
 
 paddle.enable_static()
 
@@ -93,7 +92,10 @@ class TestBase(IPUOpTest):
                 # none
                 cpu_res = self.feed['x']
 
-            self.assertTrue(np.allclose(ipu_res[0], cpu_res, atol=self.atol))
+            np.testing.assert_allclose(ipu_res[0],
+                                       cpu_res,
+                                       rtol=1e-05,
+                                       atol=self.atol)
 
     def test_base(self):
         # TODO: use string instead of int for reduction

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
@@ -882,10 +880,10 @@ class API_TestSumOp(unittest.TestCase):
                 res, = exe.run(feed={"data": input_data},
                                fetch_list=[result_sum])
 
-            self.assertTrue(
-                np.allclose(res,
-                            np.sum(input_data.astype(attr_dtype),
-                                   axis=np_axis)))
+            np.testing.assert_allclose(res,
+                                       np.sum(input_data.astype(attr_dtype),
+                                              axis=np_axis),
+                                       rtol=1e-05)
 
     def test_static(self):
         shape = [10, 10]
@@ -955,7 +953,7 @@ class TestAllAPI(unittest.TestCase):
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], np.all(input_np)))
+            np.testing.assert_allclose(fetches[0], np.all(input_np), rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -1011,7 +1009,7 @@ class TestAnyAPI(unittest.TestCase):
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], np.any(input_np)))
+            np.testing.assert_allclose(fetches[0], np.any(input_np), rtol=1e-05)
 
     def test_static(self):
         for place in self.places:

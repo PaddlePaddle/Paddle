@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid.core as core
@@ -182,8 +180,8 @@ class TestDyRnnStaticInput(unittest.TestCase):
         expected_outs, expected_lods = self.get_expected_static_step_outs()
         for i in range(self._max_sequence_len):
             step_out, lod = self.fetch_value(static_step_outs[i])
-            self.assertTrue(np.allclose(step_out, expected_outs[i]))
-            self.assertTrue(np.allclose(lod, expected_lods[i]))
+            np.testing.assert_allclose(step_out, expected_outs[i], rtol=1e-05)
+            np.testing.assert_allclose(lod, expected_lods[i], rtol=1e-05)
 
     def test_network_gradient(self):
         static_input_grad, loss = self.build_graph()
@@ -205,10 +203,13 @@ class TestDyRnnStaticInput(unittest.TestCase):
             y_neg = self.fetch_value(loss)[0][0]
             self.static_input_tensor._set_float_element(i, origin)
             numeric_gradients.ravel()[i] = (y_pos - y_neg) / self._delta / 2
-        self.assertTrue(np.allclose(actual_gradients, numeric_gradients, 0.001))
-        self.assertTrue(
-            np.allclose(actual_lod,
-                        self.static_input_tensor.recursive_sequence_lengths()))
+        np.testing.assert_allclose(actual_gradients,
+                                   numeric_gradients,
+                                   rtol=0.001)
+        np.testing.assert_allclose(
+            actual_lod,
+            self.static_input_tensor.recursive_sequence_lengths(),
+            rtol=1e-05)
 
 
 if __name__ == '__main__':

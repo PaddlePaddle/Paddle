@@ -21,6 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+VarDesc::VarDesc(const VarDesc &other)
+    : desc_(other.desc_),
+      attrs_(other.attrs_),
+      original_id_(other.original_id_) {
+  if (other.dist_attr_) {
+    dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
+  }
+}
+
 proto::VarType::Type VarDesc::GetType() const { return desc_.type().type(); }
 
 void VarDesc::SetType(proto::VarType::Type type) {
@@ -212,11 +221,11 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
   PADDLE_ENFORCE_EQ(
       desc_.has_type(),
       true,
-      platform::errors::NotFound("The variable's type was not be set."));
+      platform::errors::NotFound("The variable's type was not set."));
   PADDLE_ENFORCE_EQ(
       desc_.type().has_type(),
       true,
-      platform::errors::NotFound("The variable's type was not be set."));
+      platform::errors::NotFound("The variable's type was not set."));
   switch (desc_.type().type()) {
     case proto::VarType::SELECTED_ROWS:
       return desc_.type().selected_rows();
@@ -228,6 +237,8 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
       return desc_.type().strings();
     case proto::VarType::VOCAB:
       return desc_.type().vocab();
+    case proto::VarType::SPARSE_COO:
+      return desc_.type().sparse_coo();
     default:
       PADDLE_THROW(platform::errors::Unavailable(
           "Getting 'tensor_desc' is not supported by the %s type variable.",
@@ -275,6 +286,8 @@ proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
       return desc_.mutable_type()->mutable_strings();
     case proto::VarType::VOCAB:
       return desc_.mutable_type()->mutable_vocab();
+    case proto::VarType::SPARSE_COO:
+      return desc_.mutable_type()->mutable_sparse_coo();
     default:
       PADDLE_THROW(
           platform::errors::Unavailable("Getting 'mutable_tensor_desc' is not "
@@ -352,6 +365,22 @@ Attribute VarDesc::GetAttr(const std::string &name) const {
       attrs_.end(),
       platform::errors::NotFound("Attribute %s is not found.", name));
   return it->second;
+}
+
+TensorDistAttr *VarDesc::MutableDistAttr() {
+  // If dist_attr_ is nullptr, construct a new one and return.
+  if (dist_attr_) {
+    return dist_attr_.get();
+  } else {
+    dist_attr_.reset(new TensorDistAttr(*this));
+    return dist_attr_.get();
+  }
+}
+
+void VarDesc::SetDistAttr(const TensorDistAttr &dist_attr) {
+  // Make sure this dist attr be created
+  MutableDistAttr();
+  *dist_attr_ = dist_attr;
 }
 
 bool operator==(const VarDesc &left, const VarDesc &right) {

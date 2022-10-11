@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This script simply removes all grad ops and kernels. You should use this script 
+This script simply removes all grad ops and kernels. You should use this script
 when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction library.
 """
 
@@ -67,18 +67,12 @@ if __name__ == '__main__':
 
     tool_dir = os.path.dirname(os.path.abspath(__file__))
 
-    if sys.version_info[0] == 3:
-        all_op = glob.glob(os.path.join(tool_dir,
-                                        '../paddle/fluid/operators/**/*.cc'),
-                           recursive=True)
-        all_op += glob.glob(os.path.join(tool_dir,
-                                         '../paddle/fluid/operators/**/*.cu'),
-                            recursive=True)
-    elif sys.version_info[0] == 2:
-        all_op = find_type_files(
-            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cc')
-        all_op = find_type_files(
-            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cu', all_op)
+    all_op = glob.glob(os.path.join(tool_dir,
+                                    '../paddle/fluid/operators/**/*.cc'),
+                       recursive=True)
+    all_op += glob.glob(os.path.join(tool_dir,
+                                     '../paddle/fluid/operators/**/*.cu'),
+                        recursive=True)
 
     spec_ops = ['activation_op.cc']
 

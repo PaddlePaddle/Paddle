@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import math
 import time
 import unittest
@@ -118,9 +116,13 @@ class TestResnet(unittest.TestCase):
             static_loss = self.train(to_static=True)
             dygraph_loss = self.train(to_static=False)
             # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
-            self.assertTrue(np.allclose(static_loss, dygraph_loss, atol=1e-3),
-                            msg="static_loss: {} \n dygraph_loss: {}".format(
-                                static_loss, dygraph_loss))
+            np.testing.assert_allclose(
+                static_loss,
+                dygraph_loss,
+                rtol=1e-05,
+                atol=0.001,
+                err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                    static_loss, dygraph_loss))
 
 
 if __name__ == '__main__':

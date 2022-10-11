@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 
@@ -508,7 +506,9 @@ class TestDy2StIfElseBackward(unittest.TestCase):
         net.train()
         out = net(a, b, c)
         out.backward()
-        self.assertTrue(np.allclose((b + net.param).numpy(), out.numpy()))
+        np.testing.assert_allclose((b + net.param).numpy(),
+                                   out.numpy(),
+                                   rtol=1e-05)
 
 
 if __name__ == '__main__':

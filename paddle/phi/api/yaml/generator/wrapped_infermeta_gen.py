@@ -45,9 +45,10 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
 
             tensor_type_map = {
                 'const Tensor&': 'const MetaTensor&',
-                'const std::vector<Tensor>&': 'const std::vector<MetaTensor>&',
+                'const std::vector<Tensor>&':
+                'const std::vector<const MetaTensor*>&',
                 'Tensor': 'MetaTensor*',
-                'std::vector<Tensor>': 'std::vector<MetaTensor>*',
+                'std::vector<Tensor>': 'std::vector<MetaTensor*>',
                 'const paddle::optional<Tensor>&': 'const MetaTensor&'
             }
 
@@ -167,7 +168,7 @@ def main():
     parser.add_argument('--api_yaml_path',
                         help='path to api yaml file',
                         nargs='+',
-                        default='paddle/phi/api/yaml/api.yaml')
+                        default='paddle/phi/api/yaml/ops.yaml')
     parser.add_argument(
         '--wrapped_infermeta_header_path',
         help='output of generated wrapped_infermeta header code file',

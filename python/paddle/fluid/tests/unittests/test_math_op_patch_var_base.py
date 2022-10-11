@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -78,7 +76,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = fluid.dygraph.to_variable(b_np)
             res = a / b
             #NOTE: Not sure why array_equal fails on windows, allclose is acceptable
-            self.assertTrue(np.allclose(res.numpy(), a_np / b_np))
+            np.testing.assert_allclose(res.numpy(), a_np / b_np, rtol=1e-05)
 
     def test_div(self):
         with _test_eager_guard():
@@ -157,7 +155,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             b = 0.1
             res = a / b
-            self.assertTrue(np.allclose(res.numpy(), a_np / b))
+            np.testing.assert_allclose(res.numpy(), a_np / b, rtol=1e-05)
 
     def test_div_scalar(self):
         with _test_eager_guard():
@@ -172,7 +170,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
             res = a**b
-            self.assertTrue(np.allclose(res.numpy(), a_np**b_np))
+            np.testing.assert_allclose(res.numpy(), a_np**b_np, rtol=1e-05)
 
     def test_pow(self):
         with _test_eager_guard():
@@ -388,11 +386,10 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             x = fluid.layers.ones((2, 2), dtype="float32")
             y = t * x
 
-            self.assertTrue(
-                np.allclose(y.numpy(),
-                            t * np.ones((2, 2), dtype="float32"),
-                            rtol=1e-05,
-                            atol=0.0))
+            np.testing.assert_allclose(y.numpy(),
+                                       t * np.ones((2, 2), dtype='float32'),
+                                       rtol=1e-05,
+                                       atol=0.0)
 
     def test_np_left_mul(self):
         with _test_eager_guard():
@@ -734,6 +731,22 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         with _test_eager_guard():
             self.func_test_complex_scalar()
         self.func_test_complex_scalar()
+
+    def func_test_matmul(self):
+        x_np = np.random.uniform(-1, 1, [2, 3]).astype(self.dtype)
+        y_np = np.random.uniform(-1, 1, [3, 2]).astype(self.dtype)
+        except_out = x_np @ y_np
+
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            out = x @ y
+            np.testing.assert_allclose(out.numpy(), except_out, atol=1e-03)
+
+    def test_matmul(self):
+        with _test_eager_guard():
+            self.func_test_matmul()
+        self.func_test_matmul()
 
 
 if __name__ == '__main__':

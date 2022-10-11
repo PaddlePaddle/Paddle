@@ -95,6 +95,12 @@ message KernelEventInfoProto {
   required uint64 submitted = 13;
   // The completed timestamp for the kernel execution, in ns.
   required uint64 completed = 14;
+  // blocks per sm
+  required float blocks_per_sm = 15;
+  // warps per sm
+  required float warps_per_sm = 16;
+  // theoretical achieved occupancy
+  required float occupancy = 17;
 }
 
 message MemcpyEventInfoProto {
@@ -270,9 +276,27 @@ message ExtraInfoMap {
   required string value = 2;
 }
 
+message DevicePropertyProto {
+  required uint32 id = 1;
+  required string name = 2;
+  required uint64 total_global_memory = 3;
+  required uint32 compute_major = 4;
+  required uint32 compute_minor = 5;
+  required uint32 max_threads_per_block = 6;
+  required uint32 max_threads_per_multiprocessor = 7;
+  required uint32 regs_per_block = 8;
+  required uint32 regs_per_multiprocessor = 9;
+  required uint32 warp_size = 10;
+  required uint64 shared_memory_per_block = 11;
+  required uint64 shared_memory_per_multiprocessor = 12;
+  required uint32 sm_count = 13;
+  required uint64 shared_memory_per_block_optin = 14;
+}
+
 message NodeTreesProto {
   required string version = 1;
   required uint32 span_indx = 2;
   repeated ThreadNodeTreeProto thread_trees = 3;
   repeated ExtraInfoMap extra_info = 4;
+  repeated DevicePropertyProto device_property = 5;
 }

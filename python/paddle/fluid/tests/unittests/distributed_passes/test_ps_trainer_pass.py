@@ -12,17 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
-import os
 import unittest
-import numpy as np
 
-import paddle
-from ps_pass_test_base import *
+from ps_pass_test_base import remove_path_if_exists, PsPassTestBase
 from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
-from paddle.fluid.tests.unittests.ps.ps_dnn_trainer import DnnTrainer
 
 
 class TestPsTrainerPass(PsPassTestBase):
@@ -149,7 +142,7 @@ class TestPsTrainerPass(PsPassTestBase):
         self.config['debug_new_minimize'] = '0'
         self.config['log_dir'] = ps_log_root_dir + "gpubox_log_old_minimize"
         remove_path_if_exists(self.config['log_dir'])
-        self.ps_launch("gpu-ps")
+        #self.ps_launch("gpu-ps")
 
         self.config['debug_new_minimize'] = '1'
         self.config['log_dir'] = ps_log_root_dir + "gpubox_log_new_minimize"

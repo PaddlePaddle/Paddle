@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.utils import gast
 import inspect
 import numpy as np
@@ -327,7 +325,7 @@ class TestTransformWhileLoop(unittest.TestCase):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
         print(static_numpy, dygraph_numpy)
-        self.assertTrue(np.allclose(dygraph_numpy, static_numpy))
+        np.testing.assert_allclose(dygraph_numpy, static_numpy, rtol=1e-05)
 
 
 class TestTransformWhileLoopWithoutTensor(TestTransformWhileLoop):
@@ -404,7 +402,9 @@ class TestTransformForLoop(unittest.TestCase):
             return ret.numpy()
 
     def test_ast_to_func(self):
-        self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+        np.testing.assert_allclose(self._run_dygraph(),
+                                   self._run_static(),
+                                   rtol=1e-05)
 
 
 class TestTransformForLoop2(TestTransformForLoop):

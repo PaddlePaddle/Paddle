@@ -26,7 +26,7 @@ void GraphSendRecvKernel(const Context& ctx,
                          const DenseTensor& x,
                          const DenseTensor& src_index,
                          const DenseTensor& dst_index,
-                         const std::string& pool_type,
+                         const std::string& reduce_op,
                          const IntArray& out_size,
                          DenseTensor* out,
                          DenseTensor* dst_count);
