@@ -293,6 +293,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
     const AllreduceOptions& opts) {
+  return AllReduce(inputs, outputs, opts, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
+    std::vector<phi::DenseTensor>& inputs,
+    std::vector<phi::DenseTensor>& outputs,
+    const AllreduceOptions& opts,
+    bool sync_op) {
   auto tag = next_tag();
   std::shared_ptr<GlooTask> task;
   auto context = get_context();
