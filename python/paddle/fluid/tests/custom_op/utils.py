@@ -14,7 +14,6 @@
 
 import os
 import sys
-import six
 from distutils.sysconfig import get_python_lib
 from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
 
