@@ -74,5 +74,3 @@ per-file-ignores =
     python/paddle/fluid/tests/unittests/sequence/*:F401
     python/paddle/fluid/tests/unittests/mkldnn/*:F401
     python/paddle/fluid/tests/unittests/rnn/*:F401
-    python/paddle/fluid/tests/unittests/test_*:F401
-    python/paddle/fluid/tests/*:F401
