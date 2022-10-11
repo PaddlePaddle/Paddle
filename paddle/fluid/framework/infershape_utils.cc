@@ -236,6 +236,7 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
     } else if (var->IsType<phi::SelectedRows>()) {
       auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
+      phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
     } else if (var->IsType<phi::SparseCooTensor>()) {
       auto* tensor = var->GetMutable<phi::SparseCooTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
