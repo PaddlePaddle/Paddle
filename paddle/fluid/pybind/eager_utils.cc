@@ -763,7 +763,7 @@ PyObject* ToPyObject(const void* value) {
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value) {
   PyObject* dict = PyDict_New();
-  for (const auto map_iter : value) {
+  for (const auto& map_iter : value) {
     // Convert Key
     PyObject* key_string = PyUnicode_FromString(map_iter.first.c_str());
     if (!key_string) {
@@ -773,7 +773,7 @@ PyObject* ToPyObject(
 
     // Convert Val
     PyObject* py_list = PyList_New(0);
-    for (const auto vector_iter : map_iter.second) {
+    for (const auto& vector_iter : map_iter.second) {
       PyObject* val_string = PyUnicode_FromString(vector_iter.c_str());
       if (!val_string) {
         PADDLE_THROW(platform::errors::Fatal(
@@ -800,7 +800,7 @@ PyObject* ToPyObject(
 
 PyObject* ToPyObject(const std::unordered_map<std::wstring, int>& value) {
   PyObject* dict = PyDict_New();
-  for (const auto map_iter : value) {
+  for (const auto& map_iter : value) {
     // Convert Key
     PyObject* key_string =
         PyUnicode_FromWideChar(map_iter.first.c_str(), map_iter.first.size());
