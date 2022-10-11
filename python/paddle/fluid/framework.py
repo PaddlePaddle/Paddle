@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from __future__ import print_function
 
 import collections
 from collections import defaultdict
@@ -181,9 +179,9 @@ def _fallback_legacy_dygraph():
     global _in_eager_mode_
     global _is_first_import_
     need_fallback = False
-    # Only enable eager on CPU/GPU
-    is_not_support = core.is_compiled_with_xpu() or core.is_compiled_with_npu(
-    ) or core.is_compiled_with_ipu() or core.is_compiled_with_mlu()
+    # Only enable eager on CPU/GPU/XPU
+    is_not_support = core.is_compiled_with_npu() or core.is_compiled_with_ipu(
+    ) or core.is_compiled_with_mlu()
 
     if _in_eager_mode_ and is_not_support:
         # switch into legacy dygraph mode
@@ -245,8 +243,8 @@ def _non_static_mode():
 
 @signature_safe_contextmanager
 def _test_eager_guard(place=None):
-    # FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
-    # only GPU/CPU. Remove this after we improve this feature.
+    # FIXME(dev): We haven't fully verified eager mode on NPU et.al but
+    # only GPU/CPU/XPU. Remove this after we improve this feature.
     already_fallback = _fallback_legacy_dygraph()
     if not already_fallback:
         _disable_legacy_dygraph()
@@ -286,13 +284,13 @@ def ipu_shard_guard(index=-1, stage=-1):
             The sharded model will be computed from small to large. The default value is -1,
             which means no pipelining computation order and run Ops in terms of graph.
 
-    **Note**:
-    Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer
-    to :code:`paddle.static.IpuStrategy` .
-    Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer
-    to :code:`paddle.static.IpuStrategy` .
-    A index is allowed to match none stage or a stage. A stage is only allowed to match a new or
-    duplicated index.
+    Note:
+        Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer
+        to :ref:`api_paddle_static_IpuStrategy`.
+        Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer
+        to :ref:`api_paddle_static_IpuStrategy`.
+        A index is allowed to match none stage or a stage. A stage is only allowed to match a new or
+        duplicated index.
 
     Examples:
         .. code-block:: python
@@ -331,6 +329,11 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
     """
     Shard the ipu with the given call function. Set every ops in call function to the given ipu sharding.
 
+    Note:
+        Only when enable_manual_shard=True to set the index to a value other than -1. please refer to :ref:`api_paddle_static_IpuStrategy` .
+        Only when enable_pipelining=True to set stage to a value other than -1. please refer to :ref:`api_paddle_static_IpuStrategy` .
+        An index supports a corresponding None stage or a stage, and a stage only supports a new index or a duplicate index.
+
     Args:
         call_func(Layer|function): Specify the call function to be wrapped.
         index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
@@ -341,7 +344,6 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
 
     Returns:
         The wrapped call function.
-
 
     Examples:
         .. code-block:: python
@@ -1004,19 +1006,20 @@ def cuda_pinned_places(device_count=None):
 
 def mlu_places(device_ids=None):
     """
-    **Note**:
+    This function creates a list of :code:`paddle.device.MLUPlace` objects.
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_mlus` would be checked first. For example, if
+    :code:`FLAGS_selected_mlus=0,1,2`, the returned list would
+    be [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+    If :code:`FLAGS_selected_mlus` is not set, all visible
+    mlu places would be returned.
+    If :code:`device_ids` is not None, it should be the device
+    ids of MLUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be
+    [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+
+    Note:
         For multi-card tasks, please use `FLAGS_selected_mlus` environment variable to set the visible MLU device.
-        This function creates a list of :code:`paddle.device.MLUPlace` objects.
-        If :code:`device_ids` is None, environment variable of
-        :code:`FLAGS_selected_mlus` would be checked first. For example, if
-        :code:`FLAGS_selected_mlus=0,1,2`, the returned list would
-        be [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
-        If :code:`FLAGS_selected_mlus` is not set, all visible
-        mlu places would be returned.
-        If :code:`device_ids` is not None, it should be the device
-        ids of MLUs. For example, if :code:`device_ids=[0,1,2]`,
-        the returned list would be
-        [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
 
     Parameters:
         device_ids (list or tuple of int, optional): list of MLU device ids.
@@ -1377,6 +1380,9 @@ class Variable(object):
 
         if dtype == core.VarDesc.VarType.STRINGS:
             type = core.VarDesc.VarType.STRINGS
+            lod_level = None
+
+        if type == core.VarDesc.VarType.SPARSE_COO:
             lod_level = None
 
         self.belong_to_optimizer = belong_to_optimizer
@@ -5931,6 +5937,8 @@ class Program(object):
                     "activation_bits", "bit_length", "quantize_weight_bits",
                     "weight_quant_scale"
                 ]
+                for extra_attr_name in extra_attrs_map.keys():
+                    op.remove_attr(extra_attr_name)
                 remove_attr_list = []
                 for name in op.attr_names():
                     if quant:
@@ -5939,7 +5947,7 @@ class Program(object):
                         if name.endswith("_threshold"):
                             continue
                     if len(extra_attrs_map) > 0:
-                        if name in extra_attrs_map or name in common_clipped_attrs_list:
+                        if name in common_clipped_attrs_list:
                             op.remove_attr(name)
                         continue
                     find = False

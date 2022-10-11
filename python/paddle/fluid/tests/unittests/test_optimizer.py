@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import tempfile
 import unittest
@@ -992,7 +990,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
         except NotImplementedError as e:
             self.assertEqual(
                 "load function is not supported by Recompute Optimizer for now",
-                cpt.get_exception_message(e))
+                str(e))
 
     def test_dropout(self):
         """

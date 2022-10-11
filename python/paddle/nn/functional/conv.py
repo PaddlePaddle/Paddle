@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
 import numpy as np
 from ...device import get_cudnn_version
@@ -153,8 +152,8 @@ def _conv_nd(x,
             channel_dim = channel_dim + len(
                 x.shape) if channel_dim < 0 else channel_dim
             tmp_bias = _C_ops.reshape(
-                bias,
-                bias.shape + [1 for i in range(len(x.shape) - channel_dim - 1)])
+                bias, [1 for i in range(channel_dim)] + bias.shape +
+                [1 for i in range(len(x.shape) - channel_dim - 1)])
             return _C_ops.add(pre_bias, tmp_bias)
         else:
             return pre_bias

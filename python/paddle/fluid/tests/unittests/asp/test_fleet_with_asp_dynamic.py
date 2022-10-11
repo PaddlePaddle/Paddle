@@ -14,10 +14,8 @@
 # limitations under the License.
 
 import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 import unittest
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 import os
 from paddle.fluid.contrib.sparsity.asp import ASPHelper

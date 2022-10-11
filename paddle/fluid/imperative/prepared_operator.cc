@@ -58,9 +58,9 @@ const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
   return var;
 }
 
-const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
-  if (var.IsType<framework::LoDTensor>()) {
-    return &(var.Get<framework::LoDTensor>());
+const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var) {
+  if (var.IsType<phi::DenseTensor>()) {
+    return &(var.Get<phi::DenseTensor>());
   } else if (var.IsType<phi::SelectedRows>()) {
     return &(var.Get<phi::SelectedRows>().value());
   } else {
@@ -91,7 +91,7 @@ void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
                 << " var `" << var->Name() << "` to "
                 << framework::DataTypeToString(var->ForwardDataType())
                 << " real var in dynamic graph.";
-        framework::Tensor out;
+        phi::DenseTensor out;
         framework::TransComplexToReal(
             var->ForwardDataType(), var->DataType(), *tensor, &out);
         SetTensorToVariable(var->Var(), out, var->MutableVar());

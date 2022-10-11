@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import sys
 import unittest
@@ -22,9 +20,6 @@ import numpy as np
 import random
 import six
 import struct
-import time
-import itertools
-import collections
 from collections import defaultdict
 from copy import copy
 
@@ -37,7 +32,7 @@ from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
+from paddle.fluid.framework import OpProtoHolder, Program, _current_expected_place
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 
@@ -1429,7 +1424,6 @@ class OpTest(unittest.TestCase):
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                pass
 
             def _is_skip_name(self, name):
                 if name not in self.expects:

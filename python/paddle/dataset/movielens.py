@@ -22,8 +22,6 @@ set and test set into paddle reader creators.
 
 """
 
-from __future__ import print_function
-
 import numpy as np
 import zipfile
 import paddle.dataset.common

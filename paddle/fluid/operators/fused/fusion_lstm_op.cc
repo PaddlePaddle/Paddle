@@ -309,11 +309,11 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 #define INIT_BASE_DEFINES                               \
   using DeviceContext = phi::CPUContext;                \
   auto* x = ctx.Input<LoDTensor>("X");                  \
-  auto* h0 = ctx.Input<Tensor>("H0");                   \
-  auto* c0 = ctx.Input<Tensor>("C0");                   \
-  auto* wx = ctx.Input<Tensor>("WeightX");              \
-  auto* wh = ctx.Input<Tensor>("WeightH");              \
-  auto* bias = ctx.Input<Tensor>("Bias");               \
+  auto* h0 = ctx.Input<phi::DenseTensor>("H0");         \
+  auto* c0 = ctx.Input<phi::DenseTensor>("C0");         \
+  auto* wx = ctx.Input<phi::DenseTensor>("WeightX");    \
+  auto* wh = ctx.Input<phi::DenseTensor>("WeightH");    \
+  auto* bias = ctx.Input<phi::DenseTensor>("Bias");     \
   auto* xx = ctx.Output<LoDTensor>("XX");               \
   auto* hidden_out = ctx.Output<LoDTensor>("Hidden");   \
   auto* cell_out = ctx.Output<LoDTensor>("Cell");       \
@@ -336,7 +336,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   auto place = ctx.GetPlace();                                                 \
   if (use_peepholes) {                                                         \
     /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                           \
-    auto* checked_cell = ctx.Output<Tensor>("CheckedCell");                    \
+    auto* checked_cell = ctx.Output<phi::DenseTensor>("CheckedCell");          \
     checked_cell_data = checked_cell->mutable_data<T>(place);                  \
   }                                                                            \
   const jit::lstm_attr_t attr(                                                 \
@@ -448,8 +448,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     }
     INIT_OTHER_DEFINES;
 
-    auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
-    auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
+    auto* reordered_h0 = ctx.Output<phi::DenseTensor>("ReorderedH0");
+    auto* reordered_c0 = ctx.Output<phi::DenseTensor>("ReorderedC0");
     auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
     auto* batched_c_out = ctx.Output<LoDTensor>("BatchedCell");
     auto* batched_h_out = ctx.Output<LoDTensor>("BatchedHidden");

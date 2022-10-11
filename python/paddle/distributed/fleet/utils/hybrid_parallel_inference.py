@@ -345,7 +345,7 @@ class HybridParallelInferenceHelper(object):
         for each_block in self._main_program.blocks:
             for op in each_block.ops:
                 for var_name in op.input_arg_names:
-                    if not var_name in params or var_name in self._param_device_map:
+                    if var_name not in params or var_name in self._param_device_map:
                         continue
                     device = op.attr(self._op_device_key)
 
@@ -404,7 +404,7 @@ class HybridParallelInferenceHelper(object):
                 block._remove_op(op_idx)
 
         for var_name in list(block.vars.keys()):
-            if not var_name in used_var_names:
+            if var_name not in used_var_names:
                 block._remove_var(var_name)
 
         return used_var_names
@@ -741,9 +741,9 @@ class HybridParallelInferenceHelper(object):
         startup_block = self._startup_program.global_block()
 
         if debug:
-            with open(f'main_program.txt', 'w') as f:
+            with open('main_program.txt', 'w') as f:
                 f.write(str(self._main_program))
-            with open(f'startup_program.txt', 'w') as f:
+            with open('startup_program.txt', 'w') as f:
                 f.write(str(self._startup_program))
 
         # step1: add op_device attribute for all ops

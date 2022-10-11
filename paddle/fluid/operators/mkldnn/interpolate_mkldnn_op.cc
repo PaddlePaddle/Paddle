@@ -35,8 +35,8 @@ class InterpolateMKLDNNHandler
   InterpolateMKLDNNHandler(const dnnl::algorithm algo,
                            const dnnl::engine engine,
                            platform::Place cpu_place,
-                           const Tensor* x,
-                           Tensor* out)
+                           const phi::DenseTensor* x,
+                           phi::DenseTensor* out)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
     const auto dst_tz = phi::vectorize(out->dims());
@@ -51,7 +51,7 @@ template <typename T = float>
 class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
   std::vector<int> ComputeOutputShape(
       const framework::ExecutionContext& ctx) const {
-    const auto* x = ctx.Input<Tensor>("X");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
     const auto& in_dims = x->dims();
 
     const framework::DDim in_dhw_dims =
@@ -70,8 +70,8 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
       out_dims.push_back(ctx.Attr<int>("out_w"));
     }
 
-    auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
-    auto out_size = ctx.Input<Tensor>("OutSize");
+    auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
+    auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (list_new_size_tensor.size() > 0) {
       auto new_size = get_new_shape(list_new_size_tensor);
       if (new_size.size() == out_dims.size()) {
@@ -85,7 +85,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     } else {
       std::vector<float> scale;
       scale.reserve(3);
-      auto scale_tensor = ctx.Input<Tensor>("Scale");
+      auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
       if (scale_tensor != nullptr) {
         auto scale_data = get_new_data_from_tensor<float>(scale_tensor);
         scale.resize(3, scale_data[0]);
@@ -136,8 +136,8 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     const auto interp_method = ctx.Attr<std::string>("interp_method");
     const dnnl::algorithm algo = (interp_method == "nearest")

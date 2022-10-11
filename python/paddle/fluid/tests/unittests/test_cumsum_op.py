@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import tempfile
@@ -22,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
 import paddle.inference as paddle_infer
 import gradient_checker
 from decorator_helper import prog_scope

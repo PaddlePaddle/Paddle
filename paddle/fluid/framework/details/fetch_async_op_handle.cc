@@ -130,8 +130,8 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
           offset));
 }
 
-static void TransData(const framework::Tensor *src_item,
-                      framework::Tensor *dst_item,
+static void TransData(const phi::DenseTensor *src_item,
+                      phi::DenseTensor *dst_item,
                       const platform::DeviceContext &ctx) {
   if (src_item->IsInitialized() && src_item->numel() > 0) {
     if (platform::is_gpu_place(src_item->place())) {
@@ -250,7 +250,7 @@ void FetchAsyncOpHandle::RunImpl() {
       std::vector<const LoDTensor *> src_lodtensors;
       src_lodtensors.reserve(src_vars.size());
       for (size_t i = 0; i < src_vars.size(); ++i) {
-        src_lodtensors.emplace_back(&src_vars[i]->Get<framework::LoDTensor>());
+        src_lodtensors.emplace_back(&src_vars[i]->Get<phi::DenseTensor>());
       }
 
       LoDTensor dst_lodtensor;
@@ -285,7 +285,7 @@ void FetchAsyncOpHandle::RunImpl() {
 
     for (size_t i = 0; i < src_vars.size(); ++i) {
       if (src_vars[i]->IsType<LoDTensor>()) {
-        auto &t = src_vars[i]->Get<framework::LoDTensor>();
+        auto &t = src_vars[i]->Get<phi::DenseTensor>();
         LoDTensor item;
         TransData(&t, &item, *dev_ctxes_[t.place()]);
         dst_tensors.emplace_back(std::move(item));

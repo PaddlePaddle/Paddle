@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from collections import Counter
 
 from ..static import Variable, device_guard
@@ -635,12 +634,16 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')
-    check_type(shape, 'shape', (list, tuple, Variable), 'crop_tensor')
+    check_type(shape, 'shape', (list, tuple, Variable, type(None)),
+               'crop_tensor')
     check_type(offsets, 'offsets', (list, tuple, Variable, type(None)),
                'crop_tensor')
 
     if offsets is None:
         offsets = [0] * len(x.shape)
+
+    if shape is None:
+        shape = x.shape
 
     if in_dygraph_mode():
         return _C_ops.crop_tensor(x, shape, offsets)
@@ -1230,12 +1233,9 @@ def flip(x, axis, name=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
           image_shape=(3, 2, 2)
-          x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
-          x = x.astype('float32')
-          img = paddle.to_tensor(x)
+          img = paddle.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           tmp = paddle.flip(img, [0,1])
           print(tmp) # [[[10,11],[8, 9]], [[6, 7],[4, 5]], [[2, 3],[0, 1]]]
 
@@ -2878,15 +2878,12 @@ def chunk(x, chunks, axis=0, name=None):
     Returns:
         list(Tensor): The list of segmented Tensors.
 
-    Example:
+    Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            # x is a Tensor which shape is [3, 9, 5]
-            x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_tensor(x_np)
+            x = paddle.rand([3, 9, 5])
 
             out0, out1, out2 = paddle.chunk(x, chunks=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -4334,8 +4331,9 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr. Supported data type are int and int64.
         axis (int) : The axis to put 1d slices along.
-        reduce (string | optinal) : The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
-    Returns :
+        reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
+
+    Returns:
         Tensor: The indexed element, same dtype with arr
 
     Examples:
@@ -4441,10 +4439,11 @@ def index_add(x, index, axis, value, name=None):
             index = paddle.to_tensor([0, 2], dtype="int32")
             value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
             outplace_res = paddle.index_add(input_tensor, index, 0, value)
-            print(outplace_res.numpy())
-            # [[2 2 2]
-            #  [1 1 1]
-            #  [2 2 2]]
+            print(outplace_res)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2., 2., 2.],
+            #         [1., 1., 1.],
+            #         [2., 2., 2.]])
     """
     if in_dygraph_mode():
         return _C_ops.index_add(x, index, value, axis)
@@ -4488,10 +4487,11 @@ def index_add_(x, index, axis, value, name=None):
             index = paddle.to_tensor([0, 2], dtype="int32")
             value = paddle.to_tensor([[1, 1], [1, 1], [1, 1]], dtype="float32")
             inplace_res = paddle.index_add_(input_tensor, index, 1, value)
-            print(inplace_res.numpy())
-            # [[2, 1, 2]
-            #  [2, 1, 2]
-            #  [2, 1, 2]]
+            print(inplace_res)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2., 1., 2.],
+            #         [2., 1., 2.],
+            #         [2., 1., 2.]])
     """
     return _C_ops.index_add_(x, index, value, axis)
 

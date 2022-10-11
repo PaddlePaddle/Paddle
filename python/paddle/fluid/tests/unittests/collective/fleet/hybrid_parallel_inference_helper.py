@@ -12,20 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 
 import os
 import paddle
 import numpy as np
-import random
 import paddle.fluid.layers as layers
-import paddle.distributed as dist
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-from paddle import framework
 from paddle.distributed.fleet.utils.hybrid_parallel_inference import HybridParallelInferenceHelper
 
 paddle.enable_static()

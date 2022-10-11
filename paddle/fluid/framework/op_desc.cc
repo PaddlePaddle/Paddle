@@ -1227,17 +1227,12 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name,
   if (output_names.empty()) {
     return false;
   }
-  if (allow_null) {
-    for (auto &output : output_names) {
-      if (block_.HasVarRecursive(output)) return true;
-    }
-    return false;
-  } else {
+  if (!allow_null) {
     for (auto &output : output_names) {
       if (!block_.HasVarRecursive(output)) return false;
     }
-    return true;
   }
+  return true;
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {

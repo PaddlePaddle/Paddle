@@ -1,3 +1,8 @@
+# - op : rnn
+#   backward : rnn_grad
+#   extra :
+#     attrs : [bool is_test = false]
+
 - op : abs
   backward : abs_grad
   extra :
@@ -609,11 +614,6 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : rnn
-  backward : rnn_grad
-  extra :
-    attrs : [bool is_test = false]
-
 - op : round
   backward : round_grad
   extra :
@@ -631,6 +631,11 @@
 - op : seed
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+
+- op : sequence_softmax
+  backward : sequence_softmax_grad
+  extra :
+    attrs : [str data_format = "AnyLayout"]
 
 - op : shape
   extra :

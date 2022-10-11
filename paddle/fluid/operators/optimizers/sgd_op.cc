@@ -42,11 +42,10 @@ class SGDOp : public framework::OperatorWithKernel {
       const auto *grad_var = ctx.InputVar("Grad");
 
       // supported cases
-      bool dense_param_sparse_grad =
-          param_var->IsType<framework::LoDTensor>() &&
-          grad_var->IsType<phi::SelectedRows>();
-      bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
-                                  grad_var->IsType<framework::LoDTensor>();
+      bool dense_param_sparse_grad = param_var->IsType<phi::DenseTensor>() &&
+                                     grad_var->IsType<phi::SelectedRows>();
+      bool dense_param_and_grad = param_var->IsType<phi::DenseTensor>() &&
+                                  grad_var->IsType<phi::DenseTensor>();
 
       if (dense_param_sparse_grad || dense_param_and_grad)
         return framework::OpKernelType(data_type,
@@ -60,7 +59,7 @@ class SGDOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "LearningRate") {
       return framework::OpKernelType(

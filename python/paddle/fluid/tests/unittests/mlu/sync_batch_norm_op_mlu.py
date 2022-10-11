@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import argparse
 import os
@@ -49,6 +47,7 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
         self.global_ring_id = 0
 
         self.dtype = np.float32
+        self.bn_dtype = np.float32
         self.N = 8
         self.C = 16
         self.H = 32
@@ -79,6 +78,8 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                     param_attr=fluid.ParamAttr(name='conv2d_weight'),
                     bias_attr=False,
                     use_cudnn=use_cudnn)
+                if self.bn_dtype == np.float16:
+                    conv = fluid.layers.cast(conv, 'float16')
                 bn = fluid.layers.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
@@ -87,8 +88,8 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
                     is_test=only_forward)
-                # if self.dtype == np.float16:
-                #     bn = fluid.layers.cast(bn, 'float32')
+                if self.bn_dtype == np.float16:
+                    bn = fluid.layers.cast(bn, 'float32')
                 sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
                 # if not sync_bn:

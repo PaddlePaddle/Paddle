@@ -237,7 +237,7 @@ cc_test(
 cc_library(
   var_type_traits
   SRCS var_type_traits.cc
-  DEPS framework_proto scope tensor_array)
+  DEPS framework_proto scope tensor_array sparse_coo_tensor)
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
@@ -1185,7 +1185,8 @@ cc_library(
        phi
        phi_api_utils
        op_info
-       shape_inference)
+       shape_inference
+       sparse_coo_tensor)
 cc_test(
   infershape_utils_test
   SRCS infershape_utils_test.cc

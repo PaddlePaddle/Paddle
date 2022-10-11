@@ -12,13 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest
-from paddle.fluid import core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 import paddle.nn as nn

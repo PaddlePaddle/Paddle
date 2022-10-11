@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
-import os
 import paddle
 import numpy as np
 import random
 import paddle.distributed as dist
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-from paddle.io import DataLoader, Dataset
 import unittest
 import paddle.nn as nn
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle.distributed.utils.launch_utils import find_free_ports, get_cluster
 
 
 def set_random_seed(seed, dp_id, rank_id):

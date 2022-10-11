@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -284,13 +284,19 @@ if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
     check_approval 1 16605440 6836917
 fi
 
+UNNECESSARY_FUTURE_IMPORT=`echo "$ALL_ADDED_LINES" | grep -E '\+\s*from __future__ import .+(nested_scopes|generators|division|absolute_import|with_statement|print_function|unicode_literals|generator_stop)' || true`
+if [ "${UNNECESSARY_FUTURE_IMPORT}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="This feature is already mandatory in the Python3.7+, no need to import it from __future__.\nPlease modify the code below. If anything is unclear, please read the Python __future__ module docs [ https://docs.python.org/3/library/__future__.html ]. If it is a mismatch, please request luotao1 (Recommend) or jzhang533 review and approve.\nThe code that do not meet the specification are as follows:\n${UNNECESSARY_FUTURE_IMPORT}\n"
+    check_approval 1 luotao1 jzhang533
+fi
+
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
 PHI_INCLUDE_FLUID_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do
     PHI_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep "#include \"paddle/fluid/" || true`
     if [ "${PHI_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
         PHI_INCLUDE_FLUID_FILES="${PHI_INCLUDE_FLUID_FILES} ${CHANGE_FILE}"
-    fi 
+    fi
 done
 if [ "${PHI_INCLUDE_FLUID_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (chenwhql, MingMingShangTian, YuanRisheng or zyfncg) approval for the including paddle/fluid header in paddle/phi files(${PHI_INCLUDE_FLUID_FILES}).\n"
@@ -303,7 +309,7 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_KERNEL_FILES}; do
     PHI_DIR_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "^+" | grep -w "mutable_data" || true`
     if [ "${PHI_DIR_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
         PHI_USE_MUTABLE_DATA_FILES="${PHI_USE_MUTABLE_DATA_FILES} ${CHANGE_FILE}"
-    fi 
+    fi
 done
 if [ "${PHI_USE_MUTABLE_DATA_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You can not use the DenseTensor::mutable_data() method in paddle/phi/kernels files(${PHI_USE_MUTABLE_DATA_FILES}). If you want to alloc memory, use phi::DeviceContext::Alloc() or phi::DeviceContext::HostAlloc() instead and if you want to get mutable data, use DenseTensor::data(). If you have any questions, you can have one RD (chenwhql, Shixiaowei02, MingMingShangTian, YuanRisheng or zyfncg) review and approve.\n"
@@ -387,7 +393,7 @@ if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_GRAD_CHECK=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 -E "checker\.double_grad_check"|grep "eps=|atol=|rtol=" |grep "+" || true`
     CHECK_WHOLE=$CHECK_OUTPUT$CHECK_OUTPUT_WITH_PLACE$CHECK_GRAD$CHECK_GRAD_CHECK
     if [ "${CHECK_WHOLE}" != "" ] ; then
-        CHECK_OP=${CHECK_WHOLE//+/'\n+'}       
+        CHECK_OP=${CHECK_WHOLE//+/'\n+'}
         echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), fuyinno4, QingshuChen(Recommend for kunlun), zhiqiu or qili93 (Recommend for NPU) , luotao1, lanxianghit or phlrain) approval for the usage of other values. The detailed information is in the link: https://github.cor/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
         check_approval 1 6836917 47554610 12538138 43953930 35824027 6888866 16605440 2002279
     fi

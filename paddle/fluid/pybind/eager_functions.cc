@@ -107,12 +107,18 @@ static PyObject* eager_api_scale(PyObject* self,
                                  PyObject* kwargs) {
   EAGER_TRY
   // TODO(jiabin): Sync Tensor and Variable here when we support
-  paddle::experimental::Tensor ret = egr::scale(
-      reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor,
-      CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1),
-      CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 2), 2),
-      CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3),
-      CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4));
+
+  auto& tensor =
+      reinterpret_cast<TensorObject*>(PyTuple_GET_ITEM(args, 0))->tensor;
+  float scale = CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1);
+  float bias = CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 2), 2);
+  bool bias_after_scale = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
+  bool trace_backward = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
+  paddle::experimental::Tensor ret;
+  {
+    eager_gil_scoped_release guard;
+    ret = egr::scale(tensor, scale, bias, bias_after_scale, trace_backward);
+  }
   return ToPyObject(ret);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -123,11 +129,10 @@ static PyObject* eager_api_run_backward(PyObject* self,
   EAGER_TRY
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
+  bool retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
   {
     eager_gil_scoped_release guard;
-    egr::Backward(tensors,
-                  grad_tensors,
-                  CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2));
+    egr::Backward(tensors, grad_tensors, retain_graph);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -156,8 +161,8 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
                        only_inputs,
                        allow_unused,
                        no_grad_vars);
+    VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
   }
-  VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -173,11 +178,14 @@ static PyObject* eager_api_tensor_copy(PyObject* self,
   auto place = CastPyArg2Place(PyTuple_GET_ITEM(args, 2), 2);
   bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
 
-  dst = src.copy_to(place, blocking);
-  egr::EagerUtils::autograd_meta(&dst)->SetStopGradient(
-      egr::EagerUtils::autograd_meta(&(src))->StopGradient());
-  egr::EagerUtils::autograd_meta(&dst)->SetPersistable(
-      egr::EagerUtils::autograd_meta(&(src))->Persistable());
+  {
+    eager_gil_scoped_release guard;
+    dst = src.copy_to(place, blocking);
+    egr::EagerUtils::autograd_meta(&dst)->SetStopGradient(
+        egr::EagerUtils::autograd_meta(&(src))->StopGradient());
+    egr::EagerUtils::autograd_meta(&dst)->SetPersistable(
+        egr::EagerUtils::autograd_meta(&(src))->Persistable());
+  }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -192,7 +200,7 @@ static PyObject* eager_api_read_next_tensor_list(PyObject* self,
   {
     eager_gil_scoped_release guard;
     tensor_list.reserve(tensor_base_list.size());
-    auto func = [](framework::Tensor& tensor_base) {
+    auto func = [](phi::DenseTensor& tensor_base) {
       paddle::experimental::Tensor tensor(
           egr::Controller::Instance().GenerateUniqueName());
       auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
@@ -378,7 +386,11 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
       CastPyArg2JitFunction(PyTuple_GET_ITEM(args, 0), 0);
   std::vector<paddle::experimental::Tensor> ins =
       CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
-  std::vector<paddle::experimental::Tensor> outs = (*function)(ins);
+  std::vector<paddle::experimental::Tensor> outs;
+  {
+    eager_gil_scoped_release guard;
+    outs = (*function)(ins);
+  }
   return ToPyObject(outs);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -391,116 +403,120 @@ static PyObject* eager_api_run_costum_op(PyObject* self,
       CastPyArg2CustomOpKernelContext(PyTuple_GET_ITEM(args, 0), 0);
   std::string op_type = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
   bool trace_backward = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
-  VLOG(7) << "Get things for python for Custom Op: " << op_type
-          << ", trace_backward is: " << trace_backward;
-  auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
-  PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
-                    meta_info_map.end(),
-                    paddle::platform::errors::NotFound(
-                        "Can't find %s in Eager OpMetaInfoMap which should be "
-                        "created by LoadOpMetaInfoAndRegisterOp, please make "
-                        "sure you registered your op first and try again. ",
-                        op_type));
-  VLOG(7) << "Run Kernel of Custom Op: " << op_type;
-  std::vector<paddle::any> res_attrs =
-      CastAttrsToTragetType(ctx.Attrs(),
-                            paddle::framework::OpMetaInfoHelper::GetAttrs(
-                                meta_info_map.at(op_type)[0]));
-  ctx.EmplaceBackAttrs(res_attrs);
-  const auto& vec_map = meta_info_map.at(op_type);
-  (*paddle::framework::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
+  {
+    eager_gil_scoped_release guard;
+    VLOG(7) << "Get things for python for Custom Op: " << op_type
+            << ", trace_backward is: " << trace_backward;
+    auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
+    PADDLE_ENFORCE_NE(
+        meta_info_map.find(op_type),
+        meta_info_map.end(),
+        paddle::platform::errors::NotFound(
+            "Can't find %s in Eager OpMetaInfoMap which should be "
+            "created by LoadOpMetaInfoAndRegisterOp, please make "
+            "sure you registered your op first and try again. ",
+            op_type));
+    VLOG(7) << "Run Kernel of Custom Op: " << op_type;
+    std::vector<paddle::any> res_attrs =
+        CastAttrsToTragetType(ctx.Attrs(),
+                              paddle::framework::OpMetaInfoHelper::GetAttrs(
+                                  meta_info_map.at(op_type)[0]));
+    ctx.EmplaceBackAttrs(res_attrs);
+    const auto& vec_map = meta_info_map.at(op_type);
+    (*paddle::framework::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
 
-  VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
-  std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
-  std::vector<std::vector<egr::AutogradMeta*>> outs_auto_grad_metas;
-  VLOG(7) << "We got slot num of ins is: " << ctx.InputRange().size();
-  ins_auto_grad_metas.resize(ctx.InputRange().size());
-  VLOG(7) << "We got slot num of outs is: " << ctx.OutputRange().size();
-  outs_auto_grad_metas.resize(ctx.OutputRange().size());
+    VLOG(7) << "Get AutogradMeta for inputs and outputs for Custom Op";
+    std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
+    std::vector<std::vector<egr::AutogradMeta*>> outs_auto_grad_metas;
+    VLOG(7) << "We got slot num of ins is: " << ctx.InputRange().size();
+    ins_auto_grad_metas.resize(ctx.InputRange().size());
+    VLOG(7) << "We got slot num of outs is: " << ctx.OutputRange().size();
+    outs_auto_grad_metas.resize(ctx.OutputRange().size());
 
-  for (size_t i = 0; i < ctx.InputRange().size(); i++) {
-    ins_auto_grad_metas[i] =
-        egr::EagerUtils::nullable_autograd_meta(ctx.InputsBetween(
-            ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second));
-  }
-  for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
-    outs_auto_grad_metas[i] =
-        egr::EagerUtils::unsafe_autograd_meta(ctx.OutputsBetweeen(
-            ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second));
-  }
-  bool require_any_grad = false;
-  for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
-    require_any_grad =
-        require_any_grad || egr::EagerUtils::ComputeRequireGrad(
-                                trace_backward, &(ins_auto_grad_metas[i]));
-  }
-  if (require_any_grad && (vec_map.size() > 1)) {
-    VLOG(6) << " Construct Grad for Custom Op: " << op_type;
-    ConstructFwdAndBwdMap(vec_map, op_type);
-    for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
-      egr::EagerUtils::PassStopGradient(false, &(outs_auto_grad_metas[i]));
+    for (size_t i = 0; i < ctx.InputRange().size(); i++) {
+      ins_auto_grad_metas[i] =
+          egr::EagerUtils::nullable_autograd_meta(ctx.InputsBetween(
+              ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second));
     }
-    auto grad_node = std::make_shared<egr::RunCustomOpNode>(
-        outs_auto_grad_metas.size(), ins_auto_grad_metas.size(), op_type);
-    auto slot_map =
-        egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type);
-    // Prepare Grad outputs
-    size_t no_grad_cnt = 0;
+    for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
+      outs_auto_grad_metas[i] =
+          egr::EagerUtils::unsafe_autograd_meta(ctx.OutputsBetweeen(
+              ctx.OutputRangeAt(i).first, ctx.OutputRangeAt(i).second));
+    }
+    bool require_any_grad = false;
     for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
-      const std::vector<paddle::experimental::Tensor>& in_tensors =
-          ctx.InputsBetween(ctx.InputRangeAt(i).first,
-                            ctx.InputRangeAt(i).second);
-
-      if (slot_map[0][0].find(i) != slot_map[0][0].end()) {
-        grad_node->SetGradOutMeta(in_tensors, slot_map[0][0][i]);
-      } else {
-        grad_node->SetGradOutMeta(in_tensors,
-                                  ins_auto_grad_metas.size() - 1 - no_grad_cnt);
-        no_grad_cnt++;
+      require_any_grad =
+          require_any_grad || egr::EagerUtils::ComputeRequireGrad(
+                                  trace_backward, &(ins_auto_grad_metas[i]));
+    }
+    if (require_any_grad && (vec_map.size() > 1)) {
+      VLOG(6) << " Construct Grad for Custom Op: " << op_type;
+      ConstructFwdAndBwdMap(vec_map, op_type);
+      for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
+        egr::EagerUtils::PassStopGradient(false, &(outs_auto_grad_metas[i]));
       }
-    }
-    // Prepare Grad inputs with grad of fwd outputs
-    for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
-      const std::vector<paddle::experimental::Tensor>& out_tensors =
-          ctx.OutputsBetweeen(ctx.OutputRangeAt(i).first,
-                              ctx.OutputRangeAt(i).second);
+      auto grad_node = std::make_shared<egr::RunCustomOpNode>(
+          outs_auto_grad_metas.size(), ins_auto_grad_metas.size(), op_type);
+      auto slot_map =
+          egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type);
+      // Prepare Grad outputs
+      size_t no_grad_cnt = 0;
+      for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
+        const std::vector<paddle::experimental::Tensor>& in_tensors =
+            ctx.InputsBetween(ctx.InputRangeAt(i).first,
+                              ctx.InputRangeAt(i).second);
 
-      egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
-      egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
-      grad_node->SetGradInMeta(out_tensors, i);
-      egr::EagerUtils::CheckAndRetainGrad(out_tensors);
-    }
+        if (slot_map[0][0].find(i) != slot_map[0][0].end()) {
+          grad_node->SetGradOutMeta(in_tensors, slot_map[0][0][i]);
+        } else {
+          grad_node->SetGradOutMeta(
+              in_tensors, ins_auto_grad_metas.size() - 1 - no_grad_cnt);
+          no_grad_cnt++;
+        }
+      }
+      // Prepare Grad inputs with grad of fwd outputs
+      for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
+        const std::vector<paddle::experimental::Tensor>& out_tensors =
+            ctx.OutputsBetweeen(ctx.OutputRangeAt(i).first,
+                                ctx.OutputRangeAt(i).second);
 
-    // Prepare Grad inputs with fwd outputs
-    for (auto it = slot_map[0][2].begin(); it != slot_map[0][2].end(); it++) {
-      VLOG(7) << "Prepare fwd_outs: " << it->first
-              << " to grad_inputs: " << it->second;
-      grad_node->fwd_outs[it->second] =
-          egr::RunCustomOpNode::ConstructTensorWrapper(
-              ctx.OutputsBetweeen(ctx.OutputRangeAt(it->first).first,
-                                  ctx.OutputRangeAt(it->first).second));
-    }
+        egr::EagerUtils::SetOutRankWithSlot(&(outs_auto_grad_metas[i]), i);
+        egr::EagerUtils::SetHistory(&(outs_auto_grad_metas[i]), grad_node);
+        grad_node->SetGradInMeta(out_tensors, i);
+        egr::EagerUtils::CheckAndRetainGrad(out_tensors);
+      }
 
-    // Prepare Grad inputs with fwd inputs
-    for (auto it = slot_map[0][3].begin(); it != slot_map[0][3].end(); it++) {
-      VLOG(7) << "Prepare fwd_ins: " << it->first
-              << " to grad_inputs: " << it->second;
-      grad_node->fwd_ins[it->second] =
-          egr::RunCustomOpNode::ConstructTensorWrapper(
-              ctx.InputsBetween(ctx.InputRangeAt(it->first).first,
-                                ctx.InputRangeAt(it->first).second));
-    }
+      // Prepare Grad inputs with fwd outputs
+      for (auto it = slot_map[0][2].begin(); it != slot_map[0][2].end(); it++) {
+        VLOG(7) << "Prepare fwd_outs: " << it->first
+                << " to grad_inputs: " << it->second;
+        grad_node->fwd_outs[it->second] =
+            egr::RunCustomOpNode::ConstructTensorWrapper(
+                ctx.OutputsBetweeen(ctx.OutputRangeAt(it->first).first,
+                                    ctx.OutputRangeAt(it->first).second));
+      }
 
-    auto attrs_names = paddle::framework::OpMetaInfoHelper::GetAttrs(
-        meta_info_map.at(op_type)[1]);
-    std::vector<paddle::any> attrs(attrs_names.size());
-    // Prepare attrs for Grad node
-    for (auto it = slot_map[0][4].begin(); it != slot_map[0][4].end(); it++) {
-      VLOG(7) << "Prepare fwd attrs: " << it->first
-              << " to grad_attrs: " << it->second;
-      attrs[it->second] = res_attrs[it->first];
+      // Prepare Grad inputs with fwd inputs
+      for (auto it = slot_map[0][3].begin(); it != slot_map[0][3].end(); it++) {
+        VLOG(7) << "Prepare fwd_ins: " << it->first
+                << " to grad_inputs: " << it->second;
+        grad_node->fwd_ins[it->second] =
+            egr::RunCustomOpNode::ConstructTensorWrapper(
+                ctx.InputsBetween(ctx.InputRangeAt(it->first).first,
+                                  ctx.InputRangeAt(it->first).second));
+      }
+
+      auto attrs_names = paddle::framework::OpMetaInfoHelper::GetAttrs(
+          meta_info_map.at(op_type)[1]);
+      std::vector<paddle::any> attrs(attrs_names.size());
+      // Prepare attrs for Grad node
+      for (auto it = slot_map[0][4].begin(); it != slot_map[0][4].end(); it++) {
+        VLOG(7) << "Prepare fwd attrs: " << it->first
+                << " to grad_attrs: " << it->second;
+        attrs[it->second] = res_attrs[it->first];
+      }
+      grad_node->SetAttrs(attrs);
     }
-    grad_node->SetAttrs(attrs);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -514,33 +530,36 @@ static PyObject* eager_api_sparse_coo_tensor(PyObject* self,
   auto non_zero_elements = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 1), 1);
   auto dense_shape = CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 2), 2);
   auto stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3);
-  PADDLE_ENFORCE(non_zero_indices.is_dense_tensor(),
-                 paddle::platform::errors::Fatal(
-                     "the non-zero indices must be a DenseTensor."));
-  PADDLE_ENFORCE(non_zero_elements.is_dense_tensor(),
-                 paddle::platform::errors::Fatal(
-                     "the non-zero elements must be a DenseTensor."));
-  auto dense_indices =
-      std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_indices.impl());
-  auto dense_elements =
-      std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
-  // TODO(zhangkaihuo): After creating SparseCooTensor, call coalesced() to sort
-  // and merge duplicate indices
-  std::shared_ptr<phi::SparseCooTensor> coo_tensor =
-      std::make_shared<phi::SparseCooTensor>(
-          *dense_indices, *dense_elements, phi::make_ddim(dense_shape));
   paddle::experimental::Tensor tensor;
-  tensor.set_impl(coo_tensor);
-  auto name =
-      egr::Controller::Instance().GenerateUniqueName("generated_tensor");
-  tensor.set_name(name);
-  auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
-  autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
-  if (!autograd_meta->GetMutableGradNode()) {
-    VLOG(3) << "Tensor(" << name
-            << ") doesn't have GradNode, add GradNodeAccumulation to it.";
-    autograd_meta->SetGradNode(
-        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+  {
+    eager_gil_scoped_release guard;
+    PADDLE_ENFORCE(non_zero_indices.is_dense_tensor(),
+                   paddle::platform::errors::Fatal(
+                       "the non-zero indices must be a DenseTensor."));
+    PADDLE_ENFORCE(non_zero_elements.is_dense_tensor(),
+                   paddle::platform::errors::Fatal(
+                       "the non-zero elements must be a DenseTensor."));
+    auto dense_indices =
+        std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_indices.impl());
+    auto dense_elements =
+        std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
+    // TODO(zhangkaihuo): After creating SparseCooTensor, call coalesced() to
+    // sort and merge duplicate indices
+    std::shared_ptr<phi::SparseCooTensor> coo_tensor =
+        std::make_shared<phi::SparseCooTensor>(
+            *dense_indices, *dense_elements, phi::make_ddim(dense_shape));
+    tensor.set_impl(coo_tensor);
+    auto name =
+        egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+    tensor.set_name(name);
+    auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
+    autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
+    if (!autograd_meta->GetMutableGradNode()) {
+      VLOG(3) << "Tensor(" << name
+              << ") doesn't have GradNode, add GradNodeAccumulation to it.";
+      autograd_meta->SetGradNode(
+          std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+    }
   }
   return ToPyObject(tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -555,39 +574,42 @@ static PyObject* eager_api_sparse_csr_tensor(PyObject* self,
   auto non_zero_elements = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 2), 2);
   auto dense_shape = CastPyArg2VectorOfInt(PyTuple_GET_ITEM(args, 3), 3);
   auto stop_gradient = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4);
-  PADDLE_ENFORCE(non_zero_crows.is_dense_tensor(),
-                 paddle::platform::errors::Fatal(
-                     "the compressed non-zero rows must be a DenseTensor."));
-  PADDLE_ENFORCE(non_zero_cols.is_dense_tensor(),
-                 paddle::platform::errors::Fatal(
-                     "the non-zero cols must be a DenseTensor."));
-  PADDLE_ENFORCE(non_zero_elements.is_dense_tensor(),
-                 paddle::platform::errors::Fatal(
-                     "the non-zero elements must be a DenseTensor."));
-
-  auto dense_crows =
-      std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_crows.impl());
-  auto dense_cols =
-      std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_cols.impl());
-  auto dense_elements =
-      std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
-  std::shared_ptr<phi::SparseCsrTensor> csr_tensor =
-      std::make_shared<phi::SparseCsrTensor>(*dense_crows,
-                                             *dense_cols,
-                                             *dense_elements,
-                                             phi::make_ddim(dense_shape));
   paddle::experimental::Tensor tensor;
-  tensor.set_impl(csr_tensor);
-  auto name =
-      egr::Controller::Instance().GenerateUniqueName("generated_tensor");
-  tensor.set_name(name);
-  auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
-  autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
-  if (!autograd_meta->GetMutableGradNode()) {
-    VLOG(3) << "Tensor(" << name
-            << ") have not GradNode, add GradNodeAccumulation for it.";
-    autograd_meta->SetGradNode(
-        std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+  {
+    eager_gil_scoped_release guard;
+    PADDLE_ENFORCE(non_zero_crows.is_dense_tensor(),
+                   paddle::platform::errors::Fatal(
+                       "the compressed non-zero rows must be a DenseTensor."));
+    PADDLE_ENFORCE(non_zero_cols.is_dense_tensor(),
+                   paddle::platform::errors::Fatal(
+                       "the non-zero cols must be a DenseTensor."));
+    PADDLE_ENFORCE(non_zero_elements.is_dense_tensor(),
+                   paddle::platform::errors::Fatal(
+                       "the non-zero elements must be a DenseTensor."));
+
+    auto dense_crows =
+        std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_crows.impl());
+    auto dense_cols =
+        std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_cols.impl());
+    auto dense_elements =
+        std::dynamic_pointer_cast<phi::DenseTensor>(non_zero_elements.impl());
+    std::shared_ptr<phi::SparseCsrTensor> csr_tensor =
+        std::make_shared<phi::SparseCsrTensor>(*dense_crows,
+                                               *dense_cols,
+                                               *dense_elements,
+                                               phi::make_ddim(dense_shape));
+    tensor.set_impl(csr_tensor);
+    auto name =
+        egr::Controller::Instance().GenerateUniqueName("generated_tensor");
+    tensor.set_name(name);
+    auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
+    autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
+    if (!autograd_meta->GetMutableGradNode()) {
+      VLOG(3) << "Tensor(" << name
+              << ") have not GradNode, add GradNodeAccumulation for it.";
+      autograd_meta->SetGradNode(
+          std::make_shared<egr::GradNodeAccumulation>(autograd_meta));
+    }
   }
   return ToPyObject(tensor);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -626,164 +648,168 @@ static PyObject* eager_api_async_read(PyObject* self,
   auto& buffer = GetTensorFromArgs("async_read", "buffer", args, 3, false);
   auto& offset = GetTensorFromArgs("async_read", "offset", args, 4, false);
   auto& count = GetTensorFromArgs("async_read", "count", args, 5, false);
-  PADDLE_ENFORCE_EQ(
-      src.is_gpu_pinned(),
-      true,
-      platform::errors::InvalidArgument("Required `src` device should be "
-                                        "CUDAPinnedPlace, but received %d.",
-                                        src.place()));
-  PADDLE_ENFORCE_EQ(
-      dst.is_gpu(),
-      true,
-      platform::errors::InvalidArgument(
-          "Required `dst` device should be CUDAPlace, but received %d.",
-          dst.place()));
-  PADDLE_ENFORCE_EQ(
-      index.is_cpu(),
-      true,
-      platform::errors::InvalidArgument(
-          "Required `index` device should be CPUPlace, but received %d.",
-          index.place()));
-  PADDLE_ENFORCE_EQ(buffer.is_gpu_pinned(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Required `buffer` device should be CUDAPinnedPlace, "
-                        "but received %d.",
-                        buffer.place()));
-  PADDLE_ENFORCE_EQ(
-      offset.is_cpu(),
-      true,
-      platform::errors::InvalidArgument(
-          "Required `offset` device should be CPUPlace, but received %d.",
-          offset.place()));
-  PADDLE_ENFORCE_EQ(
-      count.is_cpu(),
-      true,
-      platform::errors::InvalidArgument(
-          "Required `count` device should be CPUPlace, but received %d.",
-          count.place()));
-
-  auto& src_tensor = src;
-  auto* dst_tensor = &dst;
-  auto& index_tensor = index;
-  auto* buffer_tensor = &buffer;
-  auto& offset_tensor = offset;
-  auto& count_tensor = count;
-  auto* dst_data = dst_tensor->mutable_data<float>(dst.place());
-  const auto& deviceId = paddle::platform::GetCurrentDeviceId();
-
-  PADDLE_ENFORCE_EQ(src_tensor.dims().size(),
-                    dst_tensor->dims().size(),
-                    platform::errors::InvalidArgument(
-                        "`src` and `dst` should have same tensor shape, "
-                        "except for the first dimension."));
-  PADDLE_ENFORCE_EQ(src_tensor.dims().size(),
-                    buffer_tensor->dims().size(),
-                    platform::errors::InvalidArgument(
-                        "`src` and `buffer` should have same tensor shape, "
-                        "except for the first dimension."));
-  for (int i = 1; i < src_tensor.dims().size(); i++) {
-    PADDLE_ENFORCE_EQ(src_tensor.dims()[i],
-                      dst_tensor->dims()[i],
-                      platform::errors::InvalidArgument(
-                          "`src` and `dst` should have the same tensor shape, "
-                          "except for the first dimension."));
+  {
+    eager_gil_scoped_release guard;
     PADDLE_ENFORCE_EQ(
-        src_tensor.dims()[i],
-        buffer_tensor->dims()[i],
+        src.is_gpu_pinned(),
+        true,
+        platform::errors::InvalidArgument("Required `src` device should be "
+                                          "CUDAPinnedPlace, but received %d.",
+                                          src.place()));
+    PADDLE_ENFORCE_EQ(
+        dst.is_gpu(),
+        true,
         platform::errors::InvalidArgument(
-            "`src` and `buffer` should have the same tensor shape, "
-            "except for the first dimension."));
-  }
-  PADDLE_ENFORCE_EQ(index_tensor.dims().size(),
-                    1,
-                    platform::errors::InvalidArgument(
-                        "`index` tensor should be one-dimensional."));
+            "Required `dst` device should be CUDAPlace, but received %d.",
+            dst.place()));
+    PADDLE_ENFORCE_EQ(
+        index.is_cpu(),
+        true,
+        platform::errors::InvalidArgument(
+            "Required `index` device should be CPUPlace, but received %d.",
+            index.place()));
+    PADDLE_ENFORCE_EQ(buffer.is_gpu_pinned(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Required `buffer` device should be CUDAPinnedPlace, "
+                          "but received %d.",
+                          buffer.place()));
+    PADDLE_ENFORCE_EQ(
+        offset.is_cpu(),
+        true,
+        platform::errors::InvalidArgument(
+            "Required `offset` device should be CPUPlace, but received %d.",
+            offset.place()));
+    PADDLE_ENFORCE_EQ(
+        count.is_cpu(),
+        true,
+        platform::errors::InvalidArgument(
+            "Required `count` device should be CPUPlace, but received %d.",
+            count.place()));
 
-  auto stream = paddle::platform::get_current_stream(deviceId)->raw_stream();
+    auto& src_tensor = src;
+    auto* dst_tensor = &dst;
+    auto& index_tensor = index;
+    auto* buffer_tensor = &buffer;
+    auto& offset_tensor = offset;
+    auto& count_tensor = count;
+    auto* dst_data = dst_tensor->mutable_data<float>(dst.place());
+    const auto& deviceId = paddle::platform::GetCurrentDeviceId();
 
-  int64_t numel = 0;  // total copy length
-  int64_t copy_flag = offset_tensor.dims()[0];
-  int64_t size = src_tensor.numel() / src_tensor.dims()[0];
-
-  if (copy_flag != 0) {
-    PADDLE_ENFORCE_EQ(offset_tensor.dims().size(),
+    PADDLE_ENFORCE_EQ(src_tensor.dims().size(),
+                      dst_tensor->dims().size(),
+                      platform::errors::InvalidArgument(
+                          "`src` and `dst` should have same tensor shape, "
+                          "except for the first dimension."));
+    PADDLE_ENFORCE_EQ(src_tensor.dims().size(),
+                      buffer_tensor->dims().size(),
+                      platform::errors::InvalidArgument(
+                          "`src` and `buffer` should have same tensor shape, "
+                          "except for the first dimension."));
+    for (int i = 1; i < src_tensor.dims().size(); i++) {
+      PADDLE_ENFORCE_EQ(
+          src_tensor.dims()[i],
+          dst_tensor->dims()[i],
+          platform::errors::InvalidArgument(
+              "`src` and `dst` should have the same tensor shape, "
+              "except for the first dimension."));
+      PADDLE_ENFORCE_EQ(
+          src_tensor.dims()[i],
+          buffer_tensor->dims()[i],
+          platform::errors::InvalidArgument(
+              "`src` and `buffer` should have the same tensor shape, "
+              "except for the first dimension."));
+    }
+    PADDLE_ENFORCE_EQ(index_tensor.dims().size(),
                       1,
                       platform::errors::InvalidArgument(
-                          "`offset` tensor should be one-dimensional."));
-    PADDLE_ENFORCE_EQ(count_tensor.dims().size(),
-                      1,
-                      platform::errors::InvalidArgument(
-                          "`count` tensor should be one-dimensional."));
-    PADDLE_ENFORCE_EQ(offset_tensor.numel(),
-                      count_tensor.numel(),
-                      platform::errors::InvalidArgument(
-                          "`offset` and `count` tensor size dismatch."));
-    auto* offset_data = offset_tensor.data<int64_t>();
-    auto* count_data = count_tensor.data<int64_t>();
-    for (int64_t i = 0; i < count_tensor.numel(); i++) {
-      numel += count_data[i];
-    }
-    PADDLE_ENFORCE_LE(
-        numel + index_tensor.numel(),
-        buffer_tensor->dims()[0],
-        platform::errors::InvalidArgument("Buffer tensor size is too small."));
-    PADDLE_ENFORCE_LE(
-        numel + index_tensor.numel(),
-        dst_tensor->dims()[0],
-        platform::errors::InvalidArgument("Target tensor size is too small."));
+                          "`index` tensor should be one-dimensional."));
 
-    int64_t src_offset, dst_offset = 0, c;
-    auto* src_data = src_tensor.data<float>();
-    for (int64_t i = 0; i < offset_tensor.numel(); i++) {
-      src_offset = offset_data[i], c = count_data[i];
-      PADDLE_ENFORCE_LE(
-          src_offset + c,
-          src_tensor.dims()[0],
-          platform::errors::InvalidArgument("Invalid offset or count index."));
-      PADDLE_ENFORCE_LE(
-          dst_offset + c,
-          dst_tensor->dims()[0],
-          platform::errors::InvalidArgument("Invalid offset or count index."));
-      cudaMemcpyAsync(dst_data + (dst_offset * size),
-                      src_data + (src_offset * size),
-                      c * size * sizeof(float),
-                      cudaMemcpyHostToDevice,
-                      stream);
-      dst_offset += c;
+    auto stream = paddle::platform::get_current_stream(deviceId)->raw_stream();
+
+    int64_t numel = 0;  // total copy length
+    int64_t copy_flag = offset_tensor.dims()[0];
+    int64_t size = src_tensor.numel() / src_tensor.dims()[0];
+
+    if (copy_flag != 0) {
+      PADDLE_ENFORCE_EQ(offset_tensor.dims().size(),
+                        1,
+                        platform::errors::InvalidArgument(
+                            "`offset` tensor should be one-dimensional."));
+      PADDLE_ENFORCE_EQ(count_tensor.dims().size(),
+                        1,
+                        platform::errors::InvalidArgument(
+                            "`count` tensor should be one-dimensional."));
+      PADDLE_ENFORCE_EQ(offset_tensor.numel(),
+                        count_tensor.numel(),
+                        platform::errors::InvalidArgument(
+                            "`offset` and `count` tensor size dismatch."));
+      auto* offset_data = offset_tensor.data<int64_t>();
+      auto* count_data = count_tensor.data<int64_t>();
+      for (int64_t i = 0; i < count_tensor.numel(); i++) {
+        numel += count_data[i];
+      }
+      PADDLE_ENFORCE_LE(numel + index_tensor.numel(),
+                        buffer_tensor->dims()[0],
+                        platform::errors::InvalidArgument(
+                            "Buffer tensor size is too small."));
+      PADDLE_ENFORCE_LE(numel + index_tensor.numel(),
+                        dst_tensor->dims()[0],
+                        platform::errors::InvalidArgument(
+                            "Target tensor size is too small."));
+
+      int64_t src_offset, dst_offset = 0, c;
+      auto* src_data = src_tensor.data<float>();
+      for (int64_t i = 0; i < offset_tensor.numel(); i++) {
+        src_offset = offset_data[i], c = count_data[i];
+        PADDLE_ENFORCE_LE(src_offset + c,
+                          src_tensor.dims()[0],
+                          platform::errors::InvalidArgument(
+                              "Invalid offset or count index."));
+        PADDLE_ENFORCE_LE(dst_offset + c,
+                          dst_tensor->dims()[0],
+                          platform::errors::InvalidArgument(
+                              "Invalid offset or count index."));
+        cudaMemcpyAsync(dst_data + (dst_offset * size),
+                        src_data + (src_offset * size),
+                        c * size * sizeof(float),
+                        cudaMemcpyHostToDevice,
+                        stream);
+        dst_offset += c;
+      }
+    } else {
+      PADDLE_ENFORCE_LE(index_tensor.numel(),
+                        buffer_tensor->dims()[0],
+                        platform::errors::InvalidArgument(
+                            "Buffer tensor size is too small."));
     }
-  } else {
-    PADDLE_ENFORCE_LE(
-        index_tensor.numel(),
-        buffer_tensor->dims()[0],
-        platform::errors::InvalidArgument("Buffer tensor size is too small."));
+
+    // Select the index data to the buffer
+    auto index_select = [](const paddle::experimental::Tensor& src_tensor,
+                           const paddle::experimental::Tensor& index_tensor,
+                           paddle::experimental::Tensor* buffer_tensor) {
+      auto* src_data = src_tensor.data<float>();
+      auto* index_data = index_tensor.data<int64_t>();
+      auto* buffer_data = buffer_tensor->data<float>();
+      const int& slice_size = src_tensor.numel() / src_tensor.dims()[0];
+      const int& copy_bytes = slice_size * sizeof(float);
+      int64_t c = 0;
+      for (int64_t i = 0; i < index_tensor.numel(); i++) {
+        std::memcpy(buffer_data + c * slice_size,
+                    src_data + index_data[i] * slice_size,
+                    copy_bytes);
+        c += 1;
+      }
+    };
+    index_select(src_tensor, index_tensor, buffer_tensor);
+
+    // Copy the data to device memory
+    cudaMemcpyAsync(dst_data + (numel * size),
+                    buffer_tensor->data<float>(),
+                    index_tensor.numel() * size * sizeof(float),
+                    cudaMemcpyHostToDevice,
+                    stream);
   }
-
-  // Select the index data to the buffer
-  auto index_select = [](const paddle::experimental::Tensor& src_tensor,
-                         const paddle::experimental::Tensor& index_tensor,
-                         paddle::experimental::Tensor* buffer_tensor) {
-    auto* src_data = src_tensor.data<float>();
-    auto* index_data = index_tensor.data<int64_t>();
-    auto* buffer_data = buffer_tensor->data<float>();
-    const int& slice_size = src_tensor.numel() / src_tensor.dims()[0];
-    const int& copy_bytes = slice_size * sizeof(float);
-    int64_t c = 0;
-    for (int64_t i = 0; i < index_tensor.numel(); i++) {
-      std::memcpy(buffer_data + c * slice_size,
-                  src_data + index_data[i] * slice_size,
-                  copy_bytes);
-      c += 1;
-    }
-  };
-  index_select(src_tensor, index_tensor, buffer_tensor);
-
-  // Copy the data to device memory
-  cudaMemcpyAsync(dst_data + (numel * size),
-                  buffer_tensor->data<float>(),
-                  index_tensor.numel() * size * sizeof(float),
-                  cudaMemcpyHostToDevice,
-                  stream);
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -796,88 +822,92 @@ static PyObject* eager_api_async_write(PyObject* self,
   auto& dst = GetTensorFromArgs("async_write", "dst", args, 1, false);
   auto& offset = GetTensorFromArgs("async_write", "offset", args, 2, false);
   auto& count = GetTensorFromArgs("async_write", "count", args, 3, false);
-  PADDLE_ENFORCE_EQ(
-      src.is_gpu(),
-      true,
-      platform::errors::InvalidArgument(
-          "Required `src` device should be CUDAPlace, but received %d. ",
-          src.place()));
-  PADDLE_ENFORCE_EQ(dst.is_gpu_pinned(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Required `dst` device should be CUDAPinnedPlace, "
-                        "but received %d. ",
-                        dst.place()));
-  PADDLE_ENFORCE_EQ(
-      offset.is_cpu(),
-      true,
-      platform::errors::InvalidArgument("Required `offset` device should "
-                                        "be CPUPlace, but received %d. ",
-                                        offset.place()));
-  PADDLE_ENFORCE_EQ(
-      count.is_cpu(),
-      true,
-      platform::errors::InvalidArgument(
-          "Required `count` device should be CPUPlace, but received %d. ",
-          count.place()));
+  {
+    eager_gil_scoped_release guard;
+    PADDLE_ENFORCE_EQ(
+        src.is_gpu(),
+        true,
+        platform::errors::InvalidArgument(
+            "Required `src` device should be CUDAPlace, but received %d. ",
+            src.place()));
+    PADDLE_ENFORCE_EQ(dst.is_gpu_pinned(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Required `dst` device should be CUDAPinnedPlace, "
+                          "but received %d. ",
+                          dst.place()));
+    PADDLE_ENFORCE_EQ(
+        offset.is_cpu(),
+        true,
+        platform::errors::InvalidArgument("Required `offset` device should "
+                                          "be CPUPlace, but received %d. ",
+                                          offset.place()));
+    PADDLE_ENFORCE_EQ(
+        count.is_cpu(),
+        true,
+        platform::errors::InvalidArgument(
+            "Required `count` device should be CPUPlace, but received %d. ",
+            count.place()));
 
-  // TODO(daisiming): In future, add index as arguments following
-  // async_read.
-  auto& src_tensor = src;
-  auto* dst_tensor = &dst;
-  auto& offset_tensor = offset;
-  auto& count_tensor = count;
-  const auto& deviceId = paddle::platform::GetCurrentDeviceId();
+    // TODO(daisiming): In future, add index as arguments following
+    // async_read.
+    auto& src_tensor = src;
+    auto* dst_tensor = &dst;
+    auto& offset_tensor = offset;
+    auto& count_tensor = count;
+    const auto& deviceId = paddle::platform::GetCurrentDeviceId();
 
-  PADDLE_ENFORCE_EQ(offset_tensor.dims().size(),
-                    1,
-                    platform::errors::InvalidArgument(
-                        "`offset` tensor should be one-dimensional."));
-  PADDLE_ENFORCE_EQ(count_tensor.dims().size(),
-                    1,
-                    platform::errors::InvalidArgument(
-                        "`count` tensor should be one-dimensional."));
-  PADDLE_ENFORCE_EQ(offset_tensor.numel(),
-                    count_tensor.numel(),
-                    platform::errors::InvalidArgument(
-                        "`offset` and `count` tensor size dismatch."));
-  PADDLE_ENFORCE_EQ(src_tensor.dims().size(),
-                    dst_tensor->dims().size(),
-                    platform::errors::InvalidArgument(
-                        "`src` and `dst` should have the same tensor shape, "
-                        "except for the first dimension."));
-  for (int i = 1; i < src_tensor.dims().size(); i++) {
-    PADDLE_ENFORCE_EQ(src_tensor.dims()[i],
-                      dst_tensor->dims()[i],
+    PADDLE_ENFORCE_EQ(offset_tensor.dims().size(),
+                      1,
+                      platform::errors::InvalidArgument(
+                          "`offset` tensor should be one-dimensional."));
+    PADDLE_ENFORCE_EQ(count_tensor.dims().size(),
+                      1,
+                      platform::errors::InvalidArgument(
+                          "`count` tensor should be one-dimensional."));
+    PADDLE_ENFORCE_EQ(offset_tensor.numel(),
+                      count_tensor.numel(),
+                      platform::errors::InvalidArgument(
+                          "`offset` and `count` tensor size dismatch."));
+    PADDLE_ENFORCE_EQ(src_tensor.dims().size(),
+                      dst_tensor->dims().size(),
                       platform::errors::InvalidArgument(
                           "`src` and `dst` should have the same tensor shape, "
                           "except for the first dimension."));
-  }
+    for (int i = 1; i < src_tensor.dims().size(); i++) {
+      PADDLE_ENFORCE_EQ(
+          src_tensor.dims()[i],
+          dst_tensor->dims()[i],
+          platform::errors::InvalidArgument(
+              "`src` and `dst` should have the same tensor shape, "
+              "except for the first dimension."));
+    }
 
-  auto stream = paddle::platform::get_current_stream(deviceId)->raw_stream();
+    auto stream = paddle::platform::get_current_stream(deviceId)->raw_stream();
 
-  int64_t size = src_tensor.numel() / src_tensor.dims()[0];
-  auto* src_data = src_tensor.data<float>();
-  auto* dst_data = dst_tensor->data<float>();
-  const int64_t* offset_data = offset_tensor.data<int64_t>();
-  const int64_t* count_data = count_tensor.data<int64_t>();
-  int64_t src_offset = 0, dst_offset, c;
-  for (int64_t i = 0; i < offset_tensor.numel(); i++) {
-    dst_offset = offset_data[i], c = count_data[i];
-    PADDLE_ENFORCE_LE(
-        src_offset + c,
-        src_tensor.dims()[0],
-        platform::errors::InvalidArgument("Invalid offset or count index"));
-    PADDLE_ENFORCE_LE(
-        dst_offset + c,
-        dst_tensor->dims()[0],
-        platform::errors::InvalidArgument("Invalid offset or count index"));
-    cudaMemcpyAsync(dst_data + (dst_offset * size),
-                    src_data + (src_offset * size),
-                    c * size * sizeof(float),
-                    cudaMemcpyDeviceToHost,
-                    stream);
-    src_offset += c;
+    int64_t size = src_tensor.numel() / src_tensor.dims()[0];
+    auto* src_data = src_tensor.data<float>();
+    auto* dst_data = dst_tensor->data<float>();
+    const int64_t* offset_data = offset_tensor.data<int64_t>();
+    const int64_t* count_data = count_tensor.data<int64_t>();
+    int64_t src_offset = 0, dst_offset, c;
+    for (int64_t i = 0; i < offset_tensor.numel(); i++) {
+      dst_offset = offset_data[i], c = count_data[i];
+      PADDLE_ENFORCE_LE(
+          src_offset + c,
+          src_tensor.dims()[0],
+          platform::errors::InvalidArgument("Invalid offset or count index"));
+      PADDLE_ENFORCE_LE(
+          dst_offset + c,
+          dst_tensor->dims()[0],
+          platform::errors::InvalidArgument("Invalid offset or count index"));
+      cudaMemcpyAsync(dst_data + (dst_offset * size),
+                      src_data + (src_offset * size),
+                      c * size * sizeof(float),
+                      cudaMemcpyDeviceToHost,
+                      stream);
+      src_offset += c;
+    }
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -929,7 +959,6 @@ static PyObject* eager_api_to_uva_tensor(PyObject* self,
         "float64, int8, int16, int32, int64,"
         "please check your input or input array data type."));
   }
-
   return ToPyObject(*(new_tensor.get()));
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

@@ -12,21 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
-import contextlib
-import unittest
 import numpy as np
-import six
-import pickle
-import random
 
 import paddle
 import paddle.fluid as fluid
-import paddle.distributed as dist
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Linear
 from test_dist_base import runtime_main
 from parallel_dygraph_no_sync import TestNoSync

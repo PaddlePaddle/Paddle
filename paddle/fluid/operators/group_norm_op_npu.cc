@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 struct GroupNormFunction {
@@ -32,8 +32,8 @@ struct GroupNormFunction {
     stream = ctx.template device_context<paddle::platform::NPUDeviceContext>()
                  .stream();
   }
-  void ReduceMean(const Tensor* x,
-                  Tensor* y,
+  void ReduceMean(const phi::DenseTensor* x,
+                  phi::DenseTensor* y,
                   const std::vector<int>& dim,
                   bool keep_dims = true) {
     //  y should be init first
@@ -41,8 +41,8 @@ struct GroupNormFunction {
         "ReduceMeanD", {*x}, {*y}, {{"axes", dim}, {"keep_dims", keep_dims}});
     runner.Run(stream);
   }
-  void ReduceSum(const Tensor* x,
-                 Tensor* y,
+  void ReduceSum(const phi::DenseTensor* x,
+                 phi::DenseTensor* y,
                  const std::vector<int>& dim,
                  bool keep_dims = true) {
     //  y should be init first
@@ -50,48 +50,60 @@ struct GroupNormFunction {
         "ReduceSumD", {*x}, {*y}, {{"axes", dim}, {"keep_dims", keep_dims}});
     runner.Run(stream);
   }
-  void Add(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Add(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("AddV2", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Sub(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Sub(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Mul(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Mul(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Div(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Div(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Div", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void DivNoNan(const Tensor* x, const Tensor* y, Tensor* z) {
+  void DivNoNan(const phi::DenseTensor* x,
+                const phi::DenseTensor* y,
+                phi::DenseTensor* z) {
     //  y should be init first
     const auto& runner = NpuOpRunner("DivNoNan", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Transpose(const Tensor* x, Tensor* y, const std::vector<int>& axis) {
+  void Transpose(const phi::DenseTensor* x,
+                 phi::DenseTensor* y,
+                 const std::vector<int>& axis) {
     //  y should be init first
     const auto& runner =
         NpuOpRunner("TransposeD", {*x}, {*y}, {{"perm", axis}});
     runner.Run(stream);
   }
-  void Sqrt(const Tensor* x, Tensor* y) {
+  void Sqrt(const phi::DenseTensor* x, phi::DenseTensor* y) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Sqrt", {*x}, {*y}, {});
     runner.Run(stream);
   }
-  void Adds(const Tensor* x, float scalar, Tensor* y) {
+  void Adds(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
     //  y should be init first
     const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  Tensor ReduceMeanToNG(const Tensor* x,
+  Tensor ReduceMeanToNG(const phi::DenseTensor* x,
                         const DataLayout& data_layout,
                         const int64_t N,
                         const int64_t C,
@@ -129,13 +141,13 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* x = ctx.Input<Tensor>("X");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
 
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* mean = ctx.Output<Tensor>("Mean");
-    auto* var = ctx.Output<Tensor>("Variance");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+    auto* var = ctx.Output<phi::DenseTensor>("Variance");
     const auto groups = ctx.Attr<int>("groups");
 
     auto place = ctx.GetPlace();
@@ -203,18 +215,19 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* var = ctx.Input<Tensor>("Variance");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* var = ctx.Input<phi::DenseTensor>("Variance");
 
-    auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     const auto G = ctx.Attr<int>("groups");
 
     // init output
-    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     GroupNormFunction<T> F(ctx);
     auto place = ctx.GetPlace();
