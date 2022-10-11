@@ -32,7 +32,7 @@ def try_import(module_name, err_msg=None):
         mod = importlib.import_module(module_name)
         return mod
     except ImportError:
-        if err_msg  is None:
+        if err_msg is None:
             err_msg = (
                 "Failed importing {}. This likely means that some paddle modules "
                 "require additional dependencies that have to be "
