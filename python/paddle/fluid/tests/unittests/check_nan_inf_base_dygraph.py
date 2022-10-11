@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import sys
-import time
 import numpy as np
 
 os.environ[str("FLAGS_check_nan_inf")] = str("1")
