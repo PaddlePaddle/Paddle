@@ -155,7 +155,8 @@ class TestGumbelPDF(unittest.TestCase):
 
     def test_log_prob(self):
         np.testing.assert_allclose(self.log_prob,
-                                   scipy.stats.gumbel_r.logpdf(self.value, self.loc, self.scale),
+                                   scipy.stats.gumbel_r.logpdf(
+                                       self.value, self.loc, self.scale),
                                    rtol=config.RTOL.get(str(self.loc.dtype)),
                                    atol=config.ATOL.get(str(self.loc.dtype)))
 
