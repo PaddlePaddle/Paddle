@@ -13,16 +13,13 @@
 # limitations under the License.
 """This is the lib for gradient checker unittest."""
 
-import unittest
 import six
-import collections
 import numpy as np
 from itertools import product
 import paddle
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 from paddle.fluid.framework import _test_eager_guard
 try:

@@ -29,8 +29,6 @@ import collections
 import string
 import opt_einsum
 
-from paddle.common_ops_import import dygraph_only
-
 __all__ = []
 
 

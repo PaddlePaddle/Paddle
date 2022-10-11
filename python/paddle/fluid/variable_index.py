@@ -730,10 +730,13 @@ def _setitem_impl_(var, item, value):
         elif dtype == core.VarDesc.VarType.INT64:
             value_name = "int64_values"
             values = [int(v) for v in value.flat]
+        elif dtype == core.VarDesc.VarType.FP16:
+            value_name = "fp16_values"
+            values = [float(v) for v in value.flat]
         else:
             raise TypeError(
                 "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
-                "the data type of the paddle.Tensor must be bool, float32, int32 or int64, but "
+                "the data type of the paddle.Tensor must be bool, float32, int32, int64 or float16, but "
                 "received %s." % convert_dtype(dtype))
         attrs[value_name] = values
         attrs["shape"] = shape

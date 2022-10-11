@@ -14,13 +14,10 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
-from paddle.fluid import core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 import paddle.nn as nn
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 LOOKAHEAD_K = 5
 LOOKAHEAD_ALPHA = 0.2
