@@ -72,8 +72,6 @@ enum PermuteType {
 
 constexpr int kBlockRows = 16;
 constexpr int kTileSize = 32;
-// To avoid bank conflict.
-constexpr int kShareCol = kTileSize + 1;
 
 // Simplify the input dims and permute dims if possible.
 template <typename T>
@@ -186,8 +184,8 @@ class DimsSimplifier {
   int GetPermVecSize(const int sm_count, const T* src, T* dst) {
     // For gerneal_permute kernel, there is good chance for
     // vectorized write.
-    int vec_size = phi::GetVectorizedSize<T>(dst);
     type_ = PermuteType::kNormalPermute;
+    int vec_size = phi::GetVectorizedSize<T>(dst);
 
     // While the last dim is fixed, there is good chance for
     // both vectorized read and write.
@@ -205,18 +203,11 @@ class DimsSimplifier {
     if ((rank_ == 2 && perm_[1] == 0 && perm_[0] == 1) ||
         (rank_ == 3 && perm_[2] == 1 && perm_[1] == 2)) {
       type_ = PermuteType::kTranspose;
-      vec_size = 1;
-      // int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
-      // // With bytes limitation of shared_memory, the VecSize shall be
-      // // restricted for the type whose byte-size is less than 8 (double).
-      // int type_vec =
-      //     sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, src_dims[rank_ - 1]);
-      // for (int i = type_vec; i > 0; i /= 2) {
-      //   if (blocks / i >= sm_count) {
-      //     break;
-      //   }
-      //   vec_size = i;
-      // }
+      int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
+      // With bytes limitation of shared_memory, the VecSize shall be
+      // restricted for the type whose byte-size is less than 8 (double).
+      vec_size =
+          sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, src_dims[rank_ - 1]);
     }
     return vec_size;
   }

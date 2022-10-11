@@ -918,49 +918,59 @@ __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
                                      IndexT cols,
                                      IndexT round_tile_rows,
                                      IndexT round_tile_cols) {
-  __shared__ T s_data[kTileSize * kShareCol];
+  using VecT = phi::AlignedVector<T, VecSize>;
+  constexpr int kShareCol = kTileSize + 1;
+  __shared__ VecT v_shared[kTileSize * kShareCol];
+  T* s_shared = reinterpret_cast<T*>(v_shared);
+
+  // Vectorized load data from src into shared memory. [rows, cols]
+  const VecT* __restrict__ vec_src =
+      reinterpret_cast<const VecT* __restrict__>(src_data);
 
   IndexT col_in_matrix = blockIdx.x * kTileSize + threadIdx.x;
   IndexT offset = blockIdx.z * rows * cols;
 
-  // load data from src into shared memory. [rows, cols]
   if (col_in_matrix < cols) {
-    IndexT row_range = (blockIdx.y < round_tile_rows)
-                           ? kTileSize
-                           : (rows - kTileSize * round_tile_rows);
-
+    int row_range = (blockIdx.y < round_tile_rows)
+                        ? kTileSize
+                        : (rows - kTileSize * round_tile_rows);
 #pragma unroll
     for (int tile_y = threadIdx.y; tile_y < row_range; tile_y += kBlockRows) {
       IndexT row_in_matrix = tile_y + blockIdx.y * kTileSize;
-      s_data[tile_y * kShareCol + threadIdx.x] =
-          src_data[offset + row_in_matrix * cols + col_in_matrix];
+      v_shared[tile_y * kShareCol + threadIdx.x] =
+          vec_src[offset + row_in_matrix * cols + col_in_matrix];
     }
   }
-  // Write data from shared memory into dst.
-  // and dst_cols = rows, dst_rows = cols, [cols * Vecsize, rows]
+
+  // Write data from shared memory into dst and
+  // dst_cols = rows, dst_rows = cols * Vecsize
   col_in_matrix = blockIdx.y * kTileSize + threadIdx.x;
-  offset = offset + col_in_matrix;
+  offset = offset * VecSize + col_in_matrix;
   __syncthreads();
 
   if (col_in_matrix < /*dst_cols=*/rows) {
-    IndexT row_range = (blockIdx.x < round_tile_cols)
-                           ? kTileSize
-                           : (cols - kTileSize * round_tile_cols);
+    int col_range = (blockIdx.x < round_tile_cols)
+                        ? kTileSize
+                        : (cols - kTileSize * round_tile_cols);
 #pragma unroll
-    for (int tile_y = threadIdx.y; tile_y < row_range; tile_y += kBlockRows) {
-      IndexT row_in_matrix = tile_y + blockIdx.x * kTileSize;
-      dst_data[offset + row_in_matrix * rows] =
-          s_data[threadIdx.x * kShareCol + tile_y];
+    for (IndexT tile_y = threadIdx.y; tile_y < col_range;
+         tile_y += kBlockRows) {
+#pragma unroll
+      for (int i = 0; i < VecSize; ++i) {
+        IndexT row_in_matrix = (tile_y + blockIdx.x * kTileSize) * VecSize + i;
+        IndexT shared_idx = (tile_y + threadIdx.x * kShareCol) * VecSize + i;
+        dst_data[offset + row_in_matrix * rows] = s_shared[shared_idx];
+      }
     }
   }
 }
 
-// With the byte limitation of shared_memory, the VecSize shall be restricted
-// for the type whose byte-size is less than 8.
+// With the byte limitation of shared_memory, the VecSize shall be
+// restricted for the type whose byte-size is less than 4.
 template <typename T,
           typename IndexT,
           int Size,
-          int VecSize = (sizeof(T) > 8 ? 1 : Size)>
+          int VecSize = (sizeof(T) > 4 ? 1 : Size)>
 inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
                                   const std::vector<int>& dims,
                                   const T* src,
@@ -968,7 +978,7 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
   auto rank = dims.size();
   IndexT num_batches = (rank == 2) ? 1 : dims[0];
   IndexT rows = dims[rank - 2];
-  IndexT cols = dims[rank - 1];
+  IndexT cols = dims[rank - 1] / VecSize;
   IndexT num_tile_rows = (rows + kTileSize - 1) / kTileSize;
   IndexT num_tile_cols = (cols + kTileSize - 1) / kTileSize;
 
