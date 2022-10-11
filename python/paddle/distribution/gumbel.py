@@ -21,11 +21,6 @@ from paddle.distribution.transformed_distribution import TransformedDistribution
 from paddle.distribution.transform import AffineTransform, ExpTransform
 from paddle.fluid import framework as framework
 
-try:
-    from collections.abc import Iterable
-except:
-    from collections import Iterable
-
 
 class Gumbel(TransformedDistribution):
     r"""The Gumbel distribution with location `loc` and `scale` parameters.
@@ -222,9 +217,6 @@ class Gumbel(TransformedDistribution):
             Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-        if not isinstance(shape, Iterable):
-            raise TypeError('sample shape must be Iterable object.')
-
         with paddle.no_grad():
             return self.rsample(shape)
 
@@ -237,9 +229,6 @@ class Gumbel(TransformedDistribution):
             Tensor: A tensor with prepended dimensions shape.The data type is float32.
 
         """
-        if not isinstance(shape, list):
-            raise TypeError('rsample shape should be list')
-
         exp_trans = paddle.distribution.ExpTransform()
         affine_trans_1 = paddle.distribution.AffineTransform(
             paddle.full(shape=self.scale.shape, fill_value=0, dtype='float32'),
