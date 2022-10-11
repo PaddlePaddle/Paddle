@@ -342,9 +342,9 @@ class TestMKLDNNInt8ForResnet50AvgONNXFormat(TestPostTrainingQuantization):
         algo = "avg"
         round_type = "round"
         data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
-        data_md5s = ['4a5194524823d9b76da6e738e1367881']
+        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
         quantizable_op_type = [
             "conv2d",
             "depthwise_conv2d",
