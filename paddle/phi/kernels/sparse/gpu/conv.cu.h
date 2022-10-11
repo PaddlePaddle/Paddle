@@ -966,7 +966,8 @@ template <typename ElementA = float,
           typename ShapeMMAOp,
           int NumStages,
           bool GatherA>
-void group_gemm(ElementA** A,
+void group_gemm(const GPUContext& dev_ctx,
+                ElementA** A,
                 ElementB** B,
                 ElementOutput** C,
                 ElementOutput** D,
@@ -1061,7 +1062,7 @@ void group_gemm(ElementA** A,
   }
 
   // Run the grouped GEMM object
-  status = gemm.run();
+  status = gemm.run(dev_ctx.stream());
 
   if (status != cutlass::Status::kSuccess) {
     std::cerr << "Failed to run CUTLASS Grouped GEMM kernel." << std::endl;

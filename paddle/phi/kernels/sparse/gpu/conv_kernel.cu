@@ -225,6 +225,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                  ShapeMMAOp,
                  NumStages,
                  GatherA>(
+          dev_ctx,
           thrust::raw_pointer_cast(ptr_A.data()),
           const_cast<T**>(thrust::raw_pointer_cast(ptr_B.data())),
           thrust::raw_pointer_cast(ptr_D.data()),
@@ -309,6 +310,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                  ShapeMMAOp,
                  NumStages,
                  GatherA>(
+          dev_ctx,
           thrust::raw_pointer_cast(ptr_A.data()),
           const_cast<T**>(thrust::raw_pointer_cast(ptr_B.data())),
           thrust::raw_pointer_cast(ptr_D.data()),
@@ -392,7 +394,8 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                  ShapeMMAWarp,
                  ShapeMMAOp,
                  NumStages,
-                 GatherA>(reinterpret_cast<cutlass::half_t**>(
+                 GatherA>(dev_ctx,
+                          reinterpret_cast<cutlass::half_t**>(
                               thrust::raw_pointer_cast(ptr_A.data())),
                           reinterpret_cast<cutlass::half_t**>(const_cast<T**>(
                               thrust::raw_pointer_cast(ptr_B.data()))),
