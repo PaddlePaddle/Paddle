@@ -234,7 +234,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
-        def generate_dynamic_shape(attrs):
+        def generate_dynamic_shape():
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"expand_v2_input": [1]}
                 self.dynamic_shape.max_input_shape = {"expand_v2_input": [1]}
@@ -245,22 +245,13 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
-        def generate_trt_nodes_num(attrs, dynamic_shape):
-            return 0, 3
-
-        attrs = [
-            program_config.ops[i].attrs for i in range(len(program_config.ops))
-        ]
-
         clear_dynamic_shape()
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+        yield self.create_inference_config(), (0, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+        yield self.create_inference_config(), (0, 3), 1e-5
 
     def add_skip_trt_case(self):
         pass
@@ -384,7 +375,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
-        def generate_dynamic_shape(attrs):
+        def generate_dynamic_shape():
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
                     "expand_v2_input": [1, 1, 4, 6]
@@ -419,22 +410,13 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.opt_input_shape = {}
 
-        def generate_trt_nodes_num(attrs, dynamic_shape):
-            return 0, 3
-
-        attrs = [
-            program_config.ops[i].attrs for i in range(len(program_config.ops))
-        ]
-
         clear_dynamic_shape()
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+        yield self.create_inference_config(), (0, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+        yield self.create_inference_config(), (0, 3), 1e-5
 
     def add_skip_trt_case(self):
         pass
