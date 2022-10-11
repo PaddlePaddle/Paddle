@@ -3503,7 +3503,6 @@ PDNode *patterns::AddSupportInt8::operator()() {
 }
 
 PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
-  VLOG(0)<<"@@ LayernormShiftPartitionPattern, with_roll:"<<with_roll_;
   auto layer_norm_op =
       pattern->NewNode(layer_norm_op_repr())
           ->assert_is_op("layer_norm")

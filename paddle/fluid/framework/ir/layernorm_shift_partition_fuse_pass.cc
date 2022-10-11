@@ -119,8 +119,11 @@ int LayerNormShiftPartitionFusePass::ApplyPattern(ir::Graph* graph, bool with_ro
     LOG(WARNING) << "layernorm_shift_partition_fuse in op compat failed.";
     return;
   }
-
-  VLOG(0) << "layernorm_shift_partition_fuse pass, with_roll:"<<with_roll;
+  if(with_roll){
+    VLOG(4) << "layernorm_shift_partition_fuse pass, shift_size>0, with roll op";
+  } else {
+    VLOG(4) << "layernorm_shift_partition_fuse pass, shift_size=0, without roll op";
+  }
   GET_IR_NODE_FROM_SUBGRAPH(
       layer_norm_in, layer_norm_in, shift_patition_pattern);
   GET_IR_NODE_FROM_SUBGRAPH(
