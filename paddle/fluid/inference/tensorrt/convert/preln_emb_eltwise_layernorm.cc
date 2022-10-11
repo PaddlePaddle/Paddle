@@ -194,7 +194,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
         "max_seqlen_tensor"));  // max_seqlen, eval_placeholder_3
 
     auto creator = GetPluginRegistry()->getPluginCreator(
-        "ManyEmbLayerNormPluginDynamic", "3");
+        "ManyEmbLayerNormPluginDynamic", "2");
 
     auto plugin_obj =
         creator->createPlugin("ManyEmbLayerNormPluginDynamic", plugin_ptr);

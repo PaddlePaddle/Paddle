@@ -113,7 +113,7 @@ def visit_all_module(mod):
                         .format(member_name, instance.__name__),
                         file=sys.stderr)
         except:
-            if not cur_name in ErrorSet and not cur_name in skiplist:
+            if cur_name not in ErrorSet and cur_name not in skiplist:
                 ErrorSet.add(cur_name)
 
 

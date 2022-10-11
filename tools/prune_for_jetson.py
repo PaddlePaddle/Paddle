@@ -54,18 +54,11 @@ def find_kernel(content, pattern):
 
 def prune_phi_kernels():
     tool_dir = os.path.dirname(os.path.abspath(__file__))
-    if sys.version_info[0] == 3:
-        all_op = glob.glob(os.path.join(tool_dir,
-                                        '../paddle/phi/kernels/**/*.cc'),
-                           recursive=True)
-        all_op += glob.glob(os.path.join(tool_dir,
-                                         '../paddle/phi/kernels/**/*.cu'),
-                            recursive=True)
-    elif sys.version_info[0] == 2:
-        all_op = find_type_files(
-            os.path.join(tool_dir, '../paddle/phi/kernels/'), '.cc')
-        all_op = find_type_files(
-            os.path.join(tool_dir, '../paddle/phi/kernels/'), '.cu', all_op)
+
+    all_op = glob.glob(os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cc'),
+                       recursive=True)
+    all_op += glob.glob(os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cu'),
+                        recursive=True)
 
     register_op_count = 0
     for op_file in all_op:
@@ -139,18 +132,12 @@ def append_fluid_kernels():
     #2. add op and kernel register
     op_white_list.append("tensorrt_engine")
     tool_dir = os.path.dirname(os.path.abspath(__file__))
-    if sys.version_info[0] == 3:
-        all_op = glob.glob(os.path.join(tool_dir,
-                                        '../paddle/fluid/operators/**/*.cc'),
-                           recursive=True)
-        all_op += glob.glob(os.path.join(tool_dir,
-                                         '../paddle/fluid/operators/**/*.cu'),
-                            recursive=True)
-    elif sys.version_info[0] == 2:
-        all_op = find_type_files(
-            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cc')
-        all_op = find_type_files(
-            os.path.join(tool_dir, '../paddle/fluid/operators/'), '.cu', all_op)
+    all_op = glob.glob(os.path.join(tool_dir,
+                                    '../paddle/fluid/operators/**/*.cc'),
+                       recursive=True)
+    all_op += glob.glob(os.path.join(tool_dir,
+                                     '../paddle/fluid/operators/**/*.cu'),
+                        recursive=True)
 
     for op_file in all_op:
         with io.open(op_file, 'r', encoding='utf-8') as f:
