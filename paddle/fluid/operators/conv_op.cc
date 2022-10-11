@@ -189,8 +189,6 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
 
 framework::OpKernelType ConvOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  int customized_type_value =
-      framework::OpKernelType::kDefaultCustomizedTypeValue;
   framework::LibraryType library{framework::LibraryType::kPlain};
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
@@ -208,14 +206,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       this->CanMKLDNNBeUsed(ctx, input_data_type)) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
-    customized_type_value =
-        (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
-         input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
-            ? OperatorWithKernel::IndicateVarDataType(ctx, "Filter") ==
-                      framework::DataTypeTrait<int8_t>::DataType()
-                  ? kConvMKLDNNINT8WS8
-                  : kConvMKLDNNINT8
-            : kConvMKLDNNFP32;
   }
 #endif
 
@@ -234,14 +224,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
             paddle::framework::DataTypeToString(input_data_type),
             paddle::framework::DataTypeToString(filter_data_type)));
   }
-// #ifndef PADDLE_WITH_ASCEND_CL
-//   if (input_data_type == framework::proto::VarType::FP16) {
-//     PADDLE_ENFORCE_EQ(
-//         library, framework::LibraryType::kCUDNN,
-//         platform::errors::InvalidArgument(
-//             "float16 can only be used when CUDNN or NPU is used"));
-//   }
-// #endif
 #if PADDLE_WITH_CUDA
   if (input_data_type == framework::proto::VarType::BF16 &&
       library == framework::LibraryType::kCUDNN) {
@@ -253,8 +235,8 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   }
 #endif  // PADDLE_WITH_CUDA
 
-  auto type = framework::OpKernelType(
-      input_data_type, ctx.GetPlace(), layout, library, customized_type_value);
+  auto type =
+      framework::OpKernelType(input_data_type, ctx.GetPlace(), layout, library);
   return type;
 }
 
