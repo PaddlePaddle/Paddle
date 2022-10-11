@@ -188,6 +188,11 @@ class Engine:
         self._fetch_vars = {}
         self._planners = {}
         self._has_prepared = {"train": False, "eval": False, "predict": False}
+        self._has_prepared_reader = {
+            "train": False,
+            "eval": False,
+            "predict": False
+        }
         self._inputs_spec = []
         self._labels_spec = []
         self._inputs = []
@@ -278,7 +283,8 @@ class Engine:
                 assert isinstance(inputs, list), \
                     "inputs should be list, but received {}".format(type(inputs))
                 for input_spec, input in zip(inputs_spec, inputs):
-                    input.desc.set_shape(input_spec.shape)
+                    if input_spec.shape != input.shape:
+                        input.desc.set_shape(input_spec.shape)
         if labels_spec:
             assert isinstance(labels_spec, list), \
                 "labels should be list, but received {}".format(type(labels_spec))
@@ -288,7 +294,8 @@ class Engine:
                 assert isinstance(labels, list), \
                     "labels should be list, but received {}".format(type(labels))
                 for label_spec, label in zip(labels_spec, labels):
-                    label.desc.set_shape(label_spec.shape)
+                    if label_spec.shape != label.shape:
+                        label.desc.set_shape(label_spec.shape)
         return inputs, labels
 
     def _prepare_reader(self):
@@ -296,28 +303,43 @@ class Engine:
         dist_context = self._dist_contexts[self._mode]
         dist_main_block = dist_main_prog.global_block()
 
-        # remove the first three ops if multi run fit/evaluate/predict
-        op_size = self._op_size
+        # NOTE: this list may be changed if Paddle changes the existing rules.
+        related_reader_ops = [
+            "create_py_reader", "create_double_buffer_reader", "read"
+        ]
+        # remove the first three ops if multiple run fit/evaluate/predict
         if dist_main_block.ops[0].type == 'create_py_reader':
-            op_size -= 3
-            for _ in range(3):
-                dist_main_block._remove_op(0, sync=False)
-
-        # move read op from the end of program to the start of program
-        new_op_size = len(dist_main_block.ops)
-        for _ in range(new_op_size - 1, op_size - 1, -1):
-            op = dist_main_block.ops[new_op_size - 1]
+            for i in range(len(related_reader_ops)):
+                if dist_main_block.ops[0].type in related_reader_ops:
+                    dist_main_block._remove_op(0, sync=False)
+        dist_main_block._sync_with_cpp()
+        # Step 1: find the reader ops
+        reader_op_indices = []
+        for idx, op in enumerate(dist_main_block.ops):
+            if op.type in related_reader_ops:
+                reader_op_indices.append(idx)
+        # Step 2: insert the new reader ops to cpp
+        new_reader_ops = []
+        for idx in reversed(reader_op_indices):
             new_op_desc = dist_main_block.desc._prepend_op()
-            new_op_desc.copy_from(op.desc)
+            new_op_desc.copy_from(dist_main_block.ops[idx].desc)
             new_op = Operator(dist_main_block,
                               new_op_desc,
                               type=new_op_desc.type())
-            dist_main_block.ops.insert(0, new_op)
+            new_reader_ops.append(new_op)
             dist_op = DistributedOperator(new_op)
             dist_context.add_dist_op_for_program(dist_op)
-        for _ in range(new_op_size - op_size):
-            dist_main_block._remove_op(new_op_size, sync=False)
+        # Step 3: insert the new reader ops to python
+        for new_op in new_reader_ops:
+            dist_main_block.ops.insert(0, new_op)
+        for i in range(len(reader_op_indices)):
+            reader_op_indices[i] += len(reader_op_indices)
+        # Step 4: remove the old reader ops from python and cpp
+        for idx in reversed(reader_op_indices):
+            op = dist_main_block.ops.pop(idx)
+            dist_main_block.desc._remove_op(idx, idx + 1)
         dist_main_block._sync_with_cpp()
+        self._has_prepared_reader[self._mode] = True
 
     def _prepare_feed(self, data, user_feeds, mode):
         feeds = {}
@@ -356,6 +378,8 @@ class Engine:
                     if var_name not in fetch_names:
                         fetch_names.append(var_name)
                     group_indices.append(fetch_names.index(var_name))
+            if not group_indices:
+                fetch_names.append([])
             fetch_indices.append(group_indices)
 
         if mode != "predict":
@@ -398,17 +422,19 @@ class Engine:
             group_idx += 1
         # logging metrics
         if mode != "predict":
-            for metric in self._metrics:
-                metrics_indices = fetch_indices[group_idx]
-                metric_out = []
-                for idx in metrics_indices:
-                    metric_out.append(outs[idx])
-                if metric_out:
-                    metric.update(*metric_out)
-                    results = metric.accumulate()
-                    for i, res in enumerate(to_list(results)):
-                        logs += "{}: {:8f} ".format(metric.name()[i], res)
-                group_idx += 1
+            metric_vars = self._fetch_vars[mode]["metrics"]
+            if metric_vars:
+                for metric in self._metrics:
+                    metrics_indices = fetch_indices[group_idx]
+                    metric_out = []
+                    for idx in metrics_indices:
+                        metric_out.append(outs[idx])
+                    if metric_out:
+                        metric.update(*metric_out)
+                        results = metric.accumulate()
+                        for i, res in enumerate(to_list(results)):
+                            logs += "{}: {:8f} ".format(metric.name()[i], res)
+                    group_idx += 1
         # Skip logging outputs
         if mode == "predict":
             group_idx += 1
@@ -435,16 +461,18 @@ class Engine:
             group_idx += 1
         # store metrics
         if mode != "predict":
-            for metric in self._metrics:
-                metrics_indices = fetch_indices[group_idx]
-                metric_out = []
-                for idx in metrics_indices:
-                    metric_out.append(outs[idx])
-                if metric_out:
-                    metric.update(*metric_out)
-                    results = metric.accumulate()
-                    history[tuple(metric.name())] = to_list(results)
-                group_idx += 1
+            metric_vars = self._fetch_vars[mode]["metrics"]
+            if metric_vars:
+                for metric in self._metrics:
+                    metrics_indices = fetch_indices[group_idx]
+                    metric_out = []
+                    for idx in metrics_indices:
+                        metric_out.append(outs[idx])
+                    if metric_out:
+                        metric.update(*metric_out)
+                        results = metric.accumulate()
+                        history[tuple(metric.name())] = to_list(results)
+                    group_idx += 1
         # store outputs
         if mode == "predict":
             outputs_indices = fetch_indices[group_idx]
@@ -1134,21 +1162,11 @@ class Engine:
                 self._orig_startup_prog = static.default_startup_program()
             if not self._has_prepared[self._mode]:
                 self._prepare_program(self._mode)
-                dist_main_prog = self._dist_main_progs[self._mode][
-                    self._cur_rank]
-                dist_main_block = dist_main_prog.global_block()
-                self._op_size = len(dist_main_block.ops)
             else:
                 self._switch_mode(self._mode)
         else:
             assert self._inputs_spec and self._labels_spec, \
-                "Please call the dataloader(...) of Engine before calling prepare(...)"
-            # if not self._has_prepared[self._mode]:
-            #     self._prepare_program(self._mode)
-            # else:
-            #     self._switch_mode(self._mode)
-        print_program_with_dist_attr(self.serial_main_program,
-                                     self.dist_context)
+                "Please call the dataloader(...) before calling prepare(...)"
 
     def run(
         self,
@@ -1168,19 +1186,14 @@ class Engine:
             self.to_mode(mode)
         feed_dict = self._prepare_feed(data, feed, self._mode)
         fetch_names, fetch_indices = self._prepare_fetch(fetch_list, self._mode)
-        print("%%%%%%%%%%%", self._outside_dataloader, feed_dict, fetch_names)
-        if self._outside_dataloader:
+        if self._outside_dataloader and not self._has_prepared_reader[
+                self._mode]:
             self._prepare_reader()
-        print(self.main_program)
-        try:
-            outs = self._executor.run(
-                self.main_program,
-                feed=feed_dict,
-                fetch_list=fetch_names,
-                use_program_cache=self._strategy.use_cache,
-                return_numpy=self._strategy.return_numpy)
-        except core.EOFException:
-            pass
+        outs = self._executor.run(self.main_program,
+                                  feed=feed_dict,
+                                  fetch_list=fetch_names,
+                                  use_program_cache=self._strategy.use_cache,
+                                  return_numpy=self._strategy.return_numpy)
         self._prepare_logger(outs, None, None, None, fetch_names, fetch_indices,
                              "", self._mode)
         history = self._prepare_history(outs, fetch_indices, self._mode)
@@ -1290,7 +1303,7 @@ class Engine:
                 feed_list.append(copy_var)
 
         # # remove the first three ops if multi run fit/evaluate/predict
-        self._op_size = len(dist_main_block.ops)
+        # self._op_size = len(dist_main_block.ops)
         # if dist_main_block.ops[0].type == 'create_py_reader':
         #     op_size -= 3
         #     for _ in range(3):

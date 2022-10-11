@@ -187,6 +187,3 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.TUNING, None)
         self.tuning = TuningConfig(config_dict)
-
-        config_dict = self._config_dict.get(constants.DATASET, None)
-        self.dataset = DatasetConfig(config_dict)

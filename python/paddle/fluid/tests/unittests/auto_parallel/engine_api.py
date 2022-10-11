@@ -37,6 +37,7 @@ paddle.enable_static()
 global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
 PP_MESH_0 = auto.ProcessMesh([0])
 PP_MESH_1 = auto.ProcessMesh([1])
+epoch_num = 1
 batch_size = 2
 batch_num = 10
 hidden_size = 1024
@@ -75,9 +76,9 @@ def get_random_inputs_and_labels(image_shape, label_shape):
 def batch_generator_creator():
 
     def __reader__():
-        for _ in range(batch_size):
+        for _ in range(batch_num):
             batch_input, batch_label = get_random_inputs_and_labels(
-                [batch_size, image_size], [batch_size])
+                [batch_size, image_size], [batch_size, 1])
             yield batch_input, batch_label
 
     return __reader__
@@ -191,39 +192,39 @@ def train_low_level():
     for feed_var, shape in my_feed_vars:
         feed_dict[feed_var.name] = np.zeros(shape, dtype="float32")
 
-    # # Build normal normal dataloader
-    # # train
-    # train_dataset = MyDataset(batch_num * batch_size)
-    # train_dataloader = engine.dataloader(train_dataset,
-    #                                      batch_size=batch_size,
-    #                                      mode="train")
-    # engine.prepare(mode="train")
-    # for data in train_dataloader:
-    #     outs = engine.run(data, feed=feed_dict, mode="train")
+    # Build normal normal dataloader
+    # train
+    train_dataset = MyDataset(batch_num * batch_size)
+    train_dataloader = engine.dataloader(train_dataset,
+                                         batch_size=batch_size,
+                                         mode="train")
+    engine.prepare(mode="train")
+    for data in train_dataloader:
+        outs = engine.run(data, feed=feed_dict, mode="train")
 
-    # # eval
-    # eval_dataset2 = MyDataset(batch_size)
-    # eval_dataloader = engine.dataloader(eval_dataset2,
-    #                                     batch_size=batch_size,
-    #                                     mode="eval")
-    # engine.prepare(mode="eval")
-    # for data in eval_dataloader:
-    #     outs = engine.run(data, feed=feed_dict, mode="eval")
+    # eval
+    eval_dataset2 = MyDataset(batch_size)
+    eval_dataloader = engine.dataloader(eval_dataset2,
+                                        batch_size=batch_size,
+                                        mode="eval")
+    engine.prepare(mode="eval")
+    for data in eval_dataloader:
+        outs = engine.run(data, feed=feed_dict, mode="eval")
 
-    # # predict
-    # engine.to_mode("predict")
-    # test_dataset = MyDataset(batch_size)
-    # predict_dataloader = engine.dataloader(test_dataset, batch_size=batch_size)
-    # engine.prepare()
-    # for data in predict_dataloader:
-    #     outs = engine.run(data, feed=feed_dict)
+    # predict
+    engine.to_mode("predict")
+    test_dataset = MyDataset(batch_size)
+    predict_dataloader = engine.dataloader(test_dataset, batch_size=batch_size)
+    engine.prepare()
+    for data in predict_dataloader:
+        outs = engine.run(data, feed=feed_dict)
 
-    # # save
-    # temp_dir = tempfile.TemporaryDirectory()
-    # model_filename = os.path.join(temp_dir.name, 'mlp')
-    # engine.save(model_filename, training=True)
-    # engine.load(model_filename)
-    # temp_dir.cleanup()
+    # save
+    temp_dir = tempfile.TemporaryDirectory()
+    model_filename = os.path.join(temp_dir.name, 'mlp')
+    engine.save(model_filename, training=True)
+    engine.load(model_filename)
+    temp_dir.cleanup()
 
     # Build dataloader from generator
     # train
@@ -234,40 +235,34 @@ def train_low_level():
     engine.prepare(mode="train")
     for data in train_dataloader:
         outs = engine.run(data, feed=feed_dict, mode="train")
-        break
 
-    # # eval
-    # eval_dataset2 = MyDataset(batch_size)
-    # engine.to_mode(mode="eval")
-    # eval_dataloader = engine.dataloader_from_generator(eval_dataset2,
-    #                                                    batch_size=batch_size)
-    # engine.prepare()
-    # for data in eval_dataloader:
-    #     outs = engine.run(data, feed=feed_dict)
+    # eval
+    engine.to_mode("eval")
+    eval_dataset2 = MyDataset(batch_size)
+    eval_dataloader = engine.dataloader_from_generator(eval_dataset2,
+                                                       batch_size=batch_size)
+    engine.prepare()
+    for data in eval_dataloader:
+        outs = engine.run(data, feed=feed_dict)
 
-    # # predict
-    # test_dataset = MyDataset(batch_size)
-    # predict_dataloader = engine.dataloader_from_generator(test_dataset,
-    #                                                       batch_size=batch_size,
-    #                                                       mode="predict")
-    # engine.prepare(mode="predict")
-    # for data in predict_dataloader:
-    #     outs = engine.run(data, feed=feed_dict, mode="predict")
+    # predict
+    test_dataset = MyDataset(batch_size)
+    predict_dataloader = engine.dataloader_from_generator(test_dataset,
+                                                          batch_size=batch_size,
+                                                          mode="predict")
+    engine.prepare(mode="predict")
+    for data in predict_dataloader:
+        outs = engine.run(data, feed=feed_dict, mode="predict")
 
-    # # save
-    # temp_dir = tempfile.TemporaryDirectory()
-    # model_filename = os.path.join(temp_dir.name, 'mlp')
-    # engine.save(model_filename, training=True)
-    # engine.load(model_filename)
-    # temp_dir.cleanup()
+    # save
+    temp_dir = tempfile.TemporaryDirectory()
+    model_filename = os.path.join(temp_dir.name, 'mlp')
+    engine.save(model_filename, training=True)
+    engine.load(model_filename)
+    temp_dir.cleanup()
 
 
 def train_builtin_data_vars():
-    # input = static.data(name="input",
-    #                     shape=[batch_size, image_size],
-    #                     dtype='float32')
-    # label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
-
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    dropout_ratio=0.1,
@@ -302,14 +297,14 @@ def train_builtin_data_vars():
         places = static.cuda_places()
         loader.set_batch_generator(batch_generator_creator(), places=places)
 
-    # print("$$$$$$$", engine.main_program, engine.startup_program)
-    count = 0
-    while True:
-        outs = engine.run()
-        count += 1
-        print("%%%%%%%%%%%", count)
-        if count == batch_size:
-            break
+    for _ in range(epoch_num):
+        loader.start()  # call DataLoader.start() before each epoch starts
+        try:
+            while True:
+                engine.run()
+        except paddle.fluid.core.EOFException:
+            loader.reset(
+            )  # call DataLoader.reset() after catching EOFException
 
 
 def train_non_builtin_data_vars():
@@ -320,13 +315,12 @@ def train_non_builtin_data_vars():
         input = static.data(name="input",
                             shape=[batch_size, image_size],
                             dtype='float32')
-        label = static.data(name="label", shape=[batch_size], dtype='int64')
+        label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
 
         loader = paddle.io.DataLoader.from_generator(feed_list=[input, label],
                                                      capacity=4 * batch_size,
                                                      iterable=False)
         places = static.cuda_places()
-        print("##########", places)
         loader.set_batch_generator(batch_generator_creator(), places=places)
 
         mlp = MLPLayer(hidden_size=hidden_size,
@@ -348,7 +342,7 @@ def train_non_builtin_data_vars():
 
     engine = auto.Engine(loss=loss_var,
                          optimizer=optimizer,
-                         metrics=None,
+                         metrics=metric,
                          strategy=strategy)
 
     # train
@@ -357,20 +351,19 @@ def train_non_builtin_data_vars():
                    labels=[label],
                    main_program=main_program,
                    startup_program=startup_program)
-    # for data in loader:
-    #     outs = engine.run(data)
-    count = 1
-    while True:
-        outs = engine.run()
-        count += 1
-        print("%%%%%%%%%%%", count)
-        if count == batch_size:
-            break
+    for _ in range(epoch_num):
+        loader.start()  # call DataLoader.start() before each epoch starts
+        try:
+            while True:
+                engine.run()
+        except paddle.fluid.core.EOFException:
+            loader.reset(
+            )  # call DataLoader.reset() after catching EOFException
 
 
 if __name__ == "__main__":
-    # train_high_level(fetch=True)
-    # train_high_level(fetch=False)
-    # train_low_level()
-    # train_builtin_data_vars()
+    train_high_level(fetch=True)
+    train_high_level(fetch=False)
+    train_low_level()
+    train_builtin_data_vars()
     train_non_builtin_data_vars()
