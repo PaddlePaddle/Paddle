@@ -961,8 +961,11 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id) {
   }
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "RecordStreamForGC is only implemented when compiled with GPU."));
+#endif
   if (!IsInterpretercoreFastGCEnabled() ||
       instr.KernelType() != OpFuncType::kQueueAsync) {
     return;
@@ -1054,7 +1057,6 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
     }
   }
 }
-#endif
 
 void InterpreterCore::CheckGC(const Instruction& instr) {
   platform::RecordEvent record(
