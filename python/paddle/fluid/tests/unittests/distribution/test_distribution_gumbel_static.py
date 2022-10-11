@@ -86,17 +86,16 @@ class TestGumbel(unittest.TestCase):
     def test_sample(self):
         self.assertEqual(self.samples.dtype, self.scale.dtype)
 
-        tolerance = 1e-3
         np.testing.assert_allclose(self.samples.mean(axis=0),
                                    scipy.stats.gumbel_r.mean(self.loc,
                                                              scale=self.scale),
                                    rtol=0.1,
-                                   atol=tolerance)
+                                   atol=config.ATOL.get(str(self.scale.dtype)))
         np.testing.assert_allclose(self.samples.var(axis=0),
                                    scipy.stats.gumbel_r.var(self.loc,
                                                             scale=self.scale),
                                    rtol=0.1,
-                                   atol=tolerance)
+                                   atol=config.ATOL.get(str(self.scale.dtype)))
 
     def _np_mean(self):
         return self.loc + self.scale * np.euler_gamma
@@ -149,23 +148,23 @@ class TestGumbelPDF(unittest.TestCase):
 
     def test_prob(self):
         np.testing.assert_allclose(
-            self._dist.prob(paddle.to_tensor(self.value)),
+            self.prob,
             scipy.stats.gumbel_r.pdf(self.value, self.loc, self.scale),
             rtol=config.RTOL.get(str(self.loc.dtype)),
             atol=config.ATOL.get(str(self.loc.dtype)))
 
     def test_log_prob(self):
         np.testing.assert_allclose(
-            self._dist.log_prob(paddle.to_tensor(self.value)),
+            self.log_prob,
             scipy.stats.gumbel_r.logpdf(self.value, self.loc, self.scale),
             rtol=config.RTOL.get(str(self.loc.dtype)),
             atol=config.ATOL.get(str(self.loc.dtype)))
 
     def test_cdf(self):
-        np.testing.assert_allclose(self._dist.cdf(paddle.to_tensor(self.value)),
+        np.testing.assert_allclose(self.cdf,
                                    scipy.stats.gumbel_r.cdf(
                                        self.value, self.loc, self.scale),
-                                   rtol=config.RTOL.get(str(self.loc.dtype)),
+                                   rtol=0.3,
                                    atol=config.ATOL.get(str(self.loc.dtype)))
 
 
