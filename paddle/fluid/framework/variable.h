@@ -120,9 +120,9 @@ class Variable {
 
 inline phi::DenseTensor::InplaceVersion* Variable::InplaceVersionCounter() {
   phi::DenseTensor::InplaceVersion* version_counter_ptr(nullptr);
-  if (IsType<framework::LoDTensor>()) {
+  if (IsType<phi::DenseTensor>()) {
     version_counter_ptr =
-        &GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
+        &GetMutable<phi::DenseTensor>()->InplaceVersionCounter();
   } else if (IsType<phi::DenseTensor>()) {
     version_counter_ptr =
         &GetMutable<phi::DenseTensor>()->InplaceVersionCounter();
