@@ -37,6 +37,26 @@ namespace ir {
 //  reshape2
 //     |
 //  other_op
+//
+// or
+//
+//     |
+// layer_norm
+//     |
+//  reshape2
+//     |
+//    roll
+//     |
+//  reshape2                            |
+//     |           fuse       layernorm_shift_patition
+// transpose2       ->                  |
+//     |                             other_op
+//  reshape2
+//     |
+//  reshape2
+//     |
+//  other_op
+
 class LayerNormShiftPartitionFusePass : public FusePassBase {
  public:
   LayerNormShiftPartitionFusePass();
