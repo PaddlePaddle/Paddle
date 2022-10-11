@@ -1945,12 +1945,15 @@ struct LayernormShiftPartitionPattern : public PatternBase {
 //       The reverse circlic shift based on roll op,
 //       therefore, reverse_roll were adopted as pattern and fused op name.
 //
-struct ReverseRollPattern : public PatternBase{
+struct ReverseRollPattern : public PatternBase {
   ReverseRollPattern(PDPattern* pattern,
-                                 const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "reverse_roll") {}
+                     const std::string& name_scope,
+                     bool with_roll)
+      : PatternBase(pattern, name_scope, "reverse_roll"),
+        with_roll_(with_roll) {}
 
   PDNode* operator()(PDNode* in);
+  bool with_roll_;
   PATTERN_DECL_NODE(reshape2_00_op);
   PATTERN_DECL_NODE(reshape2_00_out);
   PATTERN_DECL_NODE(reshape2_10_op);
@@ -1961,24 +1964,6 @@ struct ReverseRollPattern : public PatternBase{
   PATTERN_DECL_NODE(reshape2_30_out);
   PATTERN_DECL_NODE(roll_40_op);
   PATTERN_DECL_NODE(roll_40_out);
-  PATTERN_DECL_NODE(reshape2_50_op);
-  PATTERN_DECL_NODE(reshaep2_50_out);
-};
-
-struct ReverseRoll2Pattern : public PatternBase{
-  ReverseRoll2Pattern(PDPattern* pattern,
-                                 const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "reverse_roll2") {}
-
-  PDNode* operator()(PDNode* in);
-  PATTERN_DECL_NODE(reshape2_00_op);
-  PATTERN_DECL_NODE(reshape2_00_out);
-  PATTERN_DECL_NODE(reshape2_10_op);
-  PATTERN_DECL_NODE(reshape2_10_out);
-  PATTERN_DECL_NODE(transpose2_20_op);
-  PATTERN_DECL_NODE(transpose2_20_out);
-  PATTERN_DECL_NODE(reshape2_30_op);
-  PATTERN_DECL_NODE(reshape2_30_out);
   PATTERN_DECL_NODE(reshape2_50_op);
   PATTERN_DECL_NODE(reshaep2_50_out);
 };
