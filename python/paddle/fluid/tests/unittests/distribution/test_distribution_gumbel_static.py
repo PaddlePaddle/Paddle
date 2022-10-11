@@ -147,18 +147,17 @@ class TestGumbelPDF(unittest.TestCase):
                                   fetch_list=fetch_list)
 
     def test_prob(self):
-        np.testing.assert_allclose(
-            self.prob,
-            scipy.stats.gumbel_r.pdf(self.value, self.loc, self.scale),
-            rtol=config.RTOL.get(str(self.loc.dtype)),
-            atol=config.ATOL.get(str(self.loc.dtype)))
+        np.testing.assert_allclose(self.prob,
+                                   scipy.stats.gumbel_r.pdf(
+                                       self.value, self.loc, self.scale),
+                                   rtol=config.RTOL.get(str(self.loc.dtype)),
+                                   atol=config.ATOL.get(str(self.loc.dtype)))
 
     def test_log_prob(self):
-        np.testing.assert_allclose(
-            self.log_prob,
-            scipy.stats.gumbel_r.logpdf(self.value, self.loc, self.scale),
-            rtol=config.RTOL.get(str(self.loc.dtype)),
-            atol=config.ATOL.get(str(self.loc.dtype)))
+        np.testing.assert_allclose(self.log_prob,
+                                   scipy.stats.gumbel_r.logpdf(self.value, self.loc, self.scale),
+                                   rtol=config.RTOL.get(str(self.loc.dtype)),
+                                   atol=config.ATOL.get(str(self.loc.dtype)))
 
     def test_cdf(self):
         np.testing.assert_allclose(self.cdf,

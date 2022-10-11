@@ -78,10 +78,13 @@ class TransformedDistribution(distribution.Distribution):
             transformed_event_rank = chain._codomain.event_rank + \
                 max(len(base.event_shape) - chain._domain.event_rank, 0)
             super(TransformedDistribution, self).__init__(
-                transformed_shape[:len(transformed_shape) - transformed_event_rank],
-                transformed_shape[len(transformed_shape) - transformed_event_rank:])
+                transformed_shape[:len(transformed_shape) -
+                                  transformed_event_rank],
+                transformed_shape[len(transformed_shape) -
+                                  transformed_event_rank:])
         else:
-            super(TransformedDistribution, self).__init__(base.batch_shape, base.event_shape)
+            super(TransformedDistribution,
+                  self).__init__(base.batch_shape, base.event_shape)
 
     def sample(self, shape=()):
         """Sample from ``TransformedDistribution``.
