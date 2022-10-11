@@ -176,6 +176,27 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(
         strategy_.enable_inference_pass_ && strategy_.use_mkldnn_,
         "mkldnn_placement_pass");
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.depthwise_conv_mkldnn_,
+        "depthwise_conv_mkldnn_pass");
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.fuse_conv_bias_,
+        "conv_bias_mkldnn_fuse_pass");
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.fuse_conv_act_,
+        "conv_activation_mkldnn_fuse_pass");
+    AppendPassWithCheck(strategy_.enable_inference_pass_ &&
+                            strategy_.fuse_matmul_transpose_reshape,
+                        "matmul_transpose_reshape_mkldnn_fuse_pass");
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.fuse_matmul_element_,
+        "matmul_elementwise_add_mkldnn_fuse_pass");
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.fuse_matmul_act_,
+        "matmul_activation_mkldnn_fuse_pass");
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.fuse_elementwise_act_,
+        "elt_act_mkldnn_fuse_pass");
 
     // 2. trainning pass
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,

@@ -52,8 +52,11 @@ void FunctionSchema::AddOutputArg(const std::string& name) {
 
 FunctionInfo::FunctionInfo(const std::string& func_name,
                            const std::vector<std::string>& param_names,
-                           const framework::ProgramDesc& program_desc)
-    : func_name_(func_name), param_names_(param_names) {
+                           const framework::ProgramDesc& program_desc,
+                           const std::string& pdmodel_path)
+    : func_name_(func_name),
+      param_names_(param_names),
+      pdmodel_path_(pdmodel_path) {
   program_desc_.reset(new framework::ProgramDesc(program_desc));
   // Parse FunctionSchema
   for (auto& in_name : program_desc_->GetFeedTargetNames()) {
@@ -81,6 +84,8 @@ const std::vector<std::string> FunctionInfo::InputArgNames() const {
 const std::vector<std::string> FunctionInfo::OutputArgNames() const {
   return schema_.OutputArgNames();
 }
+
+const std::string& FunctionInfo::PdModelPath() const { return pdmodel_path_; }
 
 void FunctionInfo::RemoveDescFeedFetch() {
   utils::RemoveFeedFetch(program_desc_.get());

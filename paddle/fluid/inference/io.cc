@@ -176,12 +176,12 @@ std::unique_ptr<framework::ProgramDesc> Load(
       platform::errors::Unavailable("Model version %ld is not supported.",
                                     main_program->Version()));
 
-  LoadPersistables(executor,
-                   scope,
-                   *main_program,
-                   "",
-                   param_filename,
-                   false /* model_from_memory */);
+  // LoadPersistables(executor,
+  //                  scope,
+  //                  *main_program,
+  //                  "",
+  //                  param_filename,
+  //                  false /* model_from_memory */);
   return main_program;
 }
 

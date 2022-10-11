@@ -167,19 +167,22 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
     return false;
   }
 
-  PADDLE_ENFORCE_NOT_NULL(
-      input_ptr,
-      paddle::platform::errors::Fatal(
-          "Cannot convert to LoDTensor because LoDTensor creation failed."));
-  PADDLE_ENFORCE_NOT_NULL(
-      pt.data.data(),
-      paddle::platform::errors::InvalidArgument(
-          "The data contained in the input PaddleTensor is illegal."));
+  // PADDLE_ENFORCE_NOT_NULL(
+  //     input_ptr,
+  //     paddle::platform::errors::Fatal(
+  //         "Cannot convert to LoDTensor because LoDTensor creation failed."));
+
+  // PADDLE_ENFORCE_NOT_NULL(
+  //     pt.data.data(),
+  //     paddle::platform::errors::InvalidArgument(
+  //         "The data contained in the input PaddleTensor is illegal."));
 
   if (platform::is_cpu_place(place)) {
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(
-        static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
+    if (input_ptr != nullptr) {
+      std::memcpy(
+          static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
+    }
   } else if (platform::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
     std::memcpy(
@@ -527,6 +530,7 @@ bool AnalysisPredictor::PrepareProgram(
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
     inference_program_ = program;
+    OptimizeInferenceProgram();
   }
 
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
@@ -1059,11 +1063,11 @@ void AnalysisPredictor::PrepareArgument() {
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
-    PADDLE_ENFORCE_EQ(config_.prog_file().empty(),
-                      false,
-                      platform::errors::PreconditionNotMet(
-                          "Either model_dir or prog_file should be set."));
-    std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
+    // PADDLE_ENFORCE_EQ(config_.prog_file().empty(),
+    //                   false,
+    //                   platform::errors::PreconditionNotMet(
+    //                       "Either model_dir or prog_file should be set."));
+    // std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
 
     argument_.SetModelProgramPath(config_.prog_file());
     argument_.SetModelParamsPath(config_.params_file());

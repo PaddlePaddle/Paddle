@@ -106,6 +106,7 @@ std::vector<DenseTensor> PEEngine::operator()(
   // Erase output vars to avoid data rewriting.
   scope_.EraseVars(out_names);
   scope_.DropKids();
+  scope_.EraseVars(info_->OutputArgNames());
   return outputs;
 }
 

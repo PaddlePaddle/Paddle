@@ -155,6 +155,13 @@ struct BuildStrategy {
 #else
   bool use_mkldnn_{false};  // use mkdnn to do inference
 #endif
+  bool depthwise_conv_mkldnn_{false};         // depthwise_conv2d using conv2d
+  bool fuse_conv_bias_{false};                // fuse conv + add bias
+  bool fuse_conv_act_{false};                 // fuse conv + act
+  bool fuse_matmul_transpose_reshape{false};  // matmul + transpose + reshape
+  bool fuse_matmul_element_{false};           // fuse matmul + elementadd
+  bool fuse_matmul_act_{false};               // fuse matmul + act
+  bool fuse_elementwise_act_{false};          // elementwise + act
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if

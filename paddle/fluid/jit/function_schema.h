@@ -60,7 +60,8 @@ class FunctionInfo {
  public:
   FunctionInfo(const std::string& func_name,
                const std::vector<std::string>& param_names,
-               const framework::ProgramDesc& program_desc);
+               const framework::ProgramDesc& program_desc,
+               const std::string& pdmodel_path);
 
   const std::string& FunctionName() const;
 
@@ -72,6 +73,8 @@ class FunctionInfo {
 
   const std::vector<std::string> OutputArgNames() const;
 
+  const std::string& PdModelPath() const;
+
   void RemoveDescFeedFetch();
 
  private:
@@ -79,6 +82,7 @@ class FunctionInfo {
   std::vector<std::string> param_names_;
   std::shared_ptr<framework::ProgramDesc> program_desc_;
   FunctionSchema schema_;
+  std::string pdmodel_path_;
 };
 
 }  // namespace jit

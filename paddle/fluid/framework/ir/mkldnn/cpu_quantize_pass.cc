@@ -422,7 +422,16 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     auto filter_scale_tensor = GetScaleTensorForNode(conv_filter);
     EigenVectorArrayMap eigen_tensor{filter_scale_tensor.data<double>(),
                                      filter_scale_tensor.numel()};
-    eigen_tensor *= static_cast<double>(S8_MAX);
+
+    // If the scale value of a weight is already multiplied by S8_MAX, it does
+    // not need to be multiplied again
+    if (std::find(change_weight_->begin(),
+                  change_weight_->end(),
+                  conv_filter->Name()) == change_weight_->end()) {
+      eigen_tensor *= static_cast<double>(S8_MAX);
+      change_weight_->push_back(conv_filter->Name());
+    }
+
     std::vector<float> filter_scale{
         filter_scale_tensor.data<double>(),
         filter_scale_tensor.data<double>() + filter_scale_tensor.numel()};
@@ -692,6 +701,14 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
     if (!IsOpDequantized(prev_op) && !IsOpQuantized(immutable_out)) {
       MarkAndLogCannotQuantizeOp(immutable_op,
                                  "No other quantizable operators nearby");
+      return;
+    }
+
+    // skip if the dtype of immutable_in is not float32
+    auto dtype = immutable_in->Var()->GetDataType();
+    if (dtype != proto::VarType::FP32) {
+      VLOG(0) << "dytpe: " << dtype;
+      MarkAndLogCannotQuantizeOp(immutable_op, "The input dtype is not float.");
       return;
     }
 
@@ -1166,7 +1183,6 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeImmutable(graph, "reshape2", "X");
   QuantizeImmutable(graph, "transpose2", "X");
   QuantizeImmutable(graph, "slice", "Input");
-  QuantizeImmutable(graph, "shape", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeElementwise(graph, "elementwise_add");

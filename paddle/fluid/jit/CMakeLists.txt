@@ -9,7 +9,8 @@ cc_library(
 cc_library(
   jit_serializer
   SRCS serializer.cc
-  DEPS lod_tensor device_context jit_property)
+  DEPS lod_tensor device_context jit_property paddle_inference_api
+       analysis_predictor)
 
 cc_library(
   jit_function_utils

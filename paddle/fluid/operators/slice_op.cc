@@ -156,6 +156,15 @@ class SliceOp : public framework::OperatorWithKernel {
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
+      auto vec_dims = phi::vectorize(in_tensor.dims());
+      bool all_zeros = true;
+      for (auto &dim : vec_dims) {
+        if (dim != 0) {
+          all_zeros = false;
+          break;
+        }
+      }
+
       if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
         // OneDNN uses blocking format, which cannot be always supported with
         // reorders, because if blocked dimension is not divisible by 8 or
@@ -164,8 +173,8 @@ class SliceOp : public framework::OperatorWithKernel {
         auto tmp_md = dnnl::memory::desc(
             phi::vectorize(ctx.Input<phi::DenseTensor>("Input")->dims()),
             dnnl::memory::data_type::f32,
-            ctx.Input<phi::DenseTensor>("Input")->format());
-        if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+            ctx.Input<Tensor>("Input")->format());
+        if (tmp_md.data.format_desc.blocking.inner_nblks == 0 && !all_zeros)
           return framework::OpKernelType(input_data_type,
                                          ctx.GetPlace(),
                                          framework::DataLayout::kMKLDNN,

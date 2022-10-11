@@ -252,6 +252,7 @@ void GpuPassStrategy::EnableMkldnnInt8() {
 }
 
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
+  VLOG(1) << "using CpuPassStrategy.";
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
   passes_.assign({"simplify_with_basic_ops_pass",  //

@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import os
+import paddle
+from pathlib import Path
 
-__all__ = ['get_include', 'get_lib']
+__all__ = ['get_include', 'get_lib', 'get_compile_flags', 'get_link_flags']
 
 
 def get_include():
@@ -49,3 +51,45 @@ def get_lib():
     """
     import paddle
     return os.path.join(os.path.dirname(paddle.__file__), 'libs')
+
+
+def get_compile_flags():
+    """Get the compilation flags for custom operators.
+    Returns:
+      The compilation flags.
+
+    Examples:
+      .. code-block:: python
+          import paddle
+          compiler_flags = paddle.sysconfig.get_compile_flags()
+    """
+    flags = []
+    flags.append(f"-I{get_include()}")
+    # flags.append(f"-I/workspace/Paddle")
+    return flags
+
+
+def get_link_flags():
+    """Get the link flags for custom operators.
+
+    Returns:
+      The link flags.
+
+
+    Examples:
+      .. code-block:: python
+          import paddle
+          link_flags = paddle.sysconfig.get_link_flags()
+    """
+    flags = []
+    flags.append("-L%s" % get_lib())
+    core_so_path = Path(paddle.__file__).parent / 'fluid'
+    flags.append("-L%s" % core_so_path)
+
+    # if paddle.fluid.core.has_avx_core:
+    #     flags.append("-l:core_avx.so -l:libdnnl.so.2 -l:libiomp5.so")
+    # else:
+    #     flags.append("-l:core_noavx.so")
+    # since https://github.com/PaddlePaddle/Paddle/pull/46095
+    flags.append("-l:libpaddle.so -l:libdnnl.so.2 -l:libiomp5.so")
+    return flags
