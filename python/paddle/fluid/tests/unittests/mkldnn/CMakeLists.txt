@@ -15,8 +15,4 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 set_tests_properties(test_concat_mkldnn_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv3d_mkldnn_op PROPERTIES TIMEOUT 120)
-if(WITH_MKLDNN AND NOT WIN32)
-  set_tests_properties(test_onnx_format_quantization_model PROPERTIES TIMEOUT
-                                                                      300)
-endif()
 set_tests_properties(test_flags_mkldnn_ops_on_off PROPERTIES TIMEOUT 120)
