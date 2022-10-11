@@ -118,8 +118,13 @@ endif()
 set(parsed_api_dir ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/parsed_apis)
 set(generated_op_path
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op.cc)
+set(generated_sparse_ops_path
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_sparse_op.cc)
 set(generated_argument_mapping_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sig.cc)
+set(generated_sparse_argument_mapping_path
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sparse_sig.cc)
+
 message(
   "parse api yamls:
 - ${api_yaml_file}
@@ -130,16 +135,22 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_api_dir}
   COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./ops.yaml
-          --output_path ./parsed_apis/api.parsed.yaml
+          --output_path ./parsed_apis/ops.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
-          ./legacy_ops.yaml --output_path ./parsed_apis/legacy_api.parsed.yaml
+          ./legacy_ops.yaml --output_path ./parsed_apis/legacy_ops.parsed.yaml
   COMMAND
     ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path ./backward.yaml
-    --output_path ./parsed_apis/backward_api.parsed.yaml --backward
+    --output_path ./parsed_apis/backward_ops.parsed.yaml --backward
   COMMAND
     ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
     ./legacy_backward.yaml --output_path
-    ./parsed_apis/legacy_backward_api.parsed.yaml --backward RESULTS_VARIABLE
+    ./parsed_apis/legacy_backward_ops.parsed.yaml --backward
+  COMMAND ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
+          ./sparse_ops.yaml --output_path ./parsed_apis/sparse_ops.parsed.yaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} generator/parse_api.py --api_yaml_path
+    ./sparse_backward.yaml --output_path
+    ./parsed_apis/sparse_backward.parsed.yaml --backward RESULTS_VARIABLE
     _results)
 foreach(_result in ${_results})
   if(${_result})
@@ -149,19 +160,25 @@ endforeach()
 
 # validation of api yamls
 message("validate api yaml:
-- ${parsed_api_dir}/api.parsed.yaml
-- ${parsed_api_dir}/backward_api.parsed.yaml")
+- ${parsed_api_dir}/ops.parsed.yaml
+- ${parsed_api_dir}/backward_ops.parsed.yaml")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND
     ${PYTHON_EXECUTABLE} generator/cross_validate.py --forward_yaml_paths
-    ./parsed_apis/api.parsed.yaml ./parsed_apis/legacy_api.parsed.yaml
-    --backward_yaml_paths ./parsed_apis/backward_api.parsed.yaml
-    ./parsed_apis/legacy_backward_api.parsed.yaml
-  RESULT_VARIABLE _result)
-if(${_result})
-  message(FATAL_ERROR "api validation failed, exiting.")
-endif()
+    ./parsed_apis/ops.parsed.yaml ./parsed_apis/legacy_ops.parsed.yaml
+    --backward_yaml_paths ./parsed_apis/backward_ops.parsed.yaml
+    ./parsed_apis/legacy_backward_ops.parsed.yaml
+  COMMAND
+    ${PYTHON_EXECUTABLE} generator/cross_validate.py --forward_yaml_paths
+    ./parsed_apis/sparse_ops.parsed.yaml --backward_yaml_paths
+    ./parsed_apis/sparse_backward.parsed.yaml
+  RESULT_VARIABLE _results)
+foreach(_result in ${_results})
+  if(${_result})
+    message(FATAL_ERROR "ops validation failed, exiting.")
+  endif()
+endforeach()
 
 # code generation for op, op makers, and argument mapping functions
 message(
@@ -172,15 +189,23 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml
   COMMAND
     ${PYTHON_EXECUTABLE} generator/generate_op.py --api_yaml_path
-    ./parsed_apis/api.parsed.yaml --backward_api_yaml_path
-    ./parsed_apis/backward_api.parsed.yaml --api_version_yaml_path
+    ./parsed_apis/ops.parsed.yaml --backward_api_yaml_path
+    ./parsed_apis/backward_ops.parsed.yaml --api_version_yaml_path
     op_version.yaml --op_compat_yaml_path op_compat.yaml --output_op_path
     "${generated_op_path}.tmp" --output_arg_map_path
     "${generated_argument_mapping_path}.tmp"
-  RESULT_VARIABLE _result)
-if(${_result})
-  message(FATAL_ERROR "operator codegen failed, exiting.")
-endif()
+  COMMAND
+    ${PYTHON_EXECUTABLE} generator/generate_sparse_op.py --ops_yaml_path
+    ./parsed_apis/sparse_ops.parsed.yaml --backward_ops_yaml_path
+    ./parsed_apis/sparse_backward.parsed.yaml --output_op_path
+    "${generated_sparse_ops_path}.tmp" --output_arg_map_path
+    "${generated_sparse_argument_mapping_path}.tmp"
+  RESULT_VARIABLE _results)
+foreach(_result in ${_results})
+  if(${_result})
+    message(FATAL_ERROR "operator codegen failed, exiting.")
+  endif()
+endforeach()
 
 if(EXISTS "${generated_op_path}.tmp" AND EXISTS "${generated_op_path}")
   execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -193,6 +218,25 @@ elseif(EXISTS "${generated_op_path}.tmp")
 else()
   execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f "${generated_op_path}")
   message("remove ${generated_op_path}")
+endif()
+
+if(EXISTS "${generated_sparse_ops_path}.tmp" AND EXISTS
+                                                 "${generated_sparse_ops_path}")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${generated_sparse_ops_path}.tmp" "${generated_sparse_ops_path}")
+  message(
+    "copy if different ${generated_sparse_ops_path}.tmp ${generated_sparse_ops_path}"
+  )
+elseif(EXISTS "${generated_sparse_ops_path}.tmp")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E copy "${generated_sparse_ops_path}.tmp"
+            "${generated_sparse_ops_path}")
+  message("copy ${generated_sparse_ops_path}.tmp ${generated_sparse_ops_path}")
+else()
+  execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f
+                          "${generated_sparse_ops_path}")
+  message("remove ${generated_sparse_ops_path}")
 endif()
 
 if(EXISTS "${generated_argument_mapping_path}.tmp"
@@ -216,6 +260,30 @@ else()
   execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f
                           "${generated_argument_mapping_path}")
   message("remove ${generated_argument_mapping_path}")
+endif()
+
+if(EXISTS "${generated_sparse_argument_mapping_path}.tmp"
+   AND EXISTS "${generated_sparse_argument_mapping_path}")
+  execute_process(
+    COMMAND
+      ${CMAKE_COMMAND} -E copy_if_different
+      "${generated_sparse_argument_mapping_path}.tmp"
+      "${generated_sparse_argument_mapping_path}")
+  message(
+    "copy if different ${generated_sparse_argument_mapping_path}.tmp ${generated_sparse_argument_mapping_path}"
+  )
+elseif(EXISTS "${generated_sparse_argument_mapping_path}.tmp")
+  execute_process(
+    COMMAND
+      ${CMAKE_COMMAND} -E copy "${generated_sparse_argument_mapping_path}.tmp"
+      "${generated_sparse_argument_mapping_path}")
+  message(
+    "copy ${generated_sparse_argument_mapping_path}.tmp ${generated_sparse_argument_mapping_path}"
+  )
+else()
+  execute_process(COMMAND ${CMAKE_COMMAND} -E remove -f
+                          "${generated_sparse_argument_mapping_path}")
+  message("remove ${generated_sparse_argument_mapping_path}")
 endif()
 
 # generate ops extra info

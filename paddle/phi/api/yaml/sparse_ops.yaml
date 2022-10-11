@@ -119,7 +119,7 @@
     func : conv3d_coo{sparse_coo, dense -> sparse_coo, dense, dense}
     layout : x
   intermediate: rulebook, counter
-  backward : conv3d_coo_grad
+  backward : conv3d_grad
 
 - op : divide
   args : (Tensor x, Tensor y)
