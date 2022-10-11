@@ -38,10 +38,10 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
     auto bias_name = op_desc.Input("Bias").front();
 
     auto* weight_v = scope.FindVar(weight_name);
-    auto* weight_t = weight_v->GetMutable<framework::LoDTensor>();
+    auto* weight_t = weight_v->GetMutable<phi::DenseTensor>();
 
     auto* bias_v = scope.FindVar(bias_name);
-    auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
+    auto* bias_t = bias_v->GetMutable<phi::DenseTensor>();
 
     float* weight_data = nullptr;
     bool qkv2context_plugin_int8 = op_desc.HasAttr("qkv2context_plugin_int8");
@@ -51,9 +51,11 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
       in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input, in_scale);
     }
-    weight_data = engine_->GetWeightCPUData(weight_name, weight_t);
+    weight_data = const_cast<float*>(static_cast<const float*>(
+        engine_->GetFp32TrtWeight(weight_name, *weight_t).get().values));
 
-    float* bias_data = engine_->GetWeightCPUData(bias_name, bias_t);
+    float* bias_data = const_cast<float*>(static_cast<const float*>(
+        engine_->GetFp32TrtWeight(bias_name, *bias_t).get().values));
     std::vector<float> weight_data_tmp;
     weight_data_tmp.reserve(weight_t->numel());
     memcpy(
