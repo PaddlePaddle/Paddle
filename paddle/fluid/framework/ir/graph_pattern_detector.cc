@@ -3522,6 +3522,7 @@ PDNode *patterns::AddSupportInt8::operator()() {
 }
 
 PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
+  VLOG(0)<<"@@ LayernormShiftPartitionPattern, with_roll:"<<with_roll_;
   auto layer_norm_op =
       pattern->NewNode(layer_norm_op_repr())
           ->assert_is_op("layer_norm")
@@ -3555,18 +3556,21 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   auto reshape1_out = pattern->NewNode(reshape1_out_repr())
                           ->AsIntermediate()
                           ->assert_is_op_output("reshape2", "Out");
-  auto roll1_op = pattern->NewNode(roll1_op_repr())
-                         ->assert_is_op("roll");
+  PDNode* roll1_op = nullptr;
+  PDNode* roll1_out = nullptr;
+   
 
-  auto roll1_out = pattern->NewNode(roll1_out_repr())
-                          ->AsIntermediate()
-                          ->assert_is_op_output("roll","Out");
-
+  auto ;
   if(!with_roll_){
     reshape1_out->assert_is_op_input("reshape2", "X");
   } else {
-    reshape1_out->assert_is_op_input("roll","X");
-    roll1_out->assert_is_op_input("reshape2", "X");
+    reshape1_out->assert_is_op_input("roll", "X");
+    roll1_op = pattern->NewNode(roll1_op_repr())
+                       ->assert_is_op("roll");
+    roll1_out = pattern->NewNode(roll1_out_repr())
+                       ->AsIntermediate()
+                       ->assert_is_op_output("roll","Out")
+                       ->assert_is_op_input("reshape2","X");
   }
   auto reshape2_op =
       pattern->NewNode(reshape2_op_repr())
@@ -3638,115 +3642,6 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
 
   return reshape4_out;
 }
-
-// pattern for LayernormShiftPartitionPattern with shift_size >0
-PDNode *patterns::LayernormShiftPartition2Pattern::operator()() {
-  auto layer_norm_op =
-      pattern->NewNode(layer_norm_op_repr())
-          ->assert_is_op("layer_norm")
-          ->assert_more([&](Node *node) {
-            return node->Op()->HasAttr("begin_norm_axis") &&
-                   (PADDLE_GET_CONST(
-                        int, node->Op()->GetAttr("begin_norm_axis")) == 2);
-          });
-  auto layer_norm_in = pattern->NewNode(layer_norm_in_repr())
-                           ->AsInput()
-                           ->assert_is_op_input("layer_norm", "X");
-  auto layer_norm_bias = pattern->NewNode(layer_norm_bias_repr())
-                             ->AsInput()
-                             ->assert_is_op_input("layer_norm", "Bias");
-  auto layer_norm_scale = pattern->NewNode(layer_norm_scale_repr())
-                              ->AsInput()
-                              ->assert_is_op_input("layer_norm", "Scale");
-  auto layer_norm_out = pattern->NewNode(layer_norm_out_repr())
-                            ->AsIntermediate()
-                            ->assert_is_op_input("reshape2", "X")
-                            ->assert_is_op_output("layer_norm", "Y");
-  auto reshape1_op =
-      pattern->NewNode(reshape1_op_repr())
-          ->assert_is_op("reshape2")
-          ->assert_more([&](Node *node) {
-            return node->Op()->HasAttr("shape") &&
-                   (PADDLE_GET_CONST(std::vector<int>,
-                                     node->Op()->GetAttr("shape"))
-                        .size() == 4);
-          });
-  auto reshape1_out = pattern->NewNode(reshape1_out_repr())
-                          ->AsIntermediate()
-                          ->assert_is_op_input("roll", "X")
-                          ->assert_is_op_output("reshape2", "Out");
-  auto roll1_op = pattern->NewNode(roll1_op_repr())
-                         ->assert_is_op("roll");
-  auto roll1_out = pattern->NewNode(roll1_out_repr())
-                          ->AsIntermediate()
-                          ->assert_is_op_output("roll","Out")
-                          ->assert_is_op_input("reshape2","X");
-  auto reshape2_op =
-      pattern->NewNode(reshape2_op_repr())
-          ->assert_is_op("reshape2")
-          ->assert_more([&](Node *node) {
-            return node->Op()->HasAttr("shape") &&
-                   (PADDLE_GET_CONST(std::vector<int>,
-                                     node->Op()->GetAttr("shape"))
-                        .size() == 6);
-          });
-  auto reshape2_out = pattern->NewNode(reshape2_out_repr())
-                          ->AsIntermediate()
-                          ->assert_is_op_input("transpose2", "X")
-                          ->assert_is_op_output("reshape2", "Out");
-  auto transpose_op =
-      pattern->NewNode(transpose_op_repr())
-          ->assert_is_op("transpose2")
-          ->assert_more([&](Node *node) {
-            if (!node->Op()->HasAttr("axis")) return false;
-            std::vector<int> axis =
-                PADDLE_GET_CONST(std::vector<int>, node->Op()->GetAttr("axis"));
-            if (axis.size() != 6) return false;
-            const std::vector<int> axis_cmp{0, 1, 3, 2, 4, 5};
-            return std::equal(axis.begin(), axis.end(), axis_cmp.begin());
-          });
-  auto transpose_out = pattern->NewNode(transpose_out_repr())
-                           ->AsIntermediate()
-                           ->assert_is_op_input("reshape2", "X")
-                           ->assert_is_op_output("transpose2", "Out");
-  auto reshape3_op =
-      pattern->NewNode(reshape3_op_repr())
-          ->assert_is_op("reshape2")
-          ->assert_more([&](Node *node) {
-            return node->Op()->HasAttr("shape") &&
-                   (PADDLE_GET_CONST(std::vector<int>,
-                                     node->Op()->GetAttr("shape"))
-                        .size() == 4);
-          });
-  auto reshape3_out = pattern->NewNode(reshape3_out_repr())
-                          ->AsIntermediate()
-                          ->assert_is_op_input("reshape2", "X")
-                          ->assert_is_op_output("reshape2", "Out");
-  auto reshape4_op =
-      pattern->NewNode(reshape4_op_repr())
-          ->assert_is_op("reshape2")
-          ->assert_more([&](Node *node) {
-            return node->Op()->HasAttr("shape") &&
-                   (PADDLE_GET_CONST(std::vector<int>,
-                                     node->Op()->GetAttr("shape"))
-                        .size() == 3);
-          });
-  auto reshape4_out = pattern->NewNode(reshape4_out_repr())
-                          ->assert_is_op_output("reshape2", "Out")
-                          ->AsOutput();
-
-  layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale})
-      .LinksTo({layer_norm_out});
-  reshape1_op->LinksFrom({layer_norm_out}).LinksTo({reshape1_out});
-  roll1_op->LinksFrom({reshape1_out}).LinksTo({roll1_out});
-  reshape2_op->LinksFrom({roll1_out}).LinksTo({reshape2_out});
-  transpose_op->LinksFrom({reshape2_out}).LinksTo({transpose_out});
-  reshape3_op->LinksFrom({transpose_out}).LinksTo({reshape3_out});
-  reshape4_op->LinksFrom({reshape3_out}).LinksTo({reshape4_out});
-
-  return reshape4_out;
-}
-
 
 }  // namespace ir
 }  // namespace framework
