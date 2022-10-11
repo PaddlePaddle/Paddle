@@ -15,12 +15,9 @@
 import unittest
 import random
 import numpy as np
-import os
-import shutil
 
 import paddle
 from paddle.fluid import core
-from datetime import timedelta
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.parallel import ParallelEnv
 

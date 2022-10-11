@@ -16,12 +16,10 @@ import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.ps.utils.ps_program_builder import *
 import paddle.distributed.fleet as fleet
 import argparse
-import time
 import sys
 import yaml, six, copy
 import paddle
 import os
-import warnings
 import ast
 import numpy as np
 import struct

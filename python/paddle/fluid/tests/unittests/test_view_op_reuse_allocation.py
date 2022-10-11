@@ -16,7 +16,6 @@ import unittest
 
 import numpy as np
 
-from op_test import OpTest
 import paddle
 from paddle.fluid.framework import in_dygraph_mode
 
