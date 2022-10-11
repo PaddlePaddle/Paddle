@@ -105,6 +105,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_conditional_block_reshard MODULES
                   test_conditional_block_reshard)
   py_test_modules(test_parallel_tuner MODULES test_parallel_tuner)
-  set_tests_properties(test_parallel_tuner PROPERTIES TIMEOUT 30)
+  set_tests_properties(test_parallel_tuner PROPERTIES TIMEOUT 120)
 
 endif()
