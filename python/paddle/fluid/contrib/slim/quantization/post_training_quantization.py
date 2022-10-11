@@ -32,7 +32,7 @@ from .... import unique_name
 from ....executor import global_scope, Executor
 from ....framework import IrGraph
 from ....log_helper import get_logger
-from .quantization_pass import QuantizationTransformPass, QuantizationTransformPassV2, QuantizationFreezePass, QuantWeightPass, AddQuantDequantPass, AddQuantDequantPassV2
+from .quantization_pass import QuantizationTransformPass, QuantizationTransformPassV2, QuantizationFreezePass, QuantWeightPass, AddQuantDequantPass, AddQuantDequantPassV2, AddQuantDequantForInferencePass
 from .cal_kl_threshold import cal_kl_threshold
 from .adaround import run_adaround
 from . import utils
@@ -1031,8 +1031,7 @@ class PostTrainingQuantization(object):
             add_quant_dequant_pass = AddQuantDequantPassV2(
                 scope=self._scope,
                 place=self._place,
-                quantizable_op_type=minor_quantizable_op_types,
-                is_full_quantized=True)
+                quantizable_op_type=minor_quantizable_op_types)
 
         for sub_graph in graph.all_sub_graphs():
             sub_graph._for_test = True
@@ -1121,6 +1120,16 @@ class PostTrainingQuantization(object):
             for sub_graph in graph.all_sub_graphs():
                 sub_graph._for_test = True
                 quant_weight_pass.apply(sub_graph)
+
+            out_scale_infer_pass = AddQuantDequantForInferencePass(
+                scope=self._scope,
+                place=self._place,
+                quant_bits=self._activation_bits,
+                quantizable_op_type=self._quantizable_op_type,
+                calibration_range_dict=self._scale_dict)
+            for sub_graph in graph.all_sub_graphs():
+                sub_graph._for_test = True
+                out_scale_infer_pass.apply(sub_graph)
 
         self._program = graph.to_program()
 

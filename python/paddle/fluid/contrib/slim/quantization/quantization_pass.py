@@ -2757,7 +2757,12 @@ class AddQuantDequantForInferencePass(object):
     When export quant model, it will traverse to find the output of each op, and then insert the quant/dequant op after it.
     """
 
-    def __init__(self, scope, place, quant_bits=8):
+    def __init__(self,
+                 scope,
+                 place,
+                 quant_bits=8,
+                 quantizable_op_type=[],
+                 calibration_range_dict=None):
         """
         Args:
             scope(fluid.Scope): The scope is used to initialize these new parameters.
@@ -2768,7 +2773,8 @@ class AddQuantDequantForInferencePass(object):
         self._scope = scope
         self._place = place
         self._quant_bits = quant_bits
-        self._teller_set = utils.QUANT_SUPPORTED_OP_TYPE_LIST
+        self._teller_set = quantizable_op_type if quantizable_op_type else utils.QUANT_SUPPORTED_OP_TYPE_LIST
+        self._calibration_range_dict = calibration_range_dict
 
     def apply(self, graph):
         """
@@ -2827,8 +2833,23 @@ class AddQuantDequantForInferencePass(object):
             var_type=var_node.type(),
             shape=var_node.shape(),
             var_dtype=var_node.dtype())
-        scale_var_node = graph._find_node_by_name(graph.all_persistable_nodes(),
-                                                  self._scale_name(var_name))
+        if not self._calibration_range_dict:
+            scale_var_node = graph._find_node_by_name(
+                graph.all_persistable_nodes(), self._scale_name(var_name))
+        elif var_name in self._calibration_range_dict:
+            scale_value = self._calibration_range_dict[var_name]
+            scale_var_node = graph.create_persistable_node(
+                name=self._scale_name(var_name),
+                var_type=var_node.type(),
+                shape=[1],
+                var_dtype=var_node.dtype())
+            data_type = 'float64' if var_node.dtype(
+            ) == core.VarDesc.VarType.FP64 else 'float32'
+            _init_var_node(scale_var_node, np.array(scale_value,
+                                                    dtype=data_type),
+                           self._scope, self._place)
+        else:
+            return None
         try:
             zero_point_node = graph._find_node_by_name(
                 graph.all_persistable_nodes(),
