@@ -515,9 +515,9 @@ class GroupShardedOptimizerStage2(Optimizer):
 
         param2task = {}
         for x in self._broadcast_order_params:
-            group = self._broadcast_groups[group_idx]
-            group_idx = (group_idx + 1) % self._number_of_broadcast_groups
             if x.trainable:
+                group = self._broadcast_groups[group_idx]
+                group_idx = (group_idx + 1) % self._number_of_broadcast_groups
                 task = broadcast(tensor=x,
                                  src=group.ranks[self._param2rank[x.name]],
                                  group=group,
