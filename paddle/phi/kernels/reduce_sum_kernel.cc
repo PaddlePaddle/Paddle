@@ -87,7 +87,3 @@ PD_REGISTER_KERNEL(
 #if defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(sum, XPU, ALL_LAYOUT, phi::SumKernel, float) {}
 #endif
-
-#if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(sum, XPU, ALL_LAYOUT, phi::SumKernel, float) {}
-#endif
