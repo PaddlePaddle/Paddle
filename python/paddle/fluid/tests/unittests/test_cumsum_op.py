@@ -93,7 +93,7 @@ class TestCumsumOp(unittest.TestCase):
 
             if use_gpu:
                 self.assertTrue(out[6].dtype == np.float16)
-                z = np.cumsum(data_np)
+                z = np.cumsum(data_np.astype(np.float16))
                 np.testing.assert_allclose(z, out[6], rtol=5e-03)
 
     def test_cpu(self):
@@ -217,7 +217,7 @@ class TestCumsumFP16(OpTest):
 
     def setUp(self):
         self.op_type = "cumsum"
-        self.inputs = {'X': np.random.random((100)).astype("float64")}
+        self.inputs = {'X': np.random.random((10)).astype(np.float16)}
         self.attrs = {'dtype': 'float16'}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 

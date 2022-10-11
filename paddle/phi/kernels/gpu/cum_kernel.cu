@@ -405,7 +405,20 @@ void LogcumsumexpKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-/*#ifdef PADDLE_WITH_HIP*/
+#ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(cumsum,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CumsumKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(
+    logcumsumexp, GPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}
+#else
 PD_REGISTER_KERNEL(cumsum,
                    GPU,
                    ALL_LAYOUT,
@@ -424,23 +437,4 @@ PD_REGISTER_KERNEL(logcumsumexp,
                    float,
                    double,
                    phi::dtype::float16) {}
-/*
-#else
-PD_REGISTER_KERNEL(cumsum,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CumsumKernel,
-                   float,
-                   double,
-                   int16_t,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(logcumsumexp,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::LogcumsumexpKernel,
-                   float,
-                   double) {}
 #endif
-*/

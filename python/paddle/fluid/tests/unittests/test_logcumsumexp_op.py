@@ -170,13 +170,16 @@ class TestLogcumsumexp(unittest.TestCase):
             np.testing.assert_allclose(z, out[4], rtol=1e-05)
 
             if use_gpu:
-                # print("in", data_np)
+                np.set_printoptions(formatter={'float': '{: 0.7f}'.format})
+                print("in", data_np)
                 self.assertTrue(out[5].dtype == np.float16)
-                z = np_logcumsumexp(data_np)
-                # print("numpy", z)
-                # print("out", out[5])
-                # print("out3", out[3])
-                # np.testing.assert_allclose(z, out[5], rtol=5e-03)
+                data_np_fp16 = data_np.astype(np.float16)
+                print("in2", data_np_fp16)
+                z = np_logcumsumexp(data_np_fp16)
+                print("numpy", z)
+                print("out", out[5])
+                print("out3", out[3])
+                np.testing.assert_allclose(z, out[5], rtol=5e-03)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
@@ -284,7 +287,7 @@ class TestLogcumsumexpOp4(BaseTestCases.BaseOpTest):
 class TestLogcumsumexpFP16(BaseTestCases.BaseOpTest):
 
     def input_and_attrs(self):
-        return np.arange(100, dtype=np.float64).reshape(10, 10), {
+        return np.arange(100, dtype=np.float16).reshape(10, 10), {
             'axis': 1,
             'dtype': 'float16'
         }
@@ -295,7 +298,7 @@ class TestLogcumsumexpFP16(BaseTestCases.BaseOpTest):
 class TestLogcumsumexpReverseFP16(BaseTestCases.BaseOpTest):
 
     def input_and_attrs(self):
-        return np.arange(100, dtype=np.float64).reshape(10, 10), {
+        return np.arange(100, dtype=np.float16).reshape(10, 10), {
             'axis': 0,
             'flatten': True,
             'reverse': True,

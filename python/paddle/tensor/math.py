@@ -3201,10 +3201,6 @@ def cumsum(x, axis=None, dtype=None, name=None):
             #  [ 4  9 15 22]
             #  [ 8 17 27 38]]
 
-            y = paddle.cumsum(data, dtype='float16')
-            print(y.dtype)
-            # paddle.float16
-
             y = paddle.cumsum(data, dtype='float64')
             print(y.dtype)
             # paddle.float64
@@ -3278,10 +3274,6 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
             # [[ 0.         1.3132617  2.4076061  3.4401898]
             #  [ 4.         5.3132615  6.407606   7.44019  ]
             #  [ 8.         9.313262  10.407606  11.440189 ]]
-
-            y = paddle.logcumsumexp(data, dtype='float16')
-            print(y.dtype)
-            # paddle.float16
 
             y = paddle.logcumsumexp(data, dtype='float64')
             print(y.dtype)
