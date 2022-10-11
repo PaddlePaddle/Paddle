@@ -17,7 +17,7 @@ ignore =
 
     # F, see https://flake8.pycqa.org/en/latest/user/error-codes.html
     F403,F405,
-    F522,F524,F541,
+    F522,
     F811,F821,F841,
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
