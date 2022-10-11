@@ -139,8 +139,8 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : divide_coo_scalar{sparse_coo -> sparse_coo},
-           divide_csr_scalar{sparse_csr -> sparse_csr}
+    func : divide_scalar_coo{sparse_coo -> sparse_coo},
+           divide_scalar_csr{sparse_csr -> sparse_csr}
   backward : divide_scalar_grad
 
 - op : expm1
