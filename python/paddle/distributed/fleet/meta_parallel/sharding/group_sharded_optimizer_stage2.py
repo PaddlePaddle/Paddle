@@ -190,7 +190,7 @@ class GroupShardedOptimizerStage2(Optimizer):
     def _set_broadcast_overlap(self,
                                broadcast_overlap,
                                layers=None,
-                               num_groups=1):
+                               num_groups=4):
         # Enable post optimizer broadcasts overlap with the forward calculation of next batch.
         self._broadcast_overlap = broadcast_overlap
         if self._broadcast_overlap:
@@ -225,8 +225,9 @@ class GroupShardedOptimizerStage2(Optimizer):
         ]
         self._broadcast_groups[0] = self._group
 
+        ranks = self._group.ranks
         for i in range(1, self._number_of_broadcast_groups):
-            self._broadcast_groups[i] = new_group()
+            self._broadcast_groups[i] = new_group(ranks)
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -510,14 +511,17 @@ class GroupShardedOptimizerStage2(Optimizer):
     def _broadcast_params_overlap_forward(self):
         # Exchange all the shards with the other ranks,
         # but overlap the broadcast with next batch's calculation.
+        group_idx = 0
+
         param2task = {}
         for x in self._broadcast_order_params:
+            group = self._broadcast_groups[group_idx]
+            group_idx = (group_idx + 1) % self._number_of_broadcast_groups
             if x.trainable:
-                task = broadcast(
-                    tensor=x,
-                    src=self._group.ranks[self._param2rank[x.name]],
-                    group=self._group,
-                    sync_op=False)
+                task = broadcast(tensor=x,
+                                 src=group.ranks[self._param2rank[x.name]],
+                                 group=group,
+                                 sync_op=False)
                 assert x.name not in param2task
                 param2task[x.name] = task
 
