@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import copy
-import io
 import json
 import os
 import unicodedata
@@ -464,7 +463,7 @@ class PretrainedTokenizer(object):
         tokenizer_config_file = resolved_vocab_files.pop(
             "tokenizer_config_file", None)
         if tokenizer_config_file is not None:
-            with io.open(tokenizer_config_file, encoding="utf-8") as f:
+            with open(tokenizer_config_file, 'r', encoding="utf-8") as f:
                 init_kwargs = json.load(f)
         else:
             init_kwargs = init_configuration
@@ -527,7 +526,7 @@ class PretrainedTokenizer(object):
                                              self.tokenizer_config_file)
         # init_config is set in metaclass created `__init__`,
         tokenizer_config = self.init_config
-        with io.open(tokenizer_config_file, "w", encoding="utf-8") as f:
+        with open(tokenizer_config_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(tokenizer_config, ensure_ascii=False))
 
         self.save_resources(save_directory)
@@ -571,7 +570,7 @@ class PretrainedTokenizer(object):
             Vocab: An instance of `Vocab`.
         """
         token_to_idx = {}
-        with io.open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             for index, line in enumerate(f):
                 token = line.rstrip('\n')
                 token_to_idx[token] = int(index)

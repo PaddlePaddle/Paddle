@@ -14,7 +14,6 @@
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import unittest
 
 

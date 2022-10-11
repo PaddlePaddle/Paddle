@@ -13,15 +13,9 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
-from paddle.fluid.incubate.checkpoint.auto_checkpoint import ExeTrainStatus
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
-import os
-import sys
 
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
+from paddle.distributed.fleet.utils.fs import HDFSClient
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
 
 
