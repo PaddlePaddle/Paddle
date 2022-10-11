@@ -15,7 +15,6 @@
 import os
 import sys
 import time
-import threading
 import subprocess
 import unittest
 import numpy

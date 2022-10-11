@@ -28,7 +28,7 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 
 template <typename Tx, typename Ty>
@@ -71,7 +71,7 @@ struct SequenceMaskFunctor {
 
 template <typename DeviceContext, typename Tx>
 class SequenceMaskKernel : public framework::OpKernel<Tx> {
-  using Tensor = framework::LoDTensor;
+  using Tensor = phi::DenseTensor;
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {

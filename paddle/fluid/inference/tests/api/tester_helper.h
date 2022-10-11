@@ -1029,7 +1029,7 @@ void SaveOptimModel(AnalysisConfig *cfg, const std::string &dstPath) {
 }
 
 template <typename T>
-std::string LoDTensorSummary(const framework::LoDTensor &tensor) {
+std::string LoDTensorSummary(const phi::DenseTensor &tensor) {
   std::stringstream ss;
   ss << "\n---- tensor ---" << '\n';
   ss << "lod: [";
@@ -1095,8 +1095,8 @@ static bool CompareShape(const std::vector<int64_t> &a,
   return true;
 }
 
-static bool CompareTensorData(const framework::LoDTensor &a,
-                              const framework::LoDTensor &b) {
+static bool CompareTensorData(const phi::DenseTensor &a,
+                              const phi::DenseTensor &b) {
   auto a_shape = phi::vectorize(a.dims());
   auto b_shape = phi::vectorize(b.dims());
   size_t a_size = std::accumulate(
@@ -1141,8 +1141,8 @@ static bool CompareTensorData(const framework::LoDTensor &a,
   return true;
 }
 
-static bool CompareTensor(const framework::LoDTensor &a,
-                          const framework::LoDTensor &b) {
+static bool CompareTensor(const phi::DenseTensor &a,
+                          const phi::DenseTensor &b) {
   if (!CompareLoD(a.lod(), b.lod())) {
     return false;
   }

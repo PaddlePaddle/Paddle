@@ -61,7 +61,6 @@ class TestCloudRoleMaker(unittest.TestCase):
         """Test cases for pslib."""
         import paddle.fluid as fluid
         from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
 
         os.environ["POD_IP"] = "127.0.0.1"

@@ -52,6 +52,65 @@ using framework::ir::Node;
 using GraphNodeVec = std::vector<Node*>;
 using GraphNodeMap = std::unordered_map<Node*, Node*>;
 
+OpTransInfo::OpTransInfo() {
+  // judgment condition for the dynamic slice
+  dynamic_op_cond_.emplace("slice", [](const ir::Node& node) -> bool {
+    if (!node.IsOp()) {
+      return false;
+    }
+    auto* op_desc = node.Op();
+    auto infer_flags =
+        op_desc->GetAttrIfExists<std::vector<int>>("infer_flags");
+    return std::find_if(infer_flags.begin(), infer_flags.end(), [](int v) {
+             return v < 0;
+           }) != infer_flags.end();
+  });
+
+  // judgment condition for the dynamic reshape
+  dynamic_op_cond_.emplace("reshape", [](const ir::Node& node) -> bool {
+    if (!node.IsOp()) {
+      return false;
+    }
+    auto* op_desc = node.Op();
+    bool has_shape_tensor = op_desc->Inputs().count("ShapeTensor") &&
+                            op_desc->Inputs().at("ShapeTensor").size();
+    bool has_shape = op_desc->Inputs().count("Shape") &&
+                     op_desc->Inputs().at("Shape").size();
+    return has_shape_tensor || has_shape;
+  });
+
+  // judgment condition for the dynamic reshape2
+  dynamic_op_cond_.emplace("reshape2", dynamic_op_cond_.at("reshape"));
+
+  // judgment condition for the dynamic expand
+  dynamic_op_cond_.emplace("expand", [](const ir::Node& node) -> bool {
+    if (!node.IsOp()) {
+      return false;
+    }
+    auto* op_desc = node.Op();
+    bool has_expand_times_tensor =
+        op_desc->Inputs().count("expand_times_tensor") &&
+        op_desc->Inputs().at("expand_times_tensor").size();
+    bool has_expand_times = op_desc->Inputs().count("ExpandTimes") &&
+                            op_desc->Inputs().at("ExpandTimes").size();
+    return has_expand_times_tensor || has_expand_times;
+  });
+
+  // judgment condition for the dynamic expand_v2
+  dynamic_op_cond_.emplace("expand_v2", [](const ir::Node& node) -> bool {
+    if (!node.IsOp()) {
+      return false;
+    }
+    auto* op_desc = node.Op();
+    bool has_expand_shapes_tensor =
+        op_desc->Inputs().count("expand_shapes_tensor") &&
+        op_desc->Inputs().at("expand_shapes_tensor").size();
+    bool has_shape = op_desc->Inputs().count("Shape") &&
+                     op_desc->Inputs().at("Shape").size();
+    return has_expand_shapes_tensor || has_shape;
+  });
+}
+
 std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
     const GraphNodeSet& cluster) const {
   std::unordered_set<std::string> deny_var_set;
@@ -67,16 +126,16 @@ std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
   };
 
   for (auto* op : cluster) {
-    if (deny_param_cond.count(op->Name())) {
+    if (deny_param_cond_.count(op->Name())) {
       const auto* desc = op->Op();
       PADDLE_ENFORCE_NE(desc,
                         nullptr,
                         platform::errors::PreconditionNotMet(
                             "The Op %s's OpDesc should not be NULL, which has "
-                            "a parameter in deny_param_cond.",
+                            "a parameter in deny_param_cond_.",
                             op->Name().c_str()));
 
-      auto deny_param_names = deny_param_cond.at(op->Name());
+      auto deny_param_names = deny_param_cond_.at(op->Name());
       VLOG(4) << "We found deny param " << get_debug_info(deny_param_names)
               << " in op [" << op->Name() << "].";
 
@@ -105,6 +164,15 @@ std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
   VLOG(4) << "All deny var names are " << get_debug_info(deny_var_set);
 
   return deny_var_set;
+}
+
+bool OpTransInfo::IsInplaceOp(const OpDesc& op_desc) {
+  auto inputs = op_desc.InputArgumentNames();
+  std::unordered_set<std::string> input_set(inputs.begin(), inputs.end());
+  for (auto& name : op_desc.OutputArgumentNames()) {
+    if (input_set.count(name) > 0) return true;
+  }
+  return false;
 }
 
 namespace {
@@ -539,15 +607,6 @@ void ReplaceSubGraphWithCinnOpNode(
   RemoveSubGraphFromGraph(cluster, cluster_internals, graph);
 }
 
-static bool IsInplaceOp(const OpDesc& op_desc) {
-  auto inputs = op_desc.InputArgumentNames();
-  std::unordered_set<std::string> input_set(inputs.begin(), inputs.end());
-  for (auto& name : op_desc.OutputArgumentNames()) {
-    if (input_set.count(name) > 0) return true;
-  }
-  return false;
-}
-
 // Search all subgraphs which all op node supported by CINN,
 // Here we using SubgraphDetector to detecte the subgraph that
 // all of op node supported by CINN. We using OpMapperRegistry
@@ -562,24 +621,27 @@ void SearchAllSubgraphs(Graph* graph) {
                           node_name) != nullptr;
     // skip the dynamic ops
     bool is_dynamic = false;
-    if (trans_info.dynamic_op_cond.count(node_name)) {
-      is_dynamic = trans_info.dynamic_op_cond.at(node_name)(node);
+    if (trans_info.dynamic_op_cond().count(node_name)) {
+      is_dynamic = trans_info.dynamic_op_cond().at(node_name)(*node);
     }
+
+    bool is_support =
+        registered && !trans_info.default_deny_ops().count(node_name) &&
+        !is_dynamic && (node->IsOp() && !trans_info.IsInplaceOp(*node->Op()));
     // if the op type is registered in CINN and allow_ops is not empty, return
     // true only when it is in allow_ops
     if (!allow_ops.empty()) {
-      return registered && !is_dynamic && allow_ops.count(node_name);
+      return is_support && allow_ops.count(node_name);
     }
     // if the op type is registered in CINN and deny_ops is not empty, return
     // true only when it is not in deny_ops
     if (!deny_ops.empty()) {
-      return registered && !is_dynamic && !deny_ops.count(node_name);
+      return is_support && !deny_ops.count(node_name);
     }
 
     // if the user doesn't set FLAGS_allow_cinn_ops and FLAGS_deny_cinn_ops,
     // return true only when it is registered in CINN
-    return registered && !trans_info.default_deny_ops.count(node_name) &&
-           !is_dynamic && (node->IsOp() && !IsInplaceOp(*node->Op()));
+    return is_support;
   };
   VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
   VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;

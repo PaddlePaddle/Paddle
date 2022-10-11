@@ -16,8 +16,7 @@ import paddle
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
