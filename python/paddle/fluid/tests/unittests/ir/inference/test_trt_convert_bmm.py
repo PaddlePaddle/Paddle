@@ -104,8 +104,8 @@ class TrtConvertBmmTest_dynamic(TrtLayerAutoScanTest):
             attrs, False), 1e-5
 
         # The output has little diff between gpu and trt in CI-Windows-Inference
-        tol_fp32 = 1e-5
-        tol_half = 1e-5
+        tol_fp32 = 1e-4
+        tol_half = 1e-4
         if (os.name == 'nt'):
             tol_fp32 = 1e-2
             tol_half = 1e-2
