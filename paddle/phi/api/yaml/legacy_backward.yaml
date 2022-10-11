@@ -839,12 +839,6 @@
     layout: out_grad
   inplace : (out_grad -> x_grad)
 
-- backward_op : flip_grad
-  forward : flip (Tensor x, int[] axis) -> Tensor(out)
-  args : (Tensor out_grad, int[] axis)
-  output : Tensor(x_grad)
-  invoke : flip(out_grad, axis)
-
 - backward_op : floor_grad
   forward : floor(Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
