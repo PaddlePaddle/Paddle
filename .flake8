@@ -13,11 +13,11 @@ ignore =
     E301,E302,E303,E305,E306,
     E401,E402,
     E501,E502,
-    E701,E711,E712,E713,E714,E721,E722,E731,E741,
+    E701,E711,E712,E721,E722,E731,E741,
 
     # F, see https://flake8.pycqa.org/en/latest/user/error-codes.html
     F403,F405,
-    F631,F632,
+    F522,
     F811,F821,F841,
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes

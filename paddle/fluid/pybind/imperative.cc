@@ -964,11 +964,15 @@ void BindImperative(py::module *m_ptr) {
                              framework::proto::VarType::BOOL) {
                     attrs["bool_values"] =
                         std::vector<int>{value_obj.cast<bool>()};
+                  } else if (self->DataType() ==
+                             framework::proto::VarType::FP16) {
+                    attrs["fp16_values"] =
+                        std::vector<float>{value_obj.cast<float>()};
                   } else {
                     PADDLE_THROW(platform::errors::InvalidArgument(
                         "When assign a value to a paddle.Tensor, "
                         "the data type of the paddle.Tensor must be bool, "
-                        "float32, int32 or int64, "
+                        "float32, int32, int64 or float16, "
                         "please check the type of tensor."));
                   }
                   attrs["shape"] = std::vector<int64_t>{1};
@@ -2044,8 +2048,49 @@ void BindImperative(py::module *m_ptr) {
           "shape",
           [](imperative::VarBase &self) {
             if (self.Var().IsType<framework::LoDTensor>()) {
-              return phi::vectorize<int>(
+              auto value = phi::vectorize<int>(
                   self.Var().Get<framework::LoDTensor>().dims());
+              auto tensor = self.Var().Get<framework::LoDTensor>();
+              auto tmp_value = value;
+              auto desired_layout =
+                  paddle::imperative::LayoutAutoTune::Instance()
+                      .GetDesiredLayout();
+              auto default_layout =
+                  paddle::imperative::LayoutAutoTune::Instance()
+                      .GetDefaultLayout();
+              bool change_dim =
+                  (desired_layout != default_layout &&
+                   tensor.layout() == desired_layout && value.size() == 4);
+              VLOG(6) << "'Shape' method, layout autotune,"
+                      << " desired_layout: " << desired_layout
+                      << " default_layout: " << default_layout
+                      << " tensor layout: " << tensor.layout()
+                      << " tensor's shape size is : " << value.size();
+
+              if (change_dim && paddle::framework::DataLayoutToString(
+                                    desired_layout) == "NCHW") {
+                VLOG(6) << "layout autotune get Shape from NHWC -> NCHW "
+                        << value[0] << " " << value[1] << " " << value[2] << " "
+                        << value[3] << " to " << tmp_value[3] << " "
+                        << tmp_value[1] << " " << tmp_value[2] << " "
+                        << tmp_value[1];
+                // NCHW -> NHWC
+                value[1] = tmp_value[2];
+                value[2] = tmp_value[3];
+                value[3] = tmp_value[1];
+              } else if (change_dim && paddle::framework::DataLayoutToString(
+                                           desired_layout) == "NHWC") {
+                VLOG(6) << "layout autotune get Shape from NHWC -> NCHW "
+                        << value[0] << " " << value[1] << " " << value[2] << " "
+                        << value[3] << " to " << tmp_value[0] << " "
+                        << tmp_value[3] << " " << tmp_value[1] << " "
+                        << tmp_value[2];
+                // NHWC -> NCHW
+                value[1] = tmp_value[3];
+                value[2] = tmp_value[1];
+                value[3] = tmp_value[2];
+              }
+              return value;
             } else if (self.Var().IsType<phi::SelectedRows>()) {
               return phi::vectorize<int>(
                   self.Var().Get<phi::SelectedRows>().value().dims());
