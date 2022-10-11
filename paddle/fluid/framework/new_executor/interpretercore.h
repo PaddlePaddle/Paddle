@@ -99,8 +99,11 @@ class InterpreterCore {
   // workqueue
   std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
+  // scope
+  bool HasLocalScope() const;
+
  private:
-  bool is_build_;
+  bool is_build_{false};
 
   platform::Place place_;
   const BlockDesc& block_;  // not owned
@@ -121,11 +124,7 @@ class InterpreterCore {
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
-  // last_live_ops_[i] contains the id of operators that last access var[i]
-  std::map<size_t, std::set<size_t>> last_live_ops_;
-
-  std::vector<size_t> dependecy_count_;
-  std::atomic<size_t> unfinished_op_numer_{0};
+  std::atomic<size_t> unfinished_op_number_{0};
   VariableScope var_scope_;
   Scope* local_scope_{nullptr};  // not owned
 
@@ -139,8 +138,13 @@ class InterpreterCore {
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
 
-  std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_deps_;
-  std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;
+  // last_live_ops_[i] contains the id of operators that last access the i-th
+  // var
+  std::map<size_t, std::set<size_t>> last_live_ops_;
+
+  // dependecy_count_[i] contains the number of dependencies that the i-th op
+  // need to wait
+  std::vector<size_t> dependecy_count_;
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
