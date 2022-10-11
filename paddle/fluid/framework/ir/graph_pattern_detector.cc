@@ -3503,6 +3503,7 @@ PDNode *patterns::AddSupportInt8::operator()() {
 }
 
 PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
+  VLOG(0)<<"@@ LayernormShiftPartitionPattern, with_roll:"<<with_roll_;
   auto layer_norm_op =
       pattern->NewNode(layer_norm_op_repr())
           ->assert_is_op("layer_norm")
@@ -3536,18 +3537,21 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   auto reshape1_out = pattern->NewNode(reshape1_out_repr())
                           ->AsIntermediate()
                           ->assert_is_op_output("reshape2", "Out");
-  auto roll1_op = pattern->NewNode(roll1_op_repr())
-                         ->assert_is_op("roll");
+  PDNode* roll1_op = nullptr;
+  PDNode* roll1_out = nullptr;
+   
 
-  auto roll1_out = pattern->NewNode(roll1_out_repr())
-                          ->AsIntermediate()
-                          ->assert_is_op_output("roll","Out");
-
+  auto ;
   if(!with_roll_){
     reshape1_out->assert_is_op_input("reshape2", "X");
   } else {
-    reshape1_out->assert_is_op_input("roll","X");
-    roll1_out->assert_is_op_input("reshape2", "X");
+    reshape1_out->assert_is_op_input("roll", "X");
+    roll1_op = pattern->NewNode(roll1_op_repr())
+                       ->assert_is_op("roll");
+    roll1_out = pattern->NewNode(roll1_out_repr())
+                       ->AsIntermediate()
+                       ->assert_is_op_output("roll","Out")
+                       ->assert_is_op_input("reshape2","X");
   }
   auto reshape2_op =
       pattern->NewNode(reshape2_op_repr())

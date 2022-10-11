@@ -1934,7 +1934,7 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   // optional op roll
   PATTERN_DECL_NODE(roll1_op);
   PATTERN_DECL_NODE(roll1_out);
-  
+
   PATTERN_DECL_NODE(reshape2_op);
   PATTERN_DECL_NODE(reshape2_out);
   PATTERN_DECL_NODE(transpose_op);
