@@ -37,7 +37,7 @@ paddle.enable_static()
 global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
 PP_MESH_0 = auto.ProcessMesh([0])
 PP_MESH_1 = auto.ProcessMesh([1])
-batch_size = 1
+batch_size = 2
 batch_num = 10
 hidden_size = 1024
 sequence_len = 512
@@ -77,7 +77,7 @@ def batch_generator_creator():
     def __reader__():
         for _ in range(batch_size):
             batch_input, batch_label = get_random_inputs_and_labels(
-                [batch_size, image_size], [batch_size, 1])
+                [batch_size, image_size], [batch_size])
             yield batch_input, batch_label
 
     return __reader__
@@ -185,45 +185,45 @@ def train_low_level():
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
 
-    engine = auto.Engine(mlp, loss, optimizer, metric, strategy=strategy)
+    engine = auto.Engine(mlp, loss, optimizer, metrics=None, strategy=strategy)
 
     feed_dict = {}
     for feed_var, shape in my_feed_vars:
         feed_dict[feed_var.name] = np.zeros(shape, dtype="float32")
 
-    # Build normal normal dataloader
-    # train
-    train_dataset = MyDataset(batch_num * batch_size)
-    train_dataloader = engine.dataloader(train_dataset,
-                                         batch_size=batch_size,
-                                         mode="train")
-    engine.prepare(mode="train")
-    for data in train_dataloader:
-        outs = engine.run(data, feed=feed_dict, mode="train")
+    # # Build normal normal dataloader
+    # # train
+    # train_dataset = MyDataset(batch_num * batch_size)
+    # train_dataloader = engine.dataloader(train_dataset,
+    #                                      batch_size=batch_size,
+    #                                      mode="train")
+    # engine.prepare(mode="train")
+    # for data in train_dataloader:
+    #     outs = engine.run(data, feed=feed_dict, mode="train")
 
-    # eval
-    eval_dataset2 = MyDataset(batch_size)
-    eval_dataloader = engine.dataloader(eval_dataset2,
-                                        batch_size=batch_size,
-                                        mode="eval")
-    engine.prepare(mode="eval")
-    for data in eval_dataloader:
-        outs = engine.run(data, feed=feed_dict, mode="eval")
+    # # eval
+    # eval_dataset2 = MyDataset(batch_size)
+    # eval_dataloader = engine.dataloader(eval_dataset2,
+    #                                     batch_size=batch_size,
+    #                                     mode="eval")
+    # engine.prepare(mode="eval")
+    # for data in eval_dataloader:
+    #     outs = engine.run(data, feed=feed_dict, mode="eval")
 
-    # predict
-    engine.to_mode("predict")
-    test_dataset = MyDataset(batch_size)
-    predict_dataloader = engine.dataloader(test_dataset, batch_size=batch_size)
-    engine.prepare()
-    for data in predict_dataloader:
-        outs = engine.run(data, feed=feed_dict)
+    # # predict
+    # engine.to_mode("predict")
+    # test_dataset = MyDataset(batch_size)
+    # predict_dataloader = engine.dataloader(test_dataset, batch_size=batch_size)
+    # engine.prepare()
+    # for data in predict_dataloader:
+    #     outs = engine.run(data, feed=feed_dict)
 
-    # save
-    temp_dir = tempfile.TemporaryDirectory()
-    model_filename = os.path.join(temp_dir.name, 'mlp')
-    engine.save(model_filename, training=True)
-    engine.load(model_filename)
-    temp_dir.cleanup()
+    # # save
+    # temp_dir = tempfile.TemporaryDirectory()
+    # model_filename = os.path.join(temp_dir.name, 'mlp')
+    # engine.save(model_filename, training=True)
+    # engine.load(model_filename)
+    # temp_dir.cleanup()
 
     # Build dataloader from generator
     # train
@@ -234,34 +234,85 @@ def train_low_level():
     engine.prepare(mode="train")
     for data in train_dataloader:
         outs = engine.run(data, feed=feed_dict, mode="train")
+        break
 
-    # eval
-    eval_dataset2 = MyDataset(batch_size)
-    engine.to_mode(mode="eval")
-    eval_dataloader = engine.dataloader_from_generator(eval_dataset2,
-                                                       batch_size=batch_size)
-    engine.prepare()
-    for data in eval_dataloader:
-        outs = engine.run(data, feed=feed_dict)
+    # # eval
+    # eval_dataset2 = MyDataset(batch_size)
+    # engine.to_mode(mode="eval")
+    # eval_dataloader = engine.dataloader_from_generator(eval_dataset2,
+    #                                                    batch_size=batch_size)
+    # engine.prepare()
+    # for data in eval_dataloader:
+    #     outs = engine.run(data, feed=feed_dict)
 
-    # predict
-    test_dataset = MyDataset(batch_size)
-    predict_dataloader = engine.dataloader_from_generator(test_dataset,
-                                                          batch_size=batch_size,
-                                                          mode="predict")
-    engine.prepare(mode="predict")
-    for data in predict_dataloader:
-        outs = engine.run(data, feed=feed_dict, mode="predict")
+    # # predict
+    # test_dataset = MyDataset(batch_size)
+    # predict_dataloader = engine.dataloader_from_generator(test_dataset,
+    #                                                       batch_size=batch_size,
+    #                                                       mode="predict")
+    # engine.prepare(mode="predict")
+    # for data in predict_dataloader:
+    #     outs = engine.run(data, feed=feed_dict, mode="predict")
 
-    # save
-    temp_dir = tempfile.TemporaryDirectory()
-    model_filename = os.path.join(temp_dir.name, 'mlp')
-    engine.save(model_filename, training=True)
-    engine.load(model_filename)
-    temp_dir.cleanup()
+    # # save
+    # temp_dir = tempfile.TemporaryDirectory()
+    # model_filename = os.path.join(temp_dir.name, 'mlp')
+    # engine.save(model_filename, training=True)
+    # engine.load(model_filename)
+    # temp_dir.cleanup()
 
 
-def train_within_static():
+def train_builtin_data_vars():
+    # input = static.data(name="input",
+    #                     shape=[batch_size, image_size],
+    #                     dtype='float32')
+    # label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
+
+    mlp = MLPLayer(hidden_size=hidden_size,
+                   intermediate_size=4 * hidden_size,
+                   dropout_ratio=0.1,
+                   initializer_range=0.02)
+    loss = paddle.nn.CrossEntropyLoss()
+    optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                      beta1=0.9,
+                                      beta2=0.999,
+                                      epsilon=1e-08,
+                                      grad_clip=None)
+    metric = paddle.metric.Accuracy()
+
+    strategy = auto.Strategy()
+    strategy.auto_mode = "semi"
+
+    engine = auto.Engine(mlp, loss, optimizer, metric, strategy=strategy)
+
+    # train
+    engine.to_mode("train")
+
+    input_spec = static.InputSpec([batch_size, image_size], 'float32', 'input')
+    label_spec = static.InputSpec([batch_size, 1], 'int64', 'label')
+    engine.prepare(inputs_spec=[input_spec], labels_spec=[label_spec])
+
+    with static.program_guard(engine.main_program, engine.startup_program):
+        feed_list = engine.inputs + engine.labels
+        print(feed_list)
+        loader = paddle.io.DataLoader.from_generator(feed_list=feed_list,
+                                                     capacity=4 * batch_size,
+                                                     iterable=False)
+
+        places = static.cuda_places()
+        loader.set_batch_generator(batch_generator_creator(), places=places)
+
+    # print("$$$$$$$", engine.main_program, engine.startup_program)
+    count = 0
+    while True:
+        outs = engine.run()
+        count += 1
+        print("%%%%%%%%%%%", count)
+        if count == batch_size:
+            break
+
+
+def train_non_builtin_data_vars():
     main_program = static.Program()
     startup_program = static.Program()
     with static.program_guard(main_program,
@@ -269,7 +320,14 @@ def train_within_static():
         input = static.data(name="input",
                             shape=[batch_size, image_size],
                             dtype='float32')
-        label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
+        label = static.data(name="label", shape=[batch_size], dtype='int64')
+
+        loader = paddle.io.DataLoader.from_generator(feed_list=[input, label],
+                                                     capacity=4 * batch_size,
+                                                     iterable=False)
+        places = static.cuda_places()
+        print("##########", places)
+        loader.set_batch_generator(batch_generator_creator(), places=places)
 
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
@@ -285,26 +343,34 @@ def train_within_static():
         predict = mlp(input)
         loss_var = loss(predict, label)
 
-    loader = paddle.io.DataLoader.from_generator(feed_list=[input, label],
-                                                 capacity=4 * batch_size,
-                                                 iterable=True)
-    places = static.cuda_places()
-    loader.set_batch_generator(batch_generator_creator(), places=places)
-
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
 
-    engine = auto.Engine(loss=loss_var, optimizer=optimizer, strategy=strategy)
+    engine = auto.Engine(loss=loss_var,
+                         optimizer=optimizer,
+                         metrics=None,
+                         strategy=strategy)
 
     # train
     engine.to_mode("train")
-    engine.prepare(main_program=main_program, startup_program=startup_program)
-    for data in loader:
-        outs = engine.run(data)
+    engine.prepare(inputs=[input],
+                   labels=[label],
+                   main_program=main_program,
+                   startup_program=startup_program)
+    # for data in loader:
+    #     outs = engine.run(data)
+    count = 1
+    while True:
+        outs = engine.run()
+        count += 1
+        print("%%%%%%%%%%%", count)
+        if count == batch_size:
+            break
 
 
 if __name__ == "__main__":
-    train_high_level(fetch=True)
-    train_high_level(fetch=False)
-    train_low_level()
-    train_within_static()
+    # train_high_level(fetch=True)
+    # train_high_level(fetch=False)
+    # train_low_level()
+    # train_builtin_data_vars()
+    train_non_builtin_data_vars()
