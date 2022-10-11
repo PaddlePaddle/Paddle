@@ -18,7 +18,7 @@ from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
-from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from ..fluid.framework import Variable, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from paddle import _C_ops, _legacy_C_ops
 from ..framework import _current_expected_place
 
