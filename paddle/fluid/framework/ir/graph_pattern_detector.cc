@@ -3539,7 +3539,6 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   PDNode *roll1_op = nullptr;
   PDNode *roll1_out = nullptr;
 
-  auto;
   if (!with_roll_) {
     reshape1_out->assert_is_op_input("reshape2", "X");
   } else {
