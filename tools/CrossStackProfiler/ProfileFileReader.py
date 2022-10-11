@@ -53,7 +53,7 @@ class profileFileReader(FileReader):
                          (rankId)] = self._parseSingleFile(fileName)
             self._logger.info("I finish processing %s!" % fileName)
 
-        if not q is None:
+        if q is not None:
             q.put(profile_dict)
 
         return profile_dict
@@ -142,7 +142,7 @@ class profileFileReader(FileReader):
 
             res[str(rankId)] = pipeLineList
 
-        if not q is None:
+        if q is not None:
             q.put(res)
 
         return res

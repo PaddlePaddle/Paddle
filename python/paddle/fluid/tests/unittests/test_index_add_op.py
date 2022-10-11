@@ -15,10 +15,8 @@
 import unittest
 import paddle
 import numpy as np
-import paddle.fluid.core as core
 from op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program
 
 
 def compute_index_add_ref(axis, x_shape, x_np, add_value_shape, add_value_np,

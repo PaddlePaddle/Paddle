@@ -27,7 +27,7 @@ class NPUClipByNormKernel : public framework::OpKernel<T> {
     auto max_norm = context.Attr<float>("max_norm");
     auto in_var = context.InputVar("X");
 
-    if (!(in_var->IsType<framework::LoDTensor>())) {
+    if (!(in_var->IsType<phi::DenseTensor>())) {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Invalid input variable type, only support LodTensor"
           "type, but got type is %s.",

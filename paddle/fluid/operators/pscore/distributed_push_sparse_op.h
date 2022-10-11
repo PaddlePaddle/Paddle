@@ -35,10 +35,10 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     auto use_cvm_op = context.Attr<bool>("use_cvm_op");
     auto slots = context.Attr<std::vector<int>>("slots");
 
-    auto inputs = context.MultiInput<framework::LoDTensor>("Ids");
-    auto shows = context.Input<framework::LoDTensor>("Shows");
-    auto clks = context.Input<framework::LoDTensor>("Clicks");
-    auto outputs = context.MultiOutput<framework::LoDTensor>("Outputs");
+    auto inputs = context.MultiInput<phi::DenseTensor>("Ids");
+    auto shows = context.Input<phi::DenseTensor>("Shows");
+    auto clks = context.Input<phi::DenseTensor>("Clicks");
+    auto outputs = context.MultiOutput<phi::DenseTensor>("Outputs");
 
     auto fleet = distributed::FleetWrapper::GetInstance();
 
@@ -62,17 +62,17 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       auto cpu_place = platform::CPUPlace();
       framework::Scope *tmp_scope = scope.NewTmpScope().release();
 
-      std::vector<const framework::LoDTensor *> tmp_input_vec;
+      std::vector<const phi::DenseTensor *> tmp_input_vec;
       auto input_var_size = inputs_variable.size();
-      std::vector<framework::LoDTensor *> tmp_output_vec;
+      std::vector<phi::DenseTensor *> tmp_output_vec;
       auto output_var_size = outputs_variable.size();
 
       // create temp input
       for (size_t idx = 0; idx < input_var_size; ++idx) {
         framework::Variable *tmp_input_var = tmp_scope->Var(inputs_name[idx]);
-        framework::LoDTensor *tmp_input_tensor =
-            tmp_input_var->GetMutable<framework::LoDTensor>();
-        framework::TensorCopy(inputs_variable[idx]->Get<framework::LoDTensor>(),
+        phi::DenseTensor *tmp_input_tensor =
+            tmp_input_var->GetMutable<phi::DenseTensor>();
+        framework::TensorCopy(inputs_variable[idx]->Get<phi::DenseTensor>(),
                               cpu_place,
                               context.device_context(),
                               tmp_input_tensor);
@@ -80,11 +80,11 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       }
 
       framework::Variable *tmp_shows_var = tmp_scope->Var("Shows");
-      framework::LoDTensor *tmp_shows_tensor =
-          tmp_shows_var->GetMutable<framework::LoDTensor>();
+      phi::DenseTensor *tmp_shows_tensor =
+          tmp_shows_var->GetMutable<phi::DenseTensor>();
       framework::Variable *tmp_clicks_var = tmp_scope->Var("Clicks");
-      framework::LoDTensor *tmp_clicks_tensor =
-          tmp_clicks_var->GetMutable<framework::LoDTensor>();
+      phi::DenseTensor *tmp_clicks_tensor =
+          tmp_clicks_var->GetMutable<phi::DenseTensor>();
       framework::TensorCopy(
           *shows, cpu_place, context.device_context(), tmp_shows_tensor);
       framework::TensorCopy(
@@ -93,8 +93,8 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       // create temp output
       for (size_t idx = 0; idx < output_var_size; ++idx) {
         framework::Variable *tmp_output_var = tmp_scope->Var(outputs_name[idx]);
-        framework::LoDTensor *tmp_output_tensor =
-            tmp_output_var->GetMutable<framework::LoDTensor>();
+        phi::DenseTensor *tmp_output_tensor =
+            tmp_output_var->GetMutable<phi::DenseTensor>();
         tmp_output_tensor->Resize(outputs[idx]->dims());
         tmp_output_vec.push_back(tmp_output_tensor);
       }
@@ -113,13 +113,13 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       // cp temp to origin
       for (size_t idx = 0; idx < output_var_size; ++idx) {
         framework::Variable *tmp_output_var = tmp_scope->Var(outputs_name[idx]);
-        framework::LoDTensor *tmp_output_tensor =
-            tmp_output_var->GetMutable<framework::LoDTensor>();
+        phi::DenseTensor *tmp_output_tensor =
+            tmp_output_var->GetMutable<phi::DenseTensor>();
         framework::TensorCopy(
             *tmp_output_tensor,
             context.GetPlace(),
             context.device_context(),
-            outputs_variable[idx]->GetMutable<framework::LoDTensor>());
+            outputs_variable[idx]->GetMutable<phi::DenseTensor>());
       }
       delete tmp_scope;
     }

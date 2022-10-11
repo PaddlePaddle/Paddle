@@ -27,7 +27,7 @@ namespace operators {
 using framework::DataLayout;
 using framework::DDim;
 using framework::ExecutionContext;
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 using platform::MatMulV2MKLDNNHandler;
 using platform::MKLDNNDeviceContext;
