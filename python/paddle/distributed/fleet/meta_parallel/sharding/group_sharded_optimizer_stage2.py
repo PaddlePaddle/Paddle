@@ -190,7 +190,7 @@ class GroupShardedOptimizerStage2(Optimizer):
     def _set_broadcast_overlap(self,
                                broadcast_overlap,
                                layers=None,
-                               num_groups=4):
+                               num_groups=1):
         # Enable post optimizer broadcasts overlap with the forward calculation of next batch.
         self._broadcast_overlap = broadcast_overlap
         if self._broadcast_overlap:
