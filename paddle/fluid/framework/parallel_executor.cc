@@ -258,9 +258,11 @@ class ParallelExecutorPrivate {
   }
 
   void InitOrGetNCCLCommunicator(framework::Scope *scope, BuildStrategy *bst) {
+    VLOG(4) << "yoki pe9";
     const std::string var_name = "NCCLCommunicator";
     auto var = scope->FindVar(var_name);
     if (var != nullptr) {
+      VLOG(4) << "yoki pe10";
       PADDLE_ENFORCE_EQ(var->IsInitialized(),
                         true,
                         platform::errors::PreconditionNotMet(
@@ -272,6 +274,7 @@ class ParallelExecutorPrivate {
     }
 
     if (bst->use_hierarchical_allreduce_) {
+      VLOG(4) << "yoki pe11";
       PADDLE_ENFORCE_GT(
           bst->num_trainers_,
           1,
@@ -298,6 +301,7 @@ class ParallelExecutorPrivate {
 
     VLOG(1) << "not find " << var_name << " in scope, so recreate it!";
     nccl_ctxs_ = scope->Var(var_name)->GetMutable<platform::NCCLCommunicator>();
+    VLOG(4) << "yoki pe12";
     InitNCCLCtxs(scope, *bst);
   }
 #endif
@@ -717,7 +721,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Step 1. Create local scopes and Clone graph into multi device
   CreateLocalScopes(scope, local_scopes, /*create_new*/ true);
   std::vector<ir::Graph *> graphs = CloneGraphToMultiDevices(graph);
+  VLOG(4) << "yoki pe1";
   PrepareNCCLCommunicator(scope);
+  VLOG(4) << "yoki pe2";
 
   // broadcast parameters from the 0th device to others:
   auto need_broadcast = [&]() -> bool {
@@ -1494,14 +1500,20 @@ void ParallelExecutor::PreludeToRun(
 }
 
 void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
+  VLOG(4) << "yoki pe3";
   if (member_->build_strategy_.reduce_ ==
       BuildStrategy::ReduceStrategy::kNoReduce) {
+    VLOG(4) << "yoki pe4";
     return;
   }
 
+  VLOG(4) << "yoki pe5";
   if (member_->IsUseCUDA(member_->use_device_) && member_->nranks_ > 1) {
+    VLOG(4) << "yoki pe6";
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    VLOG(4) << "yoki pe7";
     member_->InitOrGetNCCLCommunicator(global_scope, &member_->build_strategy_);
+    VLOG(4) << "yoki pe8";
 
     // Initialize device context's nccl comm, will be used by normal
     // Operators like sync_batch_norm, and collective ops.

@@ -506,10 +506,100 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   return desc;
 }
 
+
+void ReplaceAllReduceOp(const Node &node,
+                        proto::BlockDesc *block,
+                        std::vector<OpDesc> *ops) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  bool is_fused = (node.Name() == "fused_all_reduce");
+  details::OpHandleBase &op_handle =
+      const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
+  
+  int ring_id = platform::NCCLCommContext::Instance().GetRingId(
+      dynamic_cast<details::NCCLOpHandleBase *>(&op_handle)->GetComm());
+  if (ring_id == -2) {
+    VLOG(4) << "NCCL Context is null.";
+    return;
+  }
+
+  std::string all_reduce_var_name;
+  // If fused, add check_memory_continue OP to fuse inputs
+  if (is_fused) {
+    all_reduce_var_name = "fake_coalesce_" + std::to_string(ops->size());
+    proto::VarDesc var_desc;
+    var_desc.set_name(all_reduce_var_name);
+    var_desc.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
+    block->mutable_vars()->Add()->CopyFrom(var_desc);
+    VLOG(4) << "add variable for check_memory_continue: "
+            << all_reduce_var_name;
+
+    // get inputs of check_memory_continue
+    auto in_var_handles = op_handle.Inputs();
+    std::vector<std::string> in_names;
+    for (const auto &in : in_var_handles) {
+      if (dynamic_cast<details::DummyVarHandle *>(in) != nullptr) {
+        continue;
+      }
+      in_names.emplace_back(in->Name());
+    }
+
+    ops->emplace_back();
+    OpDesc &fuse_op_desc = ops->back();
+    fuse_op_desc.SetType("check_memory_continue");
+    fuse_op_desc.SetInput("X", in_names);
+    fuse_op_desc.SetOutput("Out", {all_reduce_var_name});
+    fuse_op_desc.SetOutput("XOut", in_names);
+    fuse_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                         (static_cast<int>(OpRole::kBackward)));
+  } else {
+    all_reduce_var_name = op_handle.Inputs()[0]->Name();
+  }
+
+  // add c_allreduce_sum OP
+  ops->emplace_back();
+  OpDesc &all_reduce_op_desc = ops->back();
+  all_reduce_op_desc.SetType("c_allreduce_sum");
+  all_reduce_op_desc.SetInput("X", {all_reduce_var_name});
+  all_reduce_op_desc.SetOutput("Out", {all_reduce_var_name});
+
+  VLOG(4) << "yoki new func1";
+  // int ring_id = platform::NCCLCommContext::Instance().GetRingId(
+  //     dynamic_cast<details::NCCLOpHandleBase *>(&op_handle)->GetComm());
+  VLOG(4) << "yoki new func2";
+  all_reduce_op_desc.SetAttr("ring_id", ring_id);
+  all_reduce_op_desc.SetAttr("use_calc_stream", true);
+  all_reduce_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                             (static_cast<int>(OpRole::kBackward)));
+
+  // handle grad merge
+  if (dynamic_cast<details::FusedGradMergeAllReduceOpHandle *>(&op_handle)) {
+    VLOG(4) << "FusedGradMergeAllReduceOpHandle: add cond to c_allreduce_sum";
+    const std::string cond_name =
+        dynamic_cast<details::FusedGradMergeAllReduceOpHandle *>(&op_handle)
+            ->GradMergeCondName();
+    all_reduce_op_desc.SetInput("Cond", {cond_name});
+  } else if (dynamic_cast<details::GradMergeAllReduceOpHandle *>(&op_handle)) {
+    VLOG(4) << "GradMergeAllReduceOpHandle: add cond to c_allreduce_sum";
+    const std::string cond_name =
+        dynamic_cast<details::GradMergeAllReduceOpHandle *>(&op_handle)
+            ->GradMergeCondName();
+    all_reduce_op_desc.SetInput("Cond", {cond_name});
+  }
+#else
+  PADDLE_THROW(
+      platform::errors::Unimplemented("ReplaceAllReduceOp is only implemented "
+                                      "for paddle compiled with NCCL/RCCL."));
+#endif
+}
+
+
+
+/*
 static void ReplaceAllReduceOp(const Node &node,
                                proto::BlockDesc *block,
                                std::vector<OpDesc> *ops) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  VLOG(3) << "yoki1";
   ops->emplace_back();
   auto &desc1 = ops->back();
   std::string name = "fake_coalesce_" + std::to_string(ops->size());
@@ -518,8 +608,10 @@ static void ReplaceAllReduceOp(const Node &node,
   ops->emplace_back();
   auto &desc2 = ops->back();
   desc2.SetType("c_allreduce_sum");
+  VLOG(3) << "yoki2";
 
   if (node.IsWrappedBy<details::OpHandleBase>()) {
+    VLOG(3) << "yoki3";
     details::OpHandleBase &op_handler =
         const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
 
@@ -554,10 +646,19 @@ static void ReplaceAllReduceOp(const Node &node,
     }
     desc2.SetOutput("Out", {name});
 
+    VLOG(4) << "yoki old func1";
     int ring_id = platform::NCCLCommContext::Instance().GetRingId(
         dynamic_cast<details::NCCLOpHandleBase *>(&op_handler)->GetComm());
+    VLOG(4) << "yoki old func2";
+    VLOG(3) << "yoki4";
+    VLOG(3) << "yoki5 ring_id " << ring_id;
+    if (ring_id == -2) {
+      return;
+    }
     desc2.SetAttr("ring_id", ring_id);
+    VLOG(3) << "yoki6";
     desc2.SetAttr("use_calc_stream", true);
+    VLOG(3) << "yoki7";
 
     // handle grad merge
     if (dynamic_cast<details::FusedGradMergeAllReduceOpHandle *>(&op_handler)) {
@@ -568,17 +669,27 @@ static void ReplaceAllReduceOp(const Node &node,
       desc2.SetInput("Cond", {cond_name});
     }
   }
+  VLOG(3) << "yoki8";
+
+  VLOG(3) << "yoki8.1: OpRoleAttrName: " << OpProtoAndCheckerMaker::OpRoleAttrName();
+  VLOG(3) << "yoki8.2: kBackward: " << (static_cast<int>(OpRole::kBackward));
+
+  VLOG(3) << "yoki desc1: type: " << desc1.Type();
 
   desc1.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 (static_cast<int>(OpRole::kBackward)));
+  VLOG(3) << "yoki8.3";
   desc2.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 (static_cast<int>(OpRole::kBackward)));
+  VLOG(3) << "yoki9";
 #else
   PADDLE_THROW(
       platform::errors::Unimplemented("ReplaceAllReduceOp is only implemented "
                                       "for paddle compiled with NCCL/RCCL."));
 #endif
 }
+*/
+
 
 void UpdateControlOpSkipEagerDeletionVars(const Node &node,
                                           const Graph &graph,
@@ -636,8 +747,11 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       ops->emplace_back();
       auto &desc = ops->back();
       ReplaceScaleLossGradOp(*n, &desc);
+    // } else if (n->Name() == "allreduce" || n->Name() == "fused_all_reduce") {
+    //   VLOG(4) << "convert op node " << n->Name() << " to desc c_allreduce_sum";
     } else if (n->Name() == "fused_all_reduce") {
       VLOG(4) << "convert op node fused_all_reduce to desc c_allreduce_sum";
+      VLOG(4) << "yoki: node: " << n->ToString();
       ReplaceAllReduceOp(*n, block, ops);
       VLOG(4) << n->ToString();
     } else if (n->Op()) {

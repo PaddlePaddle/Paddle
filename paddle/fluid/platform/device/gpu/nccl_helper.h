@@ -260,6 +260,13 @@ class NCCLCommunicator {
   }
 
   NCCLContextMap *GetFlatCtx(size_t run_order) const {
+    VLOG(4) << "yoki1 nccl_helper";
+    VLOG(4) << "yoki2: " << run_order;
+    // VLOG(4) << "yoki3: " << flat_ctxs_.size();
+    // if (flat_ctxs_.size() == 0) {
+      VLOG(4) << "yoki4";
+      // return nullptr;
+    // }
     return flat_ctxs_[run_order % flat_ctxs_.size()].get();
   }
 

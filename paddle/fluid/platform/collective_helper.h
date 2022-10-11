@@ -106,6 +106,9 @@ class NCCLCommContext {
   }
 
   int GetRingId(ncclComm_t comm) const {
+    if (!comm) {
+      return -2;
+    }
     for (const auto& pair : comm_map_) {
       for (const auto& p : pair.second) {
         if (p.second.get()->comm() == comm) {

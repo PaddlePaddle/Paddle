@@ -41,7 +41,9 @@ class NCCLOpHandleBase : public OpHandleBase {
                    const std::vector<platform::Place>& places,
                    const platform::NCCLCommunicator* nccl_ctxs)
       : OpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
+    VLOG(4) << "yoki nccl op handle construct";
     if (nccl_ctxs == nullptr) {
+      VLOG(4) << "yoki nccl op handle nccl_ctxs==nullptr";
       return;
     }
     // init device context
@@ -71,20 +73,37 @@ class NCCLOpHandleBase : public OpHandleBase {
     return nccl_ctxs_;
   }
 
-  const ncclComm_t GetComm() const {
+  ncclComm_t GetComm() const {
+    VLOG(3) << "yoki nccl0";
     PADDLE_ENFORCE_EQ(
         places_.size(),
         1,
         platform::errors::Unimplemented(
             "Only supported for single place now, but got %d", places_.size()));
+    VLOG(3) << "yoki nccl1";
     PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
                       0,
                       platform::errors::Unimplemented(
                           "Not supported use_hierarchical_allreduce_ now"));
+    VLOG(3) << "yoki nccl2";
+    VLOG(3) << "yoki run_order_: " << run_order_;
+    VLOG(3) << "yoki nccl2.1";
+    if (nccl_ctxs_ == nullptr) {
+      VLOG(3) << "yoki nccl2.2";
+      return nullptr;
+    }
+    VLOG(3) << "yoki nccl2.3";
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
+    if (!flat_nccl_ctxs) {
+      return nullptr;
+    }
+    VLOG(3) << "yoki nccl3";
     int dev_id = places_[0].device;
+    VLOG(3) << "yoki nccl4";
     auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);
+    VLOG(3) << "yoki nccl5";
     auto comm = nccl_ctx.comm_;
+    VLOG(3) << "yoki nccl6";
     return comm;
   }
 

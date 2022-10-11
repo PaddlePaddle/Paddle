@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 
 namespace paddle {
@@ -44,7 +45,9 @@ struct ExtraAttrChecker {
 class ExtraInfoUtils {
  public:
   static ExtraInfoUtils& Instance() {
+    // VLOG(4) << "yoki extra0";
     static ExtraInfoUtils extra_info_utils;
+    // VLOG(4) << "yoki extra1";
     return extra_info_utils;
   }
 
@@ -53,12 +56,20 @@ class ExtraInfoUtils {
     return g_extra_attrs_map_;
   }
 
+  const paddle::framework::AttributeMap& GetEmptyExtraAttrsMap() const {
+    return empty_extra_attrs_map_;
+  }
+
   const paddle::framework::AttributeMap& GetExtraAttrsMap(
       const std::string& op_type) const {
+    // VLOG(4) << "yoki extra2";
     auto iter = g_extra_attrs_map_.find(op_type);
+    // VLOG(4) << "yoki extra3";
     if (iter != g_extra_attrs_map_.end()) {
+      // VLOG(4) << "yoki extra4";
       return iter->second;
     }
+    // VLOG(4) << "yoki extra5";
     return empty_extra_attrs_map_;
   }
 

@@ -658,25 +658,63 @@ void OpDesc::RemoveAttr(const std::string &name) {
   need_update_ = true;
 }
 
+
+const paddle::framework::AttributeMap& yokiGetExtraAttrsMap(
+    const std::unordered_map<std::string, paddle::framework::AttributeMap>& yoki_g_extra_attrs_map, const paddle::framework::AttributeMap& yoki_empty_extra_attrs_map, const std::string& op_type) {
+  VLOG(4) << "yoki extra2";
+  auto iter = yoki_g_extra_attrs_map.find(op_type);
+  VLOG(4) << "yoki extra3";
+  if (iter != yoki_g_extra_attrs_map.end()) {
+    VLOG(4) << "yoki extra4";
+    return iter->second;
+  }
+  VLOG(4) << "yoki extra5";
+  return yoki_empty_extra_attrs_map;
+}
+
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
+  VLOG(4) << "yoki set_attr0";
   AttributeMap *attrs_ptr = &(this->attrs_);
 
   bool is_runtime_attr = false;
+  VLOG(4) << "yoki set_attr1";
 
-  const auto &extra_attr_map =
-      operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(Type());
+  auto &extra_attr_instance = operators::ExtraInfoUtils::Instance();
+  VLOG(4) << "yoki set_attr1.01";
+  const auto &yoki_test_all_map = extra_attr_instance.GetAllExtraAttrsMap();
+  VLOG(4) << "yoki set_attr1.02";
+  const paddle::framework::AttributeMap& yoki_empty_extra_attrs_map = extra_attr_instance.GetEmptyExtraAttrsMap();
+  VLOG(4) << "yoki set_attr1.03";
+  // VLOG(4) << "yoki set_attr1.030" << yoki_test_all_map;
+  // VLOG(4) << "yoki set_attr1.031" << yoki_empty_extra_attrs_map;
+  VLOG(4) << "yoki type";
+  VLOG(4) << Type();
+  VLOG(4) << "yoki type2";
+  VLOG(4) << "yoki set_attr1.032" << Type();
+  const auto &extra_attr_map = yokiGetExtraAttrsMap(yoki_test_all_map, yoki_empty_extra_attrs_map, Type());
+  VLOG(4) << "yoki set_attr1.04";
+  // const auto &extra_attr_map =
+  //     operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(Type());
+  VLOG(4) << "yoki set_attr1.1";
   auto extra_attr_iter = extra_attr_map.find(name);
+  VLOG(4) << "yoki set_attr1.2";
   if (extra_attr_iter != extra_attr_map.end()) {
+    VLOG(4) << "yoki set_attr1.3";
     is_runtime_attr = true;
+    VLOG(4) << "yoki set_attr1.4";
     attrs_ptr = &(this->runtime_attrs_);
+    VLOG(4) << "yoki set_attr1.5";
   }
+  VLOG(4) << "yoki set_attr2";
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
   // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.index() - 1);
   if (attr_type == proto::AttrType::INTS &&
       PADDLE_GET_CONST(std::vector<int>, v).size() == 0u) {
+    VLOG(4) << "yoki set_attr3";
     // Find current attr via attr name and set the correct attribute value
+    // auto attr_type = GetProtoAttr(name).type();
     auto attr_type =
         is_runtime_attr
             ? static_cast<proto::AttrType>(extra_attr_iter->second.index() - 1)
@@ -731,11 +769,14 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
     need_update_ = true;
     return;
   }
+  VLOG(4) << "yoki set_attr4";
 
   // In order to set bool attr properly
   if (attr_type == proto::AttrType::INT) {
+    VLOG(4) << "yoki set_attr5";
     if (HasProtoAttr(name) &&
         GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
+      VLOG(4) << "yoki set_attr5.1";
       attrs_ptr->operator[](name) = static_cast<bool>(PADDLE_GET_CONST(int, v));
       need_update_ = true;
       return;
@@ -743,14 +784,17 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
     if (extra_attr_iter != extra_attr_map.end() &&
         static_cast<proto::AttrType>(extra_attr_iter->second.index() - 1) ==
             proto::AttrType::BOOLEAN) {
+      VLOG(4) << "yoki set_attr5.2";
       attrs_ptr->operator[](name) = static_cast<bool>(PADDLE_GET_CONST(int, v));
       need_update_ = true;
       return;
     }
   }
+  VLOG(4) << "yoki set_attr6";
 
   attrs_ptr->operator[](name) = v;
   need_update_ = true;
+  VLOG(4) << "yoki set_attr7";
 }
 
 void OpDesc::SetVarAttr(const std::string &name, VarDesc *var) {

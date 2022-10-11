@@ -93,6 +93,8 @@ class OpDesc {
 
   std::vector<std::string> AttrNames(bool with_attr_var = false) const;
 
+  // const paddle::framework::AttributeMap& yokiGetExtraAttrsMap(
+  //   const std::unordered_map<std::string, paddle::framework::AttributeMap>& yoki_g_extra_attrs_map, const paddle::framework::AttributeMap& yoki_empty_extra_attrs_map, const std::string& op_type) const;
   void SetAttr(const std::string &name, const Attribute &v);
   void RemoveAttr(const std::string &name);
 

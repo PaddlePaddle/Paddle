@@ -293,7 +293,9 @@ class FuseAllReduceOpPass : public ir::Pass {
       ir::Graph *result) const {
     details::FusedAllReduceOpHandle *op_handle = NULL;
     if (is_grad_merge) {
+      VLOG(4) << "yoki all_reduce_pass 000";
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      VLOG(4) << "yoki all_reduce_pass 0";
       op_handle = new details::FusedGradMergeAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
@@ -303,6 +305,7 @@ class FuseAllReduceOpPass : public ir::Pass {
           grad_merge_cond_name,
           multi_nccl_ctxs);
 #elif defined(PADDLE_WITH_XPU_BKCL)
+      VLOG(4) << "yoki all_reduce_pass 1";
       op_handle = new details::FusedGradMergeAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
@@ -312,6 +315,7 @@ class FuseAllReduceOpPass : public ir::Pass {
           grad_merge_cond_name,
           multi_bkcl_ctxs);
 #else
+      VLOG(4) << "yoki all_reduce_pass 2";
       op_handle = new details::FusedGradMergeAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
@@ -321,7 +325,9 @@ class FuseAllReduceOpPass : public ir::Pass {
           grad_merge_cond_name);
 #endif
     } else {
+      VLOG(4) << "yoki all_reduce_pass 111";
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+      VLOG(4) << "yoki all_reduce_pass 3";
       op_handle = new details::FusedAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
@@ -330,6 +336,7 @@ class FuseAllReduceOpPass : public ir::Pass {
           num_of_all_reduce,
           multi_nccl_ctxs);
 #elif defined(PADDLE_WITH_XPU_BKCL)
+      VLOG(4) << "yoki all_reduce_pass 4";
       op_handle = new details::FusedAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),
@@ -338,6 +345,7 @@ class FuseAllReduceOpPass : public ir::Pass {
           num_of_all_reduce,
           multi_bkcl_ctxs);
 #else
+      VLOG(4) << "yoki all_reduce_pass 5";
       op_handle = new details::FusedAllReduceOpHandle(
           result->CreateEmptyNode("fused_all_reduce",
                                   ir::Node::Type::kOperation),

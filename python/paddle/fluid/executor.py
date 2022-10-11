@@ -1558,9 +1558,11 @@ class Executor(object):
             if core.is_compiled_with_mlu():
                 return False
 
-            use_standalone_executor_for_distribution = os.environ.get(
-                'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
-                None) in [1, '1', True, 'True', 'true']
+            #use_standalone_executor_for_distribution = os.environ.get(
+            #    'FLAGS_CONVERT_GRAPH_TO_PROGRAM',
+            #    None) in [1, '1', True, 'True', 'true']
+            # use_standalone_executor_for_distribution = True
+            use_standalone_executor_for_distribution = False
 
             compiled = isinstance(program,
                                   compiler.CompiledProgram) or isinstance(
@@ -1570,15 +1572,17 @@ class Executor(object):
                     program, compiler.CompiledProgram) else program._graph
 
                 # delete this code after supporting distribution
-                if compiled_program._build_strategy is not None and (
+                if (compiled_program._build_strategy is not None and (
                         compiled_program._build_strategy.is_distribution
-                        or compiled_program._build_strategy.num_trainers > 1):
+                        or compiled_program._build_strategy.num_trainers > 1)) and not use_standalone_executor_for_distribution:
                     warnings.warn(
                         "Standalone executor is not used for distribution",
                         UserWarning)
-                    return use_standalone_executor_for_distribution
+                    return False
+                    #return use_standalone_executor_for_distribution
 
                 # Unsupported case 1: data parallel
+                print("yoki places: ", compiled_program._places)
                 if compiled_program._is_data_parallel and len(
                         compiled_program._get_places(
                             place, compiled_program._places)) != 1:
@@ -1622,6 +1626,24 @@ class Executor(object):
             if fleet._role_maker is not None:
                 warnings.warn("Standalone executor is not used for fleet",
                               UserWarning)
+                # cur_rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+                # trainer_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", "").split(',')
+                # nrank = len(trainer_endpoints)
+                # print("yoki gloo rank: ", cur_rank)
+                # print("yoki gloo nrank: ", nrank)
+                # gloo = core.Gloo()
+                # gloo.set_rank(cur_rank)
+                # gloo.set_size(nrank)
+                # # gloo.set_prefix(prefix)
+                # # gloo.set_iface(self._iface)
+                # gloo.set_timeout_seconds(10,
+                #                          10)
+                # gloo.set_timeout_seconds(self._init_timeout_seconds,
+                #                         self._run_timeout_seconds)
+                # gloo.set_http_store(ip, port, 'worker')
+                # ep = ":".join([ip, str(port)])
+                # wait_server_ready([ep])
+                # gloo.init()
                 return use_standalone_executor_for_distribution
 
             return True

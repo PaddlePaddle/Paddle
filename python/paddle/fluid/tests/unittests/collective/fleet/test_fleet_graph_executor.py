@@ -17,31 +17,68 @@ import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import os
+import sys
+sys.path.append("/ssd/paddle/paddle0320/Paddle/build/python/paddle/fluid/tests/unittests/")
 from launch_function_helper import launch_func
 
 
 class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
 
     def test_graph_execution_optimizer(self):
+        # node_a = {
+        #     "PADDLE_TRAINER_ID": "0",
+        #     "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36001",
+        #     "PADDLE_TRAINERS_NUM": "2",
+        #     "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+        #     "http_proxy": "",
+        #     "https_proxy": "",
+        #     "GLOG_v": "10"
+        # }
+
+        # node_b = {
+        #     "PADDLE_TRAINER_ID": "1",
+        #     "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36002",
+        #     "PADDLE_TRAINERS_NUM": "2",
+        #     "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+        #     "http_proxy": "",
+        #     "https_proxy": "",
+        #     "GLOG_v": "10"
+        # }
+
         node_a = {
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36001",
-            "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "PADDLE_TRAINERS_NUM": "3",
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003",
             "http_proxy": "",
-            "https_proxy": ""
+            "https_proxy": "",
+            "GLOG_v": "10"
         }
 
         node_b = {
             "PADDLE_TRAINER_ID": "1",
             "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36002",
-            "PADDLE_TRAINERS_NUM": "2",
-            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
+            "PADDLE_TRAINERS_NUM": "3",
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003",
             "http_proxy": "",
-            "https_proxy": ""
+            "https_proxy": "",
+            "GLOG_v": "10"
+        }
+
+        node_c = {
+            "PADDLE_TRAINER_ID": "2",
+            "PADDLE_CURRENT_ENDPOINT": "127.0.0.1:36003",
+            "PADDLE_TRAINERS_NUM": "3",
+            "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003",
+            "http_proxy": "",
+            "https_proxy": "",
+            "GLOG_v": "10"
         }
 
         def node_func():
+            print("pid: ", str(os.getpid()))
+            # sys.stdout = sys.stderr = open(str(os.getpid()) + ".out", "w")
+            # print("pid2: ", str(os.getpid()))
             role = role_maker.PaddleCloudRoleMaker(is_collective=True)
             fleet.init(role)
             input_x = paddle.fluid.layers.data(name="x",
@@ -81,17 +118,28 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             for i in range(5):
                 cost_val = exe.run(feed=gen_data(), fetch_list=[avg_cost.name])
                 print("cost of step[{}] = {}".format(i, cost_val))
+            
+            import time
+            time.sleep(10)
 
+        for key in node_b:
+            os.environ[key] = node_b[key]
         # rank 1
         proc_b = launch_func(node_func, node_b)
         proc_b.start()
+
+        # rank 2
+        proc_c = launch_func(node_func, node_c)
+        proc_c.start()
 
         # rank 0, for wait server ready coverage
         # just for coverage
         for key in node_a:
             os.environ[key] = node_a[key]
+        # print("yoki os env1: ", os.environ)
         node_func()
 
+        proc_c.join()
         proc_b.join()
 
 

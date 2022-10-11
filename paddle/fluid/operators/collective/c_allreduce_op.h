@@ -104,6 +104,10 @@ class CAllReduceOpCPUKernel : public framework::OpKernel<T> {
     const T* send_buff = in->data<T>();
     T* recv_buff = out->mutable_data<T>(in->dims(), place);
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
+    if (!gloo->IsInitialized()) {
+      VLOG(4) << "GLOO is not inited";
+      gloo->Init();
+    }
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(),
         true,
