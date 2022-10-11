@@ -996,6 +996,9 @@ void* GetPointerByOffset(void* raw_pointer,
   } else if (type == experimental::DataType::BOOL) {
     return reinterpret_cast<void*>(reinterpret_cast<bool*>(raw_pointer) +
                                    offset);
+  } else if (type == experimental::DataType::BFLOAT16) {
+    return reinterpret_cast<void*>(reinterpret_cast<uint16_t*>(raw_pointer) +
+                                   offset);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This datatype in nccl is not supported."));
