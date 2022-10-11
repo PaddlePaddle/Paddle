@@ -499,8 +499,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     return framework::OpKernelType(data_type,
                                    ctx.GetPlace(),
                                    framework::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN,
-                                   kConvMKLDNNFP32);
+                                   framework::LibraryType::kMKLDNN);
   }
 #endif
 
