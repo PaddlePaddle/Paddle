@@ -28,7 +28,7 @@ from op_test_ipu import IPUOpTest
 # just load one custom-op for the data race issue under parallel mode
 def load_custom_detach():
     cur_dir = os.path.dirname(os.path.realpath(__file__))
-    custom_ops = load(name=f"custom_detach",
+    custom_ops = load(name="custom_detach",
                       sources=[
                           f"{cur_dir}/custom_detach.cc",
                       ],
@@ -39,7 +39,7 @@ def load_custom_detach():
 
 def load_custom_identity():
     cur_dir = os.path.dirname(os.path.realpath(__file__))
-    custom_ops = load(name=f"custom_identity",
+    custom_ops = load(name="custom_identity",
                       sources=[
                           f"{cur_dir}/custom_identity.cc",
                       ],
@@ -50,7 +50,7 @@ def load_custom_identity():
 
 def load_custom_nll():
     cur_dir = os.path.dirname(os.path.realpath(__file__))
-    custom_ops = load(name=f"custom_nll",
+    custom_ops = load(name="custom_nll",
                       sources=[
                           f"{cur_dir}/custom_nll.cc",
                       ],

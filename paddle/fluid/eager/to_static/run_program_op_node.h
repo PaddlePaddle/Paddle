@@ -326,7 +326,9 @@ inline void RunProgramAPI(
         paddle::framework::InterpreterCoreInfoCache::Instance();
 
     if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/false)) {
-      VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
+      VLOG(2) << "No interpretercore cahce, so create a new interpretercore "
+                 "for program: "
+              << program_id;
       // Step 1. share input_vars & parameters into scope
       details::ShareTensorsIntoScope(x, global_inner_scope);
       details::ShareTensorsIntoScope(params, global_inner_scope);
@@ -545,19 +547,14 @@ inline void RunProgramGradAPI(
       // share threadpool
       // NOTE(zhiqiu): this only works interpreter_core is executed strictly
       // after the related fwd_interpreter_core.
-      PADDLE_ENFORCE_EQ(
-          interpretercore_info_cache.Has(program_id, false),
-          true,
-          paddle::platform::errors::NotFound(
-              "The forward interpretercore of program %d is not found",
-              program_id));
-      auto fwd_interpreter_core =
-          interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false)
-              .core_;
-      interpreter_core->ShareWorkQueueFrom(fwd_interpreter_core);
-      VLOG(4) << "Share workqueue from " << fwd_interpreter_core.get() << " to "
-              << interpreter_core.get();
-
+      if (interpretercore_info_cache.Has(program_id, false)) {
+        auto fwd_interpreter_core =
+            interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false)
+                .core_;
+        interpreter_core->ShareWorkQueueFrom(fwd_interpreter_core);
+        VLOG(4) << "Share workqueue from " << fwd_interpreter_core.get()
+                << " to " << interpreter_core.get();
+      }
       // get all eager gc vars
       std::set<std::string> skip_eager_delete_vars;
       // all out_vars are skip_eager_var

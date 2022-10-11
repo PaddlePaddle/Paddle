@@ -17,7 +17,6 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 
 
 class TestUniqueWithCountsOp(OpTest):
