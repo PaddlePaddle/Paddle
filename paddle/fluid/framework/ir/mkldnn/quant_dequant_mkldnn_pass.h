@@ -137,6 +137,10 @@ class QuantDequantMkldnnPass : public FusePassBase {
 
   void UpdateActivations(ir::Graph* graph) const;
 
+  void DropoutScale(
+    ir::Graph* graph,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales) const ;
+
   void RemoveCtrlVars(ir::Graph* graph) const;
 };
 }  // namespace ir
