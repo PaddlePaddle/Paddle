@@ -156,6 +156,7 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
         "For GPU kernel, they must not fallback into CPU kernel."));
   }
 #endif
+
   return phi::KernelKey();
 }
 
