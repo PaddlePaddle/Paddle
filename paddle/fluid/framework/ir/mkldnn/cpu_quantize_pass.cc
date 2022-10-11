@@ -85,14 +85,16 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
                                     std::string scale_attr_name,
                                     float shift,
                                     std::string shift_attr_name) const {
-  auto inputs = op->Op()->InputNames();
+  bool residual_fc = input_name == "ResidualData" && op->Op()->Type() == "fc";
+  auto inputs = residual_fc ? op->Op()->OutputNames() : op->Op()->InputNames();
   bool name_found =
       std::find(inputs.begin(), inputs.end(), input_name) != inputs.end();
   PADDLE_ENFORCE_EQ(name_found,
                     true,
                     platform::errors::InvalidArgument(
-                        "Var(%s) isn't the input of the %s operator.",
+                        "Var(%s) isn't the %s of the %s operator.",
                         input_name,
+                        residual_fc ? "output" : "input",
                         op->Op()->Type()));
   unsigned max = is_input_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_to_one * max;
@@ -125,8 +127,13 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
   auto quantize_op = g->CreateOpNode(&q_desc);  // OpDesc will be copied.
 
   // update op's input
-  op->Op()->SetInput(input_name,
-                     std::vector<std::string>({quantize_out_node->Name()}));
+  if (residual_fc) {
+    op->Op()->SetOutput(input_name,
+                        std::vector<std::string>({quantize_out_node->Name()}));
+  } else {
+    op->Op()->SetInput(input_name,
+                       std::vector<std::string>({quantize_out_node->Name()}));
+  }
 
   // link quantize op
   UnlinkNodes(input, op);
@@ -467,16 +474,17 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
       ((with_residual_data) ? "with residual connection" : ""));
 }
 
-void CPUQuantizePass::QuantizeFc(Graph* graph) const {
+void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope_};
-  fc_pattern(false /* with_residual */);
+  fc_pattern(with_residual_data);
 
   int quantize_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "Quantize fc op";
+    VLOG(4) << "Quantize fc op " << (with_residual_data ? "with" : "without")
+            << " residual data";
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
 
     // skip if should not be quantized
@@ -484,18 +492,34 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
       LogQuantizationDisabled(fc);
       return;
     }
-    if (!fc->Op()->GetAttrIfExists<bool>("use_mkldnn")) {
-      MarkAndLogCannotQuantizeOp(fc, "use_mkldnn attribute set to false");
-      return;
-    }
 
     GET_IR_NODE_FROM_SUBGRAPH(weights, weights, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(output, output, fc_pattern);
 
-    if (!AreScalesPresentForNodes({input, weights})) {
-      MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
-      return;
+    if (with_residual_data) {
+      GET_IR_NODE_FROM_SUBGRAPH(residual_data, residual_data, fc_pattern);
+      if (!AreScalesPresentForNodes({input, weights, residual_data})) {
+        MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
+        return;
+      }
+
+      bool is_residual_unsigned{false};
+      auto residual_scale =
+          GetScaleValueForNode(residual_data, &is_residual_unsigned);
+
+      QuantizeInput(g,
+                    fc,
+                    residual_data,
+                    "ResidualData",
+                    residual_scale,
+                    is_residual_unsigned,
+                    "Scale_in_eltwise");
+    } else {
+      if (!AreScalesPresentForNodes({input, weights})) {
+        MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
+        return;
+      }
     }
 
     bool is_input_unsigned{false};
@@ -528,7 +552,9 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
 
   gpd(graph, handler);
   AddStatis(quantize_fc_count);
-  LogQuantizedOpsCounter("fc", quantize_fc_count);
+  LogQuantizedOpsCounter("fc",
+                         quantize_fc_count,
+                         with_residual_data ? "with residual connection" : "");
 }
 
 void CPUQuantizePass::QuantizePool(Graph* graph) const {
@@ -1160,7 +1186,8 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizePool(graph);
   QuantizeConcat(graph);
   QuantizePriorBox(graph);
-  QuantizeFc(graph);
+  QuantizeFc(graph, false /* with_residual_data */);
+  QuantizeFc(graph, true /* with_residual_data */);
   QuantizeMatmul(graph, false /* with_residual_data */);
   QuantizeMatmul(graph, true /* with_residual_data */);
   QuantizeImmutable(graph, "reshape2", "X");

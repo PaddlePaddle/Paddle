@@ -112,17 +112,18 @@ class FCMKLDNNHandler
         {"hard_swish", dnnl::algorithm::eltwise_hardswish},
         {"mish", dnnl::algorithm::eltwise_mish}};
 
-    std::vector<float> output_shift_scale;
-    float scale = 1.0f;
+    float sum_scale = 1.0f;
+    float activation_scale = 1.0f;
     if (IsInt8<T_w>()) {
-      std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
+      std::vector<float> output_shift_scale;
+      std::tie(output_shift_scale, sum_scale, activation_scale) =
+          GetOutputScales(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
       attrs->set_output_scales(mask, output_shift_scale);
     }
 
     dnnl::post_ops post_ops;
 
-    constexpr float sum_scale = 1.0f;
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
       post_ops.append_sum(sum_scale);
@@ -133,8 +134,8 @@ class FCMKLDNNHandler
     if (activation_type.empty() == false) {
       constexpr float alpha = 0.0f;
       constexpr float beta = 0.0f;
-
-      post_ops.append_eltwise(scale, algo_map[activation_type], alpha, beta);
+      post_ops.append_eltwise(
+          activation_scale, algo_map[activation_type], alpha, beta);
     }
 
     attrs->set_post_ops(post_ops);
@@ -142,18 +143,22 @@ class FCMKLDNNHandler
 
   // Compute the bias scales so that its values correspond to the
   // scale of data being an output of weights and input multiplication
-  std::vector<float> ComputeBiasScales(
-      const float scale_in, const std::vector<float>& scale_weights) {
-    std::vector<float> bias_scales(scale_weights.size());
+  std::vector<float> GetBiasScales(const framework::ExecutionContext& ctx) {
+    if (ctx.HasAttr("Bias_scales")) {
+      return ctx.Attr<std::vector<float>>("Bias_scales");
+    } else {
+      const float scale_in = ctx.Attr<float>("Scale_in");
+      const auto& scale_weights = ctx.Attr<std::vector<float>>("Scale_weights");
+      std::vector<float> bias_scales(scale_weights.size());
 
-    for (size_t i = 0; i < bias_scales.size(); ++i) {
-      if (scale_weights[i] == 0.0)
-        bias_scales[i] = 1.0f;
-      else
-        bias_scales[i] = scale_in * scale_weights[i];
+      for (size_t i = 0; i < bias_scales.size(); ++i) {
+        if (scale_weights[i] == 0.0)
+          bias_scales[i] = 1.0f;
+        else
+          bias_scales[i] = scale_in * scale_weights[i];
+      }
+      return bias_scales;
     }
-
-    return bias_scales;
   }
 
   // Correct output scale, to take into account scaling of input and weights
@@ -161,33 +166,45 @@ class FCMKLDNNHandler
   // scaled with its own scales, this data needs to be divided by
   // those scales to normalise them back to what their floating-point range
   // was. Then we multiply them by desired output scale we want on the output.
-  std::tuple<std::vector<float>, float> ComputeOutputShiftScale(
+  std::tuple<std::vector<float>, float, float> GetOutputScales(
       const ExecutionContext& ctx) {
-    auto scale_in_data = ctx.Attr<float>("Scale_in");
-    auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-    bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
-    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+    if (ctx.HasAttr("Sum_scale")) {
+      return std::make_tuple(ctx.Attr<std::vector<float>>("Output_shift_scale"),
+                             ctx.Attr<float>("Sum_scale"),
+                             ctx.Attr<float>("Activation_scale"));
+    } else {
+      auto scale_in_data = ctx.Attr<float>("Scale_in");
+      auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
+      bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
+      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+      bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
+                                ctx.Attr<bool>("fuse_residual_connection");
+      auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
+                                       ? ctx.Attr<float>("Scale_in_eltwise")
+                                       : 1.0f;
 
-    // If the output will be in floats, we don't multiply by scale_out.
+      // If the output will be in floats, we don't multiply by scale_out.
 
-    float scale = (!force_fp32_output && has_activation)
-                      ? ctx.Attr<float>("Scale_out")
-                      : 1.0f;
-    float inner_scale = (force_fp32_output || has_activation)
-                            ? 1.0f
-                            : ctx.Attr<float>("Scale_out");
-    const size_t weight_scales_num = scale_weights_data.size();
-    std::vector<float> output_shift_scale(weight_scales_num);
+      float activation_scale = (!force_fp32_output && has_activation)
+                                   ? ctx.Attr<float>("Scale_out")
+                                   : 1.0f;
+      float scale_out_data = (force_fp32_output || has_activation)
+                                 ? 1.0f
+                                 : ctx.Attr<float>("Scale_out");
+      float sum_scale =
+          fuse_residual_conn ? scale_out_data / scale_in_eltwise_data : 1.0f;
+      const size_t weight_scales_num = scale_weights_data.size();
+      std::vector<float> output_shift_scale(weight_scales_num);
 
-    for (size_t i = 0; i < weight_scales_num; i++) {
-      if (scale_weights_data[i] == 0.0)
-        output_shift_scale[i] = inner_scale;
-      else
-        output_shift_scale[i] =
-            inner_scale / (scale_in_data * scale_weights_data[i]);
+      for (size_t i = 0; i < weight_scales_num; i++) {
+        if (scale_weights_data[i] == 0.0)
+          output_shift_scale[i] = scale_out_data;
+        else
+          output_shift_scale[i] =
+              scale_out_data / (scale_in_data * scale_weights_data[i]);
+      }
+      return std::make_tuple(output_shift_scale, sum_scale, activation_scale);
     }
-
-    return make_tuple(output_shift_scale, scale);
   }
 
   // Computing MKL-DNN's scaling mask which determines along which dimension
@@ -240,9 +257,7 @@ class FCMKLDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
-      const phi::DenseTensor* bias,
-      const float scale_in,
-      const std::vector<float>& scale_weights) {
+      const framework::ExecutionContext& ctx, const phi::DenseTensor* bias) {
     const float* bias_data = bias->data<float>();
 
     if (IsInt8<T_w>() == false) {
@@ -255,7 +270,7 @@ class FCMKLDNNHandler
           this->dev_ctx_.GetBlob(bias_key));
 
       if (!memory_p) {
-        const auto& scale_data = ComputeBiasScales(scale_in, scale_weights);
+        const auto& scale_data = GetBiasScales(ctx);
         dnnl::primitive_attr attrs;
 
         int mask = CreateMask(0, scale_data.size() > 1);
@@ -366,7 +381,6 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
     auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
 
-    const float scale_in = ctx.Attr<float>("Scale_in");
     const auto& scale_weights = ctx.Attr<std::vector<float>>("Scale_weights");
 
     RecomputeOutputDims(ctx, x, weights, out);
@@ -395,8 +409,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
         {DNNL_ARG_DST, *dst_memory_p}};
 
     if (bias) {
-      auto bias_memory_p =
-          handler.AcquireBiasMemoryWithReorder(bias, scale_in, scale_weights);
+      auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(ctx, bias);
       fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
     }
 
