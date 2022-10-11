@@ -62,7 +62,7 @@ class TestGumbel(unittest.TestCase):
         entropy = self._dist.entropy()
         self.assertEqual(entropy.numpy().dtype, self._np_entropy().dtype)
         np.testing.assert_allclose(entropy,
-                                   self._np_stddev(),
+                                   self._np_entropy(),
                                    rtol=config.RTOL.get(str(self.scale.dtype)),
                                    atol=config.ATOL.get(str(self.scale.dtype)))
 
@@ -71,28 +71,25 @@ class TestGumbel(unittest.TestCase):
         sample_shape = [10000]
         samples = self._dist.sample(sample_shape)
         sample_values = samples.numpy()
-        self.assertEqual(samples.dtype, self.scale.dtype)
-
-        # There is a loss of accuracy in this conversion.
-        tolerance = 1e-3
+        self.assertEqual(sample_values.dtype, self.scale.dtype)
 
         np.testing.assert_allclose(sample_values.mean(axis=0),
                                    scipy.stats.gumbel_r.mean(self.loc,
                                                              scale=self.scale),
                                    rtol=0.1,
-                                   atol=tolerance)
+                                   atol=config.ATOL.get(str(self.loc.dtype)))
         np.testing.assert_allclose(sample_values.var(axis=0),
                                    scipy.stats.gumbel_r.var(self.loc,
                                                             scale=self.scale),
                                    rtol=0.1,
-                                   atol=tolerance)
+                                   atol=config.ATOL.get(str(self.loc.dtype)))
 
     def test_rsample(self):
 
         sample_shape = [10000]
         samples = self._dist.rsample(sample_shape)
         sample_values = samples.numpy()
-        self.assertEqual(samples.dtype, self.scale.dtype)
+        self.assertEqual(sample_values.dtype, self.scale.dtype)
 
         # There is a loss of accuracy in this conversion.
         tolerance = 1e-4
@@ -101,12 +98,12 @@ class TestGumbel(unittest.TestCase):
                                    scipy.stats.gumbel_r.mean(self.loc,
                                                              scale=self.scale),
                                    rtol=0.1,
-                                   atol=tolerance)
+                                   atol=config.ATOL.get(str(self.loc.dtype)))
         np.testing.assert_allclose(sample_values.var(axis=0),
                                    scipy.stats.gumbel_r.var(self.loc,
                                                             scale=self.scale),
                                    rtol=0.1,
-                                   atol=tolerance)
+                                   atol=config.ATOL.get(str(self.loc.dtype)))
 
     def _np_mean(self):
         return self.loc + self.scale * np.euler_gamma
@@ -155,7 +152,7 @@ class TestGumbelPDF(unittest.TestCase):
         np.testing.assert_allclose(self._dist.cdf(paddle.to_tensor(self.value)),
                                    scipy.stats.gumbel_r.cdf(
                                        self.value, self.loc, self.scale),
-                                   rtol=config.RTOL.get(str(self.loc.dtype)),
+                                   rtol=0.02,
                                    atol=config.ATOL.get(str(self.loc.dtype)))
 
 
