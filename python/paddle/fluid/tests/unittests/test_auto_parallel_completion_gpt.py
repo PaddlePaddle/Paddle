@@ -13,25 +13,18 @@
 # limitations under the License.
 
 import collections
-import math
 import unittest
 
-import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.tensor as tensor
 import paddle.utils as utils
 from paddle.fluid import layers
-from paddle.fluid.framework import _non_static_mode
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
-from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
-from paddle.distributed.fleet import fleet
 import paddle.static as static
 from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 
 paddle.enable_static()
@@ -266,7 +259,7 @@ class TransformerDecoder(nn.Layer):
         self.num_layers = num_layers
         self.layers = decoder_layers
         self.norm = norm
-        if norm is "LayerNorm":
+        if norm == "LayerNorm":
             self.norm = nn.LayerNorm(hidden_size)
         elif norm is not None:
             raise ValueError("Only support LayerNorm")

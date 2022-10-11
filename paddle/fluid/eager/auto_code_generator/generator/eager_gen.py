@@ -1055,7 +1055,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         heavily_flag = True
         if len(layout_autotune_attr) == 0:
             layout_autotune_attr_code_list.append(
-                f"auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);\n"
+                "auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);\n"
             )
         elif len(layout_autotune_attr) == 1:
             layout_autotune_attr_code_list.append(
@@ -1093,7 +1093,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         tensors_vector_list_str = "{ " + ",".join(
             amp_tensors_vector_list) + " }"
 
-        if len(amp_tensors_vector_list) == 0:
+        if len(amp_tensors_vector_list) == 0:  # or forward_api_name == "shape":
             layout_logic_str = ""
         else:
             after_call_str = f"{returns_type_str} {result_name} = {forward_function_name}({layout_inputs_call_args_str});\n"
@@ -1387,7 +1387,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             amp_tensors_vector_list) + " }"
         amp_tensors_vector_optional_list_str = "    ".join(
             amp_tensors_vector_optional_list)
-        amp_get_dst_dtype_str = f"auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
+        amp_get_dst_dtype_str = "auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
         amp_autocast_list_str = "    ".join(
             amp_autocast_list) + "    " + "    ".join(
                 amp_autocast_optional_list)

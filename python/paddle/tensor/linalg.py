@@ -25,7 +25,6 @@ from .creation import full
 
 import paddle
 import warnings
-from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops, _legacy_C_ops
 
@@ -292,38 +291,53 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            shape=[2, 3, 4]
-            np_input = np.arange(24).astype('float32') - 12
-            np_input = np_input.reshape(shape)
-            x = paddle.to_tensor(np_input)
-            #[[[-12. -11. -10.  -9.] [ -8.  -7.  -6.  -5.] [ -4.  -3.  -2.  -1.]]
-            # [[  0.   1.   2.   3.] [  4.   5.   6.   7.] [  8.   9.  10.  11.]]]
+            x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
+            # x: Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #          [[[-12., -11., -10., -9. ],
+            #            [-8. , -7. , -6. , -5. ],
+            #            [-4. , -3. , -2. , -1. ]],
+
+            #           [[ 0. ,  1. ,  2. ,  3. ],
+            #            [ 4. ,  5. ,  6. ,  7. ],
+            #            [ 8. ,  9. ,  10.,  11.]]])
 
             # compute frobenius norm along last two dimensions.
             out_fro = paddle.linalg.norm(x, p='fro', axis=[0,1])
-            # out_fro.numpy() [17.435596 16.911535 16.7332   16.911535]
+            # out_fro: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                 [17.43559647, 16.91153526, 16.73320007, 16.91153526])
 
             # compute 2-order vector norm along last dimension.
             out_pnorm = paddle.linalg.norm(x, p=2, axis=-1)
-            #out_pnorm.numpy(): [[21.118711  13.190906   5.477226]
-            #                    [ 3.7416575 11.224972  19.131126]]
+            # out_pnorm: Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                [[21.11871147, 13.19090557, 5.47722578 ],
+            #                 [3.74165750 , 11.22497177, 19.13112640]])
 
             # compute 2-order  norm along [0,1] dimension.
             out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
-            #out_pnorm.numpy(): [17.435596 16.911535 16.7332   16.911535]
+            # out_pnorm: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  [17.43559647, 16.91153526, 16.73320007, 16.91153526])
 
             # compute inf-order  norm
-            out_pnorm = paddle.linalg.norm(x, p=np.inf)
-            #out_pnorm.numpy()  = [12.]
-            out_pnorm = paddle.linalg.norm(x, p=np.inf, axis=0)
-            #out_pnorm.numpy(): [[12. 11. 10. 9.] [8. 7. 6. 7.] [8. 9. 10. 11.]]
+            out_pnorm = paddle.linalg.norm(x, p=float("inf"))
+            # out_pnorm  = Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                    [12.])
+
+            out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
+            # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                 [[12., 11., 10., 9. ],
+            #                  [8. , 7. , 6. , 7. ],
+            #                  [8. , 9. , 10., 11.]])
 
             # compute -inf-order  norm
-            out_pnorm = paddle.linalg.norm(x, p=-np.inf)
-            #out_pnorm.numpy(): [0.]
-            out_pnorm = paddle.linalg.norm(x, p=-np.inf, axis=0)
-            #out_pnorm.numpy(): [[0. 1. 2. 3.] [4. 5. 6. 5.] [4. 3. 2. 1.]]
+            out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
+            # out_pnorm: Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  [0.])
+
+            out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
+            # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  [[0., 1., 2., 3.],
+            #                  [4., 5., 6., 5.],
+            #                  [4., 3., 2., 1.]])
     """
 
     def frobenius_norm(input, dim=None, keepdim=False, name=None):
@@ -634,10 +648,9 @@ def dist(x, y, p=2, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([[3, 3],[3, 3]]), "float32")
-            y = paddle.to_tensor(np.array([[3, 3],[3, 1]]), "float32")
+            x = paddle.to_tensor([[3, 3],[3, 3]], dtype="float32")
+            y = paddle.to_tensor([[3, 3],[3, 1]], dtype="float32")
             out = paddle.dist(x, y, 0)
             print(out) # out = [1.]
 
@@ -1046,14 +1059,18 @@ def dot(x, y, name=None):
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
-        x_data = np.random.uniform(0.1, 1, [10]).astype(np.float32)
-        y_data = np.random.uniform(1, 3, [10]).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
+        # 1-D Tensor * 1-D Tensor
+        x = paddle.to_tensor([1, 2, 3])
+        y = paddle.to_tensor([4, 5, 6])
         z = paddle.dot(x, y)
-        print(z)
+        print(z)  # [32]
+
+        # 2-D Tensor * 2-D Tensor
+        x = paddle.to_tensor([[1, 2, 3], [2, 4, 6]])
+        y = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+        z = paddle.dot(x, y)
+        print(z)  # [[32], [64]]
 
     """
     if in_dygraph_mode():
@@ -2454,7 +2471,6 @@ def multi_dot(x, name=None):
     .. code-block:: python
 
         import paddle
-        import numpy as np
 
         # A * B
         A = paddle.rand([3, 4])
@@ -3016,7 +3032,6 @@ def triangular_solve(x,
             #               -x3 = 5
 
             import paddle
-            import numpy as np
 
             x = paddle.to_tensor([[1, 1, 1],
                                   [0, 2, 1],
@@ -3127,14 +3142,13 @@ def eigvalsh(x, UPLO='L', name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x_data = np.array([[1, -2j], [2j, 5]])
-            x = paddle.to_tensor(x_data)
+            x = paddle.to_tensor([[1, -2j], [2j, 5]])
             out_value = paddle.eigvalsh(x, UPLO='L')
             print(out_value)
-            #[0.17157288, 5.82842712]
+            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [0.17157286, 5.82842731])
     """
     if in_dygraph_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)

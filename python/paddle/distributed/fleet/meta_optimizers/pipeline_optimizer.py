@@ -255,7 +255,7 @@ class PipelineOptimizer(MetaOptimizerBase):
                     if param_name in processed_param_name: continue
                     processed_param_name.add(param_name)
                     grad_name = op_role_var[i + 1]
-                    if not 'MERGED' in grad_name: grad_name += '@MERGED'
+                    if 'MERGED' not in grad_name: grad_name += '@MERGED'
                     grad = block.vars[grad_name]
                     origin_param = origin_block.vars[op_role_var[i]]
                     if origin_param.is_distributed:

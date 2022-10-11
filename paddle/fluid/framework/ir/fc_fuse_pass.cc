@@ -203,7 +203,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       int w_w = weight_dims[1];
       if (w_h % 128 == 0 && w_w % 128 == 0) {
         auto* w_var = scope->Var(w_name);
-        auto* w_tensor = w_var->GetMutable<framework::LoDTensor>();
+        auto* w_tensor = w_var->GetMutable<phi::DenseTensor>();
 
         auto* weight_data_tmp = new float[weight_num];
         for (int i = 0; i < w_h; i++) {

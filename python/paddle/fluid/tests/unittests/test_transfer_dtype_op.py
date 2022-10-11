@@ -17,7 +17,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 from op_test import OpTest, convert_uint16_to_float, convert_float_to_uint16
 
 

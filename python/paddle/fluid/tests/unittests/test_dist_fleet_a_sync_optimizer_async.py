@@ -13,12 +13,10 @@
 # limitations under the License.
 
 import os
-import time
 import unittest
 
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid.transpiler.details.program_utils as pu
 
 paddle.enable_static()
 

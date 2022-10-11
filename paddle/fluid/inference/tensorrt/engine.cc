@@ -438,7 +438,7 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
                                  "tensor, but there is no "
                                  "persistable variable called %s in scope.",
                                  name));
-  auto *var_t = var_v->GetMutable<framework::LoDTensor>();
+  auto *var_t = var_v->GetMutable<phi::DenseTensor>();
   auto weight = this->GetTrtWeight(name, *var_t);
 
   // Now we have create weights, then we need create a itensor
@@ -745,9 +745,8 @@ void TensorRTEngine::GetEngineInfo() {
   LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
       infer_engine_->createEngineInspector());
-  auto infer_context = infer_ptr<nvinfer1::IExecutionContext>(
-      infer_engine_->createExecutionContextWithoutDeviceMemory());
-  infer_inspector->setExecutionContext(infer_context.get());
+  auto *infer_context = context();
+  infer_inspector->setExecutionContext(infer_context);
   LOG(INFO) << infer_inspector->getEngineInformation(
       nvinfer1::LayerInformationFormat::kONELINE);
   LOG(INFO) << "====== engine info end ======";

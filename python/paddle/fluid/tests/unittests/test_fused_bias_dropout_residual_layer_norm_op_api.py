@@ -15,13 +15,8 @@
 import numpy as np
 
 import paddle
-import paddle.nn as nn
-import paddle.fluid.core as core
-import paddle.nn.functional as F
 from paddle.incubate.nn.layer.fused_transformer import FusedBiasDropoutResidualLayerNorm
-from paddle import tensor
-from paddle.fluid import layers
-from paddle.static import Program, program_guard
+from paddle.static import Program
 import unittest
 
 

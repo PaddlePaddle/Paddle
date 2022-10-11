@@ -18,8 +18,6 @@ including create, config, run, etc.
 
 import paddle.fluid as fluid
 import numpy as np
-import os
-import shutil
 import unittest
 
 

@@ -28,8 +28,7 @@ class TestException(unittest.TestCase):
         try:
             core.__unittest_throw_exception__()
         except RuntimeError as ex:
-            self.assertIn("This is a test of exception",
-                          cpt.get_exception_message(ex))
+            self.assertIn("This is a test of exception", str(ex))
             exception = ex
 
         self.assertIsNotNone(exception)
