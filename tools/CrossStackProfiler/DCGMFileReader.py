@@ -100,7 +100,7 @@ class dcgmFileReader(FileReader):
                                       axis=0,
                                       join='outer')
         dcgm_data = dcgm_data.dropna()
-        if not q is None:
+        if q is not None:
             q.put(dcgm_data)
         self._logger.info("I finish processing %s!" % fileName)
         return dcgm_data

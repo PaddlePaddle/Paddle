@@ -37,7 +37,7 @@ class Scope;
 
 namespace {
 template <typename T1, typename T2>
-void ConvertTensorType(paddle::framework::LoDTensor* tensor) {
+void ConvertTensorType(phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_tensor;
   tmp_tensor.set_type(paddle::experimental::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());

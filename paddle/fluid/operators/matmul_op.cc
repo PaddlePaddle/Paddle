@@ -434,13 +434,13 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto x = *context.Input<phi::DenseTensor>("X");
     auto y = *context.Input<phi::DenseTensor>("Y");
-    auto dout = *context.Input<framework::LoDTensor>("DOut");
-    auto *ddx = context.Input<framework::LoDTensor>("DDX");
-    auto *ddy = context.Input<framework::LoDTensor>("DDY");
+    auto dout = *context.Input<phi::DenseTensor>("DOut");
+    auto *ddx = context.Input<phi::DenseTensor>("DDX");
+    auto *ddy = context.Input<phi::DenseTensor>("DDY");
 
-    auto *dx = context.Output<framework::LoDTensor>("DX");
-    auto *dy = context.Output<framework::LoDTensor>("DY");
-    auto *ddout = context.Output<framework::LoDTensor>("DDOut");
+    auto *dx = context.Output<phi::DenseTensor>("DX");
+    auto *dy = context.Output<phi::DenseTensor>("DY");
+    auto *ddout = context.Output<phi::DenseTensor>("DDOut");
 
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
@@ -780,13 +780,13 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>(
         "fused_reshape_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
-              "it's a shape atribute of fused reshape for `Out` output.)DOC")
+              "it's a shape attribute of fused reshape for `Out` output.)DOC")
         .SetDefault({})
         .AsExtra();
     AddAttr<std::vector<int>>(
         "fused_transpose_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
-              "it's a axis atribute of fused transpose for `Out` output.)DOC")
+              "it's a axis attribute of fused transpose for `Out` output.)DOC")
         .SetDefault({})
         .AsExtra();
     AddAttr<bool>(

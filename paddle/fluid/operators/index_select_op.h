@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using DDim = framework::DDim;
 
 template <typename DeviceContext, typename T, typename IndexT = int>

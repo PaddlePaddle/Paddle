@@ -467,7 +467,7 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
                                  "tensor, but there is no "
                                  "persistable variable called %s in scope.",
                                  name));
-  auto *var_t = var_v->GetMutable<framework::LoDTensor>();
+  auto *var_t = var_v->GetMutable<phi::DenseTensor>();
   auto weight = this->GetTrtWeight(name, *var_t);
 
   // Now we have create weights, then we need create a itensor
