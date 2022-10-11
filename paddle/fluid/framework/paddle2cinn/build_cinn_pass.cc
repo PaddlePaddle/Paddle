@@ -81,6 +81,38 @@ OpTransInfo::OpTransInfo() {
 
   // judgment condition for the dynamic reshape2
   dynamic_op_cond_.emplace("reshape2", dynamic_op_cond_.at("reshape"));
+
+  // judgment condition for the dynamic expand
+  dynamic_op_cond_.emplace("expand", [](const ir::Node& node) -> bool {
+    if (!node.IsOp()) {
+      return false;
+    }
+    auto* op_desc = node.Op();
+    bool has_expand_times_tensor =
+        op_desc->Inputs().count("expand_times_tensor") &&
+        op_desc->Inputs().at("expand_times_tensor").size();
+    bool has_expand_times = op_desc->Inputs().count("ExpandTimes") &&
+                            op_desc->Inputs().at("ExpandTimes").size();
+    std::cout << "######## expand " << has_expand_times_tensor << " "
+              << has_expand_times << std::endl;
+    return has_expand_times_tensor || has_expand_times;
+  });
+
+  // judgment condition for the dynamic expand_v2
+  dynamic_op_cond_.emplace("expand_v2", [](const ir::Node& node) -> bool {
+    if (!node.IsOp()) {
+      return false;
+    }
+    auto* op_desc = node.Op();
+    bool has_expand_shapes_tensor =
+        op_desc->Inputs().count("expand_shapes_tensor") &&
+        op_desc->Inputs().at("expand_shapes_tensor").size();
+    bool has_shape = op_desc->Inputs().count("Shape") &&
+                     op_desc->Inputs().at("Shape").size();
+    std::cout << "######## expand_v2 " << has_expand_shapes_tensor << " "
+              << has_shape << std::endl;
+    return has_expand_shapes_tensor || has_shape;
+  });
 }
 
 std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
