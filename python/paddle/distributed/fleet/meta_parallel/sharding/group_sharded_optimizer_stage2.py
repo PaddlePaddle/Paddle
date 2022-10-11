@@ -187,7 +187,10 @@ class GroupShardedOptimizerStage2(Optimizer):
         # Enable gradients' reduces overlap with backward calculation.
         self._reduce_overlap = reduce_overlap
 
-    def _set_broadcast_overlap(self, broadcast_overlap, layers=None):
+    def _set_broadcast_overlap(self,
+                               broadcast_overlap,
+                               layers=None,
+                               num_groups=1):
         # Enable post optimizer broadcasts overlap with the forward calculation of next batch.
         self._broadcast_overlap = broadcast_overlap
         if self._broadcast_overlap:
@@ -204,6 +207,26 @@ class GroupShardedOptimizerStage2(Optimizer):
                     "The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
                     "overlap broadcast may harm the performance.")
                 self._broadcast_order_params = self._local_params
+
+        if num_groups > len(self._broadcast_order_params):
+            warnings.warn(
+                "The num_groups for broadcast is larger than the number of params to be broadcast. "
+                "It will set to default value: 1 (use the default sharding group)."
+            )
+            num_groups = 1
+
+        assert isinstance(
+            num_groups,
+            int) and num_groups > 0, "num_groups should be a positive integer"
+
+        self._number_of_broadcast_groups = num_groups
+        self._broadcast_groups = [
+            None for _ in range(self._number_of_broadcast_groups)
+        ]
+        self._broadcast_groups[0] = self._group
+
+        for i in range(1, self._number_of_broadcast_groups):
+            self._broadcast_groups[i] = new_group()
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
