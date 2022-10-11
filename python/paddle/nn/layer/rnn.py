@@ -25,7 +25,7 @@ from paddle.nn import initializer as I
 from paddle.nn import Layer, LayerList
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import flatten, map_structure
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.framework import core
