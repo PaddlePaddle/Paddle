@@ -15,12 +15,9 @@
 import os
 import unittest
 import numpy as np
-import tempfile
 import shutil
-from op_test import OpTest, randomize_probability
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.fleet import fleet
 from test_dist_sparse_load_ps0 import SparseLoadOp

@@ -17,7 +17,6 @@ import numpy as np
 from op_test import OpTest
 import paddle.nn.functional as F
 import paddle.fluid as fluid
-import paddle.fluid.dygraph as dg
 import paddle.fluid.core as core
 
 

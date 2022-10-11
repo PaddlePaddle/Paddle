@@ -20,9 +20,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.compat as cpt
 import paddle.fluid.core as core
-import numpy as np
 import os
-import shutil
 import tempfile
 import unittest
 
