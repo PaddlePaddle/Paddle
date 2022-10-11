@@ -57,7 +57,7 @@ class TestRegisterExitFunc(unittest.TestCase):
         try:
             CleanupFuncRegistrar.register(5)
         except TypeError as ex:
-            self.assertIn("is not callable", cpt.get_exception_message(ex))
+            self.assertIn("is not callable", str(ex))
             exception = ex
         self.assertIsNotNone(exception)
 

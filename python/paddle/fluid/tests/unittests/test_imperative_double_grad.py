@@ -109,7 +109,7 @@ class TestEagerGrad(TestCase):
             # allow_unused is false in default
             dx = fluid.dygraph.grad(out, [x, z])
         except ValueError as e:
-            error_msg = cpt.get_exception_message(e)
+            error_msg = str(e)
             assert error_msg.find("allow_unused") > 0
 
     def test_simple_example_eager_grad_not_allow_unused(self):
@@ -133,7 +133,7 @@ class TestEagerGrad(TestCase):
             # duplicate input will arise RuntimeError errors
             dx = fluid.dygraph.grad(out, [x, x])
         except RuntimeError as e:
-            error_msg = cpt.get_exception_message(e)
+            error_msg = str(e)
             assert error_msg.find("duplicate") > 0
 
     def test_simple_example_eager_grad_duplicate_input(self):
@@ -157,7 +157,7 @@ class TestEagerGrad(TestCase):
             # duplicate output will arise RuntimeError errors
             dx = fluid.dygraph.grad([out, out], [x])
         except RuntimeError as e:
-            error_msg = cpt.get_exception_message(e)
+            error_msg = str(e)
             assert error_msg.find("duplicate") > 0
 
     def test_simple_example_eager_grad_duplicate_output(self):

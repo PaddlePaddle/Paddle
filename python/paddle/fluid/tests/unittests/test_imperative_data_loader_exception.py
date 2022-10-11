@@ -67,8 +67,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                 for _ in loader():
                     print("test_single_process_with_thread_expection")
             except core.EnforceNotMet as ex:
-                self.assertIn("Blocking queue is killed",
-                              cpt.get_exception_message(ex))
+                self.assertIn("Blocking queue is killed", str(ex))
                 exception = ex
             self.assertIsNotNone(exception)
 
@@ -130,8 +129,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                     for image, _ in loader():
                         fluid.layers.relu(image)
             except core.EnforceNotMet as ex:
-                self.assertIn("Blocking queue is killed",
-                              cpt.get_exception_message(ex))
+                self.assertIn("Blocking queue is killed", str(ex))
                 exception = ex
             self.assertIsNotNone(exception)
 
