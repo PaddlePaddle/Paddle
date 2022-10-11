@@ -19,7 +19,6 @@ import random
 import math
 import functools
 import contextlib
-import tempfile
 import numpy as np
 from PIL import Image, ImageEnhance
 import paddle
