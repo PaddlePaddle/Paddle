@@ -514,6 +514,17 @@ void ReplaceAllReduceOp(const Node &node,
   details::OpHandleBase &op_handle =
       const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
 
+  // Even if PADDLE_WITH_NCCL is defined, if the program runs on CPU,
+  // nccl_ctxs_ in NCCLOpHandleBase will be nullptr, and calling the
+  // GetComm() method will report an error.
+  // There is bugs in all_reduce_op_handle method on CPU devices, skip
+  // this case in temporary.
+  if (dynamic_cast<details::NCCLOpHandleBase *>(&op_handle)->GetNcclContext() ==
+      nullptr) {
+    VLOG(4) << "Skip replacing allreduce op because nccl_ctxs_ is nullptr.";
+    return;
+  }
+
   std::string all_reduce_var_name;
   // If fused, add check_memory_continue OP to fuse inputs
   if (is_fused) {
