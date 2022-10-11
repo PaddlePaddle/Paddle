@@ -16,25 +16,25 @@ import paddle.fluid.framework as framework
 from paddle.distributed import collective
 
 
-def _recv_in_dygraph(tensor, src, group, sync_op, use_calc_stream):
+def _broadcast_in_dygraph(tensor, src, group, sync_op, use_calc_stream):
     group = collective._get_default_group() if group is None else group
     if use_calc_stream:
-        return group.process_group.recv_on_calc_stream(tensor, src)
+        return group.process_group.broadcast_on_calc_stream(tensor, src)
 
-    task = group.process_group.recv(tensor, src, sync_op)
+    task = group.process_group.broadcast(tensor, src, sync_op)
     if sync_op:
         task.wait()
 
     return task
 
 
-def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
+def broadcast(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
     """
 
-    Receive a tensor from the source device.
+    Broadcast a tensor to all devices.
 
     Args:
-        tensor (Tensor): The tensor to receive. Support float16, float32, float64, int32, int64, int8, uint8 or bool as its data type.
+        tensor (Tensor): The tensor to broadcast. Support float16, float32, float64, int32, int64, int8, uint8 or bool as its data type.
         src (int, optional): Rank of the source device. If none is given, use `0` as default.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
@@ -58,13 +58,12 @@ def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
             local_rank = dist.get_rank()
             if local_rank == 0:
                 data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-                task = dist.stream.send(data, dst=1, sync_op=False)
             else:
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-                task = dist.stream.recv(data, src=0, sync_op=False)
+            task = dist.stream.broadcast(data, src=1, sync_op=False)
             task.wait()
             out = data.numpy()
-            # [[4, 5, 6], [4, 5, 6]] (2 GPUs)
+            # [[1, 2, 3], [1, 2, 3]] (2 GPUs)
     """
     if group is not None and not group.is_member():
         raise RuntimeError(
@@ -76,7 +75,9 @@ def recv(tensor, src=0, group=None, sync_op=True, use_calc_stream=False):
             "use_calc_stream can only be True in sync op behavior.")
 
     if framework.in_dygraph_mode():
-        return _recv_in_dygraph(tensor, src, group, sync_op, use_calc_stream)
+        return _broadcast_in_dygraph(tensor, src, group, sync_op,
+                                     use_calc_stream)
 
     raise RuntimeError(
-        "paddle.distributed.stream.recv is only supported in dygraph mode now.")
+        "paddle.distributed.stream.broadcast is only supported in dygraph mode now."
+    )

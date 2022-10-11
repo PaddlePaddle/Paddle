@@ -15,11 +15,13 @@
 import os
 import numpy as np
 import paddle
+import paddle.fluid as fluid
 import paddle.distributed as dist
+import test_communication_api_base as test_base
 import test_collective_api_base as test_collective_base
 
 
-class StreamSendRecvTestCase():
+class StreamAllToAllSingleTestCase():
 
     def __init__(self):
         self._sync_op = eval(os.getenv("sync_op"))
@@ -43,27 +45,30 @@ class StreamSendRecvTestCase():
                                                       dtype=self._dtype,
                                                       seed=seed))
 
-        src_rank = 0
-        dst_rank = 1
+        nranks = len(test_data_list)
+        data1 = paddle.to_tensor(test_data_list[0])
+        data2 = paddle.to_tensor(test_data_list[1])
+        result1 = np.vstack(
+            (data1[0:data1.shape[0] // 2, :], data2[0:data2.shape[0] // 2, :]))
+        result2 = np.vstack(
+            (data1[data1.shape[0] // 2:, :], data2[data2.shape[0] // 2:, :]))
 
         rank = dist.get_rank()
         tensor = paddle.to_tensor(test_data_list[rank])
-        if rank == 0:
-            task = dist.stream.send(tensor,
-                                    dst=dst_rank,
-                                    sync_op=self._sync_op,
-                                    use_calc_stream=self._use_calc_stream)
-        else:
-            task = dist.stream.recv(tensor,
-                                    src=src_rank,
-                                    sync_op=self._sync_op,
-                                    use_calc_stream=self._use_calc_stream)
+
+        out_tensor = paddle.empty_like(tensor)
+        task = dist.stream.alltoall_single(
+            out_tensor,
+            tensor,
+            sync_op=self._sync_op,
+            use_calc_stream=self._use_calc_stream)
         if not self._sync_op:
             task.wait()
-
-        result = test_data_list[src_rank]
-        assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+        if rank == 0:
+            assert np.allclose(out_tensor, result1, rtol=1e-05, atol=1e-05)
+        else:
+            assert np.allclose(out_tensor, result2, rtol=1e-05, atol=1e-05)
 
 
 if __name__ == "__main__":
-    StreamSendRecvTestCase().run_test_case()
+    StreamAllToAllSingleTestCase().run_test_case()

@@ -13,64 +13,37 @@
 # limitations under the License.
 
 import paddle.fluid.framework as framework
-import paddle.fluid.data_feeder as data_feeder
-import paddle.fluid.layer_helper as layer_helper
-from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
 from paddle.distributed.communication.group import _get_global_group
+from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
 
 
-def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
-    op_type = _get_reduce_op(op, "all_reduce")
-
+def _reduce_in_dygraph(tensor, dst, op, group, sync_op, use_calc_stream):
+    op_type = _get_reduce_op(op, "reduce")
     group = _get_global_group() if group is None else group
     if use_calc_stream:
-        return group.process_group.allreduce_on_calc_stream(tensor, op_type)
+        return group.process_group.reduce_on_calc_stream(tensor, dst, op_type)
 
-    task = group.process_group.allreduce(tensor, op_type, sync_op)
+    task = group.process_group.reduce(tensor, dst, op_type, sync_op)
     if sync_op:
         task.wait()
 
     return task
 
 
-def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
-    data_feeder.check_variable_and_dtype(tensor, 'tensor', [
-        'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
-        'bool'
-    ], 'all_reduce')
-
-    op_type = _get_reduce_op(op, "all_reduce")
-    ring_id = 0 if group is None else group.id
-
-    if not isinstance(ring_id, int):
-        raise ValueError("The type of 'ring_id' for all_reduce should be int.")
-
-    # TODO: Support task and use task.wait in static mode
-    #       Use use_calc_stream rather than sync_op
-    helper = layer_helper.LayerHelper(op_type, **locals())
-    helper.append_op(type=op_type,
-                     inputs={'X': [tensor]},
-                     outputs={'Out': [tensor]},
-                     attrs={
-                         'ring_id': ring_id,
-                         'use_calc_stream': sync_op
-                     })
-
-    return None
-
-
-def all_reduce(tensor,
-               op=ReduceOp.SUM,
-               group=None,
-               sync_op=True,
-               use_calc_stream=False):
+def reduce(tensor,
+           dst=0,
+           op=ReduceOp.SUM,
+           group=None,
+           sync_op=True,
+           use_calc_stream=False):
     """
 
-    Perform specific reduction (for example, sum, max) on inputs across devices.
+    Perform specific reduction (for example, sum, max) on a tensor across devices and send to the destintion device.
 
     Args:
         tensor (Tensor): The input tensor on each rank. The result will overwrite this tenor after communication. Support
             float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
+        dst (int, optional): Rank of the destination device. If none is given, use `0` as default.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
@@ -79,6 +52,9 @@ def all_reduce(tensor,
 
     Returns:
         Return a task object.
+
+    Warning:
+        This API only supports the dygraph mode now.
 
     Examples:
         .. code-block:: python
@@ -89,15 +65,15 @@ def all_reduce(tensor,
 
             dist.init_parallel_env()
             local_rank = dist.get_rank()
-            data = None
             if local_rank == 0:
                 data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
             else:
                 data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            task = dist.stream.all_reduce(data, sync_op=False)
+            task = dist.stream.reduce(data, dst=0, sync_op=False)
             task.wait()
             out = data.numpy()
-            # [[5, 7, 9], [5, 7, 9]]
+            # [[5, 7, 9], [5, 7, 9]] (2 GPUs, out for rank 0)
+            # [[1, 2, 3], [1, 2, 3]] (2 GPUs, out for rank 1)
     """
     if group is not None and not group.is_member():
         raise RuntimeError(
@@ -109,8 +85,9 @@ def all_reduce(tensor,
             "use_calc_stream can only be true in sync op behavior.")
 
     if framework.in_dygraph_mode():
-        return _all_reduce_in_dygraph(tensor, op, group, sync_op,
-                                      use_calc_stream)
-    else:
-        return _all_reduce_in_static_mode(tensor, op, group, sync_op,
-                                          use_calc_stream)
+        return _reduce_in_dygraph(tensor, dst, op, group, sync_op,
+                                  use_calc_stream)
+
+    raise RuntimeError(
+        "paddle.distributed.stream.reduce is only supported in dygraph mode now."
+    )

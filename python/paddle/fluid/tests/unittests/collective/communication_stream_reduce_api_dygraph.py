@@ -19,7 +19,7 @@ import paddle.distributed as dist
 import test_collective_api_base as test_collective_base
 
 
-class StreamSendRecvTestCase():
+class StreamReduceTestCase():
 
     def __init__(self):
         self._sync_op = eval(os.getenv("sync_op"))
@@ -43,27 +43,24 @@ class StreamSendRecvTestCase():
                                                       dtype=self._dtype,
                                                       seed=seed))
 
-        src_rank = 0
-        dst_rank = 1
-
         rank = dist.get_rank()
         tensor = paddle.to_tensor(test_data_list[rank])
-        if rank == 0:
-            task = dist.stream.send(tensor,
-                                    dst=dst_rank,
-                                    sync_op=self._sync_op,
-                                    use_calc_stream=self._use_calc_stream)
-        else:
-            task = dist.stream.recv(tensor,
-                                    src=src_rank,
-                                    sync_op=self._sync_op,
-                                    use_calc_stream=self._use_calc_stream)
+        task = dist.stream.reduce(tensor,
+                                  dst=1,
+                                  sync_op=self._sync_op,
+                                  use_calc_stream=self._use_calc_stream)
         if not self._sync_op:
             task.wait()
 
-        result = test_data_list[src_rank]
-        assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+        result = sum(test_data_list)
+        if rank == 1:
+            assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
+        else:
+            assert np.allclose(tensor,
+                               test_data_list[rank],
+                               rtol=1e-05,
+                               atol=1e-05)
 
 
 if __name__ == "__main__":
-    StreamSendRecvTestCase().run_test_case()
+    StreamReduceTestCase().run_test_case()
