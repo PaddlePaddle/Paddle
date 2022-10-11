@@ -36,7 +36,6 @@ class TestDygraphDataLoaderCleanUpFunc(unittest.TestCase):
 
     def func_test_clear_queue_set(self):
         test_queue = queue.Queue(self.capacity)
-        global multiprocess_queue_set
         multiprocess_queue_set.add(test_queue)
         for i in range(0, self.capacity):
             test_queue.put(i)
