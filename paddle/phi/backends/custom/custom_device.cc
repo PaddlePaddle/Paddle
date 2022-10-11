@@ -27,7 +27,7 @@ static bool operator==(const C_Device_st& d1, const C_Device_st& d2) {
   return d1.id == d2.id;
 }
 
-static std::once_flag g_device_count_init_flag;
+static std::unordered_map<std::string, size_t> g_device_count_map;
 
 namespace phi {
 
@@ -55,15 +55,18 @@ class CustomDevice : public DeviceInterface {
   ~CustomDevice() override { Finalize(); }
 
   size_t GetDeviceCount() override {
-    static size_t num_dev;
-    std::call_once(g_device_count_init_flag, [&] {
+    const std::string& device_type = Type();
+    if (g_device_count_map.find(device_type) != g_device_count_map.end() &&
+        g_device_count_map[device_type] != 0) {
+      return g_device_count_map[device_type];
+    } else {
       size_t count;
       if (pimpl_->get_device_count(&count) != C_SUCCESS) {
         count = 0;
       }
-      num_dev = count;
-    });
-    return num_dev;
+      g_device_count_map[device_type] = count;
+      return count;
+    }
   }
 
   std::vector<size_t> GetDeviceList() override {
