@@ -68,42 +68,36 @@ class InterpreterCore {
   void reset_scope(Scope* new_scope);
 
  private:
+  // build graph
+  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
+  void BuildOperatorDependences();
+  void BuildAndCacheInstructionCtx(Instruction* instr_node);
+  void BuildSkipShareLoDInfo();
+
+  // inplace
+  void BuildInplace();
   bool BuildInplaceCheckVarIsOnlyInput(
       const std::vector<std::vector<size_t>>& input_var2op, size_t var_index);
+  void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
-  std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
-
-  void BuildAndCacheInstructionCtx(Instruction* instr_node);
-
-  void BuildInplace();
-
-  void BuildOperatorDependences();
-
-  void ClearLoDTensorArrayInLocalScope();
-
-  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
-
-  void RunInstruction(const Instruction& instr_node);
-
+  // execution
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
-
+  void RunInstructionAsync(size_t instr_id);
+  void RunInstruction(const Instruction& instr_node);
+  void RunNextInstructions(const Instruction& instr_id,
+                           std::queue<size_t>* reserved_next_ops);
+  // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,
                const std::vector<phi::DenseTensor>& feed_tensors,
                bool prepare_feed);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // gc
   void RecordStreamForGC(const Instruction& instr);
-#endif
-
   void CheckGC(const Instruction& instr);
+  void ClearLoDTensorArrayInLocalScope();
 
-  void RunInstructionAsync(size_t instr_id);
-  void RunNextInstructions(const Instruction& instr_id,
-                           std::queue<size_t>* reserved_next_ops);
-
-  void BuildSkipShareLoDInfo();
-
-  void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
+  // workqueue
+  std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
  private:
   bool is_build_;
