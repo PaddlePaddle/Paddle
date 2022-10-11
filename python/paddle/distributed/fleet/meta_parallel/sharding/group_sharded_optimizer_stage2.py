@@ -190,7 +190,7 @@ class GroupShardedOptimizerStage2(Optimizer):
     def _set_broadcast_overlap(self,
                                broadcast_overlap,
                                layers=None,
-                               num_groups=1):
+                               num_groups=None):
         # Enable post optimizer broadcasts overlap with the forward calculation of next batch.
         self._broadcast_overlap = broadcast_overlap
         if self._broadcast_overlap:
@@ -208,7 +208,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                     "overlap broadcast may harm the performance.")
                 self._broadcast_order_params = self._local_params
 
-        if num_groups > len(self._broadcast_order_params):
+        if num_groups is None or num_groups > len(self._broadcast_order_params):
             warnings.warn(
                 "The num_groups for broadcast is larger than the number of params to be broadcast. "
                 "It will set to default value: 1 (use the default sharding group)."
