@@ -166,6 +166,10 @@ phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
     auto tmp_kernel_key = expected_kernel_key;
     tmp_kernel_key.library_type_ = framework::LibraryType::kPlain;
     tmp_kernel_key.data_layout_ = framework::DataLayout::kAnyLayout;
+    VLOG(3) << "phi missing " << expected_kernel_key.place_.GetDeviceType()
+            << " kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
     return TransOpKernelTypeToPhiKernelKey(tmp_kernel_key);
   }
 #endif
