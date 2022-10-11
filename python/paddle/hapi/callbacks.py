@@ -1060,11 +1060,12 @@ class WandbCallback(Callback):
         self._is_fit = True
         self.train_step = 0
 
-        self.run.define_metric("train/step")
-        self.run.define_metric("train/*", step_metric="train/step")
+        if self._is_write():
+            self.run.define_metric("train/step")
+            self.run.define_metric("train/*", step_metric="train/step")
 
-        self.run.define_metric("epoch")
-        self.run.define_metric("eval/*", step_metric="epoch")
+            self.run.define_metric("epoch")
+            self.run.define_metric("eval/*", step_metric="epoch")
     
     def on_epoch_begin(self, epoch, logs=None):
         self.steps = self.params['steps']
