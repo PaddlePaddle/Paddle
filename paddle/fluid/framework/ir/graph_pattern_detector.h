@@ -1917,11 +1917,13 @@ struct LayerNorm : public PatternBase {
 //
 struct LayernormShiftPartitionPattern : public PatternBase {
   LayernormShiftPartitionPattern(PDPattern* pattern,
-                                 const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "layernorm_shift_partition") {}
+                                 const std::string& name_scope,
+                                 bool with_roll)
+      : PatternBase(pattern, name_scope, "layernorm_shift_partition"),
+        with_roll_(with_roll) {}
 
   PDNode* operator()();
-
+  bool with_roll_;
   PATTERN_DECL_NODE(layer_norm_in);
   PATTERN_DECL_NODE(layer_norm_op);
   PATTERN_DECL_NODE(layer_norm_bias);
@@ -1929,6 +1931,10 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_out);
   PATTERN_DECL_NODE(reshape1_op);
   PATTERN_DECL_NODE(reshape1_out);
+  // optional op roll
+  PATTERN_DECL_NODE(roll1_op);
+  PATTERN_DECL_NODE(roll1_out);
+  
   PATTERN_DECL_NODE(reshape2_op);
   PATTERN_DECL_NODE(reshape2_out);
   PATTERN_DECL_NODE(transpose_op);
