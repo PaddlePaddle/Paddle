@@ -97,7 +97,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
                                static_cast<void*>(bias_data),
                                static_cast<int32_t>(bias_t->numel())};
         if (engine_->with_interleaved()) {
-          VLOG(4) << "fused multihead_matmul op: use_oss and with_interleaved"; 
+          VLOG(4) << "fused multihead_matmul op: use_oss and with_interleaved";
           if (!op_desc.HasAttr("Input_scale")) {
             PADDLE_THROW(
                 platform::errors::Fatal("use with_interleaved must be int8."));
