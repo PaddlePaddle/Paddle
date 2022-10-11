@@ -12,21 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import unittest
-
 import numpy as np
 import paddle
 
 import re
 import sys
 from spectral_op_np import fft_c2c, fft_r2c, fft_c2r, fft_c2c_backward, fft_r2c_backward, fft_c2r_backward
-import paddle.fluid.core as core
-import paddle.fluid.dygraph as dg
-import paddle.static as static
-from numpy.random import random as rand
-from paddle.fluid import Program, program_guard
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 sys.path.append("../")
 from op_test import OpTest

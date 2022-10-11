@@ -83,7 +83,9 @@ void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
   out->set_mem_desc(out_mem_desc);
   out->Resize(in.dims());
 
-  if ((in.mem_desc() != out->mem_desc()) || always_copy) {
+  // Note(0x45f): Using initialized() to support slice Tensors
+  // with shapes like [0, 0, 0].
+  if (in.initialized() && ((in.mem_desc() != out->mem_desc()) || always_copy)) {
     void* in_data = GetDataFromTensor(in, in_type);
 
     ReorderOneDNNHandler handler(in_tz, in.dtype(), in_type, cpu_engine);
@@ -113,8 +115,6 @@ void innerTransDataLayoutFromOneDNN(DataLayout in_layout,
   out->set_layout(DataLayout::kNCHW);
   VLOG(10) << "out->layout: " << out->layout() << " in->dims: " << in.dims()
            << " out->dims: " << out->dims();
-  // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(OneDNNMemoryFormat::undef);
 }
 
 #endif

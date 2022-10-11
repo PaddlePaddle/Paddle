@@ -293,7 +293,7 @@ class TestStaticModel(unittest.TestCase):
                 # For PE
                 if use_pe:
                     places = paddle.static.cpu_places(
-                    ) if device is 'cpu' else paddle.static.cuda_places()
+                    ) if device == 'cpu' else paddle.static.cuda_places()
                     main_program = paddle.static.CompiledProgram(
                         paddle.static.default_main_program(
                         )).with_data_parallel(loss_name=loss.name,

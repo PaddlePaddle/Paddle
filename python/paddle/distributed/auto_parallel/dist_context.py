@@ -126,9 +126,6 @@ class DistributedContext:
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
 
-        # flag whether using `to_static`
-        self._dygraph_mode = False
-
     @property
     def serial_main_program(self):
         return self._serial_main_program
@@ -271,12 +268,24 @@ class DistributedContext:
     def _restore_serial_fetch_vars(self):
         for key, var_list in self._original_serial_fetch_vars.items():
             new_var_list = []
-            for var in var_list:
-                block_idx = var.block.idx
-                var_name = var.name
-                var = self._serial_main_program.blocks[
-                    block_idx]._var_recursive(var_name)
-                new_var_list.append(var)
+            # metrics is a list of list
+            if key == "metrics":
+                for inner_var_list in var_list:
+                    new_inner_var_list = []
+                    for var in inner_var_list:
+                        block_idx = var.block.idx
+                        var_name = var.name
+                        var = self._serial_main_program.blocks[
+                            block_idx]._var_recursive(var_name)
+                        new_inner_var_list.append(var)
+                    new_var_list.append(new_inner_var_list)
+            else:
+                for var in var_list:
+                    block_idx = var.block.idx
+                    var_name = var.name
+                    var = self._serial_main_program.blocks[
+                        block_idx]._var_recursive(var_name)
+                    new_var_list.append(var)
             self._serial_fetch_vars[key] = new_var_list
 
     def _restore_serial_info(self, mode="to_backup"):

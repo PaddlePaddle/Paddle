@@ -18,16 +18,16 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
 class MLUConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("Input");
-    auto* filter = ctx.Input<Tensor>("Filter");
-    auto* output = ctx.Output<Tensor>("Output");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -129,11 +129,14 @@ template <typename T>
 class MLUConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto input = ctx.Input<Tensor>("Input");
-    auto filter = ctx.Input<Tensor>("Filter");
-    auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
-    auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+    auto input = ctx.Input<phi::DenseTensor>("Input");
+    auto filter = ctx.Input<phi::DenseTensor>("Filter");
+    auto output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
+    auto input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    auto filter_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
 
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -292,9 +295,9 @@ template <typename T>
 class MLUDepthwiseConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* input = ctx.Input<Tensor>("Input");
-    auto* filter = ctx.Input<Tensor>("Filter");
-    auto* output = ctx.Output<Tensor>("Output");
+    const phi::DenseTensor* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* filter = ctx.Input<phi::DenseTensor>("Filter");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -398,11 +401,14 @@ template <typename T>
 class MLUDepthwiseConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto input = ctx.Input<Tensor>("Input");
-    auto filter = ctx.Input<Tensor>("Filter");
-    auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
-    auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+    auto input = ctx.Input<phi::DenseTensor>("Input");
+    auto filter = ctx.Input<phi::DenseTensor>("Filter");
+    auto output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
+    auto input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    auto filter_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
 
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");

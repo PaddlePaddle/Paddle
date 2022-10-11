@@ -43,17 +43,11 @@ using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
 namespace paddle {
 namespace framework {
 namespace interpreter {
-
 class AsyncWorkQueue {
  public:
   AsyncWorkQueue(size_t host_num_threads,
                  size_t deivce_num_threads,
                  EventsWaiter* waiter);
-
-  std::future<std::unique_ptr<AtomicVectorSizeT>> PrepareAtomicDeps(
-      const std::vector<size_t>& dependecy_count);
-  std::future<std::unique_ptr<AtomicVectorSizeT>> PrepareAtomicVarRef(
-      const std::vector<VariableMetaInfo>& vec_meta_info);
 
   // void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }
 
@@ -61,15 +55,16 @@ class AsyncWorkQueue {
 
   void Cancel() { queue_group_->Cancel(); }
 
+  size_t QueueNumThreads(size_t idx) {
+    return queue_group_->QueueNumThreads(idx);
+  }
+
  private:
   size_t host_num_thread_;
   std::unique_ptr<WorkQueueGroup> queue_group_;
 };
 
-std::unique_ptr<AtomicVectorSizeT> PrepareAtomicDeps(
-    const std::vector<size_t>& dependecy_count);
-std::unique_ptr<AtomicVectorSizeT> PrepareAtomicVarRef(
-    const std::vector<VariableMetaInfo>& vec_meta_info);
+void LogDeviceMemoryStats(const platform::Place& place);
 
 void build_variable_scope(const framework::BlockDesc& block,
                           VariableScope* var_scope,

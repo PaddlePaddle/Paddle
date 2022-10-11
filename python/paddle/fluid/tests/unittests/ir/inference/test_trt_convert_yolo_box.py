@@ -19,6 +19,7 @@ import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
+import os
 
 
 class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
@@ -107,24 +108,30 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
             if attrs[0]['iou_aware'] == True:
                 channel = 3 * (attrs[0]['class_num'] + 6)
                 self.dynamic_shape.min_input_shape = {
-                    "scale_input": [1, channel, 12, 12]
+                    "yolo_box_input": [1, channel, 12, 12],
+                    "imgsize": [1, 2]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "scale_input": [4, channel, 24, 24]
+                    "yolo_box_input": [4, channel, 24, 24],
+                    "imgsize": [4, 2]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "scale_input": [1, channel, 24, 24]
+                    "yolo_box_input": [1, channel, 24, 24],
+                    "imgsize": [1, 2]
                 }
             else:
                 channel = 3 * (attrs[0]['class_num'] + 5)
                 self.dynamic_shape.min_input_shape = {
-                    "scale_input": [1, channel, 12, 12]
+                    "yolo_box_input": [1, channel, 12, 12],
+                    "imgsize": [1, 2]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "scale_input": [4, channel, 24, 24]
+                    "yolo_box_input": [4, channel, 24, 24],
+                    "imgsize": [4, 2]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "scale_input": [1, channel, 24, 24]
+                    "yolo_box_input": [1, channel, 24, 24],
+                    "imgsize": [1, 2]
                 }
 
         def clear_dynamic_shape():
@@ -133,10 +140,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if dynamic_shape == True:
-                return 0, 5
-            else:
-                return 1, 4
+            return 1, 4
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -160,7 +164,15 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
             attrs, True), 1e-3
 
     def add_skip_trt_case(self):
-        pass
+
+        def teller2(program_config, predictor_config):
+            if len(self.dynamic_shape.min_input_shape) != 0 and os.name == 'nt':
+                return True
+            return False
+
+        self.add_skip_case(
+            teller2, SkipReasons.TRT_NOT_SUPPORT,
+            "The output has diff between gpu and trt in Windows.")
 
     def test(self):
         self.add_skip_trt_case()

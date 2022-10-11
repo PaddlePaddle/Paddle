@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import pickle
 import shutil
@@ -26,8 +24,8 @@ from paddle.static import InputSpec
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph import Linear
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
+from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph.io import INFER_PARAMS_INFO_SUFFIX
 from paddle.fluid import unique_name
 
 BATCH_SIZE = 32
@@ -1738,6 +1736,40 @@ class TestInputSpecCompatibility(unittest.TestCase):
                             ])
         if os.path.exists(save_dir):
             shutil.rmtree(save_dir)
+
+
+class NotJitForward(paddle.nn.Layer):
+
+    def __init__(self):
+        super(NotJitForward, self).__init__()
+
+    def forward(self, x, y):
+        return x + y
+
+
+class TestNotJitForward(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_jit_not_save_forward(self):
+        layer = NotJitForward()
+
+        save_dir = os.path.join(self.temp_dir.name, "jit_not_save_forward")
+        path = save_dir + "/model"
+
+        paddle.jit.save(layer=layer, path=path, skip_forward=True)
+
+        self.assertTrue(not os.path.exists(path + ".pdmodel"))
+        self.assertTrue(not os.path.exists(path + ".pdparam"))
+
+        with self.assertRaises(ValueError):
+            paddle.jit.load(path=path)
+
+        shutil.rmtree(save_dir)
 
 
 if __name__ == '__main__':

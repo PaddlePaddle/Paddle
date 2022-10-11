@@ -790,11 +790,11 @@ Attribute OpDesc::GetAttr(const std::string &name, bool with_attr_var) const {
   auto it = attrs_.find(name);
   if (it == attrs_.end()) {
     it = runtime_attrs_.find(name);
+    PADDLE_ENFORCE_NE(
+        it,
+        runtime_attrs_.end(),
+        platform::errors::NotFound("Attribute %s is not found.", name));
   }
-  PADDLE_ENFORCE_NE(
-      it,
-      attrs_.end(),
-      platform::errors::NotFound("Attribute %s is not found.", name));
   if (!with_attr_var) {
     PADDLE_ENFORCE_EQ(
         HasAttrVar(it->second),
@@ -998,16 +998,25 @@ void OpDesc::Flush() {
 
     std::vector<std::pair<std::string, Attribute>> sorted_attrs{attrs_.begin(),
                                                                 attrs_.end()};
+
+    std::vector<std::pair<std::string, Attribute>> sorted_runtime_attrs{
+        runtime_attrs_.begin(), runtime_attrs_.end()};
+
     std::sort(
         sorted_attrs.begin(),
         sorted_attrs.end(),
+        [](std::pair<std::string, Attribute> a,
+           std::pair<std::string, Attribute> b) { return a.first < b.first; });
+    std::sort(
+        sorted_runtime_attrs.begin(),
+        sorted_runtime_attrs.end(),
         [](std::pair<std::string, Attribute> a,
            std::pair<std::string, Attribute> b) { return a.first < b.first; });
 
     for (auto &attr : sorted_attrs) {
       set_attr_desc(attr.first, attr.second);
     }
-    for (auto &attr : runtime_attrs_) {
+    for (auto &attr : sorted_runtime_attrs) {
       set_attr_desc(attr.first, attr.second);
     }
 
@@ -1218,17 +1227,12 @@ bool CompileTimeInferShapeContext::HasOutputs(const std::string &name,
   if (output_names.empty()) {
     return false;
   }
-  if (allow_null) {
-    for (auto &output : output_names) {
-      if (block_.HasVarRecursive(output)) return true;
-    }
-    return false;
-  } else {
+  if (!allow_null) {
     for (auto &output : output_names) {
       if (!block_.HasVarRecursive(output)) return false;
     }
-    return true;
   }
+  return true;
 }
 
 AttrReader CompileTimeInferShapeContext::Attrs() const {

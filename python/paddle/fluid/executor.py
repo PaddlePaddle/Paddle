@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import logging
 import os
 import multiprocessing
@@ -1555,8 +1553,7 @@ class Executor(object):
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_mlu() or isinstance(
-                    place, core.CustomPlace):
+            if core.is_compiled_with_mlu():
                 return False
 
             use_standalone_executor_for_distribution = os.environ.get(

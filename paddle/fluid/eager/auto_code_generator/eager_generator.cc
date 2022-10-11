@@ -826,7 +826,7 @@ static bool CollectGradInformationFromOpInfo(
           new paddle::imperative::VarBase("auto_" + in_name + "_" +
                                           std::to_string(i))));
       ins[in_name][i]->SetOverridedStopGradient(false);
-      ins[in_name][i]->MutableVar()->GetMutable<framework::LoDTensor>();
+      ins[in_name][i]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
   } else {
     for (const proto::OpProto::Var& input : op_proto.inputs()) {
@@ -850,7 +850,7 @@ static bool CollectGradInformationFromOpInfo(
       ins[in_name] = {std::shared_ptr<paddle::imperative::VarBase>(
           new paddle::imperative::VarBase("auto_" + in_name))};
       ins[in_name][0]->SetOverridedStopGradient(false);
-      ins[in_name][0]->MutableVar()->GetMutable<framework::LoDTensor>();
+      ins[in_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
   }
   VLOG(6) << "Prepared Forward Ins Map, size = " << ins.size();
@@ -868,7 +868,7 @@ static bool CollectGradInformationFromOpInfo(
     outs[out_name] = {std::shared_ptr<paddle::imperative::VarBase>(
         new paddle::imperative::VarBase("auto_" + out_name))};
     outs[out_name][0]->SetOverridedStopGradient(false);
-    outs[out_name][0]->MutableVar()->GetMutable<framework::LoDTensor>();
+    outs[out_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
   }
   VLOG(6) << "Prepared Forward Outs Map, size = " << outs.size();
 
@@ -1797,6 +1797,15 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     generated_function_body += amp_context;
     generated_function_body += "\n";
   }
+
+  if (!forward_inplace_map.empty()) {
+    generated_function_body +=
+        "  auto current_level = egr::Controller::Instance().GetAMPLevel();\n";
+    generated_function_body +=
+        "  "
+        "egr::Controller::Instance().SetAMPLevel(paddle::imperative::AmpLevel::"
+        "O0);\n";
+  }
   // forward ins insert
   const char* FWD_INS_MAP_TEMPLATE =
       "  std::map<std::string, "
@@ -1998,6 +2007,10 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       return_contents[return_position] = output_varname;
     }
     trace_op_body_str += out_tensor_str;
+  }
+  if (!forward_inplace_map.empty()) {
+    trace_op_body_str +=
+        "  egr::Controller::Instance().SetAMPLevel(current_level);\n";
   }
   trace_op_body_str += "\n";
   VLOG(6) << "Converted Output VarBase to EagerVariable(s)";

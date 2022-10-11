@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.fluid.core as core
 import math
 import os
@@ -24,7 +22,6 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
 
 paddle.enable_static()
 

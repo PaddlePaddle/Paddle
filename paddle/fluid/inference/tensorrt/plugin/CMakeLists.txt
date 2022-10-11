@@ -32,7 +32,14 @@ list(
   c_allreduce_op_plugin.cu
   preln_residual_bias_plugin.cu
   fused_token_prune_op_plugin.cu
-  layernorm_shift_partition_op.cu)
+  layernorm_shift_partition_op.cu
+  generic_plugin.cu
+  lookup_table.cu)
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+  list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu
+       many_emb_Layernorm_varseqlen_kernelMTron.cu
+       many_emb_Layernorm_varseqlen_kernelHFace.cu)
+endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)
@@ -41,7 +48,13 @@ endif()
 nv_library(
   tensorrt_plugin
   SRCS ${TRT_FILES}
-  DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor)
+  DEPS enforce
+       tensorrt_engine
+       prelu
+       tensor
+       bert_encoder_functor
+       tensorrt_dynamic_shape_infermeta_factory
+       tensorrt_plugin_arg_mapping_context)
 
 nv_test(
   test_split_plugin

@@ -70,16 +70,16 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "group should be larger than 0."));
         });
     AddComment(R"DOC(
-		Shuffle Channel operator
-		This opearator shuffles the channels of input x.
-		It  divide the input channels in each group into several subgroups,
-		and obtain a new order by selecting element from every subgroup one by one.
+    Shuffle Channel operator
+    This opearator shuffles the channels of input x.
+    It  divide the input channels in each group into several subgroups,
+    and obtain a new order by selecting element from every subgroup one by one.
 
-		Shuffle channel operation makes it possible to build more powerful structures
-		with multiple group convolutional layers.
-		please get more information from the following paper:
-		https://arxiv.org/pdf/1707.01083.pdf
-        )DOC");
+    Shuffle channel operation makes it possible to build more powerful structures
+    with multiple group convolutional layers.
+    please get more information from the following paper:
+    https://arxiv.org/pdf/1707.01083.pdf
+    )DOC");
   }
 };
 

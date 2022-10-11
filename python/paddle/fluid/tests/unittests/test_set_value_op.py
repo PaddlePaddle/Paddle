@@ -14,8 +14,6 @@
 
 # Test set_value op in static mode
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -23,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
 from functools import reduce
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSetValueBase(unittest.TestCase):
@@ -576,6 +574,28 @@ create_test_value_int64(TestSetValueItemSlice3)
 create_test_value_int64(TestSetValueItemSlice4)
 
 
+def create_test_value_fp16(parent):
+
+    class TestValueInt(parent):
+
+        def set_value(self):
+            self.value = 3.7
+
+        def set_dtype(self):
+            self.dtype = "float16"
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Valuefp16")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_fp16(TestSetValueItemInt)
+create_test_value_fp16(TestSetValueItemSlice)
+create_test_value_fp16(TestSetValueItemSlice2)
+create_test_value_fp16(TestSetValueItemSlice3)
+create_test_value_fp16(TestSetValueItemSlice4)
+
+
 def create_test_value_fp32(parent):
 
     class TestValueInt(parent):
@@ -1015,7 +1035,6 @@ class TestError(TestSetValueBase):
         paddle.enable_static()
         with paddle.static.program_guard(self.program):
             self._value_type_error()
-            self._dtype_error()
             self._step_error()
             self._bool_list_error()
             self._bool_tensor_error()

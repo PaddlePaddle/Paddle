@@ -43,12 +43,6 @@ class TestBase(IPUOpTest):
         self.feed_shape = [x.shape for x in self.feed_fp32.values()]
         self.feed_list = list(self.feed_fp32.keys())
 
-    def dtype_check(self, program, to_fp16_var_names):
-        block = program.global_block()
-        assert len(to_fp16_var_names) > 0
-        for var_name in to_fp16_var_names:
-            assert (block.var(var_name).dtype, paddle.float16)
-
     def set_attrs(self):
         self.num_ipus = 1
         self.enable_pipelining = False
@@ -84,7 +78,6 @@ class TestBase(IPUOpTest):
             amp_list.unsupported_list = {}
             to_fp16_var_names = paddle.static.amp.cast_model_to_fp16(
                 self.main_prog, amp_list, use_fp16_guard=True)
-            self.dtype_check(self.main_prog, to_fp16_var_names)
 
         if self.is_ipu_mode(exec_mode):
             place = paddle.CPUPlace()

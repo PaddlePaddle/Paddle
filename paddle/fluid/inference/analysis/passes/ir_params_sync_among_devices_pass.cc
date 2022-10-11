@@ -60,12 +60,11 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
         var,
         platform::errors::PreconditionNotMet("The var should not be nullptr"));
 
-    if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<framework::Tensor>()) {
-      auto *t = var->GetMutable<framework::LoDTensor>();
+    if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+      auto *t = var->GetMutable<phi::DenseTensor>();
 
       platform::CPUPlace cpu_place;
-      framework::LoDTensor temp_tensor;
+      phi::DenseTensor temp_tensor;
       temp_tensor.Resize(t->dims());
       temp_tensor.mutable_data<float>(cpu_place);
 
@@ -125,9 +124,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
       if (!var_node->Var()->Persistable()) continue;
       auto var_name = var_node->Var()->Name();
       auto *var = scope->FindLocalVar(var_name);
-      if (var->IsType<framework::LoDTensor>() ||
-          var->IsType<framework::Tensor>()) {
-        auto *t = var->GetMutable<framework::LoDTensor>();
+      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+        auto *t = var->GetMutable<phi::DenseTensor>();
         params_total_bytes += t->numel() * experimental::SizeOf(t->dtype());
       }
     }
@@ -135,7 +133,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
 
   {
     // Alloc memory in pool to store all parameters.
-    framework::Tensor ts;
+    phi::DenseTensor ts;
     ts.mutable_data(place, params_total_bytes);
   }
 
@@ -159,14 +157,14 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
       PADDLE_ENFORCE_NOT_NULL(var,
                               platform::errors::PreconditionNotMet(
                                   "The var should not be nullptr"));
-      if (var->IsType<framework::LoDTensor>() ||
-          var->IsType<framework::Tensor>()) {
-        auto *t = var->GetMutable<framework::LoDTensor>();
+      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+        auto *t = var->GetMutable<phi::DenseTensor>();
         auto var_data_type = var_node->Var()->GetDataType();
         VLOG(5) << "var_name is " << var_name << ", data type is "
                 << var_data_type;
-        if (var_data_type == paddle::framework::proto::VarType::FP16) {
-          framework::Tensor half_tensor;
+        if (var_data_type == paddle::framework::proto::VarType::FP16 &&
+            t->dtype() != paddle::experimental::DataType::FLOAT16) {
+          phi::DenseTensor half_tensor;
           half_tensor.set_type(paddle::experimental::DataType::FLOAT16);
           half_tensor.Resize(t->dims());
           auto *half_data =
@@ -178,7 +176,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
           t->clear();
           paddle::framework::TensorCopySync(half_tensor, place, t);
         } else if (var_data_type == paddle::framework::proto::VarType::BF16) {
-          framework::Tensor bf16_tensor;
+          phi::DenseTensor bf16_tensor;
           bf16_tensor.set_type(paddle::experimental::DataType::BFLOAT16);
           bf16_tensor.Resize(t->dims());
           auto *bf16_data = bf16_tensor.mutable_data<platform::bfloat16>(
@@ -191,7 +189,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
           paddle::framework::TensorCopySync(bf16_tensor, place, t);
         } else {
           platform::CPUPlace cpu_place;
-          framework::LoDTensor temp_tensor;
+          phi::DenseTensor temp_tensor;
           temp_tensor.Resize(t->dims());
           paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
           t->clear();

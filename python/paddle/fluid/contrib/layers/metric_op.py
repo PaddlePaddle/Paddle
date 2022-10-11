@@ -15,8 +15,6 @@
 Contrib layers just related to metric.
 """
 
-from __future__ import print_function
-
 import warnings
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.initializer import Normal, Constant

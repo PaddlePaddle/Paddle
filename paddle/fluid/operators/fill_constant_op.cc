@@ -58,7 +58,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
-      const framework::Tensor &tensor,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;
@@ -70,11 +70,12 @@ class FillConstantOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = framework::OpKernelType(
-        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
-        ctx.GetPlace());
-    // TODO(zyfncg) The force_cpu and place_type are conflicted, it's a issue
-    // lefted before, and we may merge them in the future.
+    auto input_data_type =
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
+    framework::OpKernelType kt =
+        framework::OpKernelType(input_data_type, ctx.GetPlace());
+    // TODO(zyfncg) The force_cpu and place_type are conflicted, it's an issue
+    // left before, and we may merge them in the future.
     // In order to invoke new fill_constant kernel, the place of OpKernelType
     // will be setted by force_cpu and place_type here.
     if (ctx.Attr<bool>("force_cpu")) {
@@ -104,9 +105,6 @@ class FillConstantOp : public framework::OperatorWithKernel {
     }
 
 #ifdef PADDLE_WITH_MKLDNN
-    auto input_data_type =
-        framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
-
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
@@ -174,10 +172,6 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "3: XPUPlace. "
                  "4: NPUPlace. ")
         .SetDefault(-1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");

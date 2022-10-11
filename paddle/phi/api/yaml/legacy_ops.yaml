@@ -102,10 +102,7 @@
 - op : add_n
   args : (Tensor[] x)
   output : Tensor
-  infer_meta :
-    func : AddNInferMeta
-  kernel :
-    func : add_n
+  invoke : add_n_impl(x)
   backward : add_n_grad
 
 - op : addmm
@@ -331,7 +328,12 @@
 - op : batch_norm
   args : (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
-  invoke : batch_norm_impl(x, scale, bias, mean, variance, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics, fuse_with_relu)
+  infer_meta:
+    func : BatchNormInferMeta
+  kernel :
+    func : batch_norm
+    data_type : x
+  view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
 
 - op : bce_loss
@@ -465,6 +467,18 @@
   kernel :
     func : celu
   backward : celu_grad
+
+- op : check_finite_and_unscale_
+  args : (Tensor[] x, Tensor scale, Tensor input_found_infinite)
+  output : Tensor[](out){x.size()}, Tensor(output_found_infinite)
+  infer_meta :
+    func : CheckFiniteAndUnscaleInferMeta
+    param : [x, scale]
+  kernel :
+    func : check_finite_and_unscale
+    param : [x, scale]
+    data_type : x
+  inplace : (x -> out), (input_found_infinite -> output_found_infinite)
 
 - op : class_center_sample
   args : (Tensor label, int num_classes, int num_samples, int ring_id, int rank, int nranks, bool fix_seed, int seed)
@@ -634,12 +648,15 @@
   backward : cumsum_grad
 
 - op : decode_jpeg
-  args : (Tensor x, str mode)
+  args : (Tensor x, str mode, Place place)
   output : Tensor(out)
   infer_meta :
     func : DecodeJpegInferMeta
+    param : [x, mode]
   kernel :
     func : decode_jpeg
+    param : [x, mode]
+    backend : place
 
 - op : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
@@ -789,7 +806,14 @@
 - op : embedding
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1, bool sparse=false)
   output : Tensor
-  invoke : embedding_impl(x, weight, padding_idx, sparse)
+  infer_meta :
+    func : EmbeddingInferMeta
+    param : [x, weight, padding_idx]
+  kernel :
+    func : embedding {dense, dense -> dense}
+           sparse_weight_embedding {dense, selected_rows -> dense}
+    param : [x, weight, padding_idx]
+    data_type : weight
   backward : embedding_grad
 
 - op : empty
@@ -1464,13 +1488,16 @@
   backward : linear_interp_grad
 
 - op : linspace
-  args : (Tensor start, Tensor stop, Tensor number, DataType dtype)
+  args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
   output : Tensor(out)
   infer_meta :
     func : LinspaceInferMeta
+    param: [start, stop, number, dtype]
   kernel :
     func : linspace
+    param: [start, stop, number, dtype]
     data_type : dtype
+    backend : place
 
 - op : log
   args : (Tensor x)
@@ -1749,6 +1776,14 @@
   kernel :
     func : mean_all
   backward : mean_all_grad
+
+- op : merge_selected_rows
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : merge_selected_rows {selected_rows -> selected_rows}
 
 - op : merged_adam_
   args : (Tensor[] param, Tensor[] grad, Tensor[] learning_rate, Tensor[] moment1, Tensor[] moment2, Tensor[] beta1_pow, Tensor[] beta2_pow, Tensor[] master_param, Scalar beta1, Scalar beta2, Scalar epsilon, bool multi_precision, bool use_global_beta_pow)
@@ -2377,6 +2412,7 @@
     func : UnchangedInferMeta
   kernel :
     func : sign
+  backward : sign_grad
 
 - op : silu
   args : (Tensor x)
@@ -2762,6 +2798,17 @@
     backend : place
     data_type : dtype
 
+- op : update_loss_scaling_
+  args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update)
+  output : Tensor[](out){x.size()}, Tensor(loss_scaling), Tensor(out_good_steps), Tensor(out_bad_steps)
+  infer_meta :
+    func : UpdateLossScalingInferMeta
+    param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+  kernel :
+    func : update_loss_scaling
+    data_type : x
+  inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
+
 - op : unbind
   args : (Tensor input, int axis)
   output : Tensor[] {axis<0 ? input.dims()[input.dims().size()+axis]:input.dims()[axis]}
@@ -2944,6 +2991,21 @@
     func: overlap_add
   backward: overlap_add_grad
 
+- op: rnn
+  args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
+  output: Tensor(out), Tensor(dropout_state_out), Tensor[](state){pre_state.size()}, Tensor(reserve)
+  infer_meta:
+    func: RnnInferMeta
+    param : [x, pre_state, weight_list, sequence_length, dropout_prob, is_bidirec, input_size, hidden_size, num_layers, mode, seed, is_test]
+  kernel:
+    func: rnn
+    param : [x, pre_state, weight_list, sequence_length, dropout_prob, is_bidirec, input_size, hidden_size, num_layers, mode, seed, is_test]
+    data_type: x
+  backward: rnn_grad
+  optional : sequence_length
+  intermediate : reserve
+  view : (dropout_state_in -> dropout_state_out)
+
 - op: uniform_random_inplace
   args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
   output: Tensor(out)
@@ -2974,3 +3036,12 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
+
+- op: bincount
+  args: (Tensor x, Tensor weights, Scalar minlength)
+  output: Tensor(out)
+  infer_meta:
+    func: BincountInferMeta
+  kernel:
+    func: bincount
+  optional: weights

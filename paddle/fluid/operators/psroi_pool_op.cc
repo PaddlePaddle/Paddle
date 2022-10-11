@@ -70,8 +70,8 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddComment(R"Doc(
 Position sensitive region of interest pooling (also known as PSROIPooling) is to perform
-position-sensitive average pooling on regions of interest specified by input, takes as 
-input N position-sensitive score maps and a list of num_rois regions of interest. 
+position-sensitive average pooling on regions of interest specified by input, takes as
+input N position-sensitive score maps and a list of num_rois regions of interest.
 
 PSROIPooling for R-FCN. Please refer to https://arxiv.org/abs/1605.06409 for more details.
     )Doc");

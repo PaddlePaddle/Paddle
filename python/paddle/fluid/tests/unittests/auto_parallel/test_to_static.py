@@ -20,14 +20,13 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 import paddle.distributed.fleet as fleet
 
 from paddle import LazyGuard
 from paddle.io import Dataset
 from paddle.static import InputSpec
 from paddle.fluid.framework import _non_static_mode
-from paddle.distributed.auto_parallel.engine import Engine
 from paddle.distributed.auto_parallel.helper import ProgramHelper
 
 batch_size = 4
@@ -111,7 +110,7 @@ class TestWholeProgram(unittest.TestCase):
         program_helper.to('train')
 
         forward_ops = program_helper.main_program.block(0).ops
-        self.assertEqual(len(forward_ops), 21)
+        self.assertEqual(len(forward_ops), 17)
 
         # step 2: apply optimzer to generate whole program
         optimize_ops, _ = program_helper.apply_optimizer(optimizer)
@@ -120,7 +119,7 @@ class TestWholeProgram(unittest.TestCase):
             op for op in program_helper.main_program.block(0).ops
             if op.type == 'sgd'
         ]
-        self.assertEqual(len(all_ops), 41)
+        self.assertEqual(len(all_ops), 37)
         self.assertEqual(len(optimize_ops), len(sgd_ops))
 
         program_helper.reset()
@@ -140,23 +139,19 @@ class TestToStatic(unittest.TestCase):
 
         dataset = MyDataset(batch_num * batch_size)
 
-        inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
-        labels = InputSpec([batch_size], 'int64', 'label')
+        # inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
+        # labels = InputSpec([batch_size], 'int64', 'label')
 
-        engine = Engine(model=mlp,
-                        inputs_spec=inputs,
-                        labels_spec=labels,
-                        strategy=None)
         assert _non_static_mode() == True
-
-        engine.prepare(optimizer=optimizer,
-                       loss=loss,
-                       metrics=paddle.metric.Accuracy())
-
-        assert _non_static_mode() == False
+        engine = auto.Engine(model=mlp,
+                             loss=loss,
+                             optimizer=optimizer,
+                             metrics=paddle.metric.Accuracy(),
+                             strategy=None)
         engine.fit(dataset, batch_size=batch_size)
         engine.evaluate(dataset, batch_size=batch_size)
         engine.predict(dataset, batch_size=batch_size)
+        assert _non_static_mode() == False
 
 
 class TestLazyInit(unittest.TestCase):

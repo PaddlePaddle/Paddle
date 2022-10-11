@@ -113,7 +113,7 @@ def visit_all_module(mod):
                         .format(member_name, instance.__name__),
                         file=sys.stderr)
         except:
-            if not cur_name in ErrorSet and not cur_name in skiplist:
+            if cur_name not in ErrorSet and cur_name not in skiplist:
                 ErrorSet.add(cur_name)
 
 
@@ -296,7 +296,7 @@ def parse_args():
                         dest='skipped',
                         type=str,
                         help='Skip Checking submodules',
-                        default='paddle.fluid.core_avx.eager.ops')
+                        default='paddle.fluid.libpaddle.eager.ops')
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['paddle'])

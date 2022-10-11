@@ -14,6 +14,5 @@
 
 from . import features
 from . import functional
-from . import utils
 
-__all__ = ["functional", "features", "utils"]
+__all__ = ["functional", "features"]

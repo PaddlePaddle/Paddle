@@ -81,11 +81,55 @@ void TensorRTEngine::InitNetwork() {
     optim_profiles_[i] = infer_builder_->createOptimizationProfile();
 }
 
+nvinfer1::IExecutionContext *TensorRTEngine::context() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  if (infer_context_.find(predictor_id_per_thread) == infer_context_.end()) {
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::InvalidArgument(
+            "You should build engine first and then set the context."));
+    // We may see trt warning: Profile 0 has been chosen by another
+    // IExecutionContext...
+    // It's ok. We will set it later.
+    nvinfer1::IExecutionContext *infer_context{nullptr};
+    if (context_memory_sharing_) {
+      infer_context =
+          infer_engine_->createExecutionContextWithoutDeviceMemory();
+    } else {
+      infer_context = infer_engine_->createExecutionContext();
+    }
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_context,
+        platform::errors::InvalidArgument(
+            "TensorRT engine can not build execution context."));
+    if (with_dynamic_shape_) {
+      // need new profile if it's not the first
+      if (cur_profile_num_ > 0) {
+        infer_context->setOptimizationProfile(cur_profile_num_);
+      }
+      profile_index_[predictor_id_per_thread] = cur_profile_num_;
+      ++cur_profile_num_;
+    }
+    infer_context_[predictor_id_per_thread].reset(infer_context);
+  }
+  return infer_context_[predictor_id_per_thread].get();
+}
+
 void TensorRTEngine::Execute(int batch_size,
                              std::vector<void *> *buffers,
                              cudaStream_t stream) {
   freshDeviceId();
   auto infer_context = context();
+  if (context_memory_sharing_) {
+    void *context_memory{nullptr};
+    context_memory =
+        inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+            .getContextMemory(
+                predictor_id_per_thread,
+                phi::GPUPlace(device_id_),
+                phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    infer_context->setDeviceMemory(context_memory);
+  }
   if (!with_dynamic_shape()) {
     infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
@@ -272,6 +316,12 @@ void TensorRTEngine::FreezeNetwork() {
     infer_context_.clear();
     cur_profile_num_ = 0;
   }
+  // for engine context memory sharing
+  if (context_memory_sharing_) {
+    inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+        .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
+                                 predictor_id_per_thread);
+  }
 
   GetEngineInfo();
 }
@@ -369,16 +419,101 @@ void TensorRTEngine::SetITensor(const std::string &name,
 }
 
 nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
-  PADDLE_ENFORCE_EQ(itensor_map_.count(name),
-                    true,
-                    platform::errors::NotFound(
-                        "Tensor named %s is not found in TRT engine", name));
-  return itensor_map_[name];
+  if (itensor_map_.count(name)) {
+    return itensor_map_[name];
+  } else {
+    ConvertWeight2ITensor(name);
+    return itensor_map_[name];
+  }
+}
+
+// For cases when input is not middle-tensor , but persistable tensor
+// you should call this.
+nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
+    const std::string &name) {
+  auto *var_v = scope_->FindVar(name);
+  PADDLE_ENFORCE_NOT_NULL(
+      var_v,
+      platform::errors::NotFound("You are converting a persistable weight to a "
+                                 "tensor, but there is no "
+                                 "persistable variable called %s in scope.",
+                                 name));
+  auto *var_t = var_v->GetMutable<phi::DenseTensor>();
+  auto weight = this->GetTrtWeight(name, *var_t);
+
+  // Now we have create weights, then we need create a itensor
+  auto var_dims = var_t->dims();
+  nvinfer1::Dims trt_in_shape;
+  trt_in_shape.nbDims = var_t->dims().size();
+  for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
+    trt_in_shape.d[i] = var_dims[i];
+  }
+  // In fact , this is not always right, because we can't determine if the 0th
+  // dimension is batch. Just for run chenqu's model
+  if (!this->with_dynamic_shape()) {
+    trt_in_shape.nbDims--;
+    for (int i = 0; i < trt_in_shape.nbDims; i++) {
+      trt_in_shape.d[i] = trt_in_shape.d[i + 1];
+    }
+  }
+  nvinfer1::ILayer *layer =
+      TRT_ENGINE_ADD_LAYER(this, Constant, trt_in_shape, weight.get());
+  this->SetITensor(name, layer->getOutput(0));
+  return layer->getOutput(0);
 }
 
 std::unordered_map<std::string, nvinfer1::ITensor *>
     *TensorRTEngine::GetITensorMap() {
   return &itensor_map_;
+}
+
+void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
+  freshDeviceId();
+  infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
+
+  if (use_dla_) {
+    if (precision_ != AnalysisConfig::Precision::kInt8 &&
+        precision_ != AnalysisConfig::Precision::kHalf) {
+      LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
+                      "set float32, so DLA is not used.";
+    } else if (runtime->getNbDLACores() == 0) {
+      LOG(WARNING)
+          << "TensorRT DLA is set by config, but your device does not have "
+             "DLA, so DLA is not used.";
+    } else {
+      if (dla_core_ < 0 || dla_core_ >= runtime->getNbDLACores()) {
+        dla_core_ = 0;
+        LOG(WARNING) << "Invalid DLACore, must be 0 < DLACore < "
+                     << runtime->getNbDLACores() << ", but got " << dla_core_
+                     << ", so use use 0 as default.";
+      }
+      runtime->setDLACore(dla_core_);
+      LOG(INFO) << "TensorRT DLA enabled in Deserialize(), DLACore "
+                << dla_core_;
+    }
+  }
+
+  infer_engine_.reset(runtime->deserializeCudaEngine(
+      engine_serialized_data.c_str(), engine_serialized_data.size()));
+
+  PADDLE_ENFORCE_NOT_NULL(
+      infer_engine_,
+      platform::errors::Fatal(
+          "Building TRT cuda engine failed when deserializing engine info. "
+          "Please check:\n1. Your TRT serialization is generated and loaded "
+          "on the same GPU architecture;\n2. The Paddle Inference version of "
+          "generating serialization file and doing inference are "
+          "consistent."));
+
+  binding_num_ = infer_engine_->getNbBindings();
+  // for engine context memory sharing
+  if (context_memory_sharing_) {
+    inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+        .updateContextMemorySize(infer_engine_->getDeviceMemorySize(),
+                                 predictor_id_per_thread);
+  }
+
+  GetEngineInfo();
 }
 
 void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
@@ -387,7 +522,7 @@ void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
 
 // Note: Only for support plugin.
 TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
-    const std::string &name, const framework::Tensor &weight_tensor) {
+    const std::string &name, const phi::DenseTensor &weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -399,7 +534,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
-  weight_map[name_with_suffix].reset(new framework::Tensor());
+  weight_map[name_with_suffix].reset(new phi::DenseTensor());
   weight_map[name_with_suffix]->Resize(weight_tensor.dims());
 
   TensorRTEngine::Weight weight;
@@ -409,7 +544,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
 
   // if trt not support dtype, we need to cast to  fp16.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
-    framework::Tensor bf16_tensor;
+    phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
@@ -423,7 +558,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
       fp16_data[i] = static_cast<float16>(bf16_data[i]);
     }
   } else if (weight_tensor.dtype() == phi::DataType::FLOAT32) {
-    framework::Tensor fp32_tensor;
+    phi::DenseTensor fp32_tensor;
     fp32_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &fp32_tensor);
@@ -447,7 +582,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
 
 // Note: Only for support plugin.
 TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
-    const std::string &name, const framework::Tensor &weight_tensor) {
+    const std::string &name, const phi::DenseTensor &weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -459,7 +594,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
-  weight_map[name_with_suffix].reset(new framework::Tensor());
+  weight_map[name_with_suffix].reset(new phi::DenseTensor());
   weight_map[name_with_suffix]->Resize(weight_tensor.dims());
 
   TensorRTEngine::Weight weight;
@@ -469,7 +604,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
 
   // if trt not support dtype, we need to cast to  fp32.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
-    framework::Tensor bf16_tensor;
+    phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
@@ -483,7 +618,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
       fp32_data[i] = static_cast<float>(bf16_data[i]);
     }
   } else if (weight_tensor.dtype() == phi::DataType::FLOAT16) {
-    framework::Tensor fp16_tensor;
+    phi::DenseTensor fp16_tensor;
     fp16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &fp16_tensor);
@@ -506,7 +641,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
 }
 
 TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
-    const std::string &name, const framework::Tensor &weight_tensor) {
+    const std::string &name, const phi::DenseTensor &weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -519,7 +654,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
                         "twice in TRT OP converter.",
                         name_with_suffix));
 
-  weight_map[name_with_suffix].reset(new framework::Tensor());
+  weight_map[name_with_suffix].reset(new phi::DenseTensor());
   weight_map[name_with_suffix]->Resize(weight_tensor.dims());
 
   TensorRTEngine::Weight weight;
@@ -527,7 +662,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
 
   // if trt not support dtype, we need to cast to fp32.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
-    framework::Tensor bf16_tensor;
+    phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
@@ -542,7 +677,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     weight.SetDataType(phi::DataType::FLOAT32);
     weight.SetValues(fp32_data);
   } else if (weight_tensor.dtype() == phi::DataType::INT64) {
-    framework::Tensor int64_tensor;
+    phi::DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &int64_tensor);
@@ -610,9 +745,8 @@ void TensorRTEngine::GetEngineInfo() {
   LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
       infer_engine_->createEngineInspector());
-  auto infer_context = infer_ptr<nvinfer1::IExecutionContext>(
-      infer_engine_->createExecutionContextWithoutDeviceMemory());
-  infer_inspector->setExecutionContext(infer_context.get());
+  auto *infer_context = context();
+  infer_inspector->setExecutionContext(infer_context);
   LOG(INFO) << infer_inspector->getEngineInformation(
       nvinfer1::LayerInformationFormat::kONELINE);
   LOG(INFO) << "====== engine info end ======";

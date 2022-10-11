@@ -54,6 +54,7 @@
 namespace phi {
 class DenseTensor;
 class SelectedRows;
+class SparseCooTensor;
 }  // namespace phi
 
 // Users should add forward declarations here
@@ -178,8 +179,9 @@ struct VarTypeRegistryImpl {
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
-    Tensor,
+    phi::DenseTensor,
     phi::SelectedRows,
+    phi::SparseCooTensor,
     std::vector<Scope *>,
     LoDRankTable,
     Strings,
@@ -252,6 +254,7 @@ REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
 REG_PROTO_VAR_TYPE_TRAIT(Vocab, proto::VarType::VOCAB);
 REG_PROTO_VAR_TYPE_TRAIT(String, proto::VarType::STRING);
 REG_PROTO_VAR_TYPE_TRAIT(Strings, proto::VarType::STRINGS);
+REG_PROTO_VAR_TYPE_TRAIT(phi::SparseCooTensor, proto::VarType::SPARSE_COO);
 
 /** End of variable type registration */
 

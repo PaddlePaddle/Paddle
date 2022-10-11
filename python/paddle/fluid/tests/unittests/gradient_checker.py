@@ -13,18 +13,13 @@
 # limitations under the License.
 """This is the lib for gradient checker unittest."""
 
-from __future__ import print_function
-
-import unittest
 import six
-import collections
 import numpy as np
 from itertools import product
 import paddle
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 from paddle.fluid.framework import _test_eager_guard
 try:
@@ -268,6 +263,9 @@ def grad_check(x,
     for v in x:
         v.stop_gradient = False
         v.persistable = True
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     if place is None:
         place = fluid.CPUPlace()
     if program is None:
@@ -364,6 +362,9 @@ def double_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
 
     if program is None:
         program = fluid.default_main_program()
@@ -445,6 +446,9 @@ def triple_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
 
     if program is None:
         program = fluid.default_main_program()
@@ -578,6 +582,9 @@ def get_static_double_grad(x,
     for v in x:
         v.stop_gradient = False
         v.persistable = True
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     if place is None:
         place = fluid.CPUPlace()
     if program is None:
@@ -736,7 +743,9 @@ def double_grad_check_for_dygraph(func,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -903,7 +912,9 @@ def triple_grad_check_for_dygraph(func,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)

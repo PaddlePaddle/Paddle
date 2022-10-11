@@ -12,45 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import tempfile
 import unittest
 import os
 import json
-import collections
-import math
 import numpy as np
 
 import paddle
 import paddle.nn as nn
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-import paddle.tensor as tensor
 import paddle.utils as utils
 import paddle.static as static
 from paddle.fluid import core
 from paddle.fluid import layers
-from paddle.fluid.framework import _non_static_mode
-from paddle.nn.layer.transformer import _convert_param_attr_to_list
-from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
+from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.distributed import fleet
 
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.process_group import get_all_process_groups
-from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cluster import DeviceType
-from paddle.distributed.auto_parallel.cluster import LinkType
-from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
-from paddle.distributed.auto_parallel.mapper import build_process_graph
-from paddle.distributed.auto_parallel.mapper import build_cluster_graph
 from paddle.distributed.auto_parallel.mapper import mapping
 from paddle.distributed.auto_parallel.mapper import get_dtype_bytes
 from paddle.distributed.auto_parallel.mapper import get_comm_volume
@@ -414,37 +399,25 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(self.linear0.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[0],
-                                  "dims_mapping": [-1, 1]
-                              })
-            auto.shard_tensor(self.linear1.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[0],
-                                  "dims_mapping": [1, -1]
-                              })
-            auto.shard_tensor(self.linear2.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[1],
-                                  "dims_mapping": [-1, 1]
-                              })
-            auto.shard_tensor(self.linear3.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[1],
-                                  "dims_mapping": [1, -1]
-                              })
+            auto.shard_tensor(self.linear0.weight, _global_process_mesh[0],
+                              [None, "y"])
+
+            auto.shard_tensor(self.linear1.weight, _global_process_mesh[0],
+                              ["y", None])
+
+            auto.shard_tensor(self.linear2.weight, _global_process_mesh[1],
+                              [None, "y"])
+
+            auto.shard_tensor(self.linear3.weight, _global_process_mesh[1],
+                              ["y", None])
 
         out = self.norm(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = self.linear1(out)
 
-        auto.shard_tensor(out,
-                          dist_attr={
-                              "process_mesh": _global_process_mesh[1],
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(out, _global_process_mesh[1], ["x", None])
+
         out = self.linear2(out)
         out = F.gelu(out, approximate=True)
         out = self.linear3(out)
@@ -464,11 +437,7 @@ def mlp_forward(train_program, start_program):
                             dtype='float32')
 
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(input,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[0],
-                                  "dims_mapping": [0, -1]
-                              })
+            auto.shard_tensor(input, _global_process_mesh[0], ["x", None])
         mlp = MLPLayer(hidden_size=hidden_size,
                        intermediate_size=4 * hidden_size,
                        initializer_range=0.02)
@@ -548,7 +517,10 @@ class TestAutoParallelMapper(unittest.TestCase):
         global _global_num_stages
         _global_num_stages = 2
         global _global_process_mesh
-        _global_process_mesh = [[[0, 1], [2, 3]], [[4, 5], [6, 7]]]
+        _global_process_mesh = [
+            auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"]),
+            auto.ProcessMesh([[4, 5], [6, 7]], dim_names=["x", "y"])
+        ]
         processes = [0, 1, 2, 3, 4, 5, 6, 7]
 
         dist_programs = {}
