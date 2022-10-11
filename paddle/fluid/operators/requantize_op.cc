@@ -15,9 +15,6 @@
 #include "paddle/fluid/operators/requantize_op.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {

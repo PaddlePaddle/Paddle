@@ -15,7 +15,6 @@
 from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
-from ..fluid.framework import Variable, name_scope
 from ..fluid.dygraph import no_grad
 from paddle import _C_ops, _legacy_C_ops
 import warnings

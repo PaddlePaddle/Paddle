@@ -637,6 +637,7 @@ void BatchNormInferMeta(const MetaTensor& x,
     saved_variance->set_dims({C});
   }
   y->share_lod(x);
+  y->set_dtype(x.dtype());
 }
 
 void BatchNormInferInferMeta(const MetaTensor& x,
@@ -2491,6 +2492,14 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
 
 void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out) {
+  PADDLE_ENFORCE_EQ(
+      x.size(),
+      out.size(),
+      phi::errors::InvalidArgument(
+          "Input's size should be equal to the output's size"
+          "but received input size: (%d) does not equals output_size: (%d)",
+          x.size(),
+          out.size()));
   for (size_t i = 0; i < x.size(); ++i) {
     if (out[i]) {
       out[i]->share_meta(*x[i]);

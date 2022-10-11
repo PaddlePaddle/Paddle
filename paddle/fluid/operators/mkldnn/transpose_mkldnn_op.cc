@@ -210,8 +210,3 @@ REGISTER_OP_KERNEL(transpose_grad,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
-
-REGISTER_OP_KERNEL(transpose2_grad,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::TransposeMKLDNNGradOpKernel<float>);

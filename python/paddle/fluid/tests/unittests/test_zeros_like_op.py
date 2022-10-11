@@ -17,7 +17,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle import zeros_like
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid import core, Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_

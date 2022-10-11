@@ -194,8 +194,10 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
           (conv_in_type == framework::proto::VarType::FP16);
       if (is_tune_fp32) {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NCHW);
+        LayoutAutoTune::Instance().SetDefaultLayout(DataLayout::NHWC);
       } else if (is_tune_fp16) {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NHWC);
+        LayoutAutoTune::Instance().SetDefaultLayout(DataLayout::NCHW);
       } else {
         tracer->DisableLayoutAutoTune();
         return ins;
