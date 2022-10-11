@@ -102,8 +102,8 @@ class TrtConvertBmmTest_dynamic(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), 1e-5
-        
-         # The output has little diff between gpu and trt in CI-Windows-Inference
+
+        # The output has little diff between gpu and trt in CI-Windows-Inference
         tol_fp32 = 1e-5
         tol_half = 1e-5
         if (os.name == 'nt'):
