@@ -14,23 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <assert.h>
-#include <cuda_runtime.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
 #include <thrust/remove.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
-
-#include <algorithm>
-#include <fstream>
-#include <iostream>
-#include <numeric>
-#include <random>
-
 #include "paddle/phi/kernels/sparse/conv_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
