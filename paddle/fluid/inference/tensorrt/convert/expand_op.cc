@@ -39,9 +39,9 @@ class ExpandOpConverter : public OpConverter {
     auto input_dims = input->getDimensions();
     auto output_name = op_desc.Output("Out")[0];
     auto rank = input_dims.nbDims;
-    std::vector<int> shape =
-        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("shape"));
-    int nbDims_num = shape.size();
+    std::vector<int32_t> shape =
+        PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("shape"));
+    int32_t nbDims_num = shape.size();
 
     auto* shape_tensor =
         Add1DConstantLayer(shape, output_name + "_shape_tensor_");
@@ -62,10 +62,10 @@ class ExpandOpConverter : public OpConverter {
     auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     shuffle->setInput(1, *input_shape_tensor);
 
-    std::vector<int> start_vec(nbDims_num, 0);
+    std::vector<int32_t> start_vec(nbDims_num, 0);
     nvinfer1::Dims start;
     start.nbDims = nbDims_num;
-    for (int i = 0; i < nbDims_num; ++i) {
+    for (int32_t i = 0; i < nbDims_num; ++i) {
       start.d[i] = start_vec[i];
     }
     nvinfer1::Dims size;
@@ -75,28 +75,11 @@ class ExpandOpConverter : public OpConverter {
 
     auto starts_tensor =
         Add1DConstantLayer(start_vec, output_name + "_start_tensor_");
-    auto sizes_tensor =
-        TRT_ENGINE_ADD_LAYER(engine_,
-                             ElementWise,
-                             *input_shape_tensor,
-                             *shape_tensor,
-                             nvinfer1::ElementWiseOperation::kMAX)
-            ->getOutput(0);
     auto one_tensor = Add1DConstantLayer(1, output_name + "_one_tensor_");
-    auto input_sub_tensor =
-        TRT_ENGINE_ADD_LAYER(engine_,
-                             ElementWise,
-                             *input_shape_tensor,
-                             *one_tensor,
-                             nvinfer1::ElementWiseOperation::kSUB)
-            ->getOutput(0);
-    auto strides_tensor =
-        TRT_ENGINE_ADD_LAYER(engine_,
-                             ElementWise,
-                             *one_tensor,
-                             *input_sub_tensor,
-                             nvinfer1::ElementWiseOperation::kMIN)
-            ->getOutput(0);
+
+    auto sizes_tensor = Max(input_shape_tensor, shape_tensor);
+    auto input_sub_tensor = Sub(input_shape_tensor, one_tensor);
+    auto strides_tensor = Min(one_tensor, input_sub_tensor);
 
     auto layer = TRT_ENGINE_ADD_LAYER(
         engine_, Slice, *shuffle->getOutput(0), start, size, stride);

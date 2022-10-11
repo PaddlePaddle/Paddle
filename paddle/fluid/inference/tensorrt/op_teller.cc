@@ -1771,13 +1771,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         for (int i = shape_rank - 1; i >= 0; --i) {
           int dim = i + rank - shape_rank;
           int size = (dim >= 0) ? x_shape[dim] : 1;
-          if (shape[i] != -1) {
-            if (size != shape[i]) {
-              if (!(size == -1 || size == 1)) {
-                return false;
-              }
-            }
-          } else {
+          if (shape[i] == -1) {
             if (dim < 0) return false;
           }
         }
