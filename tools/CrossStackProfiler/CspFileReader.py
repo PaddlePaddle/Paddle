@@ -43,14 +43,10 @@ dcgmMetricParameterMap = {
     "02_gpuUtility": [("GPUTL", "GPUTL"), ("GRACT", "GRACT")],
     "03_smUtility": [("SMACT", "SMACT"), ("SMOCC", "SMOCC")],
     "04_memUtility": [("FB_USED_RATIO", "FB_USED_RATIO"), ("DRAMA", "DRAMA")],
-    "05_txUtility": [
-        ("NVLTX", "NVLTX"),
-        ("NVLRX", "NVLRX"),
-        ("PCITX", "PCITX"),
-        ("PCIRX", "PCIRX"),
-    ],
+    "05_txUtility": [("NVLTX", "NVLTX"), ("NVLRX", "NVLRX"), ("PCITX", "PCITX"),
+                     ("PCIRX", "PCIRX")],
     "06_calUtility": [("FP32A", "FP32A"), ("FP16A", "FP16A"),
-                      ("TENSO", "TENSO")],
+                      ("TENSO", "TENSO")]
 }
 DCGMINFO_TRACE_NUM = len(dcgmMetricParameterMap.keys())
 NETINFO_TRACE_NUM = 2
@@ -64,9 +60,8 @@ FILEORGANIZEFORM_BYRANK = "byRank"
 FILEORGANIZEFORM_BYTRAINER = "byTrainer"
 FILEORGANIZEFORM_BYOTHER = "other"
 FILEORGANIZEFORM = [
-    FILEORGANIZEFORM_BYRANK,
-    FILEORGANIZEFORM_BYTRAINER,
-    FILEORGANIZEFORM_BYOTHER,
+    FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER,
+    FILEORGANIZEFORM_BYOTHER
 ]
 
 
@@ -113,7 +108,7 @@ class FileReader(object):
                 "Invalid type of key [%s] in args dict, it should be a %s!" %
                 (key, type))
 
-        exec('self._%s = self._args["%s"]' % (key, key))
+        exec("self._%s = self._args[\"%s\"]" % (key, key))
 
     def _align_ts(self, ts):
         return ts - self._minTimeStamp
@@ -123,8 +118,8 @@ class FileReader(object):
             raise TypeError("Invalid type of args, it should be a dict!")
 
         self._checkArgsKey("organizeForm", str)
-        if (self._organizeForm not in FILEORGANIZEFORM
-                or self._organizeForm == FILEORGANIZEFORM_BYOTHER):
+        if self._organizeForm not in FILEORGANIZEFORM or \
+            self._organizeForm == FILEORGANIZEFORM_BYOTHER:
             raise NotImplementedError(
                 "we have not known how to process this form of file [%s]!" %
                 self._organizeForm)
@@ -183,7 +178,6 @@ class FileReader(object):
             if (self._getId(self._fileList[-1]) -
                     self._getId(self._fileList[0])) != len(self._fileList) - 1:
                 raise Exception("The file id should be countious!")
-
         # sort
         def _sortBySuffix(elem):
             return int(elem.split(".")[-1])
@@ -195,7 +189,7 @@ class FileReader(object):
                                  self._dataPath)
         else:
             self._logger.info("file list in dir [%s] is : %s !" %
-                              (self._dataPath, ",  ".join(self._fileList)))
+                              (self._dataPath, ',  '.join(self._fileList)))
 
         return self._fileList
 
@@ -329,15 +323,15 @@ class FileReader(object):
             os.makedirs(tmpPath)
         self._lock.release()
         if pretty:
-            jsObj = json.dumps(data, indent=4, separators=(",", ": "))
+            jsObj = json.dumps(data, indent=4, separators=(',', ': '))
         else:
-            jsObj = json.dumps(data, separators=(",", ":"))
+            jsObj = json.dumps(data, separators=(',', ':'))
 
         fileName = self.getFileName(name, groupId, gpuId, tmpPath)
         if os.path.isfile(fileName):
             os.remove(fileName)
 
-        fileObject = open(fileName, "w")
+        fileObject = open(fileName, 'w')
         fileObject.write(jsObj)
         fileObject.close()
         self._logger.info("dump [%s] sucessfully!" % fileName)
@@ -347,14 +341,14 @@ def getLogger():
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
-    rq = time.strftime("%Y%m%d%H%M.%s", time.localtime(time.time()))
-    log_path = os.path.dirname(os.getcwd()) + "/Logs/"
+    rq = time.strftime('%Y%m%d%H%M.%s', time.localtime(time.time()))
+    log_path = os.path.dirname(os.getcwd()) + '/Logs/'
     if not os.path.exists(log_path):
         os.makedirs(log_path)
 
-    log_name = log_path + rq + ".log"
+    log_name = log_path + rq + '.log'
     logfile = log_name
-    fh = logging.FileHandler(logfile, mode="w")
+    fh = logging.FileHandler(logfile, mode='w')
     fh.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter(
