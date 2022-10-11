@@ -27,7 +27,7 @@ namespace operators {
 namespace math {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 /*
  * \brief Context projection concatenates features in adjacent time-steps in

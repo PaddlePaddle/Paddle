@@ -21,10 +21,7 @@ import time
 import paddle.compat as cpt
 from paddle.fluid.framework import _test_eager_guard
 
-if sys.version_info[0] == 2:
-    import Queue as queue
-else:
-    import queue
+import queue
 
 from paddle.fluid.reader import multiprocess_queue_set, _cleanup, CleanupFuncRegistrar
 

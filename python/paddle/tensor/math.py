@@ -538,7 +538,7 @@ def add(x, y, name=None):
     For case 2:
 
     1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
-    2. If $axis$ is -1 (default), $axis$=rank($X$)−rank($Y$).
+    2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
     3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
 
         For example:
@@ -558,7 +558,7 @@ def add(x, y, name=None):
         name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It’s dimension equals with x.
+        N-D Tensor. A location into which the result is stored. It's dimension equals with x.
 
     Examples:
 
@@ -929,34 +929,37 @@ def maximum(x, y, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             x = paddle.to_tensor([[1, 2], [7, 8]])
             y = paddle.to_tensor([[3, 4], [5, 6]])
             res = paddle.maximum(x, y)
             print(res)
-            #    [[3, 4],
-            #     [7, 8]]
+            # Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[3, 4],
+            #         [7, 8]])
 
             x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             y = paddle.to_tensor([3, 0, 4])
             res = paddle.maximum(x, y)
             print(res)
-            #    [[3, 2, 4],
-            #     [3, 2, 4]]
+            # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[3, 2, 4],
+            #         [3, 2, 4]])
 
             x = paddle.to_tensor([2, 3, 5], dtype='float32')
-            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
             res = paddle.maximum(x, y)
             print(res)
-            #    [ 2., nan, nan]
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [2. , nan, nan])
 
-            x = paddle.to_tensor([5, 3, np.inf], dtype='float32')
-            y = paddle.to_tensor([1, -np.inf, 5], dtype='float32')
+            x = paddle.to_tensor([5, 3, float("inf")], dtype='float32')
+            y = paddle.to_tensor([1, -float("inf"), 5], dtype='float32')
             res = paddle.maximum(x, y)
             print(res)
-            #    [  5.,   3., inf.]
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [5.  , 3.  , inf.])
     """
     op_type = 'elementwise_max'
     axis = -1
@@ -994,34 +997,37 @@ def minimum(x, y, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             x = paddle.to_tensor([[1, 2], [7, 8]])
             y = paddle.to_tensor([[3, 4], [5, 6]])
             res = paddle.minimum(x, y)
             print(res)
-            #       [[1, 2],
-            #        [5, 6]]
+            # Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1, 2],
+            #         [5, 6]])
 
             x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
             y = paddle.to_tensor([3, 0, 4])
             res = paddle.minimum(x, y)
             print(res)
-            #       [[[1, 0, 3],
-            #         [1, 0, 3]]]
+            # Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[[1, 0, 3],
+            #          [1, 0, 3]]])
 
             x = paddle.to_tensor([2, 3, 5], dtype='float32')
-            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
             res = paddle.minimum(x, y)
             print(res)
-            #       [ 1., nan, nan]
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [1. , nan, nan])
 
-            x = paddle.to_tensor([5, 3, np.inf], dtype='float64')
-            y = paddle.to_tensor([1, -np.inf, 5], dtype='float64')
+            x = paddle.to_tensor([5, 3, float("inf")], dtype='float64')
+            y = paddle.to_tensor([1, -float("inf"), 5], dtype='float64')
             res = paddle.minimum(x, y)
             print(res)
-            #       [   1., -inf.,    5.]
+            # Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [ 1.  , -inf.,  5.  ])
     """
     op_type = 'elementwise_min'
     axis = -1
@@ -1061,34 +1067,37 @@ def fmax(x, y, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             x = paddle.to_tensor([[1, 2], [7, 8]])
             y = paddle.to_tensor([[3, 4], [5, 6]])
             res = paddle.fmax(x, y)
             print(res)
-            #    [[3, 4],
-            #     [7, 8]]
+            # Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[3, 4],
+            #         [7, 8]])
 
             x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             y = paddle.to_tensor([3, 0, 4])
             res = paddle.fmax(x, y)
             print(res)
-            #    [[3, 2, 4],
-            #     [3, 2, 4]]
+            # Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[3, 2, 4],
+            #         [3, 2, 4]])
 
             x = paddle.to_tensor([2, 3, 5], dtype='float32')
-            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
             res = paddle.fmax(x, y)
             print(res)
-            #    [ 2., 3., 5.]
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [2., 3., 5.])
 
-            x = paddle.to_tensor([5, 3, np.inf], dtype='float32')
-            y = paddle.to_tensor([1, -np.inf, 5], dtype='float32')
+            x = paddle.to_tensor([5, 3, float("inf")], dtype='float32')
+            y = paddle.to_tensor([1, -float("inf"), 5], dtype='float32')
             res = paddle.fmax(x, y)
             print(res)
-            #    [  5.,   3., inf.]
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [5.  , 3.  , inf.])
     """
     op_type = 'elementwise_fmax'
     axis = -1
@@ -1128,34 +1137,37 @@ def fmin(x, y, name=None):
 
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
             x = paddle.to_tensor([[1, 2], [7, 8]])
             y = paddle.to_tensor([[3, 4], [5, 6]])
             res = paddle.fmin(x, y)
             print(res)
-            #       [[1, 2],
-            #        [5, 6]]
+            # Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1, 2],
+            #         [5, 6]])
 
             x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
             y = paddle.to_tensor([3, 0, 4])
             res = paddle.fmin(x, y)
             print(res)
-            #       [[[1, 0, 3],
-            #         [1, 0, 3]]]
+            # Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[[1, 0, 3],
+            #          [1, 0, 3]]])
 
             x = paddle.to_tensor([2, 3, 5], dtype='float32')
-            y = paddle.to_tensor([1, np.nan, np.nan], dtype='float32')
+            y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
             res = paddle.fmin(x, y)
             print(res)
-            #       [ 1., 3., 5.]
+            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [1., 3., 5.])
 
-            x = paddle.to_tensor([5, 3, np.inf], dtype='float64')
-            y = paddle.to_tensor([1, -np.inf, 5], dtype='float64')
+            x = paddle.to_tensor([5, 3, float("inf")], dtype='float64')
+            y = paddle.to_tensor([1, -float("inf"), 5], dtype='float64')
             res = paddle.fmin(x, y)
             print(res)
-            #       [   1., -inf.,    5.]
+            # Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [ 1.  , -inf.,  5.  ])
     """
     op_type = 'elementwise_fmin'
     axis = -1
@@ -1321,15 +1333,13 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             # x is a Tensor with following elements:
             #    [[nan, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, -nan, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x = np.array([[float('nan'), 0.3, 0.5, 0.9],
-                            [0.1, 0.2, float('-nan'), 0.7]]).astype(np.float32)
-            x = paddle.to_tensor(x)
+            x = paddle.to_tensor([[float('nan'), 0.3, 0.5, 0.9],
+                            [0.1, 0.2, float('-nan'), 0.7]],dtype="float32")
             out1 = paddle.nansum(x)  # [2.7]
             out2 = paddle.nansum(x, axis=0)  # [0.1, 0.5, 0.5, 1.6]
             out3 = paddle.nansum(x, axis=-1)  # [1.7, 1.0]
@@ -1339,9 +1349,8 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             #      [[[1, nan], [3, 4]],
             #      [[5, 6], [-nan, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = np.array([[[1, float('nan')], [3, 4]],
+            y = paddle.to_tensor([[[1, float('nan')], [3, 4]],
                             [[5, 6], [float('-nan'), 8]]])
-            y = paddle.to_tensor(y)
             out5 = paddle.nansum(y, axis=[1, 2]) # [8, 19]
             out6 = paddle.nansum(y, axis=[0, 1]) # [9, 18]
     """
@@ -4323,7 +4332,7 @@ def rad2deg(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
+            import math
 
             x1 = paddle.to_tensor([3.142, -3.142, 6.283, -6.283, 1.570, -1.570])
             result1 = paddle.rad2deg(x1)
@@ -4332,7 +4341,7 @@ def rad2deg(x, name=None):
             #         [180.02334595, -180.02334595,  359.98937988, -359.98937988,
             #           9.95437622 , -89.95437622])
 
-            x2 = paddle.to_tensor(np.pi/2)
+            x2 = paddle.to_tensor(math.pi/2)
             result2 = paddle.rad2deg(x2)
             print(result2)
             # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -4813,18 +4822,20 @@ def angle(x, name=None):
             x = paddle.to_tensor([-2, -1, 0, 1]).unsqueeze(-1).astype('float32')
             y = paddle.to_tensor([-2, -1, 0, 1]).astype('float32')
             z = x + 1j * y
-            print(z.numpy())
-            # [[-2.-2.j -2.-1.j -2.+0.j -2.+1.j]
-            #  [-1.-2.j -1.-1.j -1.+0.j -1.+1.j]
-            #  [ 0.-2.j  0.-1.j  0.+0.j  0.+1.j]
-            #  [ 1.-2.j  1.-1.j  1.+0.j  1.+1.j]]
+            print(z)
+            # Tensor(shape=[4, 4], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            #        [[(-2-2j), (-2-1j), (-2+0j), (-2+1j)],
+            #         [(-1-2j), (-1-1j), (-1+0j), (-1+1j)],
+            #         [-2j    , -1j    ,  0j    ,  1j    ],
+            #         [ (1-2j),  (1-1j),  (1+0j),  (1+1j)]])
 
             theta = paddle.angle(z)
-            print(theta.numpy())
-            # [[-2.3561945 -2.6779451  3.1415927  2.6779451]
-            #  [-2.0344439 -2.3561945  3.1415927  2.3561945]
-            #  [-1.5707964 -1.5707964  0.         1.5707964]
-            #  [-1.1071488 -0.7853982  0.         0.7853982]]
+            print(theta)
+            # Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[-2.35619450, -2.67794514,  3.14159274,  2.67794514],
+            #         [-2.03444386, -2.35619450,  3.14159274,  2.35619450],
+            #         [-1.57079637, -1.57079637,  0.        ,  1.57079637],
+            #         [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
     """
 
     if in_dygraph_mode():
@@ -4911,19 +4922,14 @@ def frac(x, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            input = paddle.rand([3, 3], 'float32')
-            print(input.numpy())
-            # [[ 1.2203873  -1.0035421  -0.35193074]
-            #  [-0.00928353  0.58917075 -0.8407828 ]
-            #  [-1.5131804   0.5850153  -0.17597814]]
-
+            input = paddle.to_tensor([[12.22000003, -1.02999997],
+                                    [-0.54999995, 0.66000003]])
             output = paddle.frac(input)
-            print(output.numpy())
-            # [[ 0.22038734 -0.00354207 -0.35193074]
-            #  [-0.00928353  0.58917075 -0.8407828 ]
-            #  [-0.5131804   0.5850153  -0.17597814]]
+            print(output)
+            # Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[ 0.22000003, -0.02999997],
+            #         [-0.54999995,  0.66000003]])
     """
     op_type = 'elementwise_sub'
     axis = -1

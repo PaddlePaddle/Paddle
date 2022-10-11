@@ -26,10 +26,7 @@ from paddle.distributed.fleet.utils.fs import LocalFS, FS, HDFSClient, FSTimeOut
 class FSTest(unittest.TestCase):
 
     def _test_method(self, func):
-        if sys.version_info[0] <= 2:
-            args = inspect.getargspec(func).args
-        else:
-            args = inspect.getfullargspec(func).args
+        args = inspect.getfullargspec(func).args
 
         a = None
         try:
