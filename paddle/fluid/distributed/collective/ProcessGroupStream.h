@@ -54,6 +54,20 @@ class ProcessGroupStream : public ProcessGroup {
   ProcessGroupStream(int rank, int size, const platform::Place& place, int gid);
   virtual ~ProcessGroupStream() = default;
 
+  virtual phi::DeviceContext* GetDeviceContext(const Place& place,
+                                               bool use_calc_stream) const;
+
+  std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
+      bool sync_op,
+      bool use_calc_stream);
+
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& input_tensors,   // NOLINT
       std::vector<phi::DenseTensor>& output_tensors,  // NOLINT
@@ -114,6 +128,21 @@ class ProcessGroupStream : public ProcessGroup {
   virtual std::shared_ptr<ProcessGroup::Task> Recv_Partial(
       phi::DenseTensor& tensors,  // NOLINT
       int src_rank,
+      int offset,
+      int length,
+      bool sync_op,
+      bool use_calc_stream);
+
+  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      int offset,
+      int length,
+      bool sync_op) override;
+
+  virtual std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
+      std::vector<phi::DenseTensor>& in_tensors,   // NOLINT
+      std::vector<phi::DenseTensor>& out_tensors,  // NOLINT
       int offset,
       int length,
       bool sync_op,

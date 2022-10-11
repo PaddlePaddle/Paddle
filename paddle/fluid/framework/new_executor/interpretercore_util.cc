@@ -51,10 +51,7 @@ namespace interpreter {
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
-    size_t host_num_threads,
-    size_t device_num_threads,
-    size_t prepare_num_threads,
-    EventsWaiter* waiter) {
+    size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
   std::vector<WorkQueueOptions> group_options;
   // for execute host Kernel
   group_options.emplace_back(/*name*/ "HostTasks",
@@ -68,14 +65,6 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
   group_options.emplace_back(/*name*/ "DeviceKernelLaunch",
                              /*num_threads*/ device_num_threads,
                              /*allow_spinning*/ true,
-                             /*always_spinning*/ true,
-                             /*track_task*/ false,
-                             /*detached*/ true,
-                             /*events_waiter*/ waiter);
-  // for prepare deps and others
-  group_options.emplace_back(/*name*/ "Prepare",
-                             /*num_threads*/ prepare_num_threads,
-                             /*allow_spinning*/ true,
                              /*always_spinning*/ false,
                              /*track_task*/ false,
                              /*detached*/ true,
@@ -85,11 +74,10 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
 
 AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
                                size_t device_num_threads,
-                               size_t prepare_num_threads,
                                EventsWaiter* waiter)
     : host_num_thread_(host_num_threads) {
-  queue_group_ = CreateWorkQueueGroup(ConstructWorkQueueOptions(
-      host_num_threads, device_num_threads, prepare_num_threads, waiter));
+  queue_group_ = CreateWorkQueueGroup(
+      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
 }
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
@@ -102,44 +90,6 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   } else {
     queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
   }
-}
-
-std::future<std::unique_ptr<AtomicVectorSizeT>>
-AsyncWorkQueue::PrepareAtomicDeps(const std::vector<size_t>& dependecy_count) {
-  VLOG(4) << "PrepareAtomicDeps";
-  return queue_group_->AddAwaitableTask(
-      kPrepareWorkQueueIdx, interpreter::PrepareAtomicDeps, dependecy_count);
-}
-
-std::future<std::unique_ptr<AtomicVectorSizeT>>
-AsyncWorkQueue::PrepareAtomicVarRef(
-    const std::vector<VariableMetaInfo>& vec_meta_info) {
-  VLOG(4) << "PrepareAtomicVarRef";
-  return queue_group_->AddAwaitableTask(
-      kPrepareWorkQueueIdx, interpreter::PrepareAtomicVarRef, vec_meta_info);
-}
-
-std::unique_ptr<AtomicVectorSizeT> PrepareAtomicDeps(
-    const std::vector<size_t>& dependecy_count) {
-  VLOG(4) << "PrepareAtomicDeps";
-
-  auto op_deps = std::make_unique<AtomicVectorSizeT>(dependecy_count.size());
-  for (size_t i = 0; i < dependecy_count.size(); ++i) {
-    (*op_deps)[i] = dependecy_count[i];
-  }
-  VLOG(4) << "AtomicDeps:" << op_deps.get() << " " << op_deps->size();
-  return op_deps;
-}
-
-std::unique_ptr<AtomicVectorSizeT> PrepareAtomicVarRef(
-    const std::vector<VariableMetaInfo>& vec_meta_info) {
-  VLOG(4) << "PrepareAtomicVarRef";
-  auto var_ref = std::make_unique<AtomicVectorSizeT>(vec_meta_info.size());
-  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-    (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
-  }
-  VLOG(4) << "AtomicVarRef:" << var_ref.get() << " " << var_ref->size();
-  return var_ref;
 }
 
 void LogDeviceMemoryStats(const platform::Place& place) {
@@ -744,6 +694,12 @@ void build_op_func_list(const platform::Place& place,
 
     interpreter::LogDeviceMemoryStats(place);
   }
+
+  // NOTE(Ruibiao): Release memory cache to avoid memory fragments in Allocator.
+  // It reduce about 10% memory usage for V100 8-GPU training of
+  // transformer_base_bs4096_amp_fp16 and transformer_base_bs4096_pure_fp16
+  // model.
+  memory::Release(place);
 }
 
 void add_fetch(const std::vector<std::string>& fetch_names,
