@@ -164,29 +164,6 @@ class Gumbel(TransformedDistribution):
         """
         return paddle.sqrt(self.variance)
 
-    def _validate_value(self, value):
-        """Argument dimension check for distribution methods such as `log_prob`,
-        `cdf`.
-
-        Args:
-          value (Tensor|Scalar): The input value, which can be a scalar or a tensor.
-
-        Returns:
-          loc, scale, value: The broadcasted loc, scale and value, with the same dimension and data type.
-        """
-        if isinstance(value, numbers.Real):
-            value = paddle.full(shape=(), fill_value=value)
-        if value.dtype != self.scale.dtype:
-            value = paddle.cast(value, self.scale.dtype)
-        if len(self.scale.shape) > 0 or len(self.loc.shape) > 0 or len(
-                value.shape) > 0:
-            loc, scale, value = paddle.broadcast_tensors(
-                [self.loc, self.scale, value])
-        else:
-            loc, scale = self.loc, self.scale
-
-        return loc, scale, value
-
     def prob(self, value):
         """Probability density/mass function
 
@@ -197,10 +174,8 @@ class Gumbel(TransformedDistribution):
             Tensor: probability.The data type is same with value.
 
         """
-
-        loc, scale, value = self._validate_value(value)
-
         y = (self.loc - value) / self.scale
+
         return paddle.exp(y - paddle.exp(y)) / self.scale
 
     def log_prob(self, value):
@@ -213,8 +188,6 @@ class Gumbel(TransformedDistribution):
             Tensor: log probability.The data type is same with value.
 
         """
-        loc, scale, value = self._validate_value(value)
-
         return paddle.log(self.prob(value))
 
     def cdf(self, value):
@@ -226,8 +199,6 @@ class Gumbel(TransformedDistribution):
             Tensor: cumulative probability of value.
 
         """
-        loc, scale, value = self._validate_value(value)
-
         return paddle.exp(-paddle.exp(-(value - self.loc) / self.scale))
 
     def entropy(self):
