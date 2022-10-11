@@ -193,7 +193,7 @@ struct DefaultDeviceContextType<platform::XPUPlace> {
 
 #ifdef PADDLE_WITH_ASCEND_CL
 class NPUDeviceContext
-    : public DeviceContex,
+    : public DeviceContext,
       public TypeInfoTraits<DeviceContext, NPUDeviceContext> {
  public:
   explicit NPUDeviceContext(NPUPlace place);
