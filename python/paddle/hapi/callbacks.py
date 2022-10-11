@@ -1002,7 +1002,7 @@ class WandbCallback(Callback):
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
 
-            ## uncomment following lines to fit model with visualdl callback function
+            ## uncomment following lines to fit model with wandb callback function
             # callback = paddle.callbacks.WandbCallback(project='paddle_mnist')
             # model.fit(train_dataset, eval_dataset, batch_size=64, callbacks=callback)
 
