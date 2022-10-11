@@ -48,7 +48,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
     float in_scale = 0.;
 
     if (op_desc.HasAttr("Input_scale")) {
-      in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+      in_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));
       engine_->SetTensorDynamicRange(input, in_scale);
     }
     weight_data = engine_->GetWeightCPUData(weight_name, weight_t);
@@ -76,13 +76,16 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
     };
     tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
 
-    int head_number = BOOST_GET_CONST(int, op_desc.GetAttr("head_number"));
+    int head_number = PADDLE_GET_CONST(int, op_desc.GetAttr("head_number"));
 
     nvinfer1::ILayer* layer = nullptr;
     auto output_name = op_desc.Output("Out")[0];
+    bool flag_varseqlen = engine_->use_varseqlen() &&
+                          engine_->tensorrt_transformer_posid() != "" &&
+                          engine_->tensorrt_transformer_maskid() != "";
 
     if (engine_->with_dynamic_shape()) {
-      if (engine_->use_oss()) {
+      if (flag_varseqlen) {
         if (engine_->precision() == AnalysisConfig::Precision::kFloat32) {
           PADDLE_THROW(platform::errors::Fatal(
               "use use_oss must be int8 or half, not float32."));
@@ -114,11 +117,11 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
               platform::errors::InvalidArgument(
                   "must have out_threshold in multihead layers in int8 mode"));
           float out_scale =
-              BOOST_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+              PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
           engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
           if (qkv2context_plugin_int8) {
             dp_probs =
-                BOOST_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
+                PADDLE_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
           }
           auto creator = GetPluginRegistry()->getPluginCreator(
               "CustomQKVToContextPluginDynamic", "3");
@@ -246,11 +249,11 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
                                   "must have out threshold in multihead layers "
                                   "in int8 mode"));
             float out_scale =
-                BOOST_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+                PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
             engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
             if (qkv2context_plugin_int8) {
               dp_probs =
-                  BOOST_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
+                  PADDLE_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
             }
           }
 
@@ -414,7 +417,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
               platform::errors::InvalidArgument(
                   "must have out threshold in multihead layers in int8 mode"));
           float out_scale =
-              BOOST_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+              PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
           engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
         }
         fc_layer->setName(
@@ -425,7 +428,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
 
         // add qkv to context
         int head_size = hidden_out / head_number;
-        float scale = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
+        float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("alpha"));
 
         std::vector<nvinfer1::ITensor*> plugin_inputs;
         plugin_inputs.push_back(fc_layer->getOutput(0));
