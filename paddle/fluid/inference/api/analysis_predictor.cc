@@ -1244,6 +1244,16 @@ void AnalysisPredictor::PrepareArgument() {
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE_EQ(

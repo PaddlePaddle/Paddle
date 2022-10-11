@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/gaussian_random_kernel.h"
+#include "paddle/phi/kernels/shape_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,36 +20,40 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianRandomKernel(const Context& ctx,
-                          const IntArray& shape,
-                          float mean,
-                          float std,
-                          int seed,
-                          DataType dtype,
-                          DenseTensor* out) {
-  std::normal_distribution<T> dist(mean, std);
-  std::shared_ptr<std::mt19937_64> engine;
-  if (seed) {
-    engine = std::make_shared<std::mt19937_64>();
-    engine->seed(seed);
-  } else {
-    engine = ctx.GetGenerator()->GetCPUEngine();
+void ShapeKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out) {
+  DDim x_dims = x.dims();
+
+  // Output of shape op is often fed as x to fill_constant ops
+  // and we need to rotate a shape otherwise Tensors of wrong shape may be
+  // allocated
+  if (OneDNNContext::tls().get_cur_paddle_data_layout() == DataLayout::kNHWC &&
+      x_dims.size() >= 3) {
+    auto rdims = vectorize<int>(x_dims);
+    std::rotate(rdims.begin() + 1, rdims.begin() + 2, rdims.end());
+    x_dims = make_ddim(rdims);
   }
 
-  T* data = ctx.template Alloc<T>(out);
-  for (int64_t i = 0; i < out->numel(); ++i) {
-    data[i] = dist(*engine);
+  out->Resize({x_dims.size()});
+  auto out_data = dev_ctx.template Alloc<int32_t>(out);
+  for (int i = 0; i < x_dims.size(); ++i) {
+    out_data[i] = x_dims[i];
   }
 
-  out->Resize(phi::make_ddim(shape.GetData()));
   dnnl::memory::desc out_mem_desc(
       vectorize(out->dims()),
       funcs::ToOneDNNDataType(out->dtype()),
       funcs::GetPlainOneDNNFormat(out->dims().size()));
   out->set_mem_desc(out_mem_desc);
 }
-
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    gaussian_random, OneDNN, ALL_LAYOUT, phi::GaussianRandomKernel, float) {}
+PD_REGISTER_KERNEL(shape,
+                   OneDNN,
+                   ALL_LAYOUT,
+                   phi::ShapeKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t) {}
