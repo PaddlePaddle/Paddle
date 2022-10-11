@@ -292,12 +292,12 @@ TEST(OpKernel, multi_inputs) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
-  scope.Var("x0")->GetMutable<paddle::framework::LoDTensor>();
-  scope.Var("x1")->GetMutable<paddle::framework::LoDTensor>();
-  scope.Var("x2")->GetMutable<paddle::framework::LoDTensor>();
-  scope.Var("k0")->GetMutable<paddle::framework::LoDTensor>();
-  scope.Var("y0")->GetMutable<paddle::framework::LoDTensor>();
-  scope.Var("y1")->GetMutable<paddle::framework::LoDTensor>();
+  scope.Var("x0")->GetMutable<phi::DenseTensor>();
+  scope.Var("x1")->GetMutable<phi::DenseTensor>();
+  scope.Var("x2")->GetMutable<phi::DenseTensor>();
+  scope.Var("k0")->GetMutable<phi::DenseTensor>();
+  scope.Var("y0")->GetMutable<phi::DenseTensor>();
+  scope.Var("y1")->GetMutable<phi::DenseTensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_place);
@@ -439,7 +439,7 @@ TEST(IndicateVarDataTypeTest, lodtensor) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* var = scope.Var("lodtensor_1");
-  var->GetMutable<paddle::framework::LoDTensor>();
+  var->GetMutable<phi::DenseTensor>();
 
   bool caught = false;
   try {
@@ -618,10 +618,10 @@ void SetGetLoDLevelTestMain(std::string op_type) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* x_var = scope.Var("x.0");
-  auto* x = x_var->GetMutable<paddle::framework::LoDTensor>();
+  auto* x = x_var->GetMutable<phi::DenseTensor>();
   x->mutable_data<float>(phi::make_ddim({64}), place);
   auto* out_var = scope.Var("out.0");
-  out_var->GetMutable<paddle::framework::LoDTensor>();
+  out_var->GetMutable<phi::DenseTensor>();
 
   bool caught = false;
   std::string err_str =
@@ -722,8 +722,8 @@ TEST(OpWithUnusedVar, all) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
-  auto* x = scope.Var("X")->GetMutable<paddle::framework::LoDTensor>();
-  auto* y = scope.Var("Y")->GetMutable<paddle::framework::LoDTensor>();
+  auto* x = scope.Var("X")->GetMutable<phi::DenseTensor>();
+  auto* y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
   x->Resize({32, 64});
   y->Resize({32, 64});
   x->mutable_data<float>(cpu_place);
@@ -747,8 +747,8 @@ TEST(OpWithoutUnusedVar, all) {
 
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
-  auto* x = scope.Var("X")->GetMutable<paddle::framework::LoDTensor>();
-  auto* y = scope.Var("Y")->GetMutable<paddle::framework::LoDTensor>();
+  auto* x = scope.Var("X")->GetMutable<phi::DenseTensor>();
+  auto* y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
   x->Resize({32, 64});
   y->Resize({32, 64});
   x->mutable_data<float>(cpu_place);

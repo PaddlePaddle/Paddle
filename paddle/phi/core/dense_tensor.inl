@@ -132,7 +132,7 @@ inline void set_format(const dnnl::memory::format_tag format) {
 #endif
 
 /* ------------------------------ */
-/*   From framework::LoDTensor    */
+/*   From phi::DenseTensor    */
 /* ------------------------------ */
 /* The following members & interfaces were copied from phi::DenseTensor,
     so as to facilitate the unification of different Tensors

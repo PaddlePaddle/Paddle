@@ -17,7 +17,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
-from threading import Thread
 
 
 def user_reader(inputs):

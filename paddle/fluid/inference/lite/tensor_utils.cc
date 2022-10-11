@@ -186,8 +186,7 @@ int64_t GetLiteTensorNumel(const paddle::lite_api::Tensor& tensor) {
   return numel;
 }
 
-void InitDstTensor(paddle::lite_api::Tensor* dst,
-                   const framework::LoDTensor& src) {
+void InitDstTensor(paddle::lite_api::Tensor* dst, const phi::DenseTensor& src) {
   // Currently, Lite needs to explicitly specify the target type of
   // the input tensor.
   constexpr int empty_size = 0;
@@ -203,8 +202,7 @@ void InitDstTensor(paddle::lite_api::Tensor* dst,
   dst->SetLoD(lite_lod);
 }
 
-void InitDstTensor(framework::LoDTensor* dst,
-                   const paddle::lite_api::Tensor& src) {
+void InitDstTensor(phi::DenseTensor* dst, const paddle::lite_api::Tensor& src) {
   dst->mutable_data(
       inference::lite::utils::GetNativePlace(src.target()),
       framework::TransToPhiDataType(GetNativePrecisionType(src.precision())));
@@ -213,7 +211,7 @@ void InitDstTensor(framework::LoDTensor* dst,
 
 template <>
 void TensorCopyAsync(paddle::lite_api::Tensor* dst,
-                     const framework::LoDTensor& src,
+                     const phi::DenseTensor& src,
                      const platform::DeviceContext& ctx) {
   InitDstTensor(dst, src);
   const platform::Place& src_place = src.place();
@@ -235,7 +233,7 @@ void TensorCopyAsync(paddle::lite_api::Tensor* dst,
 }
 
 template <>
-void TensorCopyAsync(framework::LoDTensor* dst,
+void TensorCopyAsync(phi::DenseTensor* dst,
                      const paddle::lite_api::Tensor& src,
                      const platform::DeviceContext& ctx) {
   dst->Resize(phi::make_ddim(src.shape()));
@@ -255,7 +253,7 @@ void TensorCopyAsync(framework::LoDTensor* dst,
 }
 
 template <>
-void TensorDataShare(paddle::lite_api::Tensor* dst, framework::LoDTensor* src) {
+void TensorDataShare(paddle::lite_api::Tensor* dst, phi::DenseTensor* src) {
   dst->Resize(phi::vectorize(src->dims()));
   dst->ShareExternalMemory(
       src->data(), src->memory_size(), GetLiteTargetType(src->place()));
@@ -267,7 +265,7 @@ void TensorDataShare(paddle::lite_api::Tensor* dst, framework::LoDTensor* src) {
 }
 
 template <>
-void TensorDataShare(framework::LoDTensor* dst, paddle::lite_api::Tensor* src) {
+void TensorDataShare(phi::DenseTensor* dst, paddle::lite_api::Tensor* src) {
   void* src_raw_data =
       GetLiteTensorDataPtr(src, src->precision(), src->target());
   size_t memory_size =

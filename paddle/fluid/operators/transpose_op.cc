@@ -249,18 +249,10 @@ class Transpose2Op : public TransposeOp {
         OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-      using framework::proto::VarType;
-      auto input_data_type = framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("X")->dtype());
-      int customized_type_value = (input_data_type == VarType::INT8 ||
-                                   input_data_type == VarType::UINT8)
-                                      ? kTransposeMKLDNNINT8
-                                      : kTransposeMKLDNNFP32;
       return framework::OpKernelType(data_type,
                                      ctx.GetPlace(),
                                      phi::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN,
-                                     customized_type_value);
+                                     framework::LibraryType::kMKLDNN);
     }
 #endif
     std::string data_format = ctx.Attr<std::string>("data_format");

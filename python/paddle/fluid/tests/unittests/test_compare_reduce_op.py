@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
 
 def create_test_not_equal_class(op_type, typename, callback):

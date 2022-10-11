@@ -19,7 +19,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 import paddle.fluid.core as core
-import six
 import unittest
 
 os.environ['CPU_NUM'] = str(4)

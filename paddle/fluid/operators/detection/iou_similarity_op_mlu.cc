@@ -168,10 +168,10 @@ template <typename T>
 class IouSimilarityMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     bool normalized = ctx.Attr<bool>("box_normalized");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto _type = x->dtype();
     auto place = ctx.GetPlace();

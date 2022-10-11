@@ -52,7 +52,7 @@ class TransferLayoutFunctor {
 
   void operator()() const {
     auto &in_tensor = *framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_);
-    framework::LoDTensor out_tensor;
+    phi::DenseTensor out_tensor;
 
     auto out_layout = static_cast<DataLayout>(dst_layout_);
     out_tensor.set_layout(out_layout);
@@ -61,7 +61,7 @@ class TransferLayoutFunctor {
     // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
     // data_transfer.cc
     auto in_layout = static_cast<DataLayout>(src_layout_);
-    auto *tensor_out = out_->GetMutable<framework::LoDTensor>();
+    auto *tensor_out = out_->GetMutable<phi::DenseTensor>();
     VLOG(4) << in_layout << "->" << out_layout << " " << in_tensor.layout();
     if (!in_tensor.IsInitialized() && in_layout == DataLayout::kMKLDNN &&
         out_layout == DataLayout::kNHWC) {
