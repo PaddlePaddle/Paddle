@@ -33,7 +33,7 @@ from paddle.fluid import (
 )
 from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
 from paddle.fluid.framework import static_only, Parameter
-from paddle.fluid.executor import Executor, global_scope
+from paddle.fluid.executor import global_scope
 from paddle.fluid.log_helper import get_logger
 
 __all__ = []
