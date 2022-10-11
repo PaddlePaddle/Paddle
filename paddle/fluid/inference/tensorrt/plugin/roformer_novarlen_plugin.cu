@@ -626,7 +626,7 @@ int RoformerNovarlenPlugin::enqueue(
                     tmp_roformer_ptr,
                     stream);
 
-    auto *device_ctx = static_cast<platform::CUDADeviceContext *>(
+    auto *device_ctx = static_cast<phi::GPUContext *>(
         platform::DeviceContextPool::Instance().Get(
             platform::CUDAPlace(device_id)));
 
@@ -654,7 +654,7 @@ int RoformerNovarlenPlugin::enqueue(
     apply_scale<<<blocks, threads, 0, stream>>>(
         tptr, static_cast<half>(scale_), n_q);
 
-    const platform::CUDADeviceContext &dev_ctx = *device_ctx;
+    const phi::GPUContext &dev_ctx = *device_ctx;
     operators::math::MultiHeadGPUComputeFunctor<half> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,
