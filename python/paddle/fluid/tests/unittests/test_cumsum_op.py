@@ -31,7 +31,7 @@ import paddle.fluid.layers as layers
 
 class TestCumsumOp(unittest.TestCase):
 
-    def run_cases(self):
+    def run_cases(self, use_gpu=False):
         data_np = np.arange(12).reshape(3, 4)
         data = paddle.to_tensor(data_np)
 
@@ -50,6 +50,10 @@ class TestCumsumOp(unittest.TestCase):
         y = paddle.cumsum(data, dtype='float64')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
 
+        if use_gpu:
+            y = paddle.cumsum(data, dtype='float16')
+            self.assertTrue(y.dtype == core.VarDesc.VarType.FP16)
+
         y = paddle.cumsum(data, dtype=np.int32)
         self.assertTrue(y.dtype == core.VarDesc.VarType.INT32)
 
@@ -67,8 +71,12 @@ class TestCumsumOp(unittest.TestCase):
             y4 = paddle.cumsum(x, dtype='float64')
             y5 = paddle.cumsum(x, dtype=np.int32)
             y6 = paddle.cumsum(x, axis=-2)
-
             fetch_list = [y.name, y2.name, y3.name, y4.name, y5.name, y6.name]
+
+            if use_gpu:
+                y7 = paddle.cumsum(x, dtype='float16')
+                fetch_list.append(y7)
+
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -83,6 +91,11 @@ class TestCumsumOp(unittest.TestCase):
             self.assertTrue(out[3].dtype == np.float64)
             self.assertTrue(out[4].dtype == np.int32)
 
+            if use_gpu:
+                self.assertTrue(out[6].dtype == np.float16)
+                z = np.cumsum(data_np)
+                np.testing.assert_allclose(z, out[6], rtol=5e-03)
+
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
         self.run_cases()
@@ -95,7 +108,7 @@ class TestCumsumOp(unittest.TestCase):
             return
 
         paddle.disable_static(paddle.fluid.CUDAPlace(0))
-        self.run_cases()
+        self.run_cases(use_gpu=True)
         paddle.enable_static()
 
         self.run_static(use_gpu=True)
@@ -200,7 +213,7 @@ class TestSumOp7(OpTest):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestSumOp8(OpTest):
+class TestCumsumFP16(OpTest):
 
     def setUp(self):
         self.op_type = "cumsum"

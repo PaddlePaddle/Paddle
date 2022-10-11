@@ -148,10 +148,8 @@ struct LogAddExp {
   template <typename T>
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    T min_val = a > b ? b : a;
-    T max_val = a > b ? a : b;
-    return static_cast<T>(__logf(1 + __expf(min_val - max_val))) + max_val;
+    return std::log(1 + std::exp(std::min(a, b) - std::max(a, b))) +
+           std::max(a, b);
   }
 };
 
@@ -160,7 +158,7 @@ struct Identity;
 
 template <typename T>
 struct Identity<T, cub::Sum> {
-  static constexpr T value = static_cast<T>(0);
+  static constexpr T value = 0;
 };
 
 template <typename T>
@@ -176,14 +174,20 @@ __global__ void BlockScanKernel(T* d_out,
                                 int scan_size,
                                 bool exclusive,
                                 Op op) {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  const MT* mt_d_in = reinterpret_cast<const MT*>(d_in);
+  MT* mt_d_out = reinterpret_cast<MT*>(d_out);
+
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
   typedef cub::
-      BlockLoad<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
+      BlockLoad<MT, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
           BlockLoadT;
-  typedef cub::
-      BlockStore<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_STORE_TRANSPOSE>
-          BlockStoreT;
-  typedef cub::BlockScan<T, BLOCK_THREADS> BlockScanT;
+  typedef cub::BlockStore<MT,
+                          BLOCK_THREADS,
+                          ITEMS_PER_THREAD,
+                          cub::BLOCK_STORE_TRANSPOSE>
+      BlockStoreT;
+  typedef cub::BlockScan<MT, BLOCK_THREADS> BlockScanT;
   // Allocate type-safe, repurposable shared memory for collectives
   __shared__ union {
     typename BlockLoadT::TempStorage load;
@@ -192,7 +196,7 @@ __global__ void BlockScanKernel(T* d_out,
   } temp_storage;
 
   int bx = blockIdx.x;
-  BlockPrefixCallbackOp<T, Op> prefix_op(Identity<T, Op>::value, op);
+  BlockPrefixCallbackOp<MT, Op> prefix_op(Identity<MT, Op>::value, op);
 
   // Obtain this block's segment of consecutive keys (blocked across threads)
   int item_per_block = BLOCK_THREADS * ITEMS_PER_THREAD;
@@ -207,9 +211,9 @@ __global__ void BlockScanKernel(T* d_out,
 
     int offset = block_offset + bx * scan_size;
 
-    T thread_keys[ITEMS_PER_THREAD];
+    MT thread_keys[ITEMS_PER_THREAD];
     BlockLoadT(temp_storage.load)
-        .Load(d_in + offset, thread_keys, valid_item, 0);
+        .Load(mt_d_in + offset, thread_keys, valid_item, 0);
 
     __syncthreads();
     if (exclusive) {
@@ -222,7 +226,7 @@ __global__ void BlockScanKernel(T* d_out,
     __syncthreads();
 
     BlockStoreT(temp_storage.store)
-        .Store(d_out + offset, thread_keys, valid_item);
+        .Store(mt_d_out + offset, thread_keys, valid_item);
   }
 }
 
@@ -401,27 +405,42 @@ void LogcumsumexpKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+/*#ifdef PADDLE_WITH_HIP*/
 PD_REGISTER_KERNEL(cumsum,
                    GPU,
                    ALL_LAYOUT,
                    phi::CumsumKernel,
                    float,
                    double,
-#ifdef PADDLE_WITH_HIP
-                   phi::dtype::float16,
-#endif
                    int16_t,
                    int,
-                   int64_t) {
-}
+                   int64_t,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(logcumsumexp,
                    GPU,
                    ALL_LAYOUT,
                    phi::LogcumsumexpKernel,
-#ifdef PADDLE_WITH_HIP
-                   phi::dtype::float16,
-#endif
                    float,
-                   double) {
-}
+                   double,
+                   phi::dtype::float16) {}
+/*
+#else
+PD_REGISTER_KERNEL(cumsum,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CumsumKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(logcumsumexp,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogcumsumexpKernel,
+                   float,
+                   double) {}
+#endif
+*/

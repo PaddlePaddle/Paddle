@@ -24,9 +24,6 @@ PD_REGISTER_KERNEL(logcumsumexp_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::LogcumsumexpGradKernel,
-#ifdef PADDLE_WITH_HIP
                    phi::dtype::float16,
-#endif
                    float,
-                   double) {
-}
+                   double) {}
