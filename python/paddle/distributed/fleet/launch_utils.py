@@ -1481,7 +1481,7 @@ class ParameterServerLauncher(object):
                 format(self.node_ips, self.current_node_ip, self.node_rank))
 
     def start_ps(self):
-        if not self.current_node_ip in self.node_ips:
+        if self.current_node_ip not in self.node_ips:
             return
         cluster = Cluster(hdfs=None)
         server_rank = 0

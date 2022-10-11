@@ -14,12 +14,11 @@
 
 import os
 import gc
-import sys
 import unittest
 import time
 import paddle
 import paddle.incubate.multiprocessing as mp
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dygraph_mode, _enable_legacy_dygraph
+from paddle.fluid.framework import _enable_legacy_dygraph, _test_eager_guard, in_dygraph_mode
 
 REPEAT = 20
 HAS_SHM_FILES = os.path.isdir('/dev/shm')

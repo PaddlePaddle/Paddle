@@ -13,10 +13,7 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import numpy.random as random
-import sys
-import math
 from op_test import OpTest
 
 

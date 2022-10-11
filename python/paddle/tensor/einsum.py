@@ -409,7 +409,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
             plan.add_step(step)
             step = squeeze, [var2], var2, [-1, -2]
             plan.add_step(step)
-        elif j1 + j2 == 0 and not -1 in np.concatenate(
+        elif j1 + j2 == 0 and -1 not in np.concatenate(
             (op1_vshape[K], op2_vshape[K])):
             assert all(op1_vshape[K] == op2_vshape[K])
             step = reshape, [

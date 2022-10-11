@@ -181,17 +181,10 @@ class RNNCellBase(Layer):
         batch_ref = flatten(batch_ref)[0]
 
         def _is_shape_sequence(seq):
-            if sys.version_info < (3, ):
-                integer_types = (
-                    int,
-                    long,
-                )
-            else:
-                integer_types = (int, )
             """For shape, list/tuple of integer is the finest-grained objection"""
             if (isinstance(seq, list) or isinstance(seq, tuple)):
-                if reduce(lambda flag, x: isinstance(x, integer_types) and flag,
-                          seq, True):
+                if reduce(lambda flag, x: isinstance(x, int) and flag, seq,
+                          True):
                     return False
             # TODO: Add check for the illegal
             if isinstance(seq, dict):

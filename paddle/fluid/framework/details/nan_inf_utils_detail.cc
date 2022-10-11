@@ -349,8 +349,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
           "Cannot find var: `%s` in op `%s`.", var_name, op_type));
 
   const phi::DenseTensor* tensor{nullptr};
-  if (var->IsType<framework::LoDTensor>()) {
-    tensor = &var->Get<framework::LoDTensor>();
+  if (var->IsType<phi::DenseTensor>()) {
+    tensor = &var->Get<phi::DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     tensor = &var->Get<phi::SelectedRows>().value();
   } else {
@@ -418,7 +418,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
       return;
     }
 
-    framework::LoDTensor cpu_tensor;
+    phi::DenseTensor cpu_tensor;
     cpu_tensor.Resize(tensor->dims());
     float* cpu_data = static_cast<float*>(
         cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype()));
@@ -511,8 +511,8 @@ void PrintNpuVarInfo(const std::string& op_type,
                      const framework::Variable* var,
                      const platform::Place& place) {
   const phi::DenseTensor* tensor{nullptr};
-  if (var->IsType<framework::LoDTensor>()) {
-    tensor = &var->Get<framework::LoDTensor>();
+  if (var->IsType<phi::DenseTensor>()) {
+    tensor = &var->Get<phi::DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     tensor = &var->Get<phi::SelectedRows>().value();
   } else {

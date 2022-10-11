@@ -13,11 +13,11 @@
 # limitations under the License.
 import numpy as np
 import paddle
-from ..framework import LayerHelper
-from ..fluid.data_feeder import check_dtype, check_variable_and_dtype
+from ..framework import LayerHelper, convert_np_dtype_to_dtype_
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..fluid import layers
 from ..framework import core, in_dygraph_mode, _non_static_mode
 from ..fluid.framework import _in_legacy_dygraph
-from paddle.common_ops_import import convert_np_dtype_to_dtype_
 from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops, _legacy_C_ops

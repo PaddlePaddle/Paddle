@@ -18,7 +18,7 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 
 // ( (A.^2 * B.^2) - (A * B).^2 ) .* scalar

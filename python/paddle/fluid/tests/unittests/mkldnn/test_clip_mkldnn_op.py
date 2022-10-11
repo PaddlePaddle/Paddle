@@ -31,9 +31,9 @@ class TestClipOneDNNOp(OpTest):
         self.adjust_op_settings()
 
         self.min = self.attrs[
-            'min'] if not 'Min' in self.inputs else self.inputs['Min']
+            'min'] if 'Min' not in self.inputs else self.inputs['Min']
         self.max = self.attrs[
-            'max'] if not 'Max' in self.inputs else self.inputs['Max']
+            'max'] if 'Max' not in self.inputs else self.inputs['Max']
 
         self.outputs = {'Out': np.clip(self.x_fp32, self.min, self.max)}
 

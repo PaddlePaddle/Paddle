@@ -64,7 +64,7 @@ class MineHardExamplesKernel : public framework::OpKernel<T> {
     MiningType mining_type =
         GetMiningType(ctx.Attr<std::string>("mining_type"));
 
-    auto out_neg_indices = ctx.Output<framework::LoDTensor>("NegIndices");
+    auto out_neg_indices = ctx.Output<phi::DenseTensor>("NegIndices");
     auto out_match_indices =
         ctx.Output<phi::DenseTensor>("UpdatedMatchIndices");
 

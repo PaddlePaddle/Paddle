@@ -39,10 +39,6 @@ class TestCallbacks(unittest.TestCase):
         shutil.rmtree(self.save_dir)
 
     def func_visualdl_callback(self):
-        # visualdl not support python2
-        if sys.version_info < (3, ):
-            return
-
         inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
 

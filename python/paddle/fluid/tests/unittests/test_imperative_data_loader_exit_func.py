@@ -21,10 +21,7 @@ import time
 import paddle.compat as cpt
 from paddle.fluid.framework import _test_eager_guard
 
-if sys.version_info[0] == 2:
-    import Queue as queue
-else:
-    import queue
+import queue
 
 from paddle.fluid.reader import multiprocess_queue_set, _cleanup, CleanupFuncRegistrar
 
@@ -39,7 +36,6 @@ class TestDygraphDataLoaderCleanUpFunc(unittest.TestCase):
 
     def func_test_clear_queue_set(self):
         test_queue = queue.Queue(self.capacity)
-        global multiprocess_queue_set
         multiprocess_queue_set.add(test_queue)
         for i in range(0, self.capacity):
             test_queue.put(i)
@@ -61,7 +57,7 @@ class TestRegisterExitFunc(unittest.TestCase):
         try:
             CleanupFuncRegistrar.register(5)
         except TypeError as ex:
-            self.assertIn("is not callable", cpt.get_exception_message(ex))
+            self.assertIn("is not callable", str(ex))
             exception = ex
         self.assertIsNotNone(exception)
 

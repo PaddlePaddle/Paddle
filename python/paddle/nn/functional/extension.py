@@ -24,8 +24,7 @@ from paddle import in_dynamic_mode
 from paddle import _C_ops, _legacy_C_ops
 from ...fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...framework import core
-from ...common_ops_import import convert_np_dtype_to_dtype_
+from ...framework import core, convert_np_dtype_to_dtype_
 
 __all__ = []
 

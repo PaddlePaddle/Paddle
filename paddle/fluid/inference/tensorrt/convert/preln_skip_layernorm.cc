@@ -46,7 +46,7 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
                                     framework::DDim* dims) -> float* {
       std::string var_name = op_desc.Input(arg_name).front();
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       (*dims) = temp_tensor->dims();
 
       auto* temp_data = const_cast<float*>(static_cast<const float*>(
