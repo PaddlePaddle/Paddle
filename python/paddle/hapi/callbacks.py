@@ -961,14 +961,14 @@ class WandbCallback(Callback):
     """Track your training and system metrics using `Weights and Biases <https://docs.wandb.ai>`_.
 
     **Installation and set-up**
-    
+
     Install with pip and log in to your W&B account:
 
     .. code-block:: bash
 
         pip install wandb
         wandb login
-    
+
     Args:
         project(str, optional): Name of the project which the run is a part of. Default: uncategorized
         entity(str, optional): Name of the team/user who is creating the run. Default: Logged in user
@@ -976,7 +976,7 @@ class WandbCallback(Callback):
         dir(str, optional): Directory in which all the metadata is stored. Default: `wandb`
         offline(str, optional): Can be "online", "offline" or "disabled". Default: "online".
         job_type(str, optional): the type of run, which is useful when you're grouping runs together. Default: None
-    
+
     Examples:
         .. code-block:: python
 
@@ -1033,10 +1033,10 @@ class WandbCallback(Callback):
         self.wandb_args.update(**kwargs)
 
         _ = self.run
-    
+
     def _is_write(self):
         return ParallelEnv().local_rank == 0
-    
+
     @property
     def run(self):
         if self._is_write():
@@ -1051,7 +1051,7 @@ class WandbCallback(Callback):
                     self._run = self.wandb.init(**self.wandb_args)
 
         return self._run
-    
+
     def on_train_begin(self, logs=None):
         self.epochs = self.params['epochs']
         assert self.epochs
@@ -1070,14 +1070,14 @@ class WandbCallback(Callback):
     def on_epoch_begin(self, epoch, logs=None):
         self.steps = self.params['steps']
         self.epoch = epoch
-    
+
     def _updates(self, logs, mode):
         if not self._is_write():
             return
-        
+    
         metrics = getattr(self, '%s_metrics' % (mode))
         current_step = getattr(self, '%s_step' % (mode))
-        
+
         _metrics = dict()
 
         if mode == 'train':
@@ -1086,7 +1086,6 @@ class WandbCallback(Callback):
         else:
             total_step = self.epoch
             _metrics.update({'epoch': total_step})
-        
 
         for k in metrics:
             if k in logs:
@@ -1100,24 +1099,24 @@ class WandbCallback(Callback):
                     continue
 
         self.run.log(_metrics)
-    
+
     def on_train_batch_end(self, step, logs=None):
         logs = logs or {}
         self.train_step += 1
 
         if self._is_write():
             self._updates(logs, 'train')
-    
+
     def on_eval_begin(self, logs=None):
         self.eval_steps = logs.get('steps', None)
         self.eval_metrics = logs.get('metrics', [])
         self.eval_step = 0
         self.evaled_samples = 0
-    
+
     def on_train_end(self, logs=None):
         if self._is_write():
             self.run.finish()
-    
+
     def on_eval_end(self, logs=None):
         if self._is_write():
             self._updates(logs, 'eval')
@@ -1125,7 +1124,7 @@ class WandbCallback(Callback):
             if (not hasattr(self, '_is_fit')) and hasattr(self, 'run'):
                 self.run.finish()
                 delattr(self, 'run')
-    
+
 
 class ReduceLROnPlateau(Callback):
     """Reduce learning rate when a metric of evaluation has stopped improving.
