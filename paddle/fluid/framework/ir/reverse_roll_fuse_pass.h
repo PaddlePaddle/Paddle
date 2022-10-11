@@ -22,15 +22,47 @@
 namespace paddle {
 namespace framework {
 namespace ir {
-    class ReverseRollFusePass : public FusePassBase{
-        public:
-            // ReverseRollFusePass();
-            virtual ~ReverseRollFusePass(){}
-        protected:
-            void ApplyImpl(ir::Graph *graph) const override;
-        private:
-            const std::string scope_name_{"reverse_roll_fuse"};
-    };
-} // ir
-} // framework
-} // paddle
+
+//    |
+// reshape2
+//    |
+// reshape2
+//    |
+// transpose2     ->           reverse_roll (shift_size=0)
+//    |          fuse
+// reshape2
+//    |
+// reshape2
+//    |
+//
+//   or
+//
+//    |
+// reshape2
+//    |
+// reshape2
+//    |           ->         reverse_roll (shift_size>0)
+// transpose2    fuse
+//    |
+// reshape2
+//    |
+//   roll
+//    |
+// reshape2
+//    |
+
+class ReverseRollFusePass : public FusePassBase {
+ public:
+  ReverseRollFusePass();
+  virtual ~ReverseRollFusePass() {}
+
+ protected:
+  void ApplyImpl(ir::Graph *graph) const override;
+  int ApplyPattern(ir::Graph *graph, bool with_roll) const;
+
+ private:
+  const std::string scope_name_{"reverse_roll_fuse"};
+};
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
