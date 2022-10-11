@@ -73,7 +73,7 @@ class netFileReader(FileReader):
                             (line[:-1], fileName))
         traceInfo["traceEvents"] = traceEventList
 
-        if not q is None:
+        if q is not None:
             q.put(traceInfo)
         else:
             return traceInfo

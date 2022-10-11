@@ -353,7 +353,7 @@ class TestRandomValue(unittest.TestCase):
             return
 
         # Different GPU generatte different random value. Only test V100 here.
-        if not "V100" in paddle.device.cuda.get_device_name():
+        if "V100" not in paddle.device.cuda.get_device_name():
             return
 
         def _check_random_value(dtype, expect, expect_mean, expect_std):
