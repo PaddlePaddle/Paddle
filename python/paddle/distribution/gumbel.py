@@ -18,7 +18,6 @@ import math
 import numpy as np
 
 from paddle.distribution.transformed_distribution import TransformedDistribution
-from paddle.distribution.transform import AffineTransform, ExpTransform
 from paddle.fluid import framework as framework
 
 
