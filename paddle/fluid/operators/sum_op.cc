@@ -69,6 +69,10 @@ class SumOp : public framework::OperatorWithKernel {
       if (phi::product(x_dim) == 0) {
         continue;
       }
+      // for 0D tensor
+      if (x_dim.size() == 0) {
+        continue;
+      }
       if (phi::product(in_dim) == 0) {
         in_dim = x_dim;
       } else {
