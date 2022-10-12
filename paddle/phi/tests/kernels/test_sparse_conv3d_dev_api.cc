@@ -212,7 +212,7 @@ void TestConv3dBase(const std::vector<IntT>& indices,
                                                "Conv3d",
                                                &d_rulebook,
                                                &d_counter);
-  SparseCooTensor tmp_d_out = sparse::Coalesce<T>(dev_ctx_gpu, d_out);
+  SparseCooTensor tmp_d_out = sparse::CoalesceCoo<T>(dev_ctx_gpu, d_out);
 
   ASSERT_EQ(correct_out_dims.size(), d_out.dims().size());
   ASSERT_EQ((int64_t)correct_out_features.size() / out_channels, d_out.nnz());
