@@ -84,6 +84,8 @@ bool NativePaddlePredictor::Init(
     place_ = paddle::platform::XPUPlace(config_.device);
   } else if (config_.use_npu) {
     place_ = paddle::platform::NPUPlace(config_.device);
+  } else if (config_.use_mlu) {
+    place_ = paddle::platform::MLUPlace(config_.device);
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -272,7 +274,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       PADDLE_THROW(platform::errors::Unavailable(
           "Not compile with XPU, should not reach here."));
 #endif
-    } else {
+    } else if (platform::is_npu_place(place_)) {
 #ifdef PADDLE_WITH_ASCEND_CL
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
@@ -288,6 +290,23 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 #else
       PADDLE_THROW(platform::errors::Unavailable(
           "Not compile with NPU, should not reach here."));
+#endif
+    } else {
+#ifdef PADDLE_WITH_MLU
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto *dev_ctx =
+          static_cast<const platform::MLUDeviceContext *>(pool.Get(place_));
+      auto dst_mlu_place = place_;
+      memory::Copy(dst_mlu_place,
+                   static_cast<void *>(input_ptr),
+                   platform::CPUPlace(),
+                   inputs[i].data.data(),
+                   inputs[i].data.length(),
+                   dev_ctx->stream());
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Not compile with MLU, should not reach here."));
 #endif
     }
 

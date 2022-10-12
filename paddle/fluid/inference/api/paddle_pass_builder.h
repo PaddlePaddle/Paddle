@@ -164,6 +164,10 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \return A bool variable implying whether we are in npu mode.
   bool use_npu() const { return use_npu_; }
 
+  /// \brief Check if we are using mlu.
+  /// \return A bool variable implying whether we are in mlu mode.
+  bool use_mlu() const { return use_mlu_; }
+
   /// \brief Check if we are using ipu.
   /// \return A bool variable implying whether we are in ipu mode.
   bool use_ipu() const { return use_ipu_; }
@@ -180,6 +184,7 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_xpu_{false};
   bool use_gpu_{false};
   bool use_npu_{false};
+  bool use_mlu_{false};
   bool use_ipu_{false};
   bool use_mkldnn_{false};
   bool use_custom_device_{false};
@@ -292,6 +297,21 @@ class PD_INFER_DECL NpuPassStrategy final : public PassStrategy {
   explicit NpuPassStrategy(const NpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_npu_ = true;
+  }
+};
+
+/// \class MluPassStrategy
+/// \brief The MLU passes controller, it is used in AnalysisPredictor with MLU
+/// mode.
+class PD_INFER_DECL MluPassStrategy final : public PassStrategy {
+ public:
+  MluPassStrategy() : PassStrategy({}) { use_mlu_ = true; }
+
+  /// \brief Construct by copying another MluPassStrategy object.
+  /// \param[in] other The MluPassStrategy object we want to copy.
+  explicit MluPassStrategy(const MluPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {
+    use_mlu_ = true;
   }
 };
 

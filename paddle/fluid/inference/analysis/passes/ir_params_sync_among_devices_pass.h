@@ -40,6 +40,10 @@ class IrParamsSyncAmongDevicesPass : public AnalysisPass {
 #else
   void CopyParamsToGpu(Argument *argument);
 #endif
+
+#ifdef PADDLE_WITH_MLU
+  void CopyParamsToMlu(Argument *argument);
+#endif
 };
 
 }  // namespace analysis

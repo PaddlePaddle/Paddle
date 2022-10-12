@@ -327,6 +327,7 @@ struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
   bool use_xpu{false};
   bool use_gpu{false};
   bool use_npu{false};
+  bool use_mlu{false};
   int device{0};
   float fraction_of_gpu_memory{
       -1.f};  ///< Change to a float in (0,1] if needed.

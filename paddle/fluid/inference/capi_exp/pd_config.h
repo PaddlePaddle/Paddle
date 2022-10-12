@@ -218,6 +218,14 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableNpu(
     __pd_keep PD_Config* pd_config, int32_t device_id);
 ///
+/// \brief Turn on MLU.
+///
+/// \param[in] pd_onfig config
+/// \param[in] device_id device_id the MLU card to use.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMlu(
+    __pd_keep PD_Config* pd_config, int32_t device_id);
+///
 /// \brief A boolean state telling whether the XPU is turned on.
 ///
 /// \param[in] pd_onfig config
@@ -232,6 +240,14 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseXpu(
 /// \return Whether the NPU is turned on.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseNpu(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief A boolean state telling whether the MLU is turned on.
+///
+/// \param[in] pd_onfig config
+/// \return Whether the MLU is turned on.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseMlu(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Get the GPU device id.
@@ -256,6 +272,14 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigXpuDeviceId(
 /// \return The NPU device id.
 ///
 PADDLE_CAPI_EXPORT extern int32_t PD_ConfigNpuDeviceId(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Get the MLU device id.
+///
+/// \param[in] pd_onfig config
+/// \return The MLU device id.
+///
+PADDLE_CAPI_EXPORT extern int32_t PD_ConfigMluDeviceId(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Get the initial size in MB of the GPU memory pool.

@@ -260,6 +260,12 @@ PreparedOp PrepareImpl(
   }
 #endif
 
+#ifdef PADDLE_WITH_MLU
+  if (is_in_mlu_black_list(op.Type())) {
+    expected_kernel_key.place_ = platform::CPUPlace();
+  }
+#endif
+
   bool has_phi_kernel = false;
 
   const auto* arg_map_fn = phi_op_utils_map.GetArgumentMappingFn(op.Type());
