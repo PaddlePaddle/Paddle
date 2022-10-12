@@ -21,10 +21,9 @@ __all__ = []
 
 
 class Image(unittest.TestCase):
-
     def test_resize_flip_chw(self):
         # resize
-        imgDir = sys.argv[0].replace('test_image.py','cat.jpg')
+        imgDir = sys.argv[0].replace('test_image.py', 'cat.jpg')
         im = image.load_image(imgDir)
         im = image.resize_short(im, 256)
         self.assertEqual(256, min(im.shape[:2]))
