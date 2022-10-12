@@ -15,7 +15,6 @@
 import os
 import errno
 import warnings
-import six
 import logging
 import pickle
 import contextlib

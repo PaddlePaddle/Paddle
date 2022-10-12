@@ -5522,8 +5522,6 @@ class Program(object):
 
             .. code-block:: python
 
-                import six
-
                 def print_prog(prog):
                     for name, value in sorted(prog.block(0).vars.items()):
                         print(value)
@@ -5539,7 +5537,6 @@ class Program(object):
             1. To clone a test program, the sample code is:
                 .. code-block:: python
 
-                    import six
                     import paddle
                     import paddle.static as static
                     import paddle.utils as utils
@@ -5592,7 +5589,6 @@ class Program(object):
             2. The clone method can be avoid if you create program for training and program for testing individually.
                 .. code-block:: python
 
-                    import six
                     import paddle
                     import paddle.static as static
                     import paddle.utils as utils

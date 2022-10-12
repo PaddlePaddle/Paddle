@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import collections
-import six
 
 from paddle.fluid import core
 from paddle.fluid.framework import Block

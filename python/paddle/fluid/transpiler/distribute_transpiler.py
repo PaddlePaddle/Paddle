@@ -34,7 +34,6 @@ import math
 from functools import reduce
 
 import collections
-import six
 import logging
 
 import numpy as np

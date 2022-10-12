@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import six
 from ..framework import Parameter, _non_static_mode, _global_flags
 from ..param_attr import ParamAttr
 from .. import core

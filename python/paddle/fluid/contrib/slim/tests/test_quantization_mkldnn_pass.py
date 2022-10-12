@@ -17,7 +17,6 @@ import unittest
 import random
 import numpy as np
 import paddle.fluid as fluid
-import six
 import paddle
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass

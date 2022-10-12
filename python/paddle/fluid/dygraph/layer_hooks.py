@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import warnings
 
 from paddle.fluid.framework import default_main_program, _non_static_mode

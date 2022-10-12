@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import pickle
 import numpy as np
 

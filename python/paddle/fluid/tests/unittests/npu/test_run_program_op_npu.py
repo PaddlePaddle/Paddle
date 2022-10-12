@@ -15,7 +15,6 @@
 import contextlib
 import unittest
 import numpy as np
-import six
 import sys
 
 sys.path.append("..")

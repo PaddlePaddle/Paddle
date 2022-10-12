@@ -17,7 +17,6 @@ import unittest
 import time
 import argparse
 import os
-import six
 import sys
 
 sys.path.append("..")

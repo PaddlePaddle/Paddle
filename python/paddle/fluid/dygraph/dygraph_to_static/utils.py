@@ -20,7 +20,6 @@ import collections
 from paddle.utils import gast
 import inspect
 import os
-import six
 import tempfile
 import textwrap
 import numpy as np

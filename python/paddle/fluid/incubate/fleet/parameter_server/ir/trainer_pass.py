@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import os
-import six
 import collections
 import warnings
 import math

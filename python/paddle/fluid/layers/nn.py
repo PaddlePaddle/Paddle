@@ -20,7 +20,6 @@ import inspect
 import warnings
 
 import numpy as np
-import six
 
 import paddle
 from ..layer_helper import LayerHelper
@@ -14288,7 +14287,6 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
             # example 1:
             import paddle
-            import six
             import numpy as np
 
             paddle.enable_static()

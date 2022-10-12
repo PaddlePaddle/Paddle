@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import sys
 import traceback
 import linecache

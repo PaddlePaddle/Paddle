@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-import six
 
 import paddle
 from paddle.fluid import framework, backward, core, program_guard

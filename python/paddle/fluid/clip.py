@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import six
 import warnings
 
 import functools

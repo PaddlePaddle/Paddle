@@ -22,7 +22,6 @@ import re
 import types
 
 import numpy
-import six
 import builtins
 
 from paddle.fluid.dygraph.container import Sequential

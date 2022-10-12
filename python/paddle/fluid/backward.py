@@ -19,7 +19,6 @@ from paddle.fluid import program_guard
 from . import core
 import collections
 import copy
-import six
 import logging
 from .. import compat as cpt
 from . import unique_name

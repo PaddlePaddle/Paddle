@@ -14,7 +14,6 @@
 
 import multiprocessing
 import os
-import six
 import sys
 import warnings
 from .. import compat as cpt

@@ -13,7 +13,6 @@
 # limitations under the license.
 
 import numpy as np
-import six
 
 import unittest
 import paddle

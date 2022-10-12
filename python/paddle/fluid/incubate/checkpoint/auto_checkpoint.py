@@ -17,7 +17,6 @@ import logging
 import hashlib
 import json
 import os
-import six
 import time
 import collections
 from threading import Thread, current_thread

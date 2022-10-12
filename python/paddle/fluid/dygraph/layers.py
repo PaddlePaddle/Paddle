@@ -16,7 +16,6 @@ import collections
 import contextlib
 import sys
 import numpy as np
-import six
 import re
 import copy
 import weakref

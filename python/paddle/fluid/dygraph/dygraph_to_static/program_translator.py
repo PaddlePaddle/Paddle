@@ -15,7 +15,6 @@
 import collections
 from paddle.utils import gast
 import inspect
-import six
 import textwrap
 import threading
 import weakref

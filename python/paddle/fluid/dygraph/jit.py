@@ -22,7 +22,6 @@ import inspect
 import threading
 from typing import Text, Tuple, Any, List
 
-import six
 import paddle
 from paddle.fluid import core, dygraph
 from paddle.fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy

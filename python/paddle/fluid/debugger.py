@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import sys
-import six
 import random
 import os
 import re

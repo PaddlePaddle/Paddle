@@ -32,7 +32,6 @@ import paddle
 
 import os
 import sys
-import six
 import json
 import re
 import shutil

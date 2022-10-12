@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import six
 
 from .framework import Parameter, dtype_is_floating, _non_static_mode, OpProtoHolder, _global_flags
 from . import unique_name

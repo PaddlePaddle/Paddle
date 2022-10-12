@@ -22,7 +22,6 @@ This API is still under active development and may change drastically.
 
 from ...wrapped_decorator import signature_safe_contextmanager
 import numpy as np
-import six
 
 from ... import layers
 from ...framework import Variable

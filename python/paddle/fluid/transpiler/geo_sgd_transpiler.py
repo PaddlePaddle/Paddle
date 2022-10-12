@@ -26,7 +26,6 @@ Steps to transpile pserver:
 """
 import sys
 import collections
-import six
 import numpy as np
 
 from .ps_dispatcher import RoundRobin, PSDispatcher
