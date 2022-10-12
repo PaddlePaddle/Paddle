@@ -170,15 +170,9 @@ class TestLogcumsumexp(unittest.TestCase):
             np.testing.assert_allclose(z, out[4], rtol=1e-05)
 
             if use_gpu:
-                np.set_printoptions(formatter={'float': '{: 0.7f}'.format})
-                print("in", data_np)
                 self.assertTrue(out[5].dtype == np.float16)
                 data_np_fp16 = data_np.astype(np.float16)
-                print("in2", data_np_fp16)
                 z = np_logcumsumexp(data_np_fp16)
-                print("numpy", z)
-                print("out", out[5])
-                print("out3", out[3])
                 np.testing.assert_allclose(z, out[5], rtol=5e-03)
 
     def test_cpu(self):
@@ -291,6 +285,19 @@ class TestLogcumsumexpFP16(BaseTestCases.BaseOpTest):
             'axis': 1,
             'dtype': 'float16'
         }
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3)
+
+    def test_check_grad(self):
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[
+                            np_logcumsumexp_grad(self.inputs['X'],
+                                                 1 / self.inputs['X'].size,
+                                                 **self.attrs)
+                        ],
+                        max_relative_error=1e-03)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

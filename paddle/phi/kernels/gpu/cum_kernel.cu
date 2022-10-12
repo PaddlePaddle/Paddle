@@ -148,8 +148,10 @@ struct LogAddExp {
   template <typename T>
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
-    return std::log(1 + std::exp(std::min(a, b) - std::max(a, b))) +
-           std::max(a, b);
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    MT min_val = static_cast<MT>(std::min(a, b));
+    MT max_val = static_cast<MT>(std::max(a, b));
+    return static_cast<T>(std::log(1 + std::exp(min_val - max_val)) + max_val);
   }
 };
 
@@ -175,19 +177,18 @@ __global__ void BlockScanKernel(T* d_out,
                                 bool exclusive,
                                 Op op) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  /*
   const MT* mt_d_in = reinterpret_cast<const MT*>(d_in);
-  MT* mt_d_out = reinterpret_cast<MT*>(d_out);
+  MT* mt_d_out = reinterpret_cast<MT*>(d_out);*/
 
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
   typedef cub::
-      BlockLoad<MT, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
+      BlockLoad<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
           BlockLoadT;
-  typedef cub::BlockStore<MT,
-                          BLOCK_THREADS,
-                          ITEMS_PER_THREAD,
-                          cub::BLOCK_STORE_TRANSPOSE>
-      BlockStoreT;
-  typedef cub::BlockScan<MT, BLOCK_THREADS> BlockScanT;
+  typedef cub::
+      BlockStore<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_STORE_TRANSPOSE>
+          BlockStoreT;
+  typedef cub::BlockScan<T, BLOCK_THREADS> BlockScanT;
   // Allocate type-safe, repurposable shared memory for collectives
   __shared__ union {
     typename BlockLoadT::TempStorage load;
@@ -196,7 +197,8 @@ __global__ void BlockScanKernel(T* d_out,
   } temp_storage;
 
   int bx = blockIdx.x;
-  BlockPrefixCallbackOp<MT, Op> prefix_op(Identity<MT, Op>::value, op);
+  BlockPrefixCallbackOp<T, Op> prefix_op(
+      static_cast<T>(Identity<MT, Op>::value), op);
 
   // Obtain this block's segment of consecutive keys (blocked across threads)
   int item_per_block = BLOCK_THREADS * ITEMS_PER_THREAD;
@@ -211,9 +213,9 @@ __global__ void BlockScanKernel(T* d_out,
 
     int offset = block_offset + bx * scan_size;
 
-    MT thread_keys[ITEMS_PER_THREAD];
+    T thread_keys[ITEMS_PER_THREAD];
     BlockLoadT(temp_storage.load)
-        .Load(mt_d_in + offset, thread_keys, valid_item, 0);
+        .Load(d_in + offset, thread_keys, valid_item, 0);
 
     __syncthreads();
     if (exclusive) {
@@ -226,7 +228,7 @@ __global__ void BlockScanKernel(T* d_out,
     __syncthreads();
 
     BlockStoreT(temp_storage.store)
-        .Store(mt_d_out + offset, thread_keys, valid_item);
+        .Store(d_out + offset, thread_keys, valid_item);
   }
 }
 
