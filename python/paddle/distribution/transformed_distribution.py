@@ -70,7 +70,7 @@ class TransformedDistribution(distribution.Distribution):
         else:
             if chain._domain.event_rank > len(base.event_shape):
                 base = independent.Independent(
-                    (base, chain._domain.event_rank - len(base.event_shape)))
+                    (base, chain._domain.event_rank - len(base.event_shape)), 0)
 
             transformed_shape = chain.forward_shape(base.batch_shape +
                                                     base.event_shape)

@@ -49,6 +49,10 @@ class Independent(distribution.Distribution):
     """
 
     def __init__(self, base, reinterpreted_batch_rank):
+        if not reinterpreted_batch_rank:
+            raise TypeError(
+                f"'reinterpreted_batch_rank' is required"
+            )
         if not isinstance(base, distribution.Distribution):
             raise TypeError(
                 f"Expected type of 'base' is Distribution, but got {type(base)}"
