@@ -24,9 +24,9 @@ from functools import partial
 
 import paddle
 from paddle.fluid.framework import Program, _current_expected_place
-from paddle.fluid.framework import Operator, Parameter
-from paddle.distributed.auto_parallel.process_group import clear_all_process_groups, get_all_process_groups, new_process_group
-from paddle.distributed.auto_parallel.dist_loader import NonIterableGeneratorLoader
+from paddle.fluid.framework import Operator
+from paddle.distributed.auto_parallel.process_group import get_all_process_groups, new_process_group
+from paddle.distributed.auto_parallel.dist_loader import DistributedDataLoaderFromGenerator
 from paddle.distributed.collective import _get_global_env
 
 paddle.enable_static()
@@ -135,13 +135,14 @@ def create_dataloader(main_program,
     # insert read op at the end of program
     places = paddle.static.cuda_places()
     with paddle.static.program_guard(main_program, startup_program):
-        dataloader = NonIterableGeneratorLoader(
-            dataset,
-            feed_list,
-            places,
-            dataset.batch_size,
-            epochs,
-            steps_per_epoch,
+        dataloader = DistributedDataLoaderFromGenerator(
+            dataset=dataset,
+            feed_list=feed_list,
+            capacity=70,
+            places=places,
+            batch_size=dataset.batch_size,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch,
             data_parallel_world_size=dataset.dp_world_size,
             data_parallel_rank=dataset.dp_rank)
 
