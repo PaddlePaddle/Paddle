@@ -57,7 +57,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 #endif
 #ifdef PADDLE_WITH_PSLIB
-#include "afs_api.h"
+#include "afs_api.h"  // NOLINT
 #endif
 #ifdef PADDLE_WITH_PSLIB
 #include "downpour_accessor.h"  // NOLINT
@@ -504,7 +504,7 @@ class PSGPUWrapper {
     // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
     optimizer_type_ = (config.find("optimizer_type") == config.end())
                           ? 1
-                          : int(config["optimizer_type"]);
+                          : static_cast<int>(config["optimizer_type"]);
 
     VLOG(0) << "InitializeGPUServer optimizer_type_:" << optimizer_type_
             << " nodeid_slot:" << nodeid_slot
@@ -556,7 +556,7 @@ class PSGPUWrapper {
     if (slot_info_initialized_) {
       return;
     }
-    SlotRecordDataset* dataset = (SlotRecordDataset*)(dataset_);
+    SlotRecordDataset* dataset = reinterpret_cast<SlotRecordDataset*>(dataset_);
     auto slots_vec = dataset->GetSlots();
     slot_offset_vector_.clear();
     for (auto& slot : slot_vector_) {
@@ -618,6 +618,11 @@ class PSGPUWrapper {
   std::shared_ptr<paddle::ps::AfsReader> OpenReader(
       const std::string& filename) {
     return afs_handler_.open_reader(filename);
+  }
+
+  std::shared_ptr<paddle::ps::AfsWriter> OpenWriter(
+      const std::string& filename) {
+    return afs_handler_.open_writer(filename);
   }
 
   void InitAfsApi(const std::string& fs_name,

@@ -12,23 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import re
 import argparse
 import os
-import logging
 from codegen_utils import core_ops_returns_info, core_ops_args_info, core_ops_args_type_info
-from codegen_utils import yaml_types_mapping
-from codegen_utils import ReadFwdFile, ReadBwdFile
-from codegen_utils import FindGradName, FindForwardName, GetSavedName, GetGradNodeName
+from codegen_utils import ReadBwdFile
+from codegen_utils import FindForwardName, GetGradNodeName, GetSavedName
 from codegen_utils import IsPlainTensorType, IsVectorTensorType
 from codegen_utils import GetConstReference, RemoveConstAndReference
-from codegen_utils import GetDygraphForwardFunctionName, GetIntermediateAPIFunctionName, GetDygraphLogName
+from codegen_utils import GetDygraphForwardFunctionName, GetIntermediateAPIFunctionName
 from codegen_utils import GetAutoGradMetaName, GetAutoGradMetaVectorName
-from codegen_utils import RemoveSpecialSymbolsInName, RecoverBaseNameOfInplaceFunction
 from codegen_utils import GetInplacedFunctionName
-from codegen_utils import ParseYamlArgs, ParseYamlReturns, ParseYamlForwardFromBackward
-from codegen_utils import ParseYamlForward, ParseYamlBackward
+from codegen_utils import ParseYamlForwardFromBackward
+from codegen_utils import ParseYamlBackward
 from codegen_utils import ParseYamlInplaceInfo
 from codegen_utils import FunctionGeneratorBase, GeneratorBase
 from codegen_utils import ops_to_fill_zero_for_empty_grads
@@ -1055,7 +1051,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         heavily_flag = True
         if len(layout_autotune_attr) == 0:
             layout_autotune_attr_code_list.append(
-                f"auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);\n"
+                "auto transformer = egr::EagerLayoutAutotune(op_name, tensors_vector);\n"
             )
         elif len(layout_autotune_attr) == 1:
             layout_autotune_attr_code_list.append(
@@ -1387,7 +1383,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             amp_tensors_vector_list) + " }"
         amp_tensors_vector_optional_list_str = "    ".join(
             amp_tensors_vector_optional_list)
-        amp_get_dst_dtype_str = f"auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
+        amp_get_dst_dtype_str = "auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
         amp_autocast_list_str = "    ".join(
             amp_autocast_list) + "    " + "    ".join(
                 amp_autocast_optional_list)
@@ -1414,13 +1410,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         var_str = f"\n{indent}  std::string input_str = \"\";"
         var_str += f"\n{indent}  std::string output_str = \"\";"
         for name, (ttype, pos) in forward_inputs_position_map.items():
-            var_str += f"\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = \"({name}, [%s]), \";"
+            var_str += f"\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = \" \\n( {name} , [%s]), \";"
             var_str += f"\n{indent}  std::string input_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  input_str += input_{name}_str; "
 
         before_log_str = BEFORE_LOG_PRINT_TEMPLATE.format(var_str)
         for name, (ttype, pos) in forward_outputs_position_map.items():
-            var_str += f"\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = \"({name}, [%s]), \";"
+            var_str += f"\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = \" \\n( {name} , [%s]), \";"
             var_str += f"\n{indent}  std::string output_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  output_str += output_{name}_str; "
 
@@ -1930,14 +1926,14 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_inputs_map.items():
             new_name = self.TransformToNextGradName(name)
-            var_str += f"\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = \"({new_name}, [%s]), \";"
+            var_str += f"\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = \" \\n( {new_name} , [%s]), \";"
             var_str += f"\n{indent}  std::string input_{new_name}_str = paddle::string::Sprintf(TENSOR_{new_name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({new_name}));"
             var_str += f"\n{indent}  input_str += input_{new_name}_str; "
 
         for name, (backward_input_type, is_fwd_input,
                    grad_api_position), in backward_forward_inputs_map.items():
             new_name = self.TransformToNextGradName(name)
-            var_str += f"\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = \"({new_name}, [%s]), \";"
+            var_str += f"\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = \" \\n( {new_name} , [%s]), \";"
             var_str += f"\n{indent}  std::string input_{new_name}_str = paddle::string::Sprintf(TENSOR_{new_name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({new_name}));"
             var_str += f"\n{indent}  input_str += input_{new_name}_str; "
 
@@ -1946,7 +1942,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         for name, (ttype, fwd_position,
                    grad_api_position) in backward_grad_outputs_map.items():
             new_name = self.TransformToNextGradName(name)
-            var_str += f"\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = \"({new_name}, [%s]), \";"
+            var_str += f"\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = \" \\n ( {new_name} , [%s]), \";"
             var_str += f"\n{indent}  std::string output_{new_name}_str = paddle::string::Sprintf(TENSOR_{new_name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({new_name}));"
             var_str += f"\n{indent}  output_str += output_{new_name}_str; "
 

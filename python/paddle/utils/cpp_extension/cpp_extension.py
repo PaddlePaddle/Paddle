@@ -22,11 +22,11 @@ from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
 
-from .extension_utils import find_cuda_home, find_rocm_home, normalize_extension_kwargs, add_compile_flag, run_cmd
+from .extension_utils import add_compile_flag, find_cuda_home, find_rocm_home, normalize_extension_kwargs
 from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags
 from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile
 from .extension_utils import check_abi_compatibility, log_v, CustomOpInfo, parse_op_name_from
-from .extension_utils import clean_object_if_change_cflags, _reset_so_rpath, _get_fluid_path
+from .extension_utils import _reset_so_rpath, clean_object_if_change_cflags
 from .extension_utils import bootstrap_context, get_build_directory, add_std_without_repeat
 
 from .extension_utils import IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS, MSVC_COMPILE_FLAGS
@@ -73,7 +73,7 @@ def setup(**attr):
     If the above conditions are not met, the corresponding warning will be printed, and a fatal error may
     occur because of ABI compatibility.
 
-    .. note::
+    Note:
 
         1. Currently we support Linux, MacOS and Windows platfrom.
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
@@ -230,7 +230,7 @@ def CppExtension(sources, *args, **kwargs):
         )
 
 
-    .. note::
+    Note:
         It is mainly used in ``setup`` and the nama of built shared library keeps same
         as ``name`` argument specified in ``setup`` interface.
 
@@ -282,7 +282,7 @@ def CUDAExtension(sources, *args, **kwargs):
         )
 
 
-    .. note::
+    Note:
         It is mainly used in ``setup`` and the nama of built shared library keeps same
         as ``name`` argument specified in ``setup`` interface.
 
@@ -293,7 +293,7 @@ def CUDAExtension(sources, *args, **kwargs):
         **kwargs(dict[option], optional): Specify other arguments same as ``setuptools.Extension`` .
 
     Returns:
-        setuptools.Extension: An instance of setuptools.Extension
+        setuptools.Extension: An instance of setuptools.Extension.
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
@@ -772,7 +772,7 @@ def load(name,
     ``python setup.py install`` command. The interface contains all compiling and installing
     process underground.
 
-    .. note::
+    Note:
 
         1. Currently we support Linux, MacOS and Windows platfrom.
         2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .

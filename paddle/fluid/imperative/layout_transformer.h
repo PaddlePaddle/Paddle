@@ -25,14 +25,13 @@ namespace imperative {
 template <typename VarType>
 void SetOutDataLayout(std::shared_ptr<VarType> var,
                       const paddle::experimental::DataLayout layout) {
-  if (var != nullptr) {
+  if (var != nullptr && var->Var().IsInitialized()) {
     paddle::imperative::SetDataLayout(var, layout);
     // set out_tensor's layout
     if (var->MutableVar()->IsInitialized()) {
       paddle::framework::Variable* tmp_var = var->MutableVar();
-      auto* out = tmp_var->GetMutable<framework::LoDTensor>();
-      phi::DenseTensorUtils::GetMutableMeta(
-          static_cast<framework::LoDTensor*>(out))
+      auto* out = tmp_var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensorUtils::GetMutableMeta(static_cast<phi::DenseTensor*>(out))
           ->layout = layout;
     }
   }

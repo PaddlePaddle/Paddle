@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -24,7 +22,6 @@ import paddle.utils as utils
 from paddle.fluid import layers
 from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 import paddle.fluid.core as core
 
 paddle.enable_static()

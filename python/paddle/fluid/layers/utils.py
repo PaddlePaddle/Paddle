@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import collections
 import copy
 import six
@@ -364,9 +363,6 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
             shape = cast(shape, 'int32')
         inputs["ShapeTensor"] = shape
     elif isinstance(shape, (list, tuple)):
-        assert len(shape) > 0, ("The size of 'shape' in" + op_type +
-                                " can't be zero, "
-                                "but received %s." % len(shape))
         attrs["shape"] = _get_attr_shape(shape)
         if _contain_var(shape):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)

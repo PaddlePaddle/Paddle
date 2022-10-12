@@ -12,26 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
-import collections
-import itertools
 import six
 import math
 import sys
-import warnings
-from functools import partial, reduce
+from functools import reduce
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 from paddle import framework
-from paddle.device import get_device, get_cudnn_version
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
 from paddle.nn import Layer, LayerList
 from paddle.fluid.layers import utils
-from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
-from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.layers.utils import flatten, map_structure
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
@@ -188,17 +181,10 @@ class RNNCellBase(Layer):
         batch_ref = flatten(batch_ref)[0]
 
         def _is_shape_sequence(seq):
-            if sys.version_info < (3, ):
-                integer_types = (
-                    int,
-                    long,
-                )
-            else:
-                integer_types = (int, )
             """For shape, list/tuple of integer is the finest-grained objection"""
             if (isinstance(seq, list) or isinstance(seq, tuple)):
-                if reduce(lambda flag, x: isinstance(x, integer_types) and flag,
-                          seq, True):
+                if reduce(lambda flag, x: isinstance(x, int) and flag, seq,
+                          True):
                     return False
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
@@ -1012,7 +998,13 @@ class RNNBase(LayerList):
         if not self.time_major:
             inputs = paddle.tensor.transpose(inputs, [1, 0, 2])
 
-        if in_dynamic_mode():
+        if in_dygraph_mode():
+            out, _, state = _C_ops.rnn(
+                inputs, initial_states, self._all_weights, sequence_length,
+                self._dropout_state, self.dropout, self.num_directions == 2,
+                self.input_size, self.hidden_size, self.num_layers, self.mode,
+                0, not self.training)
+        elif in_dynamic_mode():
             _, _, out, state = _legacy_C_ops.rnn(
                 inputs, initial_states, self._all_weights, sequence_length,
                 self._dropout_state, self.state_components, 'dropout_prob',

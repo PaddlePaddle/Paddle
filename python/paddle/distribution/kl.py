@@ -21,8 +21,10 @@ from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.normal import Normal
+from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.uniform import Uniform
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.distribution.laplace import Laplace
+from paddle.fluid.framework import _non_static_mode
 
 __all__ = ["register_kl", "kl_divergence"]
 
@@ -38,11 +40,11 @@ def kl_divergence(p, q):
         KL(p||q) = \int p(x)log\frac{p(x)}{q(x)} \mathrm{d}x
 
     Args:
-        p (Distribution): ``Distribution`` object.
-        q (Distribution): ``Distribution`` object.
+        p (Distribution): ``Distribution`` object. Inherits from the Distribution Base class.
+        q (Distribution): ``Distribution`` object. Inherits from the Distribution Base class.
 
     Returns:
-        Tensor: Batchwise KL-divergence between distribution p and q.
+        Tensor, Batchwise KL-divergence between distribution p and q.
 
     Examples:
 
@@ -71,8 +73,8 @@ def register_kl(cls_p, cls_q):
     implemention funciton by the decorator.
 
     Args:
-        cls_p(Distribution): Subclass derived from ``Distribution``.
-        cls_q(Distribution): Subclass derived from ``Distribution``.
+        cls_p (Distribution): The Distribution type of Instance p. Subclass derived from ``Distribution``.
+        cls_q (Distribution): The Distribution type of Instance q. Subclass derived from ``Distribution``.
 
     Examples:
         .. code-block:: python
@@ -95,7 +97,7 @@ def register_kl(cls_p, cls_q):
 
 
 def _dispatch(cls_p, cls_q):
-    """Multiple dispatch into concrete implement function"""
+    """Multiple dispatch into concrete implement function."""
 
     # find all matched super class pair of p and q
     matchs = [(super_p, super_q) for super_p, super_q in _REGISTER_TABLE
@@ -168,6 +170,11 @@ def _kl_uniform_uniform(p, q):
     return p.kl_divergence(q)
 
 
+@register_kl(Laplace, Laplace)
+def _kl_laplace_laplace(p, q):
+    return p.kl_divergence(q)
+
+
 @register_kl(ExponentialFamily, ExponentialFamily)
 def _kl_expfamily_expfamily(p, q):
     """Compute kl-divergence using `Bregman divergences <https://www.lix.polytechnique.fr/~nielsen/EntropyEF-ICIP2010.pdf>`_
@@ -204,6 +211,11 @@ def _kl_expfamily_expfamily(p, q):
         kl -= _sum_rightmost(term, len(q.event_shape))
 
     return kl
+
+
+@register_kl(LogNormal, LogNormal)
+def _kl_lognormal_lognormal(p, q):
+    return p._base.kl_divergence(q._base)
 
 
 def _sum_rightmost(value, n):

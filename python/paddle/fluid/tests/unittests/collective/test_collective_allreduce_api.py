@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
-import numpy as np
 import paddle
 
 from test_collective_api_base import TestDistBase
@@ -43,9 +41,11 @@ class TestCollectiveAllreduceAPI(TestDistBase):
 
     def test_allreduce_nccl_dygraph(self):
         dtypes_to_test = [
-            'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
-            'bool'
+            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
+            "bool"
         ]
+        if self._nccl_version >= 2100:
+            dtypes_to_test.append("bfloat16")
         for dtype in dtypes_to_test:
             self.check_with_place("collective_allreduce_api_dygraph.py",
                                   "allreduce",
@@ -55,8 +55,8 @@ class TestCollectiveAllreduceAPI(TestDistBase):
 
     def test_allreduce_gloo_dygraph(self):
         dtypes_to_test = [
-            'float16', 'float32', 'float64', 'int32', 'int64', 'int8', 'uint8',
-            'bool'
+            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
+            "bool", "bfloat16"
         ]
         for dtype in dtypes_to_test:
             self.check_with_place("collective_allreduce_api_dygraph.py",
@@ -67,5 +67,5 @@ class TestCollectiveAllreduceAPI(TestDistBase):
                                   dtype=dtype)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -23,10 +21,6 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test_xpu import XPUOpTest
-from paddle.fluid import Program, program_guard
 from test_conv2d_op_xpu import XPUTestConv2DOp, XPUTestConv2DOp_v2
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 

@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class NPUWhereIndexKernel : public framework::OpKernel<T> {
@@ -29,8 +29,8 @@ class NPUWhereIndexKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto& dev_ctx =
         context.template device_context<platform::NPUDeviceContext>();
-    auto* condition = context.Input<Tensor>("Condition");
-    auto* out = context.Output<Tensor>("Out");
+    auto* condition = context.Input<phi::DenseTensor>("Condition");
+    auto* out = context.Output<phi::DenseTensor>("Out");
 
     auto dims = condition->dims();
     const int rank = dims.size();

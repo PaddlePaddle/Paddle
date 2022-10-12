@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard, core
+from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import _test_eager_guard
 import paddle
 import gradient_checker

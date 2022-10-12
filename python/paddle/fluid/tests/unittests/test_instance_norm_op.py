@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid.op import Operator
-from op_test import OpTest
 from paddle.fluid import Program, program_guard
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _test_eager_guard

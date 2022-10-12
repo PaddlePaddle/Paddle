@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.nn import Layer
 from paddle.static import InputSpec
 from paddle.jit import to_static
 import sys

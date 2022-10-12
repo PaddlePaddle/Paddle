@@ -66,8 +66,8 @@ class TensorRTEngineTest : public ::testing::Test {
   }
 
  protected:
-  framework::Tensor input_;
-  framework::Tensor output_;
+  phi::DenseTensor input_;
+  phi::DenseTensor output_;
   TensorRTEngine *engine_;
   phi::GPUContext *ctx_;
 };

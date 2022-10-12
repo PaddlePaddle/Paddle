@@ -252,9 +252,9 @@ static void GcScope(paddle::framework::Scope *scope) {
 
   for (auto &var : scope->LocalVars()) {
     if (var != nullptr) {
-      if (var->IsType<paddle::framework::LoDTensor>()) {
-        garbages->emplace_back(var->GetMutable<paddle::framework::LoDTensor>()
-                                   ->MoveMemoryHolder());
+      if (var->IsType<phi::DenseTensor>()) {
+        garbages->emplace_back(
+            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
       }
       if (var->IsType<phi::SelectedRows>()) {
         garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
@@ -307,7 +307,7 @@ inline void RunProgramAPI(
       PADDLE_GET_CONST(bool, attrs.at("use_interpretorcore"));
 
   if (use_interpretorcore) {
-    VLOG(0) << "RunProgramOp use interpretercore to execute program.";
+    VLOG(2) << "RunProgramOp use interpretercore to execute program.";
 
     paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
@@ -326,7 +326,9 @@ inline void RunProgramAPI(
         paddle::framework::InterpreterCoreInfoCache::Instance();
 
     if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/false)) {
-      VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
+      VLOG(2) << "No interpretercore cahce, so create a new interpretercore "
+                 "for program: "
+              << program_id;
       // Step 1. share input_vars & parameters into scope
       details::ShareTensorsIntoScope(x, global_inner_scope);
       details::ShareTensorsIntoScope(params, global_inner_scope);
@@ -507,7 +509,7 @@ inline void RunProgramGradAPI(
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
   if (use_interpretorcore) {
-    VLOG(0) << "RunProgramGradOp use interpretercore to execute program.";
+    VLOG(2) << "RunProgramGradOp use interpretercore to execute program.";
 
     paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
@@ -530,17 +532,29 @@ inline void RunProgramGradAPI(
 
     auto &interpretercore_info_cache =
         paddle::framework::InterpreterCoreInfoCache::Instance();
+    std::shared_ptr<paddle::framework::InterpreterCore> interpreter_core =
+        nullptr;
     if (!interpretercore_info_cache.Has(program_id, /*is_grad=*/true)) {
       VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
       details::ShareTensorsIntoScope(out_grad, global_inner_scope);
-      auto interpreter_core =
-          paddle::framework::CreateInterpreterCoreInfoToCache(
-              *backward_program,
-              place,
-              /*is_grad=*/true,
-              program_id,
-              global_inner_scope);
+      interpreter_core = paddle::framework::CreateInterpreterCoreInfoToCache(
+          *backward_program,
+          place,
+          /*is_grad=*/true,
+          program_id,
+          global_inner_scope);
 
+      // share threadpool
+      // NOTE(zhiqiu): this only works interpreter_core is executed strictly
+      // after the related fwd_interpreter_core.
+      if (interpretercore_info_cache.Has(program_id, false)) {
+        auto fwd_interpreter_core =
+            interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false)
+                .core_;
+        interpreter_core->ShareWorkQueueFrom(fwd_interpreter_core);
+        VLOG(4) << "Share workqueue from " << fwd_interpreter_core.get()
+                << " to " << interpreter_core.get();
+      }
       // get all eager gc vars
       std::set<std::string> skip_eager_delete_vars;
       // all out_vars are skip_eager_var
@@ -552,17 +566,12 @@ inline void RunProgramGradAPI(
       interpretercore_info_cache.UpdateSkipEagerDeleteVars(
           program_id, /*is_grad=*/true, skip_eager_delete_vars);
       VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
-      if (backward_global_block->OpSize() > 0) {
-        // Debug info: scope info when run end
-        VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(
-            out_scope_vec->front());
-        interpreter_core->Run({});
-      }
     } else {
       VLOG(2) << "Get interpretercore cahce by program:" << program_id;
       auto &cached_value =
           interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/true);
-      auto &interpreter_core = cached_value.core_;
+      interpreter_core = cached_value.core_;
+
       // update scope
       details::ShareTensorsIntoScope(out_grad, global_inner_scope);
       if (interpreter_core->GetVariableScope()->GetMutableScope() !=
@@ -572,14 +581,15 @@ inline void RunProgramGradAPI(
                                    global_inner_scope);
         interpreter_core->reset_scope(global_inner_scope);
       }
-
-      if (backward_global_block->OpSize() > 0) {
-        // Debug info: scope info when run end
-        VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(
-            out_scope_vec->front());
-        interpreter_core->Run({});
-      }
     }
+
+    if (backward_global_block->OpSize() > 0) {
+      // Debug info: scope info when run end
+      VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(
+          out_scope_vec->front());
+      interpreter_core->Run({});
+    }
+
     // Step 4. get outputs
     details::ShareTensorsFromScopeWithPartialBlock(x_grad,
                                                    *forward_global_block,

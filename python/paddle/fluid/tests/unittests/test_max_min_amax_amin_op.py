@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-from op_test import OpTest
 
 paddle.enable_static()
 
@@ -46,13 +42,13 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
     def cal_np_out_and_gradient(self):
 
         def _cal_np_out_and_gradient(func):
-            if func is 'amax':
+            if func == 'amax':
                 out = np.amax(self.x_np, axis=self.axis, keepdims=self.keepdim)
-            elif func is 'amin':
+            elif func == 'amin':
                 out = np.amin(self.x_np, axis=self.axis, keepdims=self.keepdim)
-            elif func is 'max':
+            elif func == 'max':
                 out = np.max(self.x_np, axis=self.axis, keepdims=self.keepdim)
-            elif func is 'min':
+            elif func == 'min':
                 out = np.min(self.x_np, axis=self.axis, keepdims=self.keepdim)
             else:
                 print('This unittest only test amax/amin/max/min, but now is',
@@ -76,13 +72,13 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
         _cal_np_out_and_gradient('min')
 
     def _choose_paddle_func(self, func, x):
-        if func is 'amax':
+        if func == 'amax':
             out = paddle.amax(x, self.axis, self.keepdim)
-        elif func is 'amin':
+        elif func == 'amin':
             out = paddle.amin(x, self.axis, self.keepdim)
-        elif func is 'max':
+        elif func == 'max':
             out = paddle.max(x, self.axis, self.keepdim)
-        elif func is 'min':
+        elif func == 'min':
             out = paddle.min(x, self.axis, self.keepdim)
         else:
             print('This unittest only test amax/amin/max/min, but now is', func)

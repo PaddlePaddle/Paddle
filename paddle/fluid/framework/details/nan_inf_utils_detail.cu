@@ -230,7 +230,7 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
 template <>
 void tensor_check<phi::GPUContext>(const std::string& op_type,
                                    const std::string& var_name,
-                                   const framework::Tensor& tensor,
+                                   const phi::DenseTensor& tensor,
                                    const platform::Place& place) {
   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
 

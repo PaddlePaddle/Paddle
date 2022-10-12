@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import unittest
 import time
-import argparse
 import os
 import sys
 import subprocess
-import traceback
-import functools
 import pickle
 import tempfile
 from contextlib import closing
@@ -131,7 +127,6 @@ def runtime_main(test_class, col_type, sub_type):
     model.run_trainer(args)
 
 
-import paddle.compat as cpt
 import socket
 from contextlib import closing
 

@@ -20,7 +20,7 @@ from ..utils.hybrid_parallel_util import broadcast_mp_parameters
 from ..utils.hybrid_parallel_util import broadcast_dp_parameters
 from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
 from ..utils.log_util import logger
-from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer, HybridParallelGradScaler
+from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 import paddle.fluid.framework as framework
 from .pp_utils import p2p_communication as p2p
 import paddle.fluid.core as core
@@ -377,18 +377,18 @@ class PipelineParallel(MetaParallelBase):
                 1) if loss.dtype == paddle.float32 else paddle.to_tensor(0)
             paddle.distributed.broadcast(is_fp32,
                                          src=self.global_rank,
-                                         use_calc_stream=True,
+                                         sync_op=True,
                                          group=self.pp_group)
             paddle.distributed.broadcast(loss,
                                          src=self.global_rank,
-                                         use_calc_stream=True,
+                                         sync_op=True,
                                          group=self.pp_group)
         else:
             is_fp32 = paddle.to_tensor(1)
             paddle.distributed.broadcast(
                 is_fp32,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                use_calc_stream=True,
+                sync_op=True,
                 group=self.pp_group)
             loss = paddle.zeros(shape=[
                 1
@@ -397,7 +397,7 @@ class PipelineParallel(MetaParallelBase):
             paddle.distributed.broadcast(
                 loss,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                use_calc_stream=True,
+                sync_op=True,
                 group=self.pp_group)
         return loss
 
@@ -526,7 +526,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         self.set_virtual_pipeline_rank(0)
         self.input_tensors[0].append(
-            p2p.recv_forward(self.is_pipeline_first_stage()))
+            p2p.recv_forward(self.is_pipeline_first_stage(), sync_recv=False))
 
         # run startup steps
         for micro_step in range(startup_steps):
@@ -647,7 +647,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
         if not forward_only:
             if all_startup_steps:
                 self.output_tensor_grads[self.num_model_chunks - 1].append(
-                    p2p.recv_backward(self.is_pipeline_last_stage()))
+                    p2p.recv_backward(self.is_pipeline_last_stage(),
+                                      sync_recv=False))
 
             for micro_step in range(steady_steps, num_steps):
                 # cooldown loop

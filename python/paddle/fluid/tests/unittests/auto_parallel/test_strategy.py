@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 # import yaml
 import unittest
 from paddle.distributed.fleet import auto

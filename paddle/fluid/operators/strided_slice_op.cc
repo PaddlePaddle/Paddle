@@ -27,7 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class StridedSliceOp : public framework::OperatorWithKernel {
  public:
@@ -58,7 +58,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
           ctx.device_context());
     }
     // NOTE: cuda pinned tensor need to copy its data to target place
-    auto in_tensor = ctx.Input<Tensor>("Input");
+    auto in_tensor = ctx.Input<phi::DenseTensor>("Input");
     if (platform::is_cuda_pinned_place(in_tensor->place())) {
       return framework::OpKernelType(
           framework::TransToProtoVarType(in_tensor->dtype()),

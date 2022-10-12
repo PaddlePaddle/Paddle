@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from ..framework import core, _non_static_mode
+from ..framework import core
 from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.data_feeder import check_type
@@ -63,12 +61,6 @@ def rank(input):
 
 def shape(input):
     """
-    :alias_main: paddle.shape
-	:alias: paddle.shape,paddle.tensor.shape,paddle.tensor.attribute.shape
-	:old_api: paddle.fluid.layers.shape
-
-    **Shape Layer**
-
     Get the shape of the input.
 
     .. code-block:: text

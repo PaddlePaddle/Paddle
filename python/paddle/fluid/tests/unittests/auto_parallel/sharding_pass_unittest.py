@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import unittest
-import sys
 import random
 import numpy as np
 import paddle
 
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from get_gpt_model import generate_model, create_data_holder, FakeDataset
+from get_gpt_model import FakeDataset, generate_model
 
 paddle.enable_static()
 
@@ -89,26 +88,20 @@ class TestShardingPass(unittest.TestCase):
 
         # sharding2 stage1 training
         sharding1_engine = self.get_engine(True, 1)
-        sharding1_losses = sharding1_engine.fit(self.dataset,
-                                                3,
-                                                batch_size=self.batch_size)
-        sharding1_losses = np.array(sharding1_losses["loss"])
+        outs = sharding1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        sharding1_losses = np.array(outs["loss"])
         self.check_results(dp_losses, sharding1_losses)
 
         # sharding2 stage2 training
         sharding2_engine = self.get_engine(True, 2)
-        sharding2_losses = sharding2_engine.fit(self.dataset,
-                                                3,
-                                                batch_size=self.batch_size)
-        sharding2_losses = np.array(sharding2_losses["loss"])
+        outs = sharding2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        sharding2_losses = np.array(outs["loss"])
         self.check_results(dp_losses, sharding2_losses)
 
         # sharding2 stage3 training
         sharding3_engine = self.get_engine(True, 3)
-        sharding3_losses = sharding3_engine.fit(self.dataset,
-                                                3,
-                                                batch_size=self.batch_size)
-        sharding3_losses = np.array(sharding3_losses["loss"])
+        outs = sharding3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        sharding3_losses = np.array(outs["loss"])
         self.check_results(dp_losses, sharding3_losses)
 
 

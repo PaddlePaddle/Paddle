@@ -14,13 +14,12 @@
 
 import paddle
 import numpy as np
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard, Variable, _in_legacy_dygraph
 from paddle.fluid import core
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
-import paddle.compat as cpt
 
 import unittest
 

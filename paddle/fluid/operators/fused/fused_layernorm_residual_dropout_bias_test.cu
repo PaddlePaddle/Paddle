@@ -41,9 +41,9 @@ struct TestFusedLayernormResidualDropoutBias {
   bool has_bias = true;
   bool has_scale = true;
   bool has_layernorm_bias = true;
-  framework::Tensor src, residual, bias, out, mask, scale, layernorm_bias,
+  phi::DenseTensor src, residual, bias, out, mask, scale, layernorm_bias,
       layernorm_out, means, vars;
-  framework::Tensor dsrc, dbias;
+  phi::DenseTensor dsrc, dbias;
 
   std::vector<T> src_vec, residual_vec, bias_vec;
   std::vector<LayerNormParamType<T>> means_vec, vars_vec, scale_vec,

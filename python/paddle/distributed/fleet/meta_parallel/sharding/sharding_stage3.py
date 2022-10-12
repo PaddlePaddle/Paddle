@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import copy
-import time
-import contextlib
 import logging
-import functools
 import numpy as np
-from itertools import chain
 from types import MethodType
-from collections import deque, OrderedDict
+from collections import OrderedDict
 
 import paddle
 from paddle import nn
@@ -170,7 +164,7 @@ class ShardingStage3(nn.Layer):
             dist.broadcast(p,
                            src=self._global_root_rank,
                            group=self._group,
-                           use_calc_stream=True)
+                           sync_op=True)
 
         # Multi stream operation will be supported later
         dist.wait(tensor=p, group=self._group, use_calc_stream=True)
@@ -435,7 +429,7 @@ class ShardingStage3(nn.Layer):
             dist.broadcast(buffer,
                            self._global_root_rank,
                            self._group,
-                           use_calc_stream=True)
+                           sync_op=True)
         # Multi stream operation will be supported later
         dist.wait(tensor=buffer, group=self._group, use_calc_stream=True)
 
@@ -478,7 +472,7 @@ class ShardingStage3(nn.Layer):
             grad_storage.buffer.scale_(scale=self._world_size_scaling)
             dist.all_reduce(tensor=grad_storage.buffer,
                             group=self._group,
-                            use_calc_stream=True)
+                            sync_op=True)
             dist.wait(tensor=grad_storage.buffer,
                       group=self._group,
                       use_calc_stream=True)
@@ -541,7 +535,7 @@ class ShardingStage3(nn.Layer):
                 # Only support sync allreduce current rank's layer now
                 dist.all_reduce(tensor=full_grad,
                                 group=self._group,
-                                use_calc_stream=True)
+                                sync_op=True)
                 dist.wait(tensor=full_grad,
                           group=self._group,
                           use_calc_stream=True)
