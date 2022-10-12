@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import tempfile
+import os
 import shutil
+import stat
+import tempfile
+import unittest
+
+import paddle.vision.transforms as T
+from paddle.static import InputSpec
+from paddle.vision.datasets import MNIST
 
 import paddle
-from paddle.static import InputSpec
-import paddle.vision.transforms as T
-from paddle.vision.datasets import MNIST
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -35,6 +38,7 @@ class TestWandbCallbacks(unittest.TestCase):
         self.save_dir = tempfile.mkdtemp()
 
     def tearDown(self):
+        os.chmod(self.save_dir, stat.S_IWUSR)
         shutil.rmtree(self.save_dir)
 
     def func_wandb_callback(self):
@@ -55,7 +59,8 @@ class TestWandbCallbacks(unittest.TestCase):
 
         callback = paddle.callbacks.WandbCallback(project='random',
                                                   dir=self.save_dir,
-                                                  anonymous='must')
+                                                  anonymous='must',
+                                                  mode='offline')
         model.fit(train_dataset,
                   eval_dataset,
                   batch_size=64,
