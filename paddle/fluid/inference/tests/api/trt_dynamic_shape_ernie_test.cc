@@ -28,6 +28,7 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
 #endif
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
+
   int run_batch = bs;
   const int run_seq_len = 128;
   size_t len = run_batch * run_seq_len;
