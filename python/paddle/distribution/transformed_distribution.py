@@ -60,23 +60,27 @@ class TransformedDistribution(distribution.Distribution):
         if not all(isinstance(t, transform.Transform) for t in transforms):
             raise TypeError("All element of transforms must be Transform type.")
 
-        chain = transform.ChainTransform(transforms)
-        base_shape = base.batch_shape + base.event_shape
-        self._base = base
-        self._transforms = transforms
-        if (len(transforms) > 0):
+        if not transforms:
+            super(TransformedDistribution, self).__init__(base.batch_shape, base.event_shape)
+        else:
+            chain = transform.ChainTransform(transforms)
+            if len(base.batch_shape + base.event_shape) < chain._domain.event_rank:
+                raise ValueError(
+                    f"'base' needs to have shape with size at least {chain._domain.event_rank}, bug got {len(base_shape)}."
+                )
+            if chain._domain.event_rank > len(base.event_shape):
+                base = independent.Independent(
+                    (base, chain._domain.event_rank - len(base.event_shape)))
+            self._base = base
+            self._transforms = transforms
+
             transformed_shape = chain.forward_shape(base.batch_shape +
                                                     base.event_shape)
             transformed_event_rank = chain._codomain.event_rank + \
                 max(len(base.event_shape) - chain._domain.event_rank, 0)
             super(TransformedDistribution, self).__init__(
-                transformed_shape[:len(transformed_shape) -
-                                  transformed_event_rank],
-                transformed_shape[len(transformed_shape) -
-                                  transformed_event_rank:])
-        else:
-            super(TransformedDistribution,
-                  self).__init__(base.batch_shape, base.event_shape)
+                transformed_shape[:len(transformed_shape) - transformed_event_rank],
+                transformed_shape[len(transformed_shape) - transformed_event_rank:])
 
     def sample(self, shape=()):
         """Sample from ``TransformedDistribution``.
