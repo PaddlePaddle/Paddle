@@ -62,7 +62,7 @@ else:
         cv2 = None
 import os
 import tarfile
-import six.moves.cPickle as pickle
+import pickle
 
 __all__ = []
 

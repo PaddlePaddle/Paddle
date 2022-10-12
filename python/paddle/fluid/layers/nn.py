@@ -14314,7 +14314,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
             def simple_net(img, label):
                 hidden = img
-                for idx in six.moves.range(4):
+                for idx in range(4):
                     hidden = paddle.static.nn.fc(hidden, size=200)
                     new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
                         dtype=hidden.dtype, shape=hidden.shape)

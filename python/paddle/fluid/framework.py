@@ -5525,13 +5525,13 @@ class Program(object):
                 import six
 
                 def print_prog(prog):
-                    for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                    for name, value in sorted(prog.block(0).vars.items()):
                         print(value)
                     for op in prog.block(0).ops:
                         print("op type is {}".format(op.type))
                         print("op inputs are {}".format(op.input_arg_names))
                         print("op outputs are {}".format(op.output_arg_names))
-                        for key, value in sorted(six.iteritems(op.all_attrs())):
+                        for key, value in sorted(op.all_attrs().items()):
                             if key not in ['op_callstack', 'op_role_var']:
                                 print(" [ attrs: {}:   {} ]".format(key, value))
 
@@ -5548,13 +5548,13 @@ class Program(object):
                     paddle.enable_static()
 
                     def print_prog(prog):
-                        for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                        for name, value in sorted(prog.block(0).vars.items()):
                             print(value)
                         for op in prog.block(0).ops:
                             print("op type is {}".format(op.type))
                             print("op inputs are {}".format(op.input_arg_names))
                             print("op outputs are {}".format(op.output_arg_names))
-                            for key, value in sorted(six.iteritems(op.all_attrs())):
+                            for key, value in sorted(op.all_attrs().items()):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
 
@@ -5601,13 +5601,13 @@ class Program(object):
                     paddle.enable_static()
 
                     def print_prog(prog):
-                        for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                        for name, value in sorted(prog.block(0).vars.items()):
                             print(value)
                         for op in prog.block(0).ops:
                             print("op type is {}".format(op.type))
                             print("op inputs are {}".format(op.input_arg_names))
                             print("op outputs are {}".format(op.output_arg_names))
-                            for key, value in sorted(six.iteritems(op.all_attrs())):
+                            for key, value in sorted(op.all_attrs().items()):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
 

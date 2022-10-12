@@ -15,8 +15,6 @@
 from . import core
 import numpy as np
 import os
-import six
-from six.moves import zip, range, xrange
 import multiprocessing
 import warnings
 

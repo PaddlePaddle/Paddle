@@ -20,7 +20,7 @@ import shutil
 import sys
 import importlib
 import paddle.dataset
-import six.moves.cPickle as pickle
+import pickle
 import tempfile
 import glob
 import paddle
