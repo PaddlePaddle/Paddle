@@ -375,6 +375,13 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
                             int axis,
                             MetaTensor* out);
 
+void TopKTensorInferMeta(const MetaTensor& x,
+                         const MetaTensor& k_list,
+                         int axis,
+                         bool largest,
+                         MetaTensor* out,
+                         MetaTensor* indices);
+
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               bool upper,

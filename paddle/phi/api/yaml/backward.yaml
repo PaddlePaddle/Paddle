@@ -198,6 +198,16 @@
   kernel :
     func : solve_grad
 
+- backward_op : top_k_tensor_grad
+  forward : top_k_tensor (Tensor x, Tensor k_list, int axis = -1, bool largest = true) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor k_list, Tensor indices, Tensor out_grad, int axis = -1, bool largest = true)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : top_k_tensor_grad
+
 - backward_op : trace_grad
   forward : trace (Tensor x, int offset, int axis1, int axis2) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int offset, int axis1, int axis2)

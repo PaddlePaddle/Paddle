@@ -2434,6 +2434,71 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void TopKTensorInferMeta(const MetaTensor& x,
+                         const MetaTensor& k_list,
+                         int axis,
+                         bool largest,
+                         MetaTensor* out,
+                         MetaTensor* indices) {
+  auto input_dims = x.dims();
+  const int& dim_size = input_dims.size();
+  PADDLE_ENFORCE_EQ(
+      (axis < dim_size) && (axis >= (-1 * dim_size)),
+      true,
+      phi::errors::InvalidArgument(
+          "the axis of topk must be [-%d, %d), but you set axis is %d",
+          dim_size,
+          dim_size,
+          axis));
+
+  auto k_dims = k_list.dims();
+  const int& k_dim_size = k_dims.size();
+
+  PADDLE_ENFORCE_EQ(
+      k_dim_size == 1,
+      true,
+      phi::errors::InvalidArgument(
+          "the attribute of k_tensor'dim_size in the top_k_tensor must == 1, "
+          "but received %ld .",
+          k_dim_size));
+
+  if (axis == 0) {
+    PADDLE_ENFORCE_EQ(
+        k_dims[0] == 1,
+        true,
+        phi::errors::InvalidArgument("the attribute of k_tensor'size in the "
+                                     "top_k_tensor must == 1 when aixs = 0, "
+                                     "but received %ld .",
+                                     k_dims[0]));
+  }
+
+  if (k_dims[0] > 1) {
+    PADDLE_ENFORCE_EQ(
+        k_dims[0] == input_dims[0],
+        true,
+        phi::errors::InvalidArgument("the attribute of k_tensor'size in the "
+                                     "top_k_tensor must == batch_size:%ld, "
+                                     "but received %ld .",
+                                     input_dims[0],
+                                     k_dims[0]));
+  }
+
+  PADDLE_ENFORCE_GE(input_dims.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "input of top_k_tensor must have >= 1d shape"));
+
+  phi::DDim dims = input_dims;
+
+  dims[axis] = -1;
+  out->set_dims(dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  indices->set_dims(dims);
+  indices->share_lod(x);
+  indices->set_dtype(DataType::INT64);
+}
+
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               bool upper,

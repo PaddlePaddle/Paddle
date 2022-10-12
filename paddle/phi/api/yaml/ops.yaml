@@ -191,6 +191,16 @@
     func : trace
   backward : trace_grad
 
+- op : top_k_tensor
+  args : (Tensor x, Tensor k_list, int axis = -1, bool largest = true)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : TopKTensorInferMeta
+  kernel :
+    func : top_k_tensor
+    data_type : x
+  backward : top_k_tensor_grad
+
 - op : trunc
   args : (Tensor x)
   output : Tensor

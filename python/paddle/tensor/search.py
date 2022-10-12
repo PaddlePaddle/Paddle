@@ -907,6 +907,71 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     return values, indices
 
 
+def top_k_tensor(x, k, axis=None, largest=True, name=None):
+    """
+    Return values and indices of the k largest or smallest at the optional axis.
+    The input x and k are Tensors, this operator computes the top k(k may be a list with several values) values and indices along the :attr:`axis`.
+
+    Args:
+        x(Tensor): Tensor, an input N-D Tensor with type float32, float64, int32, int64.
+        k(Tensor): The number of top elements to look for along the axis.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
+            as axis + R. Default is -1.
+        largest(bool, optional) : largest is a flag, if set to true,
+            algorithm will sort by descending order, otherwise sort by
+            ascending order. Default is True.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            data_1 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
+            k_tensor_1 = paddle.to_tensor([1, 2], dtype="int32")
+            value_1, indices_1 = paddle.top_k_tensor(data_1, k=k_tensor_1)
+            print(value_1) # [[7, 0], [6, 5]]
+            print(indices_1) # [[3, 0], [1, 3]]
+
+            data_2 = paddle.to_tensor([[[1, 2], [3, 4]], [[7, 6], [5, 8]]])
+            k_tensor_2 = paddle.to_tensor([1, 2], dtype="int32")
+            value_2, indices_2 = paddle.top_k_tensor(data_2, k=k_tensor_2, axis=1)
+            print(value_2) # [[[3, 4], [0, 0]], [[7, 8], [5, 6]]]
+            print(indices_2) # [[[1, 1], [0, 0]], [[0, 1], [1, 0]]]
+
+    """
+    if in_dygraph_mode():
+        if axis == None:
+            axis = -1
+        out, indices = _C_ops.top_k_tensor(x, k, axis, largest)
+        return out, indices
+
+    helper = LayerHelper("top_k_tensor", **locals())
+    inputs = {"x": [x], "k_list": [k]}
+    attrs = {}
+    attrs['largest'] = largest
+    if axis is not None:
+        attrs['axis'] = axis
+
+    values = helper.create_variable_for_type_inference(dtype=x.dtype)
+    indices = helper.create_variable_for_type_inference(dtype="int64")
+
+    helper.append_op(type="top_k_tensor",
+                     inputs=inputs,
+                     outputs={
+                         "out": [values],
+                         "indices": [indices]
+                     },
+                     attrs=attrs)
+    indices.stop_gradient = True
+    return values, indices
+
+
 def bucketize(x, sorted_sequence, out_int32=False, right=False, name=None):
     """
     This API is used to find the index of the corresponding 1D tensor `sorted_sequence` in the innermost dimension based on the given `x`.
