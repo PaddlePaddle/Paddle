@@ -745,12 +745,12 @@ PDNode* FusedMultiTransformerEncoderFuseQKVPattern::operator()() {
 
 }  // namespace patterns
 
-inline void QKVWeightsProcess(Tensor* wq_tensor,
-                              Tensor* wk_tensor,
-                              Tensor* wv_tensor,
-                              Tensor* bq_tensor,
-                              Tensor* bk_tensor,
-                              Tensor* bv_tensor,
+inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
+                              framework::LoDTensor* wk_tensor,
+                              framework::LoDTensor* wv_tensor,
+                              framework::LoDTensor* bq_tensor,
+                              framework::LoDTensor* bk_tensor,
+                              framework::LoDTensor* bv_tensor,
                               const int num_head,
                               const int dim_head,
                               const int dim_embed) {
@@ -812,8 +812,8 @@ inline void QKVWeightsProcess(Tensor* wq_tensor,
          sizeof(float) * bq_tensor->numel());
 }
 
-inline void QKVWeightsProcessFuseQKV(Tensor* qkv_w_tensor,
-                                     Tensor* qkv_b_tensor,
+inline void QKVWeightsProcessFuseQKV(framework::LoDTensor* qkv_w_tensor,
+                                     framework::LoDTensor* qkv_b_tensor,
                                      const int num_head,
                                      const int dim_head,
                                      const int dim_embed) {
