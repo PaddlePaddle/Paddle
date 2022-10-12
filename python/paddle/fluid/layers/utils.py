@@ -99,7 +99,7 @@ def _sorted(dict_):
     Returns a sorted list of the dict keys, with error if keys not sortable.
     """
     try:
-        return sorted(six.iterkeys(dict_))
+        return sorted(dict_.keys())
     except TypeError:
         raise TypeError("nest only supports dicts with sortable keys.")
 
@@ -159,8 +159,7 @@ def _sequence_like(instance, args):
         # ordered and plain dicts (e.g., flattening a dict but using a
         # corresponding `OrderedDict` to pack it back).
         result = dict(zip(_sorted(instance), args))
-        return type(instance)(
-            (key, result[key]) for key in six.iterkeys(instance))
+        return type(instance)((key, result[key]) for key in instance.keys())
     elif (isinstance(instance, tuple) and hasattr(instance, "_fields")
           and isinstance(instance._fields, Sequence)
           and all(isinstance(f, str) for f in instance._fields)):
@@ -256,8 +255,8 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
                 "structure has type %s, while second structure has type %s." %
                 (type_nest1, type_nest2))
         if isinstance(nest1, dict):
-            keys1 = set(six.iterkeys(nest1))
-            keys2 = set(six.iterkeys(nest2))
+            keys1 = set(nest1.keys())
+            keys2 = set(nest2.keys())
             if keys1 != keys2:
                 raise ValueError(
                     "The two dictionaries don't have the same set of keys. First "
