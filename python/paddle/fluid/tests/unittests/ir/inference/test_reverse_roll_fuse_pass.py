@@ -271,7 +271,7 @@ class ReverseRoll2Pass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(quant=False,
                             max_examples=50,
-                            passes=["reverse_roll_2_fuse_pass"],
+                            passes=["reverse_roll_fuse_pass"],
                             max_duration=250,
                             min_success_num=50)
 
