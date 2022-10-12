@@ -88,6 +88,9 @@ namespace distributed {
     case experimental::DataType::BOOL:       \
       func<bool>(args);                      \
       break;                                 \
+    case experimental::DataType::BFLOAT16:   \
+      func<bfloat16>(args);                  \
+      break;                                 \
     default:                                 \
       VLOG(0) << "Error: Unknown DataType."; \
       exit(-1);                              \

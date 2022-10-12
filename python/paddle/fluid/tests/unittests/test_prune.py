@@ -100,7 +100,7 @@ class TestPrune(unittest.TestCase):
         except ValueError as e:
             self.assertIn(
                 "All targets of Program._prune_with_input() can only be Variable or Operator",
-                cpt.get_exception_message(e))
+                str(e))
 
 
 def mock(self, program, feed, fetch, optimize_ops):

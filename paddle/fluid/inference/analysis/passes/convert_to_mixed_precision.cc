@@ -54,7 +54,7 @@ inline std::string SerializeParams(framework::Scope* scope,
         scope->FindVar(param),
         platform::errors::NotFound("Block should already have a '%s' variable",
                                    param));
-    auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+    auto* tensor = scope->FindVar(param)->GetMutable<phi::DenseTensor>();
     framework::SerializeToStream(os, *tensor, ctx);
   }
   return os.str();
@@ -159,9 +159,8 @@ void SaveMixedModel(
 
   for (const auto& param_name : parameters) {
     auto* var = scope->FindLocalVar(param_name);
-    if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<phi::DenseTensor>()) {
-      auto* t = var->GetMutable<framework::LoDTensor>();
+    if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+      auto* t = var->GetMutable<phi::DenseTensor>();
       if (t->dtype() != phi::DataType::FLOAT32) continue;
 
       phi::DenseTensor mixed_tensor;

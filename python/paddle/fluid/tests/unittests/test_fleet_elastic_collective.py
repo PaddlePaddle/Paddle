@@ -13,13 +13,8 @@
 # limitations under the License.
 
 import os
-import time
-import json
 import unittest
-import argparse
 import tempfile
-import traceback
-from warnings import catch_warnings
 
 from paddle.distributed.fleet.elastic.collective import CollectiveLauncher
 from paddle.distributed.fleet.launch import launch_collective

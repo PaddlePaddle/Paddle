@@ -110,7 +110,7 @@ InterpreterCore::~InterpreterCore() {
 
 interpreter::CostInfo InterpreterCore::DryRun(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
+    const std::vector<phi::DenseTensor>& feed_tensors) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(place_.device);
@@ -144,7 +144,7 @@ interpreter::CostInfo InterpreterCore::DryRun(
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors) {
+    const std::vector<phi::DenseTensor>& feed_tensors) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place_)) {
     platform::SetDeviceId(place_.device);
@@ -1080,10 +1080,9 @@ void InterpreterCore::CheckGC(const Instruction& instr) {
   }
 }
 
-void InterpreterCore::Prepare(
-    const std::vector<std::string>& feed_names,
-    const std::vector<framework::LoDTensor>& feed_tensors,
-    bool prepare_feed) {
+void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
+                              const std::vector<phi::DenseTensor>& feed_tensors,
+                              bool prepare_feed) {
   PADDLE_ENFORCE_EQ(feed_names.size(),
                     feed_tensors.size(),
                     platform::errors::PreconditionNotMet(
@@ -1100,7 +1099,7 @@ void InterpreterCore::Prepare(
           platform::errors::NotFound("Variable %s should not be nullptr.",
                                      feed_names[i]));
 
-      auto feed_tensor = feed_var->GetMutable<framework::LoDTensor>();
+      auto feed_tensor = feed_var->GetMutable<phi::DenseTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
       feed_tensor->set_lod(feed_tensors[i].lod());
     }

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid, tensor
+from paddle import fluid
 import paddle
 import paddle.fluid.dygraph as dg
 import numpy as np
