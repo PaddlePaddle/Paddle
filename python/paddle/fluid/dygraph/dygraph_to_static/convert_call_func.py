@@ -22,6 +22,7 @@ import re
 import types
 
 import numpy
+import six
 import builtins
 
 from paddle.fluid.dygraph.container import Sequential
@@ -37,7 +38,9 @@ from paddle.fluid.dygraph.layers import Layer
 __all__ = ["convert_call"]
 
 # TODO(liym27): A better way to do this.
-BUILTIN_LIKELY_MODULES = [collections, pdb, copy, inspect, re, numpy, logging]
+BUILTIN_LIKELY_MODULES = [
+    collections, pdb, copy, inspect, re, six, numpy, logging
+]
 # The api(s) should be considered as plain function and convert
 # them into static layer code.
 PADDLE_NEED_CONVERT_APIS = [Sequential]
