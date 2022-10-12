@@ -30,36 +30,31 @@ the image layout as follows.
   be keep consistent between the training and inference period.
 """
 
-import six
 import numpy as np
 # FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
 # https://github.com/numpy/numpy/issues/12497
-if six.PY3:
-    import subprocess
-    import sys
-    import os
-    interpreter = sys.executable
-    # Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
-    # will be the C++ execubable on Windows
-    if sys.platform == 'win32' and 'python.exe' not in interpreter:
-        interpreter = sys.exec_prefix + os.sep + 'python.exe'
-    import_cv2_proc = subprocess.Popen([interpreter, "-c", "import cv2"],
-                                       stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE)
-    out, err = import_cv2_proc.communicate()
-    retcode = import_cv2_proc.poll()
-    if retcode != 0:
-        cv2 = None
-    else:
-        try:
-            import cv2
-        except ImportError:
-            cv2 = None
+import subprocess
+import sys
+import os
+
+interpreter = sys.executable
+# Note(zhouwei): if use Python/C 'PyRun_SimpleString', 'sys.executable'
+# will be the C++ execubable on Windows
+if sys.platform == 'win32' and 'python.exe' not in interpreter:
+    interpreter = sys.exec_prefix + os.sep + 'python.exe'
+import_cv2_proc = subprocess.Popen([interpreter, "-c", "import cv2"],
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+out, err = import_cv2_proc.communicate()
+retcode = import_cv2_proc.poll()
+if retcode != 0:
+    cv2 = None
 else:
     try:
         import cv2
     except ImportError:
         cv2 = None
+
 import os
 import tarfile
 import pickle

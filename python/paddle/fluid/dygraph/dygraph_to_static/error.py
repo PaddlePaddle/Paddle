@@ -380,14 +380,11 @@ class ErrorData(object):
             raise
 
         new_exception = self.create_exception()
-        if six.PY3:
-            # NOTE(liym27):
-            # 1. Why `raise new_exception from None`?
-            #   In Python 3, by default, an new exception is raised with trace information of the caught exception.
-            #   This only raises new_exception and hides unwanted implementation details from tracebacks of the
-            #   caught exception.
-            # 2. Use exec to bypass syntax error checking in Python 2.
+        # NOTE(liym27):
+        # Why `raise new_exception from None`?
+        #
+        # In Python 3, by default, an new exception is raised with trace information of the caught exception.
+        # This only raises new_exception and hides unwanted implementation details from tracebacks of the
+        # caught exception.
 
-            six.exec_("raise new_exception from None")
-        else:
-            raise new_exception
+        raise new_exception from None
