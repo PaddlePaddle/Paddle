@@ -991,18 +991,21 @@ __global__ void WarpSoftmaxForward(T* loss,
             // label
             int loss_idx = (threadIdx.x + it * kWarpSize) * kVSize;
             auto lbl = static_cast<int64_t>(label[first_batch + i]);
-            PADDLE_ENFORCE(
-                lbl >= 0 && lbl < element_count || lbl == ignore_index,
-                "The value of label expected >= 0 and < %d, or == %d, "
-                "but got %ld. Please check label value.",
-                element_count,
-                ignore_index,
-                lbl);
             if (lbl == ignore_index) {
               loss[first_batch + i] = static_cast<T>(0.0);
             } else {
-              if (lbl == loss_idx) {
-                loss[first_batch + i] = -logsoftmax;
+              if (lbl >= 0 && lbl < element_count) {
+                if (lbl == loss_idx) {
+                  loss[first_batch + i] = -logsoftmax;
+                }
+              } else {
+                PADDLE_ENFORCE(
+                    false,
+                    "The value of label expected >= 0 and < %d, or == %d, "
+                    "but got %ld. Please check label value.",
+                    element_count,
+                    ignore_index,
+                    lbl);
               }
             }
           } else {  // softmax
@@ -1029,18 +1032,21 @@ __global__ void WarpSoftmaxForward(T* loss,
             // label
             int loss_idx = (threadIdx.x + it * kWarpSize) * kVSize + s;
             auto lbl = static_cast<int64_t>(label[first_batch + i]);
-            PADDLE_ENFORCE(
-                lbl >= 0 && lbl < element_count || lbl == ignore_index,
-                "The value of label expected >= 0 and < %d, or == %d, "
-                "but got %ld. Please check label value.",
-                element_count,
-                ignore_index,
-                lbl);
             if (lbl == ignore_index) {
               loss[first_batch + i] = static_cast<T>(0.0);
             } else {
-              if (lbl == loss_idx) {
-                loss[first_batch + i] = -logsoftmax;
+              if (lbl >= 0 && lbl < element_count) {
+                if (lbl == loss_idx) {
+                  loss[first_batch + i] = -logsoftmax;
+                }
+              } else {
+                PADDLE_ENFORCE(
+                    false,
+                    "The value of label expected >= 0 and < %d, or == %d, "
+                    "but got %ld. Please check label value.",
+                    element_count,
+                    ignore_index,
+                    lbl);
               }
             }
           } else {  // softmax
