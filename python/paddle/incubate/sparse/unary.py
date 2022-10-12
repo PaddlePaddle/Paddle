@@ -640,6 +640,7 @@ def expm1(x, name=None):
     """
     return _C_ops.sparse_expm1(x)
 
+
 @dygraph_only
 def reshape(x, shape, name=None):
     """
@@ -648,13 +649,16 @@ def reshape(x, shape, name=None):
     as the shape of the reshaped tensor. Note: if x is a SparseCsrTensor, then len(shape) must be 2 or 3.
     .. math::
         out = reshape(x, shape)
+
     Parameters:
         x (Tensor): The input sparse tensor with data type float32, float64, int32, int64 and so on.
         shape (list[int]): new shape.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         A reshaped sparse tensor with the same data type as ``x``.
+
     Examples:
         .. code-block:: python
             import paddle
@@ -663,4 +667,3 @@ def reshape(x, shape, name=None):
             out = paddle.incubate.sparse.reshape(sparse_x, [6, ])
     """
     return _C_ops.sparse_reshape(x, shape)
-    

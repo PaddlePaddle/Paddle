@@ -34,7 +34,6 @@ void ReshapeCooGradKernel(const Context& dev_ctx,
   ReshapeCooKernel<T, Context>(dev_ctx, dout, x_shape, dx);
 }
 
-
 // just copy from paddle\phi\kernels\sparse\cpu\reshape_grad_kernel.cc
 template <typename T, typename Context>
 void ReshapeCsrGradKernel(const Context& dev_ctx,
