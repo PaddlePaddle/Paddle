@@ -644,17 +644,17 @@ def expm1(x, name=None):
 def reshape(x, shape, name=None):
     """
     Changes the shape of ``x`` without changing its value, requiring x to be a SparseCooTensor or SparseCsrTensor.
-    Currently this function can only reshape the sparse dims of ``x`` , but ``shape`` argument must 
-    include all dims of the reshaped tensor. Note: if x is a SparseCsrTensor, then len(shape) must be 2 or 3.
+    Currently this function can only reshape the sparse dims of ``x`` , but ``shape`` argument must be specified
+    as the shape of the reshaped tensor. Note: if x is a SparseCsrTensor, then len(shape) must be 2 or 3.
     .. math::
         out = reshape(x, shape)
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64, int32, int64 and so on.
+        x (Tensor): The input sparse tensor with data type float32, float64, int32, int64 and so on.
         shape (list[int]): new shape.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        A reshaped Sparse Tensor with the same data type as ``x``.
+        A reshaped sparse tensor with the same data type as ``x``.
     Examples:
         .. code-block:: python
             import paddle
