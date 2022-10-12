@@ -12,24 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
-import time
-import random
 import tempfile
 import shutil
-import numpy as np
 
 import paddle
-from paddle import Model
 from paddle.static import InputSpec
-from paddle.vision.models import LeNet
-from paddle.hapi.callbacks import config_callbacks
 import paddle.vision.transforms as T
 from paddle.vision.datasets import MNIST
-from paddle.metric import Accuracy
-from paddle.nn.layer.loss import CrossEntropyLoss
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 
 class MnistDataset(MNIST):
@@ -54,13 +45,13 @@ class TestCallbacks(unittest.TestCase):
         train_dataset = MnistDataset(mode='train', transform=transform)
         eval_dataset = MnistDataset(mode='test', transform=transform)
 
-        net = paddle.vision.models.LeNet()
-        model = paddle.Model(net, inputs, labels)
+        net = LeNet()
+        model = Model(net, inputs, labels)
 
         optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
         model.prepare(optimizer=optim,
-                      loss=paddle.nn.CrossEntropyLoss(),
-                      metrics=paddle.metric.Accuracy())
+                      loss=CrossEntropyLoss(),
+                      metrics=Accuracy())
 
         callback = paddle.callbacks.WandbCallback(project='random',
                                                   dir=self.save_dir,

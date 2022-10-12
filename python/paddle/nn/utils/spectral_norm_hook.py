@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-import numpy as np
-
 import paddle
 from ..layer.conv import Conv1DTranspose, Conv2DTranspose, Conv3DTranspose
 from ..layer.common import Linear

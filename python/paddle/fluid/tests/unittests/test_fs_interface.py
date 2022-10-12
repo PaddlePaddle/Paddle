@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import sys
 import inspect
 
 from paddle.distributed.fleet.utils.fs import FS

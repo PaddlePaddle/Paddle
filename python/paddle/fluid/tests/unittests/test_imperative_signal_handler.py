@@ -19,7 +19,6 @@ import unittest
 import multiprocessing
 import time
 
-import paddle.compat as cpt
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
 
