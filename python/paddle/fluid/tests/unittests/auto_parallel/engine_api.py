@@ -16,6 +16,8 @@ import tempfile
 import os
 import numpy as np
 import paddle
+import paddle.static as static
+import paddle.utils as utils
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.io import Dataset
