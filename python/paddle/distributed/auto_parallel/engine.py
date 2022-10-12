@@ -41,8 +41,7 @@ from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .dist_loader import DistributedDataLoaderFromGenerator, DistributedDataLoader
-from .utils import print_program_with_dist_attr, to_list
-from .utils import get_logger, get_dist_attr
+from .utils import to_list, get_logger, get_dist_attr
 from .process_group import new_process_group, get_all_process_groups
 from .dist_context import DistributedContext, get_default_distributed_context
 from .strategy import Strategy

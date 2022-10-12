@@ -23,10 +23,7 @@ from paddle.distributed.passes import new_pass
 
 from .reshard import Resharder
 from .partitioner import Partitioner
-from .dist_op import DistributedOperator
-from .dist_saver import DistributedSaver
-from .utils import make_data_unshard, set_grad_var_shape
-from .utils import print_program_with_dist_attr, to_list
+from .utils import set_grad_var_shape
 from .utils import get_logger
 from .process_group import get_world_process_group
 
