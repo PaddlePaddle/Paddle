@@ -14,7 +14,6 @@
 
 import unittest
 
-import paddle
 import paddle.profiler as profiler
 import paddle.profiler.profiler_statistic as profiler_statistic
 

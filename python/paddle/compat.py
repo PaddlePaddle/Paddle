@@ -17,9 +17,6 @@ import math
 
 __all__ = []
 
-int_type = int
-long_type = int
-
 
 #  str and bytes related functions
 def to_text(obj, encoding='utf-8', inplace=False):
@@ -227,35 +224,3 @@ def round(x, d=0):
     else:
         import __builtin__
         return __builtin__.round(x, d)
-
-
-def floor_division(x, y):
-    """
-    Compatible division which act the same behaviour in Python3 and Python2,
-    whose result will be a int value of floor(x / y) in Python3 and value of
-    (x / y) in Python2.
-
-    Args:
-        x(int|float) : The number to divide.
-        y(int|float) : The number to be divided
-
-    Returns:
-        division result of x // y
-    """
-    return x // y
-
-
-# exception related functions
-def get_exception_message(exc):
-    """
-    Get the error message of a specific exception
-
-    Args:
-        exec(Exception) : The exception to get error message.
-
-    Returns:
-        the error message of exec
-    """
-    assert exc is not None
-
-    return str(exc)

@@ -18,10 +18,6 @@ import paddle.compat as cpt
 
 class TestCompatible(unittest.TestCase):
 
-    def test_type(self):
-        self.assertEqual(cpt.int_type, int)
-        self.assertEqual(cpt.long_type, int)
-
     def test_to_text(self):
         self.assertIsNone(cpt.to_text(None))
 
@@ -251,30 +247,6 @@ class TestCompatible(unittest.TestCase):
         self.assertEqual(-4.0, cpt.round(-3.5))
         self.assertEqual(5.0, cpt.round(5))
         self.assertRaises(TypeError, cpt.round, None)
-
-    def test_floor_division(self):
-        self.assertEqual(0.0, cpt.floor_division(3, 4))
-        self.assertEqual(1.0, cpt.floor_division(4, 3))
-        self.assertEqual(2.0, cpt.floor_division(6, 3))
-        self.assertEqual(-2.0, cpt.floor_division(-4, 3))
-        self.assertEqual(-2.0, cpt.floor_division(-6, 3))
-        self.assertRaises(ZeroDivisionError, cpt.floor_division, 3, 0)
-        self.assertRaises(TypeError, cpt.floor_division, None, None)
-
-    def test_get_exception_message(self):
-        exception_message = "test_message"
-        self.assertRaises(AssertionError, cpt.get_exception_message, None)
-        try:
-            raise RuntimeError(exception_message)
-        except Exception as e:
-            self.assertEqual(exception_message, cpt.get_exception_message(e))
-            self.assertIsNotNone(e)
-
-        try:
-            raise Exception(exception_message)
-        except Exception as e:
-            self.assertEqual(exception_message, cpt.get_exception_message(e))
-            self.assertIsNotNone(e)
 
 
 if __name__ == "__main__":

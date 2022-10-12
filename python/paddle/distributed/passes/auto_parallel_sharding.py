@@ -13,10 +13,7 @@
 # limitations under the License.
 
 from functools import reduce
-from collections import OrderedDict
-import numpy as np
 
-import paddle
 from paddle.framework import core
 from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass

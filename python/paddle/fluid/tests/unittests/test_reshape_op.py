@@ -18,9 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler
 from paddle.static import Program, program_guard
-import paddle.fluid.core as core
 
 
 # situation 1: have shape( list, no tensor), no actual shape(Tensor)

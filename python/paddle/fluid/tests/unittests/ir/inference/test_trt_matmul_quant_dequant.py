@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-from inference_pass_test import InferencePassTest
 from quant_dequant_test import QuantDequantTest
 import paddle
 import paddle.fluid as fluid

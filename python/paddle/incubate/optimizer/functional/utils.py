@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.fluid.framework import Variable
-from paddle.fluid.data_feeder import check_type, check_dtype
+from paddle.fluid.data_feeder import check_type
 
 
 def check_input_type(input, name, op_name):
