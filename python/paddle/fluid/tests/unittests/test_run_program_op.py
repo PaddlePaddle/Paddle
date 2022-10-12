@@ -18,10 +18,10 @@ import numpy as np
 import six
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 import paddle.fluid as fluid
 from paddle import compat as cpt
-from paddle.fluid import core, framework, executor
+from paddle.fluid import core, framework
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.framework import _in_eager_mode_
 from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor

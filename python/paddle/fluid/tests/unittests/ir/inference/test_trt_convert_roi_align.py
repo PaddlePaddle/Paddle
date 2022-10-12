@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 
 
 class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):

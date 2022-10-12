@@ -15,12 +15,10 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid.core as core
 import sys
 
 sys.path.append("..")
 from op_test import OpTest
-from paddle.fluid import Program, program_guard
 import paddle.fluid.dygraph as dg
 import paddle.static as static
 from numpy.random import random as rand

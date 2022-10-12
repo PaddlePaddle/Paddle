@@ -69,6 +69,7 @@ __inline__ __device__ T blockReduceSumV2(T *val) {
   return (T)0.0f;
 }
 
+template <int UNROLL_FACTOR>
 __global__ void generalAddBiasResidualLayerNormOpt2(
     half2 *normed_output,
     half2 *output,
@@ -87,7 +88,7 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
   float x2_sum = 0.0f;
   const int b_offset = blockIdx.x * n;
 
-#pragma unroll 2
+#pragma unroll UNROLL_FACTOR
   for (int i = threadIdx.x; i < n; i += blockDim.x) {
     const int index = b_offset + i;
     float val_1 = 0.0f;
@@ -129,7 +130,7 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
   half2 mean_2 = __float2half2_rn(s_mean);
   half2 var_2 = __float2half2_rn(s_variance);
 
-#pragma unroll 2
+#pragma unroll UNROLL_FACTOR
   for (int i = threadIdx.x; i < n; i += blockDim.x) {
     const int index = b_offset + i;
     half2 val = __hmul2(__hmul2(__hsub2(output[index], mean_2), var_2),
@@ -141,6 +142,20 @@ __global__ void generalAddBiasResidualLayerNormOpt2(
   }
 #endif
 }
+
+#define HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(UNROLL_FACTOR)                \
+  generalAddBiasResidualLayerNormOpt2<UNROLL_FACTOR>                         \
+      <<<rows, block, 0, stream>>>(reinterpret_cast<half2 *>(layernorm_dst), \
+                                   reinterpret_cast<half2 *>(dst),           \
+                                   (const half2 *)bias,                      \
+                                   (const half2 *)input2,                    \
+                                   (const half2 *)input1,                    \
+                                   (const half2 *)fp16_scale_gpu_,           \
+                                   (const half2 *)fp16_bias_gpu_,            \
+                                   rows,                                     \
+                                   half_n,                                   \
+                                   epsilon);
+
 #endif
 
 using half = phi::dtype::float16;
@@ -157,6 +172,18 @@ int PrelnResidualBiasPluginDynamic::initialize() TRT_NOEXCEPT {
              scale_.data(),
              scale_size_ * sizeof(float),
              cudaMemcpyHostToDevice);
+  if (with_fp16_) {
+    cudaMalloc(&fp16_bias_gpu_, sizeof(half) * bias_size_);
+    cudaMemcpy(fp16_bias_gpu_,
+               fp16_bias_.data(),
+               bias_size_ * sizeof(half),
+               cudaMemcpyHostToDevice);
+    cudaMalloc(&fp16_scale_gpu_, sizeof(half) * scale_size_);
+    cudaMemcpy(fp16_scale_gpu_,
+               fp16_scale_.data(),
+               scale_size_ * sizeof(half),
+               cudaMemcpyHostToDevice);
+  }
   if (ele_bias_size_ > 0) {
     if (with_fp16_) {
       cudaMalloc(&ele_bias_gpu_, sizeof(half) * ele_bias_size_);
@@ -183,9 +210,17 @@ void PrelnResidualBiasPluginDynamic::terminate() TRT_NOEXCEPT {
     cudaFree(bias_gpu_);
     bias_gpu_ = nullptr;
   }
+  if (fp16_bias_gpu_) {
+    cudaFree(fp16_bias_gpu_);
+    fp16_bias_gpu_ = nullptr;
+  }
   if (scale_gpu_) {
     cudaFree(scale_gpu_);
     scale_gpu_ = nullptr;
+  }
+  if (fp16_scale_gpu_) {
+    cudaFree(fp16_scale_gpu_);
+    fp16_scale_gpu_ = nullptr;
   }
   if (ele_bias_gpu_) {
     cudaFree(ele_bias_gpu_);
@@ -217,7 +252,9 @@ nvinfer1::IPluginV2DynamicExt *PrelnResidualBiasPluginDynamic::clone() const
   }
 
   ptr->bias_gpu_ = bias_gpu_;
+  ptr->fp16_bias_gpu_ = fp16_bias_gpu_;
   ptr->scale_gpu_ = scale_gpu_;
+  ptr->fp16_scale_gpu_ = fp16_scale_gpu_;
   ptr->ele_bias_gpu_ = ele_bias_gpu_;
   return ptr;
 }
@@ -232,7 +269,8 @@ int PrelnResidualBiasPluginDynamic::getNbOutputs() const TRT_NOEXCEPT {
 
 size_t PrelnResidualBiasPluginDynamic::getSerializationSize() const
     TRT_NOEXCEPT {
-  size_t ser_size = SerializedSize(bias_) + SerializedSize(scale_) +
+  size_t ser_size = SerializedSize(bias_) + SerializedSize(fp16_bias_) +
+                    SerializedSize(scale_) + SerializedSize(fp16_scale_) +
                     SerializedSize(fp32_ele_bias_) +
                     SerializedSize(fp16_ele_bias_) +
                     SerializedSize(bias_size_) + SerializedSize(scale_size_) +
@@ -243,7 +281,9 @@ size_t PrelnResidualBiasPluginDynamic::getSerializationSize() const
 void PrelnResidualBiasPluginDynamic::serialize(void *buffer) const
     TRT_NOEXCEPT {
   SerializeValue(&buffer, bias_);
+  SerializeValue(&buffer, fp16_bias_);
   SerializeValue(&buffer, scale_);
+  SerializeValue(&buffer, fp16_scale_);
   SerializeValue(&buffer, fp32_ele_bias_);
   SerializeValue(&buffer, fp16_ele_bias_);
   SerializeValue(&buffer, bias_size_);
@@ -419,23 +459,34 @@ int PrelnResidualBiasPluginDynamic::enqueue(
     float *mean = nullptr;
     float *var = nullptr;
     const int VecSize = 8;
-    // if odd
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
-    if (hidden & 1 == 0) {
+    // if hidden is even, use half2 kernel generalAddBiasResidualLayerNormOpt2
+    if (hidden % 2 == 0) {
       int half_n = hidden / 2;
       int half_n_32 = (half_n + 31) / 32 * 32;
-      int block(std::min(half_n_32, 512));
-      generalAddBiasResidualLayerNormOpt2<<<rows, block, 0, stream>>>(
-          reinterpret_cast<half2 *>(layernorm_dst),
-          reinterpret_cast<half2 *>(dst),
-          (const half2 *)bias,
-          (const half2 *)input2,
-          (const half2 *)input1,
-          (const half2 *)scale,
-          (const half2 *)layernorm_bias,
-          rows,
-          half_n,
-          epsilon);
+      dim3 block(std::min(half_n_32, 512));
+      int rolls_per_thread = half_n / block.x;
+      int unroll_factor = 8;
+      while (unroll_factor > rolls_per_thread && unroll_factor > 1) {
+        unroll_factor /= 2;
+      }
+      switch (unroll_factor) {
+        case 1:
+          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(1);
+          break;
+        case 2:
+          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(2);
+          break;
+        case 4:
+          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(4);
+          break;
+        case 8:
+          HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(8);
+          break;
+        default:
+          PADDLE_THROW(platform::errors::Fatal(
+              "Invalid UNROLL_FACTOR in preln_residual_bias trt plugin."));
+      }
     } else {
       paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
                                                                   uint8_t,

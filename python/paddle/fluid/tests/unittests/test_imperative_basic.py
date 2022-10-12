@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
 import numpy as np
 
@@ -24,7 +23,7 @@ from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 import paddle
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _non_static_mode
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
 class MyLayer(fluid.Layer):

@@ -15,7 +15,6 @@
 
 import os
 import unittest
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestCloudRoleMaker(unittest.TestCase):
@@ -31,14 +30,8 @@ class TestCloudRoleMaker(unittest.TestCase):
 
     def test_pslib_1(self):
         """Test cases for pslib."""
-        import sys
         import threading
-        import paddle.fluid as fluid
         try:
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-            from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
-            from paddle.fluid.incubate.fleet.base.role_maker import \
-                GeneralRoleMaker
             from paddle.distributed.fleet.utils.http_server import KVHandler
             from paddle.distributed.fleet.utils.http_server import KVServer
             from paddle.distributed.fleet.utils.http_server import KVHTTPServer
@@ -73,8 +66,6 @@ class TestCloudRoleMaker(unittest.TestCase):
                 if b == 0:
                     raise ValueError("this is only for test")
                 return "fake"
-
-        import os
 
         try:
 
@@ -125,8 +116,6 @@ class TestCloudRoleMaker(unittest.TestCase):
         except:
             print("warning: no KVHandler, skip test_pslib_4")
             return
-
-        import sys
 
         try:
 

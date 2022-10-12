@@ -17,8 +17,6 @@ import paddle.fluid as fluid
 from paddle.reader import multiprocess_reader
 import unittest
 import numpy as np
-import six
-import sys
 
 
 class ReaderException(Exception):

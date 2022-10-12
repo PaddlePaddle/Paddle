@@ -15,7 +15,6 @@
 import unittest
 
 import paddle.fluid.core as core
-import paddle.compat as cpt
 
 from paddle.fluid.framework import Program, default_startup_program
 
@@ -31,15 +30,14 @@ class TestOperator(unittest.TestCase):
             self.assertFail()
         except ValueError as v_err:
             self.assertEqual(
-                cpt.get_exception_message(v_err),
+                str(v_err),
                 "`type` to initialized an Operator can not be None.")
         try:
             block.append_op(type="no_such_op")
             self.assertFail()
         except ValueError as a_err:
             self.assertEqual(
-                cpt.get_exception_message(a_err),
-                "Operator \"no_such_op\" has not been registered.")
+                str(a_err), "Operator \"no_such_op\" has not been registered.")
 
     def test_op_desc_creation(self):
         program = Program()

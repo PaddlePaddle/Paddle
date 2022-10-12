@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-import sys
 
 from paddle.distributed.utils.log_utils import get_logger
 

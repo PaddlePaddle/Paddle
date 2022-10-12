@@ -17,7 +17,6 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-import paddle.nn as nn
 import paddle
 from paddle.nn.functional import interpolate
 

@@ -29,7 +29,6 @@ import paddle.fluid.optimizer as optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
-from paddle.fluid.transpiler import memory_optimize
 
 paddle.enable_static()
 

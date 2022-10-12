@@ -15,8 +15,7 @@
 import unittest
 import numpy as np
 import paddle
-from paddle.fluid.tests.unittests.op_test import (skip_check_grad_ci,
-                                                  convert_uint16_to_float)
+from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
 from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
     _lookup, TestLookupTableBF16Op, TestLookupTableBF16OpIds4D,
     TestLookupTableBF16OpWIsSelectedRows,

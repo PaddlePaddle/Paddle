@@ -43,22 +43,25 @@ class StreamSendRecvTestCase():
                                                       dtype=self._dtype,
                                                       seed=seed))
 
+        src_rank = 0
+        dst_rank = 1
+
         rank = dist.get_rank()
         tensor = paddle.to_tensor(test_data_list[rank])
         if rank == 0:
             task = dist.stream.send(tensor,
-                                    dst=1,
+                                    dst=dst_rank,
                                     sync_op=self._sync_op,
                                     use_calc_stream=self._use_calc_stream)
         else:
             task = dist.stream.recv(tensor,
-                                    src=0,
+                                    src=src_rank,
                                     sync_op=self._sync_op,
                                     use_calc_stream=self._use_calc_stream)
         if not self._sync_op:
             task.wait()
 
-        result = test_data_list[0]
+        result = test_data_list[src_rank]
         assert np.allclose(tensor, result, rtol=1e-05, atol=1e-05)
 
 

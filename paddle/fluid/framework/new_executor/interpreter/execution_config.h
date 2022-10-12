@@ -29,7 +29,6 @@ struct ExecutionConfig {
 
   size_t host_num_threads;
   size_t deivce_num_threads;
-  size_t prepare_num_threads;
 
   std::set<std::string> skip_gc_vars;
 

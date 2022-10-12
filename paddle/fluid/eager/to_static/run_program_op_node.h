@@ -253,9 +253,9 @@ static void GcScope(paddle::framework::Scope *scope) {
 
   for (auto &var : scope->LocalVars()) {
     if (var != nullptr) {
-      if (var->IsType<paddle::framework::LoDTensor>()) {
-        garbages->emplace_back(var->GetMutable<paddle::framework::LoDTensor>()
-                                   ->MoveMemoryHolder());
+      if (var->IsType<phi::DenseTensor>()) {
+        garbages->emplace_back(
+            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
       }
       if (var->IsType<phi::SelectedRows>()) {
         garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
@@ -332,7 +332,9 @@ inline void RunProgramAPI(
           "create_new_interpretercore",
           paddle::platform::TracerEventType::UserDefined,
           1);
-      VLOG(2) << "No interpretercore cahce, so create a new interpretercore";
+      VLOG(2) << "No interpretercore cahce, so create a new interpretercore "
+                 "for program: "
+              << program_id;
       // Step 1. share input_vars & parameters into scope
       details::ShareTensorsIntoScope(x, global_inner_scope);
       details::ShareTensorsIntoScope(params, global_inner_scope);
@@ -563,14 +565,6 @@ inline void RunProgramGradAPI(
       VLOG(4) << "Share workqueue from " << fwd_interpreter_core.get() << " to "
               << interpreter_core.get();
 
-      std::vector<std::string> x_grad_names;
-      std::vector<std::string> param_grad_names;
-      if (!x_grad.empty()) {
-        x_grad_names = details::GetTensorsName(x_grad);
-      }
-      if (!params_grad.empty()) {
-        param_grad_names = details::GetTensorsName(params_grad);
-      }
       // get all eager gc vars
       std::set<std::string> skip_eager_delete_vars;
       // all out_vars are skip_eager_var
