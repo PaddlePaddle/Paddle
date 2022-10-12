@@ -506,8 +506,8 @@ def rsqrt(x, out=None):
 
 @REGISTER_FN('uniform_random_p', 'ShapeTensor', 'ShapeTensorList', 'Out')
 def uniform_random(dtype,
-                   min,
-                   max,
+                   min_value,
+                   max_value,
                    seed,
                    shape=None,
                    shape_t=None,
@@ -516,8 +516,8 @@ def uniform_random(dtype,
     attrs = {
         'shape': shape,
         'dtype': dtype,
-        'min': min,
-        'max': max,
+        'min': min_value,
+        'max': max_value,
         'seed': seed
     }
     helper = LayerHelper('uniform_random_p', **locals())
