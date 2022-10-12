@@ -25,8 +25,7 @@ inline std::vector<int64_t> CalculateReducedDims(
     bool keep_dim) {
   if (keep_dim) return vectorize(output->dims());
 
-  if (reduce_all && reduce_dims.size() > 0)
-    return std::vector<int64_t>(input->dims().size(), 1);
+  if (reduce_all) return std::vector<int64_t>(input->dims().size(), 1);
 
   std::vector<int64_t> output_dims(vectorize(input->dims()));
   for (size_t i = 0; i < reduce_dims.size(); ++i) {
