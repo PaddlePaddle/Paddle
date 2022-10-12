@@ -27,16 +27,14 @@
 
 # TODO: define normalization api
 
-import six
-
 from ...fluid.dygraph import BatchNorm  # noqa: F401
 from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
-from ...framework import get_default_dtype, set_default_dtype, _non_static_mode
+from ...framework import get_default_dtype
 
 from ..initializer import Constant
 from ...framework import ParamAttr
-from ...fluid.data_feeder import check_variable_and_dtype, check_type
+from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid import dygraph_utils
 
 from ..functional import batch_norm, layer_norm, instance_norm
