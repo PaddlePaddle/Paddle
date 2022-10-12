@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_fusion_lstm_op import fc, ACTIVATION, fusion_lstm
+from paddle.fluid.tests.unittests.test_fusion_lstm_op import ACTIVATION, fusion_lstm
 
 
 class TestFusionLSTMINT8MKLDNNOp(OpTest):

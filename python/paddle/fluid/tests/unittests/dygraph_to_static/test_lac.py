@@ -29,7 +29,7 @@ from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _non_static_mode
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 SEED = 2020
 
