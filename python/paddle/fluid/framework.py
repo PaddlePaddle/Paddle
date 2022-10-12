@@ -20,7 +20,6 @@ from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import os
 import re
 import traceback
-import six
 import copy
 from types import MethodType, FunctionType
 
@@ -1310,8 +1309,7 @@ class ParameterMetaClass(VariableMetaClass):
             return issubclass(t, Parameter)
 
 
-@six.add_metaclass(VariableMetaClass)
-class Variable(object):
+class Variable(metaclass=VariableMetaClass):
     """
     **Notes**:
         **The constructor of Variable should not be invoked directly.**
@@ -6530,8 +6528,7 @@ class Program(object):
                      .format(name)))
 
 
-@six.add_metaclass(ParameterMetaClass)
-class Parameter(Variable):
+class Parameter(Variable, metaclass=ParameterMetaClass):
     """
     Parameter is derived from Variable. A parameter is a persistable
     Variable, and will be updated by optimizers after each iteration.

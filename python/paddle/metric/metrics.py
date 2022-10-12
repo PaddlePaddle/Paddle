@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import abc
 import numpy as np
 
@@ -29,8 +28,7 @@ def _is_numpy_(var):
     return isinstance(var, (np.ndarray, np.generic))
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Metric(object):
+class Metric(metaclass=abc.ABCMeta):
     r"""
     Base class for metric, encapsulates metric logic and APIs
     Usage:
