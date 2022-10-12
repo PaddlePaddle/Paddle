@@ -93,8 +93,6 @@ OpTransInfo::OpTransInfo() {
         op_desc->Inputs().at("expand_times_tensor").size();
     bool has_expand_times = op_desc->Inputs().count("ExpandTimes") &&
                             op_desc->Inputs().at("ExpandTimes").size();
-    std::cout << "######## expand " << has_expand_times_tensor << " "
-              << has_expand_times << std::endl;
     return has_expand_times_tensor || has_expand_times;
   });
 
@@ -109,8 +107,6 @@ OpTransInfo::OpTransInfo() {
         op_desc->Inputs().at("expand_shapes_tensor").size();
     bool has_shape = op_desc->Inputs().count("Shape") &&
                      op_desc->Inputs().at("Shape").size();
-    std::cout << "######## expand_v2 " << has_expand_shapes_tensor << " "
-              << has_shape << std::endl;
     return has_expand_shapes_tensor || has_shape;
   });
 }
