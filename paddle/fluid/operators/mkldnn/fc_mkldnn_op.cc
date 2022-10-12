@@ -18,10 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
-namespace phi {
-class DenseTensor;
-}  // namespace phi
-
 namespace paddle {
 namespace operators {
 

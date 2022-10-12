@@ -43,6 +43,7 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph, std::string &act_type) const {
   int found_fc_act_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
+    VLOG(4) << "Fuse fc with activation op.";
     GET_IR_NODE_FROM_SUBGRAPH(fc, preceding_op, fc_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(fc_out, preceding_op_out, fc_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act, activation, fc_act_pattern);
