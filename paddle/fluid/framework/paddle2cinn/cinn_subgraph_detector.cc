@@ -153,7 +153,7 @@ void CinnSubgraphDetector::DoSubGraphFusion() {
         continue;
       }
       // do fusion
-      update |= FuseSubGraph(&subgraph);
+      update |= FuseSubGraph(subgraph);
     }
     if (!update) {
       break;
@@ -161,8 +161,8 @@ void CinnSubgraphDetector::DoSubGraphFusion() {
   }
 }
 
-bool CinnSubgraphDetector::FuseSubGraph(CinnSubGraphPtr* subgraph_ptr) {
-  auto producer = *subgraph_ptr;
+bool CinnSubgraphDetector::FuseSubGraph(CinnSubGraphPtr subgraph_ptr) {
+  auto producer = subgraph_ptr;
   auto& consumers = producer->consumers;
   std::vector<CinnSubGraphPtr> candidates;
   for (auto& consumer : consumers) {
