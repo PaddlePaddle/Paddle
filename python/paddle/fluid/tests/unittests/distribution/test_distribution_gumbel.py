@@ -27,18 +27,15 @@ from paddle.distribution.transformed_distribution import TransformedDistribution
 
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
-    (parameterize.TEST_CASE_NAME, 'loc', 'scale', 'transforms'), [
-        ('one-dim', parameterize.xrand((4, )), parameterize.xrand((4, )),
-         [paddle.distribution.IndependentTransform(ExpTransform(), 1)]),
-        ('multi-dim', parameterize.xrand((5, 3)), parameterize.xrand((5, 3)),
-         [paddle.distribution.IndependentTransform(ExpTransform(), 1)]),
+    (parameterize.TEST_CASE_NAME, 'loc', 'scale'), [
+        ('one-dim', parameterize.xrand((4, )), parameterize.xrand((4, ))),
+        ('multi-dim', parameterize.xrand((5, 3)), parameterize.xrand((5, 3))),
     ])
 class TestGumbel(unittest.TestCase):
 
     def setUp(self):
         self._dist = Gumbel(loc=paddle.to_tensor(self.loc),
                             scale=paddle.to_tensor(self.scale))
-        self._trans_dist = TransformedDistribution(self._dist, self.transforms)
 
     def test_mean(self):
         mean = self._dist.mean
@@ -107,12 +104,6 @@ class TestGumbel(unittest.TestCase):
                                                             scale=self.scale),
                                    rtol=0.1,
                                    atol=config.ATOL.get(str(self.loc.dtype)))
-
-    def test_sample_trans(self):
-        shape = [10000]
-        data = self._trans_dist.sample(shape)
-        sample_values = data.numpy()
-        self.assertEqual(sample_values.dtype, self.loc.dtype)
 
     def _np_mean(self):
         return self.loc + self.scale * np.euler_gamma

@@ -67,20 +67,22 @@ class TransformedDistribution(distribution.Distribution):
         if not transforms:
             super(TransformedDistribution,
                   self).__init__(base.batch_shape, base.event_shape)
-        else:
-            if chain._domain.event_rank > len(base.event_shape):
-                base = independent.Independent(
-                    (base, chain._domain.event_rank - len(base.event_shape)), 0)
+            return
+        if len(base.batch_shape + base.event_shape) < chain._domain.event_rank:
+            raise ValueError(
+                f"'base' needs to have shape with size at least {chain._domain.event_rank}, bug got {len(base_shape)}."
+            )
+        if chain._domain.event_rank > len(base.event_shape):
+            base = independent.Independent(
+                (base, chain._domain.event_rank - len(base.event_shape)))
 
-            transformed_shape = chain.forward_shape(base.batch_shape +
-                                                    base.event_shape)
-            transformed_event_rank = chain._codomain.event_rank + \
-                max(len(base.event_shape) - chain._domain.event_rank, 0)
-            super(TransformedDistribution, self).__init__(
-                transformed_shape[:len(transformed_shape) -
-                                  transformed_event_rank],
-                transformed_shape[len(transformed_shape) -
-                                  transformed_event_rank:])
+        transformed_shape = chain.forward_shape(base.batch_shape +
+                                                base.event_shape)
+        transformed_event_rank = chain._codomain.event_rank + \
+            max(len(base.event_shape) - chain._domain.event_rank, 0)
+        super(TransformedDistribution, self).__init__(
+            transformed_shape[:len(transformed_shape) - transformed_event_rank],
+            transformed_shape[len(transformed_shape) - transformed_event_rank:])
 
     def sample(self, shape=()):
         """Sample from ``TransformedDistribution``.
