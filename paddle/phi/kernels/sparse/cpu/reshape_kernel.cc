@@ -14,8 +14,8 @@
 
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
-#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -33,12 +33,10 @@ void ReshapeCooKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       const phi::IntArray& shape,
                       SparseCooTensor* out) {
-  // TODO: Currently, reshape is only applicable to sparse dims                   
+  // TODO(OccupyMars2025): Currently, reshape is only applicable to sparse dims
   int64_t x_nnz = x.nnz();
-  
-  // DDim out_dims = phi::make_ddim(shape.GetData());
-  // Use DDim::reshape to handle -1 and 0 in the argument "shape" 
-  // DDim out_dims = x.dims().reshape(std::vector<int>(shape.GetData().begin(), shape.GetData().end()));
+
+  // Use DDim::reshape to handle -1 and 0 in the argument "shape"
   std::vector<int> new_shape(shape.GetData().begin(), shape.GetData().end());
   phi::DDim out_dims = x.dims().reshape(new_shape);
   // get sparse part dimensions of x and out
@@ -50,9 +48,8 @@ void ReshapeCooKernel(const Context& dev_ctx,
   for (int i = 0; i < out_dims.size() - x.dense_dim(); ++i) {
     out_sparse_part_dims.push_back(out_dims[i]);
   }
-  DenseTensor out_indices = Empty<int64_t, Context>(dev_ctx, 
-        {static_cast<int64_t>(out_sparse_part_dims.size()), x_nnz}
-  );
+  DenseTensor out_indices = Empty<int64_t, Context>(
+      dev_ctx, {static_cast<int64_t>(out_sparse_part_dims.size()), x_nnz});
   DenseTensor out_values(x.values());
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 
@@ -61,32 +58,33 @@ void ReshapeCooKernel(const Context& dev_ctx,
   const auto* x_indices_data = x_indices.data<int64_t>();
   auto* out_indices_data = out_indices.data<int64_t>();
 
-  const phi::DDim& x_sparse_part_strides = phi::stride(phi::make_ddim(x_sparse_part_dims));
-  const phi::DDim& out_sparse_part_strides = phi::stride(phi::make_ddim(out_sparse_part_dims));
+  const phi::DDim& x_sparse_part_strides =
+      phi::stride(phi::make_ddim(x_sparse_part_dims));
+  const phi::DDim& out_sparse_part_strides =
+      phi::stride(phi::make_ddim(out_sparse_part_dims));
   int64_t location = 0;
   for (int64_t j = 0; j < x_nnz; ++j) {
-      location = 0;
-      for (int i = 0; i < x.sparse_dim(); ++i) {
-          location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
-      }
-      for (size_t i = 0; i < out_sparse_part_dims.size(); ++i) {
-          out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
-          location %= out_sparse_part_strides[i];
-      }
+    location = 0;
+    for (int i = 0; i < x.sparse_dim(); ++i) {
+      location += x_indices_data[i * x_nnz + j] * x_sparse_part_strides[i];
+    }
+    for (size_t i = 0; i < out_sparse_part_dims.size(); ++i) {
+      out_indices_data[i * x_nnz + j] = location / out_sparse_part_strides[i];
+      location %= out_sparse_part_strides[i];
+    }
   }
 }
-
 
 template <typename T, typename Context>
 void ReshapeCsrKernel(const Context& dev_ctx,
                       const SparseCsrTensor& x,
                       const phi::IntArray& shape,
                       SparseCsrTensor* out) {
-    /*transform csr format to coo format, and then use coo kernel*/
-    const SparseCooTensor x_coo = CsrToCoo<T, Context>(dev_ctx, x);
-    SparseCooTensor out_coo;
-    ReshapeCooKernel<T, Context>(dev_ctx, x_coo, shape, &out_coo);
-    CooToCsrKernel<T, Context>(dev_ctx, out_coo, out);   
+  // transform csr format to coo format, and then use coo kernel
+  const SparseCooTensor x_coo = CsrToCoo<T, Context>(dev_ctx, x);
+  SparseCooTensor out_coo;
+  ReshapeCooKernel<T, Context>(dev_ctx, x_coo, shape, &out_coo);
+  CooToCsrKernel<T, Context>(dev_ctx, out_coo, out);
 }
 
 }  // namespace sparse
@@ -117,4 +115,3 @@ PD_REGISTER_KERNEL(reshape_csr,
                    int,
                    int64_t,
                    bool) {}
-                                 
