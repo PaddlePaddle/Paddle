@@ -107,8 +107,16 @@ std::shared_ptr<GraphEngine> StandaloneExecutor::GetGraphEngine(
   auto iter = graph_engines_.find(oss.str());
 
   if (iter == graph_engines_.end()) {
-    graph_engines_[oss.str()] =
-        std::make_shared<CustomGraphEngine>(scope, prog, place);
+    if (paddle::platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      graph_engines_[oss.str()] =
+          std::make_shared<CustomGraphEngine>(scope, prog, place);
+#else
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Cannot use GraphEngine, Please recompile or reinstall paddlepaddle "
+          "with CustomDevice."));
+#endif
+    }
   }
   return graph_engines_[oss.str()];
 }

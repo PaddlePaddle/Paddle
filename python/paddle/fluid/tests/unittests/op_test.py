@@ -65,7 +65,7 @@ g_disable_legacy_dygraph = (
 )
 
 
-def use_graph_enigne(place=None):
+def use_graph_engine(place=None):
     return os.getenv('FLAGS_use_graph_engine', None) == 1 and isinstance(
         place, paddle.CustomPlace)
 
@@ -540,7 +540,7 @@ class OpTest(unittest.TestCase):
                 break
 
     def feed_var(self, input_vars, place):
-        if use_graph_enigne(place):
+        if use_graph_engine(place):
             place = paddle.CPUPlace()
 
         feed_map = {}
@@ -1544,10 +1544,12 @@ class OpTest(unittest.TestCase):
         if check_eager:
             check_dygraph = False
 
-        if use_graph_enigne(place):
+        if use_graph_engine(place):
             check_dygraph = False
             check_eager = False
             check_ge = True
+        else:
+            check_ge = False
 
         def find_imperative_actual(target_name, dygraph_outs, place):
             for name in dygraph_outs:
@@ -2186,6 +2188,8 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
             check_eager = False
             check_ge = True
+        else:
+            check_ge = False
 
         # disable legacy dygraph check when check_eager is True
         if check_eager:
