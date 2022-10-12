@@ -82,9 +82,11 @@ class DataParallelOptimizationPass(PassBase):
 
         with paddle.static.program_guard(main_program, startup_program):
             self._analyze_program()
-            self._prune_grad_scaling()
-            self._calc_comm_overlap()
-            grad_group = self._fuse_allreduce()
+
+            if self.is_data_parallel_applied():
+                self._prune_grad_scaling()
+                self._calc_comm_overlap()
+                grad_group = self._fuse_allreduce()
 
         # self.summary(grad_group)
 
@@ -166,6 +168,9 @@ class DataParallelOptimizationPass(PassBase):
             not_synchronized_grads
         ) == 0, "Unexception: gradients [{}] is scaled BUT NOT synchronized.".format(
             not_synchronized_grads)
+
+    def is_data_parallel_applied(self):
+        return len(self._group_to_grad_name_map) > 0
 
     def _could_be_prune(self):
 
