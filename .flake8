@@ -37,4 +37,3 @@ per-file-ignores =
     python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py:E101,W191
     # Ignore unused imports in __init__.py
     __init__.py: F401
-    # These files will be fixed later
