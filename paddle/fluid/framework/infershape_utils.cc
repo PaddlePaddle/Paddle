@@ -489,9 +489,18 @@ std::vector<phi::MetaTensor*> CompatInferMetaContext::MutableOutputBetween(
     size_t start, size_t end) {
   std::vector<phi::MetaTensor*> result;
   result.reserve(end - start);
+  bool has_meta_tensor = false;
+
   for (size_t i = start; i < end; ++i) {
     auto& out = compat_outputs_.at(i);
     result.emplace_back(out.initialized() ? &out : nullptr);
+    if (!has_meta_tensor && out.initialized()) {
+      has_meta_tensor = true;
+    }
+  }
+
+  if (!has_meta_tensor) {
+    result.clear();
   }
   return result;
 }
