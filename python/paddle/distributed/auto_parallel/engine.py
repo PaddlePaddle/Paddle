@@ -269,6 +269,8 @@ class Engine:
                              labels_spec,
                              inputs=None,
                              labels=None):
+        if _non_static_mode() or self._dygraph_mode:
+            return None, None
         inputs_spec = inputs_spec if inputs_spec else []
         labels_spec = labels_spec if labels_spec else []
         if inputs_spec:
@@ -520,6 +522,9 @@ class Engine:
             labels = self.program_helper.label_vars
             losses = self.program_helper.loss_vars
             metrics = self.program_helper.metric_vars
+
+            self._inputs = inputs
+            self._labels = labels
 
             paddle.enable_static()
         else:
@@ -1345,7 +1350,10 @@ class Engine:
 
     def _tune(self, tune_data, tune_sample_split=None, batch_size=1):
         self._mode = 'train'
-        self._prepare_data_spec(tune_data, tune_sample_split, batch_size)
+        self._inputs_spec, self._labels_spec = self._prepare_data_spec(
+            tune_data, tune_sample_split, batch_size)
+        self._inputs, self._labels = self._prepare_data_tensor(
+            self._inputs_spec, self._labels_spec)
         self._optimization_tuning(self._mode, tune_data, batch_size)
 
     def _validate_spec(self, specs):
