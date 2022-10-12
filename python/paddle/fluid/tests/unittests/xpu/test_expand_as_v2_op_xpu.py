@@ -17,7 +17,6 @@ import unittest
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
 import paddle
 import paddle.fluid as fluid
