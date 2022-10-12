@@ -14,7 +14,6 @@
 
 import tarfile
 import numpy as np
-import gzip
 import six
 
 from paddle.io import Dataset

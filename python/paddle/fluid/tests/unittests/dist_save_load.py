@@ -14,18 +14,9 @@
 
 import os
 import sys
-import signal
-import subprocess
-import argparse
-import time
-import math
-import random
-from multiprocessing import Process
-from functools import reduce
 
 import numpy as np
 import pickle
-import unittest
 import six
 
 import paddle
@@ -33,7 +24,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import io
 
-from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
+from test_dist_base import RUN_STEP, runtime_main
 from dist_simnet_bow import TestDistSimnetBow2x2, DATA_URL, DATA_MD5
 
 

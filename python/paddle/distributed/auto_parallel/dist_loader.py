@@ -14,7 +14,6 @@
 
 import abc
 import numpy as np
-from functools import wraps
 
 import paddle
 from .utils import to_list

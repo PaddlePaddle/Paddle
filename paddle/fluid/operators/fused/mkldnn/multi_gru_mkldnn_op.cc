@@ -26,8 +26,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
-
 using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;

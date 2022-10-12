@@ -397,7 +397,6 @@ def _get_core_name():
     """
     Return pybind DSO module name.
     """
-    import paddle
     ext_name = '.pyd' if IS_WINDOWS else '.so'
     return 'libpaddle' + ext_name
 

@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import time
-import copy
 import logging
 import random
 import numpy as np
@@ -24,14 +22,13 @@ import paddle
 import paddle.utils as utils
 
 from paddle import fluid, profiler, static
-from paddle.jit import to_static
 from paddle.metric import Metric
 from paddle.static import InputSpec
 from paddle.fluid import core
 from paddle.fluid import Variable
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.executor import global_scope, _to_name_str
-from paddle.fluid.framework import Operator, Parameter, _non_static_mode
+from paddle.fluid.framework import Operator, _non_static_mode
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet

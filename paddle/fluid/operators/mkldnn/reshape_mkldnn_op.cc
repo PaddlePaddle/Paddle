@@ -30,7 +30,6 @@ enum class ReshapeKernelOpName {
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
 using platform::GetMKLDNNFormat;
 using platform::to_void_cast;
 
@@ -67,8 +66,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     framework::DDim x_dims, out_dims;
     InferInOutShape(ctx, x_dims, out_dims);
@@ -134,8 +133,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   void InferShapeReshapeOp(const framework::ExecutionContext& ctx,
                            framework::DDim& x_dims,            // NOLINT
                            framework::DDim& out_dims) const {  // NOLINT
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* out = ctx.Output<LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     x_dims = x->dims();
     out_dims = out->dims();
     ChangeReshapeOutDimsIfNeeded(ctx, x_dims, out_dims);
@@ -144,8 +143,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   void InferShapeReshape2Op(const framework::ExecutionContext& ctx,
                             framework::DDim& x_dims,            // NOLINT
                             framework::DDim& out_dims) const {  // NOLINT
-    auto* out = ctx.Output<LoDTensor>("Out");
-    auto* xshape = ctx.Output<LoDTensor>("XShape");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* xshape = ctx.Output<phi::DenseTensor>("XShape");
     auto xshape_dims = xshape->dims();
     x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     out_dims = out->dims();
@@ -164,7 +163,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
       auto new_shape = extract_shape(list_new_shape_tensor);
       out_dims = ValidateShape(new_shape, x_dims);
     } else if (ctx.HasInput("Shape")) {
-      auto* shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
+      auto* shape_tensor = ctx.Input<phi::DenseTensor>("Shape");
       auto* shape_data = shape_tensor->data<int>();
 
       auto shape =
@@ -176,7 +175,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   void InferShapeSqueezeOp(const framework::ExecutionContext& ctx,
                            framework::DDim& x_dims,            // NOLINT
                            framework::DDim& out_dims) const {  // NOLINT
-    auto* x = ctx.Input<LoDTensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
     x_dims = x->dims();
     const auto& axes = ctx.Attr<std::vector<int>>("axes");
     out_dims = GetOutputShape(axes, x_dims, true);
@@ -185,8 +184,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   void InferShapeSqueeze2Op(const framework::ExecutionContext& ctx,
                             framework::DDim& x_dims,            // NOLINT
                             framework::DDim& out_dims) const {  // NOLINT
-    auto* out = ctx.Output<LoDTensor>("Out");
-    auto* xshape = ctx.Output<LoDTensor>("XShape");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* xshape = ctx.Output<phi::DenseTensor>("XShape");
     auto xshape_dims = xshape->dims();
     x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     out_dims = out->dims();
@@ -195,7 +194,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
   void InferShapeFlattenOp(const framework::ExecutionContext& ctx,
                            framework::DDim& x_dims,            // NOLINT
                            framework::DDim& out_dims) const {  // NOLINT
-    auto x = ctx.Input<LoDTensor>("X");
+    auto x = ctx.Input<phi::DenseTensor>("X");
     x_dims = x->dims();
     auto axes = ctx.Attr<int>("axis");
     out_dims = phi::make_ddim(
@@ -342,8 +341,8 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto* dout = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     framework::DDim dx_dims;
     InferOutputShapeInGrad(ctx, dx_dims);
@@ -405,20 +404,20 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
   void InferShapeReshapeSqueezeGradOp(
       const framework::ExecutionContext& ctx,
       framework::DDim& dx_dims) const {  // NOLINT
-    auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dx_dims = dx->dims();
   }
 
   void InferShapeReshape2Squeeze2Flatten2GradOp(
       const framework::ExecutionContext& ctx,
       framework::DDim& dx_dims) const {  // NOLINT
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
+    auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
     dx_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
   }
 
   void InferShapeFlattenGradOp(const framework::ExecutionContext& ctx,
                                framework::DDim& dx_dims) const {  // NOLINT
-    dx_dims = ctx.Input<LoDTensor>("X")->dims();
+    dx_dims = ctx.Input<phi::DenseTensor>("X")->dims();
   }
 };
 }  // namespace operators

@@ -13,12 +13,7 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from op_test import OpTest
-import math
 
 
 class TestAdagradOpV2(unittest.TestCase):

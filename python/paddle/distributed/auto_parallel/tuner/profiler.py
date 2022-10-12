@@ -13,14 +13,11 @@
 # limitations under the License.
 
 import os
-import sys
 import argparse
 import traceback
 import pickle
 import json
 import time
-import numpy as np
-from functools import partial
 
 import paddle
 from paddle.fluid.framework import Program, _current_expected_place

@@ -159,17 +159,16 @@ void ComputeBatchNormForward(const phi::GPUContext &ctx,
                              Tensor *cpu_y,
                              Tensor *saved_reserve_space) {
   framework::Scope scope;
-  auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
-  auto *scale = scope.Var("Scale")->GetMutable<framework::LoDTensor>();
-  auto *bias = scope.Var("Bias")->GetMutable<framework::LoDTensor>();
-  auto *mean = scope.Var("Mean")->GetMutable<framework::LoDTensor>();
-  auto *var = scope.Var("Variance")->GetMutable<framework::LoDTensor>();
-  auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
-  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::LoDTensor>();
-  auto *saved_var =
-      scope.Var("SavedVariance")->GetMutable<framework::LoDTensor>();
+  auto *x = scope.Var("X")->GetMutable<phi::DenseTensor>();
+  auto *scale = scope.Var("Scale")->GetMutable<phi::DenseTensor>();
+  auto *bias = scope.Var("Bias")->GetMutable<phi::DenseTensor>();
+  auto *mean = scope.Var("Mean")->GetMutable<phi::DenseTensor>();
+  auto *var = scope.Var("Variance")->GetMutable<phi::DenseTensor>();
+  auto *y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
+  auto *saved_mean = scope.Var("SavedMean")->GetMutable<phi::DenseTensor>();
+  auto *saved_var = scope.Var("SavedVariance")->GetMutable<phi::DenseTensor>();
   auto *reserve_space =
-      scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
+      scope.Var("ReserveSpace")->GetMutable<phi::DenseTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorCopySync(cpu_x, place, x);
@@ -227,18 +226,17 @@ void ComputeFusedBNAddReluForward(const phi::GPUContext &ctx,
                                   Tensor *cpu_y,
                                   Tensor *saved_reserve_space) {
   framework::Scope scope;
-  auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
-  auto *z = scope.Var("Z")->GetMutable<framework::LoDTensor>();
-  auto *scale = scope.Var("Scale")->GetMutable<framework::LoDTensor>();
-  auto *bias = scope.Var("Bias")->GetMutable<framework::LoDTensor>();
-  auto *mean = scope.Var("Mean")->GetMutable<framework::LoDTensor>();
-  auto *var = scope.Var("Variance")->GetMutable<framework::LoDTensor>();
-  auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
-  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::LoDTensor>();
-  auto *saved_var =
-      scope.Var("SavedVariance")->GetMutable<framework::LoDTensor>();
+  auto *x = scope.Var("X")->GetMutable<phi::DenseTensor>();
+  auto *z = scope.Var("Z")->GetMutable<phi::DenseTensor>();
+  auto *scale = scope.Var("Scale")->GetMutable<phi::DenseTensor>();
+  auto *bias = scope.Var("Bias")->GetMutable<phi::DenseTensor>();
+  auto *mean = scope.Var("Mean")->GetMutable<phi::DenseTensor>();
+  auto *var = scope.Var("Variance")->GetMutable<phi::DenseTensor>();
+  auto *y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
+  auto *saved_mean = scope.Var("SavedMean")->GetMutable<phi::DenseTensor>();
+  auto *saved_var = scope.Var("SavedVariance")->GetMutable<phi::DenseTensor>();
   auto *reserve_space =
-      scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
+      scope.Var("ReserveSpace")->GetMutable<phi::DenseTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorCopySync(cpu_x, place, x);
@@ -293,20 +291,19 @@ void ComputeFusedBNAddReluBackward(const phi::GPUContext &ctx,
                                    Tensor *cpu_dscale,
                                    Tensor *cpu_dbias) {
   framework::Scope scope;
-  auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
-  auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
-  auto *dy = scope.Var("Y@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *scale = scope.Var("Scale")->GetMutable<framework::LoDTensor>();
-  auto *bias = scope.Var("Bias")->GetMutable<framework::LoDTensor>();
-  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::LoDTensor>();
-  auto *saved_var =
-      scope.Var("SavedVariance")->GetMutable<framework::LoDTensor>();
+  auto *x = scope.Var("X")->GetMutable<phi::DenseTensor>();
+  auto *y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
+  auto *dy = scope.Var("Y@GRAD")->GetMutable<phi::DenseTensor>();
+  auto *scale = scope.Var("Scale")->GetMutable<phi::DenseTensor>();
+  auto *bias = scope.Var("Bias")->GetMutable<phi::DenseTensor>();
+  auto *saved_mean = scope.Var("SavedMean")->GetMutable<phi::DenseTensor>();
+  auto *saved_var = scope.Var("SavedVariance")->GetMutable<phi::DenseTensor>();
   auto *reserve_space =
-      scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
-  auto *dx = scope.Var("X@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *dz = scope.Var("Z@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *dscale = scope.Var("Scale@GRAD")->GetMutable<framework::LoDTensor>();
-  auto *dbias = scope.Var("Bias@GRAD")->GetMutable<framework::LoDTensor>();
+      scope.Var("ReserveSpace")->GetMutable<phi::DenseTensor>();
+  auto *dx = scope.Var("X@GRAD")->GetMutable<phi::DenseTensor>();
+  auto *dz = scope.Var("Z@GRAD")->GetMutable<phi::DenseTensor>();
+  auto *dscale = scope.Var("Scale@GRAD")->GetMutable<phi::DenseTensor>();
+  auto *dbias = scope.Var("Bias@GRAD")->GetMutable<phi::DenseTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorCopySync(cpu_x, place, x);

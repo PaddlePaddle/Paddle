@@ -13,7 +13,6 @@
 # limitations under the License.
 """Parameter Server utils"""
 
-import numpy as np
 import os
 import paddle
 import warnings
@@ -85,8 +84,6 @@ class DistributedInfer:
         return self.sparse_table_maps
 
     def _init_dense_params(self, exe=None, dirname=None):
-        import paddle.distributed.fleet as fleet
-
         sparse_table_maps = self._get_sparse_table_map()
 
         if dirname is not None and exe is not None:

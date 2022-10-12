@@ -19,7 +19,7 @@ import tempfile
 
 import numpy as np
 
-from test_dist_base import TestDistBase, RUN_STEP
+from test_dist_base import TestDistBase
 
 import os
 

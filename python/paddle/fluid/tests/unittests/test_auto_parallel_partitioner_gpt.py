@@ -13,26 +13,18 @@
 # limitations under the License.
 
 import collections
-import math
 import unittest
 
-import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.tensor as tensor
 import paddle.utils as utils
 from paddle.fluid import layers
-from paddle.fluid.framework import _non_static_mode
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
-from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
-from paddle.distributed import fleet
 import paddle.static as static
 from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.utils import _get_comm_group

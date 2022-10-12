@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import copy
 from functools import reduce
 
 import paddle
@@ -22,15 +21,13 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import Program, OpProtoHolder
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 import paddle.fluid.layers.utils as utils
-from ..collective import _get_global_env
 from .dist_context import DistributedContext
-from .dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
-from .process_group import new_process_group, ProcessGroup, _g_process_group_map
+from .dist_attribute import TensorDistributedAttribute
+from .process_group import new_process_group
 from .cost import build_comm_desc, CommContext
 from .cost import AllgatherOpCost, SendOpCost
 from .cost import SliceOpCost, SplitOpCost, ConcatOpCost
-from .cluster import Cluster
-from .utils import print_program_with_dist_attr, is_gradient_clip_op
+from .utils import is_gradient_clip_op
 
 # NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']

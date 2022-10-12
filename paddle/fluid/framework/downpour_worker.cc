@@ -874,7 +874,7 @@ void DownpourWorker::TrainFiles() {
             }
             phi::DenseTensor* tensor = nullptr;
             int64_t len = 0;
-            if (var->IsType<framework::LoDTensor>()) {
+            if (var->IsType<phi::DenseTensor>()) {
               tensor = var->GetMutable<LoDTensor>();
               len = tensor->numel();
             } else if (var->IsType<phi::SelectedRows>()) {

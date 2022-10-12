@@ -15,12 +15,10 @@
 import copy
 import time
 import logging
-from collections import defaultdict
 
-import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import _non_static_mode, unique_name
+from paddle.fluid.framework import unique_name
 from paddle.distributed.passes import new_pass
 
 from .reshard import Resharder
@@ -30,8 +28,7 @@ from .dist_saver import DistributedSaver
 from .utils import make_data_unshard, set_grad_var_shape
 from .utils import print_program_with_dist_attr, to_list
 from .utils import get_logger
-from .process_group import get_all_process_groups, get_world_process_group
-from .dist_context import DistributedContext, get_default_distributed_context
+from .process_group import get_world_process_group
 
 
 class Parallelizer:

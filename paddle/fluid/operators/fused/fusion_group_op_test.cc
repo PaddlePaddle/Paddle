@@ -31,7 +31,7 @@ phi::DenseTensor* CreateTensor(framework::Scope* scope,
                                const std::string& name,
                                const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  auto* tensor = var->GetMutable<phi::DenseTensor>();
   if (shape.size() > 0) {
     tensor->mutable_data<T>(phi::make_ddim(shape), place);
   }
@@ -111,7 +111,7 @@ void CheckOutputs(framework::Scope* scope,
   cpu_outputs.resize(output_names.size());
   for (size_t j = 0; j < output_names.size(); ++j) {
     auto* var = scope->Var(output_names[j]);
-    const auto& dev_tensor = var->Get<framework::LoDTensor>();
+    const auto& dev_tensor = var->Get<phi::DenseTensor>();
     paddle::framework::TensorCopySync(
         dev_tensor, platform::CPUPlace(), &(cpu_outputs[j]));
 
