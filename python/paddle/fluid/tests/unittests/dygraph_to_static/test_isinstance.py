@@ -55,7 +55,7 @@ class IsInstanceLayer(nn.Layer):
 
     @paddle.jit.to_static
     def forward(self, x):
-        if isinstance(self.layer, AddAttrLayer):
+        if isinstance(self.layer, (AddAttrLayer, )):
             self.layer.attr = x
         res = self.layer(x)
         return res
