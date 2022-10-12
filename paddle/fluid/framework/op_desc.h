@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <atomic>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -246,46 +245,6 @@ class OpDesc {
   uint64_t id_ = GenerateId();
   uint64_t original_id_ = id_;
   std::unique_ptr<OperatorDistAttr> dist_attr_;
-
-  friend std::ostream &operator<<(std::ostream &os, const OpDesc &opdesc) {
-    const std::string endl = "\n";
-    os << "Op: " << opdesc.Type() << endl;
-    os << "Input: " << endl;
-    for (const auto &n : opdesc.inputs_) {
-      auto &name = n.first;
-      auto &values = n.second;
-      os << "\t[" << name << "]: ";
-      for (const auto &v : values) {
-        os << v << ", ";
-      }
-      os << endl;
-    }
-    os << "Outputs: " << endl;
-    for (const auto &n : opdesc.outputs_) {
-      auto &name = n.first;
-      auto &values = n.second;
-      os << "\t[" << name << "]: ";
-      for (const auto &v : values) {
-        os << v << ", ";
-      }
-      os << endl;
-    }
-    os << "Attrs:" << endl;
-    for (const auto &n : opdesc.attrs_) {
-      auto &name = n.first;
-      // auto& value = n.second;
-      os << "\t[" << name << "]: ";
-      os << endl;
-    }
-    os << "RuntimeAttrs:" << endl;
-    for (const auto &n : opdesc.runtime_attrs_) {
-      auto &name = n.first;
-      // auto& value = n.second;
-      os << "\t[" << name << "]: ";
-      os << endl;
-    }
-    return os;
-  }
 };
 
 std::vector<std::string> AttrVarNames(const Attribute &attr);

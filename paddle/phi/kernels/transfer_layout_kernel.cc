@@ -176,12 +176,6 @@ void TransferLayoutKernel(const Context& dev_ctx,
   TransferLayoutGeneral<Context>(
       dev_ctx, x, static_cast<DataLayout>(dst_layout), out);
 #endif
-  //   out->set_lod(x.lod());
-  //   out->set_layout(x.layout());
-  // #ifdef PADDLE_WITH_MKLDNN
-  // todo
-  //   out->set_mem_desc(x.mem_desc());
-  // #endif
 }
 
 }  // namespace phi

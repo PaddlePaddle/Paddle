@@ -97,20 +97,6 @@ class ProgramDesc {
   std::vector<std::unique_ptr<BlockDesc>> blocks_;
 
   std::string cached_hash_str_;
-
-  friend std::ostream &operator<<(std::ostream &os,
-                                  const ProgramDesc &programdesc) {
-    const std::string endl = "\n";
-    const std::string split = "-------------------------\n";
-    os << "Program: " << endl;
-    for (const auto &block : programdesc.blocks_) {
-      os << split << split;
-      os << *block;
-      os << split << split;
-    }
-
-    return os;
-  }
 };
 }  // namespace framework
 }  // namespace paddle

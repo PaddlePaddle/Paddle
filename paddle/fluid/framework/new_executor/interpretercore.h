@@ -70,9 +70,9 @@ class InterpreterCore {
 
   const VariableScope* GetVariableScope() const;
 
-  platform::Place Place() const { return place_; }
-
   void reset_scope(Scope* new_scope);
+
+  const platform::Place& GetPlace() const { return place_; }
 
   void SetUsedForControlFlowOp(bool new_value) {
     execution_config_.used_for_control_flow_op = new_value;

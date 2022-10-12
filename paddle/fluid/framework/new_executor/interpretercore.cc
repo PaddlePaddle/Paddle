@@ -219,17 +219,6 @@ paddle::framework::FetchList InterpreterCore::Run(
     paddle::framework::interpreter::build_variable_scope(
         block_, &var_scope_, execution_config_.create_local_scope);
 
-    VLOG(10) << "var_scope_";
-    VLOG(10) << "var_scope_.scope_:"
-             << framework::GenScopeTreeDebugInfo(var_scope_.GetMutableScope());
-    VLOG(10) << "var_scope_.local_scope:"
-             << framework::GenScopeTreeDebugInfo(
-                    var_scope_.GetMutableLocalScope());
-    VLOG(10) << "internal vector: " << var_scope_.Name2Id().size();
-    for (const auto& v : var_scope_.Name2Id()) {
-      VLOG(10) << v.first << ", ";
-    }
-
     std::vector<paddle::framework::OpFuncNode> op_func_nodes;
     paddle::framework::interpreter::build_op_func_list(
         place_,
@@ -703,29 +692,6 @@ inline void SetDeviceId(const platform::Place& place) {
   }
 }
 
-std::string print_cpu_tensor(std::string name, Scope* scope) {
-  Variable* var = scope->FindVar(name);
-  std::stringstream ss;
-  ss << "[" << name << "]:";
-  if (var == nullptr) {
-    ss << "no such variable";
-    return ss.str();
-  }
-  framework::LoDTensor* t = var->GetMutable<framework::LoDTensor>();
-  if (!t->initialized()) {
-    ss << "not intialized";
-    return ss.str();
-  }
-  if (!platform::is_cpu_place(t->place())) {
-    ss << "not cpu tensor";
-    return ss.str();
-  }
-
-  float v = t->data<float>()[0];
-  ss << v;
-  return ss.str();
-}
-
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
@@ -783,14 +749,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
     }
   }
 
-  VLOG(4) << "[tmp debug] before " << block_.ID() << ":" << op->Type()
-          << print_cpu_tensor("tmp_0@GRAD", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block0@0", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block0@1", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block1@0", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block1@1", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block2@0", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block2@1", local_scope);
   {
     platform::RecordEvent compute_event(
         "compute",
@@ -818,14 +776,6 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       }
     }
   }
-  VLOG(4) << "[tmp debug] after " << block_.ID() << ":" << op->Type() << ":"
-          << print_cpu_tensor("tmp_0@GRAD", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block0@0", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block0@1", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block1@0", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block1@1", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block2@0", local_scope) << ","
-          << print_cpu_tensor("tmp_0@GRAD@RENAME@block2@1", local_scope);
   VLOG(4) << "End run " << place << " " << op->DebugStringEx(local_scope);
 
   if (!instr_node.InplaceBackMap().empty()) {

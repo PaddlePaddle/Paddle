@@ -460,8 +460,6 @@ void build_op_func_list(const platform::Place& place,
                         bool use_local_scope,
                         bool used_for_jit,
                         bool used_for_control_flow_op) {
-  VLOG(10) << "used_for_control_flow_op: " << used_for_control_flow_op;
-
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>

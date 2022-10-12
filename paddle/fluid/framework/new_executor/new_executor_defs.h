@@ -214,8 +214,6 @@ class VariableScope {
     return data_transfer_added_vars_;
   }
 
-  const std::map<std::string, int>& Name2Id() { return name2id_; }
-
   std::vector<Variable*>& MutableVarList() { return var_list_; }
 
   void SetVarSikpInplace(const std::string& name, bool skip);
