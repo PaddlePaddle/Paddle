@@ -323,6 +323,17 @@ def get_window(window: Union[str, Tuple[str, float]],
 
     Returns:
         Tensor: The window represented as a tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            n_fft = 512
+            cosine_window = paddle.audio.functional.get_window('cosine', n_fft)
+
+            std = 7
+            gussian_window = paddle.audio.functional.get_window(('gussain',std), n_fft)
     """
     sym = not fftbins
 

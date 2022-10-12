@@ -45,6 +45,25 @@ class Spectrogram(nn.Layer):
         center (bool, optional): Whether to pad `x` to make that the :math:`t \times hop\\_length` at the center of `t`-th frame. Defaults to True.
         pad_mode (str, optional): Choose padding pattern when `center` is `True`. Defaults to 'reflect'.
         dtype (str, optional): Data type of input and window. Defaults to 'float32'.
+    
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of Spectrogram.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.audio.features import Spectrogram
+
+            sample_rate = 16000
+            wav_duration = 0.5
+            num_channels = 1
+            num_frames = sample_rate * wav_duration
+            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            waveform = wav_data.tile([num_channels, 1])
+
+            feature_extractor = Spectrogram(n_fft=512, window = 'hann', power = 1.0)
+            feats = feature_extractor(waveform)
     """
 
     def __init__(self,
@@ -84,6 +103,22 @@ class Spectrogram(nn.Layer):
 
         Returns:
             Tensor: Spectrograms with shape `(N, n_fft//2 + 1, num_frames)`.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.audio.features import Spectrogram
+
+                sample_rate = 16000
+                wav_duration = 0.5
+                num_channels = 1
+                num_frames = sample_rate * wav_duration
+                wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+                waveform = wav_data.tile([num_channels, 1])
+
+                feature_extractor = Spectrogram(n_fft=512, window = 'hann', power = 1.0)
+                feats = feature_extractor(waveform)
         """
         stft = self._stft(x)
         spectrogram = paddle.pow(paddle.abs(stft), self.power)
@@ -108,6 +143,25 @@ class MelSpectrogram(nn.Layer):
         htk (bool, optional): Use HTK formula in computing fbank matrix. Defaults to False.
         norm (Union[str, float], optional): Type of normalization in computing fbank matrix. Slaney-style is used by default. You can specify norm=1.0/2.0 to use customized p-norm normalization. Defaults to 'slaney'.
         dtype (str, optional): Data type of input and window. Defaults to 'float32'.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MelSpectrogram.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.audio.features import MelSpectrogram
+
+            sample_rate = 16000
+            wav_duration = 0.5
+            num_channels = 1
+            num_frames = sample_rate * wav_duration
+            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            waveform = wav_data.tile([num_channels, 1])
+
+            feature_extractor = MelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
+            feats = feature_extractor(waveform)
     """
 
     def __init__(self,
@@ -159,6 +213,22 @@ class MelSpectrogram(nn.Layer):
 
         Returns:
             Tensor: Mel spectrograms with shape `(N, n_mels, num_frames)`.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.audio.features import MelSpectrogram
+
+                sample_rate = 16000
+                wav_duration = 0.5
+                num_channels = 1
+                num_frames = sample_rate * wav_duration
+                wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+                waveform = wav_data.tile([num_channels, 1])
+
+                feature_extractor = MelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
+                feats = feature_extractor(waveform)
         """
         spect_feature = self._spectrogram(x)
         mel_feature = paddle.matmul(self.fbank_matrix, spect_feature)
@@ -186,6 +256,25 @@ class LogMelSpectrogram(nn.Layer):
         amin (float, optional): The minimum value of input magnitude. Defaults to 1e-10.
         top_db (Optional[float], optional): The maximum db value of spectrogram. Defaults to None.
         dtype (str, optional): Data type of input and window. Defaults to 'float32'.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of LogMelSpectrogram.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.audio.features import LogMelSpectrogram
+
+            sample_rate = 16000
+            wav_duration = 0.5
+            num_channels = 1
+            num_frames = sample_rate * wav_duration
+            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            waveform = wav_data.tile([num_channels, 1])
+
+            feature_extractor = LogMelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
+            feats = feature_extractor(waveform)
     """
 
     def __init__(self,
@@ -234,6 +323,22 @@ class LogMelSpectrogram(nn.Layer):
 
         Returns:
             Tensor: Log mel spectrograms with shape `(N, n_mels, num_frames)`.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.audio.features import LogMelSpectrogram
+
+                sample_rate = 16000
+                wav_duration = 0.5
+                num_channels = 1
+                num_frames = sample_rate * wav_duration
+                wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+                waveform = wav_data.tile([num_channels, 1])
+
+                feature_extractor = LogMelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
+                feats = feature_extractor(waveform)
         """
         mel_feature = self._melspectrogram(x)
         log_mel_feature = power_to_db(mel_feature,
@@ -265,6 +370,25 @@ class MFCC(nn.Layer):
         amin (float, optional): The minimum value of input magnitude. Defaults to 1e-10.
         top_db (Optional[float], optional): The maximum db value of spectrogram. Defaults to None.
         dtype (str, optional): Data type of input and window. Defaults to 'float32'.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MFCC.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.audio.features import MFCC
+
+            sample_rate = 16000
+            wav_duration = 0.5
+            num_channels = 1
+            num_frames = sample_rate * wav_duration
+            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            waveform = wav_data.tile([num_channels, 1])
+
+            feature_extractor = MFCC(sr=sample_rate, n_fft=512, window = 'hann')
+            feats = feature_extractor(waveform)
     """
 
     def __init__(self,
@@ -316,6 +440,22 @@ class MFCC(nn.Layer):
 
         Returns:
             Tensor: Mel frequency cepstral coefficients with shape `(N, n_mfcc, num_frames)`.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                from paddle.audio.features import MFCC
+
+                sample_rate = 16000
+                wav_duration = 0.5
+                num_channels = 1
+                num_frames = sample_rate * wav_duration
+                wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+                waveform = wav_data.tile([num_channels, 1])
+
+                feature_extractor = MFCC(sr=sample_rate, n_fft=512, window = 'hann')
+                feats = feature_extractor(waveform)
         """
         log_mel_feature = self._log_melspectrogram(x)
         mfcc = paddle.matmul(log_mel_feature.transpose(
