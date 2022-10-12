@@ -17,14 +17,11 @@ import paddle
 import paddle.fluid as fluid
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
-from ...framework import create_parameter
-from ..initializer import Constant
-from ...framework import ParamAttr
 from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
-from paddle.fluid.framework import core, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 

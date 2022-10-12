@@ -17,11 +17,8 @@ import numpy as np
 import sys
 
 sys.path.append("..")
-from op_test_xpu import OpTest, XPUOpTest
+from op_test_xpu import XPUOpTest
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
 
 
 class TestXPUTransposeOp(XPUOpTest):

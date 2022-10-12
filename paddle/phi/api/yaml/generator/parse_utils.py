@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import re
-import yaml
 from copy import copy
 from typing import Dict, Any, List, Tuple
 from tests import is_attr, is_input, is_output, is_vec

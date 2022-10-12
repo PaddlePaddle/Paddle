@@ -19,7 +19,6 @@ from paddle.vision.models import resnet50, resnet101
 import unittest
 from unittest import TestCase
 import numpy as np
-import paddle.compat as cpt
 from paddle.fluid.framework import _test_eager_guard
 
 
