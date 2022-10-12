@@ -202,6 +202,50 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
 
 #endif
 
+#if defined(PADDLE_WITH_MLU)
+void IrParamsSyncAmongDevicesPass::CopyParamsToMlu(Argument *argument) {
+  if (!argument->use_mlu()) return;
+
+  auto &graph = argument->main_graph();
+  std::vector<std::string> repetitive_params;
+
+  if (graph.Has(framework::ir::kRepetitiveParamAttr))
+    repetitive_params = graph.Get<std::vector<std::string>>(
+        framework::ir::kRepetitiveParamAttr);
+
+  LOG(INFO) << "Sync params from CPU to MLU";
+
+  PADDLE_ENFORCE_EQ(argument->mlu_device_id_valid(),
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "The npu_device_id field should be valid"));
+  platform::Place place = platform::MLUPlace(argument->mlu_device_id());
+  auto *scope = argument->scope_ptr();
+  std::vector<std::string> all_vars = scope->LocalVarNames();
+
+  for (auto &var_name : all_vars) {
+    auto *var = scope->FindLocalVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet("The var should not be nullptr"));
+
+    if (var->IsType<framework::LoDTensor>() ||
+        var->IsType<phi::DenseTensor>()) {
+      auto *t = var->GetMutable<framework::LoDTensor>();
+
+      platform::CPUPlace cpu_place;
+      framework::LoDTensor temp_tensor;
+      temp_tensor.Resize(t->dims());
+      temp_tensor.mutable_data<float>(cpu_place);
+
+      paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
+      t->clear();
+      paddle::framework::TensorCopySync(temp_tensor, place, t);
+    }
+  }
+}
+#endif
+
 void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   PADDLE_ENFORCE_EQ(
       argument->scope_valid(),
@@ -214,6 +258,11 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
 #else
   if (!argument->use_gpu_valid()) return;
   CopyParamsToGpu(argument);
+#endif
+
+#ifdef PADDLE_WITH_MLU
+  if (!argument->use_mlu_valid()) return;
+  CopyParamsToMlu(argument);
 #endif
 }
 

@@ -449,6 +449,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The NPU device id.
   ///
   int npu_device_id() const { return npu_device_id_; }
+  ///
+  /// \brief Get the MLU device id.
+  ///
+  /// \return int The MLU device id.
+  ///
+  int mlu_device_id() const { return mlu_device_id_; }
+  ///
   /// \brief Get the number of IPU device .
   ///
   /// \return int The number of IPU device.
@@ -1006,7 +1013,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_npu_{false};
   int npu_device_id_{0};
 
-  // NPU related
+  // MLU related
   bool use_mlu_{false};
   int mlu_device_id_{0};
 

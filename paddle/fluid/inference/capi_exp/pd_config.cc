@@ -180,6 +180,11 @@ PD_Bool PD_ConfigUseNpu(__pd_keep PD_Config* pd_config) {
   return config->use_npu();
 }
 
+PD_Bool PD_ConfigUseMlu(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->use_mlu();
+}
+
 int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->gpu_device_id();
@@ -191,6 +196,10 @@ int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
 int32_t PD_ConfigNpuDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->npu_device_id();
+}
+int32_t PD_ConfigMluDeviceId(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->mlu_device_id();
 }
 int32_t PD_ConfigMemoryPoolInitSizeMb(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;

@@ -136,6 +136,8 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
       return phi::Backend::GPU;
     case paddle_infer::PlaceType::kNPU:
       return phi::Backend::NPU;
+    case paddle_infer::PlaceType::kMLU:
+      return phi::Backend::MLU;
     case paddle_infer::PlaceType::kXPU:
       return phi::Backend::XPU;
     case paddle_infer::PlaceType::kCPU:
@@ -145,7 +147,7 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU, "
-          "NPU and CPU."));
+          "NPU, MLU and CPU."));
       return phi::Backend::CPU;
   }
 }
@@ -342,6 +344,14 @@ void AnalysisPredictor::InitPlace() {
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use NPU forward propagation, but Paddle was not compiled "
         "with WITH_ASCEND_CL."));
+#endif
+  } else if (config_.use_mlu()) {
+#ifdef PADDLE_WITH_MLU
+    place_ = paddle::platform::MLUPlace(config_.mlu_device_id());
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use MLU forward propagation, but Paddle was not compiled "
+        "with WITH_MLU."));
 #endif
   } else if (config_.NNAdapter().use_nnadapter) {
     if (config_.lite_engine_enabled()) {
@@ -1170,6 +1180,11 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseNpu(config_.use_npu_);
   argument_.SetNPUDeviceId(config_.npu_device_id());
 
+#ifdef PADDLE_WITH_MLU
+  argument_.SetUseMlu(config_.use_mlu_);
+  argument_.SetMLUDeviceId(config_.mlu_device_id());
+#endif
+
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
@@ -1561,6 +1576,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   } else if (platform::is_npu_place(place_)) {
     auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
+  } else if (platform::is_mlu_place(place_)) {
+    auto mlu_place = place_;
+    res->SetPlace(PaddlePlace::kMLU, mlu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(
@@ -1616,6 +1634,9 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   } else if (platform::is_npu_place(place_)) {
     auto npu_place = place_;
     res->SetPlace(PaddlePlace::kNPU, npu_place.GetDeviceId());
+  } else if (platform::is_mlu_place(place_)) {
+    auto mlu_place = place_;
+    res->SetPlace(PaddlePlace::kMLU, mlu_place.GetDeviceId());
   } else if (platform::is_custom_place(place_)) {
     auto custom_place = place_;
     auto paddleplace = static_cast<PaddlePlace>(

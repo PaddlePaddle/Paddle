@@ -352,6 +352,10 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
   DECL_ARGUMENT_FIELD(npu_device_id, NPUDeviceId, int);
 
+  // mlu related
+  DECL_ARGUMENT_FIELD(use_mlu, UseMlu, bool);
+  DECL_ARGUMENT_FIELD(mlu_device_id, MLUDeviceId, int);
+
   // mixed precision related
   DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);
   DECL_ARGUMENT_FIELD(mixed_black_list,

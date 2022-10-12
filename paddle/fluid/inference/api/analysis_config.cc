@@ -48,6 +48,9 @@ PassStrategy *AnalysisConfig::pass_builder() const {
       pass_builder_.reset(new XpuPassStrategy);
     } else if (use_npu_) {
       pass_builder_.reset(new NpuPassStrategy);
+    } else if (use_mlu_) {
+      pass_builder_.reset(new MluPassStrategy);
+      LOG(INFO) << "Create MLu IR passes";
     } else if (use_ipu_) {
       LOG(INFO) << "Create IPU IR passes";
       pass_builder_.reset(new IpuPassStrategy);
@@ -455,6 +458,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(npu_device_id_);
   CP_MEMBER(nnadapter_config_);
 
+  // MLU related.
+  CP_MEMBER(use_mlu_);
+  CP_MEMBER(mlu_device_id_);
+
   // profile related.
   CP_MEMBER(with_profile_);
 
@@ -510,6 +517,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   } else if (use_npu_) {
     pass_builder_.reset(new NpuPassStrategy(
         *static_cast<NpuPassStrategy *>(other.pass_builder())));
+  } else if (use_mlu_) {
+    pass_builder_.reset(new MluPassStrategy(
+        *static_cast<MluPassStrategy *>(other.pass_builder())));
   } else {
     pass_builder_.reset(new CpuPassStrategy(
         *static_cast<CpuPassStrategy *>(other.pass_builder())));
@@ -747,6 +757,7 @@ void AnalysisConfig::Update() {
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
       ((use_npu() ^ pass_builder_->use_npu())) ||
+      ((use_mlu() ^ pass_builder_->use_mlu())) ||
       ((use_ipu() ^ pass_builder_->use_ipu())) ||
       ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
@@ -773,6 +784,13 @@ void AnalysisConfig::Update() {
           platform::errors::InvalidArgument(
               "Only one choice can be made between GPU and NPU."));
       pass_builder_.reset(new NpuPassStrategy);
+    } else if (use_mlu()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(),
+          false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and MLU."));
+      pass_builder_.reset(new MluPassStrategy);
     } else if (use_custom_device()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
@@ -808,6 +826,14 @@ void AnalysisConfig::Update() {
               "Only one choice can be made between GPU and NPU."));
       pass_builder_.reset(new NpuPassStrategy(
           *static_cast<NpuPassStrategy *>(pass_builder_.get())));
+    } else if (use_mlu()) {
+      PADDLE_ENFORCE_EQ(
+          use_gpu(),
+          false,
+          platform::errors::InvalidArgument(
+              "Only one choice can be made between GPU and MLU."));
+      pass_builder_.reset(new MluPassStrategy(
+          *static_cast<MluPassStrategy *>(pass_builder_.get())));
     } else if (use_custom_device()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
@@ -943,6 +969,20 @@ void AnalysisConfig::Update() {
         "with NPU-runtime."));
 #endif
   }
+
+  if (use_mlu_) {
+#if defined(PADDLE_WITH_MLU)
+    PADDLE_ENFORCE_EQ(use_gpu_,
+                      false,
+                      platform::errors::Unavailable(
+                          "Currently, MLU and GPU cannot be enabled in the "
+                          "same analysis configuration."));
+#else
+    PADDLE_THROW(platform::errors::Unavailable(
+        "You tried to use an MLU device, but Paddle was not compiled "
+        "with MLU-runtime."));
+#endif
+  }
   if (use_ipu_) {
 #ifndef PADDLE_WITH_IPU
     PADDLE_THROW(platform::errors::Unavailable(
@@ -1028,6 +1068,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_adaptive_seqlen_;
 
   ss << use_npu_;
+  ss << use_mlu_;
   ss << npu_device_id_;
 
   ss << thread_local_stream_;
