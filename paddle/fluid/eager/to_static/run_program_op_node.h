@@ -389,9 +389,7 @@ inline void RunProgramAPI(
 
     {
       paddle::platform::RecordEvent record_event(
-          "fetch_out_tensor",
-          paddle::platform::TracerEventType::UserDefined,
-          1);
+          "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
       // Get Output
       details::ShareTensorsFromScopeWithPartialBlock(out,
                                                      *forward_global_block,
@@ -614,9 +612,7 @@ inline void RunProgramGradAPI(
 
     {
       paddle::platform::RecordEvent record_event(
-          "fetch_grad_tensor",
-          paddle::platform::TracerEventType::UserDefined,
-          1);
+          "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
       // Step 4. get outputs
       details::ShareTensorsFromScopeWithPartialBlock(x_grad,
                                                      *forward_global_block,
