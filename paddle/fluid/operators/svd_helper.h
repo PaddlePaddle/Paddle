@@ -748,12 +748,12 @@ struct DeviceIndependenceTensorOperations {
     framework::Scope& local_scope = context.scope().NewScope();
     framework::VariableNameMap op_outputs;
     for (auto out_name : out_str) {
-      local_scope.Var("tmp_" + out_name)->GetMutable<framework::LoDTensor>();
+      local_scope.Var("tmp_" + out_name)->GetMutable<phi::DenseTensor>();
       op_outputs[out_name].emplace_back("tmp_" + out_name);
     }
     auto out_var = local_scope.Var("tmp_Out");  // return the Out
     // create Out Tensor and allocat memory
-    out_var->GetMutable<framework::LoDTensor>()->mutable_data<T>(
+    out_var->GetMutable<phi::DenseTensor>()->mutable_data<T>(
         phi::make_ddim(out_shape), context.GetPlace());
     // phi::make_ddim(out_shape)
     framework::VariableNameMap op_inputs;
@@ -765,9 +765,9 @@ struct DeviceIndependenceTensorOperations {
         // create score variable and reset the tensor.
         std::string _name = "tmp" + std::to_string(counter++);
         auto in_var = local_scope.Var(_name);  // create
-        framework::LoDTensor tmp_tns;
+        phi::DenseTensor tmp_tns;
         tmp_tns.ShareDataWith(*each_tensor);  // tensor -> lodtensor
-        (*in_var->GetMutable<framework::LoDTensor>()) =
+        (*in_var->GetMutable<phi::DenseTensor>()) =
             tmp_tns;  // initialize and set value
         name_vector.emplace_back(_name);
       }
@@ -778,7 +778,7 @@ struct DeviceIndependenceTensorOperations {
         framework::OpRegistry::CreateOp(type, op_inputs, op_outputs, attrs);
     op->Run(local_scope, context.GetPlace());
     phi::DenseTensor out;
-    out.ShareDataWith(*(out_var->GetMutable<framework::LoDTensor>()));
+    out.ShareDataWith(*(out_var->GetMutable<phi::DenseTensor>()));
     out.Resize(phi::make_ddim(out_shape));
     context.scope().DeleteScope(&local_scope);
     return out;

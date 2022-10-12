@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-import contextlib
 
 import paddle
 import paddle.fluid as fluid

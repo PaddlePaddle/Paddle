@@ -18,11 +18,8 @@ sys.path.append("..")
 
 import unittest
 import paddle
-import random
 import numpy as np
 import paddle.fluid as fluid
-from functools import partial
-from paddle.framework import core
 
 from op_test_xpu import XPUOpTest
 

@@ -17,7 +17,6 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
 from decorator_helper import prog_scope

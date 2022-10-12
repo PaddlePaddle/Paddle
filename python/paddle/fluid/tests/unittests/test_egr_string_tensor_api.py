@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import paddle.fluid.core as core
-import paddle
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 import unittest
-import copy
 
 
 class EagerStringTensorTestCase(unittest.TestCase):

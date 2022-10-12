@@ -14,11 +14,8 @@
 
 import unittest
 import numpy as np
-import random
 from op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import paddle.fluid.core as core
 
 

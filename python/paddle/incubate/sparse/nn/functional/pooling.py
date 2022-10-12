@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.layers import utils
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.nn.functional.pooling import _update_padding_nd
 
 __all__ = []

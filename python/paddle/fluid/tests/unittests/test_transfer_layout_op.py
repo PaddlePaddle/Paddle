@@ -73,7 +73,7 @@ class TestTransferLayoutOpGpu(unittest.TestCase):
                                    dtype='float32',
                                    name='x')
             y = softmax_with_data_format(x, data_format='NCHW')
-            z = softmax_with_data_format(x, data_format='NHWC')
+            z = softmax_with_data_format(y, data_format='NHWC')
 
         place = fluid.CUDAPlace(
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()

@@ -26,8 +26,6 @@ import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
-from paddle.distributed.fleet.utils.ps_util import DistributedInfer
-import paddle.distributed.fleet as fleet
 
 paddle.enable_static()
 

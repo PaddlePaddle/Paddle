@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import six
 import random
 import unittest
 import numpy as np
@@ -21,8 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PaddleTensor
-from paddle.fluid.core import PaddleDType
 from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import create_paddle_predictor
 

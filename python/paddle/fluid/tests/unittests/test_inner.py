@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.static import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMultiplyApi(unittest.TestCase):
