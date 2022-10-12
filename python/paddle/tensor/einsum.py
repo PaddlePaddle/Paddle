@@ -29,8 +29,6 @@ import collections
 import string
 import opt_einsum
 
-from paddle.common_ops_import import dygraph_only
-
 __all__ = []
 
 
@@ -57,7 +55,7 @@ def parse_op_labels(labelstr, operand):
         )
 
     assert labelstr.replace('...', '', 1).find('.') == -1, (
-        f"Invalid equation: `.` is found outside of an ellipsis.")
+        "Invalid equation: `.` is found outside of an ellipsis.")
 
     # Check shape. Note, in Paddle a tensor rank is always nonzero
     ndims = len(operand.shape)
@@ -102,7 +100,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
     # Sanity check.
     if n_bcast_dims > 0:
         assert '...' in rhs, (
-            f"Invalid equation: missing ellipsis in output labels.")
+            "Invalid equation: missing ellipsis in output labels.")
 
     rhs = rhs.replace('...', '')
     rhs_set = set(rhs)
@@ -117,7 +115,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
         f"output label {sorted(non_input_labels)} not used by any input.")
     # Verify that output labels are not duplicate
     assert len(rhs) == len(rhs_set), (
-        f"Invalid equation: duplicate output labels are found.")
+        "Invalid equation: duplicate output labels are found.")
 
 
 def build_view(in_labels, out_labels):
@@ -298,7 +296,7 @@ def diagonalize(labels, operand):
     'ijj...i' would be merged into 'ij...'
     '''
     assert not has_duplicated_labels(labels), (
-        f'Duplicate labels are not supported.')
+        'Duplicate labels are not supported.')
 
     return labels, operand
 
@@ -411,7 +409,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
             plan.add_step(step)
             step = squeeze, [var2], var2, [-1, -2]
             plan.add_step(step)
-        elif j1 + j2 == 0 and not -1 in np.concatenate(
+        elif j1 + j2 == 0 and -1 not in np.concatenate(
             (op1_vshape[K], op2_vshape[K])):
             assert all(op1_vshape[K] == op2_vshape[K])
             step = reshape, [
@@ -695,13 +693,13 @@ def preprocess(equation, *operands):
         f"but found {len(lhs.split(','))} segments in the label equation.")
 
     assert not ('...' in lhs and '...' not in rhs
-                ), f'Invalid equation: missing ellipsis in output labels.'
+                ), 'Invalid equation: missing ellipsis in output labels.'
 
     assert not (len(list(filter(has_duplicated_labels, lhs.split(',')))) >
-                0), f'Duplicate labels are not supported.'
+                0), 'Duplicate labels are not supported.'
 
     assert not has_duplicated_labels(
-        rhs), f'Invalid equation: duplicate output labels are found.'
+        rhs), 'Invalid equation: duplicate output labels are found.'
 
     return lhs, rhs, labels
 

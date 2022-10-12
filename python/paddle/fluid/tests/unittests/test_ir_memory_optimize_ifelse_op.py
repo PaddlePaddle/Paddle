@@ -25,9 +25,7 @@ import paddle.fluid.core as core
 
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
 from paddle.fluid.optimizer import MomentumOptimizer
-from ir_memory_optimize_net_base import TestIrMemOptBase
 
 
 class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):

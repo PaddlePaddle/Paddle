@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.test_profiler import TestProfiler

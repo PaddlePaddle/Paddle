@@ -990,7 +990,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
         except NotImplementedError as e:
             self.assertEqual(
                 "load function is not supported by Recompute Optimizer for now",
-                cpt.get_exception_message(e))
+                str(e))
 
     def test_dropout(self):
         """

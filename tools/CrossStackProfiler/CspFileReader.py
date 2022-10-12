@@ -100,7 +100,7 @@ class FileReader(object):
         self._logger.info(self._minTimeStamp)
 
     def _checkArgsKey(self, key, type):
-        if not self._args.has_key(key):
+        if key not in self._args:
             raise KeyError("args should has key [%s]!" % key)
 
         if not isinstance(self._args[key], type):
@@ -178,6 +178,7 @@ class FileReader(object):
             if (self._getId(self._fileList[-1]) -
                     self._getId(self._fileList[0])) != len(self._fileList) - 1:
                 raise Exception("The file id should be countious!")
+
         # sort
         def _sortBySuffix(elem):
             return int(elem.split(".")[-1])

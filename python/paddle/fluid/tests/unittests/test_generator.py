@@ -13,7 +13,6 @@
 # limitations under the License.
 """Test cloud role maker."""
 
-import os
 import unittest
 import paddle
 import paddle.fluid.generator as generator

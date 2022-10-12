@@ -96,7 +96,7 @@ class ROIAlignNPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
