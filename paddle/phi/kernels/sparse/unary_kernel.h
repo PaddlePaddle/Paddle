@@ -14,11 +14,10 @@
 
 #pragma once
 
-#include "paddle/phi/core/sparse_coo_tensor.h"
-#include "paddle/phi/core/sparse_csr_tensor.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/ddim.h"
-
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace phi {
 namespace sparse {
@@ -159,20 +158,20 @@ SparseCooTensor ReluCsr(const Context& dev_ctx, const SparseCooTensor& x) {
 }
 
 template <typename T, typename Context>
-void ReshapeCooKernel(const Context &dev_ctx,
-                      const SparseCooTensor &x,
+void ReshapeCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
                       const phi::IntArray& shape,
-                      SparseCooTensor *out);
+                      SparseCooTensor* out);
 
 template <typename T, typename Context>
-void ReshapeCsrKernel(const Context &dev_ctx,
-                      const SparseCsrTensor &x,
+void ReshapeCsrKernel(const Context& dev_ctx,
+                      const SparseCsrTensor& x,
                       const phi::IntArray& shape,
-                      SparseCsrTensor *out);
+                      SparseCsrTensor* out);
 
 template <typename T, typename Context>
-SparseCooTensor ReshapeCoo(const Context &dev_ctx,
-                           const SparseCooTensor &x,
+SparseCooTensor ReshapeCoo(const Context& dev_ctx,
+                           const SparseCooTensor& x,
                            const phi::IntArray& shape) {
   SparseCooTensor coo;
   ReshapeCooKernel<T, Context>(dev_ctx, x, shape, &coo);
@@ -180,8 +179,8 @@ SparseCooTensor ReshapeCoo(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-SparseCsrTensor ReshapeCsr(const Context &dev_ctx,
-                           const SparseCsrTensor &x,
+SparseCsrTensor ReshapeCsr(const Context& dev_ctx,
+                           const SparseCsrTensor& x,
                            const phi::IntArray& shape) {
   PADDLE_ENFORCE_LE(
       2,
