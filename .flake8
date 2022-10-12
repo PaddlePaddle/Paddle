@@ -45,6 +45,3 @@ per-file-ignores =
     python/paddle/distribution/*:F401
     python/paddle/utils/*:F401
     python/paddle/tensor/*:F401
-    python/paddle/fluid/tests/unittests/distribution/*:F401
-    python/paddle/fluid/tests/unittests/auto_parallel/*:F401
-    python/paddle/fluid/tests/unittests/mkldnn/*:F401
