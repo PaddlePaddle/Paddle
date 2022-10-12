@@ -14,10 +14,8 @@
 
 __all__ = []
 
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.fluid.layers.utils import convert_to_list
-from paddle.fluid.layers.nn import elementwise_add
-from ...creation import sparse_coo_tensor
 from ...binary import add
 from paddle.nn.functional.conv import _update_padding_nd
 from paddle.fluid.layer_helper import LayerHelper

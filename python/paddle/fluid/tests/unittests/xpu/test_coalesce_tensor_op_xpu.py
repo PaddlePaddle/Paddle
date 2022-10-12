@@ -18,7 +18,6 @@ from paddle.fluid import core
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
 
 alignment = 256
 import paddle

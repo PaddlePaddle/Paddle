@@ -451,7 +451,6 @@ class Test_get_api_md5(unittest.TestCase):
 
     def tearDown(self):
         os.remove(self.api_pr_spec_filename)
-        pass
 
     def test_get_api_md5(self):
         res = get_api_md5('paddle/fluid/API_PR.spec')

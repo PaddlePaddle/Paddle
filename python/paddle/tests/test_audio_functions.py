@@ -15,7 +15,6 @@ import unittest
 
 import librosa
 import numpy as np
-import os
 import paddle
 
 import paddle.audio

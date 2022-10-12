@@ -19,7 +19,6 @@ from ...fluid.data_feeder import check_dtype
 from ...fluid.layer_helper import LayerHelper
 from ...static import Variable
 from ...tensor.creation import assign
-from ...fluid import dygraph_utils
 from ...tensor.layer_function_generator import templatedoc
 from paddle import in_dynamic_mode
 from paddle import _C_ops, _legacy_C_ops
