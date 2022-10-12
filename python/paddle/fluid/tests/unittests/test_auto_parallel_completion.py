@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import unittest.mock
-from io import StringIO
 
 import paddle
 import paddle.nn as nn
@@ -25,14 +22,9 @@ import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.tensor as tensor
 from paddle.fluid import layers
-from paddle.nn.layer.transformer import _convert_param_attr_to_list
 from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
-from paddle.distributed.auto_parallel.utils import append_distributed_attr_suffix
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.dist_context import set_default_distributed_context
 
 paddle.enable_static()
 _global_parallel_strategy = None

@@ -100,7 +100,7 @@ class ConditionalBlockOp : public ConditionalOp {
       // depends on the input variables (Input).
       auto xs = InputTensors(scope, ConditionalOp::kInputs);
       need_run =
-          std::all_of(xs.begin(), xs.end(), [](const framework::LoDTensor *t) {
+          std::all_of(xs.begin(), xs.end(), [](const phi::DenseTensor *t) {
             return t->numel() != 0;
           });
     }
@@ -219,7 +219,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
     } else {
       auto xs = this->InputTensors(scope, ConditionalOp::kInputs);
       need_run =
-          std::all_of(xs.begin(), xs.end(), [](const framework::LoDTensor *t) {
+          std::all_of(xs.begin(), xs.end(), [](const phi::DenseTensor *t) {
             return t->numel() != 0;
           });
     }
@@ -370,19 +370,18 @@ class ConditionalBlockGradOp : public ConditionalOp {
         continue;
       }
 
-      if (input_var->IsType<framework::LoDTensor>()) {
-        PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensor>(),
+      if (input_var->IsType<phi::DenseTensor>()) {
+        PADDLE_ENFORCE_EQ(outside_var->IsType<phi::DenseTensor>(),
                           true,
                           platform::errors::InvalidArgument(
                               "Type of outside_var %s is NOT LoDTensor, which "
                               "doesn't match input_var %s.",
                               outside_grad_name,
                               input_name));
-        AssignZeroToOutsideTensor(
-            place,
-            scope,
-            input_var->Get<framework::LoDTensor>(),
-            outside_var->GetMutable<framework::LoDTensor>());
+        AssignZeroToOutsideTensor(place,
+                                  scope,
+                                  input_var->Get<phi::DenseTensor>(),
+                                  outside_var->GetMutable<phi::DenseTensor>());
       } else if (input_var->IsType<framework::LoDTensorArray>()) {
         PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
                           true,
@@ -419,8 +418,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
   void AssignZeroToOutsideTensor(const platform::Place &place,
                                  const framework::Scope &cur_scope,
-                                 const framework::LoDTensor &input_tensor,
-                                 framework::LoDTensor *outside_tensor) const {
+                                 const phi::DenseTensor &input_tensor,
+                                 phi::DenseTensor *outside_tensor) const {
     if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
       return;
     }

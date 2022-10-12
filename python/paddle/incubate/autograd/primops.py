@@ -76,6 +76,15 @@ def fill_const(value, shape, dtype, out=None):
     return out
 
 
+def bernoulli(shape, dtype, p, out=None):
+    attrs = {'shape': shape, 'dtype': dtype, 'p': p}
+    helper = LayerHelper('bernoulli_p', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type=helper.layer_type, outputs={'Y': out}, attrs=attrs)
+    return out
+
+
 def neg(x, out=None):
     zero = fill_const(0.0, x.shape, x.dtype)
     return sub(zero, x)

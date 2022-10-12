@@ -42,17 +42,19 @@ enum class Backend : uint8_t {
 
   // basic kernel backend
   CPU,
+  // the third library backend
+  ONEDNN,
+
+  // acceleration device's backend
+  GPU,
+  // the third library backend
+  GPUDNN,  // cuDNN and hipDNN
 
   // various acceleration devices' backends
-  GPU,
   XPU,  // XPU currently does not exist at the same time as CUDA
   NPU,  // NPU currently does not exist at the same time as CUDA
   MLU,  // MLU currently does not exist at the same time as CUDA
   IPU,
-
-  // the third library backend
-  ONEDNN,
-  GPUDNN,  // cuDNN and hipDNN
 
   // paddle kernel primitives backend
   KPS,

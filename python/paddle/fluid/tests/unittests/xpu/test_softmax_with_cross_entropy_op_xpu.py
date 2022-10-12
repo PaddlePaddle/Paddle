@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
 
 from test_softmax_op import stable_softmax
 from op_test_xpu import XPUOpTest
-import paddle.fluid.core as core
 import paddle
 
 import unittest

@@ -14,7 +14,6 @@
 
 import paddle
 import numpy as np
-import scipy
 import scipy.sparse as sp
 import unittest
 import os

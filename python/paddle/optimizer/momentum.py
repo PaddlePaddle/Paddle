@@ -17,11 +17,9 @@ import warnings
 from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
-from ..fluid.framework import Variable, name_scope
 from ..fluid.layer_helper import LayerHelper
 from ..fluid import unique_name
 from ..fluid import layers
-import paddle.fluid as fluid
 from paddle.fluid.regularizer import L2DecayRegularizer
 from paddle import _C_ops, _legacy_C_ops
 import paddle

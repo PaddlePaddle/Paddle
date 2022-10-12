@@ -13,23 +13,18 @@
 # limitations under the License.
 
 import copy
-import paddle
-import paddle.fluid.layers.utils as utils
 
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
-from .common import set_comm_op_dist_attr_for_program
-from .dist_default import DistributedDefaultImpl0
 from ..process_group import new_process_group
 from ..utils import is_dim_shard, is_dim_replicate, _get_corresponding_rank
 from ..utils import compute_compatible_dim_mapping, set_dist_op_desc_original_id, _get_comm_group
 from ..dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
-from paddle.fluid import core, unique_name
+from paddle.fluid import core
 from paddle.fluid.framework import Operator
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 
 

@@ -13,12 +13,9 @@
 # limitations under the License.
 """Test cloud role maker."""
 
-from __future__ import print_function
-import os
 import unittest
 import paddle.fluid.generator as generator
 
-import time  # temp for debug
 import paddle.fluid as fluid
 import numpy as np
 import paddle

@@ -38,6 +38,7 @@ _act_supported_quantizable_op_type = [
     "mean",
     "not_equal",
     "reshape",
+    "reshape2",
     "dropout",
     "bilinear_interp",
     "nearest_interp",
@@ -112,9 +113,11 @@ _act_supported_quantizable_op_type = [
     "scale",
 ]
 
-_out_scale_op_list = list(
+QUANT_SUPPORTED_OP_TYPE_LIST = list(
     set(_weight_supported_quantizable_op_type +
         _act_supported_quantizable_op_type))
+
+_out_scale_op_list = QUANT_SUPPORTED_OP_TYPE_LIST
 
 _channelwise_quant_axis1_ops = [
     'conv2d_transpose', 'mul', 'matmul', 'matmul_v2'
@@ -428,6 +431,10 @@ def calculate_quant_cos_error(orig_tensor, qdq_tensor):
     cos_sim = np.inner(orig_tensor.flatten(), qdq_tensor.flatten()) \
               / (np.linalg.norm(orig_tensor.flatten()) * np.linalg.norm(qdq_tensor.flatten()))
     return cos_sim
+
+
+def l2_loss(gt, pred):
+    return ((gt - pred)**2).mean()
 
 
 class tqdm(object):

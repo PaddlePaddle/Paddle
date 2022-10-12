@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -23,7 +21,7 @@ import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import default_main_program
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 import numpy as np
 
 

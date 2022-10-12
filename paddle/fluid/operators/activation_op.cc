@@ -30,8 +30,6 @@ DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
-
 template <typename GradFunctor>
 static constexpr bool CanInplaceAct() {
   return GradFunctor::FwdDeps() == ActBwdOpFwdDeps::kDepOut ||
@@ -124,7 +122,7 @@ class ActivationOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     // When activation is first oneDNN op (there was some non oneDNN op
@@ -172,9 +170,9 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 };
 
 UNUSED constexpr char SigmoidDoc[] = R"DOC(
-Sigmoid Activation Operator
+Sigmoid Activation
 
-$$out = \\frac{1}{1 + e^{-x}}$$
+$$out = \frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -248,7 +246,8 @@ $$out = \\frac{1}{\\sqrt{x}}$$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$$out = \\lceil x \\rceil$$
+..  math::
+    out = \left \lceil x \right \rceil
 
 )DOC";
 
@@ -264,7 +263,8 @@ Cosine Operator. Computes cosine of x element-wise.
 
 Input range is `(-inf, inf)` and output range is `[-1,1]`.
 
-$$out = cos(x)$$
+..  math::
+    out = cos(x)
 
 )DOC";
 
@@ -294,7 +294,10 @@ $$out = sinh(x)$$
 UNUSED constexpr char CoshDoc[] = R"DOC(
 Cosh Activation Operator.
 
-$$out = cosh(x)$$
+Input range `(-inf, inf)`, output range `(1, inf)`.
+
+..  math::
+    out = \frac{exp(x)+exp(-x)}{2}
 
 )DOC";
 
@@ -395,11 +398,12 @@ class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "Input of acos operator");
-    AddOutput("Out", "Output of acos operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input");
     AddComment(R"DOC(
 Arccosine Operator.
 
-$$out = \cos^{-1}(x)$$
+..  math::
+    out = \cos^{-1}(x)
 
 )DOC");
   }
@@ -411,11 +415,12 @@ class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Input of asin operator, an N-D Tensor, with data type float32, "
              "float64 or float16.");
-    AddOutput("Out", "Output of asin operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input.");
     AddComment(R"DOC(
 Arcsine Operator.
 
-$$out = \sin^{-1}(x)$$
+..  math::
+    out = \sin^{-1}(x)
 
 )DOC");
   }
@@ -427,11 +432,12 @@ class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Input of atan operator, an N-D Tensor, with data type float32, "
              "float64 or float16.");
-    AddOutput("Out", "Output of atan operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input x");
     AddComment(R"DOC(
 Arctangent Operator.
 
-$$out = \tan^{-1}(x)$$
+..  math::
+    out = \tan^{-1}(x)
 
 )DOC");
   }
@@ -1345,7 +1351,7 @@ class PowOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "FactorTensor") {
       return expected_kernel_type;
@@ -1373,7 +1379,7 @@ class PowOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "FactorTensor") {
       return expected_kernel_type;
