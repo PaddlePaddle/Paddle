@@ -98,27 +98,10 @@ class Spectrogram(nn.Layer):
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        Args:
-            x (Tensor): Tensor of waveforms with shape `(N, T)`
+            input: x (Tensor): Tensor of waveforms with shape `(N, T)`
 
-        Returns:
-            Tensor: Spectrograms with shape `(N, n_fft//2 + 1, num_frames)`.
+            return: Tensor: Spectrograms with shape `(N, n_fft//2 + 1, num_frames)`.
 
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                from paddle.audio.features import Spectrogram
-
-                sample_rate = 16000
-                wav_duration = 0.5
-                num_channels = 1
-                num_frames = sample_rate * wav_duration
-                wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
-                waveform = wav_data.tile([num_channels, 1])
-
-                feature_extractor = Spectrogram(n_fft=512, window = 'hann', power = 1.0)
-                feats = feature_extractor(waveform)
         """
         stft = self._stft(x)
         spectrogram = paddle.pow(paddle.abs(stft), self.power)
@@ -213,22 +196,6 @@ class MelSpectrogram(nn.Layer):
 
         Returns:
             Tensor: Mel spectrograms with shape `(N, n_mels, num_frames)`.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                from paddle.audio.features import MelSpectrogram
-
-                sample_rate = 16000
-                wav_duration = 0.5
-                num_channels = 1
-                num_frames = sample_rate * wav_duration
-                wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
-                waveform = wav_data.tile([num_channels, 1])
-
-                feature_extractor = MelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
-                feats = feature_extractor(waveform)
         """
         spect_feature = self._spectrogram(x)
         mel_feature = paddle.matmul(self.fbank_matrix, spect_feature)
@@ -323,22 +290,6 @@ class LogMelSpectrogram(nn.Layer):
 
         Returns:
             Tensor: Log mel spectrograms with shape `(N, n_mels, num_frames)`.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                from paddle.audio.features import LogMelSpectrogram
-
-                sample_rate = 16000
-                wav_duration = 0.5
-                num_channels = 1
-                num_frames = sample_rate * wav_duration
-                wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
-                waveform = wav_data.tile([num_channels, 1])
-
-                feature_extractor = LogMelSpectrogram(sr=sample_rate, n_fft=512, window = 'hann', power = 1.0)
-                feats = feature_extractor(waveform)
         """
         mel_feature = self._melspectrogram(x)
         log_mel_feature = power_to_db(mel_feature,
@@ -440,22 +391,6 @@ class MFCC(nn.Layer):
 
         Returns:
             Tensor: Mel frequency cepstral coefficients with shape `(N, n_mfcc, num_frames)`.
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                from paddle.audio.features import MFCC
-
-                sample_rate = 16000
-                wav_duration = 0.5
-                num_channels = 1
-                num_frames = sample_rate * wav_duration
-                wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
-                waveform = wav_data.tile([num_channels, 1])
-
-                feature_extractor = MFCC(sr=sample_rate, n_fft=512, window = 'hann')
-                feats = feature_extractor(waveform)
         """
         log_mel_feature = self._log_melspectrogram(x)
         mfcc = paddle.matmul(log_mel_feature.transpose(
