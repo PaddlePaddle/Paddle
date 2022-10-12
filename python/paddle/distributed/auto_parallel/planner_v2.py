@@ -38,7 +38,8 @@ class Planner:
         self._completer = Completer(self._dist_context)
 
         self._strategy = dist_context.strategy
-        if self._strategy.auto_search:
+        # set parallel tuner for auto search
+        if self._strategy.auto_mode == "full":
             self._parallel_tuner = ParallelTuner(self._dist_context,
                                                  mode=self._mode)
 
@@ -47,7 +48,7 @@ class Planner:
         return self._completer
 
     def plan(self):
-        if self._strategy.auto_search:
+        if self._strategy.auto_mode == "full":
             self._parallel_tuner.tune()
         else:
             self._completer.complete_forward_annotation()
