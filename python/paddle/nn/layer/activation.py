@@ -30,6 +30,8 @@ class CELU(Layer):
 
         CELU(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
 
+    change docstring, trigger example code test CI
+
     Parameters:
         alpha (float, optional): The 'alpha' value of the CELU formulation. Default is 1.0.
         name (str, optional): Name for the operation (optional, default is None).
