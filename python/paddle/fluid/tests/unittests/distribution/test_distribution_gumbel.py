@@ -24,6 +24,7 @@ from paddle.distribution.gumbel import Gumbel
 from paddle.distribution.transform import ExpTransform
 from paddle.distribution.transformed_distribution import TransformedDistribution
 
+
 @parameterize.place(config.DEVICES)
 @parameterize.parameterize_cls(
     (parameterize.TEST_CASE_NAME, 'loc', 'scale', 'transforms'), [
@@ -31,7 +32,6 @@ from paddle.distribution.transformed_distribution import TransformedDistribution
          [paddle.distribution.IndependentTransform(ExpTransform(), 1)]),
         ('multi-dim', parameterize.xrand((5, 3)), parameterize.xrand((5, 3)),
          [paddle.distribution.IndependentTransform(ExpTransform(), 1)]),
-
     ])
 class TestGumbel(unittest.TestCase):
 
