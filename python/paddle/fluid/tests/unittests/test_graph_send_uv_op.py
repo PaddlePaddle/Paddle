@@ -271,3 +271,7 @@ class API_GeometricSendUVTest(unittest.TestCase):
     def test_api_eager_dygraph(self):
         with _test_eager_guard():
             self.test_compute_all_dygraph()
+
+
+if __name__ == "__main__":
+    unittest.main()
