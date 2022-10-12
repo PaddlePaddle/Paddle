@@ -104,8 +104,8 @@ class VariableWrapper {
     bool is_empty = true;
     if (var_.IsInitialized()) {
       const phi::DenseTensor* tensor = nullptr;
-      if (var_.IsType<framework::LoDTensor>()) {
-        tensor = &(var_.Get<framework::LoDTensor>());
+      if (var_.IsType<phi::DenseTensor>()) {
+        tensor = &(var_.Get<phi::DenseTensor>());
       } else if (var_.IsType<phi::SelectedRows>()) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
@@ -153,7 +153,7 @@ class VariableWrapper {
     const phi::DenseTensor* tensor = nullptr;
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
-        tensor = &(var_.Get<framework::LoDTensor>());
+        tensor = &(var_.Get<phi::DenseTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else if (type_ == framework::proto::VarType::VOCAB) {
@@ -199,7 +199,7 @@ class VariableWrapper {
         platform::CPUPlace();  // Default place for var not initialized.
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
-        tensor = &(var_.Get<framework::LoDTensor>());
+        tensor = &(var_.Get<phi::DenseTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {

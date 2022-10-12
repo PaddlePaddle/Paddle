@@ -45,7 +45,7 @@ namespace operators {
 
 using Tensor = phi::DenseTensor;
 using SelectedRows = phi::SelectedRows;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 using Vector = framework::Vector<T>;

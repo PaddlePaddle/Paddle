@@ -18,7 +18,6 @@ Unit testing for affine_channel_op
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 
 

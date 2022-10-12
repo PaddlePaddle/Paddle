@@ -49,11 +49,11 @@ class InterpreterCore {
 
   interpreter::CostInfo DryRun(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors);
+      const std::vector<phi::DenseTensor>& feed_tensors);
 
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<framework::LoDTensor>& feed_tensors);
+      const std::vector<phi::DenseTensor>& feed_tensors);
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
 
@@ -88,28 +88,24 @@ class InterpreterCore {
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
 
   void Prepare(const std::vector<std::string>& feed_names,
-               const std::vector<framework::LoDTensor>& feed_tensors,
+               const std::vector<phi::DenseTensor>& feed_tensors,
                bool prepare_feed);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void RecordStreamForGC(const Instruction& instr);
 #endif
 
-  void CheckGC(const Instruction& instr,
-               std::vector<std::atomic<size_t>>* atomic_var_ref);
+  void CheckGC(const Instruction& instr);
 
-  void RunInstructionAsync(size_t instr_id,
-                           std::vector<std::atomic<size_t>>* atomic_deps,
-                           std::vector<std::atomic<size_t>>* atomic_var_ref);
+  void RunInstructionAsync(size_t instr_id);
   void RunNextInstructions(const Instruction& instr_id,
-                           std::queue<size_t>* reserved_next_ops,
-                           std::vector<std::atomic<size_t>>* atomic_deps,
-                           std::vector<std::atomic<size_t>>* atomic_var_ref);
+                           std::queue<size_t>* reserved_next_ops);
 
   void BuildSkipShareLoDInfo();
 
   void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
+ private:
   bool is_build_;
 
   platform::Place place_;
@@ -142,6 +138,7 @@ class InterpreterCore {
   StreamAnalyzer stream_analyzer_;
   EventsWaiter main_thread_blocker_;
   std::shared_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
+
   details::ExceptionHolder exception_holder_;
   std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
   std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
@@ -150,6 +147,9 @@ class InterpreterCore {
 
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_deps_;
   std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;
+
+  std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
+  std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
 };
 
 std::shared_ptr<InterpreterCore> CreateInterpreterCore(

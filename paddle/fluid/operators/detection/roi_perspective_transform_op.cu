@@ -368,7 +368,7 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto* out2in_idx = ctx.Output<phi::DenseTensor>("Out2InIdx");
     auto* out2in_w = ctx.Output<phi::DenseTensor>("Out2InWeights");
@@ -511,8 +511,8 @@ template <typename T>
 class CUDAROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out2in_idx = ctx.Input<framework::LoDTensor>("Out2InIdx");
-    auto* out2in_w = ctx.Input<framework::LoDTensor>("Out2InWeights");
+    auto* out2in_idx = ctx.Input<phi::DenseTensor>("Out2InIdx");
+    auto* out2in_w = ctx.Input<phi::DenseTensor>("Out2InWeights");
     auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 

@@ -14,13 +14,10 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
 import paddle
 import paddle.compat as cpt
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -106,7 +103,7 @@ class ApiZerosError(unittest.TestCase):
                 shape = [-1, 5]
                 out = paddle.zeros(shape)
             except Exception as e:
-                error_msg = cpt.get_exception_message(e)
+                error_msg = str(e)
                 assert error_msg.find("expected to be no less than 0") > 0
 
     def test_eager(self):

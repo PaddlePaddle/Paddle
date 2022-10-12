@@ -260,7 +260,7 @@ void AllReduceOpHandle::AllReduceFunc(
       size_t size =
           numel * SizeOfType(framework::TransToProtoVarType(trg.dtype()));
       RunAndRecordEvent(p, [&trg, var, p, size] {
-        auto dst_ptr = var->GetMutable<framework::LoDTensor>()->data();
+        auto dst_ptr = var->GetMutable<phi::DenseTensor>()->data();
         platform::CPUPlace cpu_place;
         memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data(), size);
       });
