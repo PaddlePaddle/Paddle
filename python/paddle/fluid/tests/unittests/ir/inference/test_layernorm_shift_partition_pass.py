@@ -428,7 +428,7 @@ class TestLayernormShiftPartition2Pass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(quant=False,
                             max_examples=50,
-                            passes=["layernorm_shift_partition_2_fuse_pass"],
+                            passes=["layernorm_shift_partition_fuse_pass"],
                             max_duration=250,
                             min_success_num=50)
 
