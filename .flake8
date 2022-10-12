@@ -38,10 +38,3 @@ per-file-ignores =
     # Ignore unused imports in __init__.py
     __init__.py: F401
     # These files will be fixed later
-    python/paddle/reader/*:F401
-    python/paddle/nn/*:F401
-    python/paddle/dataset/*:F401
-    python/paddle/tests/*:F401
-    python/paddle/distribution/*:F401
-    python/paddle/utils/*:F401
-    python/paddle/tensor/*:F401
