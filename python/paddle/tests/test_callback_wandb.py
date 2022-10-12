@@ -62,7 +62,9 @@ class TestCallbacks(unittest.TestCase):
                       loss=paddle.nn.CrossEntropyLoss(),
                       metrics=paddle.metric.Accuracy())
 
-        callback = paddle.callbacks.WandbCallback(project='random', dir=self.save_dir, anonymous='must')
+        callback = paddle.callbacks.WandbCallback(project='random',
+                                                  dir=self.save_dir,
+                                                  anonymous='must')
         model.fit(train_dataset,
                   eval_dataset,
                   batch_size=64,
