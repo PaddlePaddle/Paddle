@@ -403,7 +403,7 @@ void BindInferenceApi(py::module *m) {
            return pred;
          });
   m->def(
-      "get_phi_kernel_name",
+      "_get_phi_kernel_name",
       [](const std::string &fluid_op_name) {
         return phi::TransToPhiKernelName(fluid_op_name);
       },
