@@ -33,9 +33,8 @@ struct sgd_dense_param_kernel {
 
 // LodTensor
 template <typename T>
-struct sgd_dense_param_kernel<
-    T,
-    framework::VarTypeTrait<framework::LoDTensor>::kId> {
+struct sgd_dense_param_kernel<T,
+                              framework::VarTypeTrait<phi::DenseTensor>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, LoDTensor>";
     const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
@@ -93,9 +92,8 @@ struct sgd_dense_param_kernel<T,
 
 // LodTensor
 template <>
-struct sgd_dense_param_kernel<
-    platform::bfloat16,
-    framework::VarTypeTrait<framework::LoDTensor>::kId> {
+struct sgd_dense_param_kernel<platform::bfloat16,
+                              framework::VarTypeTrait<phi::DenseTensor>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, LoDTensor>";
     const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
@@ -164,7 +162,7 @@ class SGDOpKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
 
-    if (param_var->IsType<framework::LoDTensor>()) {
+    if (param_var->IsType<phi::DenseTensor>()) {
       invoke_dense_param_kernel(ctx);
     } else if (param_var->IsType<phi::SelectedRows>()) {
       sparse_param_and_grad_kernel(ctx);
@@ -185,7 +183,7 @@ class SGDOpKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
     auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
     const auto *grad_var = ctx.InputVar("Grad");
 
-    if (grad_var->IsType<framework::LoDTensor>()) {
+    if (grad_var->IsType<phi::DenseTensor>()) {
       const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
       const auto sz = param_out->numel();
       PADDLE_ENFORCE_EQ(param->numel(),
@@ -322,7 +320,7 @@ class SGDOpKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
       const framework::ExecutionContext &ctx) const {
     detail::sgd_dense_param_kernel<
         T,
-        framework::VarTypeTrait<framework::LoDTensor>::kId>()(ctx);
+        framework::VarTypeTrait<phi::DenseTensor>::kId>()(ctx);
   }
 
   virtual void dense_param_sparse_grad_kernel(

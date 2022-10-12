@@ -15,7 +15,6 @@
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, skip_check_grad_ci
-import paddle.fluid as fluid
 import paddle
 
 

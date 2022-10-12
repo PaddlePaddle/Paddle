@@ -12,26 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
-import collections
-import itertools
-import six
-import math
-import sys
-import warnings
-from functools import partial, reduce
-
 import numpy as np
-import paddle
 import paddle.fluid as fluid
-from paddle import framework
 from paddle.nn import initializer as I
-from paddle.nn import Layer, LayerList
+from paddle.nn import Layer
 from paddle.fluid.layers import utils
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.param_attr import ParamAttr
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 __all__ = ['resnet_basic_block', 'ResNetBasicBlock']
 

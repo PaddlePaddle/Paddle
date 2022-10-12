@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using LoD = framework::LoD;
 
 template <typename T>
@@ -158,10 +158,8 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
     auto* in = ctx.Input<LoDTensor>("X");
     auto* offset = ctx.Input<phi::DenseTensor>("Offset");
     auto* length = ctx.Input<phi::DenseTensor>("Length");
-    auto* out_grad =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto* x_grad =
-        ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     const int64_t* offset_data = offset->data<int64_t>();
     const int64_t* length_data = length->data<int64_t>();

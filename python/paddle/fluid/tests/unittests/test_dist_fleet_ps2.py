@@ -17,8 +17,6 @@ import os
 os.environ["WITH_DISTRIBUTE"] = "ON"
 
 import unittest
-import tempfile
-import shutil
 
 import paddle
 import paddle.fluid as fluid

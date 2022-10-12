@@ -656,7 +656,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
       phi::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
   auto combined_bias_dims = phi::make_ddim({3, bq_tensor->dims()[0]});
 
-  framework::LoDTensor tmp_combined_w_tensor;
+  phi::DenseTensor tmp_combined_w_tensor;
   tmp_combined_w_tensor.Resize(combined_w_dims);
   auto* tmp_combined_w_data =
       tmp_combined_w_tensor.mutable_data<T>(platform::CPUPlace());
@@ -679,7 +679,7 @@ inline void QKVWeightsProcess(phi::DenseTensor* wq_tensor,
   memcpy(
       new_combined_w_data, tmp_combined_w_data, sizeof(T) * wq_tensor->numel());
 
-  framework::LoDTensor tmp_combined_bias_tensor;
+  phi::DenseTensor tmp_combined_bias_tensor;
   tmp_combined_bias_tensor.Resize(combined_bias_dims);
   auto* tmp_combined_bias_data =
       tmp_combined_bias_tensor.mutable_data<T>(platform::CPUPlace());
@@ -1366,7 +1366,7 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     combined_bias_desc->SetShape({3, bq_tensor->dims()[0]});
     combined_bias_desc->SetPersistable(true);
 
-    framework::LoDTensor tmp_combined_w_tensor;
+    phi::DenseTensor tmp_combined_w_tensor;
     tmp_combined_w_tensor.Resize(combined_w_dims);
     auto* tmp_combined_w_data =
         tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
@@ -1393,7 +1393,7 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
 
     scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
 
-    framework::LoDTensor tmp_combined_bias_tensor;
+    phi::DenseTensor tmp_combined_bias_tensor;
     tmp_combined_bias_tensor.Resize(combined_bias_dims);
     auto* tmp_combined_bias_data =
         tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());

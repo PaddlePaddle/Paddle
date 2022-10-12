@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTestTool, OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 import paddle
 
 paddle.enable_static()
