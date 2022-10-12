@@ -379,7 +379,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
   // max_seq_len represents the max sentence length of all the sentences, only
   // length of
   // input i4 is useful, data means nothing.
-  int32_t i4[max_seq_len] = {0};
+  float i4[max_seq_len] = {0};
 
   auto input_names = predictor->GetInputNames();
   // first input

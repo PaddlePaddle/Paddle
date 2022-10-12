@@ -150,7 +150,7 @@ phi::Backend ConvertBackend(AnalysisConfig::Backend backend) {
 }  // namespace
 
 bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
-                             framework::LoDTensor *t,
+                             phi::DenseTensor *t,
                              const platform::Place &place) {
   framework::DDim ddim = phi::make_ddim(pt.shape);
   void *input_ptr;
@@ -967,7 +967,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
   feed_tensors_.resize(inputs.size());
 
   for (size_t i = 0; i < inputs.size(); ++i) {
-    framework::LoDTensor *input = &feed_tensors_[i];
+    phi::DenseTensor *input = &feed_tensors_[i];
     if (!PaddleTensorToLoDTensor(inputs[i], input, place_)) {
       return false;
     }
@@ -988,7 +988,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 }
 
 template <typename T>
-void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
+void AnalysisPredictor::GetFetchOne(const phi::DenseTensor &fetch,
                                     PaddleTensor *output) {
   // set shape.
   auto shape = phi::vectorize(fetch.dims());
@@ -1022,7 +1022,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto &fetch = PADDLE_GET(framework::LoDTensor, fetch_var);
+    auto &fetch = PADDLE_GET(phi::DenseTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
@@ -1246,6 +1246,16 @@ void AnalysisPredictor::PrepareArgument() {
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
+
+#ifdef PADDLE_WITH_TENSORRT
+  if (config_.tensorrt_engine_enabled()) {
+    inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
+        predictor_id_;
+    VLOG(3) << "thread_local var predictor_id in TensorRTEngine is set to: "
+            << inference::tensorrt::TensorRTEngine::predictor_id_per_thread;
+  }
+#endif
+
   Analyzer().Run(&argument_);
 
   PADDLE_ENFORCE_EQ(
@@ -1734,10 +1744,10 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
   std::vector<std::string> var_names = sub_scope_->LocalVarNames();
   for (const auto &name : var_names) {
     auto *var = sub_scope_->GetVar(name);
-    if (!var->IsType<framework::LoDTensor>()) {
+    if (!var->IsType<phi::DenseTensor>()) {
       continue;
     }
-    framework::DDim dim = var->Get<framework::LoDTensor>().dims();
+    framework::DDim dim = var->Get<phi::DenseTensor>().dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
     shape_info_[name].emplace_back(shape);
@@ -1908,10 +1918,10 @@ void AnalysisPredictor::ClearIntermediateTensor() {
     if (!IsPersistable(var)) {
       const std::string name = var->Name();
       auto *variable = executor_->scope()->FindVar(name);
-      if (variable != nullptr && variable->IsType<framework::LoDTensor>() &&
+      if (variable != nullptr && variable->IsType<phi::DenseTensor>() &&
           name != "feed" && name != "fetch") {
         VLOG(3) << "Clear Intermediate Tensor: " << name;
-        auto *t = variable->GetMutable<framework::LoDTensor>();
+        auto *t = variable->GetMutable<phi::DenseTensor>();
         t->clear();
       }
     }
@@ -2200,6 +2210,7 @@ USE_TRT_CONVERTER(fused_token_prune)
 USE_TRT_CONVERTER(layernorm_shift_partition)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
+USE_TRT_CONVERTER(lookup_table)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)

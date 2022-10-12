@@ -15,7 +15,6 @@
 import unittest
 import paddle
 import warnings
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.layers.control_flow import cond
 
 

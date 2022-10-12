@@ -15,9 +15,6 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 from paddle.static import program_guard, Program
 from op_test import OpTest
 

@@ -18,7 +18,6 @@ import ast
 import unittest
 import os
 import sys
-import signal
 import subprocess
 import six
 import argparse
@@ -30,10 +29,7 @@ import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import paddle.fluid.core as core
 import paddle.fluid.dygraph as dygraph
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import DataParallel, ParallelEnv
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
@@ -655,7 +651,6 @@ class TestParallelDyGraphRunnerBase(object):
 
     def run_use_fleet_api_trainer(self, args):
         import paddle.distributed.fleet as fleet
-        import paddle.distributed.fleet.base.role_maker as role_maker
         # 1. enable dygraph
         paddle.disable_static()
 
@@ -783,7 +778,6 @@ def runtime_main(test_class):
         model.run_trainer(args)
 
 
-import paddle.compat as cpt
 import socket
 from contextlib import closing
 

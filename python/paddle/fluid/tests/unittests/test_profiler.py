@@ -22,7 +22,6 @@ import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 

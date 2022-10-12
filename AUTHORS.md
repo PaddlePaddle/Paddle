@@ -114,3 +114,5 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | czr-gc | Zhaorui Chen (Graphcore) |
 | zhao-han | Han Zhao (Graphcore) |
 | yiakwy, yiakwy-xpu-ml-framework-team | Yi Wang (Graphcore) |
+| [Yulv-git](https://github.com/Yulv-git) | Shuangchi He |
+| [zrr1999](https://github.com/zrr1999) | Rongrui Zhan |

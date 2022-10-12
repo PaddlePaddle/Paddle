@@ -288,7 +288,6 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
 
     def test_case(self):
         import paddle
-        import paddle.nn.functional as F
         import paddle.fluid.core as core
         import paddle.fluid as fluid
         import numpy as np

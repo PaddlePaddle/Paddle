@@ -34,7 +34,7 @@ struct DivScalarFunctor {
 };
 
 template <typename T, typename Context>
-void DivCooScalarKernel(const Context& dev_ctx,
+void DivScalarCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         float scalar,
                         SparseCooTensor* out) {
@@ -47,7 +47,7 @@ void DivCooScalarKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void DivCsrScalarKernel(const Context& dev_ctx,
+void DivScalarCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         float scalar,
                         SparseCsrTensor* out) {
@@ -102,19 +102,19 @@ PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(expm1, Expm1)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6, Relu6)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(leaky_relu, LeakyRelu)
 
-PD_REGISTER_KERNEL(divide_coo_scalar,
+PD_REGISTER_KERNEL(divide_scalar_coo,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::DivCooScalarKernel,
+                   phi::sparse::DivScalarCooKernel,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(divide_csr_scalar,
+PD_REGISTER_KERNEL(divide_scalar_csr,
                    GPU,
                    ALL_LAYOUT,
-                   phi::sparse::DivCsrScalarKernel,
+                   phi::sparse::DivScalarCsrKernel,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);

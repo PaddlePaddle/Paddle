@@ -24,8 +24,8 @@ from paddle.static import InputSpec
 import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph import Linear
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
+from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph.io import INFER_PARAMS_INFO_SUFFIX
 from paddle.fluid import unique_name
 
 BATCH_SIZE = 32
