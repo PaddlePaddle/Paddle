@@ -46,7 +46,7 @@ using framework::ir::Graph;
 
 #ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
-    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
+    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 #endif
 
 /*
@@ -177,9 +177,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 
 #ifdef PADDLE_WITH_MKLDNN
-  // Calibration file path of quantize model
-  DECL_ARGUMENT_FIELD(calibration_file_path, CalibrationFilePath, std::string);
-
   // A set of op types to enable their quantized kernels
   DECL_ARGUMENT_FIELD(quantize_enabled_op_types,
                       QuantizeEnabledOpTypes,
@@ -344,6 +341,12 @@ struct Argument {
                       IpuAvailableMemoryProportion,
                       float);
   DECL_ARGUMENT_FIELD(ipu_enable_half_partial, IpuEnableHalfPartial, bool);
+  DECL_ARGUMENT_FIELD(ipu_custom_ops_info,
+                      IpuCustomOpsInfo,
+                      std::vector<std::vector<std::string>>);
+  DECL_ARGUMENT_FIELD(ipu_custom_patterns,
+                      IpuCustomPatterns,
+                      std::vector<std::vector<std::string>>);
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);

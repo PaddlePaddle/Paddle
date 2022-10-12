@@ -16,12 +16,10 @@ import os
 import time
 import sys
 import random
-import math
 import functools
-import contextlib
 import tempfile
 import numpy as np
-from PIL import Image, ImageEnhance
+from PIL import Image
 import paddle
 import paddle.fluid as fluid
 from paddle.dataset.common import download
@@ -158,7 +156,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
     def tearDown(self):
         self.root_path.cleanup()
-        pass
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
@@ -210,9 +207,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         config.set_cpu_math_library_num_threads(1)
         config.disable_glog_info()
         if is_quantized_model:
-            calibration_file_path = os.path.join(model_path,
-                                                 'calibration_table.txt')
-            config.set_calibration_file_path(calibration_file_path)
             config.enable_mkldnn_int8()
         predictor = paddle.inference.create_predictor(config)
 

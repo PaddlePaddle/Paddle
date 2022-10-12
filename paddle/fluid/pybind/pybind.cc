@@ -548,7 +548,7 @@ static void inline CreateVariableIfNotExist(
         auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
-        auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
+        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
         tensor_temp->Resize(phi::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
@@ -696,7 +696,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
-    framework::Tensor tensor;
+    phi::DenseTensor tensor;
 
     if (dl.device.device_type == kDLCPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
@@ -1691,11 +1691,11 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               Scope *scope,
               const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<framework::LoDTensor> feed_tensors;
+             std::vector<phi::DenseTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
-               framework::LoDTensor t;
+               phi::DenseTensor t;
                SetTensorFromPyArray<platform::CPUPlace>(
                    &t, item.second, platform::CPUPlace(), false);
                feed_names.push_back(item.first);

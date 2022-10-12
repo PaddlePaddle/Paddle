@@ -31,7 +31,7 @@ typedef paddle::variant<int,
                         float,
                         double,
                         std::string,
-                        Tensor,
+                        phi::DenseTensor,
                         LoDTensor /*, ChannelHolder*/>
     ElementVar;
 

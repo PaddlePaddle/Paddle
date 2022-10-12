@@ -19,12 +19,9 @@ silentremove("test_list_and_serv_run_empty_optimize_block.flag")
 
 import paddle
 import paddle.fluid as fluid
-import signal
-import subprocess
 import time
 import unittest
 from multiprocessing import Process
-from op_test import OpTest
 
 paddle.enable_static()
 

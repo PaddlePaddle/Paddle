@@ -1,10 +1,13 @@
-# Exclude all third-party libraries globally
+# Exclude all third-party libraries and auto-generated files globally
 exclude: |
     (?x)^(
         patches/.+|
         paddle/fluid/framework/fleet/heter_ps/cudf/.+|
         paddle/fluid/distributed/ps/thirdparty/round_robin.h|
-        python/paddle/utils/gast/.+
+        python/paddle/utils/gast/.+|
+        .+_py2\.py|
+        python/paddle/fluid/tests/unittests/npu/.+|
+        python/paddle/fluid/tests/unittests/mlu/.+
     )$
 repos:
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
@@ -30,11 +33,6 @@ repos:
     hooks:
     -   id: yapf
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
-        exclude: |
-            (?x)^(
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py|
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_origin_info.py
-            )$
 -   repo: https://github.com/PyCQA/flake8
     rev: 4.0.1
     hooks:

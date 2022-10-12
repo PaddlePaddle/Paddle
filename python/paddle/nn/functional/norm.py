@@ -17,14 +17,11 @@ import paddle
 import paddle.fluid as fluid
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
 from ...fluid.layer_helper import LayerHelper
-from ...framework import create_parameter
-from ..initializer import Constant
-from ...framework import ParamAttr
 from ...fluid import dygraph_utils
 import numbers
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
-from paddle.fluid.framework import core, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
 
@@ -382,13 +379,15 @@ def instance_norm(x,
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be float32, float64.
-        running_mean(Tensor, optional): running mean. Default None.
-        running_var(Tensor, optional): running variance. Default None.
+        running_mean(Tensor, optional): running mean. Default None. Obsolete (that is, no longer usable).
+        running_var(Tensor, optional): running variance. Default None. Obsolete (that is, no longer usable).
         weight(Tensor, optional): The weight tensor of instance_norm. Default: None.
+            If its value is None, this parameter will be initialized by one.
         bias(Tensor, optional): The bias tensor of instance_norm. Default: None.
+            If its value is None, this parameter will be initialized by zero.
         eps(float, optional): A value added to the denominator for numerical stability. Default is 1e-5.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
-        use_input_stats(bool, optional): Default True.
+        use_input_stats(bool, optional): Default True. Obsolete (that is, no longer usable).
         data_format(str, optional): Specify the input data format, may be "NC", "NCL", "NCHW" or "NCDHW". Defalut "NCHW".
         name(str, optional): Name for the InstanceNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 

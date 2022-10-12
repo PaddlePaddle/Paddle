@@ -31,7 +31,7 @@ from paddle.fluid.io import _open_file_buffer, _is_file_path, _is_memory_buffer
 from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, _non_static_mode, ParamBase, EagerParamBase, _current_expected_place, Program
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 try:
     from collections.abc import Iterable
 except:

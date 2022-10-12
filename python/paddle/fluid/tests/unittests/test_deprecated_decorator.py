@@ -16,13 +16,11 @@ import paddle
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.static import Program, program_guard
 import unittest
-import paddle.fluid.core as core
 import sys
 import warnings
 import paddle.utils.deprecated as deprecated
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize

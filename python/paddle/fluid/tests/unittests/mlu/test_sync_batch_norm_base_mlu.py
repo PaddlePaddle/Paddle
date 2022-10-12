@@ -126,8 +126,8 @@ class TestSyncBatchNormRunnerBase(object):
                 self._compare(args, place, layout, True)
 
         # Test FP16 - @TODO
-        self.dtype = np.float16
-        self.atol = 1e-2
+        self.bn_dtype = np.float16
+        self.atol = 3e-3
 
         # Test training
         for place in places:

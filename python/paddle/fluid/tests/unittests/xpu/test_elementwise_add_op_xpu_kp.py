@@ -21,7 +21,7 @@ from op_test import OpTest, skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 

@@ -15,14 +15,11 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.nn as nn
 import paddle.nn.functional as F
 import paddle.static as static
-from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 
@@ -100,6 +97,12 @@ class TestProcessMesh(unittest.TestCase):
         self.assertEqual(sub_process_mesh4.process_ids, [4])
         self.assertEqual(sub_process_mesh4.dim_names, ["d0"])
         self.assertEqual(sub_process_mesh4.ndim, 1)
+
+        sub_process_mesh5 = sub_process_mesh3[0]
+        self.assertEqual(sub_process_mesh5.shape, [1])
+        self.assertEqual(sub_process_mesh5.process_ids, [1])
+        self.assertEqual(sub_process_mesh5.dim_names, ["d0"])
+        self.assertEqual(sub_process_mesh5.ndim, 1)
 
     def test_context_manager(self):
         mesh = np.array([1, 2, 3, 4])
