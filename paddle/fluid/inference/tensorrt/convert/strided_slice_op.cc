@@ -25,6 +25,9 @@ class StridedSliceOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
     auto output_name = op_desc.Output("Out")[0];
+
+    // phi only allow axes[i] >= 0 && <rank, so we need not deal with minus
+    // axes[i]
     std::vector<int> axes =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     std::vector<int> starts =
@@ -35,12 +38,6 @@ class StridedSliceOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
     std::vector<int> decrease_axises =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("decrease_axis"));
-
-    // for (size_t i = 0; i < axes.size(); i++) {
-    //   if (axes[i] < 0) {
-    //     axes[i] += ;
-    //   }
-    // }
 
     auto input_dims = input->getDimensions();
     if (!engine_->with_dynamic_shape()) {
@@ -109,14 +106,8 @@ class StridedSliceOpConverter : public OpConverter {
         }
       }
 
-// CI failed in trt 6015 but success in 7134, may be a trt bug
-#if IS_TRT_VERSION_GE(7134)
       auto* size_tensor =
           Sub(start_tensor, Min(Concat(end_vec_tensor), shape_tensor));
-#else
-      auto* size_tensor =
-          Sub(start_tensor, Min(Concat(end_vec_tensor), shape_tensor));
-#endif
       std::vector<int> tmp_zero_vec(size_tensor->getDimensions().nbDims, 0);
       auto zero_t = Add1DConstantLayer(tmp_zero_vec);
       auto step_tensor = Add1DConstantLayer(trt_step_dims);
@@ -188,8 +179,10 @@ class StridedSliceOpConverter : public OpConverter {
       }
     }
     RreplenishLayerAndOutput(layer, "strided_slice", {output_name}, test_mode);
+
     std::cout << layer->getOutput(0)->getDimensions().d[0] << std::endl;
     std::cout << layer->getOutput(0)->getDimensions().d[1] << std::endl;
+    std::cout << layer->getOutput(0)->getDimensions().nbDims << std::endl;
     std::cout << output_name << std::endl;
   }
 };
