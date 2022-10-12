@@ -27,11 +27,7 @@ from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cost import CommContext
 from paddle.distributed.auto_parallel.cost.base_cost import build_comp_desc_from_dist_op
 from paddle.distributed.auto_parallel.cost.base_cost import build_comm_desc_from_dist_op
 from paddle.distributed.auto_parallel.cost.base_cost import build_comm_costs_from_descs
