@@ -1,8 +1,10 @@
+# Exclude all third-party libraries globally
 exclude: |
     (?x)^(
         patches/.+|
         paddle/fluid/framework/fleet/heter_ps/cudf/.+|
-        paddle/fluid/distributed/ps/thirdparty/round_robin.h
+        paddle/fluid/distributed/ps/thirdparty/round_robin.h|
+        python/paddle/utils/gast/.+
     )$
 repos:
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
@@ -12,16 +14,22 @@ repos:
     -   id: remove-tabs
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps)$
         args: [--whitespaces-count, '2']
+    -   id: remove-tabs
+        files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
+        args: [--whitespaces-count, '4']
+        # Exclude the fluid directory but keep the fluid/tests directory.
+        # And exclude some unit test files that require tabs.
+        exclude: |
+            (?x)^(
+                python/paddle/fluid/(?!tests).+|
+                python/paddle/fluid/tests/unittests/collective/fleet/test_hdfs1.py|
+                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py
+            )$
 -   repo: https://github.com/google/yapf
     rev: v0.32.0
     hooks:
     -   id: yapf
         files: (.*\.(py|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
-        exclude: |
-            (?x)^(
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py|
-                python/paddle/fluid/tests/unittests/dygraph_to_static/test_origin_info.py
-            )$
 -   repo: https://github.com/PyCQA/flake8
     rev: 4.0.1
     hooks:

@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import site
 import sys
 import os
 import warnings
 import platform
 
-core_suffix = 'so'
-if os.name == 'nt':
-    core_suffix = 'pyd'
+has_paddle_dy_lib = False
 
-has_libpaddle_so = False
+dy_lib_name = 'libpaddle'
+dy_lib_suffix = 'so'
+if os.name == 'nt':
+    dy_lib_suffix = 'pyd'
+
 current_path = os.path.abspath(os.path.dirname(__file__))
-if os.path.exists(current_path + os.sep + 'libpaddle.' + core_suffix):
-    has_libpaddle_so = True
+if os.path.exists(current_path + os.sep + dy_lib_name + '.' + dy_lib_suffix):
+    has_paddle_dy_lib = True
 
 try:
     if os.name == 'nt':
@@ -47,18 +47,17 @@ except ImportError as e:
     from .. import compat as cpt
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
-        raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+        raise ImportError("""NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
         if you encounters \"DLL load failed\" errors. If you have python
         installed in other directory, replace \"%s\" with your own
         directory. The original error is: \n %s""" %
-            (executable_path, executable_path, cpt.get_exception_message(e)))
+                          (executable_path, executable_path, str(e)))
     else:
         raise ImportError(
             """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
         if you encounters \"libmkldnn.so not found\" errors. If you have python
         installed in other directory, replace \"/usr/local/lib\" with your own
-        directory. The original error is: \n""" + cpt.get_exception_message(e))
+        directory. The original error is: \n""" + str(e))
 except Exception as e:
     raise e
 
@@ -75,8 +74,7 @@ def avx_supported():
             has_avx = os.popen('cat /proc/cpuinfo | grep -i avx').read() != ''
         except Exception as e:
             sys.stderr.write('Can not get the AVX flag from /proc/cpuinfo.\n'
-                             'The original error is: %s\n' %
-                             cpt.get_exception_message(e))
+                             'The original error is: %s\n' % str(e))
         return has_avx
     elif sysstr == 'darwin':
         try:
@@ -85,7 +83,7 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from machdep.cpu.features.\n'
-                'The original error is: %s\n' % cpt.get_exception_message(e))
+                'The original error is: %s\n' % str(e))
         if not has_avx:
             import subprocess
             pipe = subprocess.Popen(
@@ -155,8 +153,7 @@ def avx_supported():
                                                ctypes.c_size_t(0), ONE_PAGE)
         except Exception as e:
             sys.stderr.write('Failed getting the AVX flag on Windows.\n'
-                             'The original error is: %s\n' %
-                             cpt.get_exception_message(e))
+                             'The original error is: %s\n' % str(e))
         return (retval & (1 << avx_bit)) > 0
     else:
         sys.stderr.write('Do not get AVX flag on %s\n' % sysstr)
@@ -193,8 +190,8 @@ def load_dso(dso_absolute_path):
 
 
 def pre_load(dso_name):
-    if has_libpaddle_so:
-        core_so = current_path + os.sep + 'libpaddle.' + core_suffix
+    if has_paddle_dy_lib:
+        core_so = current_path + os.sep + dy_lib_name + '.' + dy_lib_suffix
     else:
         core_so = None
     dso_path = get_dso_path(core_so, dso_name)
@@ -290,10 +287,10 @@ try:
         from .libpaddle import _cleanup_mmap_fds
         from .libpaddle import _remove_tensor_list_mmap_fds
 except Exception as e:
-    if has_libpaddle_so:
+    if has_paddle_dy_lib:
         sys.stderr.write(
             'Error: Can not import paddle core while this file exists: ' +
-            current_path + os.sep + 'libpaddle.' + core_suffix + '\n')
+            current_path + os.sep + 'libpaddle.' + dy_lib_suffix + '\n')
     if not avx_supported() and libpaddle.is_compiled_with_avx():
         sys.stderr.write(
             "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "

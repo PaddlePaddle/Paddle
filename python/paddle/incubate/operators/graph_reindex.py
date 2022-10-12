@@ -109,7 +109,7 @@ def graph_reindex(x,
     """
     if flag_buffer_hashtable:
         if value_buffer is None or index_buffer is None:
-            raise ValueError(f"`value_buffer` and `index_buffer` should not"
+            raise ValueError("`value_buffer` and `index_buffer` should not"
                              "be None if `flag_buffer_hashtable` is True.")
 
     if _non_static_mode():

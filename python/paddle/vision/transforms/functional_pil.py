@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import sys
-import math
 import numbers
-import warnings
 import collections
 from PIL import Image, ImageOps, ImageEnhance
 
 import numpy as np
-from numpy import sin, cos, tan
 import paddle
 
 if sys.version_info < (3, 3):

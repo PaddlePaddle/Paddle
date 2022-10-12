@@ -25,7 +25,7 @@ limitations under the License. */
 
 namespace phi {
 /* --------------------------- */
-/*   From framework::Tensor    */
+/*   From phi::DenseTensor    */
 /* --------------------------- */
 DenseTensor::DenseTensor() {
   meta_.dtype = paddle::experimental::DataType::FLOAT32;
@@ -206,7 +206,7 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 #undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 
 /* ------------------------------ */
-/*   From framework::LoDTensor    */
+/*   From phi::DenseTensor    */
 /* ------------------------------ */
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }

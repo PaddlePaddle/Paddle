@@ -49,6 +49,23 @@ class BaseAPI(object):
             self.data_transform = self.parse_data_transform(api_item_yaml)
             self.inplace_map, self.view_map = {}, {}
 
+        self.gene_input_func = {
+            "const Tensor&": {
+                "dense": self.gene_dense_input,
+                "selected_rows": self.gene_selected_rows_input
+            },
+            "const paddle::optional<Tensor>&": {
+                "dense": self.gene_dense_input,
+                "selected_rows": self.gene_selected_rows_input
+            },
+            "const std::vector<Tensor>&": {
+                "dense": self.gene_vec_dense_input
+            },
+            "const paddle::optional<std::vector<Tensor>>&": {
+                "dense": self.gene_optional_vec_dense_input
+            }
+        }
+
     def get_api_name(self, api_item_yaml):
         return api_item_yaml['op']
 
@@ -550,6 +567,149 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  phi::{infer_meta['func']}({param_code});
 """
 
+    def gene_trans_flag(self, input_name):
+        trans_flag = "{}"
+        if input_name in self.data_transform['skip_transform']:
+            trans_flag = "{true}"
+        elif input_name in self.data_transform['support_trans_dtype']:
+            trans_flag = "{false, true}"
+        return trans_flag
+
+    def gene_dense_input(self,
+                         input_name,
+                         input_name_tensor_map,
+                         code_indent=''):
+        input_tensor_code = ""
+        trans_flag = self.gene_trans_flag(input_name)
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+
+        input_name_tensor_map[input_name].append(
+            (f"{PREFIX_TENSOR_NAME}{input_name}", False))
+        input_tensor_code = input_tensor_code + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
+        return input_tensor_code
+
+    def gene_selected_rows_input(self,
+                                 input_name,
+                                 input_name_tensor_map,
+                                 code_indent=''):
+        input_tensor_code = ""
+        trans_flag = self.gene_trans_flag(input_name)
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+
+        input_name_tensor_map[input_name].append(
+            (f"{PREFIX_TENSOR_NAME}{input_name}", False))
+        input_tensor_code = input_tensor_code + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToSelectedRows({input_name});
+"""
+        return input_tensor_code
+
+    def gene_optional_vec_dense_input(self,
+                                      input_name,
+                                      input_name_tensor_map,
+                                      code_indent=''):
+        input_tensor_code = ""
+        trans_flag = self.gene_trans_flag(input_name)
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+        if input_name in self.inplace_map.values():
+            input_name_tensor_map[input_name].append(
+                (f"{PREFIX_TENSOR_NAME}{input_name}", True))
+            input_tensor_code = input_tensor_code + f"""
+{code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name} = TensorToConstDenseTensorPtr({input_name});"""
+        else:
+            input_name_tensor_map[input_name].append(
+                (f"{PREFIX_TENSOR_NAME}{input_name}_vec", True))
+            input_tensor_code = input_tensor_code + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
+{code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name};
+{code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_vec){{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::optional<std::vector<const phi::DenseTensor*>>({PREFIX_TENSOR_NAME}{input_name}_vec->size());
+{code_indent}    for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}_vec->size(); ++i) {{
+{code_indent}      {PREFIX_TENSOR_NAME}{input_name}->at(i) = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
+{code_indent}    }}
+{code_indent}  }}"""
+        return input_tensor_code
+
+    def gene_vec_dense_input(self,
+                             input_name,
+                             input_name_tensor_map,
+                             code_indent=''):
+        input_tensor_code = ""
+        trans_flag = self.gene_trans_flag(input_name)
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+
+        if input_name in self.inplace_map.values():
+            input_name_tensor_map[input_name].append(
+                (f"{PREFIX_TENSOR_NAME}{input_name}", True))
+            input_tensor_code = input_tensor_code + f"""
+{code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name} = TensorToConstDenseTensorPtr({input_name});"""
+        else:
+            input_name_tensor_map[input_name].append(
+                (f"{PREFIX_TENSOR_NAME}{input_name}_vec", True))
+            input_tensor_code = input_tensor_code + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
+{code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
+{code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
+{code_indent}  }}"""
+        return input_tensor_code
+
+    def gene_input(self, kernel_tensor_type=None, code_indent=''):
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+        input_name_tensor_map = collections.defaultdict(list)
+        input_tensor_code = ""
+        for i, input_name in enumerate(input_names):
+            # set input code
+            if input_name in kernel_param:
+                # input is dense tensor
+                api_tensor_type = self.inputs['input_info'][input_name]
+                phi_tensor_type = 'dense' if kernel_tensor_type is None else kernel_tensor_type[
+                    0][kernel_param.index(input_name)]
+                if api_tensor_type in self.gene_input_func.keys():
+                    input_tensor_code += self.gene_input_func[api_tensor_type][
+                        phi_tensor_type](input_name, input_name_tensor_map,
+                                         code_indent)
+                else:
+                    # do nothing
+                    pass
+            else:
+                if input_name in self.infer_meta['param']:
+                    if input_name in self.optional_vars:
+                        input_tensor_code = input_tensor_code + f"""
+{code_indent}  paddle::optional<phi::TensorBase> {PREFIX_TENSOR_NAME}{input_name} = {input_name} ? paddle::optional<phi::TensorBase>(*{input_name}->impl()) : paddle::none;"""
+
+                    else:
+                        if self.inputs['input_info'][
+                                input_name] == "const std::vector<Tensor>&":
+                            input_tensor_code = input_tensor_code + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_uq_ptr = TensorToDenseTensor({input_name});
+{code_indent}  const auto& {PREFIX_TENSOR_NAME}{input_name} = *{PREFIX_TENSOR_NAME}{input_name}_uq_ptr;"""
+                        else:
+                            input_tensor_code = input_tensor_code + f"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = {input_name}.impl();"""
+
+        return input_name_tensor_map, input_tensor_code
+
     def get_kernel_args(self, kernel_tensor_type=None, code_indent=''):
         dense_input_trans_map = {
             'const Tensor&':
@@ -583,97 +743,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         if kernel_param is None:
             kernel_param = input_names + attr_names
 
-        input_tensor_code = ""
-        input_name_tensor_map = collections.defaultdict(list)
-        for i, input_name in enumerate(input_names):
-            # set input code
-            if input_name in kernel_param:
-                # input is dense tensor
-                if kernel_tensor_type is None or kernel_tensor_type[0][
-                        kernel_param.index(input_name)] == 'dense':
-                    trans_flag = "{}"
-                    if input_name in self.data_transform['skip_transform']:
-                        trans_flag = "{true}"
-                    elif input_name in self.data_transform[
-                            'support_trans_dtype']:
-                        trans_flag = "{false, true}"
-                    if input_name in self.optional_vars:
-                        if self.inputs['input_info'][
-                                input_name] == "const paddle::optional<std::vector<Tensor>>&":
-                            if input_name in self.inplace_map.values():
-                                input_name_tensor_map[input_name].append(
-                                    (f"{PREFIX_TENSOR_NAME}{input_name}", True))
-                                input_tensor_code = input_tensor_code + f"""
-{code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name} = TensorToConstDenseTensorPtr({input_name});"""
-                            else:
-                                input_name_tensor_map[input_name].append(
-                                    (f"{PREFIX_TENSOR_NAME}{input_name}_vec",
-                                     True))
-                                input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
-{code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name};
-{code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_vec){{
-{code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::optional<std::vector<const phi::DenseTensor*>>({PREFIX_TENSOR_NAME}{input_name}_vec->size());
-{code_indent}    for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}_vec->size(); ++i) {{
-{code_indent}      {PREFIX_TENSOR_NAME}{input_name}->at(i) = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
-{code_indent}    }}
-{code_indent}  }}"""
-                        else:
-                            input_name_tensor_map[input_name].append(
-                                (f"{PREFIX_TENSOR_NAME}{input_name}", False))
-                            input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
+        input_name_tensor_map, input_tensor_code = self.gene_input(
+            kernel_tensor_type, code_indent)
 
-                    else:
-                        if self.inputs['input_info'][
-                                input_name] == "const Tensor&":
-                            input_name_tensor_map[input_name].append(
-                                (f"{PREFIX_TENSOR_NAME}{input_name}", False))
-                            input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});"""
-
-                        elif self.inputs['input_info'][
-                                input_name] == "const std::vector<Tensor>&":
-                            if input_name in self.inplace_map.values():
-                                input_name_tensor_map[input_name].append(
-                                    (f"{PREFIX_TENSOR_NAME}{input_name}", True))
-                                input_tensor_code = input_tensor_code + f"""
-{code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name} = TensorToConstDenseTensorPtr({input_name});"""
-                            else:
-                                input_name_tensor_map[input_name].append(
-                                    (f"{PREFIX_TENSOR_NAME}{input_name}_vec",
-                                     True))
-                                input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, kernel.InputAt({kernel_param.index(input_name)}), {trans_flag});
-{code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
-{code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
-{code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
-{code_indent}  }}"""
-
-                        else:
-                            # do nothing
-                            pass
-                else:  # input is selected_rows
-                    input_name_tensor_map[input_name].append(
-                        (f"{PREFIX_TENSOR_NAME}{input_name}", False))
-                    input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToSelectedRows({input_name});
-"""
-            else:
-                if input_name in self.infer_meta['param']:
-                    if input_name in self.optional_vars:
-                        input_tensor_code = input_tensor_code + f"""
-{code_indent}  paddle::optional<phi::TensorBase> {PREFIX_TENSOR_NAME}{input_name} = {input_name} ? paddle::optional<phi::TensorBase>(*{input_name}->impl()) : paddle::none;"""
-
-                    else:
-                        if self.inputs['input_info'][
-                                input_name] == "const std::vector<Tensor>&":
-                            input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_uq_ptr = TensorToDenseTensor({input_name});
-{code_indent}  const auto& {PREFIX_TENSOR_NAME}{input_name} = *{PREFIX_TENSOR_NAME}{input_name}_uq_ptr;"""
-                        else:
-                            input_tensor_code = input_tensor_code + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = {input_name}.impl();"""
         input_tensor_code = input_tensor_code + f"""
 {code_indent}  if(platform::RecordOpInfoSupplement::IsEnabled()){{"""
         single_tensor_names = []

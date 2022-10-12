@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import os
 import sys
 import paddle
 import paddle.fluid as fluid
-import unittest
-import paddle.fluid.layers as layers
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 import pickle
 import paddle.distributed.utils.moe_utils as moe_utils

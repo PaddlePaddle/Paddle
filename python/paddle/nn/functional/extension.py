@@ -25,8 +25,7 @@ from paddle import in_dynamic_mode
 from paddle import _C_ops, _legacy_C_ops
 from ...fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...framework import core
-from ...common_ops_import import convert_np_dtype_to_dtype_
+from ...framework import core, convert_np_dtype_to_dtype_
 
 __all__ = []
 
@@ -349,9 +348,6 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     Returns:
         out(Tensor): The temporal shifting result is a tensor with the
         same shape and same data type as the input.
-
-    Raises:
-        TypeError: seg_num must be int type.
 
     Examples:
         .. code-block:: python

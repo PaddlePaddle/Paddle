@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import contextlib
 import numpy as np
 import six
 
@@ -26,8 +23,6 @@ from paddle.fluid import core
 from paddle.fluid import unique_name
 from test_imperative_base import new_program_scope
 from jit_load_rename_var import rename_var_with_generator
-
-import paddle.fluid.transpiler.details.program_utils as pu
 
 LOADED_VAR_SUFFIX = ".load_0"
 

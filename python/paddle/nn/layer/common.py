@@ -354,22 +354,6 @@ class Upsample(Layer):
         A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
-    Raises:
-        TypeError: size should be a list or tuple or Tensor.
-        ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
-                    'trilinear', 'bicubic', or 'nearest' currently.
-        ValueError: 'linear' only support 3-D tensor.
-        ValueError: 'bilinear' and 'bicubic'  only support 4-D tensor.
-        ValueError: 'trilinear' only support 5-D tensor.
-        ValueError: 'nearest' only support 4-D or 5-D tensor.
-        ValueError: One of size and scale_factor must not be None.
-        ValueError: size length should be 1 for input 3-D tensor.
-        ValueError: size length should be 2 for input 4-D tensor.
-        ValueError: size length should be 3 for input 5-D tensor.
-        ValueError: scale_factor should be greater than zero.
-        TypeError: align_corners should be a bool value
-        ValueError: align_mode can only be '0' or '1'
-        ValueError: data_format can only be 'NCW', 'NWC', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
 
     Examples:
         .. code-block:: python

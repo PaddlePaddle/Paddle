@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -33,7 +31,7 @@ class TestEyeOp(OpTest):
 
     def setUp(self):
         '''
-	    Test eye op with specified shape
+        Test eye op with specified shape
         '''
         self.set_npu()
         self.place = paddle.NPUPlace(0)

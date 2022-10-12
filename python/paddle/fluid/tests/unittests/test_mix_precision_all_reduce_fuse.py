@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.fluid.core as core
-import math
-import os
-import sys
 import unittest
 
 import numpy as np

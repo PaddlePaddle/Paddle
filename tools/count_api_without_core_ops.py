@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import importlib
 import inspect
 import collections
@@ -168,7 +166,7 @@ def visit_all_module(mod, func):
                 IdSet.add(instance_id)
                 visit_member(mod.__name__, instance, func)
         except:
-            if not cur_name in ErrorSet and not cur_name in skiplist:
+            if cur_name not in ErrorSet and cur_name not in skiplist:
                 ErrorSet.add(cur_name)
 
 

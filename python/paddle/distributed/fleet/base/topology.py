@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 import paddle
 import collections
@@ -378,8 +377,8 @@ class _CommunicateGroup(object):
 
     def set_comm_group(self, group_name, group_rank, group_size, ring_id,
                        group_ranks):
-        group = paddle.distributed.collective.Group(group_rank, group_size,
-                                                    ring_id, group_ranks)
+        group = paddle.distributed.collective.Group(group_rank, ring_id,
+                                                    group_ranks)
         self.groups[group_name] = group
 
     def get_group(self, group_name):
