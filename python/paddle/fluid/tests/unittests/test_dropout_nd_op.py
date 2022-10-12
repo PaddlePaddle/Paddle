@@ -14,13 +14,13 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 from paddle.static import default_main_program
 
 

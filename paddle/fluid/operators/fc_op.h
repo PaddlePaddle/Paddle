@@ -58,10 +58,10 @@ template <typename DeviceContext, typename T>
 class FCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::LoDTensor>("Input");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* w = ctx.Input<phi::DenseTensor>("W");
     auto* bias = ctx.Input<phi::DenseTensor>("Bias");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     bool with_relu =
         (ctx.Attr<std::string>("activation_type") == "relu") ? true : false;

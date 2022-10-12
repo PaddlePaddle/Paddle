@@ -19,9 +19,7 @@ import os
 import sys
 import subprocess
 
-import six
 import shutil
-import numpy as np
 import argparse
 from contextlib import closing
 import socket

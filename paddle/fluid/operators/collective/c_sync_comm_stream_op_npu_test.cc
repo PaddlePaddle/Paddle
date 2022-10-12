@@ -124,7 +124,7 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
   std::cout << "BEGIN TEST:" << __FUNCTION__ << std::endl;
   // init
   auto x = scope->Var("Data");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
   int num = 2;
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
@@ -142,7 +142,7 @@ void TestHCCLBroadcastOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("OutData");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
   tensor_out->Resize({num, num});
   tensor_out->mutable_data<float>(place);  // allocate
 

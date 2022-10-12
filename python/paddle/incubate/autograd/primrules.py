@@ -20,15 +20,15 @@ import paddle
 
 from . import primops
 from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
-                      fill_const, gather, ge, gt, log, matmul, max, mul, ne,
-                      neg, reduce_sum, reshape, scatter_add, select, set_value,
-                      sin, slice_assign, slice_select, split, sqrt, sub, tanh,
+                      fill_const, gather, ge, gt, log, matmul, mul, ne, neg,
+                      reduce_sum, reshape, scatter_add, select, set_value, sin,
+                      slice_assign, slice_select, split, sqrt, sub, tanh,
                       transpose, bernoulli, rsqrt)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
                       op_position_inputs, op_position_output)
-from .utils import INT_DTYPE_2_STRING, get_input_var_list, get_output_var_list
+from .utils import INT_DTYPE_2_STRING, get_output_var_list
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 

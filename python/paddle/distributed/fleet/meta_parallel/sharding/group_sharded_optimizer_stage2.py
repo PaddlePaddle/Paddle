@@ -22,19 +22,16 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-import copy
 import logging
 import warnings
 
-import numpy as np
 from collections import OrderedDict
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed.collective import _get_global_group, new_group, broadcast, wait
+from paddle.distributed.collective import _get_global_group, broadcast, new_group
 
 from .group_sharded_storage import ParamStorage, GradStorage
 from .group_sharded_utils import Type, device_guard, GroupShardedClipGrad

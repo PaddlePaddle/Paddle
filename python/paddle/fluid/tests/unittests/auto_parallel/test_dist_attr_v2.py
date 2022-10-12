@@ -14,8 +14,6 @@
 
 import unittest
 import paddle
-import numpy as np
-import paddle.nn as nn
 import paddle.static as static
 from paddle.fluid.core import TensorDistAttr
 from paddle.fluid.core import OperatorDistAttr

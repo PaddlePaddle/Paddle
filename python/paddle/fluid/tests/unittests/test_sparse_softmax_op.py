@@ -16,12 +16,8 @@ import paddle
 from paddle.fluid.framework import _test_eager_guard
 
 import numpy as np
-import scipy
 import scipy.sparse as sp
 import unittest
-import os
-import re
-import math
 
 np.random.seed(2022)
 

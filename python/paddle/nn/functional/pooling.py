@@ -18,7 +18,6 @@ from ...tensor.manipulation import unsqueeze, squeeze
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
-from paddle.fluid import core
 from paddle.fluid.framework import _in_legacy_dygraph, Variable
 from paddle.fluid.framework import in_dygraph_mode, _non_static_mode
 

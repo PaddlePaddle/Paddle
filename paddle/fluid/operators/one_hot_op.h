@@ -21,14 +21,14 @@ namespace operators {
 
 template <typename DeviceContext, typename InT>
 struct OneHotOpFunctor {
-  const framework::LoDTensor* in_;
-  framework::LoDTensor* out_;
+  const phi::DenseTensor* in_;
+  phi::DenseTensor* out_;
   int depth_;
   const DeviceContext& ctx_;
   bool allow_out_of_range_;
 
-  OneHotOpFunctor(const framework::LoDTensor* in,
-                  framework::LoDTensor* out,
+  OneHotOpFunctor(const phi::DenseTensor* in,
+                  phi::DenseTensor* out,
                   int depth,
                   const DeviceContext& ctx,
                   bool allow_out_of_range = false)
@@ -76,7 +76,7 @@ struct OneHotOpFunctor {
   }
 };
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class OneHotKernel : public framework::OpKernel<T> {
