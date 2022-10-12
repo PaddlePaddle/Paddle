@@ -301,7 +301,16 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   phi::DDim in_dim({0});
   for (size_t i = 0; i < x.size(); ++i) {
     auto x_dim = x[i]->dims();
+    // x_dim.size() == 1 means the real dim of selected rows is [0]
+    if (x[i]->is_selected_rows() && x_dim.size() == 1) {
+      continue;
+    }
+    // for zero-sized tensor
     if (phi::product(x_dim) == 0) {
+      continue;
+    }
+    // for 0D tensor
+    if (x_dim.size() == 0) {
       continue;
     }
     if (phi::product(in_dim) == 0) {
@@ -2491,8 +2500,8 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* warpctcgrad,
-                      MetaTensor* loss) {
+                      MetaTensor* loss,
+                      MetaTensor* warpctcgrad) {
   auto logits_dims = logits.dims();
   int sequence_width = 0;
 

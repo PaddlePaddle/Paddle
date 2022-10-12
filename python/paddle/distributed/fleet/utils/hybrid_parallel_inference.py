@@ -688,8 +688,10 @@ class HybridParallelInferenceHelper(object):
                         })
                 else:
                     var_shape = list(var.shape)
-                    var_shape[0] = self.micro_batch_size if var_shape[
-                        0] < 0 else var_shape[0]
+                    print(var_name)
+                    if len(var.shape) > 0:
+                        var_shape[0] = self.micro_batch_size if var_shape[
+                            0] < 0 else var_shape[0]
                     block._insert_op_without_sync(
                         index=index,
                         type='recv_v2',

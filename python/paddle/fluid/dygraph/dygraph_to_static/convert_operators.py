@@ -462,6 +462,7 @@ def convert_len(var):
           `shape_op` in var.block.
     """
     if isinstance(var, Variable):
+        assert var.ndim > 0, "len() of a 0D tensor is wrong"
         if var.type in [
                 core.VarDesc.VarType.LOD_TENSOR,
                 core.VarDesc.VarType.SELECTED_ROWS
