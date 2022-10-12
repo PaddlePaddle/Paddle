@@ -552,18 +552,14 @@ inline void RunProgramGradAPI(
       // share threadpool
       // NOTE(zhiqiu): this only works interpreter_core is executed strictly
       // after the related fwd_interpreter_core.
-      PADDLE_ENFORCE_EQ(
-          interpretercore_info_cache.Has(program_id, false),
-          true,
-          paddle::platform::errors::NotFound(
-              "The forward interpretercore of program %d is not found",
-              program_id));
-      auto fwd_interpreter_core =
-          interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false)
-              .core_;
-      interpreter_core->ShareWorkQueueFrom(fwd_interpreter_core);
-      VLOG(4) << "Share workqueue from " << fwd_interpreter_core.get() << " to "
-              << interpreter_core.get();
+      if (interpretercore_info_cache.Has(program_id, false)) {
+        auto fwd_interpreter_core =
+            interpretercore_info_cache.GetMutable(program_id, /*is_grad=*/false)
+                .core_;
+        interpreter_core->ShareWorkQueueFrom(fwd_interpreter_core);
+        VLOG(4) << "Share workqueue from " << fwd_interpreter_core.get()
+                << " to " << interpreter_core.get();
+      }
 
       std::vector<std::string> x_grad_names;
       std::vector<std::string> param_grad_names;
