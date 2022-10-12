@@ -45,11 +45,6 @@ per-file-ignores =
     python/paddle/distribution/*:F401
     python/paddle/utils/*:F401
     python/paddle/tensor/*:F401
-    python/paddle/fluid/tests/unittests/ir/*:F401
-    python/paddle/fluid/tests/unittests/tokenizer/*:F401
     python/paddle/fluid/tests/unittests/distribution/*:F401
-    python/paddle/fluid/tests/unittests/distributed_passes/*:F401
     python/paddle/fluid/tests/unittests/auto_parallel/*:F401
-    python/paddle/fluid/tests/unittests/dygraph_to_static/*:F401
-    python/paddle/fluid/tests/unittests/sequence/*:F401
     python/paddle/fluid/tests/unittests/mkldnn/*:F401
