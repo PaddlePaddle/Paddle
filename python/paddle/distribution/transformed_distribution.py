@@ -60,12 +60,14 @@ class TransformedDistribution(distribution.Distribution):
         if not all(isinstance(t, transform.Transform) for t in transforms):
             raise TypeError("All element of transforms must be Transform type.")
 
+        chain = transform.ChainTransform(transforms)
+        base_shape = base.batch_shape + base.event_shape
+        self._base = base
+        self._transforms = transforms
         if not transforms:
             super(TransformedDistribution,
                   self).__init__(base.batch_shape, base.event_shape)
         else:
-            chain = transform.ChainTransform(transforms)
-            base_shape = base.batch_shape + base.event_shape
             if len(base_shape) < chain._domain.event_rank:
                 raise ValueError(
                     f"'base' needs to have shape with size at least {chain._domain.event_rank}, but got {len(base_shape)}."
@@ -73,8 +75,6 @@ class TransformedDistribution(distribution.Distribution):
             if chain._domain.event_rank > len(base.event_shape):
                 base = independent.Independent(
                     (base, chain._domain.event_rank - len(base.event_shape)))
-            self._base = base
-            self._transforms = transforms
 
             transformed_shape = chain.forward_shape(base.batch_shape +
                                                     base.event_shape)
