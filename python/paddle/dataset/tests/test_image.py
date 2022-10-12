@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-
+import sys
 import paddle.dataset.image as image
 
 __all__ = []
@@ -24,7 +24,8 @@ class Image(unittest.TestCase):
 
     def test_resize_flip_chw(self):
         # resize
-        im = image.load_image('cat.jpg')
+        img_dir = sys.argv[0].replace('test_image.py','cat.jpg')
+        im = image.load_image(img_dir)
         im = image.resize_short(im, 256)
         self.assertEqual(256, min(im.shape[:2]))
         self.assertEqual(3, im.shape[2])
