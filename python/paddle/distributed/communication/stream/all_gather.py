@@ -34,17 +34,18 @@ def _check_tensor_list_shape(tensor_list, shape, nranks=1):
                 'The tensor_list for all_gather is not correctly-sized.')
 
 
-def _all_gather_base_in_dygraph(out_tensor, in_tensor, group, sync_op,
-                                use_calc_stream):
+def _all_gather_into_tensor_in_dygraph(out_tensor, in_tensor, group, sync_op,
+                                       use_calc_stream):
     group = collective._get_default_group() if group is None else group
 
     _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
     if use_calc_stream:
-        return group.process_group.allgather_base_on_calc_stream(
+        return group.process_group.allgather_into_tensor_on_calc_stream(
             in_tensor, out_tensor)
 
-    task = group.process_group.allgather_base(in_tensor, out_tensor, sync_op)
+    task = group.process_group.allgather_into_tensor(in_tensor, out_tensor,
+                                                     sync_op)
     if sync_op:
         task.wait()
 
@@ -83,7 +84,7 @@ def all_gather(tensor_or_tensor_list,
         tensor_or_tensor_list (Union[Tensor, List[Tensor]]): The output. If it is a tensor, it should be correctly-sized. If it is a list, it
             should be empty or contain correctly-sized tensors.
         tensor (Tensor): The input tensor on each rank. The result will overwrite this tenor after communication. Support
-            float16, float32, float64, int32 or int64 as the input data type.
+            float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
@@ -125,8 +126,9 @@ def all_gather(tensor_or_tensor_list,
 
     if framework.in_dygraph_mode():
         if paddle.is_tensor(tensor_or_tensor_list):
-            return _all_gather_base_in_dygraph(tensor_or_tensor_list, tensor,
-                                               group, sync_op, use_calc_stream)
+            return _all_gather_into_tensor_in_dygraph(tensor_or_tensor_list,
+                                                      tensor, group, sync_op,
+                                                      use_calc_stream)
         else:
             return _all_gather_in_dygraph(tensor_or_tensor_list, tensor, group,
                                           sync_op, use_calc_stream)

@@ -15,7 +15,6 @@
 from functools import reduce
 
 import collections
-import math
 import os
 import warnings
 import logging
@@ -784,7 +783,7 @@ def union_forward_gradient_op(program_block_ops_list):
 
     block_op_list = {"forward": [], "backward": []}
     for op in program_block_ops_list[block_length // 2]:
-        if not "_grad" in op.type and not (op.type == "sum"):
+        if "_grad" not in op.type and not (op.type == "sum"):
             block_op_list["forward"].append(op)
         else:
             block_op_list["backward"].append(op)
@@ -901,7 +900,7 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
             if var not in previous_block_private and var not in previous_block_entrance:
                 previous_block_entrance.append(var)
             previous_block_exit.append(var)
-            if not var in current_block_entrance:
+            if var not in current_block_entrance:
                 current_block_entrance.append(var)
 
     for index in range(0, len(block_var_detail) - 1, 1):
@@ -918,7 +917,7 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
         need_add_vars = list(set(current_block_entrance) - set(exist_vars))
         need_ignore_vars = []
         for var in need_add_vars:
-            if not "@GRAD" in var:
+            if "@GRAD" not in var:
                 need_ignore_vars.append(var)
         need_add_vars = list(
             set(need_add_vars).difference(set(need_ignore_vars)))

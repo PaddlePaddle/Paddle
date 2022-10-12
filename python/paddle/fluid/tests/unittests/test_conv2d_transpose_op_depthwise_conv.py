@@ -18,9 +18,6 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test import OpTest
 from test_conv2d_transpose_op import TestConv2DTransposeOp
 
 

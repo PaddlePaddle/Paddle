@@ -308,7 +308,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
   return true;
 }
 template <typename T>
-void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
+void NativePaddlePredictor::GetFetchOne(const phi::DenseTensor &fetch,
                                         PaddleTensor *output) {
   // set shape.
   auto shape = phi::vectorize(fetch.dims());
@@ -342,7 +342,7 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto fetch = PADDLE_GET_CONST(framework::LoDTensor, fetch_var);
+    auto fetch = PADDLE_GET_CONST(phi::DenseTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];

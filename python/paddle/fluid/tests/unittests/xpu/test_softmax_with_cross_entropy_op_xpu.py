@@ -18,7 +18,6 @@ sys.path.append("..")
 
 from test_softmax_op import stable_softmax
 from op_test_xpu import XPUOpTest
-import paddle.fluid.core as core
 import paddle
 
 import unittest

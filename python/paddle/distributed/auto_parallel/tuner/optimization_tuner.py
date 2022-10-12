@@ -24,20 +24,19 @@ import pickle
 import json
 import logging
 import subprocess
-import traceback
 
 import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.distributed.passes import new_pass, PassContext
 
-from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.process_group import clear_all_process_groups, get_all_process_groups
 from paddle.distributed.auto_parallel.utils import debug_program
-from paddle.distributed.auto_parallel.utils import make_data_unshard, set_grad_var_shape
+from paddle.distributed.auto_parallel.utils import set_grad_var_shape
 
 from ..utils import get_logger
 from .config import TuningConfig

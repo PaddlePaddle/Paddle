@@ -17,7 +17,6 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest, convert_float_to_uint16
-import paddle.fluid.core as core
 from paddle.fluid.framework import Program, program_guard
 
 

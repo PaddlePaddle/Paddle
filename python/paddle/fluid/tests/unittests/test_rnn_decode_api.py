@@ -28,7 +28,6 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 
 from paddle.fluid.executor import Executor
-from paddle.fluid import framework
 from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
