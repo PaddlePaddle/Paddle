@@ -14,7 +14,7 @@
 
 import math
 
-import six
+import functools
 import unittest
 import numpy as np
 
@@ -902,9 +902,9 @@ class TestLoadSliceVar(TranspilerTest):
             ps1_var = vars_ps1[idx]
 
             if not ps1_var.is_slice:
-                total_numel = six.moves.reduce(lambda x, y: x * y,
+                total_numel = functools.reduce(lambda x, y: x * y,
                                                vars_ps1[idx].origin.shape)
-                ps1_numel = six.moves.reduce(lambda x, y: x * y,
+                ps1_numel = functools.reduce(lambda x, y: x * y,
                                              vars_ps1[idx].slice.shape)
             else:
                 ps2_var = None
@@ -913,11 +913,11 @@ class TestLoadSliceVar(TranspilerTest):
                         ps2_var = var
                         break
 
-                total_numel = six.moves.reduce(lambda x, y: x * y,
+                total_numel = functools.reduce(lambda x, y: x * y,
                                                ps1_var.origin.shape)
-                ps1_numel = six.moves.reduce(lambda x, y: x * y,
+                ps1_numel = functools.reduce(lambda x, y: x * y,
                                              ps1_var.slice.shape)
-                ps2_numel = six.moves.reduce(lambda x, y: x * y,
+                ps2_numel = functools.reduce(lambda x, y: x * y,
                                              ps2_var.slice.shape)
 
             self.assertEqual(total_numel, ps1_numel + ps2_numel)

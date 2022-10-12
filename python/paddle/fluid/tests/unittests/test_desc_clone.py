@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 import unittest
-import six
+import functools
 import collections
 
 SEED = 1
@@ -43,7 +43,7 @@ def cnn_model(data):
     # TODO(dzhwinter) : refine the initializer and random seed settting
     SIZE = 10
     input_shape = conv_pool_2.shape
-    param_shape = [six.moves.reduce(lambda a, b: a * b, input_shape[1:], 1)
+    param_shape = [functools.reduce(lambda a, b: a * b, input_shape[1:], 1)
                    ] + [SIZE]
     scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
 

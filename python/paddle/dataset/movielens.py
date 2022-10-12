@@ -28,7 +28,6 @@ import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 import re
 import functools
-import six
 import paddle.compat as cpt
 
 __all__ = []
@@ -207,7 +206,7 @@ def max_movie_id():
     Get the maximum value of movie id.
     """
     __initialize_meta_info__()
-    return six.moves.reduce(__max_index_info__, list(MOVIE_INFO.values())).index
+    return functools.reduce(__max_index_info__, list(MOVIE_INFO.values())).index
 
 
 @deprecated(
@@ -220,7 +219,7 @@ def max_user_id():
     Get the maximum value of user id.
     """
     __initialize_meta_info__()
-    return six.moves.reduce(__max_index_info__, list(USER_INFO.values())).index
+    return functools.reduce(__max_index_info__, list(USER_INFO.values())).index
 
 
 def __max_job_id_impl__(a, b):
@@ -240,7 +239,7 @@ def max_job_id():
     Get the maximum value of job id.
     """
     __initialize_meta_info__()
-    return six.moves.reduce(__max_job_id_impl__,
+    return functools.reduce(__max_job_id_impl__,
                             list(USER_INFO.values())).job_id
 
 

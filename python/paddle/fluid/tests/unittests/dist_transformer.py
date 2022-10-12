@@ -15,7 +15,7 @@
 import numpy as np
 import time
 import os
-import six
+import functools
 import time
 from functools import partial
 from os.path import expanduser
@@ -307,7 +307,7 @@ def pad_batch_data(insts,
     """
     return_list = []
     max_len = max(len(inst) for inst in insts)
-    num_token = six.moves.reduce(lambda x, y: x + y,
+    num_token = functools.reduce(lambda x, y: x + y,
                                  [len(inst)
                                   for inst in insts]) if return_num_token else 0
     # Any token included in dict can be used to pad, since the paddings' loss

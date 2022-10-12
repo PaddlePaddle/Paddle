@@ -18,7 +18,7 @@ import unittest
 import warnings
 import numpy as np
 import random
-import six
+import functools
 import struct
 from collections import defaultdict
 from copy import copy
@@ -130,7 +130,7 @@ def get_numeric_gradient(place,
     set_input(scope, op, inputs, place)
 
     def product(dim):
-        return six.moves.reduce(lambda a, b: a * b, dim, 1)
+        return functools.reduce(lambda a, b: a * b, dim, 1)
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
@@ -1578,8 +1578,8 @@ class OpTest(unittest.TestCase):
                         str(place) + " in dygraph mode")
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                if six.moves.reduce(lambda x, y: x * y, actual_np.shape,
-                                    1) == 0 and six.moves.reduce(
+                if functools.reduce(lambda x, y: x * y, actual_np.shape,
+                                    1) == 0 and functools.reduce(
                                         lambda x, y: x * y, expect_np.shape,
                                         1) == 0:
                     pass
@@ -1973,7 +1973,7 @@ class OpTest(unittest.TestCase):
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
             tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
-            tensor_size = six.moves.reduce(lambda a, b: a * b,
+            tensor_size = functools.reduce(lambda a, b: a * b,
                                            tensor_to_check.shape(), 1)
             tensor_ndim = len(tensor_to_check.shape())
             # for 0D Tensor, it's additional case for OP, so not raise error

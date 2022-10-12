@@ -15,7 +15,7 @@
 import unittest
 
 import os
-import six
+import importlib
 import tempfile
 import numpy as np
 import paddle.fluid.core as core
@@ -95,7 +95,7 @@ class TestBook(unittest.TestCase):
                            },
                            fetch_list=[avg_cost])[0]
 
-        six.moves.reload_module(executor)  # reload to build a new scope
+        importlib.reload(executor)  # reload to build a new scope
 
         model_0 = InferModel(load_inference_model(MODEL_DIR, exe))
         with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
@@ -284,7 +284,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                            },
                            fetch_list=[avg_cost])[0]
 
-        six.moves.reload_module(executor)  # reload to build a new scope
+        importlib.reload(executor)  # reload to build a new scope
 
         self.assertRaises(ValueError, paddle.static.load_inference_model, None,
                           exe)
