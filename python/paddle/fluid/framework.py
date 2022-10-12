@@ -5520,8 +5520,10 @@ class Program(object):
 
             .. code-block:: python
 
+                import six
+
                 def print_prog(prog):
-                    for name, value in sorted(prog.block(0).vars.items()):
+                    for name, value in sorted(six.iteritems(prog.block(0).vars)):
                         print(value)
                     for op in prog.block(0).ops:
                         print("op type is {}".format(op.type))
