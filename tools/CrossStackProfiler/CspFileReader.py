@@ -17,8 +17,7 @@ import time
 import json
 import glob
 import logging
-import pandas as pd
-from multiprocessing import Process, Lock
+from multiprocessing import Lock
 """ Some terms to clarify the code
     in most case, one or more paremeters may be set as input args for a class or a function
     in form of single variable or k-v dict

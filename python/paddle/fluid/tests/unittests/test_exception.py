@@ -17,7 +17,6 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.compat as cpt
 import paddle.fluid.core as core
 
 

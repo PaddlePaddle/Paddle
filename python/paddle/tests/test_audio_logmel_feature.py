@@ -15,12 +15,10 @@ import unittest
 
 import librosa
 import numpy as np
-import os
 import paddle
 
 import paddle.audio
 import scipy
-from scipy import signal
 import itertools
 from parameterized import parameterized
 
