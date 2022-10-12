@@ -31,10 +31,32 @@ namespace paddle2cinn {
 using Node = ir::Node;
 using Graph = ir::Graph;
 
-struct Hasher;
-struct Comparator;
+/*
+ *
+ *
+ */
 struct CinnSubGraph;
 using CinnSubGraphPtr = std::shared_ptr<CinnSubGraph>;
+
+struct CinnSubGraph {
+  // construct function
+  CinnSubGraph() {}
+  // construct function
+  CinnSubGraph(Node *op, bool subst) : substitute(subst) { Insert(op); }
+  void Insert(Node *op);
+
+  int depth{0};
+  int max_depth{0};
+  int min_depth{INT_MAX};
+  bool substitute{true};
+  std::vector<Node *> nodes;
+  std::unordered_set<Node *> node_set;
+  std::unordered_set<Node *> input_nodes;
+
+  std::unordered_set<CinnSubGraphPtr> producers;
+  std::unordered_set<CinnSubGraphPtr> consumers;
+};
+
 /*
  * Detect the nodes in a subgraph that meet some conditions. This class doesn't
  * modify the graph.
@@ -57,14 +79,12 @@ class CinnSubgraphDetector {
   void DoSubGraphFusion();
   bool FuseSubGraph(CinnSubGraphPtr *);
   // check exist depency.
-  bool IsDependency(
-      const CinnSubGraphPtr &,
-      const CinnSubGraphPtr &,
-      const std::unordered_set<CinnSubGraphPtr, Hasher, Comparator> &);
-  bool IsDependencySimplify(
-      const CinnSubGraphPtr &,
-      const CinnSubGraphPtr &,
-      const std::unordered_set<CinnSubGraphPtr, Hasher, Comparator> &);
+  bool IsDependency(const CinnSubGraphPtr &,
+                    const CinnSubGraphPtr &,
+                    const std::unordered_set<CinnSubGraphPtr> &);
+  bool IsDependencySimplify(const CinnSubGraphPtr &,
+                            const CinnSubGraphPtr &,
+                            const std::unordered_set<CinnSubGraphPtr> &);
 
  private:
   Graph *graph_;

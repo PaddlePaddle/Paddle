@@ -50,46 +50,16 @@ std::unordered_set<Node*> GetConsumerOps(Node* node) {
   return consumers;
 }
 
-struct Hasher {
-  size_t operator()(const CinnSubGraphPtr& subgraph) const noexcept {
-    return std::hash<uint64_t>()(reinterpret_cast<uint64_t>(subgraph.get()));
+void CinnSubGraph::Insert(Node* op) {
+  nodes.push_back(op);
+  node_set.insert(op);
+
+  auto producers = GetProducerOps(op);
+  for (auto producer : producers) {
+    input_nodes.insert(producer);
   }
-};
-struct Comparator {
-  bool operator()(const CinnSubGraphPtr& first,
-                  const CinnSubGraphPtr& second) const noexcept {
-    return first.get() == second.get();
-  }
-};
-
-struct CinnSubGraph {
-  using CinnSubGraphPtr = std::shared_ptr<CinnSubGraph>;
-  // construct function
-  CinnSubGraph() {}
-  // construct function
-  CinnSubGraph(Node* op, bool subst) : substitute(subst) { Insert(op); }
-
-  void Insert(Node* op) {
-    nodes.push_back(op);
-    node_set.insert(op);
-
-    auto producers = GetProducerOps(op);
-    for (auto producer : producers) {
-      input_nodes.insert(producer);
-    }
-    input_nodes.erase(op);
-  }
-
-  int depth{0};
-  int max_depth{0}, min_depth{INT_MAX};
-  bool substitute{true};
-  std::vector<Node*> nodes;
-  std::unordered_set<Node*> node_set;
-  std::unordered_set<Node*> input_nodes;
-
-  std::unordered_set<CinnSubGraphPtr, Hasher, Comparator> producers;
-  std::unordered_set<CinnSubGraphPtr, Hasher, Comparator> consumers;
-};
+  input_nodes.erase(op);
+}
 
 void CinnSubgraphDetector::DoOpFusion() {
   // sort node from input to output
@@ -276,11 +246,11 @@ bool CinnSubgraphDetector::FuseSubGraph(CinnSubGraphPtr* subgraph_ptr) {
 bool CinnSubgraphDetector::IsDependency(
     const CinnSubGraphPtr& producer_g,
     const CinnSubGraphPtr& consumer,
-    const std::unordered_set<CinnSubGraphPtr, Hasher, Comparator>& consumers) {
+    const std::unordered_set<CinnSubGraphPtr>& consumers) {
   std::queue<CinnSubGraphPtr> candidates;
   candidates.push(consumer);
 
-  std::unordered_set<CinnSubGraphPtr, Hasher, Comparator> visited_set;
+  std::unordered_set<CinnSubGraphPtr> visited_set;
   while (!candidates.empty()) {
     auto& candidate = candidates.front();
     candidates.pop();
@@ -303,12 +273,12 @@ bool CinnSubgraphDetector::IsDependency(
 bool CinnSubgraphDetector::IsDependencySimplify(
     const CinnSubGraphPtr& producer_g,
     const CinnSubGraphPtr& consumer,
-    const std::unordered_set<CinnSubGraphPtr, Hasher, Comparator>& consumers) {
+    const std::unordered_set<CinnSubGraphPtr>& consumers) {
   std::queue<CinnSubGraphPtr> candidates;
   candidates.push(consumer);
   // check upper bound.
   int check_upper_depth = producer_g->max_depth;
-  std::unordered_set<CinnSubGraphPtr, Hasher, Comparator> visited_set;
+  std::unordered_set<CinnSubGraphPtr> visited_set;
   while (!candidates.empty()) {
     auto& candidate = candidates.front();
     candidates.pop();
