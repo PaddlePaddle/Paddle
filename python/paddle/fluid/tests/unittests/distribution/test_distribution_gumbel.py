@@ -25,11 +25,14 @@ from paddle.distribution.transform import ExpTransform
 from paddle.distribution.transformed_distribution import TransformedDistribution
 
 @parameterize.place(config.DEVICES)
-@parameterize.parameterize_cls((parameterize.TEST_CASE_NAME, 'loc', 'scale','transforms'), [
-    ('one-dim', parameterize.xrand((4, )), parameterize.xrand((4, )), [ExpTransform()]),
-    ('multi-dim', parameterize.xrand((5, 3)), parameterize.xrand((5, 3)),[ExpTransform()]),
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME, 'loc', 'scale','transforms'), [
+        ('one-dim', parameterize.xrand((4, )), parameterize.xrand(
+            (4, )), [ExpTransform()]),
+        ('multi-dim', parameterize.xrand((5, 3)), parameterize.xrand(
+            (5, 3)),[ExpTransform()]),
 
-])
+    ])
 class TestGumbel(unittest.TestCase):
 
     def setUp(self):
