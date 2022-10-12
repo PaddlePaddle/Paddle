@@ -1056,24 +1056,53 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
   }
 }
 
-PDNode *patterns::FCMKLDNN::operator()() {
+PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
   auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
+  // Create variables
+  // Input
   auto *input_var = pattern->NewNode(input_repr())
                         ->AsInput()
                         ->assert_is_op_input("fc", "Input");
-  auto *weights_var = pattern->NewNode(weights_repr())
+  // Filter
+  auto *fc_weight_var = pattern->NewNode(weights_repr())
+                            ->AsInput()
+                            ->assert_is_op_input("fc", "W");
+  // Bias
+  auto *fc_bias_var = pattern->NewNode(bias_repr())
                           ->AsInput()
-                          ->assert_is_op_input("fc", "W");
-  auto *bias_var = pattern->NewNode(bias_repr())
-                       ->AsInput()
-                       ->assert_is_op_input("fc", "Bias");
-  auto *out_var = pattern->NewNode(output_repr())
-                      ->AsOutput()
-                      ->assert_is_op_output("fc", "Out")
-                      ->assert_is_only_output_of_op("fc");
+                          ->assert_is_op_input("fc", "Bias");
+  // Output
+  auto *fc_out_var = pattern->NewNode(output_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("fc", "Out")
+                         ->assert_is_only_output_of_op("fc");
 
-  fc_op->LinksFrom({input_var, weights_var, bias_var}).LinksTo({out_var});
-  return out_var;
+  std::vector<PDNode *> links_from{input_var, fc_weight_var, fc_bias_var};
+  if (with_residual_data) {
+    auto res_fc_var = pattern->NewNode(residual_data_repr())
+                          ->AsInput()
+                          ->assert_is_op_input("fc")
+                          // assert_is_op_input with two arguments doesn't work
+                          // because ResidualData in FC is set as output with
+                          // SetOutput so we do custom assert output
+                          ->assert_more([&](Node *x) {
+                            for (auto *op : x->outputs)
+                              if (IsNthOutput(x, op, "ResidualData", 0))
+                                return true;
+                            return false;
+                          });
+    links_from.push_back(res_fc_var);
+  } else {
+    fc_op->assert_more([&](Node *x) {
+      if (!HasOutput(x, "ResidualData") ||
+          x->Op()->Output("ResidualData").size() == 0)
+        return true;
+      return false;
+    });
+  }
+
+  fc_op->LinksFrom(links_from).LinksTo({fc_out_var});
+  return fc_out_var;
 }
 
 PDNode *patterns::Embedding::operator()(PDNode *x) {
@@ -1882,11 +1911,19 @@ PDNode *patterns::Reshape2Matmul::operator()() {
   return matmul_out;
 }
 
-PDNode *patterns::MatmulWithInputOps::operator()() {
+PDNode *patterns::MatmulWithInputOps::operator()(bool with_residual) {
   auto prev_op_x = pattern->NewNode(prev_op_x_repr())->assert_is_op();
   auto prev_op_y = pattern->NewNode(prev_op_y_repr())->assert_is_op();
 
   auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  if (!with_residual) {
+    matmul_op->assert_more([&](Node *x) {
+      return (!HasInput(x, "ResidualData") ||
+              x->Op()->Input("ResidualData").size() == 0);
+    });
+  }
+
   auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
                          ->AsInput()
                          ->assert_is_op_input("matmul", "X");
@@ -1895,11 +1932,21 @@ PDNode *patterns::MatmulWithInputOps::operator()() {
                          ->assert_is_op_input("matmul", "Y");
   auto matmul_out = pattern->NewNode(matmul_out_repr())
                         ->AsOutput()
-                        ->assert_is_op_output("matmul", "Out");
+                        ->assert_is_op_output("matmul", "Out")
+                        ->assert_is_only_output_of_op("matmul");
+  std::vector<PDNode *> links_from{matmul_in_x, matmul_in_y};
+
+  if (with_residual) {
+    auto matmul_residual_data =
+        pattern->NewNode(matmul_residual_data_repr())
+            ->AsInput()
+            ->assert_is_op_input("matmul", "ResidualData");
+    links_from.push_back(matmul_residual_data);
+  }
 
   prev_op_x->LinksTo({matmul_in_x});
   prev_op_y->LinksTo({matmul_in_y});
-  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  matmul_op->LinksFrom(links_from).LinksTo({matmul_out});
   return matmul_out;
 }
 
@@ -2069,46 +2116,6 @@ PDNode *patterns::Concat::operator()() {
 
   concat_op->LinksTo({output_var});
   return output_var;
-}
-
-PDNode *patterns::ConcatReLU::operator()() {
-  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
-  auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
-
-  auto concat_out =
-      pattern->NewNode(concat_out_repr())->assert_is_op_output("concat", "Out");
-
-  auto relu_out = pattern->NewNode(relu_out_repr())
-                      ->AsOutput()
-                      ->assert_is_op_output("relu", "Out");
-
-  concat_op->LinksTo({concat_out});
-  relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
-
-  return relu_out;
-}
-
-PDNode *patterns::ConvConcatReLU::operator()() {
-  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
-  auto concat_op = pattern->NewNode(concat_op_repr())->assert_is_op("concat");
-  auto relu_op = pattern->NewNode(relu_op_repr())->assert_is_op("relu");
-
-  auto conv_out = pattern->NewNode(conv_out_repr())
-                      ->assert_is_op_output("conv2d", "Output");
-
-  auto concat_out = pattern->NewNode(concat_out_repr())
-                        ->assert_is_op_output("concat", "Out")
-                        ->assert_is_op_input("relu", "X");
-
-  auto relu_out = pattern->NewNode(relu_out_repr())
-                      ->AsOutput()
-                      ->assert_is_op_output("relu", "Out");
-
-  conv_op->LinksTo({conv_out});
-  concat_op->LinksFrom({conv_out}).LinksTo({concat_out});
-  relu_op->LinksFrom({concat_out}).LinksTo({relu_out});
-
-  return relu_out;
 }
 
 PDNode *patterns::OpRequant::operator()() {
@@ -3512,6 +3519,106 @@ PDNode *patterns::AddSupportInt8::operator()() {
           ->AsOutput();
   quant_op->LinksTo({quant_out});
   return quant_out;
+}
+
+PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
+  auto layer_norm_op =
+      pattern->NewNode(layer_norm_op_repr())
+          ->assert_is_op("layer_norm")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("begin_norm_axis") &&
+                   (PADDLE_GET_CONST(
+                        int, node->Op()->GetAttr("begin_norm_axis")) == 2);
+          });
+  auto layer_norm_in = pattern->NewNode(layer_norm_in_repr())
+                           ->AsInput()
+                           ->assert_is_op_input("layer_norm", "X");
+  auto layer_norm_bias = pattern->NewNode(layer_norm_bias_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("layer_norm", "Bias");
+  auto layer_norm_scale = pattern->NewNode(layer_norm_scale_repr())
+                              ->AsInput()
+                              ->assert_is_op_input("layer_norm", "Scale");
+  auto layer_norm_out = pattern->NewNode(layer_norm_out_repr())
+                            ->AsIntermediate()
+                            ->assert_is_op_input("reshape2", "X")
+                            ->assert_is_op_output("layer_norm", "Y");
+  auto reshape1_op =
+      pattern->NewNode(reshape1_op_repr())
+          ->assert_is_op("reshape2")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("shape") &&
+                   (PADDLE_GET_CONST(std::vector<int>,
+                                     node->Op()->GetAttr("shape"))
+                        .size() == 4);
+          });
+  auto reshape1_out = pattern->NewNode(reshape1_out_repr())
+                          ->AsIntermediate()
+                          ->assert_is_op_input("reshape2", "X")
+                          ->assert_is_op_output("reshape2", "Out");
+  auto reshape2_op =
+      pattern->NewNode(reshape2_op_repr())
+          ->assert_is_op("reshape2")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("shape") &&
+                   (PADDLE_GET_CONST(std::vector<int>,
+                                     node->Op()->GetAttr("shape"))
+                        .size() == 6);
+          });
+  auto reshape2_out = pattern->NewNode(reshape2_out_repr())
+                          ->AsIntermediate()
+                          ->assert_is_op_input("transpose2", "X")
+                          ->assert_is_op_output("reshape2", "Out");
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())
+          ->assert_is_op("transpose2")
+          ->assert_more([&](Node *node) {
+            if (!node->Op()->HasAttr("axis")) return false;
+            std::vector<int> axis =
+                PADDLE_GET_CONST(std::vector<int>, node->Op()->GetAttr("axis"));
+            if (axis.size() != 6) return false;
+            const std::vector<int> axis_cmp{0, 1, 3, 2, 4, 5};
+            return std::equal(axis.begin(), axis.end(), axis_cmp.begin());
+          });
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_op_input("reshape2", "X")
+                           ->assert_is_op_output("transpose2", "Out");
+  auto reshape3_op =
+      pattern->NewNode(reshape3_op_repr())
+          ->assert_is_op("reshape2")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("shape") &&
+                   (PADDLE_GET_CONST(std::vector<int>,
+                                     node->Op()->GetAttr("shape"))
+                        .size() == 4);
+          });
+  auto reshape3_out = pattern->NewNode(reshape3_out_repr())
+                          ->AsIntermediate()
+                          ->assert_is_op_input("reshape2", "X")
+                          ->assert_is_op_output("reshape2", "Out");
+  auto reshape4_op =
+      pattern->NewNode(reshape4_op_repr())
+          ->assert_is_op("reshape2")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("shape") &&
+                   (PADDLE_GET_CONST(std::vector<int>,
+                                     node->Op()->GetAttr("shape"))
+                        .size() == 3);
+          });
+  auto reshape4_out = pattern->NewNode(reshape4_out_repr())
+                          ->assert_is_op_output("reshape2", "Out")
+                          ->AsOutput();
+
+  layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale})
+      .LinksTo({layer_norm_out});
+  reshape1_op->LinksFrom({layer_norm_out}).LinksTo({reshape1_out});
+  reshape2_op->LinksFrom({reshape1_out}).LinksTo({reshape2_out});
+  transpose_op->LinksFrom({reshape2_out}).LinksTo({transpose_out});
+  reshape3_op->LinksFrom({transpose_out}).LinksTo({reshape3_out});
+  reshape4_op->LinksFrom({reshape3_out}).LinksTo({reshape4_out});
+
+  return reshape4_out;
 }
 
 }  // namespace ir
