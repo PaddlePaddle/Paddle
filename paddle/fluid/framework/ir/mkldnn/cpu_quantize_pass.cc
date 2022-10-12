@@ -493,6 +493,11 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
       return;
     }
 
+    if (!fc->Op()->GetAttrIfExists<bool>("use_mkldnn")) {
+      MarkAndLogCannotQuantizeOp(fc, "use_mkldnn attribute set to false");
+      return;
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(weights, weights, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(output, output, fc_pattern);
