@@ -813,9 +813,9 @@ void BindAnalysisConfig(py::module *m) {
                 None.
            Examples:
                .. code-block:: python
-                from paddle.fluid.core import AnalysisConfig
+                from paddle.inference import Config
 
-                config = AnalysisConfig("")
+                config = Config("")
                 config.enable_mkldnn()
                 config.disable_mkldnn_fc_passes()
            )DOC")
