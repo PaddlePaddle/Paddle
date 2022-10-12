@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
 from ...tensor import concat
 from ...tensor.creation import zeros
 from paddle.static import Variable
-from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network
 from ...tensor.manipulation import squeeze
 from ...tensor.manipulation import unsqueeze
@@ -27,9 +25,7 @@ from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype, check_type
-from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
-
-from ...fluid import dygraph_utils
+from ...fluid.framework import _in_legacy_dygraph, _non_static_mode, in_dygraph_mode
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.framework import in_dynamic_mode

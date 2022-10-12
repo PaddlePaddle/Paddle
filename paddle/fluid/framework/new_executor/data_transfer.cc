@@ -378,7 +378,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                         "Required src_place shall be different with dst_place, "
                         "but received same place: %s",
                         src_place));
-  if (IsSupportedHetePlace(dst_place)) {
+  if (IsSupportedHeterPlace(dst_place)) {
     op_type = kMemcpyH2D;
     int dst_place_type = platform::is_gpu_place(dst_place)      ? 0
                          : platform::is_npu_place(dst_place)    ? 1
@@ -387,7 +387,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                          : platform::is_custom_place(dst_place) ? 6
                                                                 : -1;
     attr_map = {{"dst_place_type", dst_place_type}};
-  } else if (IsSupportedHetePlace(src_place)) {
+  } else if (IsSupportedHeterPlace(src_place)) {
     op_type = kMemcpyD2H;
     int dst_place_type = platform::is_cpu_place(dst_place)           ? 0
                          : platform::is_cuda_pinned_place(dst_place) ? 1

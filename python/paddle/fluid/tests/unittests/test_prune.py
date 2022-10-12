@@ -17,7 +17,6 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.compat as cpt
 import numpy as np
 import os
 import contextlib

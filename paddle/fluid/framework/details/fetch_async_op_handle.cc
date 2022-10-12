@@ -164,22 +164,30 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     }
   }
 
-  bool find_first_dims = false;
-  for (auto *t : src_lodtensors) {
-    if (t->numel() && t->IsInitialized()) {
-      if (!find_first_dims) {
-        new_dim = t->dims();
-        find_first_dims = true;
-      } else {
-        new_dim[0] += t->dims()[0];
-      }
-    }
-  }
-
   // check src type,layout,dim,lod consistence
   for (size_t i = 1; i < src_lodtensors.size(); ++i) {
     CheckTensorAttrs(
         src_lodtensors[i], new_type, new_layout, check_dim, new_lod, offset_);
+  }
+
+  auto rank = src_lodtensors[0]->dims().size();
+
+  // for 0D tensor, can't concat eath tensor. So stack 0D and concat 1+D tensor
+  if (rank == 0) {
+    int src_lodtensor_size = src_lodtensors.size();
+    new_dim = phi::make_ddim(std::vector<int>({src_lodtensor_size}));
+  } else {
+    bool find_first_dims = false;
+    for (auto *t : src_lodtensors) {
+      if (t->numel() && t->IsInitialized()) {
+        if (!find_first_dims) {
+          new_dim = t->dims();
+          find_first_dims = true;
+        } else {
+          new_dim[0] += t->dims()[0];
+        }
+      }
+    }
   }
 
   // set dst tensor
@@ -195,9 +203,17 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   }
 
   // slice and memcpy
+  // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat
+  // them
   int begin = 0;
+  int end = 0;
   for (auto *src : src_lodtensors) {
-    int end = begin + src->dims()[0];
+    if (rank == 0) {
+      end = begin + 1;
+    } else {
+      end = begin + src->dims()[0];
+    }
+
     if (end == begin) {
       continue;
     }
