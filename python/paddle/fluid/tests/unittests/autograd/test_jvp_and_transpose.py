@@ -1241,5 +1241,26 @@ class TestMaxPJVPAndTranspose(TestAddPJVPAndTranspose):
         ]
 
 
+class TestUniformRandomPJVP(unittest.TestCase):
+
+    def test_op(self):
+        attrs = {'min': 0.0, 'max': 1.0, 'seed': 0, 'dtype': paddle.int32}
+        helper = LayerHelper('uniform_random_p')
+        shape_t = paddle.static.data(name='ShapeTensor',
+                                     shape=[4],
+                                     dtype='int32')
+        out = helper.create_variable_for_type_inference(shape_t.dtype)
+        X_DOT = paddle.static.data(name='Shape_Tensor_DOT',
+                                   shape=[4],
+                                   dtype='int32')
+        op = helper.append_op(type="uniform_random_p",
+                              inputs={'ShapeTensor': shape_t},
+                              outputs={'Out': out},
+                              attrs=attrs)
+        jvp_args = (X_DOT, None)
+        jvp_out = _jvp(op, *jvp_args)
+        self.assertEqual(jvp_out, None)
+
+
 if __name__ == '__main__':
     unittest.main()

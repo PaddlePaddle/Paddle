@@ -1083,5 +1083,25 @@ class TestFillConstantOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestUniformRandomOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'uniform_random'
+        X = paddle.static.data(name='X', shape=[1], dtype='int32')
+
+        self.input = {
+            'ShapeTensorList': [X],
+        }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (None, [X])
+        self.all_ops = ['uniform_random', 'uniform_random_p']
+        self.out_map = {0: self.output['Out']}
+
+
 if __name__ == '__main__':
     unittest.main()

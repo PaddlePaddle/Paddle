@@ -502,3 +502,39 @@ def cast(x, dtype, out=None):
 @REGISTER_FN('rsqrt_p', 'X', 'Y')
 def rsqrt(x, out=None):
     return _simple_unop(LayerHelper('rsqrt_p', **locals()))
+
+
+@REGISTER_FN('uniform_random_p', 'ShapeTensor', 'ShapeTensorList', 'Out')
+def uniform_random(dtype,
+                   min,
+                   max,
+                   seed,
+                   shape=None,
+                   shape_t=None,
+                   shape_tl=None,
+                   out=None):
+    attrs = {
+        'shape': shape,
+        'dtype': dtype,
+        'min': min,
+        'max': max,
+        'seed': seed
+    }
+    helper = LayerHelper('uniform_random_p', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    if shape_tl:
+        helper.append_op(type=helper.layer_type,
+                         inputs={'ShapeTensorList': shape_tl},
+                         outputs={'Out': out},
+                         attrs=attrs)
+    elif shape_t:
+        helper.append_op(type=helper.layer_type,
+                         inputs={'ShapeTensor': shape_t},
+                         outputs={'Out': out},
+                         attrs=attrs)
+    else:
+        helper.append_op(type=helper.layer_type,
+                         outputs={'Out': out},
+                         attrs=attrs)
+    return out
