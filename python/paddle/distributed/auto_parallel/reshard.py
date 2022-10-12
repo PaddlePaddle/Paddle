@@ -1079,7 +1079,9 @@ class Resharder:
             new_Out = []
             for var_name in while_op.output("Out"):
                 for output_name in sub_block_op_outputs[::-1]:
-                    if output_name.find(var_name) != -1:
+                    if output_name.find(var_name) != -1 and (
+                            len(var_name) == len(output_name)
+                            or "@RESHARD" in output_name):
                         if output_name not in new_Out:
                             new_Out.append(output_name)
             assert new_Out
@@ -2016,10 +2018,6 @@ class Resharder:
                         dist_op.dist_attr.process_mesh,
                         dist_op.dist_attr.get_output_dims_mapping(var_name)
                     ]
-                    # print("==> op:", op)
-                    # print("==> varname:", var_name)
-                    # print("==> dist_op:", dist_op)
-                    # print("==> dist_tensor:", dist_tensor)
                     if dist_tensor is not None and self.need_reshard(
                             dist_tensor, output_attr, False):
                         tensor_processes = set(
@@ -2096,8 +2094,6 @@ class Resharder:
 
             # reshard input
             self._reshard_input(block)
-            # print("_reshard_input **************************************************************")
-            # print_program_with_dist_attr(self.auto_parallel_main_prog, self.dist_context)
             # reshard output
             # NOTE: Only support that insert send and recv op if output process mesh is different from tensor process mesh
             self._reshard_output(block)
