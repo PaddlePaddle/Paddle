@@ -79,9 +79,11 @@ void FCMKLDNNPass::ApplyPass(ir::Graph* graph, bool with_residual) const {
 
   AddStatis(found_fc_count);
 
-  LogEnabledOps(found_fc_count,
-                (with_residual ? "with residual connection"
-                               : "without residual connection"));
+  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+    LogEnabledOps(found_fc_count,
+                  (with_residual ? "with residual connection"
+                                 : "without residual connection"));
+  }
 }
 
 void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
