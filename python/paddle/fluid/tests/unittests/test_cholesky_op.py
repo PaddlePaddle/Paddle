@@ -128,10 +128,8 @@ class TestCholeskySingularAPI(unittest.TestCase):
                                   fetch_list=[result])
             except RuntimeError as ex:
                 print("The mat is singular")
-                pass
             except ValueError as ex:
                 print("The mat is singular")
-                pass
 
     def test_static(self):
         for place in self.places:
@@ -148,10 +146,8 @@ class TestCholeskySingularAPI(unittest.TestCase):
                     result = paddle.cholesky(input)
                 except RuntimeError as ex:
                     print("The mat is singular")
-                    pass
                 except ValueError as ex:
                     print("The mat is singular")
-                    pass
 
 
 if __name__ == "__main__":

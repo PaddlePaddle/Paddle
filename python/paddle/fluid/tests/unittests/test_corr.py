@@ -15,10 +15,7 @@
 import paddle.fluid as fluid
 import unittest
 import numpy as np
-import six
 import paddle
-import warnings
-import sys
 
 np_minor_version = int((np.__version__).split('.')[1])
 

@@ -67,9 +67,9 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
   // only support cpu now
   auto cpu_place = platform::CPUPlace();
 
-  if (src_var.IsType<framework::LoDTensor>()) {
-    auto *tmp_grad_tensor = dst_var->GetMutable<framework::LoDTensor>();
-    auto &src_tensor = src_var.Get<framework::LoDTensor>();
+  if (src_var.IsType<phi::DenseTensor>()) {
+    auto *tmp_grad_tensor = dst_var->GetMutable<phi::DenseTensor>();
+    auto &src_tensor = src_var.Get<phi::DenseTensor>();
     tmp_grad_tensor->set_lod(src_tensor.lod());
     framework::TensorCopy(src_tensor, cpu_place, tmp_grad_tensor);
   } else if (src_var.IsType<phi::SelectedRows>()) {

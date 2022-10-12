@@ -16,9 +16,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
-import paddle.fluid as fluid
 from paddle.framework import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
 
 paddle.enable_static()
 

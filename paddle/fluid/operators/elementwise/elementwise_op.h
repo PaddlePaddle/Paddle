@@ -526,10 +526,9 @@ template <typename T>
 class ElemwiseGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *dx =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto &dout =
-        *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+        *context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     phi::funcs::ElementwiseGradPreProcess(dout, dx);
   }
 };

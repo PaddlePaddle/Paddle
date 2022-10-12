@@ -48,7 +48,7 @@ class MLUMomentumOpKernel : public framework::OpKernel<T> {
     velocity_out->mutable_data<T>(ctx.GetPlace());
 
     auto* grad_var = ctx.InputVar("Grad");
-    if (grad_var->IsType<framework::LoDTensor>()) {
+    if (grad_var->IsType<phi::DenseTensor>()) {
       auto grad = ctx.Input<phi::DenseTensor>("Grad");
       Tensor mu_tensor =
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);

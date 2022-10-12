@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import paddle
 
 from paddle.vision.models import resnet50

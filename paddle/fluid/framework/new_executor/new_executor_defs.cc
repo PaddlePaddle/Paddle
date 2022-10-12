@@ -94,17 +94,12 @@ bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
   if (it == outs.end() || it->second.empty()) {
     return false;
   }
-  if (allow_null) {
-    for (auto& output : it->second) {
-      if (output != nullptr) return true;
-    }
-    return false;
-  } else {
+  if (!allow_null) {
     for (auto& output : it->second) {
       if (output == nullptr) return false;
     }
-    return true;
   }
+  return true;
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
@@ -194,9 +189,9 @@ void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
     out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
     out_sele_rows->set_rows(in_sele_rows.rows());
     out_sele_rows->set_height(in_sele_rows.height());
-  } else if (in_var->IsType<framework::LoDTensor>()) {
-    auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-    auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+  } else if (in_var->IsType<phi::DenseTensor>()) {
+    auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
+    auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_lod_tensor->Resize(in_lod_tensor.dims());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -720,16 +715,18 @@ OperatorBase* Instruction::OpBase() const {
   return op_base.get();
 }
 
-NextInstruction& Instruction::NextInstructions() { return next_instruction_; }
-
-const NextInstruction& Instruction::NextInstructions() const {
+NextInstructionList& Instruction::NextInstructions() {
   return next_instruction_;
 }
 
-void Instruction::AddGCCheckVar(size_t id) { gc_check_var_list_.push_back(id); }
+const NextInstructionList& Instruction::NextInstructions() const {
+  return next_instruction_;
+}
+
+void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }
 
 const std::vector<size_t>& Instruction::GCCheckVars() const {
-  return gc_check_var_list_;
+  return gc_check_vars_;
 }
 
 void Instruction::ResetContext(const VariableValueMap& in_vars,

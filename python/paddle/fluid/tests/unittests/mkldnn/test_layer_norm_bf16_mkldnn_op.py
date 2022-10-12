@@ -24,7 +24,7 @@ from functools import reduce
 
 from paddle.fluid.tests.unittests.mkldnn.test_layer_norm_mkldnn_op import TestLayerNormMKLDNNOp
 from paddle.fluid.tests.unittests.mkldnn.test_layer_norm_mkldnn_op import _reference_layer_norm_naive
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
 from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
 
 np.random.random(123)

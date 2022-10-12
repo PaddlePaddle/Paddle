@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-import six
 import paddle
 from paddle import fluid
 from paddle import static

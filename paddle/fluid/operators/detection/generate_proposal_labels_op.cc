@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 const int kBoxDim = 4;
 
 template <typename T>

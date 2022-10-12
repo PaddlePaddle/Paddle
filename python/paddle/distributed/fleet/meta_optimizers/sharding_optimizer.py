@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import os
 from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
 from paddle.static import default_startup_program, device_guard
@@ -28,9 +28,19 @@ from .sharding.gradient_clip_helper import GradientClipHelper
 from .sharding.offload_helper import OffloadHelper
 from .sharding.prune import ProgramDeps
 from .sharding import utils
-# FIXME: import *
-from .sharding.utils import *
-import logging
+from .sharding.utils import (
+    insert_sync_calc_op,
+    insert_sync_comm_ops,
+    insert_fill_constant_ops,
+    insert_cast_ops,
+    insert_allreduce_ops,
+    insert_reduce_ops,
+    get_grad_device,
+    get_first_optimize_op_idx,
+    insert_broadcast_ops,
+    get_var_size,
+    insert_scale_loss_grad_ops,
+)
 from ..utils.log_util import logger
 
 __all__ = []

@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-from numpy.matrixlib import defmatrix
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, OpTestTool

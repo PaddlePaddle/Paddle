@@ -46,6 +46,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
+    int8_teller_set.insert("flatten_contiguous_range");
     teller_set.insert("rnn");
     int8_teller_set.insert("rnn");
     teller_set.insert("fill_constant_batch_size_like");
@@ -532,6 +533,16 @@ struct SimpleOpTypeSetTeller : public Teller {
           VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
                      "Developers need to check whether block_desc is passed in "
                      "the pass.";
+          return false;
+        }
+
+        auto index_var_name = desc.Input("Index")[0];
+        auto* index_var_desc = block->FindVar(index_var_name);
+
+        // The index input must be int32 datatype.
+        if (index_var_desc->GetDataType() !=
+            paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+          VLOG(3) << "gather op Index input data type must be int32";
           return false;
         }
 #if !IS_TRT_VERSION_GE(7000)
@@ -2210,7 +2221,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
-      "lookup_table"};
+      "lookup_table",
+      "lookup_table_v2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2322,7 +2334,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
-      "lookup_table"};
+      "lookup_table",
+      "lookup_table_v2"};
 };
 
 struct GenericPluginTeller : public Teller {
@@ -2398,6 +2411,12 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
+  // do not support the op which is labeled the `skip_quant`
+  if ((desc.HasAttr("namescope") &&
+       PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
+           "/skip_quant_2/") ||
+      desc.HasAttr("skip_quant"))
+    return false;
   auto& default_teller = GetDefaultTeller();
   if ((*default_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
     SetOpConverterType(op_type, OpConverterType::Default);

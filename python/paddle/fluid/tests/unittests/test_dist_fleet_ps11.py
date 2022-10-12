@@ -14,8 +14,6 @@
 
 import os
 import unittest
-import tempfile
-import shutil
 
 import paddle
 import paddle.fluid as fluid
