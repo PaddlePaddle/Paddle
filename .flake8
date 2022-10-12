@@ -38,10 +38,6 @@ per-file-ignores =
     # Ignore unused imports in __init__.py
     __init__.py: F401
     # These files will be fixed later
-    r/*:F401
-    cmake/*:F401
-    paddle/*:F401
-    tools/*:F401
     python/paddle/signal.py:F401
     python/paddle/common_ops_import.py:F401
     python/paddle/check_import_scipy.py:F401
