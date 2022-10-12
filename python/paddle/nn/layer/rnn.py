@@ -14,7 +14,6 @@
 
 import six
 import math
-import sys
 from functools import reduce
 
 import numpy as np
