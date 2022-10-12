@@ -104,34 +104,6 @@ class Parallelizer:
                 "within parallel apply_post_optimization time: {}, mode {}".
                 format(time.time() - time0, self._mode))
         else:
-
-            for dist_op in self._dist_context._dist_ops_for_program.values():
-                if dist_op.serial_op.type == "assign":
-                    output_tensor = dist_op.serial_op.block._var_recursive(
-                        dist_op.serial_op.output("Out")[0])
-                    tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
-                        output_tensor).dist_attr.dims_mapping
-                    output_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
-                        output_tensor.name)
-                    if tensor_dims_mapping != output_dims_mapping:
-                        input_tensor = dist_op.serial_op.block._var_recursive(
-                            dist_op.serial_op.input("X")[0])
-                        dist_op.dist_attr.set_output_dims_mapping(
-                            output_tensor.name, tensor_dims_mapping)
-                        dist_op.dist_attr.set_input_dims_mapping(
-                            input_tensor.name, tensor_dims_mapping)
-
-                if dist_op.serial_op.type == "shape":
-                    input_tensor = dist_op.serial_op.block._var_recursive(
-                        dist_op.serial_op.input("Input")[0])
-                    tensor_dims_mapping = self._dist_context.get_dist_tensor_for_program(
-                        input_tensor).dist_attr.dims_mapping
-                    input_dims_mapping = dist_op.dist_attr.get_input_dims_mapping(
-                        input_tensor.name)
-                    if tensor_dims_mapping != input_dims_mapping:
-                        dist_op.dist_attr.set_input_dims_mapping(
-                            input_tensor.name, tensor_dims_mapping)
-
             # Apply pre optimization passes
             time0 = time.time()
             self._apply_pre_optimization(serial_main_program,
@@ -145,9 +117,6 @@ class Parallelizer:
             partitioner = Partitioner(self._dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, [])
-            # print("before reshard **************************************************************")
-            # print_program_with_dist_attr(dist_main_prog, self._dist_context)
-            # exit(0)
             # Do reshard process
             self._logger.info(
                 "within parallel partitioner time: {}, mode {}".format(
