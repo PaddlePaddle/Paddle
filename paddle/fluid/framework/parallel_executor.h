@@ -84,10 +84,11 @@ class ParallelExecutor {
    * size of local scopes.
    */
   void FeedTensorsIntoLocalScopes(
-      const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors);
+      const std::vector<std::unordered_map<std::string, phi::DenseTensor>>
+          &tensors);
 
   void FeedAndSplitTensorIntoLocalScopes(
-      const std::unordered_map<std::string, LoDTensor> &tensors);
+      const std::unordered_map<std::string, phi::DenseTensor> &tensors);
 
   FetchUnmergedList Run(const std::vector<std::string> &fetch_tensors);
   FetchList RunAndMerge(const std::vector<std::string> &fetch_tensors);

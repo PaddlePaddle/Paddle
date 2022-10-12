@@ -95,7 +95,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
                         const paddle::platform::Place& place,
                         const std::string& var_name) {
     auto x = scope->Var(var_name);
-    auto tensor = x->GetMutable<LoDTensor>();
+    auto tensor = x->GetMutable<phi::DenseTensor>();
     auto tensor_size = 1;
     if (var_name == "filter") {
       tensor_size = positive_and_negative_values.size();
@@ -140,7 +140,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
     StringPairMap var_quant_scales;
 
     auto* wx_var = scope.FindVar(wx_var_names);
-    auto* wx_tensor = wx_var->GetMutable<LoDTensor>();
+    auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
     wx_tensor->Resize(phi::make_dim(wx.size(), wx[0].size()));
     for (size_t i = 0; i < wx.size(); i++)
       std::copy(begin(wx[i]),
@@ -149,7 +149,7 @@ class ComputePropagateScalesMkldnnPassTest : public testing::Test {
                     i * wx[0].size());
 
     auto* wh_var = scope.FindVar(wh_var_names);
-    auto* wh_tensor = wh_var->GetMutable<LoDTensor>();
+    auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
     wh_tensor->Resize(phi::make_dim(wh.size(), wh[0].size()));
     for (size_t i = 0; i < wh.size(); i++)
       std::copy(begin(wh[i]),
@@ -262,7 +262,7 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, compute_var_scales) {
   StringPairMap var_quant_scales;
 
   auto* var = scope.FindVar(weight_var_name);
-  auto* weight_tensor = var->GetMutable<LoDTensor>();
+  auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
   weight_tensor->Resize(phi::make_dim(1, values.size()));
   std::copy(begin(values),
             end(values),

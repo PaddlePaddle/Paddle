@@ -433,8 +433,8 @@ void InterpreterCore::BuildInplace() {
             auto invar = local_scope->FindVar(invar_name);
             auto outvar = local_scope->FindVar(outvar_name);
 
-            if (invar && outvar && invar->IsType<LoDTensor>() &&
-                outvar->IsType<LoDTensor>() &&
+            if (invar && outvar && invar->IsType<phi::DenseTensor>() &&
+                outvar->IsType<phi::DenseTensor>() &&
                 skip_inplace_outvars.find(outvar_name) ==
                     skip_inplace_outvars.end()) {
               instr.AddInplace(invar, outvar);
@@ -529,7 +529,7 @@ void InterpreterCore::Convert(
                                : var_scope_.GetMutableScope();
       paddle::framework::Variable* var =
           inner_scope->FindVar(var_scope_.GetNameById(var_id));
-      if (var->IsType<LoDTensor>() || var->IsType<phi::SelectedRows>() ||
+      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
           var->IsType<LoDTensorArray>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
@@ -614,8 +614,8 @@ void InterpreterCore::BuildSkipShareLoDInfo() {
     bool can_skip_lod = true;
     for (auto& input : vec_instruction_[i].InnerRuntimeContext()->inputs) {
       for (auto& var : input.second) {
-        if (var->IsType<LoDTensor>()) {
-          if (var->Get<LoDTensor>().lod().size() != 0) {
+        if (var->IsType<phi::DenseTensor>()) {
+          if (var->Get<phi::DenseTensor>().lod().size() != 0) {
             can_skip_lod = false;
             break;
           }
@@ -1031,8 +1031,8 @@ void InterpreterCore::RecordStreamForGC(const Instruction& instr) {
       continue;
     }
 
-    if (var->IsType<LoDTensor>()) {
-      TensorRecordStream(*(var->GetMutable<LoDTensor>()));
+    if (var->IsType<phi::DenseTensor>()) {
+      TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()));
     } else if (var->IsType<
                    operators::reader::
                        OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {

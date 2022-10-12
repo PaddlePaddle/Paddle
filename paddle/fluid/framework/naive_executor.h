@@ -64,7 +64,7 @@ class NaiveExecutor {
   void Run();
 
   // Get an tensor to operating directly, without the need for feed_ops.
-  LoDTensor* FindTensor(const std::string& name);
+  phi::DenseTensor* FindTensor(const std::string& name);
 
   Scope* scope() { return scope_; }
 

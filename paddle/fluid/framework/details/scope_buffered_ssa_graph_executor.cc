@@ -133,7 +133,7 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
 bool ScopeBufferedSSAGraphExecutor::DropScopeOrNot() const {
   for (auto &var : tensor_array_vars_) {
     auto tensor_array = var->GetMutable<LoDTensorArray>();
-    for (LoDTensor &tensor : *tensor_array) {
+    for (phi::DenseTensor &tensor : *tensor_array) {
       if (tensor.IsInitialized()) {
         return true;
       }

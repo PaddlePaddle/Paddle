@@ -113,7 +113,7 @@ void ComputePropagateScalesMkldnnPass::ComputeVarScales(
               "The input persistable var [%s] of [%s] op is not found.",
               var_name,
               op_desc->Type()));
-      auto* weight_tensor = var->GetMutable<LoDTensor>();
+      auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
       const auto dims = weight_tensor->dims();
       int volume = 1;
       for (int i = 1; i < dims.size(); i++) {
@@ -154,8 +154,8 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleGruWeightScales(
       platform::errors::NotFound("The input persistable var [%s] is not found.",
                                  wh_var_name));
 
-  const auto* wx_tensor = wx_var->GetMutable<LoDTensor>();
-  const auto* wh_tensor = wh_var->GetMutable<LoDTensor>();
+  const auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
+  const auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
   const int OC = wh_tensor->dims()[0];
   std::vector<float> scale_ur(2 * OC);
   std::vector<float> scale_o(OC);
@@ -253,8 +253,8 @@ void ComputePropagateScalesMkldnnPass::ComputeSingleLstmWeightScales(
       platform::errors::NotFound("The input persistable var [%s] is not found.",
                                  wh_var_name));
 
-  const auto* wx_tensor = wx_var->GetMutable<LoDTensor>();
-  const auto* wh_tensor = wh_var->GetMutable<LoDTensor>();
+  const auto* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
+  const auto* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
   std::vector<float> scale(wx_tensor->dims()[1]);
 
   for (int row_id = 0; row_id < wx_tensor->dims()[0]; row_id++) {

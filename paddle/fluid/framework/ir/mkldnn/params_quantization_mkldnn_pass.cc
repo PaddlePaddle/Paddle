@@ -25,7 +25,8 @@ namespace ir {
 namespace {
 
 template <typename T_out>
-void QuantizeParams(LoDTensor* param_tensor, const std::vector<float>& scales) {
+void QuantizeParams(phi::DenseTensor* param_tensor,
+                    const std::vector<float>& scales) {
   std::vector<T_out> tmp_data;
   tmp_data.reserve(param_tensor->numel());
 
@@ -59,7 +60,7 @@ bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
   }
 
   auto filter_var = scope->GetVar(conv_filter->Name());
-  if (filter_var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
+  if (filter_var->Get<phi::DenseTensor>().dtype() != phi::DataType::FLOAT32) {
     VLOG(4) << "Skipping convolution (id: " << conv_op->id()
             << ") because it's a bug that it is detected again.";
     return true;
@@ -78,7 +79,7 @@ void QuantizeConvInput(Scope* scope,
   const auto scales =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>(scales_attr_name);
 
-  auto* tensor = scope->GetVar(input_name)->GetMutable<LoDTensor>();
+  auto* tensor = scope->GetVar(input_name)->GetMutable<phi::DenseTensor>();
   QuantizeParams<T>(tensor, scales);
 
   conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));

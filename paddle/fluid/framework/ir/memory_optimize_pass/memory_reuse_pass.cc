@@ -208,7 +208,7 @@ MemoryReusePass::InsertShareTensorBufferOpHandleToGraph(
  *  - it has not been reused. If an input var is reused twice or more,
  *    the calculation result may be wrong.
  *  - it is not a persistable var.
- *  - it is LoDTensor. We can support SelectedRows in the future.
+ *  - it is phi::DenseTensor. We can support SelectedRows in the future.
  */
 bool MemoryReusePass::IsInVarReusable(const details::VarHandle &in_var) const {
   if (in_var.Name() == kEmptyVarName) {
@@ -242,7 +242,7 @@ bool MemoryReusePass::IsInVarReusable(const details::VarHandle &in_var) const {
  *  - it has not reused other var's memory. It is not necessary to do memory
  *    reuse twice for the same var.
  *  - it is not a persistable var.
- *  - it is LoDTensor. We can support SelectedRows in the future.
+ *  - it is phi::DenseTensor. We can support SelectedRows in the future.
  *  - it does not occur in inputs of the generated op. It would happen when
  *    op has the same var as both input and output.
  */

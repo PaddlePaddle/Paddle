@@ -562,8 +562,8 @@ class MiniBatchGpuPack {
       }
     }
   }
-  LoDTensor& float_tensor(void) { return float_tensor_; }
-  LoDTensor& uint64_tensor(void) { return uint64_tensor_; }
+  phi::DenseTensor& float_tensor(void) { return float_tensor_; }
+  phi::DenseTensor& uint64_tensor(void) { return uint64_tensor_; }
 
   HostBuffer<size_t>& offsets(void) { return offsets_; }
   HostBuffer<void*>& h_tensor_ptrs(void) { return h_tensor_ptrs_; }
@@ -628,9 +628,9 @@ class MiniBatchGpuPack {
   const SlotRecord* batch_ins_ = nullptr;
 
   // uint64 tensor
-  LoDTensor uint64_tensor_;
+  phi::DenseTensor uint64_tensor_;
   // float tensor
-  LoDTensor float_tensor_;
+  phi::DenseTensor float_tensor_;
   // batch
   HostBuffer<size_t> offsets_;
   HostBuffer<void*> h_tensor_ptrs_;
@@ -896,7 +896,7 @@ class GraphDataGenerator {
   virtual ~GraphDataGenerator(){};
   void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc);
   void AllocResource(const paddle::platform::Place& place,
-                     std::vector<LoDTensor*> feed_vec);
+                     std::vector<phi::DenseTensor*> feed_vec);
   int AcquireInstance(BufState* state);
   int GenerateBatch();
   int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
@@ -935,7 +935,7 @@ class GraphDataGenerator {
   int64_t* clk_tensor_ptr_;
   cudaStream_t stream_;
   paddle::platform::Place place_;
-  std::vector<LoDTensor*> feed_vec_;
+  std::vector<phi::DenseTensor*> feed_vec_;
   std::vector<size_t> offset_;
   std::shared_ptr<phi::Allocation> d_prefix_sum_;
   std::vector<std::shared_ptr<phi::Allocation>> d_device_keys_;
@@ -1106,9 +1106,9 @@ class DataFeed {
       use_slots_index_;  // -1: not used; >=0: the index of use_slots_
 
   // The data read by DataFeed will be stored here
-  std::vector<LoDTensor*> feed_vec_;
+  std::vector<phi::DenseTensor*> feed_vec_;
 
-  LoDTensor* rank_offset_;
+  phi::DenseTensor* rank_offset_;
 
   // the batch size defined by user
   int default_batch_size_;

@@ -121,7 +121,7 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 }
 
 inline bool VarIsTensor(const Variable& var) {
-  return var.IsType<LoDTensor>() || var.IsType<phi::SelectedRows>();
+  return var.IsType<phi::DenseTensor>() || var.IsType<phi::SelectedRows>();
 }
 
 const phi::DenseTensor* GetLoDTensorOrSelectedRowsValueFromVar(

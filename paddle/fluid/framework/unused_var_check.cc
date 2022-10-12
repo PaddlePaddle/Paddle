@@ -106,7 +106,7 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
       for (auto &in_var_name : pair.second) {
         auto *in_var = scope.FindVar(in_var_name);
         if (in_var != nullptr && in_var->IsInitialized()) {
-          auto *tensor = &in_var->Get<LoDTensor>();
+          auto *tensor = &in_var->Get<phi::DenseTensor>();
           if (tensor != nullptr && tensor->IsInitialized()) {
             unsed_input_var_names.emplace_back(pair.first);
             break;

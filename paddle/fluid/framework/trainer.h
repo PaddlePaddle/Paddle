@@ -117,7 +117,8 @@ class MultiTrainer : public TrainerBase {
   virtual std::string GetDumpPath(int tid);
 
   template <typename T>
-  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  void MergeToRootScope(phi::DenseTensor* root_tensor,
+                        phi::DenseTensor* thread_tensor);
 #ifdef PADDLE_WITH_HETERPS
 
   void MergeDenseParam();
@@ -149,7 +150,8 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void Run();
   virtual void Finalize();
   template <typename T>
-  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  void MergeToRootScope(phi::DenseTensor* root_tensor,
+                        phi::DenseTensor* thread_tensor);
   virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
   virtual void RegisterHeterCallback();
@@ -207,19 +209,20 @@ class HeterXpuTrainer : public TrainerBase {
   virtual void InitDumpEnv() {}
   template <typename T>
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  void HeterMemCpy(LoDTensor* tensor,
-                   LoDTensor* root_tensor,
+  void HeterMemCpy(phi::DenseTensor* tensor,
+                   phi::DenseTensor* root_tensor,
                    const paddle::platform::Place& thread_place,
                    gpuStream_t stream);
 #endif
 #ifdef PADDLE_WITH_XPU
-  void HeterMemCpy(LoDTensor* thread_tensor,
-                   LoDTensor* root_tensor,
+  void HeterMemCpy(phi::DenseTensor* thread_tensor,
+                   phi::DenseTensor* root_tensor,
                    const paddle::platform::Place& thread_place);
 #endif
   void CreateThreadParam(const ProgramDesc& program, int num);
   template <typename T>
-  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  void MergeToRootScope(phi::DenseTensor* root_tensor,
+                        phi::DenseTensor* thread_tensor);
   int EndPass(const HeterRequest* request, HeterResponse* response);
   int StopService(const HeterRequest* request, HeterResponse* response);
 
@@ -274,7 +277,8 @@ class PSGPUTrainer : public TrainerBase {
   virtual void MergeDenseParam();
 
   template <typename T>
-  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  void MergeToRootScope(phi::DenseTensor* root_tensor,
+                        phi::DenseTensor* thread_tensor);
   void InitializeGPUServer(const TrainerDesc& trainer_desc);
 
  protected:

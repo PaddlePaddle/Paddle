@@ -45,7 +45,7 @@ void FetchAsyncOpHandle::RecordWaitEventOnCtx(
       "No nodes need to wait FetchAsyncOp. Unexpceted Error."));
 }
 
-static void CheckTensorAttrs(const LoDTensor *tensor,
+static void CheckTensorAttrs(const phi::DenseTensor *tensor,
                              const proto::VarType::Type &type,
                              const DataLayout &layout,
                              const DDim &dims,
@@ -145,8 +145,8 @@ static void TransData(const phi::DenseTensor *src_item,
 }
 
 void FetchAsyncOpHandle::FetchMergedLodTensor(
-    const std::vector<const LoDTensor *> &src_lodtensors,
-    LoDTensor *dst_lodtensor) {
+    const std::vector<const phi::DenseTensor *> &src_lodtensors,
+    phi::DenseTensor *dst_lodtensor) {
   // calc dst type,layout,dim,lod and calc check dim
   proto::VarType::Type new_type = proto::VarType::FP32;
   framework::DataLayout new_layout;
@@ -229,15 +229,15 @@ void FetchAsyncOpHandle::RunImpl() {
 
   if (return_merged_) {
     auto &val = PADDLE_GET(FetchList, *data_);
-    if (src_vars[0]->IsType<LoDTensor>()) {
+    if (src_vars[0]->IsType<phi::DenseTensor>()) {
       // to lodtensor type
-      std::vector<const LoDTensor *> src_lodtensors;
+      std::vector<const phi::DenseTensor *> src_lodtensors;
       src_lodtensors.reserve(src_vars.size());
       for (size_t i = 0; i < src_vars.size(); ++i) {
         src_lodtensors.emplace_back(&src_vars[i]->Get<phi::DenseTensor>());
       }
 
-      LoDTensor dst_lodtensor;
+      phi::DenseTensor dst_lodtensor;
       FetchMergedLodTensor(src_lodtensors, &dst_lodtensor);
       val.at(offset_) = std::move(dst_lodtensor);
     } else {
@@ -253,7 +253,7 @@ void FetchAsyncOpHandle::RunImpl() {
       dst_lodtensor_array.resize(src_lodtensor_arrays[0]->size());
 
       for (size_t i = 0; i < dst_lodtensor_array.size(); ++i) {
-        std::vector<const LoDTensor *> src_lodtensors;
+        std::vector<const phi::DenseTensor *> src_lodtensors;
         src_lodtensors.reserve(src_lodtensor_arrays.size());
         for (size_t j = 0; j < src_lodtensor_arrays.size(); ++j) {
           src_lodtensors.emplace_back(&(*src_lodtensor_arrays[j])[i]);
@@ -268,9 +268,9 @@ void FetchAsyncOpHandle::RunImpl() {
     dst_tensors.reserve(src_vars.size());
 
     for (size_t i = 0; i < src_vars.size(); ++i) {
-      if (src_vars[i]->IsType<LoDTensor>()) {
+      if (src_vars[i]->IsType<phi::DenseTensor>()) {
         auto &t = src_vars[i]->Get<phi::DenseTensor>();
-        LoDTensor item;
+        phi::DenseTensor item;
         TransData(&t, &item, *dev_ctxes_[t.place()]);
         dst_tensors.emplace_back(std::move(item));
       } else {

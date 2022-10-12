@@ -115,7 +115,7 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc,
   }
 }
 
-LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
+phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(scope_,
                           platform::errors::PreconditionNotMet(
                               "Need to init scope in NaiveExecutor firstly."));
@@ -123,7 +123,7 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE_NOT_NULL(
       var,
       platform::errors::NotFound("No variable [%s] in current scope.", name));
-  auto *tensor = const_cast<LoDTensor *>(&var->Get<LoDTensor>());
+  auto *tensor = const_cast<phi::DenseTensor *>(&var->Get<phi::DenseTensor>());
   return tensor;
 }
 

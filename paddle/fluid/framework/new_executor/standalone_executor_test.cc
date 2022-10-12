@@ -197,7 +197,7 @@ TEST(InterpreterCore, skip_gc_vars) {
         auto* local_scope = scope.kids().back();
         for (const std::string& var_name : vars) {
           ASSERT_EQ(local_scope->FindVar(var_name)
-                        ->GetMutable<LoDTensor>()
+                        ->GetMutable<phi::DenseTensor>()
                         ->IsInitialized(),
                     is_skip_gc);
         }
@@ -214,7 +214,7 @@ TEST(InterpreterCore, skip_gc_vars) {
 
 void TestShareWorkQueue(const ProgramDesc& prog,
                         const std::vector<std::string>& feed_names,
-                        const std::vector<LoDTensor>& feed_tensors,
+                        const std::vector<phi::DenseTensor>& feed_tensors,
                         const std::vector<std::string>& fetch_names,
                         const std::vector<float>& fetch_results) {
   const platform::CPUPlace place = platform::CPUPlace();
@@ -231,7 +231,7 @@ void TestShareWorkQueue(const ProgramDesc& prog,
     FetchList fetch_list = core->Run(feed_names, feed_tensors);
     for (size_t i = 0; i < fetch_list.size(); ++i) {
       const float* fetch_data =
-          PADDLE_GET_CONST(LoDTensor, fetch_list[i]).data<float>();
+          PADDLE_GET_CONST(phi::DenseTensor, fetch_list[i]).data<float>();
       ASSERT_FLOAT_EQ(*fetch_data, fetch_results.at(i));
     }
   };
@@ -264,8 +264,8 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   phi::DDim dims = phi::make_ddim({2, 2});
   const platform::CPUPlace place = platform::CPUPlace();
 
-  LoDTensor tensor_a = LoDTensor();
-  LoDTensor tensor_b = LoDTensor();
+  phi::DenseTensor tensor_a = phi::DenseTensor();
+  phi::DenseTensor tensor_b = phi::DenseTensor();
 
   std::copy_n(data_a, 4, tensor_a.mutable_data<float>(dims, place));
   std::copy_n(data_b, 4, tensor_b.mutable_data<float>(dims, place));

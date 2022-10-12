@@ -929,8 +929,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](const Variable &var) -> float { return var.Get<float>(); })
       .def(
           "get_tensor",
-          [](Variable &self) -> LoDTensor * {
-            return self.GetMutable<LoDTensor>();
+          [](Variable &self) -> phi::DenseTensor * {
+            return self.GetMutable<phi::DenseTensor>();
           },
           py::return_value_policy::reference)
       .def("get_bytes",
@@ -1609,7 +1609,7 @@ All parameter, weight, gradient are variables in Paddle.
            [](Executor &self,
               ExecutorPrepareContext *ctx,
               Scope *scope,
-              std::map<std::string, const LoDTensor *> *feed_targets,
+              std::map<std::string, const phi::DenseTensor *> *feed_targets,
               std::map<std::string, FetchType *> *fetch_targets,
               bool create_local_scope = true,
               bool create_vars = true,
@@ -1811,7 +1811,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
-            const LoDTensor &,
+            const phi::DenseTensor &,
             const std::string &,
             size_t)>(&framework::SetFeedVariable));
   m.def("set_feed_variable",
@@ -1826,7 +1826,7 @@ All parameter, weight, gradient are variables in Paddle.
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
           if (data_is_lod_tensor(var)) {
-            return py::cast(PADDLE_GET(LoDTensor, var));
+            return py::cast(PADDLE_GET(phi::DenseTensor, var));
           } else {
             return py::cast(PADDLE_GET(LoDTensorArray, var));
           }
@@ -1877,7 +1877,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::return_value_policy::reference)
       .def("__len__", [](LoDTensorArray &self) { return self.size(); })
       .def("__setitem__",
-           [](LoDTensorArray &self, size_t i, const LoDTensor &t) {
+           [](LoDTensorArray &self, size_t i, const phi::DenseTensor &t) {
              PADDLE_ENFORCE_LT(i,
                                self.size(),
                                platform::errors::InvalidArgument(
@@ -1888,7 +1888,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def(
           "append",
-          [](LoDTensorArray &self, const LoDTensor &t) {
+          [](LoDTensorArray &self, const phi::DenseTensor &t) {
             self.emplace_back();
             self.back().ShareDataWith(t);
             self.back().set_lod(t.lod());
@@ -1935,7 +1935,7 @@ All parameter, weight, gradient are variables in Paddle.
             py::list res(self.size());
             for (size_t i = 0; i < self.size(); ++i) {
               if (data_is_lod_tensor(self[i])) {
-                auto &data = PADDLE_GET(LoDTensor, self[i]);
+                auto &data = PADDLE_GET(phi::DenseTensor, self[i]);
                 res[i] = py::cast(std::move(data));
               } else if (data_is_sparse_coo_tensor(self[i])) {
                 auto &data = PADDLE_GET(phi::SparseCooTensor, self[i]);
@@ -1956,9 +1956,9 @@ All parameter, weight, gradient are variables in Paddle.
 
       .def(
           "append",
-          [](FetchList &self, const LoDTensor &t) {
+          [](FetchList &self, const phi::DenseTensor &t) {
             self.emplace_back();
-            auto &lod_tensor = PADDLE_GET(LoDTensor, self.back());
+            auto &lod_tensor = PADDLE_GET(phi::DenseTensor, self.back());
             lod_tensor.ShareDataWith(t);
             lod_tensor.set_lod(t.lod());
           },
@@ -1987,7 +1987,7 @@ All parameter, weight, gradient are variables in Paddle.
               py::list tmp(self[i].size());
               for (size_t j = 0; j < self[i].size(); ++j) {
                 if (data_is_lod_tensor(self[i][j])) {
-                  auto &var = PADDLE_GET(LoDTensor, self[i][j]);
+                  auto &var = PADDLE_GET(phi::DenseTensor, self[i][j]);
                   tmp[j] = py::cast(std::move(var));
                 } else {
                   auto &var = PADDLE_GET(LoDTensorArray, self[i][j]);

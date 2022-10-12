@@ -72,7 +72,7 @@ class CompatMetaTensor : public phi::MetaTensor {
  private:
   const LoD& GetRuntimeLoD() const {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
-    return var->Get<LoDTensor>().lod();
+    return var->Get<phi::DenseTensor>().lod();
   }
 
   int32_t GetCompileTimeLoD() const {

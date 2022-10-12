@@ -1239,7 +1239,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
       auto buf = memory::Alloc(place, total_length * feature_value_size);
       float* total_values_gpu = reinterpret_cast<float*>(buf->ptr());
       VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-      LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
+      phi::DenseTensor& total_keys_tensor = keys_tensor[devid_2_index];
       uint64_t* total_keys =
           reinterpret_cast<uint64_t*>(total_keys_tensor.mutable_data<int64_t>(
               {int64_t(total_length), 1}, place));
@@ -1309,7 +1309,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
-    LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
+    phi::DenseTensor& total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(total_keys_tensor.mutable_data<int64_t>(
             {int64_t(total_length), 1}, place));
@@ -1489,7 +1489,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
               << "grad_value_size:" << grad_value_size;
       float* total_grad_values_gpu = reinterpret_cast<float*>(buf->ptr());
 
-      LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
+      phi::DenseTensor& total_keys_tensor = keys_tensor[devid_2_index];
       uint64_t* total_keys =
           reinterpret_cast<uint64_t*>(total_keys_tensor.data<int64_t>());
       VLOG(3) << "Begin copy grad tensor to gpups struct";
@@ -1526,7 +1526,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
     VLOG(3) << "Push Sparse Max mf dimention: " << max_mf_dim_
             << "grad_value_size:" << grad_value_size;
     float* total_grad_values_gpu = reinterpret_cast<float*>(buf->ptr());
-    LoDTensor& total_keys_tensor = keys_tensor[devid_2_index];
+    phi::DenseTensor& total_keys_tensor = keys_tensor[devid_2_index];
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(total_keys_tensor.data<int64_t>());
     VLOG(3) << "Begin copy grad tensor to xpups struct";

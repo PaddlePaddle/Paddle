@@ -32,10 +32,11 @@ void SetMicroId(paddle::framework::Scope* scope,
   auto* ptr = scope->Var("microbatch_id");
   InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
   framework::Variable* var = scope->FindVar("microbatch_id");
-  PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
-                    1,
-                    platform::errors::InvalidArgument(
-                        "the type of microbatch_id  should be LoDTensor"));
+  PADDLE_ENFORCE_EQ(
+      var->IsType<phi::DenseTensor>(),
+      1,
+      platform::errors::InvalidArgument(
+          "the type of microbatch_id  should be phi::DenseTensor"));
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   std::vector<int> dims{1};
   tensor->Resize(phi::make_ddim(dims));

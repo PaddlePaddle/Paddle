@@ -29,7 +29,7 @@ namespace framework {
 
 void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
-    var->GetMutable<LoDTensor>();
+    var->GetMutable<phi::DenseTensor>();
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
     var->GetMutable<phi::SelectedRows>();
   } else if (var_type == proto::VarType::FEED_MINIBATCH) {

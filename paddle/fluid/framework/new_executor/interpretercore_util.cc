@@ -685,9 +685,9 @@ void build_op_func_list(const platform::Place& place,
       }
 
       VLOG(6) << "Erase variable " << var_name;
-      if (var->IsType<LoDTensor>()) {
+      if (var->IsType<phi::DenseTensor>()) {
         garbages->emplace_back(
-            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+            var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
       }
     }
     delete garbages;  // free mem

@@ -1044,8 +1044,9 @@ int GraphDataGenerator::FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk) {
   return total_row != 0;
 }
 
-void GraphDataGenerator::AllocResource(const paddle::platform::Place &place,
-                                       std::vector<LoDTensor *> feed_vec) {
+void GraphDataGenerator::AllocResource(
+    const paddle::platform::Place &place,
+    std::vector<phi::DenseTensor *> feed_vec) {
   place_ = place;
   gpuid_ = place_.GetDeviceId();
   VLOG(3) << "gpuid " << gpuid_;

@@ -204,14 +204,14 @@ void DownpourLiteWorker::CopyDenseVars() {
             << dest_var_name;
     Variable* src_var = thread_scope_->FindVar(src_var_name);
     CHECK(src_var != nullptr) << src_var_name << " not found";  // NOLINT
-    LoDTensor* src_tensor = src_var->GetMutable<LoDTensor>();
+    phi::DenseTensor* src_tensor = src_var->GetMutable<phi::DenseTensor>();
     CHECK(src_tensor != nullptr)
         << src_var_name << " tensor is null";  // NOLINT
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
     CHECK(dest_var != nullptr) << dest_var_name << " not found";  // NOLINT
-    LoDTensor* dest_tensor = dest_var->GetMutable<LoDTensor>();
+    phi::DenseTensor* dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
     CHECK(dest_tensor != nullptr)
         << dest_var_name << " tensor is null";  // NOLINT
     float* dest_data = dest_tensor->data<float>();
@@ -307,7 +307,7 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
       if (var == nullptr) {
         continue;
       }
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (tensor == nullptr) {
         continue;
       }
@@ -490,7 +490,7 @@ void DownpourLiteWorker::TrainFiles() {
             phi::DenseTensor* tensor = nullptr;
             int64_t len = 0;
             if (var->IsType<phi::DenseTensor>()) {
-              tensor = var->GetMutable<LoDTensor>();
+              tensor = var->GetMutable<phi::DenseTensor>();
               len = tensor->numel();
             } else if (var->IsType<phi::SelectedRows>()) {
               auto selected_rows = var->GetMutable<phi::SelectedRows>();
@@ -527,7 +527,7 @@ void DownpourLiteWorker::TrainFiles() {
       if (var == nullptr) {
         continue;
       }
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       if (tensor == nullptr) {
         continue;
       }

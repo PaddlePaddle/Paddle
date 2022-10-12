@@ -183,7 +183,7 @@ class Metric {
           var,
           platform::errors::NotFound("Error: var %s is not found in scope.",
                                      varname.c_str()));
-      auto& cpu_tensor = var->Get<LoDTensor>();
+      auto& cpu_tensor = var->Get<phi::DenseTensor>();
       *data = cpu_tensor.data<T>();
       *len = cpu_tensor.numel();
     }
@@ -197,7 +197,7 @@ class Metric {
           var,
           platform::errors::NotFound("Error: var %s is not found in scope.",
                                      varname.c_str()));
-      auto& cpu_tensor = var->Get<LoDTensor>();
+      auto& cpu_tensor = var->Get<phi::DenseTensor>();
       auto* cpu_data = cpu_tensor.data<T>();
       auto len = cpu_tensor.numel();
       data->resize(len);
