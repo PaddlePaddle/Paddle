@@ -17,7 +17,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 from op_test import OpTest
-from test_collective_base import TestDistBase
 
 import random
 

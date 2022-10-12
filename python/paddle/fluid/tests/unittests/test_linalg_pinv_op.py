@@ -16,11 +16,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
-from gradient_checker import grad_check
-from decorator_helper import prog_scope
 
 
 class LinalgPinvTestCase(unittest.TestCase):

@@ -59,8 +59,8 @@ const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
 }
 
 const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var) {
-  if (var.IsType<framework::LoDTensor>()) {
-    return &(var.Get<framework::LoDTensor>());
+  if (var.IsType<phi::DenseTensor>()) {
+    return &(var.Get<phi::DenseTensor>());
   } else if (var.IsType<phi::SelectedRows>()) {
     return &(var.Get<phi::SelectedRows>().value());
   } else {

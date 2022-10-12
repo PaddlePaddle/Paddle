@@ -15,12 +15,9 @@
 from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 

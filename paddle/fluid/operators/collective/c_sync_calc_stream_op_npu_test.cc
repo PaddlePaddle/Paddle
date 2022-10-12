@@ -40,10 +40,10 @@ template <typename T>
 void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   auto y = scope->Var("Y");
-  auto tensor_y = y->GetMutable<f::LoDTensor>();
+  auto tensor_y = y->GetMutable<phi::DenseTensor>();
 
   std::vector<T> init_x;
   for (int64_t i = 0; i < 10 * 10; ++i) {
@@ -63,7 +63,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   f::AttributeMap attrs;
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   // sync data
   auto sync_op0 = f::OpRegistry::CreateOp(

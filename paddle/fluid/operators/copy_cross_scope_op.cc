@@ -30,7 +30,7 @@ class OpBase;
 }  // namespace imperative
 }  // namespace paddle
 
-using LoDTensor = paddle::framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using Tensor = phi::DenseTensor;
 
 namespace paddle {
