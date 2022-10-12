@@ -12,18 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
-import numpy as np
-import six
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid.dygraph.nn import Linear
 import paddle.fluid.core as core
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dygraph_mode
 
 

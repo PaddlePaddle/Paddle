@@ -15,14 +15,10 @@
 import unittest
 import numpy as np
 import sys
-import os
 
 sys.path.append("..")
-from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper

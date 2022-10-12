@@ -13,15 +13,10 @@
 # limitations under the License.
 
 import unittest
-import numpy
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 from paddle.fluid.contrib.layers import basic_gru, basic_lstm
-from paddle.fluid.executor import Executor
-from paddle.fluid import framework
 from test_imperative_base import new_program_scope
-import numpy as np
 
 
 class TestBasicGRUApiName(unittest.TestCase):

@@ -16,7 +16,6 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.distributed.fleet as fleet
 import numpy as np
 import os

@@ -18,13 +18,12 @@ import numpy as np
 
 from paddle.common_ops_import import VarDesc
 from paddle.common_ops_import import dygraph_only
-from paddle.common_ops_import import OpProtoHolder
 from paddle.common_ops_import import templatedoc
 from paddle.common_ops_import import dygraph_utils
 
 from .manipulation import cast
 from .creation import _complex_to_real_dtype
-from .layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
+from .layer_function_generator import generate_layer_fn
 
 import paddle
 from ..static import Variable
