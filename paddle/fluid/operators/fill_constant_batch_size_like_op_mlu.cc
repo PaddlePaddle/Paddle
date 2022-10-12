@@ -30,7 +30,7 @@ class FillConstantBatchSizeLikeOpMLUKernel : public framework::OpKernel<T> {
     auto force_cpu = ctx.Attr<bool>("force_cpu");
 
     auto *out = ctx.Output<phi::DenseTensor>("Out");
-    auto *in = ctx.Input<framework::LoDTensor>("Input");
+    auto *in = ctx.Input<phi::DenseTensor>("Input");
     if (in->lod().size() && ctx.Attr<int>("input_dim_idx") == 0) {
       // set the correct batch size for the LoDTensor.
       auto odims = out->dims();

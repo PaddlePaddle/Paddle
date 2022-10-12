@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import sys
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers

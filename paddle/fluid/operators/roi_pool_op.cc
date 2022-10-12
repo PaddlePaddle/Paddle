@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 class ROIPoolOp : public framework::OperatorWithKernel {
  public:

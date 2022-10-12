@@ -31,10 +31,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_subgraph_detector.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_op.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -81,6 +81,34 @@ OpTransInfo::OpTransInfo() {
 
   // judgment condition for the dynamic reshape2
   dynamic_op_cond_.emplace("reshape2", dynamic_op_cond_.at("reshape"));
+
+  // judgment condition for the dynamic expand
+  dynamic_op_cond_.emplace("expand", [](const ir::Node& node) -> bool {
+    if (!node.IsOp()) {
+      return false;
+    }
+    auto* op_desc = node.Op();
+    bool has_expand_times_tensor =
+        op_desc->Inputs().count("expand_times_tensor") &&
+        op_desc->Inputs().at("expand_times_tensor").size();
+    bool has_expand_times = op_desc->Inputs().count("ExpandTimes") &&
+                            op_desc->Inputs().at("ExpandTimes").size();
+    return has_expand_times_tensor || has_expand_times;
+  });
+
+  // judgment condition for the dynamic expand_v2
+  dynamic_op_cond_.emplace("expand_v2", [](const ir::Node& node) -> bool {
+    if (!node.IsOp()) {
+      return false;
+    }
+    auto* op_desc = node.Op();
+    bool has_expand_shapes_tensor =
+        op_desc->Inputs().count("expand_shapes_tensor") &&
+        op_desc->Inputs().at("expand_shapes_tensor").size();
+    bool has_shape = op_desc->Inputs().count("Shape") &&
+                     op_desc->Inputs().at("Shape").size();
+    return has_expand_shapes_tensor || has_shape;
+  });
 }
 
 std::unordered_set<std::string> OpTransInfo::GetDenyVarNames(
@@ -617,10 +645,9 @@ void SearchAllSubgraphs(Graph* graph) {
   };
   VLOG(4) << "The allowed Cinn Ops: " << FLAGS_allow_cinn_ops;
   VLOG(4) << "The denied Cinn Ops: " << FLAGS_deny_cinn_ops;
-  std::vector<GraphNodeVec> clusters =
-      framework::ir::SubgraphDetector(graph, teller)();
-  LOG(INFO) << "--- [build_cinn_pass] detected " << clusters.size()
-            << " cinn supported subgraphs";
+  std::vector<GraphNodeVec> clusters = CinnSubgraphDetector(graph, teller)();
+  VLOG(3) << "--- [build_cinn_pass] detected " << clusters.size()
+          << " cinn supported subgraphs";
 
   auto cluster_debug_info = [](const GraphNodeSet& cluster) {
     std::string res = "(";

@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 import multiprocessing
 import numpy as np
 import paddle.fluid as fluid
-from paddle.fluid import core
 from paddle.fluid.reader import _reader_process_loop
 from paddle.fluid.framework import _test_eager_guard
 

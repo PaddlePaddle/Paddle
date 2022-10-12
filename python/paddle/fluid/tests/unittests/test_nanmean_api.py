@@ -15,9 +15,7 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 

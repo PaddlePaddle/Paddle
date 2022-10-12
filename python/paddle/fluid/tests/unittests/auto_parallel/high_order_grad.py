@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
 import paddle
-import unittest
 import numpy as np
 from paddle.distributed.fleet import auto
 from paddle.incubate.autograd import Hessian

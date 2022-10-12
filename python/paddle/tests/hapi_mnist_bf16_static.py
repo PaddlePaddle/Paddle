@@ -22,7 +22,6 @@ from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
 import paddle.static.amp as amp
 import random
-from paddle import callbacks
 import argparse
 import ast
 
