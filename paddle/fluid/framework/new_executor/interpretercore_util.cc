@@ -51,10 +51,7 @@ namespace interpreter {
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
-    size_t host_num_threads,
-    size_t device_num_threads,
-    size_t prepare_num_threads,
-    EventsWaiter* waiter) {
+    size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
   std::vector<WorkQueueOptions> group_options;
   // for execute host Kernel
   group_options.emplace_back(/*name*/ "HostTasks",
@@ -68,14 +65,6 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
   group_options.emplace_back(/*name*/ "DeviceKernelLaunch",
                              /*num_threads*/ device_num_threads,
                              /*allow_spinning*/ true,
-                             /*always_spinning*/ true,
-                             /*track_task*/ false,
-                             /*detached*/ true,
-                             /*events_waiter*/ waiter);
-  // for prepare deps and others
-  group_options.emplace_back(/*name*/ "Prepare",
-                             /*num_threads*/ prepare_num_threads,
-                             /*allow_spinning*/ true,
                              /*always_spinning*/ false,
                              /*track_task*/ false,
                              /*detached*/ true,
@@ -85,11 +74,10 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
 
 AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
                                size_t device_num_threads,
-                               size_t prepare_num_threads,
                                EventsWaiter* waiter)
     : host_num_thread_(host_num_threads) {
-  queue_group_ = CreateWorkQueueGroup(ConstructWorkQueueOptions(
-      host_num_threads, device_num_threads, prepare_num_threads, waiter));
+  queue_group_ = CreateWorkQueueGroup(
+      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
 }
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
@@ -102,44 +90,6 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   } else {
     queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
   }
-}
-
-std::future<std::unique_ptr<AtomicVectorSizeT>>
-AsyncWorkQueue::PrepareAtomicDeps(const std::vector<size_t>& dependecy_count) {
-  VLOG(4) << "PrepareAtomicDeps";
-  return queue_group_->AddAwaitableTask(
-      kPrepareWorkQueueIdx, interpreter::PrepareAtomicDeps, dependecy_count);
-}
-
-std::future<std::unique_ptr<AtomicVectorSizeT>>
-AsyncWorkQueue::PrepareAtomicVarRef(
-    const std::vector<VariableMetaInfo>& vec_meta_info) {
-  VLOG(4) << "PrepareAtomicVarRef";
-  return queue_group_->AddAwaitableTask(
-      kPrepareWorkQueueIdx, interpreter::PrepareAtomicVarRef, vec_meta_info);
-}
-
-std::unique_ptr<AtomicVectorSizeT> PrepareAtomicDeps(
-    const std::vector<size_t>& dependecy_count) {
-  VLOG(4) << "PrepareAtomicDeps";
-
-  auto op_deps = std::make_unique<AtomicVectorSizeT>(dependecy_count.size());
-  for (size_t i = 0; i < dependecy_count.size(); ++i) {
-    (*op_deps)[i] = dependecy_count[i];
-  }
-  VLOG(4) << "AtomicDeps:" << op_deps.get() << " " << op_deps->size();
-  return op_deps;
-}
-
-std::unique_ptr<AtomicVectorSizeT> PrepareAtomicVarRef(
-    const std::vector<VariableMetaInfo>& vec_meta_info) {
-  VLOG(4) << "PrepareAtomicVarRef";
-  auto var_ref = std::make_unique<AtomicVectorSizeT>(vec_meta_info.size());
-  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-    (*var_ref)[i] = vec_meta_info[i].var_ref_count_;
-  }
-  VLOG(4) << "AtomicVarRef:" << var_ref.get() << " " << var_ref->size();
-  return var_ref;
 }
 
 void LogDeviceMemoryStats(const platform::Place& place) {
@@ -172,8 +122,8 @@ bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
 
 std::unordered_map<const paddle::framework::OperatorBase*,
                    std::vector<std::string>>
-get_unused_vars(const BlockDesc& block,
-                const std::vector<std::shared_ptr<OperatorBase>>& ops) {
+GetUnusedVars(const BlockDesc& block,
+              const std::vector<std::shared_ptr<OperatorBase>>& ops) {
   std::unordered_map<std::string, size_t> var_op_idx_map;
 
   for (size_t i = 0; i < ops.size(); ++i) {
@@ -216,17 +166,17 @@ get_unused_vars(const BlockDesc& block,
   for (auto& name_op_idx_pair : var_op_idx_map) {
     auto& name = name_op_idx_pair.first;
     size_t op_idx = name_op_idx_pair.second;
-
-    result[ops[op_idx].get()].emplace_back(name);
-    VLOG(4) << ops[op_idx].get()->Type() << " " << name;
+    auto op = ops[op_idx].get();
+    result[op].emplace_back(name);
+    VLOG(4) << op->Type() << " " << name;
   }
   VLOG(4) << "gc map size:" << result.size();
   return result;
 }
 
-void build_variable_scope(const framework::BlockDesc& block,
-                          VariableScope* var_scope,
-                          bool use_local_scope) {
+void BuildVariableScope(const framework::BlockDesc& block,
+                        VariableScope* var_scope,
+                        bool use_local_scope) {
   VLOG(3) << "Creating Variables";
   auto inner_scope = var_scope->GetMutableScope();
 
@@ -264,11 +214,11 @@ void build_variable_scope(const framework::BlockDesc& block,
   }
 }
 
-void create_all_ops(const framework::BlockDesc& block,
-                    std::vector<std::unique_ptr<OperatorBase>>* ops) {
+void CreateAllOps(const framework::BlockDesc& block,
+                  std::vector<std::unique_ptr<OperatorBase>>* ops) {
   for (auto& op : block.AllOps()) {
     auto op_type = op->Type();
-    VLOG(1) << "CreateOp from : " << op_type;
+    VLOG(8) << "CreateOp from : " << op_type;
 
     auto& info = OpInfoMap::Instance().Get(op_type);
 
@@ -339,9 +289,9 @@ std::tuple<VariableValueMap, VariableIdMap> BuildVariableMap(
   return std::make_tuple(name2var, name2id);
 }
 
-void apply_device_guard(const OperatorBase* op_base,
-                        const platform::Place& place,
-                        OpKernelType* expected_kernel_key) {
+void ApplyDeviceGuard(const OperatorBase* op_base,
+                      const platform::Place& place,
+                      OpKernelType* expected_kernel_key) {
   bool need_change_place =
       (op_base->HasAttr("op_device") &&
        (op_base->Attr<std::string>("op_device").length() > 0));
@@ -402,7 +352,7 @@ void apply_device_guard(const OperatorBase* op_base,
   }
 }
 
-void deal_operator_base(const platform::Place& place,
+void HandleOperatorBase(const platform::Place& place,
                         const VariableScope* var_scope,
                         std::shared_ptr<OperatorBase> op_base,
                         OpFuncNode* op_func_node,
@@ -411,7 +361,7 @@ void deal_operator_base(const platform::Place& place,
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
   op_func_node->operator_base_ = op_base;
-  if (IsSupportedHetePlace(place)) {
+  if (IsSupportedHeterPlace(place)) {
     op_func_node->type_ = OpFuncType::kQueueAsync;
   } else if (platform::is_cpu_place(place)) {
     op_func_node->type_ = OpFuncType::kQueueSync;
@@ -432,19 +382,19 @@ void deal_operator_base(const platform::Place& place,
   op_func_node->dev_ctx_ = dev_ctx;
 }
 
-void build_op_func_list(const platform::Place& place,
-                        const framework::BlockDesc& block,
-                        const std::set<std::string>& skip_gc_vars,
-                        std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* var_scope,
-                        bool use_local_scope,
-                        bool used_for_jit) {
+void BuildOpFuncList(const platform::Place& place,
+                     const framework::BlockDesc& block,
+                     const std::set<std::string>& skip_gc_vars,
+                     std::vector<OpFuncNode>* vec_func_list,
+                     VariableScope* var_scope,
+                     bool use_local_scope,
+                     bool used_for_jit) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
   std::vector<std::unique_ptr<OperatorBase>>
       ops_unique;  // its elements will be moved to vec_func_list
   // Step 1: create all ops for current block.
-  create_all_ops(block, &ops_unique);
+  CreateAllOps(block, &ops_unique);
 
   if (!used_for_jit) {
     // If gc is enabled and block size > 1
@@ -465,7 +415,7 @@ void build_op_func_list(const platform::Place& place,
   for (auto& op_unique : ops_unique) {
     ops.emplace_back(std::move(op_unique));
   }
-  auto unused_var_map = get_unused_vars(block, ops);
+  auto unused_var_map = GetUnusedVars(block, ops);
 
   bool flag_log_is_printed = false;
   for (size_t i = 0; i < ops.size(); ++i) {
@@ -535,10 +485,10 @@ void build_op_func_list(const platform::Place& place,
 
     try {
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
+        VLOG(4) << "HandleOperatorBase";
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
-        deal_operator_base(
+        HandleOperatorBase(
             place, var_scope, ops[i], &op_func_node, local_scope);
-        VLOG(4) << "deal_operator_base";
       } else {
         VLOG(4) << "OP is not null";
         auto op_with_kernel = const_cast<framework::OperatorWithKernel*>(
@@ -572,7 +522,7 @@ void build_op_func_list(const platform::Place& place,
             op_with_kernel->GetExpectedKernelType(exec_ctx);
         VLOG(4) << "get expected_kernel_key";
         // change device by the device_guard()
-        apply_device_guard(op, place, &expected_kernel_key);
+        ApplyDeviceGuard(op, place, &expected_kernel_key);
         VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
 
         // step 2. select op kernel
@@ -615,7 +565,7 @@ void build_op_func_list(const platform::Place& place,
           dev_ctx = pool.Get(kernel_type.place_);
         }
         op_func_node.dev_ctx_ = dev_ctx;
-        if (IsSupportedHetePlace(kernel_type.place_)) {
+        if (IsSupportedHeterPlace(kernel_type.place_)) {
           op_func_node.type_ = OpFuncType::kQueueAsync;
         } else if (platform::is_cpu_place(kernel_type.place_)) {
           op_func_node.type_ = OpFuncType::kQueueSync;
@@ -717,7 +667,7 @@ void build_op_func_list(const platform::Place& place,
 
     vec_func_list->emplace_back(op_func_node);
 
-    // gc---------------------------------------------------------------------------
+    // gc---------------------------------------------
     auto iter = unused_var_map.find(op);
     if (iter == unused_var_map.end()) {
       interpreter::LogDeviceMemoryStats(place);
@@ -744,10 +694,16 @@ void build_op_func_list(const platform::Place& place,
 
     interpreter::LogDeviceMemoryStats(place);
   }
+
+  // NOTE(Ruibiao): Release memory cache to avoid memory fragments in Allocator.
+  // It reduce about 10% memory usage for V100 8-GPU training of
+  // transformer_base_bs4096_amp_fp16 and transformer_base_bs4096_pure_fp16
+  // model.
+  memory::Release(place);
 }
 
-void add_fetch(const std::vector<std::string>& fetch_names,
-               framework::BlockDesc* block) {
+void AddFetch(const std::vector<std::string>& fetch_names,
+              framework::BlockDesc* block) {
   auto* fetch_holder = block->Var(kFetchVarName);
   fetch_holder->SetType(proto::VarType::FETCH_LIST);
   fetch_holder->SetPersistable(true);
@@ -763,20 +719,6 @@ void add_fetch(const std::vector<std::string>& fetch_names,
     op->CheckAttrs();
     i++;
   }
-}
-
-std::vector<size_t> merge_vector(const std::vector<size_t>& first,
-                                 const std::vector<size_t>& second) {
-  std::vector<size_t> out(first.size() + second.size());
-  std::merge(
-      first.begin(), first.end(), second.begin(), second.end(), out.begin());
-
-  std::vector<size_t>::iterator it;
-  it = std::unique(out.begin(), out.end());
-
-  out.resize(std::distance(out.begin(), it));
-
-  return out;
 }
 
 }  // namespace interpreter

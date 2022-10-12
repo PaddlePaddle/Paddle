@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -28,7 +26,6 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 from paddle.distributed.auto_parallel.cost import CostEstimator
 from paddle.distributed.auto_parallel.cluster import Cluster
 

@@ -130,8 +130,8 @@ static void CheckTensorAttrs(const LoDTensor *tensor,
           offset));
 }
 
-static void TransData(const framework::Tensor *src_item,
-                      framework::Tensor *dst_item,
+static void TransData(const phi::DenseTensor *src_item,
+                      phi::DenseTensor *dst_item,
                       const platform::DeviceContext &ctx) {
   if (src_item->IsInitialized() && src_item->numel() > 0) {
     if (platform::is_gpu_place(src_item->place())) {
@@ -164,22 +164,30 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     }
   }
 
-  bool find_first_dims = false;
-  for (auto *t : src_lodtensors) {
-    if (t->numel() && t->IsInitialized()) {
-      if (!find_first_dims) {
-        new_dim = t->dims();
-        find_first_dims = true;
-      } else {
-        new_dim[0] += t->dims()[0];
-      }
-    }
-  }
-
   // check src type,layout,dim,lod consistence
   for (size_t i = 1; i < src_lodtensors.size(); ++i) {
     CheckTensorAttrs(
         src_lodtensors[i], new_type, new_layout, check_dim, new_lod, offset_);
+  }
+
+  auto rank = src_lodtensors[0]->dims().size();
+
+  // for 0D tensor, can't concat eath tensor. So stack 0D and concat 1+D tensor
+  if (rank == 0) {
+    int src_lodtensor_size = src_lodtensors.size();
+    new_dim = phi::make_ddim(std::vector<int>({src_lodtensor_size}));
+  } else {
+    bool find_first_dims = false;
+    for (auto *t : src_lodtensors) {
+      if (t->numel() && t->IsInitialized()) {
+        if (!find_first_dims) {
+          new_dim = t->dims();
+          find_first_dims = true;
+        } else {
+          new_dim[0] += t->dims()[0];
+        }
+      }
+    }
   }
 
   // set dst tensor
@@ -195,9 +203,17 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   }
 
   // slice and memcpy
+  // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat
+  // them
   int begin = 0;
+  int end = 0;
   for (auto *src : src_lodtensors) {
-    int end = begin + src->dims()[0];
+    if (rank == 0) {
+      end = begin + 1;
+    } else {
+      end = begin + src->dims()[0];
+    }
+
     if (end == begin) {
       continue;
     }
@@ -234,7 +250,7 @@ void FetchAsyncOpHandle::RunImpl() {
       std::vector<const LoDTensor *> src_lodtensors;
       src_lodtensors.reserve(src_vars.size());
       for (size_t i = 0; i < src_vars.size(); ++i) {
-        src_lodtensors.emplace_back(&src_vars[i]->Get<framework::LoDTensor>());
+        src_lodtensors.emplace_back(&src_vars[i]->Get<phi::DenseTensor>());
       }
 
       LoDTensor dst_lodtensor;
@@ -269,7 +285,7 @@ void FetchAsyncOpHandle::RunImpl() {
 
     for (size_t i = 0; i < src_vars.size(); ++i) {
       if (src_vars[i]->IsType<LoDTensor>()) {
-        auto &t = src_vars[i]->Get<framework::LoDTensor>();
+        auto &t = src_vars[i]->Get<phi::DenseTensor>();
         LoDTensor item;
         TransData(&t, &item, *dev_ctxes_[t.place()]);
         dst_tensors.emplace_back(std::move(item));

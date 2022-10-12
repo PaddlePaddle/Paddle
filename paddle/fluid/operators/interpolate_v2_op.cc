@@ -25,7 +25,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
@@ -447,10 +446,11 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    const auto& interp_method = ctx.Attr<std::string>("interp_method");
     // TODO(danqing): support other interp_method
-    if (this->CanMKLDNNBeUsed(ctx, data_type) &&
-        (interp_method == "nearest" || interp_method == "bilinear")) {
+    // (https://github.com/PaddlePaddle/Paddle/pull/30016/files)
+    // NOTE(jiahy0825): currently only support interp_method = nearest or
+    // interp_method = bilinear
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
       return framework::OpKernelType(data_type,
                                      ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
@@ -463,7 +463,7 @@ class InterpolateV2Op : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -713,7 +713,7 @@ class InterpolateV2OpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "SizeTensor" || var_name == "Scale") {
       return expected_kernel_type;

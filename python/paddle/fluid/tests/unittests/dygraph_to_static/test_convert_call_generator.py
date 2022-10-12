@@ -12,18 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import logging
-import numpy as np
-
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import CONVERSION_OPTIONS
-from test_program_translator import get_source_code
 from paddle.jit import to_static
 
 

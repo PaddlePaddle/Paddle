@@ -13,21 +13,17 @@
 # limitations under the License.
 
 import unittest
-import os
-import json
 import copy
 
 import paddle
 import numpy as np
 import paddle.nn as nn
-import paddle.utils as utils
 import paddle.static as static
 import paddle.nn.functional as F
 
 from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 

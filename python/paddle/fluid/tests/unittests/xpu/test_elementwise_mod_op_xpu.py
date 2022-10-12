@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
 
 import paddle
 from op_test_xpu import XPUOpTest

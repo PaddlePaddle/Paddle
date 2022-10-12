@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using paddle::framework::LoDTensor;
-using paddle::framework::Tensor;
 using paddle::platform::CreateKey;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::MKLDNNMemDesc;
@@ -34,9 +32,9 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
                    const platform::MKLDNNDeviceContext& dev_ctx,
                    const dnnl::engine mkldnn_engine,
                    platform::Place cpu_place,
-                   const LoDTensor* input,
-                   const Tensor* weight_h,
-                   const Tensor* h0,
+                   const phi::DenseTensor* input,
+                   const phi::DenseTensor* weight_h,
+                   const phi::DenseTensor* h0,
                    const bool is_reverse,
                    const int64_t N,
                    const int64_t Ti,
@@ -150,7 +148,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
   }
 
   std::shared_ptr<dnnl::memory> AcquireInputMemoryWithReorder(
-      const LoDTensor* input, const bool is_reverse) {
+      const phi::DenseTensor* input, const bool is_reverse) {
     const auto name = this->key_ + "@input_mem";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(name));
@@ -201,7 +199,7 @@ class RNNMKLDNNHandler : public platform::MKLDNNHandlerT<T, T_alg> {
   // TODO(jczaja) H0 should be updated each iter and of T type (Fusion pass does
   // not support in yet)
   template <typename U>
-  std::shared_ptr<dnnl::memory> AcquireH0Memory(const Tensor* h0) {
+  std::shared_ptr<dnnl::memory> AcquireH0Memory(const phi::DenseTensor* h0) {
     const std::string h0_key = memory_key_ + "@h0";
     auto memory_p =
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(h0_key));

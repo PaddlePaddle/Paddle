@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 import paddle.fluid.core as core
 import unittest
 import paddle
-import numpy as np
 import os
 
 word_dict, verb_dict, label_dict = conll05.get_dict()

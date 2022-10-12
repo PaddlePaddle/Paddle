@@ -21,7 +21,6 @@ from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.executor import global_scope
-import paddle
 
 __all__ = []
 

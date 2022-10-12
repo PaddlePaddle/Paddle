@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import time
 import unittest
-import argparse
 
 from paddle.distributed.fleet.elastic.manager import ElasticManager
 from paddle.distributed.fleet.elastic.manager import LauncherInterface
-from paddle.distributed.fleet.elastic.manager import ELASTIC_TIMEOUT
 from paddle.distributed.fleet.elastic.manager import ELASTIC_AUTO_PARALLEL_EXIT_CODE
 
 

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -23,9 +21,8 @@ import paddle.static as static
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard, _enable_legacy_dygraph
-import os
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 
 class TestDropoutOp(OpTest):
@@ -1175,7 +1172,7 @@ class TestRandomValue(unittest.TestCase):
             return
 
         # Different GPU generate different random value. Only test V100 here.
-        if not "V100" in paddle.device.cuda.get_device_name():
+        if "V100" not in paddle.device.cuda.get_device_name():
             return
 
         print("Test Fixed Random number on V100 GPU------>")

@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import gzip
 import tarfile
 import numpy as np
-import six
-from six.moves import cPickle as pickle
 
 from paddle.io import Dataset
 import paddle.compat as cpt

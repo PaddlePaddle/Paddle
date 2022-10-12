@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest, _in_eager_without_dygraph_check
-import paddle.fluid.core as core
+from op_test import OpTest
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid import Program, program_guard

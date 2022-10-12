@@ -14,7 +14,6 @@
 
 import unittest
 import paddle
-import os
 
 
 class TestStrategyConfig(unittest.TestCase):

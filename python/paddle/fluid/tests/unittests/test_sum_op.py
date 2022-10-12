@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import tempfile
@@ -27,7 +25,6 @@ from paddle.fluid.op import Operator
 from paddle.fluid.tests.unittests.op_test import (OpTest,
                                                   convert_float_to_uint16,
                                                   convert_uint16_to_float)
-from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
 import paddle.inference as paddle_infer
 import gradient_checker

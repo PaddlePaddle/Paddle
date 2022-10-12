@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import six
 import warnings
 import sys
@@ -86,10 +84,7 @@ class ParamAttr(object):
                  do_model_average=True,
                  need_clip=True):
 
-        if sys.version_info.major == 2:
-            check_type(name, "name", (str, type(None), unicode), "ParamAttr")
-        else:
-            check_type(name, "name", (str, type(None)), "ParamAttr")
+        check_type(name, "name", (str, type(None)), "ParamAttr")
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")

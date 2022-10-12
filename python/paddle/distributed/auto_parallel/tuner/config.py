@@ -14,9 +14,7 @@
 
 import os
 import copy
-import pathlib
 
-import paddle
 from ..strategy import Strategy
 
 _tuning_supported_passes = ["sharding", "recompute"]
