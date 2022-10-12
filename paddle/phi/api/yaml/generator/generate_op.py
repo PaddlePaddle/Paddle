@@ -143,6 +143,14 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                                                            [:-5]] + '_grad'
                     args_item['name'] = args_map[args_item['name']]
 
+            if 'invoke' in backward_api_item:
+                backward_api_item['invoke']['args'] = [
+                    args_map[param.strip()]
+                    if param.strip() in args_map else param.strip()
+                    for param in backward_api_item['invoke']['args'].split(',')
+                ]
+                continue
+
             backward_api_item['infer_meta']['param'] = [
                 args_map[param] if param in args_map else param
                 for param in backward_api_item['infer_meta']['param']
@@ -173,9 +181,9 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                 ]
 
 
-def main(api_yaml_path, backward_yaml_path, op_compat_yaml_path,
-         api_version_yaml_path, output_op_path, output_arg_map_path):
-    with open(api_yaml_path, "rt") as f:
+def main(ops_yaml_path, backward_yaml_path, op_compat_yaml_path,
+         op_version_yaml_path, output_op_path, output_arg_map_path):
+    with open(ops_yaml_path, "rt") as f:
         apis = yaml.safe_load(f)
         apis = [restruct_io(api) for api in apis]
     forward_api_dict = to_named_dict(apis)
@@ -185,7 +193,7 @@ def main(api_yaml_path, backward_yaml_path, op_compat_yaml_path,
         backward_apis = [restruct_io(api) for api in backward_apis]
     backward_api_dict = to_named_dict(backward_apis)
 
-    with open(api_version_yaml_path, "rt") as f:
+    with open(op_version_yaml_path, "rt") as f:
         api_versions = yaml.safe_load(f)
     # add api version info into api
     for api_version in api_versions:
@@ -200,6 +208,45 @@ def main(api_yaml_path, backward_yaml_path, op_compat_yaml_path,
         bw_api['op_name'] = bw_api['name']
 
     replace_compat_name(api_op_map, forward_api_dict, backward_api_dict)
+
+    # prepare for invoke case
+    for bw_name, bw_api in backward_api_dict.items():
+        if 'invoke' in bw_api:
+            invoke_op = bw_api['invoke']['func']
+            args_list = bw_api['invoke']['args']
+            args_index = 0
+            if invoke_op in forward_api_dict.keys():
+                reuse_op = forward_api_dict[invoke_op]
+                bw_api['invoke']['inputs'] = []
+                bw_api['invoke']['attrs'] = []
+                bw_api['invoke']['outputs'] = []
+                for input_item in reuse_op['inputs']:
+                    bw_api['invoke']['inputs'].append({
+                        'name':
+                        input_item['name'],
+                        'value':
+                        args_list[args_index]
+                    })
+                    args_index = args_index + 1
+                for attr in reuse_op['attrs']:
+                    if args_index < len(args_list):
+                        attr_value = f"this->GetAttr(\"{args_list[args_index]}\")" if args_list[
+                            args_index] in bw_api['attr_dict'] else args_list[
+                                args_index]
+                        bw_api['invoke']['attrs'].append({
+                            'name': attr['name'],
+                            'value': attr_value
+                        })
+                        args_index = args_index + 1
+                    else:
+                        break
+                for idx, output_item in enumerate(reuse_op['outputs']):
+                    bw_api['invoke']['outputs'].append({
+                        'name':
+                        output_item['name'],
+                        'value':
+                        bw_api['outputs'][idx]['name']
+                    })
 
     # fill backward field for an api if another api claims it as forward
     for name, backward_api in backward_api_dict.items():
@@ -236,18 +283,18 @@ def main(api_yaml_path, backward_yaml_path, op_compat_yaml_path,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Generate operator file from api yaml.")
-    parser.add_argument('--api_yaml_path',
+    parser.add_argument('--ops_yaml_path',
                         type=str,
-                        help="parsed api yaml file.")
-    parser.add_argument('--backward_api_yaml_path',
+                        help="parsed ops yaml file.")
+    parser.add_argument('--backward_yaml_path',
                         type=str,
-                        help="parsed backward api yaml file.")
+                        help="parsed backward ops yaml file.")
     parser.add_argument('--op_compat_yaml_path',
                         type=str,
-                        help="api args compat yaml file.")
-    parser.add_argument('--api_version_yaml_path',
+                        help="ops args compat yaml file.")
+    parser.add_argument('--op_version_yaml_path',
                         type=str,
-                        help="api version yaml file.")
+                        help="ops version yaml file.")
     parser.add_argument("--output_op_path",
                         type=str,
                         help="path to save generated operators.")
@@ -257,6 +304,6 @@ if __name__ == "__main__":
         help="path to save generated argument mapping functions.")
 
     args = parser.parse_args()
-    main(args.api_yaml_path, args.backward_api_yaml_path,
-         args.op_compat_yaml_path, args.api_version_yaml_path,
-         args.output_op_path, args.output_arg_map_path)
+    main(args.ops_yaml_path, args.backward_yaml_path, args.op_compat_yaml_path,
+         args.op_version_yaml_path, args.output_op_path,
+         args.output_arg_map_path)

@@ -213,8 +213,9 @@ DDim CompatMetaTensor::dims() const {
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
 
-    return var->GetShape().empty() ? phi::make_ddim({0UL})
-                                   : phi::make_ddim(var->GetShape());
+    return phi::make_ddim(var->GetShape());
+    // return var->GetShape().empty() ? phi::make_ddim({0UL}) :
+    // phi::make_ddim(var->GetShape());
   }
 }
 
