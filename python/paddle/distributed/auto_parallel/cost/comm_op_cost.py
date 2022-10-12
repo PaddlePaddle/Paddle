@@ -14,7 +14,7 @@
 
 import math
 
-from .base_cost import register_op_cost, CommOpCost, _g_op_cost_factory
+from .base_cost import CommOpCost, register_op_cost
 
 
 @register_op_cost

@@ -17,7 +17,6 @@ import socket
 import os
 import six
 import copy
-import logging
 import signal
 import random
 import threading

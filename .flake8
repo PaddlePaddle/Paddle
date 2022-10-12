@@ -5,7 +5,15 @@ exclude =
     # A trick to exclude fluid/ but keep fluid/tests/, see more at
     # https://github.com/PaddlePaddle/Paddle/pull/46290#discussion_r976392010
     ./python/paddle/fluid/[!t]**,
-    ./python/paddle/fluid/tra**
+    ./python/paddle/fluid/tra**,
+    # Exclude auto-generated files
+    *_pb2.py,
+    # Exclude third-party libraries
+    ./python/paddle/utils/gast/**,
+    # Exclude files that will be removed in the future, see more at
+    # https://github.com/PaddlePaddle/Paddle/pull/46782#issuecomment-1273033731
+    ./python/paddle/fluid/tests/unittests/npu/**,
+    ./python/paddle/fluid/tests/unittests/mlu/**
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
     E121,E122,E123,E125,E126,E127,E128,E129,E131,
@@ -30,10 +38,6 @@ per-file-ignores =
     # Ignore unused imports in __init__.py
     __init__.py: F401
     # These files will be fixed later
-    r/*:F401
-    cmake/*:F401
-    paddle/*:F401
-    tools/*:F401
     python/paddle/signal.py:F401
     python/paddle/common_ops_import.py:F401
     python/paddle/check_import_scipy.py:F401
@@ -46,31 +50,12 @@ per-file-ignores =
     python/paddle/tests/*:F401
     python/paddle/distribution/*:F401
     python/paddle/utils/*:F401
-    python/paddle/quantization/*:F401
-    python/paddle/libs/*:F401
-    python/paddle/audio/*:F401
-    python/paddle/incubate/*:F401
-    python/paddle/amp/*:F401
-    python/paddle/jit/*:F401
-    python/paddle/inference/*:F401
-    python/paddle/device/*:F401
-    python/paddle/profiler/*:F401
     python/paddle/tensor/*:F401
-    python/paddle/text/*:F401
-    python/paddle/metric/*:F401
     python/paddle/fluid/tests/unittests/ir/*:F401
     python/paddle/fluid/tests/unittests/tokenizer/*:F401
-    python/paddle/fluid/tests/unittests/xpu/*:F401
     python/paddle/fluid/tests/unittests/distribution/*:F401
-    python/paddle/fluid/tests/unittests/mlu/*:F401
-    python/paddle/fluid/tests/unittests/npu/*:F401
-    python/paddle/fluid/tests/unittests/ipu/*:F401
     python/paddle/fluid/tests/unittests/distributed_passes/*:F401
     python/paddle/fluid/tests/unittests/auto_parallel/*:F401
     python/paddle/fluid/tests/unittests/dygraph_to_static/*:F401
-    python/paddle/fluid/tests/unittests/ps/*:F401
-    python/paddle/fluid/tests/unittests/fft/*:F401
-    python/paddle/fluid/tests/unittests/white_list/*:F401
     python/paddle/fluid/tests/unittests/sequence/*:F401
     python/paddle/fluid/tests/unittests/mkldnn/*:F401
-    python/paddle/fluid/tests/unittests/rnn/*:F401

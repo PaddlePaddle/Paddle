@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from collections import defaultdict
-from paddle.fluid.framework import Program, Block, Operator
+from paddle.fluid.framework import Block, Program
 from paddle.fluid.framework import _non_static_mode
 import paddle.fluid.core as core
 import paddle.distributed.fleet as fleet
@@ -688,8 +688,10 @@ class HybridParallelInferenceHelper(object):
                         })
                 else:
                     var_shape = list(var.shape)
-                    var_shape[0] = self.micro_batch_size if var_shape[
-                        0] < 0 else var_shape[0]
+                    print(var_name)
+                    if len(var.shape) > 0:
+                        var_shape[0] = self.micro_batch_size if var_shape[
+                            0] < 0 else var_shape[0]
                     block._insert_op_without_sync(
                         index=index,
                         type='recv_v2',

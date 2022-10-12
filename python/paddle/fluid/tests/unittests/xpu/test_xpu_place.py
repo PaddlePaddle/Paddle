@@ -15,7 +15,6 @@
 import unittest
 import os
 import paddle
-import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.static as static

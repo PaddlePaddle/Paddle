@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
 from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
+from ...fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
 from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []

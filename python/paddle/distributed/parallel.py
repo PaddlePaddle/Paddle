@@ -13,15 +13,11 @@
 # limitations under the License.
 
 import os
-import six
 import warnings
 from multiprocessing import Process  # noqa: F401
 from multiprocessing import Manager  # noqa: F401
 import time
-import sys
 import paddle
-
-from paddle import compat as cpt
 
 # deprecated module import
 from paddle.fluid import core
@@ -31,11 +27,9 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
-from paddle.distributed import collective
 from paddle.distributed.collective import _set_group_map
 from paddle.distributed.collective import _set_group_map_by_name
 from paddle.distributed.collective import _get_group_map_by_name
-from paddle.distributed.collective import _group_map_by_name
 from paddle.distributed.collective import _default_group_name
 from paddle.distributed.collective import _valid_backend_list
 from paddle.distributed.collective import _set_default_backend
