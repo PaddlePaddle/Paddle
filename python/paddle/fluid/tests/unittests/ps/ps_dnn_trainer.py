@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.ps.utils.ps_program_builder import *
+from paddle.distributed.ps.utils.ps_program_builder import debug_program, logger, new_pass, ps_log_root_dir
 import paddle.distributed.fleet as fleet
 import argparse
 import sys

@@ -14,7 +14,7 @@
 
 import tempfile
 
-from paddle.distributed.fleet.launch_utils import *
+from paddle.distributed.fleet.launch_utils import logger, os, paddle, pull_worker_log, shutil, start_local_trainers
 
 from paddle.distributed.fleet.elastic.manager import LauncherInterface
 

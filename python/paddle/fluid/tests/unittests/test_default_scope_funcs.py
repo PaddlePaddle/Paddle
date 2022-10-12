@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.default_scope_funcs import *
+from paddle.fluid.default_scope_funcs import enter_local_scope, find_var, get_cur_scope, leave_local_scope, scoped_function, var
 import unittest
 
 

@@ -65,9 +65,11 @@ import pathlib
 from argparse import ArgumentParser, REMAINDER
 import paddle.fluid as fluid
 from paddle.distributed.fleet import launch_utils
-
-# TODO(danleifeng): Don't import * from a module
-from paddle.distributed.fleet.launch_utils import *
+from paddle.distributed.fleet.launch_utils import (
+    get_host_name_ip, find_free_ports, logger, get_cluster, DeviceMode,
+    start_local_trainers, direct_start, watch_local_trainers,
+    terminate_local_procs, DistributeMode, ParameterServerLauncher, get_logger,
+    check_backend, block_windows_and_macos)
 from paddle.distributed.fleet import cloud_utils
 from paddle.distributed.fleet import ascend_utils
 

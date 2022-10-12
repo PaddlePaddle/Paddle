@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .public import *
+from .public import *  # noqa: F403
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 from paddle.distributed.passes import new_pass
 

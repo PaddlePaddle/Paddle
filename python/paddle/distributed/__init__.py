@@ -51,7 +51,7 @@ from .collective import batch_isend_irecv  # noqa: F401
 from .collective import P2POp  # noqa: F401
 from .collective import reduce_scatter  # noqa: F401
 
-from .communication import *  # noqa: F401
+from .communication import stream  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel import shard_tensor  # noqa: F401
@@ -66,7 +66,8 @@ from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
 from . import cloud_utils  # noqa: F401
 
-from .sharding import *  # noqa: F401
+from .sharding import group_sharded_parallel  # noqa: F401
+from .sharding import save_group_sharded_model  # noqa: F401
 
 __all__ = [  # noqa
     "spawn", "launch", "scatter", "broadcast", "ParallelEnv", "new_group",
