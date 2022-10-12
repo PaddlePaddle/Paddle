@@ -48,6 +48,7 @@ class TestTheOnePs(PsPassTestBase):
         else:
             return False
         '''
+        pass
 
     def test_ps_cpu_async(self):
         self.init()
