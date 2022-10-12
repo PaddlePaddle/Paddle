@@ -305,7 +305,12 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     if (x[i]->is_selected_rows() && x_dim.size() == 1) {
       continue;
     }
+    // for zero-sized tensor
     if (phi::product(x_dim) == 0) {
+      continue;
+    }
+    // for 0D tensor
+    if (x_dim.size() == 0) {
       continue;
     }
     if (phi::product(in_dim) == 0) {
@@ -638,6 +643,7 @@ void BatchNormInferMeta(const MetaTensor& x,
     saved_variance->set_dims({C});
   }
   y->share_lod(x);
+  y->set_dtype(x.dtype());
 }
 
 void BatchNormInferInferMeta(const MetaTensor& x,
@@ -2495,6 +2501,14 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
 
 void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out) {
+  PADDLE_ENFORCE_EQ(
+      x.size(),
+      out.size(),
+      phi::errors::InvalidArgument(
+          "Input's size should be equal to the output's size"
+          "but received input size: (%d) does not equals output_size: (%d)",
+          x.size(),
+          out.size()));
   for (size_t i = 0; i < x.size(); ++i) {
     if (out[i]) {
       out[i]->share_meta(*x[i]);
@@ -2538,8 +2552,8 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* warpctcgrad,
-                      MetaTensor* loss) {
+                      MetaTensor* loss,
+                      MetaTensor* warpctcgrad) {
   auto logits_dims = logits.dims();
   int sequence_width = 0;
 
@@ -2901,5 +2915,4 @@ void GraphSendUVInferMeta(const MetaTensor& x,
 
 }  // namespace phi
 
-PD_REGISTER_INFER_META_FN(batch_norm, phi::BatchNormInferMeta);
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

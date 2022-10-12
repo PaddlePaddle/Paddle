@@ -11,16 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from __future__ import print_function
-from __future__ import division
-import os
-import collections
-import numpy as np
-
 import paddle.fluid as fluid
 from paddle.fluid import core, unique_name
-from paddle.fluid.dygraph import Layer, LayerList
-from ..base.private_helper_function import wait_server_ready
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_loss_grad_op, is_backward_op, is_optimizer_op
 

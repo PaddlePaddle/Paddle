@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
@@ -20,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.tensor as tensor
 from paddle.static import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMultiplyApi(unittest.TestCase):

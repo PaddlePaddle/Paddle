@@ -26,10 +26,10 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 static void ReshapeTensorIntoMatrixSequence(
-    framework::Tensor *x, const phi::funcs::MatDescriptor &descriptor) {
+    phi::DenseTensor *x, const phi::funcs::MatDescriptor &descriptor) {
   int64_t h, w;
   h = descriptor.height_;
   w = descriptor.width_;
@@ -40,9 +40,9 @@ static void ReshapeTensorIntoMatrixSequence(
   x->Resize({descriptor.batch_size_, h, w});
 }
 
-static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
-                                           framework::Tensor *y,
-                                           framework::Tensor *out,
+static void ReshapeXYOutIntoMatrixSequence(phi::DenseTensor *x,
+                                           phi::DenseTensor *y,
+                                           phi::DenseTensor *out,
                                            bool trans_x,
                                            bool trans_y) {
   auto x_dim = x->dims();

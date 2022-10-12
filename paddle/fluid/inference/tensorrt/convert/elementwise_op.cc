@@ -32,7 +32,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     if (Y_v) {
       // Y is weight
-      auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+      auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
       std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
       auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
 

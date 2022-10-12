@@ -338,8 +338,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
       // get runtime input shapes.
       std::map<std::string, std::vector<int32_t>> runtime_input_shape;
       for (auto name : runtime_input_names_) {
-        auto &t = inference::analysis::GetFromScope<framework::LoDTensor>(scope,
-                                                                          name);
+        auto &t =
+            inference::analysis::GetFromScope<phi::DenseTensor>(scope, name);
         VLOG(4) << "trt engine runtime input name(" << name << "), dims("
                 << t.dims() << ")";
         auto t_shape = phi::vectorize<int32_t>(t.dims());
@@ -430,8 +430,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       std::unordered_map<std::string, size_t> calib_buffers;
       for (auto &x : input_names_) {
         if (param_names_.count(x)) continue;
-        auto &t =
-            inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+        auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
         calib_buffers[x] = t.memory_size();
         auto t_shape = phi::vectorize(t.dims());
         runtime_batch = t_shape[0];
@@ -457,8 +456,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     for (auto &x : Inputs("Xs")) {
       if (param_names_.count(x)) continue;
-      auto &t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+      auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
       calib_data.emplace(x, t.data());
     }
     temp_calibrator->setBatch(calib_data);
@@ -476,12 +474,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
-    int num_inputs = 0;
-
-    num_inputs += runtime_input_names_.size();
-    //  const int num_bindings = num_inputs + Outputs("Ys").size();
-    //  std::vector<void *> buffers(num_bindings);
-    // This method returns the total over all profiles.
+    // Get the total over all profiles
     const int num_bindings = engine->GetNbBindings();
     std::vector<void *> buffers(num_bindings, nullptr);
 
@@ -501,13 +494,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
 
       // convert input and copy to TRT engine's buffer
-      auto &t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
+      auto &t = inference::analysis::GetFromScope<phi::DenseTensor>(scope, x);
       // check the input_tensor
       if (!platform::is_gpu_place(t.place())) {
-        framework::Tensor out;
-        platform::CUDAPlace dst_place;
-        framework::TransDataDevice(t, dst_place, &out);
+        phi::DenseTensor out;
+        framework::TensorCopy(t, dev_place, dev_ctx, &out);
         t.ShareDataWith(out);
       }
       auto t_shape = phi::vectorize<int64_t>(t.dims());
@@ -628,7 +619,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           fluid_v,
           platform::errors::NotFound(
               "Output variable %s is not found in TensorRT subgraph.", y));
-      auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
+      auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
       fluid_t->Resize(phi::make_ddim(ddim));
 
       PADDLE_ENFORCE_LT(bind_index,

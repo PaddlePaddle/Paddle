@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
 import unittest
 import numpy as np
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from paddle import _legacy_C_ops
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -185,7 +183,8 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
 
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = core.ops.dropout(input, 'dropout_prob', 0.5)
+                    out, mask = _legacy_C_ops.dropout(input, 'dropout_prob',
+                                                      0.5)
                     out.backward()
 
                     np.testing.assert_allclose(
@@ -199,9 +198,10 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     prob = 0.5
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = core.ops.dropout(input, 'dropout_prob', prob,
-                                                 "dropout_implementation",
-                                                 "upscale_in_train")
+                    out, mask = _legacy_C_ops.dropout(input, 'dropout_prob',
+                                                      prob,
+                                                      "dropout_implementation",
+                                                      "upscale_in_train")
                     out.backward()
 
                     np.testing.assert_allclose(
@@ -215,9 +215,10 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     prob = 0.3
                     input = paddle.uniform([40, 40], dtype=self.in_type)
                     input.stop_gradient = False
-                    out, mask = core.ops.dropout(input, 'dropout_prob', prob,
-                                                 "dropout_implementation",
-                                                 "upscale_in_train")
+                    out, mask = _legacy_C_ops.dropout(input, 'dropout_prob',
+                                                      prob,
+                                                      "dropout_implementation",
+                                                      "upscale_in_train")
                     out.backward()
 
                     np.testing.assert_allclose(

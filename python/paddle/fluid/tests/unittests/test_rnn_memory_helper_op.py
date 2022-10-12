@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 from paddle.fluid.framework import Program
 from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
 import numpy as np
 import paddle.fluid.core as core
 

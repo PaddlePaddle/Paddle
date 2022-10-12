@@ -29,7 +29,10 @@
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/enforce.h"
 #include "paddle/fluid/platform/profiler/mlu/mlu_tracer.h"
+#endif
 #include "paddle/fluid/platform/profiler/trace_event_collector.h"
 #include "paddle/fluid/platform/profiler/utils.h"
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -101,9 +104,11 @@ Profiler::Profiler(const ProfilerOptions& options,
   if (trace_switch.test(kProfileGPUOptionBit)) {
     tracers_.emplace_back(&CudaTracer::GetInstance(), false);
   }
+#ifdef PADDLE_WITH_MLU
   if (trace_switch.test(kProfileMLUOptionBit)) {
     tracers_.emplace_back(&MluTracer::GetInstance(), false);
   }
+#endif
   if (trace_switch.test(kProfileCustomDeviceOptionBit)) {
     for (const auto& dev_type : custom_device_types) {
       tracers_.emplace_back(&CustomTracer::GetInstance(dev_type), false);

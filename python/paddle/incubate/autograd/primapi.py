@@ -22,7 +22,7 @@ from paddle.incubate.autograd import primx, utils
 def forward_grad(outputs, inputs, grad_inputs=None):
     """Forward mode of automatic differentiation.
 
-    .. note::
+    Note:
         **ONLY available in the static mode and primitive operators.**
 
     Args:
@@ -95,7 +95,7 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 def grad(outputs, inputs, grad_outputs=None):
     """Reverse mode of automatic differentiation.
 
-    .. note::
+    Note:
         **ONLY available in the static mode and primitive operators**
 
     Args:
