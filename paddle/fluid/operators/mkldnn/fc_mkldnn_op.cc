@@ -88,8 +88,7 @@ class FCMKLDNNHandler
                                    dnnl::memory::format_tag::a);
     }
 
-    dnnl::primitive_attr attrs;
-    HandlePostOps(ctx, &attrs);
+    const auto attrs = CreateFCAttrs(ctx);
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
                                             prop_kind::forward_inference,
@@ -100,44 +99,32 @@ class FCMKLDNNHandler
   }
 
  private:
-  void HandlePostOps(const paddle::framework::ExecutionContext& ctx,
-                     dnnl::primitive_attr* attrs) {
-    static std::unordered_map<std::string, dnnl::algorithm> algo_map = {
-        {"relu", dnnl::algorithm::eltwise_relu},
-        {"gelu", dnnl::algorithm::eltwise_gelu},
-        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
-        {"tanh", dnnl::algorithm::eltwise_tanh},
-        {"sigmoid", dnnl::algorithm::eltwise_logistic},
-        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-        {"mish", dnnl::algorithm::eltwise_mish}};
+  dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx) {
+    dnnl::primitive_attr attributes;
+    dnnl::post_ops post_operations;
 
     std::vector<float> output_shift_scale;
     float scale = 1.0f;
     if (IsInt8<T_w>()) {
       std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
-      attrs->set_output_scales(mask, output_shift_scale);
+      attributes.set_output_scales(mask, output_shift_scale);
     }
 
-    dnnl::post_ops post_ops;
-
-    constexpr float sum_scale = 1.0f;
+    float sum_scale = 1.0f;
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
-      post_ops.append_sum(sum_scale);
+      post_operations.append_sum(sum_scale);
     }
 
-    std::string activation_type = ctx.Attr<std::string>("activation_type");
-
-    if (activation_type.empty() == false) {
-      constexpr float alpha = 0.0f;
-      constexpr float beta = 0.0f;
-
-      post_ops.append_eltwise(scale, algo_map[activation_type], alpha, beta);
+    if (ctx.Attr<std::string>("activation_type") == "relu") {
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_relu, 0.0f, 1.0f);
     }
+    platform::AppendActivation(ctx, post_operations, scale);
 
-    attrs->set_post_ops(post_ops);
+    attributes.set_post_ops(post_operations);
+    return attributes;
   }
 
   // Compute the bias scales so that its values correspond to the
@@ -198,48 +185,10 @@ class FCMKLDNNHandler
     return is_multi_channel_quantizied ? 1 << slice_dimension : 0;
   }
 
-  void QuantizeWeights(const ExecutionContext& ctx, memory::desc dst) {
-    weights_ = ReorderWithScale(
-        weights_, dst, ctx.Attr<std::vector<float>>("Scale_weights"));
-  }
-
-  void QuantizeBias(const inner_product_forward::primitive_desc& fc_prim_desc,
-                    const ExecutionContext& ctx) {
-    auto bias_scales = ComputeBiasScales(ctx);
-    bias_ = ReorderWithScale(bias_, fc_prim_desc.bias_desc(), bias_scales);
-  }
-
-  dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx) {
-    dnnl::primitive_attr attributes;
-    dnnl::post_ops post_operations;
-
-    std::vector<float> output_shift_scale;
-    float scale;
-    std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
-    int mask = CreateMask(1, output_shift_scale.size() > 1);
-    attributes.set_output_scales(mask, output_shift_scale);
-
-    float sum_scale = 1.0f;
-    if (ctx.HasAttr("fuse_residual_connection") &&
-        ctx.Attr<bool>("fuse_residual_connection")) {
-      post_operations.append_sum(sum_scale);
-    }
-
-    if (ctx.Attr<std::string>("activation_type") == "relu") {
-      post_operations.append_eltwise(
-          scale, dnnl::algorithm::eltwise_relu, 0.0f, 1.0f);
-    }
-    platform::AppendActivation(ctx, post_operations, scale);
-
-    attributes.set_post_ops(post_operations);
-    return attributes;
-  }
-
-  dnnl::inner_product_forward::primitive_desc CreateFcPrimDesc(
-      const dnnl::memory::desc& input_desc,
-      const dnnl::memory::desc& weights_desc,
-      const dnnl::memory::desc& bias_desc,
-      const dnnl::memory::desc& dst_desc,
+  std::shared_ptr<dnnl::memory> AcquireMemoryWithReorderAndAttrs(
+      const dnnl::memory::desc& user_md,
+      const dnnl::memory::desc& target_md,
+      void* ptr,
       const dnnl::primitive_attr& attrs) {
     std::shared_ptr<dnnl::memory> target_memory_p;
 
