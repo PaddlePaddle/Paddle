@@ -448,6 +448,8 @@ def get_filenames(full_test=False):
 
     '''
     global whl_error
+    import paddle  # noqa: F401
+    import paddle.fluid.contrib.slim.quantization  # noqa: F401
     whl_error = []
     if full_test:
         get_full_api_from_pr_spec()
