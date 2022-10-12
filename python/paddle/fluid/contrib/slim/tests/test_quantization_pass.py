@@ -313,6 +313,12 @@ class TestQuantizationFreezePass(unittest.TestCase):
             weight_quantize_type=weight_quant_type,
             skip_pattern=quant_skip_pattern)
         transform_pass.apply(main_graph)
+        transform_pass = QuantizationTransformPass(
+            scope=scope,
+            place=place,
+            activation_quantize_type=activation_quant_type,
+            weight_quantize_type=weight_quant_type,
+            skip_pattern=quant_skip_pattern)
         transform_pass.apply(test_graph)
         dev_name = '_gpu_' if use_cuda else '_cpu_'
         if not for_ci:

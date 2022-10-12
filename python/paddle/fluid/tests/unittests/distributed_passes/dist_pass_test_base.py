@@ -23,7 +23,7 @@ import inspect
 import numpy as np
 from collections import OrderedDict
 from paddle.distributed.fleet.launch_utils import run_with_coverage
-from paddle.distributed.passes.pass_base import new_pass, PassBase, PassManager
+from paddle.distributed.passes.pass_base import PassBase, PassManager
 
 
 def prepare_python_path_and_return_module(path):
@@ -105,12 +105,11 @@ class DistPassTestBase(unittest.TestCase):
                 if out_var_no_pass is None:
                     self.assertTrue(out_var_pass is None)
                 else:
-                    self.assertTrue(
-                        np.allclose(out_var_no_pass,
-                                    out_var_pass,
-                                    rtol=self.rtol,
-                                    atol=self.atol,
-                                    equal_nan=self.equal_nan))
+                    np.testing.assert_allclose(out_var_no_pass,
+                                               out_var_pass,
+                                               rtol=self.rtol,
+                                               atol=self.atol,
+                                               equal_nan=self.equal_nan)
 
     @classmethod
     def _to_var_names(cls, names_or_vars):

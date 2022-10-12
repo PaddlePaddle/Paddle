@@ -94,6 +94,8 @@ class AllReduceOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_XPU_BKCL)
   void BKCLAllReduceFunc(
       const std::vector<std::function<void()>> &all_reduce_calls);
+
+  void SyncBKCLAllReduce();
 #endif
 
   void AllReduceImpl(const std::vector<VarHandle *> &in_var_handles,

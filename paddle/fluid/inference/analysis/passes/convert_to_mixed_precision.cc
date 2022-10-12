@@ -54,7 +54,7 @@ inline std::string SerializeParams(framework::Scope* scope,
         scope->FindVar(param),
         platform::errors::NotFound("Block should already have a '%s' variable",
                                    param));
-    auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
+    auto* tensor = scope->FindVar(param)->GetMutable<phi::DenseTensor>();
     framework::SerializeToStream(os, *tensor, ctx);
   }
   return os.str();
@@ -159,10 +159,11 @@ void SaveMixedModel(
 
   for (const auto& param_name : parameters) {
     auto* var = scope->FindLocalVar(param_name);
-    if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<framework::Tensor>()) {
-      auto* t = var->GetMutable<framework::LoDTensor>();
-      framework::Tensor mixed_tensor;
+    if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+      auto* t = var->GetMutable<phi::DenseTensor>();
+      if (t->dtype() != phi::DataType::FLOAT32) continue;
+
+      phi::DenseTensor mixed_tensor;
       mixed_tensor.Resize(t->dims());
       auto* data = t->mutable_data<float>(platform::CPUPlace());
 
@@ -366,6 +367,7 @@ void ProcessInputNode(
         in_var_type == framework::proto::VarType::FP32) {
       if (WeightsShouldNotConvert(in_node)) return;
       in_var->SetDataType(to_type);
+      in_var_type = to_type;
     } else if (!in_var->Persistable() && IsFloatVarType(in_var_type) &&
                in_var_type != to_type) {
       AddCastOp(graph,
@@ -673,6 +675,26 @@ void ConvertTensorDtype(
       bool support_precision =
           OpSupportPrecision(op_type, backend, tensor_dtype, blacklist);
       VLOG(2) << " support low precision " << support_precision;
+
+      // if op not has float input, we will not choose the low precision kernel.
+      {
+        bool has_float_input{false};
+        for (auto in_node : op_node->inputs) {
+          auto* real_node =
+              GetRealNode(graphes, block_idx, in_node, vars_in_multi_block_map);
+          if (real_node->Var()->GetDataType() == proto::VarType::FP16 ||
+              real_node->Var()->GetDataType() == proto::VarType::FP32 ||
+              real_node->Var()->GetDataType() == proto::VarType::FP64 ||
+              real_node->Var()->GetDataType() == proto::VarType::BF16) {
+            has_float_input = true;
+            break;
+          }
+        }
+        if (!has_float_input) {
+          support_precision = false;
+          VLOG(2) << " op doesn't has float input, just skip.";
+        }
+      }
 
       if (support_precision) {
         HandleSpecialOps(op_node->Op());

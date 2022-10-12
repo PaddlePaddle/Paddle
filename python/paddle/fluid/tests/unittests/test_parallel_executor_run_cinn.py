@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import logging
 import numpy as np
 import os
@@ -117,7 +115,10 @@ class TestParallelExecutorRunCinn(unittest.TestCase):
         cinn_losses = train(self.tmpdir, "paddle")
         set_cinn_flag(False)
         pd_losses = train(self.tmpdir, "cinn")
-        self.assertTrue(np.allclose(cinn_losses, pd_losses, atol=1e-5))
+        np.testing.assert_allclose(cinn_losses,
+                                   pd_losses,
+                                   rtol=1e-05,
+                                   atol=1e-05)
 
 
 if __name__ == '__main__':

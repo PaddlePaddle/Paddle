@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -345,7 +342,9 @@ class TestAddMMAPI(unittest.TestCase):
         numpy_output = data_beta * data_input + data_alpha * np.dot(
             data_x, data_y)
 
-        self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()), True)
+        np.testing.assert_allclose(numpy_output,
+                                   paddle_output.numpy(),
+                                   rtol=1e-05)
 
         paddle.enable_static()
 
@@ -369,7 +368,9 @@ class TestAddMMAPI(unittest.TestCase):
         numpy_output = data_beta * data_input + data_alpha * np.dot(
             data_x, data_y)
 
-        self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()), True)
+        np.testing.assert_allclose(numpy_output,
+                                   paddle_output.numpy(),
+                                   rtol=1e-05)
 
         paddle.enable_static()
 
@@ -393,7 +394,9 @@ class TestAddMMAPI(unittest.TestCase):
         numpy_output = data_beta * data_input + data_alpha * np.dot(
             data_x, data_y)
 
-        self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()), True)
+        np.testing.assert_allclose(numpy_output,
+                                   paddle_output.numpy(),
+                                   rtol=1e-05)
 
         paddle.enable_static()
 

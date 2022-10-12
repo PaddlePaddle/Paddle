@@ -136,9 +136,12 @@ class AutoScanTest(unittest.TestCase):
                 "The output shapes are not equal, the baseline shape is " +
                 str(baseline[key].shape) + ', but got ' + str(arr.shape))
             diff = abs(baseline[key] - arr)
-            self.assertTrue(
-                np.allclose(baseline[key], arr, atol=atol, rtol=rtol),
-                "Output has diff, Maximum absolute error: {}".format(
+            np.testing.assert_allclose(
+                baseline[key],
+                arr,
+                rtol=rtol,
+                atol=atol,
+                err_msg='Output has diff, Maximum absolute error: {}'.format(
                     np.amax(diff)))
 
     @abc.abstractmethod
@@ -502,7 +505,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     class TensorRTParam:
         '''
-        TensorRT subgraph engine parameters. 
+        TensorRT subgraph engine parameters.
         '''
 
         def __init__(self, workspace_size, max_batch_size, min_subgraph_size,
@@ -516,7 +519,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     class DynamicShapeParam:
         '''
-         Prepare TensorRT subgraph engine dynamic shape parameters. 
+         Prepare TensorRT subgraph engine dynamic shape parameters.
          '''
 
         def __init__(self, min_input_shape, max_input_shape, opt_input_shape,

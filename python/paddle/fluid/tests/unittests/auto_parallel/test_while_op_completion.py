@@ -16,19 +16,13 @@ import unittest
 import paddle
 import numpy as np
 import paddle.nn as nn
-import paddle.utils as utils
 import paddle.static as static
 import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.utils import make_data_unshard
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
-from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
-from paddle.distributed.auto_parallel.operators import find_compatible_distributed_operator_impls
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 
 paddle.enable_static()
 
@@ -36,7 +30,7 @@ batch_size = 4
 epoch_num = 10
 hidden_size = 1024
 sequence_len = 512
-_g_process_mesh = [[0, 1], [2, 3]]
+_g_process_mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
 
 
 def get_random_inputs_and_labels(input_shape, label_shape):
@@ -84,18 +78,12 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         out = self.norm(input)
-        auto.shard_tensor(self.linear0.weight,
-                          dist_attr={
-                              "process_mesh": _g_process_mesh[0],
-                              "dims_mapping": [-1, 0]
-                          })
+        auto.shard_tensor(self.linear0.weight, _g_process_mesh[:, 0],
+                          [None, 'x'])
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
-        auto.shard_tensor(self.linear1.weight,
-                          dist_attr={
-                              "process_mesh": _g_process_mesh[1],
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(self.linear1.weight, _g_process_mesh[:, 1],
+                          ['x', None])
         out = self.linear1(out)
 
         return out
@@ -155,16 +143,8 @@ def get_program():
         dataloader.set_batch_generator(batch_generator_creator(),
                                        places=paddle.static.cuda_places())
         # data dist_attr
-        auto.shard_tensor(input,
-                          dist_attr={
-                              "process_mesh": _g_process_mesh[0],
-                              "dims_mapping": [-1, -1, -1]
-                          })
-        auto.shard_tensor(label,
-                          dist_attr={
-                              "process_mesh": _g_process_mesh[0],
-                              "dims_mapping": [-1, -1, -1]
-                          })
+        auto.shard_tensor(input, _g_process_mesh[:, 0], [None, None, None])
+        auto.shard_tensor(label, _g_process_mesh[:, 0], [None, None, None])
 
         mlp_start = MLPLayer(hidden_size=hidden_size,
                              intermediate_size=4 * hidden_size,
@@ -200,6 +180,14 @@ class TestMLP(unittest.TestCase):
         complete_train_program = completer.complete_forward_annotation(
             train_program)
         # print_program_with_dist_attr(complete_train_program, dist_context)
+
+    def test_completer_by_dist_op(self):
+        train_program, start_program, dataloader, i, loss = get_program()
+        dist_context = DistributedContext()
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program)
+        complete_train_program = completer._complete_tensor_dist_attr_by_op()
 
 
 if __name__ == "__main__":

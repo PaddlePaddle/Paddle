@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
 import paddle
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 
 def huber_loss_forward(val, delta):

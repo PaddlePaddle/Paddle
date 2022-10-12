@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 import contextlib
@@ -228,18 +226,18 @@ class TestImageMultiPrecision(unittest.TestCase):
                     use_nesterov=use_nesterov,
                     optimizer=optimizer)
 
-            self.assertTrue(np.allclose(np.array(train_loss_fp16),
-                                        np.array(train_loss_fp32),
-                                        rtol=1e-02,
-                                        atol=1e-05,
-                                        equal_nan=True),
-                            msg='Failed to train in pure FP16.')
-            self.assertTrue(np.allclose(np.array(test_loss_fp16),
-                                        np.array(test_loss_fp32),
-                                        rtol=1e-02,
-                                        atol=1e-05,
-                                        equal_nan=True),
-                            msg='Failed to test in pure FP16.')
+            np.testing.assert_allclose(np.array(train_loss_fp16),
+                                       np.array(train_loss_fp32),
+                                       rtol=0.01,
+                                       atol=1e-05,
+                                       equal_nan=True,
+                                       err_msg='Failed to train in pure FP16.')
+            np.testing.assert_allclose(np.array(test_loss_fp16),
+                                       np.array(test_loss_fp32),
+                                       rtol=0.01,
+                                       atol=1e-05,
+                                       equal_nan=True,
+                                       err_msg='Failed to test in pure FP16.')
 
         do_test(use_nesterov=False)
         do_test(use_nesterov=True)

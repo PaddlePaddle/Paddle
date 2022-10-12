@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import sys
-import math
 from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
@@ -277,9 +273,9 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
                 "decode_center_size",
                 self.box_normalized,
                 axis=self.axis)
-            self.assertEqual(
-                np.allclose(np.sum(self.output_ref),
-                            np.sum(output_box.numpy())), True)
+            np.testing.assert_allclose(np.sum(self.output_ref),
+                                       np.sum(output_box.numpy()),
+                                       rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:

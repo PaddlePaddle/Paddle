@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import contextlib
 import unittest
 import numpy as np
 import six
@@ -24,9 +21,8 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from utils import DyGraphProgramDescTracerTestHelper
 from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
@@ -258,15 +254,22 @@ class TestImperativeMnist(unittest.TestCase):
                         static_param_value[static_param_name_list[i -
                                                                   1]] = out[i]
 
-        self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
+        np.testing.assert_allclose(dy_x_data.all(),
+                                   static_x_data.all(),
+                                   rtol=1e-05)
 
         for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+            np.testing.assert_allclose(value,
+                                       dy_param_init_value[key],
+                                       rtol=1e-05)
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
         for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+            np.testing.assert_allclose(value,
+                                       dy_param_value[key],
+                                       rtol=1e-05,
+                                       atol=1e-05)
 
     def test_mnist_float32(self):
         with _test_eager_guard():

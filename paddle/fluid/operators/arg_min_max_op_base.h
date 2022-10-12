@@ -31,6 +31,13 @@ namespace operators {
 class ArgMinMaxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -42,7 +49,8 @@ class BaseArgMinMaxOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input tensor.");
     AddOutput("Out", "Output tensor.");
-    AddAttr<int64_t>("axis", "The axis in which to compute the arg indics.");
+    AddAttr<int64_t>("axis", "The axis in which to compute the arg indics.")
+        .SupportTensor();
     AddAttr<bool>("keepdims", "Keep the dim that to reduce.").SetDefault(false);
     AddAttr<bool>("flatten",
                   "Flatten the input value, and search the min or max indices")

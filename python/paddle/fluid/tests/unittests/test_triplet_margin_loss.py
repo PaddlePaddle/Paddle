@@ -109,7 +109,7 @@ def test_static(place,
                                                reduction=reduction)
 
         exe = paddle.static.Executor(place)
-        static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
+        static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])[0]
     return static_result
 
 
@@ -212,9 +212,18 @@ class TestTripletMarginLoss(unittest.TestCase):
                     negative_np=negative,
                     reduction=reduction,
                 )
-                self.assertTrue(np.allclose(static_result, expected))
-                self.assertTrue(np.allclose(static_result, dy_result))
-                self.assertTrue(np.allclose(dy_result, expected))
+                np.testing.assert_allclose(static_result,
+                                           expected,
+                                           rtol=1e-5,
+                                           atol=1e-8)
+                np.testing.assert_allclose(static_result,
+                                           dy_result,
+                                           rtol=1e-5,
+                                           atol=1e-8)
+                np.testing.assert_allclose(dy_result,
+                                           expected,
+                                           rtol=1e-5,
+                                           atol=1e-8)
                 static_functional = test_static(place=place,
                                                 input_np=input,
                                                 positive_np=positive,
@@ -227,9 +236,18 @@ class TestTripletMarginLoss(unittest.TestCase):
                                              negative=negative,
                                              reduction=reduction,
                                              functional=True)
-                self.assertTrue(np.allclose(static_functional, expected))
-                self.assertTrue(np.allclose(static_functional, dy_functional))
-                self.assertTrue(np.allclose(dy_functional, expected))
+                np.testing.assert_allclose(static_functional,
+                                           expected,
+                                           rtol=1e-5,
+                                           atol=1e-8)
+                np.testing.assert_allclose(static_functional,
+                                           dy_functional,
+                                           rtol=1e-5,
+                                           atol=1e-8)
+                np.testing.assert_allclose(dy_functional,
+                                           expected,
+                                           rtol=1e-5,
+                                           atol=1e-8)
 
     def test_TripletMarginLoss_error(self):
         paddle.disable_static()
@@ -300,9 +318,15 @@ class TestTripletMarginLoss(unittest.TestCase):
             negative_np=negative,
             reduction=reduction,
         )
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result,
+                                   expected,
+                                   rtol=1e-5,
+                                   atol=1e-8)
+        np.testing.assert_allclose(static_result,
+                                   dy_result,
+                                   rtol=1e-5,
+                                   atol=1e-8)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-5, atol=1e-8)
         static_functional = test_static(place=place,
                                         swap=True,
                                         input_np=input,
@@ -317,9 +341,18 @@ class TestTripletMarginLoss(unittest.TestCase):
                                      negative=negative,
                                      reduction=reduction,
                                      functional=True)
-        self.assertTrue(np.allclose(static_functional, expected))
-        self.assertTrue(np.allclose(static_functional, dy_functional))
-        self.assertTrue(np.allclose(dy_functional, expected))
+        np.testing.assert_allclose(static_functional,
+                                   expected,
+                                   rtol=1e-5,
+                                   atol=1e-8)
+        np.testing.assert_allclose(static_functional,
+                                   dy_functional,
+                                   rtol=1e-5,
+                                   atol=1e-8)
+        np.testing.assert_allclose(dy_functional,
+                                   expected,
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
     def test_TripletMarginLoss_margin(self):
         paddle.disable_static()
@@ -369,9 +402,15 @@ class TestTripletMarginLoss(unittest.TestCase):
             negative_np=negative,
             reduction=reduction,
         )
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result,
+                                   expected,
+                                   rtol=1e-5,
+                                   atol=1e-8)
+        np.testing.assert_allclose(static_result,
+                                   dy_result,
+                                   rtol=1e-5,
+                                   atol=1e-8)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-5, atol=1e-8)
         static_functional = test_static(place=place,
                                         p=p,
                                         input_np=input,
@@ -386,9 +425,18 @@ class TestTripletMarginLoss(unittest.TestCase):
                                      negative=negative,
                                      reduction=reduction,
                                      functional=True)
-        self.assertTrue(np.allclose(static_functional, expected))
-        self.assertTrue(np.allclose(static_functional, dy_functional))
-        self.assertTrue(np.allclose(dy_functional, expected))
+        np.testing.assert_allclose(static_functional,
+                                   expected,
+                                   rtol=1e-5,
+                                   atol=1e-8)
+        np.testing.assert_allclose(static_functional,
+                                   dy_functional,
+                                   rtol=1e-5,
+                                   atol=1e-8)
+        np.testing.assert_allclose(dy_functional,
+                                   expected,
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
 
 if __name__ == "__main__":

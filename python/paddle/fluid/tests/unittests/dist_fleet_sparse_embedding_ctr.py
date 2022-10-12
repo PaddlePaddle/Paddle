@@ -15,12 +15,8 @@
 Distribute CTR model for test fleet api
 """
 
-from __future__ import print_function
-
 import os
-import time
 
-import random
 import numpy as np
 
 import paddle

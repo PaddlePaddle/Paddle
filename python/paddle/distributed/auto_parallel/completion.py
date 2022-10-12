@@ -13,17 +13,13 @@
 # limitations under the License.
 
 import copy
-from copy import deepcopy
 import time
 
 from paddle.fluid import core
-from paddle.fluid import framework
 
-from .utils import print_program_with_dist_attr
+from .utils import is_gradient_clip_op
 from .operators import find_compatible_distributed_operator_impls
-from .dist_context import get_default_distributed_context, _node_id
-from .dist_tensor import DistributedTensor
-from .dist_op import DistributedOperator
+from .dist_context import _node_id
 from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import OperatorDistributedAttribute
 from .process_mesh import ProcessMesh
@@ -142,6 +138,7 @@ class Completer:
     def __init__(self, dist_context):
         assert dist_context is not None
         self._dist_context = dist_context
+        self._has_prepared = False
 
     def _update_tensor_node_dims_mapping(self, tensor_node, fwd=True):
         changed = False
@@ -719,6 +716,8 @@ class Completer:
         self._update_process_mesh_between_graphs()
 
     def _prepare(self):
+        if self._has_prepared:
+            return
         self._while_op_nodes = {}
         self._array_nodes = {}
         self._node_pairs_between_graphs = []
@@ -732,6 +731,8 @@ class Completer:
                     if self._array_nodes.get(array_var_name, None) is None:
                         self._array_nodes[array_var_name] = []
                     self._array_nodes[array_var_name].append(node)
+                    # Add the array input node
+                    self._array_nodes[array_var_name].append(node.inputs[0])
                 if node.op().type() == "write_to_array":
                     array_var_name = node.op().output("Out")[0]
                     if self._array_nodes.get(array_var_name, None) is None:
@@ -752,6 +753,7 @@ class Completer:
                                 and after_node.var().name() == node.var().name():
                             self._node_pairs_between_graphs.append(
                                 (after_node, node))
+        self._has_prepared = True
 
     def complete_forward_annotation(self, serial_main_program=None):
         """ Complete annotation for the partial annotated serial_main_program.
@@ -899,9 +901,75 @@ class Completer:
             else:
                 dist_op.dist_attr = original_op_dist_attr
 
+    def _complete_tensor_dist_attr_by_op(self, serial_main_program=None):
+        if serial_main_program is None:
+            serial_main_program = self._dist_context.serial_main_program
+        else:
+            self._dist_context._serial_main_program = serial_main_program
+
+        self._dist_context.initialize()
+
+        self._prepare()
+
+        has_set_dist_attr = set()
+
+        all_nodes = self._dist_context.serial_ordered_nodes
+        for node in all_nodes:
+            if node.is_op():
+                if node.op().type() in ["while"]:
+                    continue
+                dist_op = self._dist_context.get_dist_op_for_graph(node)
+                op_dist_attr = dist_op.dist_attr
+                for tensor_node in node.inputs:
+                    if tensor_node.is_var() and tensor_node.var() is not None:
+                        # Skip the non-leaf var node
+                        if len(tensor_node.inputs) != 0:
+                            continue
+                        tensor_desc = tensor_node.var()
+                        tensor_name = tensor_desc.name()
+                        tensor = dist_op.get_serial_input(tensor_name)
+                        # Use the first op to set the tensor dist attr
+                        if tensor_name in has_set_dist_attr:
+                            continue
+                        tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+                            tensor_node)
+                        tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+                        tensor_dist_attr.dims_mapping = op_dist_attr.get_input_dims_mapping(
+                            tensor_name) if tensor.is_parameter else [
+                                -1 for i in tensor_desc.shape()
+                            ]
+                        has_set_dist_attr.add(tensor_name)
+                for tensor_node in node.outputs:
+                    if tensor_node.is_var() and tensor_node.var() is not None:
+                        tensor_name = tensor_node.var().name()
+                        if tensor_name in has_set_dist_attr:
+                            continue
+                        tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
+                            tensor_node)
+                        tensor_dist_attr.process_mesh = op_dist_attr.process_mesh
+                        tensor_dist_attr.dims_mapping = op_dist_attr.get_output_dims_mapping(
+                            tensor_name)
+                        has_set_dist_attr.add(tensor_name)
+
+        self._update_process_mesh_for_specials()
+
+        self._update_process_mesh_between_graphs()
+
+        self._update_dims_mapping_for_special()
+
+        self._update_dims_mapping_between_graphs()
+
+        # Copy the corresponding distributed attribute from graph to serial_main_program
+        self._dist_context.copy_dist_attr_from_graph_to_program()
+
+        # Do the validation check and amend some completion
+        self._dist_context.amend_dist_attr_for_program()
+
+        self._dist_context.validate_dist_attr_for_program()
+
     def _complete_high_order_grad_annotation(self, serial_main_program=None):
         """
-        NOTE: 
+        NOTE:
             [HighOrderGrad] Complete the annotation of vars and ops only for high order gradient.
             This function is temporary to support high order gradient, and will be removed in the future.
         """
@@ -939,6 +1007,12 @@ class Completer:
                         ops[idx - 1].attr('op_role')) == int(
                             core.op_proto_and_checker_maker.OpRole.Forward):
                 appended_grad_times += 1
+
+            if int(op.attr('op_role')) == int(
+                    int(core.op_proto_and_checker_maker.OpRole.Backward)
+                    | int(core.op_proto_and_checker_maker.OpRole.Loss)):
+                assert op.type == "fill_constant"
+                break
 
             # complete the annotation of grad op (xxx_grad op or sum op)
             # xxx_grad op will have a corresponding forward op in grad_op_id_to_op_id
@@ -1031,7 +1105,7 @@ class Completer:
                     grad_op_dist_attr.set_output_dims_mapping(
                         output_name, ref_fwd_dims_mapping)
 
-                elif grad_op.type == 'fill_zeros_like':
+                elif grad_op.type == 'fill_any_like':
                     ref_var_name = grad_op.input_arg_names[0]
                     ref_var = vars[ref_var_name]
                     ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
@@ -1268,7 +1342,7 @@ class Completer:
                     grad_op_dist_attr.impl_type = "default"
                     grad_op_dist_attr.impl_idx = 0
 
-                elif grad_op.type == 'fill_zeros_like':
+                elif grad_op.type == 'fill_any_like':
                     ref_var_name = grad_op.input_arg_names[0]
                     ref_var = vars[ref_var_name]
                     ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
@@ -1319,26 +1393,65 @@ class Completer:
             # TODO to add attribute for moment var
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
-                if op.type == "clip_by_norm":
-                    param_grad = vars[op.input("X")[0]]
-                    param_grad_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
-                        param_grad)
-                    assert param_grad_dist_attr is not None
-                    ref_process_mesh = param_grad_dist_attr.process_mesh
-                    ref_dims_mapping = param_grad_dist_attr.dims_mapping
+                if is_gradient_clip_op(op):
+                    if op.type in [
+                            "sum", "sqrt", "fill_constant", "elementwise_max",
+                            "elementwise_div"
+                    ]:
+                        op_dist_attr = OperatorDistributedAttribute()
+                        op_dist_attr.process_mesh = world_ranks
+                        for in_name in op.input_arg_names:
+                            in_var = vars[in_name]
+                            in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                                in_var)
+                            op_dist_attr.set_input_dist_attr(
+                                in_name, in_dist_attr)
+                        for out_name in op.output_arg_names:
+                            out_var = vars[out_name]
+                            out_dist_attr = TensorDistributedAttribute()
+                            out_dist_attr.process_mesh = world_ranks
+                            out_dist_attr.dims_mapping = [
+                                -1 for _ in range(len(out_var.shape))
+                            ]
+                            self._dist_context.set_tensor_dist_attr_for_program(
+                                out_var, out_dist_attr)
+                            op_dist_attr.set_output_dist_attr(
+                                out_name, out_dist_attr)
+                    else:
+                        in_var = vars[op.input("X")[0]]
+                        in_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                            in_var)
+                        assert in_dist_attr is not None
+                        ref_process_mesh = in_dist_attr.process_mesh
+                        ref_dims_mapping = in_dist_attr.dims_mapping
 
-                    out = vars[op.output("Out")[0]]
-                    out_dist_attr = TensorDistributedAttribute()
-                    out_dist_attr.process_mesh = ref_process_mesh
-                    out_dist_attr.dims_mapping = ref_dims_mapping
-                    self._dist_context.set_tensor_dist_attr_for_program(
-                        out, out_dist_attr)
+                        if op.type == "cast" and \
+                            ops[idx + 1].type == "elementwise_mul":
+                            ref_var = vars[ops[idx + 1].input("X")[0]]
+                            ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                                ref_var)
+                            assert ref_dist_attr is not None
+                            ref_process_mesh = ref_dist_attr.process_mesh
 
-                    op_dist_attr = OperatorDistributedAttribute()
-                    op_dist_attr.process_mesh = ref_process_mesh
-                    op_dist_attr.set_input_dist_attr(param_grad.name,
-                                                     param_grad_dist_attr)
-                    op_dist_attr.set_output_dist_attr(out.name, out_dist_attr)
+                        out_var = vars[op.output("Out")[0]]
+                        out_dist_attr = TensorDistributedAttribute()
+                        out_dist_attr.process_mesh = ref_process_mesh
+                        if out_var.shape == in_var.shape:
+                            out_dist_attr.dims_mapping = ref_dims_mapping
+                        else:
+                            assert len(
+                                out_var.shape) == 1 and out_var.shape[0] == 1
+                            out_dist_attr.dims_mapping = [-1]
+                        self._dist_context.set_tensor_dist_attr_for_program(
+                            out_var, out_dist_attr)
+
+                        op_dist_attr = OperatorDistributedAttribute()
+                        op_dist_attr.process_mesh = ref_process_mesh
+                        op_dist_attr.set_input_dist_attr(
+                            in_var.name, in_dist_attr)
+                        op_dist_attr.set_output_dist_attr(
+                            out_var.name, out_dist_attr)
+
                     self._dist_context.set_op_dist_attr_for_program(
                         op, op_dist_attr)
 
@@ -1383,10 +1496,16 @@ class Completer:
                     for input_name in op.desc.input_names():
 
                         if input_name in [
-                                'Param', 'Grad', 'LearningRate', "SkipUpdate",
-                                "Beta1Tensor", "Beta2Tensor", "EpsilonTensor",
-                                "MasterParam"
+                                'Param',
+                                'Grad',
+                                'LearningRate',
+                                "SkipUpdate",
+                                "Beta1Tensor",
+                                "Beta2Tensor",
+                                "EpsilonTensor",
                         ]:
+                            continue
+                        if len(op.desc.input(input_name)) == 0:
                             continue
 
                         assert len(op.desc.input(input_name)) == 1
@@ -1400,7 +1519,6 @@ class Completer:
                             op_dist_attr.set_output_dims_mapping(
                                 input_var.name, [-1])
                         else:
-                            assert "Moment" in input_name or "Velocity" in input_name
                             input_var_attr.dims_mapping = ref_dims_mapping
                             op_dist_attr.set_input_dims_mapping(
                                 input_var.name, ref_dims_mapping)

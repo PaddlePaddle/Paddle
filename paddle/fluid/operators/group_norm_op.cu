@@ -268,13 +268,13 @@ class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* x = ctx.Input<Tensor>("X");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
 
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* mean = ctx.Output<Tensor>("Mean");
-    auto* var = ctx.Output<Tensor>("Variance");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+    auto* var = ctx.Output<phi::DenseTensor>("Variance");
     const auto groups = ctx.Attr<int>("groups");
 
     const auto x_dims = x->dims();
@@ -427,8 +427,21 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
   }
   CudaAtomicAddWithWarp(&(d_mean[bid * groups + gid]), d_mean_data);
   CudaAtomicAddWithWarp(&(d_var[bid * groups + gid]), d_var_data);
-  if (flags & kHasScale) CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
-  if (flags & kHasBias) CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
+
+  if (flags & kHasScale) {
+#if CUDA_VERSION >= 11070
+    platform::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+#else
+    CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
+#endif
+  }
+  if (flags & kHasBias) {
+#if CUDA_VERSION >= 11070
+    platform::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+#else
+    CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
+#endif
+  }
 }
 
 template <typename T, int flags>
@@ -603,19 +616,20 @@ class GroupNormGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* mean = ctx.Input<Tensor>("Mean");
-    auto* var = ctx.Input<Tensor>("Variance");
-    auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* mean = ctx.Input<phi::DenseTensor>("Mean");
+    auto* var = ctx.Input<phi::DenseTensor>("Variance");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     const auto groups = ctx.Attr<int>("groups");
 
     // init output
-    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     const auto& x_dims = x->dims();
     const int C =

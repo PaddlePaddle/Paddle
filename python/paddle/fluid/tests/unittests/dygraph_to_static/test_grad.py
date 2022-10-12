@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import paddle
 import unittest
@@ -88,7 +86,7 @@ class TestGrad(unittest.TestCase):
     def test_forward(self):
         dygraph_res = self._run(self.func, to_static=False)
         static_res = self._run(self.func, to_static=True)
-        self.assertTrue(np.allclose(static_res, dygraph_res))
+        np.testing.assert_allclose(static_res, dygraph_res, rtol=1e-05)
 
 
 class TestGradLinear(TestGrad):
@@ -116,7 +114,7 @@ class TestGradLinear(TestGrad):
 
         origin_res = self.func(self.x).numpy()
         load_res = load_func(self.x).numpy()
-        self.assertTrue(np.allclose(origin_res, load_res))
+        np.testing.assert_allclose(origin_res, load_res, rtol=1e-05)
 
     def test_save_train_program(self):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
@@ -136,7 +134,7 @@ class TestGradLinear(TestGrad):
 
         origin_res = self.func(self.x).numpy()
         load_res = load_func(self.x).numpy()
-        self.assertTrue(np.allclose(origin_res, load_res))
+        np.testing.assert_allclose(origin_res, load_res, rtol=1e-05)
 
 
 class TestNoGradLinear(TestGradLinear):

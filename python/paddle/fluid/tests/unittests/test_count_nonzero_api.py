@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 
@@ -48,7 +44,7 @@ class TestCountNonzeroAPI(unittest.TestCase):
                           fetch_list=[out1, out2, out3, out4, out5])
         out_ref = np.count_nonzero(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref), True)
+            np.testing.assert_allclose(out, out_ref, rtol=1e-05)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
@@ -62,7 +58,7 @@ class TestCountNonzeroAPI(unittest.TestCase):
                     axis = None
 
             out_ref = np.count_nonzero(x, axis, keepdims=keepdim)
-            self.assertEqual(np.allclose(out.numpy(), out_ref), True)
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
 
         test_case(self.x)
         test_case(self.x, None)

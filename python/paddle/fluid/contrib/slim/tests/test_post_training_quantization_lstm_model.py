@@ -191,6 +191,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                        onnx_format=onnx_format,
                                        is_use_cache_file=is_use_cache_file)
         ptq.quantize()
+        if onnx_format:
+            ptq._clip_extra = False
         ptq.save_quantized_model(self.int8_model_path)
 
     def run_test(self,
@@ -226,7 +228,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.generate_quantized_model(fp32_model_path, data_path, algo,
                                       round_type, quantizable_op_type,
                                       is_full_quantize, is_use_cache_file,
-                                      is_optimize_model, quant_iterations,
+                                      is_optimize_model, 10, quant_iterations,
                                       onnx_format)
 
         print("Start INT8 inference for {0} on {1} samples ...".format(

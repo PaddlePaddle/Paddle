@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 import enum
 import paddle
@@ -40,7 +40,7 @@ class TensorConfig:
         '''
         shape: The shape of the tensor.
         dtype: The data type of the tensor.
-        data: The value of WeightVar. for input, it should be None 
+        data: The value of WeightVar. for input, it should be None
         '''
         self.lod = lod
         if data_gen is not None:

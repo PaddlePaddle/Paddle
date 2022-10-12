@@ -13,13 +13,14 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/gelu_grad_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_context.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
-#include "paddle/phi/kernels/funcs/onednn/mkldnn_reuse.h"
 
 namespace phi {
 
@@ -52,12 +53,11 @@ void EltwiseForward(const OneDNNContext& dev_ctx,
                     true,
                     phi::errors::PreconditionNotMet(
                         "Operator DNNL eletwise_forward must use ONEDNNPlace"));
-  const auto& mkldnn_engine = dev_ctx.GetEngine();
 
   bool is_inplaced = x.IsSharedBufferWith(*out);
 
-  funcs::ActivationMKLDNNHandler<T> handler(
-      algorithm, alpha, beta, mkldnn_engine, dev_ctx.GetPlace(), &x);
+  funcs::ActivationOneDNNHandler<T> handler(
+      algorithm, alpha, beta, dev_ctx.GetEngine(), dev_ctx.GetPlace(), &x);
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
   std::shared_ptr<dnnl::memory> dst_memory_p = nullptr;
@@ -78,7 +78,7 @@ void EltwiseForward(const OneDNNContext& dev_ctx,
 }
 
 template <typename T, dnnl::algorithm algorithm>
-struct MKLDNNActivationFunc : public funcs::BaseActivationFunctor<T> {
+struct OneDNNActivationFunc : public funcs::BaseActivationFunctor<T> {
   void operator()(const OneDNNContext& dev_ctx,
                   const DenseTensor& x,
                   float alpha,
@@ -89,55 +89,72 @@ struct MKLDNNActivationFunc : public funcs::BaseActivationFunctor<T> {
 };
 
 template <typename T>
-using ReluMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_relu>;
+using AbsOneDNNFunctor = OneDNNActivationFunc<T, dnnl::algorithm::eltwise_abs>;
 
 template <typename T>
-using SwishMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_swish>;
+using EluOneDNNFunctor = OneDNNActivationFunc<T, dnnl::algorithm::eltwise_elu>;
 
 template <typename T>
-using HardSwishMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_hardswish>;
+using ExpOneDNNFunctor = OneDNNActivationFunc<T, dnnl::algorithm::eltwise_exp>;
 
 template <typename T>
-using MishMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_mish>;
+using GeluTanhOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_gelu_tanh>;
 
 template <typename T>
-using SigmoidMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_logistic>;
+using GeluErfOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_gelu_erf>;
 
 template <typename T>
-using TanhMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_tanh>;
+using HardSwishOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_hardswish>;
 
 template <typename T>
-using SqrtMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_sqrt>;
+using MishOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_mish>;
 
 template <typename T>
-using EluMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_elu>;
+using ReluOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_relu>;
 
 template <typename T>
-using ExpMKLDNNFunctor = MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_exp>;
+using Relu6OneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_clip_v2>;
 
 template <typename T>
-using RoundMKLDNNFunctor =
-    MKLDNNActivationFunc<T, dnnl::algorithm::eltwise_round>;
+using RoundOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_round>;
 
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Relu, ReluMKLDNNFunctor)
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Tanh, TanhMKLDNNFunctor)
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Exp, ExpMKLDNNFunctor)
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Sqrt, SqrtMKLDNNFunctor)
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Sigmoid, SigmoidMKLDNNFunctor)
+template <typename T>
+using SigmoidOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_logistic>;
+
+template <typename T>
+using SqrtOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_sqrt>;
+
+template <typename T>
+using SwishOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_swish>;
+
+template <typename T>
+using TanhOneDNNFunctor =
+    OneDNNActivationFunc<T, dnnl::algorithm::eltwise_tanh>;
+
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Abs, AbsOneDNNFunctor)
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Exp, ExpOneDNNFunctor)
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Relu, ReluOneDNNFunctor)
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Sigmoid, SigmoidOneDNNFunctor)
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Sqrt, SqrtOneDNNFunctor)
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Tanh, TanhOneDNNFunctor)
+
 // round eltwise primitive doesn't support BF16, nor does it support grad
-DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundMKLDNNFunctor)
+DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundOneDNNFunctor)
 
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluMKLDNNFunctor, alpha)
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishMKLDNNFunctor, threshold)
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluMKLDNNFunctor, alpha)
-DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Swish, SwishMKLDNNFunctor, beta)
+DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
+DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, ReluOneDNNFunctor, alpha)
+DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishOneDNNFunctor, threshold)
+DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Swish, SwishOneDNNFunctor, beta)
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
@@ -146,25 +163,51 @@ void HardSwishKernel(const Context& dev_ctx,
                      float scale,
                      float offset,
                      DenseTensor* out) {
-  HardSwishMKLDNNFunctor<T> functor;
+  HardSwishOneDNNFunctor<T> functor;
   functor(dev_ctx, x, threshold, 0, out);
+}
+
+template <typename T, typename Context>
+void GeluKernel(const Context& dev_ctx,
+                const DenseTensor& x,
+                bool approximate,
+                DenseTensor* out) {
+  if (approximate) {
+    GeluTanhOneDNNFunctor<T> functor;
+    functor(dev_ctx, x, 0, 0, out);
+  } else {
+    GeluErfOneDNNFunctor<T> functor;
+    functor(dev_ctx, x, 0, 0, out);
+  }
+}
+
+template <typename T, typename Context>
+void Relu6Kernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 float threshold,
+                 DenseTensor* out) {
+  Relu6OneDNNFunctor<T> functor;
+  functor(dev_ctx, x, 0, threshold, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(round, OneDNN, ALL_LAYOUT, phi::RoundKernel, float) {}
+PD_REGISTER_KERNEL(round, OneDNN, ONEDNN, phi::RoundKernel, float) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(                             \
-      name, OneDNN, ALL_LAYOUT, phi::func, float, phi::dtype::bfloat16) {}
+      name, OneDNN, ONEDNN, phi::func, float, phi::dtype::bfloat16) {}
 
+PD_REGISTER_ACTIVATION_KERNEL(abs, AbsKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)
+PD_REGISTER_ACTIVATION_KERNEL(gelu, GeluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_swish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
-PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)

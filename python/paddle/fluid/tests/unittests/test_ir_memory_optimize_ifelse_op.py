@@ -14,8 +14,6 @@
 
 # nlp model stack of op operate on lod. It's a classical test case in optimize pass.
 
-from __future__ import print_function
-
 import numpy as np
 
 import paddle
@@ -27,9 +25,7 @@ import paddle.fluid.core as core
 
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.executor import Executor
-from paddle.fluid.backward import append_backward
 from paddle.fluid.optimizer import MomentumOptimizer
-from ir_memory_optimize_net_base import TestIrMemOptBase
 
 
 class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
@@ -116,14 +112,14 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
         print(ret1)
         ret2 = self.check_network_convergence(False, False)
         print(ret2)
-        self.assertTrue(np.allclose(ret1, ret2))
+        np.testing.assert_allclose(ret1, ret2, rtol=1e-05)
 
         if fluid.core.is_compiled_with_cuda():
             ret1 = self.check_network_convergence(True, True)
             print(ret1)
             ret2 = self.check_network_convergence(True, False)
             print(ret2)
-            self.assertTrue(np.allclose(ret1, ret2))
+            np.testing.assert_allclose(ret1, ret2, rtol=1e-05)
 
 
 if __name__ == "__main__":

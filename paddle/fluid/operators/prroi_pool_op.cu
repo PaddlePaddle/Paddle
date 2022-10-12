@@ -17,8 +17,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
@@ -218,9 +218,9 @@ template <typename T>
 class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<Tensor>("X");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<LoDTensor>("ROIs");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -237,14 +237,14 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     if (rois_num == 0) return;
 
     // set rois batch id
-    framework::Tensor rois_batch_id_list;
+    phi::DenseTensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num});
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
 
     if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
-      auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
-      framework::Tensor batch_index_cpu;
+      auto* batchroinum = ctx.Input<phi::DenseTensor>("BatchRoINums");
+      phi::DenseTensor batch_index_cpu;
       framework::TensorCopySync(
           *batchroinum, platform::CPUPlace(), &batch_index_cpu);
 
@@ -287,7 +287,10 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     auto cplace = platform::CPUPlace();
     auto& dev_ctx = ctx.cuda_device_context();
     int bytes = rois_batch_id_list.numel() * sizeof(int);
-    auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+    auto roi_ptr = memory::Alloc(
+        dev_ctx.GetPlace(),
+        bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     const auto gplace = ctx.GetPlace();
     memory::Copy(gplace,
@@ -318,12 +321,14 @@ template <typename DeviceContext, typename T>
 class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<Tensor>("X");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
     auto* rois = ctx.Input<LoDTensor>("ROIs");
-    auto* out = ctx.Input<framework::Tensor>("Out");
+    auto* out = ctx.Input<phi::DenseTensor>("Out");
 
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* input_roi_grad =
         ctx.Output<LoDTensor>(framework::GradVarName("ROIs"));
 
@@ -339,14 +344,14 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 
     if (input_grad || input_roi_grad) {
       // set roi batch id
-      framework::Tensor rois_batch_id_list;
+      phi::DenseTensor rois_batch_id_list;
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
 
       if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
-        auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
-        framework::Tensor batch_index_cpu;
+        auto* batchroinum = ctx.Input<phi::DenseTensor>("BatchRoINums");
+        phi::DenseTensor batch_index_cpu;
         framework::TensorCopySync(
             *batchroinum, platform::CPUPlace(), &batch_index_cpu);
 
@@ -377,7 +382,10 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       auto cplace = platform::CPUPlace();
       auto& dev_ctx = ctx.cuda_device_context();
       int bytes = rois_batch_id_list.numel() * sizeof(int);
-      auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+      auto roi_ptr = memory::Alloc(
+          dev_ctx.GetPlace(),
+          bytes,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
       int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
       const auto gplace = ctx.GetPlace();
       memory::Copy(gplace,

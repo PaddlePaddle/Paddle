@@ -14,15 +14,15 @@
 
 # TODO: define statistical functions of a tensor
 
-import numpy as np
 from ..static import Variable
 from ..framework import LayerHelper
 from ..framework import core
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .search import where
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
+from ..fluid.layers import utils
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []
 
@@ -80,31 +80,39 @@ def mean(x, axis=None, keepdim=False, name=None):
             # [ 8.5 12.5 16.5]
     """
 
-    if isinstance(axis, int):
-        axis = [axis]
-    reduce_all = True if axis is None \
-        or len(axis)==0 \
-        or len(axis) == len(x.shape) else False
-    if axis is None or len(axis) == 0:
-        axis = [0]
+    if isinstance(axis, Variable):
+        reduce_all = True if axis.shape[0] == len(x.shape) else False
+    else:
+        if isinstance(axis, int):
+            axis = [axis]
+        reduce_all = True if axis is None \
+            or len(axis)==0 \
+            or len(axis) == len(x.shape) else False
+        if axis is None or len(axis) == 0:
+            axis = [0]
 
     if in_dygraph_mode():
         if reduce_all:
-            axis = range(len(x.shape))
-        return _C_ops.final_state_mean(x, axis, keepdim)
+            axis = list(range(len(x.shape)))
+        return _C_ops.mean(x, axis, keepdim)
     if _in_legacy_dygraph():
-        return _C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
-                                  'reduce_all', reduce_all)
+        return _legacy_C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
+                                         'reduce_all', reduce_all)
 
     check_variable_and_dtype(x, 'x/input',
                              ['uint16', 'float16', 'float32', 'float64'],
                              'mean/reduce_mean')
-    check_type(axis, 'axis/dim', (int, list, tuple), 'mean/reduce_mean')
+    check_type(axis, 'axis/dim', (int, list, tuple, Variable),
+               'mean/reduce_mean')
     if isinstance(axis, (list, tuple)):
         for item in axis:
-            check_type(item, 'elements of axis/dim', (int), 'mean/reduce_mean')
+            check_type(item, 'elements of axis/dim', (int, Variable),
+                       'mean/reduce_mean')
 
     helper = LayerHelper('mean', **locals())
+
+    if not isinstance(axis, Variable) and utils._contain_var(axis):
+        axis = utils._convert_to_tensor_list(axis)
     attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='reduce_mean',
@@ -120,10 +128,10 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
 
     Args:
         x (Tensor): The input Tensor with data type float32, float64.
-        axis (int|list|tuple, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int). 
-        
-            - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` . 
-            - If ``axis`` or element(s) of ``axis`` is less than 0, it works the same way as :math:`axis + D` . 
+        axis (int|list|tuple, optional): The axis along which to perform variance calculations. ``axis`` should be int, list(int) or tuple(int).
+
+            - If ``axis`` is a list/tuple of dimension(s), variance is calculated along all element(s) of ``axis`` . ``axis`` or element(s) of ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
+            - If ``axis`` or element(s) of ``axis`` is less than 0, it works the same way as :math:`axis + D` .
             - If ``axis`` is None, variance is calculated over all elements of ``x``. Default is None.
 
         unbiased (bool, optional): Whether to use the unbiased estimation. If ``unbiased`` is True, the divisor used in the computation is :math:`N - 1`, where :math:`N` represents the number of elements along ``axis`` , otherwise the divisor is :math:`N`. Default is True.
@@ -150,8 +158,10 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     u = mean(x, axis, True, name)
     out = paddle.sum((x - u)**2, axis, keepdim=keepdim, name=name)
 
-    n = paddle.cast(paddle.numel(x), x.dtype) \
-        / paddle.cast(paddle.numel(out), x.dtype)
+    dtype = x.dtype
+    n = paddle.cast(paddle.numel(x), paddle.int64) \
+        / paddle.cast(paddle.numel(out), paddle.int64)
+    n = n.astype(dtype)
     if unbiased:
         one_const = paddle.ones([1], x.dtype)
         n = where(n > one_const, n - 1., one_const)
@@ -227,14 +237,16 @@ def numel(x, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.full(shape=[4, 5, 7], fill_value=0, dtype='int32')
             numel = paddle.numel(x) # 140
 
 
     """
-    if paddle.in_dynamic_mode():
+    if in_dygraph_mode():
         return _C_ops.size(x)
+    elif _in_legacy_dygraph():
+        return _legacy_C_ops.size(x)
 
     if not isinstance(x, Variable):
         raise TypeError("x must be a Tensor in numel")
@@ -320,8 +332,8 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
         raise ValueError("Axis has duplicated elements.")
 
     if _in_legacy_dygraph():
-        median_index, out = _C_ops.nanmedian(x, 'axis', axis, 'keepdim',
-                                             keepdim)
+        median_index, out = _legacy_C_ops.nanmedian(x, 'axis', axis, 'keepdim',
+                                                    keepdim)
         return out
 
     check_variable_and_dtype(
@@ -592,32 +604,35 @@ def quantile(x, q, axis=None, keepdim=False):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.arange(0, 8, dtype=np.float32).reshape(4, 2)
-            # [[0 1]
-            #  [2 3]
-            #  [4 5]
-            #  [6 7]]
-            y = paddle.to_tensor(x)
+            y = paddle.arange(0, 8 ,dtype="float32").reshape([4, 2])
+            # Tensor(shape=[4, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        [[0., 1.],
+            #         [2., 3.],
+            #         [4., 5.],
+            #         [6., 7.]])
+
             y1 = paddle.quantile(y, q=0.5, axis=[0, 1])
-            # 3.5
+            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        3.50000000)
 
             y2 = paddle.quantile(y, q=0.5, axis=1)
-            # [0.5 2.5 4.5 6.5]
+            # Tensor(shape=[4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [0.50000000, 2.50000000, 4.50000000, 6.50000000])
 
             y3 = paddle.quantile(y, q=[0.3, 0.5], axis=0)
-            # [[1.8 2.8]
-            #  [3.  4. ]]
+            # Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[1.80000000, 2.80000000],
+            #         [3.        , 4.        ]])
 
-            x[0][0] = np.nan
-            y = paddle.to_tensor(x)
+            y[0,0] = float("nan")
             y4 = paddle.quantile(y, q=0.8, axis=1, keepdim=True)
-            # [[nan]
-            #  [2.8]
-            #  [4.8]
-            #  [6.8]]
+            # Tensor(shape=[4, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[nan       ],
+            #         [2.80000000],
+            #         [4.80000000],
+            #         [6.80000000]])
 
     """
     return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=False)
@@ -652,35 +667,37 @@ def nanquantile(x, q, axis=None, keepdim=False):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            x = np.array(
+            x = paddle.to_tensor(
                 [[0, 1, 2, 3, 4],
-                 [5, 6, 7, 8, 9]],
-                dtype=np.float32
-            )
-            x[0][0] = np.nan
+                    [5, 6, 7, 8, 9]],
+                dtype="float32")
+            x[0,0] = float("nan")
 
-            x = paddle.to_tensor(x)
             y1 = paddle.nanquantile(x, q=0.5, axis=[0, 1])
-            # 5.0
+            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        5.)
 
             y2 = paddle.nanquantile(x, q=0.5, axis=1)
-            # [2.5 7. ]
+            # Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [2.50000000, 7.        ])
 
             y3 = paddle.nanquantile(x, q=[0.3, 0.5], axis=0)
-            # [[5.  2.5 3.5 4.5 5.5]
-            #  [5.  3.5 4.5 5.5 6.5]
+            # Tensor(shape=[2, 5], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[5.        , 2.50000000, 3.50000000, 4.50000000, 5.50000000],
+            #         [5.        , 3.50000000, 4.50000000, 5.50000000, 6.50000000]])
 
             y4 = paddle.nanquantile(x, q=0.8, axis=1, keepdim=True)
-            # [[3.4]
-            #  [8.2]]
+            # Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[3.40000000],
+            #         [8.20000000]])
 
-            nan = paddle.full(shape=[2, 3], fill_value=np.nan)
+            nan = paddle.full(shape=[2, 3], fill_value=float("nan"))
             y5 = paddle.nanquantile(nan, q=0.8, axis=1, keepdim=True)
-            # [[nan]
-            #  [nan]]
+            # Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        [[nan],
+            #         [nan]])
 
     """
     return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=True)

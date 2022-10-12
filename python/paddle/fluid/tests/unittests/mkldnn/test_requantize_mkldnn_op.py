@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -360,8 +358,10 @@ class TestReQuantizeOpReused(TestReQuantizeOp):
                               feed={'input': variables['input']},
                               fetch_list=['output'])
 
-            self.assertTrue(np.allclose(variables['output'], out[0], atol=1e-4),
-                            'output')
+            np.testing.assert_allclose(variables['output'],
+                                       out[0],
+                                       rtol=1e-05,
+                                       atol=1e-4)
 
 
 # ---------------test reused requantize op, no shift------------------------

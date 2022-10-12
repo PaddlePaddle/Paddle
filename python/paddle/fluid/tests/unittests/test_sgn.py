@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -69,7 +67,7 @@ class TestSignAPI(unittest.TestCase):
             z = paddle.sgn(x)
             np_z = z.numpy()
             z_expected = np_sgn(np_x)
-            self.assertTrue(np.allclose(np_z, z_expected))
+            np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
     def test_float(self):
         for dtype in self.support_dtypes:
@@ -78,7 +76,7 @@ class TestSignAPI(unittest.TestCase):
             z = paddle.sgn(x)
             np_z = z.numpy()
             z_expected = np_sgn(np_x)
-            self.assertTrue(np.allclose(np_z, z_expected))
+            np.testing.assert_allclose(np_z, z_expected, rtol=1e-05)
 
 
 if __name__ == "__main__":

@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
 from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler
 from paddle.static import Program, program_guard
-import paddle.fluid.core as core
 
 
 # situation 1: have shape( list, no tensor), no actual shape(Tensor)
@@ -488,7 +484,7 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
         expected_out = np.reshape(input_1, newshape=[5, 10])
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_out_uint8(self):
         paddle.disable_static()
@@ -497,7 +493,7 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
         expected_out = np.reshape(input_1, newshape=[5, 10])
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_out_float32(self):
         paddle.disable_static()
@@ -506,7 +502,7 @@ class TestDygraphReshapeAPI(unittest.TestCase):
         output = self.reshape(x=input, shape=[5, 10])
         out_np = output.numpy()
         expected_out = np.reshape(input_1, newshape=[5, 10])
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
 
 class TestDygraphReshapeInplaceAPI(TestDygraphReshapeAPI):

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -130,14 +128,14 @@ class TestAucAPI(unittest.TestCase):
 
         y = np.array([0, 0, 1, 0]).astype('int64')
         z = np.array([1, 1, 1, 1]).astype('float32')
-        output = exe.run(feed={
+        output, = exe.run(feed={
             "input": x,
             "label": y,
             "ins_tag_weight": z
         },
-                         fetch_list=[result[0]])
+                          fetch_list=[result[0]])
         auc_np = np.array([0.66666667]).astype("float32")
-        self.assertTrue(np.allclose(output, auc_np))
+        np.testing.assert_allclose(output, auc_np, rtol=1e-05)
 
 
 class TestAucOpError(unittest.TestCase):

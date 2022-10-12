@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.w
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -349,9 +347,9 @@ class TestSolveOpAPI_1(unittest.TestCase):
                                   "input_y": np_input_y
                               },
                               fetch_list=[paddle_result])
-            self.assertTrue(
-                np.allclose(fetches[0], np.linalg.solve(np_input_x,
-                                                        np_input_y)))
+            np.testing.assert_allclose(fetches[0],
+                                       np.linalg.solve(np_input_x, np_input_y),
+                                       rtol=1e-05)
 
     def test_static(self):
         for place in self.place:
@@ -370,8 +368,9 @@ class TestSolveOpAPI_1(unittest.TestCase):
 
             numpy_output = np.linalg.solve(input_x_np, input_y_np)
             paddle_output = paddle.linalg.solve(tensor_input_x, tensor_input_y)
-            self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
-                             True)
+            np.testing.assert_allclose(numpy_output,
+                                       paddle_output.numpy(),
+                                       rtol=1e-05)
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 
@@ -417,9 +416,9 @@ class TestSolveOpAPI_2(unittest.TestCase):
                                   "input_y": np_input_y
                               },
                               fetch_list=[paddle_result])
-            self.assertTrue(
-                np.allclose(fetches[0], np.linalg.solve(np_input_x,
-                                                        np_input_y)))
+            np.testing.assert_allclose(fetches[0],
+                                       np.linalg.solve(np_input_x, np_input_y),
+                                       rtol=1e-05)
 
     def test_static(self):
         for place in self.place:
@@ -437,8 +436,9 @@ class TestSolveOpAPI_2(unittest.TestCase):
 
             numpy_output = np.linalg.solve(input_x_np, input_y_np)
             paddle_output = paddle.linalg.solve(tensor_input_x, tensor_input_y)
-            self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
-                             True)
+            np.testing.assert_allclose(numpy_output,
+                                       paddle_output.numpy(),
+                                       rtol=1e-05)
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 
@@ -484,10 +484,9 @@ class TestSolveOpAPI_3(unittest.TestCase):
                                   "input_y": np_input_y
                               },
                               fetch_list=[paddle_result])
-            self.assertTrue(
-                np.allclose(fetches[0],
-                            np.linalg.solve(np_input_x, np_input_y),
-                            rtol=1.e-4))
+            np.testing.assert_allclose(fetches[0],
+                                       np.linalg.solve(np_input_x, np_input_y),
+                                       rtol=0.0001)
 
     def test_static(self):
         for place in self.place:
@@ -506,9 +505,9 @@ class TestSolveOpAPI_3(unittest.TestCase):
 
             numpy_output = np.linalg.solve(input_x_np, input_y_np)
             paddle_output = paddle.linalg.solve(tensor_input_x, tensor_input_y)
-            self.assertEqual(
-                np.allclose(numpy_output, paddle_output.numpy(), rtol=1.e-4),
-                True)
+            np.testing.assert_allclose(numpy_output,
+                                       paddle_output.numpy(),
+                                       rtol=0.0001)
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 
@@ -553,9 +552,9 @@ class TestSolveOpAPI_4(unittest.TestCase):
                                   "input_y": np_input_y
                               },
                               fetch_list=[paddle_result])
-            self.assertTrue(
-                np.allclose(fetches[0], np.linalg.solve(np_input_x,
-                                                        np_input_y)))
+            np.testing.assert_allclose(fetches[0],
+                                       np.linalg.solve(np_input_x, np_input_y),
+                                       rtol=1e-05)
 
     def test_static(self):
         for place in self.place:
@@ -574,8 +573,9 @@ class TestSolveOpAPI_4(unittest.TestCase):
 
             numpy_output = np.linalg.solve(input_x_np, input_y_np)
             paddle_output = paddle.linalg.solve(tensor_input_x, tensor_input_y)
-            self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
-                             True)
+            np.testing.assert_allclose(numpy_output,
+                                       paddle_output.numpy(),
+                                       rtol=1e-05)
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 
@@ -616,10 +616,8 @@ class TestSolveOpSingularAPI(unittest.TestCase):
                                   fetch_list=[result])
             except RuntimeError as ex:
                 print("The mat is singular")
-                pass
             except ValueError as ex:
                 print("The mat is singular")
-                pass
 
     def test_static(self):
         for place in self.places:
@@ -637,10 +635,8 @@ class TestSolveOpSingularAPI(unittest.TestCase):
                     result = paddle.linalg.solve(input_x, input_y)
                 except RuntimeError as ex:
                     print("The mat is singular")
-                    pass
                 except ValueError as ex:
                     print("The mat is singular")
-                    pass
 
     def test_dygraph(self):
         with _test_eager_guard():

@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.nn import Embedding
-import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
@@ -197,8 +194,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                                 static_param_updated[static_param_name_list[
                                     k - 1]] = out[k]
 
-                self.assertTrue(
-                    np.allclose(static_loss_value, dy_loss_value, rtol=1e-3))
+                np.testing.assert_allclose(static_loss_value,
+                                           dy_loss_value,
+                                           rtol=0.001)
                 for key, value in six.iteritems(static_param_init):
                     np.testing.assert_array_equal(value, dy_param_init[key])
                 for key, value in six.iteritems(static_param_updated):

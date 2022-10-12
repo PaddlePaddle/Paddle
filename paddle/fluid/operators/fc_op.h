@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 enum { kFCMKLDNNFP32 = 1, kFCMKLDNNINT8 = 2 };
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 inline void FCOutputSize(const framework::DDim& in_dims,
                          const framework::DDim& w_dims,
@@ -58,16 +58,18 @@ template <typename DeviceContext, typename T>
 class FCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::LoDTensor>("Input");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     bool with_relu =
         (ctx.Attr<std::string>("activation_type") == "relu") ? true : false;
 
     auto w_dims = w->dims();
     bool padding_weights = ctx.Attr<bool>("padding_weights");
+
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     std::vector<int64_t> output_dims;
     FCOutputSize(
@@ -82,9 +84,9 @@ class FCOpKernel : public framework::OpKernel<T> {
 
     const T* input_data = input->data<T>();
     const T* w_data = w->data<T>();
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    auto* output_data =
+        dev_ctx.template Alloc<T>(output, output->numel() * sizeof(T));
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx,
        M,

@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
 import unittest
-import op_test
 import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 from op_test_xpu import XPUOpTest
 
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
@@ -33,6 +31,7 @@ typeid_dict = {
     'float32': int(core.VarDesc.VarType.FP32),
     'float16': int(core.VarDesc.VarType.FP16),
     'bool': int(core.VarDesc.VarType.BOOL),
+    'uint8': int(core.VarDesc.VarType.UINT8),
 }
 
 
@@ -45,7 +44,7 @@ class XPUTestCastOp(XPUOpTestWrapper):
     def dynamic_create_class(self):
         base_class = self.TestCastOp
         classes = []
-        for out_type in {'float16', 'float32', 'int32', 'int64'}:
+        for out_type in {'float16', 'float32', 'int32', 'int64', 'uint8'}:
             class_name = 'XPUTestCastOp_outtype_' + out_type
             attr_dict = {'out_typename': out_type}
             classes.append([class_name, attr_dict])

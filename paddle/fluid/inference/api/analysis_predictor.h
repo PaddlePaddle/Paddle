@@ -173,6 +173,12 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the map of input names and shapes
   ///
   std::map<std::string, std::vector<int64_t>> GetInputTensorShape() override;
+  ///
+  /// \brief Get all input names and their corresponding type
+  ///
+  /// \return the map of input names and type
+  ///
+  std::map<std::string, paddle_infer::DataType> GetInputTypes() override;
 
   ///
   /// \brief Run the prediction engine
@@ -347,8 +353,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[out] output_data output tensor
   ///
   template <typename T>
-  void GetFetchOne(const framework::LoDTensor &fetchs,
-                   PaddleTensor *output_data);
+  void GetFetchOne(const phi::DenseTensor &fetchs, PaddleTensor *output_data);
   ///
   /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.
   ///
@@ -493,7 +498,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
-  std::vector<framework::LoDTensor> feed_tensors_;
+  std::vector<phi::DenseTensor> feed_tensors_;
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
   // A mutex help to make Clone thread safe.
   std::mutex clone_mutex_;
@@ -509,6 +514,7 @@ class AnalysisPredictor : public PaddlePredictor {
   bool status_is_cloned_{false};
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
+  std::map<std::string, std::vector<std::vector<int32_t>>> shape_tensor_value_;
   static int clone_num_;
 
   bool private_context_{false};

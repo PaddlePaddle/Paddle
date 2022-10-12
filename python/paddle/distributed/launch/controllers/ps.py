@@ -111,7 +111,7 @@ class PSController(Controller):
 
     def _build_pod_with_master(self):
 
-        self.pod.rank = self.ctx.args.rank
+        self.pod.rank = int(self.ctx.args.rank)
 
         server_num = self.ctx.args.server_num or 1
         servers = [

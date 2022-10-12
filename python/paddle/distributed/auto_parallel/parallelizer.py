@@ -24,13 +24,11 @@ import pickle
 import time
 import paddle
 from paddle.fluid.backward import append_backward
-from paddle.distributed.utils import get_logger
-from paddle.distributed.fleet import cloud_utils
+from paddle.distributed.utils.log_utils import get_logger
 import paddle.fluid.core as core
 from paddle.fluid import program_guard
 from paddle.distributed.passes import new_pass, PassContext
 from .dist_context import DistributedContext
-from .dist_context import get_default_distributed_context
 from .dist_context import set_default_distributed_context
 from .completion import Completer
 from .partitioner import Partitioner
@@ -40,8 +38,8 @@ from .process_group import get_world_process_group
 from .process_group import _g_process_group_map, ProcessGroup
 from .utils import make_data_unshard
 from .utils import set_grad_var_shape
-from .utils import print_program_with_dist_attr
 from .utils import SerialProgramInfo
+from .utils import get_logger
 from .reshard import Resharder
 from .cluster import Cluster
 from .mapper import mapping
@@ -57,9 +55,9 @@ class AutoParallelizer:
     AutoParallelizer is the main controller class to do the auto parallel process.
     And the auto parallel process will be triggered in the wrapped parallelize function.
     To facilitate the auto parallelization, it will contain information about program, cluster and the
-    related context. In this basic version, the program information will be retrevied from 
+    related context. In this basic version, the program information will be retrevied from
     Fleet object, and the cluster information can be retrevied in the new created Cluster object,
-    and the context information can be retrevied in the new created DistributedContext. 
+    and the context information can be retrevied in the new created DistributedContext.
     """
 
     def __init__(self, fleet):
@@ -84,7 +82,7 @@ class AutoParallelizer:
         self._need_rank_mapping = os.getenv("PADDLE_NEED_RANK_MAPPING")
         self._need_rank_mapping = True if self._need_rank_mapping and \
             self._need_rank_mapping.lower() == 'true' else False
-        self._pass_context = None
+        # self._pass_context = None
 
     def _remove_distributed_attrs(self, main_program):
         suffix = core.kAutoParallelSuffix()
@@ -109,10 +107,12 @@ class AutoParallelizer:
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply([main_program], [startup_program],
                                               self._pass_context)
+                loss = auto_parallel_fp16_pass.get_loss()
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply([main_program], [startup_program],
                                              self._pass_context)
+                loss = auto_parallel_amp_pass.get_loss()
 
         # apply recompute pass
         if self._dist_strategy.recompute:
@@ -143,10 +143,11 @@ class AutoParallelizer:
 
     def _apply_optimize(self, main_program, startup_program, params_grads):
 
+        optimizer = copy.deepcopy(self._optimizer)
         with program_guard(main_program, startup_program):
-            optimize_ops = copy.deepcopy(
-                self._optimizer).apply_gradients(params_grads)
+            optimize_ops = optimizer.apply_gradients(params_grads)
 
+        self._dist_context._lr_optimizer = optimizer
         # update completion
         self._completer = Completer(self._dist_context)
         self._completer.complete_update_annotation(main_program)
@@ -165,6 +166,15 @@ class AutoParallelizer:
                                                    config)
             auto_parallel_sharding_pass.apply([main_program], [startup_program],
                                               self._pass_context)
+            params_grads = self._pass_context.get_attr("params_grads")
+
+        config = copy.deepcopy(self._dist_strategy.sharding_configs)
+        config["dist_context"] = self._dist_context
+        config["params_grads"] = params_grads
+        config["rank_id"] = rank
+        auto_parallel_clip_pass = new_pass("auto_parallel_grad_clip", config)
+        auto_parallel_clip_pass.apply([main_program], [startup_program],
+                                      self._pass_context)
 
         if self._dist_strategy.gradient_merge:
             config = copy.deepcopy(self._dist_strategy.gradient_merge_configs)

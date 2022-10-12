@@ -31,7 +31,7 @@ from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 _grad_scalar = None
 
@@ -119,6 +119,10 @@ def monkey_patch_varbase():
         attr_keys = ['block', 'shape', 'dtype', 'type', 'name', 'persistable']
         for attr in attr_keys:
             attr_kwargs[attr] = getattr(self, attr, None)
+
+        # If specify block, use it instead of self.block
+        if 'block' in kwargs:
+            attr_kwargs['block'] = kwargs['block']
 
         attr_kwargs.update(kwargs)
 
@@ -425,12 +429,14 @@ def monkey_patch_varbase():
         if device is not None:
             if isinstance(device, str):
                 device = paddle.device._convert_to_place(device)
-            elif isinstance(device, (core.CPUPlace, core.CUDAPlace,
-                                     core.CUDAPinnedPlace, core.XPUPlace)):
+            elif isinstance(
+                    device,
+                (core.CPUPlace, core.CUDAPlace, core.CUDAPinnedPlace,
+                 core.XPUPlace, core.CustomPlace)):
                 pass
             else:
                 raise ValueError(
-                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace() or paddle.XPUPlace(), but the type of device is "
+                    "device value error, must be str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace() or paddle.CustomPlace(), but the type of device is "
                     + type(device).__name__)
 
         if blocking is None:
@@ -810,17 +816,6 @@ def monkey_patch_varbase():
                 "_set_grad_ivar is only supported for Parameter Tensor")
 
     @framework.dygraph_only
-    def clone(self):
-        if in_dygraph_mode():
-            return _C_ops.final_state_assign(self)
-
-        if _in_legacy_dygraph():
-            output = core.VarBase()
-        else:
-            output = core.eager.Tensor()
-        return _C_ops.assign(self, output)
-
-    @framework.dygraph_only
     def value(self):
         return self
 
@@ -917,12 +912,7 @@ def monkey_patch_varbase():
                     print(sparse_x.values())
                     #[1, 2, 3, 4, 5]
         """
-
-        if self.is_sparse_coo() or self.is_sparse_csr():
-            return _C_ops.final_state_sparse_values(self)
-        else:
-            raise ValueError(
-                "only SparseCooTensor and SparseCsrTensor have method values")
+        return _C_ops.sparse_values(self)
 
     @framework.dygraph_only
     def to_dense(self):
@@ -950,12 +940,7 @@ def monkey_patch_varbase():
                     # [4., 5., 0., 0.]]
         """
 
-        if self.is_sparse_coo():
-            return _C_ops.final_state_sparse_coo_to_dense(self)
-        elif self.is_sparse_csr():
-            return _C_ops.final_state_sparse_to_dense(self)
-        else:
-            return self
+        return _C_ops.sparse_to_dense(self)
 
     @framework.dygraph_only
     def to_sparse_coo(self, sparse_dim):
@@ -981,16 +966,7 @@ def monkey_patch_varbase():
                     #values=[1., 2., 3., 4.]
         """
 
-        if self.is_sparse_csr():
-            return _C_ops.final_state_sparse_to_sparse_coo(self, sparse_dim)
-        elif self.is_sparse_coo():
-            return self
-        elif self.is_selected_rows():
-            raise ValueError(
-                "SelectedRows does not support to_sparse_coo method")
-        else:
-            #is dense tensor
-            return _C_ops.final_state_sparse_dense_to_coo(self, sparse_dim)
+        return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
@@ -1022,7 +998,6 @@ def monkey_patch_varbase():
     if framework._in_eager_mode_:
         setattr(core.eager.Tensor, "_grad_ivar", _grad_ivar)
         setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
-        setattr(core.eager.Tensor, "clone", clone)
         setattr(core.eager.Tensor, "value", value)
         setattr(core.eager.Tensor, "cpu", cpu)
         setattr(core.eager.Tensor, "cuda", cuda)

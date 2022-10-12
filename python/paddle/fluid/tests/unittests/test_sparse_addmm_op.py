@@ -14,8 +14,6 @@
 
 import paddle
 import numpy as np
-import scipy
-import scipy.sparse as sp
 import unittest
 import os
 import re
@@ -66,17 +64,21 @@ class TestAddmm(unittest.TestCase):
         sp_y.stop_gradient = False
         sp_out = paddle.incubate.sparse.addmm(sp_input, sp_x, sp_y, 3.0, 2.0)
 
-        self.assertTrue(np.allclose(sp_out.numpy(), dense_out.numpy()))
+        np.testing.assert_allclose(sp_out.numpy(),
+                                   dense_out.numpy(),
+                                   rtol=1e-05)
         if get_cuda_version() >= 11030:
             dense_out.backward()
             sp_out.backward()
-            self.assertTrue(
-                np.allclose(sp_input.grad.numpy(), dense_input.grad.numpy()))
-            self.assertTrue(
-                np.allclose(sp_x.grad.to_dense().numpy(),
-                            (dense_x.grad * mask).numpy()))
-            self.assertTrue(np.allclose(sp_y.grad.numpy(),
-                                        dense_y.grad.numpy()))
+            np.testing.assert_allclose(sp_input.grad.numpy(),
+                                       dense_input.grad.numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                       (dense_x.grad * mask).numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(sp_y.grad.numpy(),
+                                       dense_y.grad.numpy(),
+                                       rtol=1e-05)
 
     @unittest.skipIf(not paddle.is_compiled_with_cuda()
                      or get_cuda_version() < 11000, "only support cuda>=11.0")

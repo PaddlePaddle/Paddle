@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import numpy as np
 from enum import IntEnum
 from enum import unique
 
-import paddle
 from paddle.fluid import core
-from paddle.fluid.core import Device
-from paddle.fluid.core import Link
+from paddle.fluid.core import Device  # noqa: F401
+from paddle.fluid.core import Link  # noqa: F401
 
 
 @unique
@@ -49,14 +47,14 @@ class LinkType(IntEnum):
 
 class DeviceMesh(core.DeviceMesh):
     r"""
-    The class `DeviceMesh` describes the topology of physical devices. 
+    The class `DeviceMesh` describes the topology of physical devices.
 
     Args:
         mesh (list|numpy.array): an N-dimensional array describes the toplogy
             of logical processes.
         dim_names (list, optional): the i-th element of this list gives the name of the
             i-th dimension.
-    
+
     Returns:
         None
 
@@ -65,9 +63,9 @@ class DeviceMesh(core.DeviceMesh):
 
             import paddle
             import paddle.distributed as dist
-            
+
             paddle.enable_static()
-            
+
             mesh = dist.DeviceMesh([[2, 4, 5], [0, 1, 3]])
             assert mesh.shape == [2, 3]
             assert mesh.device_ids == [2, 4, 5, 0, 1, 3]

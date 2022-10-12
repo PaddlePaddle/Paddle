@@ -184,7 +184,62 @@ PyObject* tensor_properties_get_shape(TensorObject* self, void* closure) {
     }
   }
 
+  auto desired_layout =
+      paddle::imperative::LayoutAutoTune::Instance().GetDesiredLayout();
+  auto default_layout =
+      paddle::imperative::LayoutAutoTune::Instance().GetDefaultLayout();
+  bool change_dim =
+      (desired_layout != default_layout &&
+       self->tensor.layout() == desired_layout && value.size() == 4);
+  VLOG(6) << "eager_properties 'Shape' method, layout autotune "
+          << " desired_layout: " << desired_layout
+          << " default_layout: " << default_layout
+          << " tensor layout: " << self->tensor.layout()
+          << " tensor's shape size is : " << value.size();
+  std::vector<int64_t> dims = value;
+  if (change_dim &&
+      paddle::framework::DataLayoutToString(desired_layout) == "NCHW") {
+    // NCHW -> NHWC
+    VLOG(6) << "layout autotune get Shape from NCHW -> NHWC " << value[0] << " "
+            << value[1] << " " << value[2] << " " << value[3] << " to "
+            << dims[0] << " " << dims[2] << " " << dims[3] << " " << dims[1];
+    value[0] = dims[0];
+    value[1] = dims[2];
+    value[2] = dims[3];
+    value[3] = dims[1];
+  } else if (change_dim &&
+             paddle::framework::DataLayoutToString(desired_layout) == "NHWC") {
+    // NHWC -> NCHW
+    VLOG(6) << "layout autotune get Shape from NHWC -> NCHW " << value[0] << " "
+            << value[1] << " " << value[2] << " " << value[3] << " to "
+            << dims[0] << " " << dims[3] << " " << dims[1] << " " << dims[2]
+            << " " << dims[1];
+    value[0] = dims[0];
+    value[1] = dims[3];
+    value[2] = dims[1];
+    value[3] = dims[2];
+  }
+
   return ToPyObject(value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+PyObject* tensor_properties_get_layout(TensorObject* self, void* closure) {
+  EAGER_TRY
+  std::string layout = "";
+  if (!self->tensor.defined()) {
+    return ToPyObject(layout);
+  }
+
+  if (egr::IsVariableCompatTensor(self->tensor)) {
+    VLOG(3) << "VariableCompatTensor does not support `layout` method.";
+    return ToPyObject(layout);
+  } else {
+    return ToPyObject(
+        paddle::framework::DataLayoutToString(self->tensor.layout()));
+  }
+
+  return ToPyObject(layout);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -249,6 +304,7 @@ struct PyGetSetDef variable_properties[] = {
      nullptr,
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
+    {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
     // {"is_leaf", (getter)tensor_properties_get_is_leaf, nullptr,
     // nullptr,
     //  nullptr},
@@ -271,6 +327,7 @@ struct PyGetSetDef string_tensor_variable_properties[] = {
      nullptr,
      nullptr},
     {"shape", (getter)tensor_properties_get_shape, nullptr, nullptr, nullptr},
+    {"layout", (getter)tensor_properties_get_layout, nullptr, nullptr, nullptr},
     {"place", (getter)tensor_properties_get_place, nullptr, nullptr, nullptr},
     {"_place_str",
      (getter)tensor_properties_get_place_str,

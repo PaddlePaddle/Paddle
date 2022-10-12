@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import numpy as np
@@ -68,7 +66,7 @@ class TestLen(unittest.TestCase):
     def test_len(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
-        self.assertTrue(np.allclose(dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestLenWithTensorArray(TestLen):
@@ -84,6 +82,7 @@ def len_with_selected_rows(place):
     # create selected_rows variable
     var = block.create_var(name="X",
                            dtype="float32",
+                           shape=[-1],
                            persistable=True,
                            type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
     # y is Variable(SelectedRows)

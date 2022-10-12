@@ -51,8 +51,8 @@ TEST(DEV_API, sum) {
                            .get());
 
   // 2. test API
-  auto out =
-      phi::Sum<float>(dev_ctx, dense_x, axis, phi::DataType::FLOAT32, false);
+  auto out = phi::Sum<float>(
+      dev_ctx, dense_x, phi::IntArray(axis), phi::DataType::FLOAT32, false);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);

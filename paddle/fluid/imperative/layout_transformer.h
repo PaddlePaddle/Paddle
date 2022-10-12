@@ -19,8 +19,23 @@
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
+#include "paddle/phi/core/tensor_utils.h"
 namespace paddle {
 namespace imperative {
+template <typename VarType>
+void SetOutDataLayout(std::shared_ptr<VarType> var,
+                      const paddle::experimental::DataLayout layout) {
+  if (var != nullptr && var->Var().IsInitialized()) {
+    paddle::imperative::SetDataLayout(var, layout);
+    // set out_tensor's layout
+    if (var->MutableVar()->IsInitialized()) {
+      paddle::framework::Variable* tmp_var = var->MutableVar();
+      auto* out = tmp_var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensorUtils::GetMutableMeta(static_cast<phi::DenseTensor*>(out))
+          ->layout = layout;
+    }
+  }
+}
 
 template <typename VarType>
 std::shared_ptr<VarType> TraceTransposeOp(
@@ -77,6 +92,9 @@ class LayoutTransformer {
       for (auto& var : pair.second) {
         // Once the any input is desired layout, we set in_layout is desired
         // layout.
+        if (in_layout == DataLayout::UNDEFINED) {
+          in_layout = paddle::imperative::GetDataLayout(var);
+        }
         if (var != nullptr && (paddle::imperative::GetDataLayout(var) ==
                                LayoutAutoTune::Instance().GetDesiredLayout())) {
           in_layout = LayoutAutoTune::Instance().GetDesiredLayout();
@@ -84,7 +102,11 @@ class LayoutTransformer {
         }
       }
     }
-    SetVarsLayout(outs, in_layout);
+    VLOG(3) << "Optimze Layout agnostic op: " << type_ << " "
+            << paddle::framework::DataLayoutToString(in_layout);
+    if (in_layout != DataLayout::UNDEFINED) {
+      SetVarsLayout(outs, in_layout);
+    }
     return ins;
   }
 
@@ -111,7 +133,7 @@ class LayoutTransformer {
           auto out_vars = outs.at(name);
           for (auto& var : out_vars) {
             if (var != nullptr) {
-              paddle::imperative::SetDataLayout(var, layout);
+              paddle::imperative::SetOutDataLayout(var, layout);
             }
           }
           not_in_out = false;
@@ -123,7 +145,7 @@ class LayoutTransformer {
       for (auto& pair : outs) {
         for (auto& var : pair.second) {
           if (var != nullptr) {
-            paddle::imperative::SetDataLayout(var, layout);
+            paddle::imperative::SetOutDataLayout(var, layout);
           }
         }
       }

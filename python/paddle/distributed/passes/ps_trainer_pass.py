@@ -20,7 +20,7 @@ from paddle.framework import core
 from paddle.distributed.passes.pass_base import PassBase, register_pass
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.transpiler.collective import SingleProcessMultiThread
-from _collections import deque, defaultdict
+from _collections import defaultdict
 from paddle.fluid.framework import Program, Parameter
 
 
@@ -617,6 +617,8 @@ class DeleteExtraOptimizerPass(PassBase):
         for var in remote_optimize_vars:
             if var in local_optimize_vars:
                 continue
+            if 'learning_rate_0' == var:
+                continue
             if var not in remote_optimize_op_role_vars:
                 optimize_need_delete_vars.append(var)
         need_delete_optimize_vars = list(set(optimize_need_delete_vars))
@@ -1140,7 +1142,7 @@ class SplitTrainerOpsPass(PassBase):
         split cpu-trainer program from origin-program
         1. find heter op (located on different device)
         2. find input&output of every heter-block
-        3. create cpu-trainer program, add send&recv op 
+        3. create cpu-trainer program, add send&recv op
         """
         attrs = pass_ctx._attrs
         default_device_ = 'cpu'

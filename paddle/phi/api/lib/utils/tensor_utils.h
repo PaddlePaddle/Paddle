@@ -29,9 +29,9 @@ namespace paddle {
 namespace experimental {
 
 std::unique_ptr<phi::DenseTensor> MakePhiDenseTensor(
-    const paddle::framework::Tensor& src);
+    const phi::DenseTensor& src);
 
-phi::IntArray MakePhiIntArray(const paddle::framework::Tensor& src);
+phi::IntArray MakePhiIntArray(const phi::DenseTensor& src);
 
 phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable);
 

@@ -77,6 +77,15 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("optim_input_shape",
               new std::map<std::string, std::vector<int>>(
                   argument->optim_input_shape()));
+    // Now, shape tensor value is not explicit set by user,
+    // it is collected through API CollectShapeRangeInfo.
+    pass->Set("max_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+    pass->Set("min_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+    pass->Set("optim_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
@@ -145,7 +154,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_calib_mode", new bool(use_calib_mode));
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
-
+      pass->Set("context_memory_sharing",
+                new bool(argument->trt_engine_memory_sharing()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -209,8 +219,23 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
     } else if (pass_name == "dlnne_subgraph_pass") {
+      auto precision_mode = argument->dlnne_precision_mode();
       pass->Set("min_subgraph_size",
                 new int(argument->dlnne_min_subgraph_size()));
+      pass->Set("max_batch_size", new int(argument->dlnne_max_batch_size()));
+      pass->Set("use_static_batch",
+                new bool(argument->dlnne_use_static_batch()));
+      pass->Set("weight_share_mode",
+                new std::string(argument->dlnne_weight_share_mode()));
+      pass->Set("disable_nodes_by_outputs",
+                new std::unordered_set<std::string>(
+                    argument->dlnne_disable_nodes_by_outputs()));
+      pass->Set("use_calib_mode", new bool(argument->dlnne_use_calib_mode()));
+      pass->Set("precision_mode",
+                new AnalysisConfig::Precision(precision_mode));
+      pass->Set("input_shape_dict",
+                new std::map<std::string, std::vector<int64_t>>(
+                    argument->dlnne_input_shape_dict()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
     }

@@ -16,8 +16,6 @@ import paddle
 from paddle.fluid.framework import _test_eager_guard
 
 import numpy as np
-import scipy
-import scipy.sparse as sp
 import unittest
 import os
 import re
@@ -64,12 +62,15 @@ class TestCsrMv(unittest.TestCase):
             sp_out = paddle.incubate.sparse.mv(sp_x, sp_vec)
             sp_out.backward()
 
-            self.assertTrue(np.allclose(sp_out.numpy(), dense_out.numpy()))
-            self.assertTrue(
-                np.allclose(sp_x.grad.to_dense().numpy(),
-                            (dense_x.grad * mask).numpy()))
-            self.assertTrue(
-                np.allclose(sp_vec.grad.numpy(), dense_vec.grad.numpy()))
+            np.testing.assert_allclose(sp_out.numpy(),
+                                       dense_out.numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                       (dense_x.grad * mask).numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(sp_vec.grad.numpy(),
+                                       dense_vec.grad.numpy(),
+                                       rtol=1e-05)
 
 
 @unittest.skipIf(
@@ -99,12 +100,15 @@ class TestCooMv(unittest.TestCase):
             sp_out = paddle.incubate.sparse.mv(sp_x, sp_vec)
             sp_out.backward()
 
-            self.assertTrue(np.allclose(sp_out.numpy(), dense_out.numpy()))
-            self.assertTrue(
-                np.allclose(sp_x.grad.to_dense().numpy(),
-                            (dense_x.grad * mask).numpy()))
-            self.assertTrue(
-                np.allclose(sp_vec.grad.numpy(), dense_vec.grad.numpy()))
+            np.testing.assert_allclose(sp_out.numpy(),
+                                       dense_out.numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                       (dense_x.grad * mask).numpy(),
+                                       rtol=1e-05)
+            np.testing.assert_allclose(sp_vec.grad.numpy(),
+                                       dense_vec.grad.numpy(),
+                                       rtol=1e-05)
 
 
 if __name__ == "__main__":

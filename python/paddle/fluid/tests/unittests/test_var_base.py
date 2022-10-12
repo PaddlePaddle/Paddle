@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import six
@@ -1623,11 +1621,11 @@ class TestVarBaseTo(unittest.TestCase):
     def func_test_to_api(self):
         x_double = self.x._to(dtype='double')
         self.assertEqual(x_double.dtype, paddle.fluid.core.VarDesc.VarType.FP64)
-        self.assertTrue(np.allclose(self.np_x, x_double))
+        np.testing.assert_allclose(self.np_x, x_double, rtol=1e-05)
 
         x_ = self.x._to()
         self.assertEqual(self.x.dtype, paddle.fluid.core.VarDesc.VarType.FP64)
-        self.assertTrue(np.allclose(self.np_x, x_))
+        np.testing.assert_allclose(self.np_x, x_, rtol=1e-05)
 
         if paddle.fluid.is_compiled_with_cuda():
             x_gpu = self.x._to(device=paddle.CUDAPlace(0))

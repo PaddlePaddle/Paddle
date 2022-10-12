@@ -14,17 +14,15 @@
 
 import unittest
 import paddle
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
-from paddle.fluid import program_guard
-from paddle.incubate.autograd import prim2orig, enable_prim, prim_enabled
+from paddle.incubate.autograd import enable_prim
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import set_var_dist_attr
-from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context, set_default_distributed_context
+from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
 
 paddle.enable_static()
 enable_prim()
@@ -78,7 +76,7 @@ class TestPrimDistOp(unittest.TestCase):
                                        outputs={'Z': self.w_grad},
                                        attrs=self.attrs)
 
-        op = self.layer_help.append_op(type="reduce_p",
+        op = self.layer_help.append_op(type="reduce_sum_p",
                                        inputs={'X': self.tmp2},
                                        outputs={'Y': self.batch_reduced},
                                        attrs={"axis": [0]})

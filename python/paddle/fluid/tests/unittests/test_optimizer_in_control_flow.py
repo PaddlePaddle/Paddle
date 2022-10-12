@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 
@@ -218,17 +216,9 @@ class TestMultiTask(unittest.TestCase):
         for loss_in_switch in [True, False]:
             hidden_1, pre_1, loss_1 = static(self.train_data, loss_in_switch,
                                              use_cuda)
-            self.assertTrue(
-                np.allclose(hidden_1, hidden_2),
-                msg='static hidden is {}\ndynamic hidden is {}'.format(
-                    hidden_1, hidden_2))
-            self.assertTrue(
-                np.allclose(pre_1, pre_2),
-                msg='static prediction is {}\ndynamic prediction is {}'.format(
-                    pre_1, pre_2))
-            self.assertTrue(np.allclose(loss_1, loss_2),
-                            msg='static loss is {}\ndynamic loss is {}'.format(
-                                loss_1, loss_2))
+            np.testing.assert_allclose(hidden_1, hidden_2, rtol=1e-05)
+            np.testing.assert_allclose(pre_1, pre_2, rtol=1e-05)
+            np.testing.assert_allclose(loss_1, loss_2, rtol=1e-05)
 
 
 class TestMultiOptimizersMultiCardsError(unittest.TestCase):

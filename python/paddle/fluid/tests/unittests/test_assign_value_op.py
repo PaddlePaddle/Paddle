@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -88,10 +86,7 @@ class TestAssignApi(unittest.TestCase):
 
         exe = fluid.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
-        np.testing.assert_array_equal(fetched_x,
-                                      self.value,
-                                      err_msg='fetch_x=%s val=%s' %
-                                      (fetched_x, self.value))
+        np.testing.assert_array_equal(fetched_x, self.value)
         self.assertEqual(fetched_x.dtype, self.value.dtype)
 
 

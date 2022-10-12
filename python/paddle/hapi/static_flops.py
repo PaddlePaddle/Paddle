@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import numpy as np
-import paddle
 from collections import OrderedDict
-from paddle.static import Program, program_guard, Variable
+from paddle.static import Program, Variable
 
 __all__ = []
 
@@ -79,7 +77,7 @@ class GraphWrapper(object):
     for paddle slim framework.
 
     Args:
-        program(framework.Program): A program with 
+        program(framework.Program): A program with
         in_nodes(dict): A dict to indicate the input nodes of the graph.
                         The key is user-defined and human-readable name.
                         The value is the name of Variable.

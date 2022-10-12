@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.framework import seed
-from paddle.fluid.framework import Program, default_main_program, default_startup_program
 import numpy as np
 
 
@@ -41,8 +38,8 @@ class TestManualSeed(unittest.TestCase):
         x3_np = x3.numpy()
 
         if not fluid.core.is_compiled_with_cuda():
-            self.assertTrue(np.allclose(x1_np, x2_np))
-            self.assertTrue(np.allclose(x_np, x3_np))
+            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
+            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
 
 if __name__ == '__main__':

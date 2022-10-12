@@ -17,7 +17,5 @@ import unittest
 
 fluid.core.globals()['FLAGS_enable_parallel_graph'] = 1
 
-from test_parallel_executor_inference_feed_partial_data import *
-
 if __name__ == '__main__':
     unittest.main()

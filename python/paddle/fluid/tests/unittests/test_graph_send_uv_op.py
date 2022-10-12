@@ -15,8 +15,6 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 
 from op_test import OpTest
@@ -198,9 +196,13 @@ class API_GeometricSendUVTest(unittest.TestCase):
             dtype="float32")
 
         for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div], res):
-            self.assertTrue(
-                np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
-                {}\n{}, check diff!".format(np_res, paddle_res))
+            np.testing.assert_allclose(
+                np_res,
+                paddle_res,
+                rtol=1e-05,
+                atol=1e-06,
+                err_msg='two value is                {}\n{}, check diff!'.
+                format(np_res, paddle_res))
 
     def test_compute_all_static(self):
         paddle.enable_static()
@@ -256,9 +258,13 @@ class API_GeometricSendUVTest(unittest.TestCase):
                           fetch_list=[res_add, res_sub, res_mul, res_div])
             for np_res, paddle_res in zip([np_add, np_sub, np_mul, np_div],
                                           ret):
-                self.assertTrue(
-                    np.allclose(np_res, paddle_res, atol=1e-6), "two value is\
-                    {}\n{}, check diff!".format(np_res, paddle_res))
+                np.testing.assert_allclose(
+                    np_res,
+                    paddle_res,
+                    rtol=1e-05,
+                    atol=1e-06,
+                    err_msg='two value is                    {}\n{}, check diff!'
+                    .format(np_res, paddle_res))
 
     def test_api_eager_dygraph(self):
         with _test_eager_guard():

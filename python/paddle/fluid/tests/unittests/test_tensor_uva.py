@@ -54,8 +54,19 @@ class TestUVATensorFromNumpy(unittest.TestCase):
 
                 self.assertTrue(tensor.place.is_gpu_place())
                 self.assertTrue(tensor2.place.is_gpu_place())
-                self.assertTrue(np.allclose(tensor.numpy(), data))
-                self.assertTrue(np.allclose(tensor2.numpy(), data))
+                np.testing.assert_allclose(tensor.numpy(), data, rtol=1e-05)
+                np.testing.assert_allclose(tensor2.numpy(), data, rtol=1e-05)
+
+    def test_uva_tensor_corectness(self):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            a = np.arange(0, 100, dtype="int32")
+            a = a.reshape([10, 10])
+            slice_a = a[:, 5]
+            tensor1 = paddle.to_tensor(slice_a)
+            tensor2 = core.eager.to_uva_tensor(slice_a)
+            np.testing.assert_allclose(tensor1.numpy(),
+                                       tensor2.numpy(),
+                                       rtol=1e-05)
 
     def test_uva_tensor_creation(self):
         with _test_eager_guard():

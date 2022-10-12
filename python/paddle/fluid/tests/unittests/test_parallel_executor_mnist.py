@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import numpy as np
@@ -273,8 +271,7 @@ class TestMNISTNoReduce(unittest.TestCase):
 
         self.assertEqual(len(grads_multi_place), len(grads_single_place))
         for g1, g2 in zip(grads_multi_place, grads_single_place):
-            self.assertTrue(np.allclose(g1, g2),
-                            'g1 = {}\ng2 = {}\n'.format(g1, g2))
+            np.testing.assert_allclose(g1, g2, rtol=1e-05)
 
     def split_feed(self, feed, n):
         image = feed['image']

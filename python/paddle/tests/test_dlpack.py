@@ -18,7 +18,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDLPack(unittest.TestCase):
@@ -48,7 +48,7 @@ class TestDLPack(unittest.TestCase):
         # TODO: There may be a reference count problem of to_dlpack.
         dlpack = paddle.utils.dlpack.to_dlpack(t)
         out = paddle.utils.dlpack.from_dlpack(dlpack)
-        self.assertTrue(np.allclose(numpy_data, out.numpy()))
+        np.testing.assert_allclose(numpy_data, out.numpy(), rtol=1e-05)
 
     def test_dlpack_tensor_larger_than_2dim(self):
         with _test_eager_guard():
@@ -98,7 +98,7 @@ class TestDLPack(unittest.TestCase):
             dlpack = paddle.utils.dlpack.to_dlpack(x)
             o = paddle.utils.dlpack.from_dlpack(dlpack)
             self.assertEqual(x.dtype, o.dtype)
-            self.assertTrue(np.allclose(x.numpy(), o.numpy()))
+            np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
 
         complex_dtypes = ["complex64", "complex128"]
         for dtype in complex_dtypes:
@@ -108,7 +108,7 @@ class TestDLPack(unittest.TestCase):
             dlpack = paddle.utils.dlpack.to_dlpack(x)
             o = paddle.utils.dlpack.from_dlpack(dlpack)
             self.assertEqual(x.dtype, o.dtype)
-            self.assertTrue(np.allclose(x.numpy(), o.numpy()))
+            np.testing.assert_allclose(x.numpy(), o.numpy(), rtol=1e-05)
 
     def test_dlpack_dtype_conversion(self):
         with _test_eager_guard():

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -21,7 +19,7 @@ from paddle.fluid import Embedding, LayerNorm, Linear, Layer
 from paddle.fluid.dygraph import to_variable, guard
 from paddle.fluid.dygraph import TracedLayer
 from test_imperative_base import new_program_scope
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid import core
 import numpy as np
 import six
@@ -1157,16 +1155,26 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             with _test_eager_guard():
                 eager_avg_cost_value, eager_sum_cost_value, eager_predict_value, eager_token_num_value, \
                     eager_param_init, eager_param_updated = run_dygraph()
-        self.assertTrue(np.allclose(dy_avg_cost_value, eager_avg_cost_value))
-        self.assertTrue(np.allclose(dy_sum_cost_value, eager_sum_cost_value))
+        np.testing.assert_allclose(dy_avg_cost_value,
+                                   eager_avg_cost_value,
+                                   rtol=1e-05)
+        np.testing.assert_allclose(dy_sum_cost_value,
+                                   eager_sum_cost_value,
+                                   rtol=1e-05)
 
-        self.assertTrue(np.allclose(dy_predict_value, eager_predict_value))
-        self.assertTrue(np.allclose(dy_token_num_value, eager_token_num_value))
+        np.testing.assert_allclose(dy_predict_value,
+                                   eager_predict_value,
+                                   rtol=1e-05)
+        np.testing.assert_allclose(dy_token_num_value,
+                                   eager_token_num_value,
+                                   rtol=1e-05)
 
         for key, value in six.iteritems(static_param_init):
             np.testing.assert_array_equal(value, eager_param_init[key])
         for key, value in six.iteritems(dy_param_updated):
-            self.assertTrue(np.allclose(value, eager_param_updated[key]))
+            np.testing.assert_allclose(value,
+                                       eager_param_updated[key],
+                                       rtol=1e-05)
 
 
 if __name__ == '__main__':
