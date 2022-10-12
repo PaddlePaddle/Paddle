@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ class MnistDataset(MNIST):
         return 512
 
 
-class TestCallbacks(unittest.TestCase):
+class TestWandbCallbacks(unittest.TestCase):
 
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
@@ -45,13 +45,13 @@ class TestCallbacks(unittest.TestCase):
         train_dataset = MnistDataset(mode='train', transform=transform)
         eval_dataset = MnistDataset(mode='test', transform=transform)
 
-        net = LeNet()
-        model = Model(net, inputs, labels)
+        net = paddle.vision.models.LeNet()
+        model = paddle.Model(net, inputs, labels)
 
         optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
         model.prepare(optimizer=optim,
-                      loss=CrossEntropyLoss(),
-                      metrics=Accuracy())
+                      loss=paddle.nn.CrossEntropyLoss(),
+                      metrics=paddle.metric.Accuracy())
 
         callback = paddle.callbacks.WandbCallback(project='random',
                                                   dir=self.save_dir,
