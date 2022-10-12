@@ -565,6 +565,14 @@ inline void RunProgramGradAPI(
       VLOG(4) << "Share workqueue from " << fwd_interpreter_core.get() << " to "
               << interpreter_core.get();
 
+      std::vector<std::string> x_grad_names;
+      std::vector<std::string> param_grad_names;
+      if (!x_grad.empty()) {
+        x_grad_names = details::GetTensorsName(x_grad);
+      }
+      if (!params_grad.empty()) {
+        param_grad_names = details::GetTensorsName(params_grad);
+      }
       // get all eager gc vars
       std::set<std::string> skip_eager_delete_vars;
       // all out_vars are skip_eager_var
