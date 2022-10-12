@@ -500,4 +500,3 @@
            reshape_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : reshape_grad
-  
