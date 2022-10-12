@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import json
 import multiprocessing
 from multiprocessing import Process
@@ -200,7 +199,7 @@ class profileFileReader(FileReader):
         initLineNum = initPid + 1
         lineDelta = len(profile_dict.keys())
         i = 0
-        for k, profile_pb in six.iteritems(profile_dict):
+        for k, profile_pb in profile_dict.items():
             lineNum = initLineNum
             for event in profile_pb.events:
                 if event.type == profiler_pb2.Event.CPU:
@@ -298,7 +297,7 @@ class profileFileReader(FileReader):
 
     def _allocate_events(self, profile_dict, devices, gpuId):
         chrome_trace = ChromeTraceFormatter()
-        for k, profile_pb in six.iteritems(profile_dict):
+        for k, profile_pb in profile_dict.items():
 
             rankId = int(k.split(".")[-1])
 
@@ -334,7 +333,7 @@ class profileFileReader(FileReader):
             profiler_pb2.MemEvent.CUDAPlace: "GPU",
             profiler_pb2.MemEvent.CUDAPinnedPlace: "CUDAPinnedPlace"
         }
-        for k, profile_pb in six.iteritems(profile_dict):
+        for k, profile_pb in profile_dict.items():
             rankId = int(k.split(".")[-1])
 
             trainerId = rankId / self._gpuPerTrainer

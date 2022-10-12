@@ -338,7 +338,7 @@ class _SaveLoadConfig(object):
     def model_filename(self, filename):
         if filename is None:
             return
-        if not isinstance(filename, six.string_types):
+        if not isinstance(filename, str):
             raise TypeError(
                 "The config `model_filename` should be str, but received input's type is %s."
                 % type(filename))
@@ -354,7 +354,7 @@ class _SaveLoadConfig(object):
     def params_filename(self, filename):
         if filename is None:
             return
-        if not isinstance(filename, six.string_types):
+        if not isinstance(filename, str):
             raise TypeError(
                 "The config `params_filename` should be str, but received input's type is %s."
                 % type(filename))
@@ -985,7 +985,7 @@ def save(layer, path, input_spec=None, **configs):
             # we only record the state_dict variable's structured name
             state_names_dict = dict()
             state_var_dict = dict()
-            for structured_name, var in six.iteritems(dygraph_state_dict):
+            for structured_name, var in dygraph_state_dict.items():
                 state_names_dict[var.name] = structured_name
                 state_var_dict[var.name] = var
 

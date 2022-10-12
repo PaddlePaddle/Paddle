@@ -405,7 +405,7 @@ class TrainEpochRange(SerializableBase):
         # registerd exes
         d["exe_status"] = {}
         e = d["exe_status"]
-        for k, t in six.iteritems(self._exe_status):
+        for k, t in self._exe_status.items():
             e[t._key] = t._serialize()
         return json.dumps(d)
 
@@ -427,7 +427,7 @@ class TrainEpochRange(SerializableBase):
 
         # exes status
         e = d["exe_status"]
-        for k, v in six.iteritems(e):
+        for k, v in e.items():
             t = ExeTrainStatus()
             t._deserialize(v)
             self._exe_status[k] = t
@@ -480,7 +480,7 @@ class TrainEpochRange(SerializableBase):
             return
 
         e = self._exe_status
-        for k, t in six.iteritems(self._exe_status):
+        for k, t in self._exe_status.items():
             m = PaddleModel(t._exe, t._program)
             p = self._checker.get_exe_checkpoint_path(t._hash_key)
             t._epoch_no = self.get()

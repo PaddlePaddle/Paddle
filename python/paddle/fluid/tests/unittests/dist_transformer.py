@@ -548,7 +548,7 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                         np.log(TrainTaskConfig.label_smooth_eps /
                                (ModelHyperParams.trg_vocab_size - 1) + 1e-20))
     init = False
-    for pass_id in six.moves.xrange(TrainTaskConfig.pass_num):
+    for pass_id in range(TrainTaskConfig.pass_num):
         pass_start_time = time.time()
         for batch_id, data in enumerate(train_data()):
             if batch_id >= RUN_STEP:

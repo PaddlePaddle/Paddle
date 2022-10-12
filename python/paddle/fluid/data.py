@@ -107,11 +107,11 @@ def data(name, shape, dtype='float32', lod_level=0):
     """
     helper = LayerHelper('data', **locals())
 
-    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(name, 'name', (bytes, str), 'data')
     check_type(shape, 'shape', (list, tuple), 'data')
 
     shape = list(shape)
-    for i in six.moves.range(len(shape)):
+    for i in range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
 

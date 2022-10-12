@@ -262,7 +262,7 @@ class ElasticManager(object):
                         logger.info(
                             f"[lease_heartbeat] register host={self.curr_host}")
                         self.etcd.put(self.host_path,
-                                      six.b(self.curr_host),
+                                      self.curr_host.encode('latin-1'),
                                       lease=host_lease)
                 except Exception as e:
                     logger.error(
@@ -276,11 +276,15 @@ class ElasticManager(object):
                                              daemon=True)
         keepalived_thread.start()
 
-        self.etcd.put(self.host_path, six.b(self.curr_host), lease=host_lease)
+        self.etcd.put(self.host_path,
+                      self.curr_host.encode('latin-1'),
+                      lease=host_lease)
 
         # endpoints handle DISTRIBUTED_TRAINER_ENDPOINTS and PADDLE_TRAINERS
-        self.etcd.put(self.endpoints_path,
-                      six.b('{}|{}'.format(self.dist_endpoints, self.trainers)))
+        self.etcd.put(
+            self.endpoints_path,
+            '{}|{}'.format(self.dist_endpoints,
+                           self.trainers).encode('latin-1'))
 
         def endpoints_call_back(event):
             if not self.dist_endpoints:
@@ -433,7 +437,7 @@ class ElasticManager(object):
 
     def _update_endpoint(self, endpoints, hosts):
         self.etcd.put(self.endpoints_path,
-                      six.b('{}|{}'.format(endpoints, hosts)))
+                      '{}|{}'.format(endpoints, hosts).encode('latin-1'))
 
     def _update_fault_tolrance(self):
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))

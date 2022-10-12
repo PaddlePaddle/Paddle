@@ -115,7 +115,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # step 3. create send recv var (param after optimize)
         send_vars = []
         ps_dispatcher.reset()
-        param_var_mapping_items = list(six.iteritems(self.param_var_mapping))
+        param_var_mapping_items = list(self.param_var_mapping.items())
         # send_vars is the parameter which split by communicator and send to pserver,not the origin parameter
         for _, splited_vars in param_var_mapping_items:
             for _, var in enumerate(splited_vars):

@@ -92,7 +92,7 @@ def operator_equal(a, b):
     if a.__str__() != b.__str__():
         raise ValueError("In operator_equal not equal\n")
 
-    for k, v in six.iteritems(a.__dict__):
+    for k, v in a.__dict__.items():
         if isinstance(v, fluid.framework.Program) or \
                 isinstance(v, fluid.framework.Block):
             continue
@@ -101,8 +101,8 @@ def operator_equal(a, b):
             continue
 
         elif isinstance(v, collections.OrderedDict):
-            v0 = sorted(list(six.iteritems(v)), key=lambda x: x[0])
-            v1 = sorted(list(six.iteritems(b.__dict__[k])), key=lambda x: x[0])
+            v0 = sorted(list(v.items()), key=lambda x: x[0])
+            v1 = sorted(list(b.__dict__[k].items()), key=lambda x: x[0])
 
             if v0 != v1:
                 raise ValueError("In operator_equal not equal:{0}\n".format(k))
@@ -114,7 +114,7 @@ def operator_equal(a, b):
 
 
 def block_equal(a, b):
-    for k, v in six.iteritems(a.__dict__):
+    for k, v in a.__dict__.items():
         if isinstance(v, core.ProgramDesc) or isinstance(
                 v, fluid.framework.Program) or isinstance(v, core.BlockDesc):
             continue
@@ -126,7 +126,7 @@ def block_equal(a, b):
                     raise ValueError("In block_equal not equal:{0}\n".format(k))
 
         elif isinstance(v, collections.OrderedDict):
-            for key, value in six.iteritems(v):
+            for key, value in v.items():
                 if str(value) != str(b.__dict__[k][key]):
                     raise ValueError("In block_equal not equal:{0}\n".format(k))
 
@@ -137,7 +137,7 @@ def block_equal(a, b):
 
 
 def program_equal(a, b):
-    for k, v in six.iteritems(a.__dict__):
+    for k, v in a.__dict__.items():
         if isinstance(v, core.ProgramDesc):
             continue
 

@@ -385,8 +385,8 @@ def _add_feed_fetch_ops(program,
                                fetch_op):
         for i, var in enumerate(fetch_list):
             assert isinstance(var, Variable) or isinstance(
-                var, six.string_types), ("Wrong type for fetch_list[%s]: %s" %
-                                         (i, type(var)))
+                var, str), ("Wrong type for fetch_list[%s]: %s" %
+                            (i, type(var)))
             global_block.append_op(type=fetch_op,
                                    inputs={'X': [var]},
                                    outputs={'Out': [fetch_var]},
@@ -430,7 +430,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
     Returns:
        LodTensor|numpy.ndarray
     """
-    assert isinstance(name, six.string_types)
+    assert isinstance(name, str)
     if scope is None:
         scope = global_scope()
     assert isinstance(scope, core._Scope)
@@ -453,7 +453,7 @@ def _to_name_str(var):
             return var.desc.name()
         elif isinstance(var, str):
             return var
-        elif isinstance(var, six.string_types):
+        elif isinstance(var, str):
             return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
@@ -988,7 +988,7 @@ class Executor(object):
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
-            for i in six.moves.range(len(fetch_list))
+            for i in range(len(fetch_list))
         ]
         return outs
 
@@ -1018,7 +1018,7 @@ class Executor(object):
                     raise TypeError(
                         "The operator in fetch_list is not an optimize_op")
             elif isinstance(item, Variable) or isinstance(
-                    item, str) or isinstance(item, six.string_types):
+                    item, str) or isinstance(item, str):
                 _fetch_list.append(item)
             else:
                 raise TypeError(
@@ -1818,8 +1818,7 @@ class Executor(object):
         return exe.run(feed)
 
     def _check_fetch_list(self, fetch_list):
-        is_fetch_var = lambda var: isinstance(var,
-                                              (Variable, str, six.string_types))
+        is_fetch_var = lambda var: isinstance(var, (Variable, str, (str, )))
         is_tuple_list = lambda var: isinstance(var, (tuple, list))
 
         if fetch_list is None: return []
@@ -2414,9 +2413,8 @@ class Executor(object):
                                    fetch_op):
             for i, var in enumerate(fetch_list):
                 assert isinstance(var, Variable) or isinstance(
-                    var,
-                    six.string_types), ("Wrong type for fetch_list[%s]: %s" %
-                                        (i, type(var)))
+                    var, str), ("Wrong type for fetch_list[%s]: %s" %
+                                (i, type(var)))
                 global_block.append_op(type=fetch_op,
                                        inputs={'X': [var]},
                                        outputs={'Out': [fetch_var]},

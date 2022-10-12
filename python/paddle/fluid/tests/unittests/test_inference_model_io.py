@@ -68,7 +68,7 @@ class TestBook(unittest.TestCase):
 
         exe.run(init_program, feed={}, fetch_list=[])
 
-        for i in six.moves.xrange(100):
+        for i in range(100):
             tensor_x = np.array([[1, 1], [1, 2], [3, 4], [5,
                                                           2]]).astype("float32")
             tensor_y = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
@@ -238,7 +238,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
-        for i in six.moves.xrange(3):
+        for i in range(3):
             exe.run(program,
                     feed={
                         'x': tensor_x,
@@ -358,7 +358,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
-        for i in six.moves.xrange(3):
+        for i in range(3):
             exe.run(program,
                     feed={
                         'x': tensor_x,
@@ -401,7 +401,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
-        for i in six.moves.xrange(3):
+        for i in range(3):
             exe.run(program,
                     feed={
                         'x': tensor_x,

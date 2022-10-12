@@ -64,7 +64,7 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
         layer._op_recorder.ops = ops
 
         for op in ops:
-            for attr_name, val in six.iteritems(layer._customized_attrs):
+            for attr_name, val in layer._customized_attrs.items():
                 op._set_attr(attr_name, val)
 
         # remove pre-hook and post-hook

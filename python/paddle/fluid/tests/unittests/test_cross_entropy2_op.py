@@ -15,7 +15,6 @@
 from op_test import OpTest
 import unittest
 import numpy as np
-import six
 
 
 class CrossEntropy2OpTestBase(OpTest):
@@ -26,7 +25,7 @@ class CrossEntropy2OpTestBase(OpTest):
     def calc_output(self, logits, label, ignore_index):
         ret = np.zeros(shape=label.shape, dtype=logits.dtype)
         match_x = np.zeros(shape=label.shape, dtype=logits.dtype)
-        for idx in six.moves.range(label.shape[0]):
+        for idx in range(label.shape[0]):
             if label[idx] == ignore_index:
                 continue
             match_x[idx] = logits[idx][label[idx]]

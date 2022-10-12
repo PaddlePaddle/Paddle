@@ -32,7 +32,7 @@ def fake_imdb_reader(word_dict_size,
                      class_dim=2):
 
     def __reader__():
-        for _ in six.moves.range(sample_num):
+        for _ in range(sample_num):
             length = np.random.random_integers(low=lower_seq_len,
                                                high=upper_seq_len,
                                                size=[1])[0]

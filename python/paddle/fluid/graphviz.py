@@ -21,7 +21,7 @@ import logging
 
 
 def crepr(v):
-    if isinstance(v, six.string_types):
+    if isinstance(v, str):
         return '"%s"' % v
     return str(v)
 
@@ -104,7 +104,7 @@ class Graph(object):
                          stderr=subprocess.PIPE)
 
     def _rank_repr(self):
-        ranks = sorted(six.iteritems(self.rank_groups),
+        ranks = sorted(self.rank_groups.items(),
                        key=functools.cmp_to_key(
                            lambda a, b: a[1].priority > b[1].priority))
         repr = []
@@ -149,7 +149,7 @@ class Node(object):
             name=self.name,
             label=self.label,
             extra=',' + ','.join("%s=%s" % (key, crepr(value))
-                                 for key, value in six.iteritems(self.attrs))
+                                 for key, value in self.attrs.items())
             if self.attrs else "")
         return reprs
 
@@ -174,7 +174,7 @@ class Edge(object):
             target=self.target.name,
             extra="" if not self.attrs else "[" +
             ','.join("{}={}".format(attr[0], crepr(attr[1]))
-                     for attr in six.iteritems(self.attrs)) + "]")
+                     for attr in self.attrs.items()) + "]")
         return repr
 
 

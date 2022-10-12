@@ -433,7 +433,7 @@ class CompiledProgram(object):
 
         return core.ParallelExecutor(
             places, self._persistable_vars,
-            cpt.to_text(self._loss_name) if self._loss_name else six.u(''),
+            cpt.to_text(self._loss_name) if self._loss_name else '',
             self._scope, self._local_scopes, self._exec_strategy,
             self._build_strategy, self._graph)
 

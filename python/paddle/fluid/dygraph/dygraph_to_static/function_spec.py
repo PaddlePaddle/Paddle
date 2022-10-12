@@ -83,7 +83,7 @@ class FunctionSpec(object):
 
         args = list(args)
 
-        for i in six.moves.range(len(args), len(self._arg_names)):
+        for i in range(len(args), len(self._arg_names)):
             arg_name = self._arg_names[i]
             if arg_name in kwargs:
                 args.append(kwargs[arg_name])
@@ -315,7 +315,7 @@ def convert_to_input_spec(inputs, input_spec):
     elif isinstance(input_spec, dict):
         input_with_spec = {}
         check_type_and_len(inputs, input_spec, True)
-        for name, input in six.iteritems(inputs):
+        for name, input in inputs.items():
             if name in input_spec:
                 input_with_spec[name] = convert_to_input_spec(
                     input, input_spec[name])
@@ -380,7 +380,7 @@ def _replace_spec_name(name, input_spec):
         return processed_specs
     elif isinstance(input_spec, dict):
         processed_specs = {}
-        for key, spec in six.iteritems(input_spec):
+        for key, spec in input_spec.items():
             processed_specs[key] = _replace_spec_name(key, spec)
         return processed_specs
     else:

@@ -962,7 +962,7 @@ class StaticRNN(object):
         boot_memories = []
         pre_memories = []
         memories = []
-        for _, mem in six.iteritems(self.memories):
+        for _, mem in self.memories.items():
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             assert mem.mem is not None, "%s should be updated in every step." % (
@@ -1205,7 +1205,7 @@ class While(object):
             })
 
 
-support_ret_buildin_type = (bool, float, six.integer_types)
+support_ret_buildin_type = (bool, float, (int, ))
 
 
 def assign_skip_lod_tensor_array(input, output):

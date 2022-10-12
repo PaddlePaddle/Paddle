@@ -43,7 +43,7 @@ class Context(object):
 
     def print(self):
         self.logger.info("-----------  Configuration  ----------------------")
-        for arg, value in sorted(six.iteritems(vars(self.args))):
+        for arg, value in sorted(vars(self.args).items()):
             self.logger.info("%s: %s" % (arg, value))
         self.logger.info("--------------------------------------------------")
 

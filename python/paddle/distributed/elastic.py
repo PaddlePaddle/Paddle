@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import argparse
-import six
 import os
 
 
@@ -30,7 +29,7 @@ class Command(object):
         self.np_path = self.prefix + '/np'
 
     def set_np(self, np):
-        self.etcd.put(self.np_path, six.b('{}'.format(np)))
+        self.etcd.put(self.np_path, '{}'.format(np).encode('latin-1'))
 
     def scale_np(self, np):
         if self.etcd.get(self.np_path)[0] != None:

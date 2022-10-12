@@ -15,7 +15,6 @@
 import unittest
 import numpy as np
 import math
-import six
 from op_test import OpTest
 '''
 # Equivalent code
@@ -78,7 +77,7 @@ def poly2mask(xy, k, h, w):
     x = np.zeros((k), np.int_)
     y = np.zeros((k), np.int_)
     m = 0
-    for j in six.moves.xrange(1, k):
+    for j in range(1, k):
         if u[j] != u[j - 1]:
             xd = float(u[j] if (u[j] < u[j - 1]) else (u[j] - 1))
             xd = (xd + .5) / scale - .5

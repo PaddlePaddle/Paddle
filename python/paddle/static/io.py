@@ -17,7 +17,6 @@ import inspect
 import logging
 import os
 import warnings
-import six
 import numpy as np
 
 import paddle
@@ -69,7 +68,7 @@ def _normalize_path_prefix(path_prefix):
     """
     convert path_prefix to absolute path.
     """
-    if not isinstance(path_prefix, six.string_types):
+    if not isinstance(path_prefix, str):
         raise ValueError("'path_prefix' should be a string.")
     if path_prefix.endswith("/"):
         raise ValueError("'path_prefix' should not be a directory")

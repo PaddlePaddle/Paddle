@@ -82,7 +82,7 @@ def is_sequence(seq):
     """
     if isinstance(seq, dict):
         return True
-    return (isinstance(seq, Sequence) and not isinstance(seq, six.string_types))
+    return (isinstance(seq, Sequence) and not isinstance(seq, str))
 
 
 def _hash_with_id(*args):
@@ -163,7 +163,7 @@ def _sequence_like(instance, args):
             (key, result[key]) for key in six.iterkeys(instance))
     elif (isinstance(instance, tuple) and hasattr(instance, "_fields")
           and isinstance(instance._fields, Sequence)
-          and all(isinstance(f, six.string_types) for f in instance._fields)):
+          and all(isinstance(f, str) for f in instance._fields)):
         # This is a namedtuple
         return type(instance)(*args)
     else:
@@ -382,7 +382,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
             ele.stop_gradient = True
             new_list_tensor.append(ele)
         else:
-            assert isinstance(ele, six.integer_types)
+            assert isinstance(ele, int)
             temp_out = fill_constant([1], dtype, ele, force_cpu=True)
             new_list_tensor.append(temp_out)
     return new_list_tensor
@@ -414,7 +414,7 @@ def check_shape(shape):
                     raise ValueError(
                         "All elements in ``shape`` must be positive when it's a list or tuple"
                     )
-                if not isinstance(ele, six.integer_types):
+                if not isinstance(ele, int):
                     raise TypeError(
                         "All elements in ``shape`` must be integers when it's a list or tuple"
                     )

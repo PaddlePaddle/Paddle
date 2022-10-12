@@ -57,7 +57,7 @@ def to_text(obj, encoding='utf-8', inplace=False):
 
     if isinstance(obj, list):
         if inplace:
-            for i in six.moves.xrange(len(obj)):
+            for i in range(len(obj)):
                 obj[i] = _to_text(obj[i], encoding)
             return obj
         else:
@@ -73,13 +73,13 @@ def to_text(obj, encoding='utf-8', inplace=False):
     elif isinstance(obj, dict):
         if inplace:
             new_obj = {}
-            for key, value in six.iteritems(obj):
+            for key, value in obj.items():
                 new_obj[_to_text(key, encoding)] = _to_text(value, encoding)
             obj.update(new_obj)
             return obj
         else:
             new_obj = {}
-            for key, value in six.iteritems(obj):
+            for key, value in obj.items():
                 new_obj[_to_text(key, encoding)] = _to_text(value, encoding)
             return new_obj
     else:
@@ -105,14 +105,14 @@ def _to_text(obj, encoding):
     if obj is None:
         return obj
 
-    if isinstance(obj, six.binary_type):
+    if isinstance(obj, bytes):
         return obj.decode(encoding)
-    elif isinstance(obj, six.text_type):
+    elif isinstance(obj, str):
         return obj
     elif isinstance(obj, (bool, float)):
         return obj
     else:
-        return six.u(obj)
+        return obj
 
 
 def to_bytes(obj, encoding='utf-8', inplace=False):
@@ -154,7 +154,7 @@ def to_bytes(obj, encoding='utf-8', inplace=False):
 
     if isinstance(obj, list):
         if inplace:
-            for i in six.moves.xrange(len(obj)):
+            for i in range(len(obj)):
                 obj[i] = _to_bytes(obj[i], encoding)
             return obj
         else:
@@ -191,12 +191,12 @@ def _to_bytes(obj, encoding):
         return obj
 
     assert encoding is not None
-    if isinstance(obj, six.text_type):
+    if isinstance(obj, str):
         return obj.encode(encoding)
-    elif isinstance(obj, six.binary_type):
+    elif isinstance(obj, bytes):
         return obj
     else:
-        return six.b(obj)
+        return obj.encode('latin-1')
 
 
 # math related functions

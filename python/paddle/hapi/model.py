@@ -16,7 +16,6 @@ import inspect
 import os
 import pickle
 import numpy as np
-import six
 import warnings
 import time
 import socket
@@ -107,7 +106,7 @@ def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
 
 
 def wait_server_ready(endpoints):
-    assert not isinstance(endpoints, six.string_types)
+    assert not isinstance(endpoints, str)
     while True:
         all_ok = True
         not_ready_endpoints = []

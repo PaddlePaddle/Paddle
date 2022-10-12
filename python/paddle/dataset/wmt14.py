@@ -20,7 +20,6 @@ parse training set and test set into paddle reader creators.
 
 """
 
-import six
 import tarfile
 
 import paddle.dataset.common
@@ -174,8 +173,8 @@ def get_dict(dict_size, reverse=True):
     tar_file = paddle.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)
     src_dict, trg_dict = __read_to_dict(tar_file, dict_size)
     if reverse:
-        src_dict = {v: k for k, v in six.iteritems(src_dict)}
-        trg_dict = {v: k for k, v in six.iteritems(trg_dict)}
+        src_dict = {v: k for k, v in src_dict.items()}
+        trg_dict = {v: k for k, v in trg_dict.items()}
     return src_dict, trg_dict
 
 

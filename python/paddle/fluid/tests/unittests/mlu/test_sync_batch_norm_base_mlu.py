@@ -159,7 +159,7 @@ class TestSyncBatchNormRunnerBase(object):
 
         sys.stderr.write("len(sync_bn_fetches): " + str(len(sync_bn_fetches)) +
                          "\n")
-        for i in six.moves.xrange(0, len(sync_bn_fetches)):
+        for i in range(0, len(sync_bn_fetches)):
             sys.stderr.write("i: " + str(i) + "\n")
             sys.stderr.write("fetch_names[i]): " + fetch_names[i] + "\n")
 
