@@ -32,7 +32,7 @@ class Graph;
 namespace {
 void LogEnabledOps(const int counter, const std::string& details) {
   std::string msg_ss{"---    enabled FC MKL-DNN for "};
-  msg_ss += counter + " fc ops " + details;
+  msg_ss += std::to_string(counter) + " fc ops " + details;
   string::PrettyLogDetail(msg_ss.c_str());
 }
 }  // namespace
