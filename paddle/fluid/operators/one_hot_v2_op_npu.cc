@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 class OneHotV2NPUKernel : public framework::OpKernel<T> {

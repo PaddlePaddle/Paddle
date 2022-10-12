@@ -17,7 +17,6 @@ import paddle
 import numpy as np
 from op_test import OpTest
 import math
-import os
 from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()

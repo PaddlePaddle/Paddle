@@ -2,6 +2,7 @@ pass_library(
   build_cinn_pass
   base
   DEPS
+  cinn_subgraph_detector
   subgraph_detector
   cinn_compiler
   errors
@@ -11,6 +12,10 @@ cc_library(
   cinn_cache_key
   SRCS cinn_cache_key.cc
   DEPS graph graph_helper lod_tensor proto_desc)
+cc_library(
+  cinn_subgraph_detector
+  SRCS cinn_subgraph_detector.cc
+  DEPS graph graph_helper subgraph_detector lod_tensor proto_desc)
 cc_library(
   transform_desc
   SRCS transform_desc.cc

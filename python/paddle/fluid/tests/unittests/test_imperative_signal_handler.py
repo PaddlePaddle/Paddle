@@ -19,7 +19,6 @@ import unittest
 import multiprocessing
 import time
 
-import paddle.compat as cpt
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
 
@@ -55,7 +54,7 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
                 set_child_signal_handler(id(self), test_process.pid)
                 time.sleep(5)
             except SystemError as ex:
-                self.assertIn("Fatal", cpt.get_exception_message(ex))
+                self.assertIn("Fatal", str(ex))
                 exception = ex
             return exception
 
@@ -88,8 +87,7 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
                 set_child_signal_handler(id(self), test_process.pid)
                 time.sleep(5)
             except SystemError as ex:
-                self.assertIn("Segmentation fault",
-                              cpt.get_exception_message(ex))
+                self.assertIn("Segmentation fault", str(ex))
                 exception = ex
             return exception
 
@@ -122,7 +120,7 @@ class DygraphDataLoaderSingalHandler(unittest.TestCase):
                 set_child_signal_handler(id(self), test_process.pid)
                 time.sleep(5)
             except SystemError as ex:
-                self.assertIn("Bus error", cpt.get_exception_message(ex))
+                self.assertIn("Bus error", str(ex))
                 exception = ex
             return exception
 

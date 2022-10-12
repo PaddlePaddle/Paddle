@@ -18,7 +18,7 @@ from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 import os
 

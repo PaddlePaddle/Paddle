@@ -19,41 +19,28 @@ import io
 import datetime
 import time
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable
 from ..fluid.framework import in_dygraph_mode
-from ..fluid.framework import OpProtoHolder
 from ..fluid.framework import _non_static_mode
-from ..fluid.framework import _in_legacy_dygraph
-from ..fluid.framework import convert_np_dtype_to_dtype_
-from ..fluid.framework import _varbase_creator
-from ..fluid.data_feeder import convert_dtype
 from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.data_feeder import check_type
-from ..fluid.data_feeder import check_dtype
 from ..fluid.layers.tensor import fill_constant
-from ..fluid.layers import utils
-from ..fluid.dygraph import layers
-from ..fluid.dygraph.parallel import prepare_context
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle import _C_ops, _legacy_C_ops
-import paddle.fluid.dygraph_utils as dygraph_utils
+from paddle import _legacy_C_ops
 import contextlib
-from .fleet.layers.mpu.mp_ops import split
-from .fleet.layers.mpu.mp_ops import _c_identity
-from .fleet.layers.mpu.mp_ops import _c_concat
-from .fleet.layers.mpu.mp_ops import _c_split
-from .fleet.layers.mpu.mp_ops import _mp_allreduce
-from .fleet.layers.mpu.mp_ops import _c_lookup_table
-from .fleet.layers.mpu.mp_ops import _Linear
-from .fleet.layers.mpu.mp_ops import _set_var_distributed
-from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy
-from .fleet.layers.mpu.mp_ops import _linear
-from .fleet.layers.mpu.mp_ops import _parallel_linear
-from .fleet.layers.mpu.mp_ops import _parallel_embedding
+from .fleet.layers.mpu.mp_ops import split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
 from .communication.group import Group, _add_new_group
-from .communication.all_reduce import all_reduce
+from .communication.all_reduce import all_reduce  # noqa: F401
 from .communication.reduce import _get_reduce_op, ReduceOp
 
 __all__ = []
@@ -478,7 +465,8 @@ def is_initialized():
 
     Check whether the distributed environment has been initialized
 
-    Returns (bool): `True` if distributed environment has been initialized, otherwise `False`.
+    Returns:
+        `True` if distributed environment has been initialized, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -626,7 +614,7 @@ def broadcast(tensor, src, group=None, sync_op=True):
 
     Args:
         tensor (Tensor): The Tensor to send if current rank is the source, or the Tensor to receive otherwise. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         src (int): The source rank.
         group (Group, optional): The group instance return by new_group or None for global default group.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
@@ -709,7 +697,7 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, sync_op=True):
 
     Args:
         tensor (Tensor): The output Tensor for the destination and the input Tensor otherwise. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         dst (int): The destination rank id.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The operation used. Default value is ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global default group.
@@ -817,7 +805,7 @@ def all_gather(tensor_list, tensor, group=None, sync_op=True):
 
     Args:
         tensor_list (list): A list of output Tensors. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, bfloat16, complex64 or complex128.
         tensor (Tensor): The Tensor to send. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
         group (Group, optional): The group instance return by new_group or None for global default group.
@@ -999,9 +987,9 @@ def scatter(tensor, tensor_list=None, src=0, group=None, sync_op=True):
 
     Args:
         tensor (Tensor): The output Tensor. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         tensor_list (list|tuple): A list/tuple of Tensors to scatter. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool. Default value is None.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16. Default value is None.
         src (int): The source rank id. Default value is 0.
         group (Group, optional): The group instance return by new_group or None for global default group.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
@@ -1096,7 +1084,7 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, sync_op=True):
 
     Args:
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         out_tensor_list (list): A list of output Tensors. The data type of its elements should be the same as the
             data type of the input Tensors.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
@@ -1197,7 +1185,7 @@ def alltoall_single(in_tensor,
         ``alltoall_single`` is only supported in eager mode.
 
     Args:
-        in_tensor (Tensor): Input tensor. The data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+        in_tensor (Tensor): Input tensor. The data type should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         out_tensor (Tensor): Output Tensor. The data type should be the same as the data type of the input Tensor.
         in_split_sizes (list[int], optional): Split sizes of ``in_tensor`` for dim[0]. If not given, dim[0] of ``in_tensor``
             must be divisible by group size and ``in_tensor`` will be scattered averagely to all participators. Default: None.
@@ -1286,7 +1274,7 @@ def send(tensor, dst=0, group=None, sync_op=True):
 
     Args:
         tensor (Tensor): The Tensor to send. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         dst (int): The destination rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
@@ -1352,7 +1340,7 @@ def recv(tensor, src=0, group=None, sync_op=True):
 
     Args:
         tensor (Tensor): The Tensor to receive. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
@@ -1435,7 +1423,7 @@ def isend(tensor, dst, group=None):
 
     Args:
         tensor (Tensor): The Tensor to send. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         dst (int): The destination rank.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
 
@@ -1485,7 +1473,7 @@ def irecv(tensor, src=None, group=None):
 
     Args:
         tensor (Tensor): The Tensor to receive. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         src (int): The source rank id.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
 
@@ -1594,7 +1582,7 @@ def batch_isend_irecv(p2p_op_list):
     corresponding tasks. NCCL are currently supported.
 
     Args:
-        p2p_op_list: A list of point-to-point operations(type of each operator is
+        p2p_op_list (List[P2POp]): A list of point-to-point operations(type of each operator is
             ``paddle.distributed.P2POp``). The order of the isend/irecv in the list
             matters and it needs to match with corresponding isend/irecv on the
             remote end.
@@ -1668,9 +1656,9 @@ def reduce_scatter(tensor,
     Reduces, then scatters a list of tensors to all processes in a group
 
     Args:
-        tensor (Tensor): Output tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+        tensor (Tensor): Output tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         tensor_list (list[Tensor]): List of tensors to reduce and scatter. Every element in the list must be a Tensor whose data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (Group, optional): The group instance return by new_group or None for global
             default group. Default: None.
@@ -1736,9 +1724,9 @@ def _reduce_scatter_base(output,
     Reduces, then scatters a flattened tensor to all processes in a group.
 
     Args:
-        output (Tensor): Output tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+        output (Tensor): Output tensor. Its data type should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         input (Tensor): Input tensor that is of size output tensor size times world size. Its data type
-            should be float16, float32, float64, int32, int64, int8, uint8 or bool.
+            should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD): Optional. The operation used. Default: ReduceOp.SUM.
         group (ProcessGroup, optional): The process group to work on. If None,
             the default process group will be used.

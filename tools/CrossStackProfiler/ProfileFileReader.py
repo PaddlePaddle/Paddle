@@ -12,26 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import six
-import glob
 import json
-import logging
-import argparse
-import pandas as pd
 import multiprocessing
 from multiprocessing import Process
 
-import google.protobuf.text_format as text_format
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 from CspChromeTraceFormatter import ChromeTraceFormatter
 
 from CspFileReader import FileReader
 from CspFileReader import getLogger
-from CspFileReader import TIME_PATH, DCGM_PATH, NET_PATH, PROFILE_PATH
 from CspFileReader import NETINFO_TRACE_NUM, DCGMINFO_TRACE_NUM, PIPELINEINFO_TRACE_NUM
-from CspFileReader import FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER, FILEORGANIZEFORM_BYOTHER, FILEORGANIZEFORM
+from CspFileReader import FILEORGANIZEFORM_BYRANK
 
 
 class profileFileReader(FileReader):
@@ -53,7 +46,7 @@ class profileFileReader(FileReader):
                          (rankId)] = self._parseSingleFile(fileName)
             self._logger.info("I finish processing %s!" % fileName)
 
-        if not q is None:
+        if q is not None:
             q.put(profile_dict)
 
         return profile_dict
@@ -142,7 +135,7 @@ class profileFileReader(FileReader):
 
             res[str(rankId)] = pipeLineList
 
-        if not q is None:
+        if q is not None:
             q.put(res)
 
         return res

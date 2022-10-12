@@ -42,7 +42,7 @@ class Reshape2MLUKernel : public framework::OpKernel<T> {
       }
     } else {
       auto* shape_tensor = ctx.HasInput("Shape")
-                               ? ctx.Input<framework::LoDTensor>("Shape")
+                               ? ctx.Input<phi::DenseTensor>("Shape")
                                : nullptr;
       if (shape_tensor) {
         target_shape_vector = GetDataFromTensor<int>(shape_tensor);

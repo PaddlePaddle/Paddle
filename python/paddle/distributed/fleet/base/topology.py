@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import paddle
 import collections
-import numpy as np
 from itertools import product
 from functools import reduce
 from ..utils.log_util import logger

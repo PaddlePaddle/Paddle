@@ -39,7 +39,7 @@ class WriteToArrayOp : public ArrayOp {
                const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
-    auto &x_tensor = x->Get<framework::LoDTensor>();
+    auto &x_tensor = x->Get<phi::DenseTensor>();
     size_t offset = GetOffset(scope, place);
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
@@ -158,7 +158,7 @@ class ReadFromArrayOp : public ArrayOp {
             "Output(Out) of ReadFromArrayOp is not found."));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
-      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+      auto *out_tensor = out->GetMutable<phi::DenseTensor>();
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
@@ -169,7 +169,7 @@ class ReadFromArrayOp : public ArrayOp {
       // set grad of the writed tensor to 0 when used as write_to_array_grad
       auto *fw_var = scope.FindVar(Input("X_W"));
       if (fw_var == nullptr) return;
-      auto &fw_var_tensor = fw_var->Get<framework::LoDTensor>();
+      auto &fw_var_tensor = fw_var->Get<phi::DenseTensor>();
 
       framework::AttributeMap attrs;
       attrs["dtype"] = framework::TransToProtoVarType(fw_var_tensor.dtype());
@@ -179,7 +179,7 @@ class ReadFromArrayOp : public ArrayOp {
       auto zero_op = framework::OpRegistry::CreateOp(
           "fill_constant", {}, {{"Out", {Output("Out")}}}, attrs);
       zero_op->Run(scope, place);
-      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+      auto *out_tensor = out->GetMutable<phi::DenseTensor>();
       out_tensor->set_lod(fw_var_tensor.lod());
     }
   }
