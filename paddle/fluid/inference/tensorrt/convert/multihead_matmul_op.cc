@@ -396,6 +396,10 @@ class MultiheadMatMulOpConverter : public OpConverter {
                ")")
                   .c_str());
 
+          if (op_desc.HasAttr("Input_scale")) {
+            engine_->SetTensorDynamicRange(
+                reshape_before_fc_layer->getOutput(0), in_scale);
+          }
           // add fc layer
           nvinfer1::ILayer* fc_layer = nullptr;
           fc_layer =
@@ -405,6 +409,17 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                    n,
                                    weight,
                                    bias);
+
+          if (op_desc.HasAttr("fc_out_threshold")) {
+            PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
+                              true,
+                              platform::errors::InvalidArgument(
+                                  "must have out threshold in multihead layers "
+                                  "in int8 mode"));
+            float out_scale =
+                PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+            engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
+          }
 
           // add shuffle for CustomQKVToContextPluginDynamic layer
           auto* reshape_after_fc_layer =
@@ -428,6 +443,15 @@ class MultiheadMatMulOpConverter : public OpConverter {
           int type = static_cast<int>(nvinfer1::DataType::kHALF);
           int var_seqlen = 1;
           bool has_mask = true;
+          float dp_probs = 1.0 / 127.0;
+
+          if (qkv2context_plugin_int8 &&
+              (engine_->precision() == AnalysisConfig::Precision::kInt8)) {
+            dp_probs =
+                PADDLE_GET_CONST(float, op_desc.GetAttr("dp_probs")) / 127.0;
+            type = static_cast<int>(nvinfer1::DataType::kINT8);
+          }
+
           std::vector<nvinfer1::PluginField> fields{
               {"hidden_size",
                &hidden_out,
@@ -440,6 +464,14 @@ class MultiheadMatMulOpConverter : public OpConverter {
                &var_seqlen,
                nvinfer1::PluginFieldType::kINT32,
                1}};
+
+          if (qkv2context_plugin_int8) {
+            fields.push_back({"dq_probs",
+                              &dp_probs,
+                              nvinfer1::PluginFieldType::kFLOAT32,
+                              1});
+          }
+
           nvinfer1::PluginFieldCollection* plugin_collection =
               static_cast<nvinfer1::PluginFieldCollection*>(malloc(
                   sizeof(*plugin_collection) +

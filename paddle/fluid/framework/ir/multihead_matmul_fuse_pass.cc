@@ -1328,7 +1328,12 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
                           Node* eltadd_qk_b,
                           Node* reshape2,
                           Node* reshape2_qkv_out,
-                          Node* matmul_qk) {
+                          Node* softmax_qk,
+                          Node* eltadd0,
+                          Node* eltadd1,
+                          Node* eltadd2,
+                          Node* matmul_qk,
+                          Node* reshape2_qkv) {
     auto scale_attr =
         PADDLE_GET_CONST(float, matmul_qk->Op()->GetAttr("alpha"));
 
@@ -1431,6 +1436,43 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
     multihead_op_desc.SetAttr("alpha", scale_attr);
     multihead_op_desc.SetAttr("head_number", head_number);
+
+    auto* mul0_op_desc = mul0->Op();
+
+    // all mul op has same input.
+    if (mul0_op_desc->HasAttr("Input_scale")) {
+      multihead_op_desc.SetAttr("Input_scale",
+                                mul0_op_desc->GetAttr("Input_scale"));
+    }
+    auto* add0_op_desc = eltadd0->Op();
+    auto* add1_op_desc = eltadd1->Op();
+    auto* add2_op_desc = eltadd2->Op();
+    if (add0_op_desc->HasAttr("out_threshold")) {
+      auto out_scale0 =
+          PADDLE_GET_CONST(float, add0_op_desc->GetAttr("out_threshold"));
+      auto out_scale1 =
+          PADDLE_GET_CONST(float, add1_op_desc->GetAttr("out_threshold"));
+      auto out_scale2 =
+          PADDLE_GET_CONST(float, add2_op_desc->GetAttr("out_threshold"));
+      auto out_scale_max = std::max(out_scale0, out_scale1);
+      out_scale_max = std::max(out_scale_max, out_scale2);
+      multihead_op_desc.SetAttr("fc_out_threshold", out_scale_max);
+    }
+
+    auto* softmax_qk_op_desc = softmax_qk->Op();
+    auto* matmul_qk_op_desc = matmul_qk->Op();
+    if (matmul_qk_op_desc->HasAttr("Input_scale")) {
+      multihead_op_desc.SetAttr("qkv2context_plugin_int8", true);
+      if (softmax_qk_op_desc->HasAttr("out_threshold")) {
+        auto qkv_plugin_scale = PADDLE_GET_CONST(
+            float, softmax_qk_op_desc->GetAttr("out_threshold"));
+        multihead_op_desc.SetAttr("dp_probs", qkv_plugin_scale);
+      }
+    }
+    if (reshape2_qkv->Op()->HasAttr("out_threshold")) {
+      multihead_op_desc.SetAttr("out_threshold",
+                                reshape2_qkv->Op()->GetAttr("out_threshold"));
+    }
 
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
 
@@ -1540,7 +1582,12 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
                  eltadd_qk_b,
                  reshape2_0,
                  reshape2_qkv_out,
-                 matmul_qk);
+                 softmax_qk,
+                 eltadd0,
+                 eltadd1,
+                 eltadd2,
+                 matmul_qk,
+                 reshape2_qkv);
 
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,
