@@ -605,6 +605,7 @@ exp_ag = lambda xs: anp.exp(xs[0])
 pow_ag = lambda xs: xs[0]**xs[1]
 log_ag = lambda xs: anp.log(xs[0])
 erf_ag = lambda xs: ascipy.special.erf(xs[0])
+sigmoid_ag = lambda xs: 1.0 / (1 + anp.exp(-xs[0]))
 
 
 def gelu_ag(x, approximate=False):
@@ -618,22 +619,26 @@ def gelu_ag(x, approximate=False):
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
-    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'),
-    (('multiply', multiply_pd, multiply_ag,
-      (np.random.rand(3, 5), ), None, 'float32'),
-     ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
-     ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
-     ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
-     ('pow', paddle.pow, pow_ag,
-      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
-     ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
-     ('erf', paddle.erf, erf_ag, (np.random.rand(100, 200), ), None, 'float32'),
-     ('gelu', paddle.nn.functional.gelu, lambda xs: gelu_ag(xs[0]),
-      (np.random.rand(10, 20, 30), ), None, 'float32'),
-     ('gelu_approximate',
-      lambda x: paddle.nn.functional.gelu(x, approximate=True),
-      lambda xs: gelu_ag(xs[0], approximate=True),
-      (np.random.rand(10, 20, 30), ), None, 'float32')))
+    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'), (
+        ('multiply', multiply_pd, multiply_ag,
+         (np.random.rand(3, 5), ), None, 'float32'),
+        ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
+        ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
+        ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
+        ('pow', paddle.pow, pow_ag,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+        ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
+        ('erf', paddle.erf, erf_ag,
+         (np.random.rand(100, 200), ), None, 'float32'),
+        ('gelu', paddle.nn.functional.gelu, lambda xs: gelu_ag(xs[0]),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('gelu_approximate',
+         lambda x: paddle.nn.functional.gelu(x, approximate=True),
+         lambda xs: gelu_ag(xs[0], approximate=True),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('sigmoid', paddle.nn.functional.sigmoid, sigmoid_ag,
+         (np.random.rand(10, 20), ), None, 'float32'),
+    ))
 class TestGradWithHigherOrder(unittest.TestCase):
 
     def setUp(self):
