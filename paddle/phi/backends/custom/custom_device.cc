@@ -83,7 +83,6 @@ class CustomDevice : public DeviceInterface {
       LOG(ERROR) << "Initialize " << Type() << " Failed\n";
       exit(-1);
     }
-    device_init_flag_ = false;
     auto devices = GetDeviceList();
     for (auto dev_id : devices) {
       C_Device_st device;
@@ -886,7 +885,7 @@ class CustomDevice : public DeviceInterface {
   std::unique_ptr<C_DeviceInterface> pimpl_;
   void* dso_handle_;
   std::unordered_map<size_t, C_Device_st> devices_pool;
-  bool device_init_flag_;
+  bool device_init_flag_ = false;
   size_t device_count_;
 };
 
