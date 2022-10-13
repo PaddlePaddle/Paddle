@@ -784,14 +784,12 @@ class DistributedContext:
                 if dims_mapping[i] != -1 and len(process_mesh_processes) == 1:
                     dims_mapping[i] = -1
 
-        created_vars = []
         for dist_op in self._dist_ops_for_program.values():
             serial_op = dist_op.serial_op
             dist_attr = dist_op.dist_attr
             process_mesh_shape = dist_attr.process_mesh.topology
             process_mesh_processes = dist_attr.process_mesh.processes
             for arg_name in serial_op.input_arg_names:
-                created_vars.append(arg_name)
                 if dist_op.get_serial_input(arg_name) is None:
                     tensor_shape = []
                 else:
@@ -812,7 +810,6 @@ class DistributedContext:
                             process_mesh_processes) == 1:
                         dims_mapping[i] = -1
             for arg_name in serial_op.output_arg_names:
-                created_vars.append(arg_name)
                 if dist_op.get_serial_output(arg_name).type == core.VarDesc.VarType.READER \
                     or dist_op.get_serial_output(arg_name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
                     or dist_op.get_serial_output(arg_name).type == core.VarDesc.VarType.STEP_SCOPES:
@@ -832,20 +829,6 @@ class DistributedContext:
             if len(process_mesh_processes) == 1:
                 dist_op.dist_attr.impl_type = "default"
                 dist_op.dist_attr.impl_idx = 0
-            if serial_op.type == "assign":
-                in_name = serial_op.input_arg_names[0]
-                out_name = serial_op.output_arg_names[0]
-                if out_name in created_vars:
-                    out_var = dist_op.get_serial_output(out_name)
-                    dist_tensor = self.get_dist_tensor_for_program(out_var)
-                    tensor_dims_mapping = dist_tensor.dist_attr.dims_mapping
-                    out_dims_mapping = dist_op.dist_attr.get_output_dims_mapping(
-                        out_name)
-                    if out_dims_mapping != tensor_dims_mapping:
-                        dist_op.dist_attr.set_output_dims_mapping(
-                            out_name, tensor_dims_mapping)
-                        dist_op.dist_attr.set_input_dims_mapping(
-                            in_name, tensor_dims_mapping)
 
     def validate_dist_attr_for_program(self):
         if not self._is_initialized:

@@ -1107,10 +1107,7 @@ class Resharder:
         return False
 
     def is_condition_replicative(self, op):
-        # assert op.type == "while"
         sub_block = self.auto_parallel_main_prog.blocks[op.attr("sub_block").id]
-        dist_op = self.dist_context.get_dist_op_for_program(op)
-        op_dist_attr = dist_op.dist_attr
 
         if op.type == "while":
             input_cond = op.input("Condition")
@@ -2091,6 +2088,7 @@ class Resharder:
 
             # reshard input
             self._reshard_input(block)
+
             # reshard output
             # NOTE: Only support that insert send and recv op if output process mesh is different from tensor process mesh
             self._reshard_output(block)

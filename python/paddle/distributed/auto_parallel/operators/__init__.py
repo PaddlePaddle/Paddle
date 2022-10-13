@@ -34,3 +34,4 @@ from . import dist_fused_feedforward
 from . import dist_fused_attention
 from . import dist_reduce_sum_p
 from . import dist_shape
+from . import dist_assign
