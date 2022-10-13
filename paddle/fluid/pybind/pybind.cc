@@ -182,6 +182,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
+#if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
+    !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
+    !defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/pybind/rpc.h"
+#endif
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -548,7 +554,7 @@ static void inline CreateVariableIfNotExist(
         auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
-        auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
+        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
         tensor_temp->Resize(phi::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
@@ -1691,11 +1697,11 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               Scope *scope,
               const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<framework::LoDTensor> feed_tensors;
+             std::vector<phi::DenseTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
-               framework::LoDTensor t;
+               phi::DenseTensor t;
                SetTensorFromPyArray<platform::CPUPlace>(
                    &t, item.second, platform::CPUPlace(), false);
                feed_names.push_back(item.first);
@@ -2601,6 +2607,21 @@ All parameter, weight, gradient are variables in Paddle.
   BindNeighborSampleResult(&m);
   BindGraphGpuWrapper(&m);
 #endif
+#endif
+#if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
+    !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
+    !defined(PADDLE_WITH_HIP)
+  BindWorkerInfo(&m);
+  BindFuture(&m);
+  InitAndSetAgentInstance(&m);
+  InvokeRpc(&m);
+  StartWorker(&m);
+  StartClient(&m);
+  StopWorker(&m);
+  GetWorkerInfo(&m);
+  GetWorkerInfoByRank(&m);
+  GetCurrentWorkerInfo(&m);
+  GetAllWorkerInfos(&m);
 #endif
 }
 }  // namespace pybind

@@ -16,10 +16,8 @@
 
 #
 import platform
-from sys import argv
 import argparse
 import os
-import time
 
 
 def parse_args():

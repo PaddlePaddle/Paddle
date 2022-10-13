@@ -20,7 +20,6 @@ sys.path.append("..")
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program
 from paddle.fluid.backward import append_backward
 
 from op_test_xpu import XPUOpTest

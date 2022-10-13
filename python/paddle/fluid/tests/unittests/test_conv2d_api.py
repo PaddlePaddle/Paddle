@@ -20,8 +20,6 @@ import paddle
 paddle.enable_static()
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest
-from paddle.fluid import Program, program_guard
 
 
 class TestConv2DAPI(unittest.TestCase):

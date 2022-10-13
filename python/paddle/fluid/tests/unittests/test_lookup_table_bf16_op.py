@@ -26,7 +26,7 @@ from paddle import enable_static
 
 def _lookup(weights, ids, flat_ids, op_version="lookup_table"):
     w_shape = weights.shape
-    out_shape = list(ids.shape[:-1]) if op_version is "lookup_table" else list(
+    out_shape = list(ids.shape[:-1]) if op_version == "lookup_table" else list(
         ids.shape)
     out_shape.append(w_shape[-1])
     out = weights[flat_ids].reshape(out_shape)
@@ -36,7 +36,7 @@ def _lookup(weights, ids, flat_ids, op_version="lookup_table"):
 def _get_grad(weights, ids, flat_ids, op_version="lookup_table"):
     w_shape = weights.shape
     w_grad = np.zeros((w_shape), dtype=weights.dtype)
-    out_shape = list(ids.shape[:-1]) if op_version is "lookup_table" else list(
+    out_shape = list(ids.shape[:-1]) if op_version == "lookup_table" else list(
         ids.shape)
     out_grad_shape = (np.prod(out_shape), w_shape[-1])
     out_grad = weights[flat_ids].reshape(out_grad_shape)

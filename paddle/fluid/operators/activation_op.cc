@@ -82,27 +82,18 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
 framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const framework::OperatorWithKernel& oper,
                                       const std::string& name) {
-  framework::LibraryType library{framework::LibraryType::kPlain};
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = oper.IndicateVarDataType(ctx, name);
-// FIXME(liuwei1031) temporarily disable the code to unblock users
-// TODO(liuwei1031) figure out the reason behind
-// https://github.com/PaddlePaddle/Paddle/issues/16096
-// and re-enable this in the future
-// #ifdef PADDLE_WITH_CUDA
-//   auto it1 = oper.Attrs().find("use_cudnn");
-//   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
-//     library = framework::LibraryType::kCUDNN;
-//   }
-// #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      oper.CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-#endif
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  // FIXME(liuwei1031) temporarily disable the code to unblock users
+  // TODO(liuwei1031) figure out the reason behind
+  // https://github.com/PaddlePaddle/Paddle/issues/16096
+  // and re-enable this in the future
+  // #ifdef PADDLE_WITH_CUDA
+  //   auto it1 = oper.Attrs().find("use_cudnn");
+  //   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+  //     library = framework::LibraryType::kCUDNN;
+  //   }
+  // #endif
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
@@ -246,7 +237,8 @@ $$out = \\frac{1}{\\sqrt{x}}$$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$$out = \\lceil x \\rceil$$
+..  math::
+    out = \left \lceil x \right \rceil
 
 )DOC";
 
@@ -262,7 +254,8 @@ Cosine Operator. Computes cosine of x element-wise.
 
 Input range is `(-inf, inf)` and output range is `[-1,1]`.
 
-$$out = cos(x)$$
+..  math::
+    out = cos(x)
 
 )DOC";
 
@@ -292,7 +285,10 @@ $$out = sinh(x)$$
 UNUSED constexpr char CoshDoc[] = R"DOC(
 Cosh Activation Operator.
 
-$$out = cosh(x)$$
+Input range `(-inf, inf)`, output range `(1, inf)`.
+
+..  math::
+    out = \frac{exp(x)+exp(-x)}{2}
 
 )DOC";
 
@@ -393,11 +389,12 @@ class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "Input of acos operator");
-    AddOutput("Out", "Output of acos operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input");
     AddComment(R"DOC(
 Arccosine Operator.
 
-$$out = \cos^{-1}(x)$$
+..  math::
+    out = \cos^{-1}(x)
 
 )DOC");
   }
@@ -409,11 +406,12 @@ class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Input of asin operator, an N-D Tensor, with data type float32, "
              "float64 or float16.");
-    AddOutput("Out", "Output of asin operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input.");
     AddComment(R"DOC(
 Arcsine Operator.
 
-$$out = \sin^{-1}(x)$$
+..  math::
+    out = \sin^{-1}(x)
 
 )DOC");
   }
@@ -425,11 +423,12 @@ class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Input of atan operator, an N-D Tensor, with data type float32, "
              "float64 or float16.");
-    AddOutput("Out", "Output of atan operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input x");
     AddComment(R"DOC(
 Arctangent Operator.
 
-$$out = \tan^{-1}(x)$$
+..  math::
+    out = \tan^{-1}(x)
 
 )DOC");
   }

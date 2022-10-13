@@ -17,14 +17,11 @@ import paddle
 from paddle.fluid import framework, core, layers, unique_name
 from paddle.fluid.framework import Variable
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.fluid.initializer import Constant
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.optimizer import Optimizer
-from paddle.distributed.collective import new_group
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import name_scope
 from paddle.fluid import core, unique_name
-import numpy as np
 
 
 def init_communicator(block, rank, ranks, ring_id):

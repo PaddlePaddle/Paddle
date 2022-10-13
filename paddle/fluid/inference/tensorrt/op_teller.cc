@@ -2221,7 +2221,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
-      "lookup_table"};
+      "lookup_table",
+      "lookup_table_v2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2333,7 +2334,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
-      "lookup_table"};
+      "lookup_table",
+      "lookup_table_v2"};
 };
 
 struct GenericPluginTeller : public Teller {
@@ -2409,6 +2411,12 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                     bool with_dynamic_shape) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
+  // do not support the op which is labeled the `skip_quant`
+  if ((desc.HasAttr("namescope") &&
+       PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
+           "/skip_quant_2/") ||
+      desc.HasAttr("skip_quant"))
+    return false;
   auto& default_teller = GetDefaultTeller();
   if ((*default_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
     SetOpConverterType(op_type, OpConverterType::Default);

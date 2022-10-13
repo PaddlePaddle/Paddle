@@ -62,8 +62,8 @@ class LoDTensor2BatchFunctor {
 
  public:
   void operator()(const DeviceContext& context,
-                  const paddle::framework::LoDTensor& lod_tensor,
-                  paddle::framework::LoDTensor* batch,
+                  const phi::DenseTensor& lod_tensor,
+                  phi::DenseTensor* batch,
                   bool is_cal_batch_lod,
                   bool is_reverse = false) const {
     if (!is_cal_batch_lod) {
@@ -178,8 +178,8 @@ template <typename DeviceContext, typename T>
 class Batch2LoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const paddle::framework::LoDTensor& batch,
-                  paddle::framework::LoDTensor* lod_tensor) const {
+                  const phi::DenseTensor& batch,
+                  phi::DenseTensor* lod_tensor) const {
     auto in_lod = batch.lod();
     PADDLE_ENFORCE_GT(
         in_lod.size(),

@@ -267,8 +267,8 @@ void* XcclGetPointerByOffset(void* raw_pointer,
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather_Partial(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
-    int offset,
-    int length) {
+    int64_t offset,
+    int64_t length) {
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
