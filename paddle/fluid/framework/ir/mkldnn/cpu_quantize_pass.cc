@@ -502,9 +502,14 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
     GET_IR_NODE_FROM_SUBGRAPH(input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(output, output, fc_pattern);
 
+    if (!AreScalesPresentForNodes({input, weights})) {
+      MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
+      return;
+    }
+
     if (with_residual_data) {
       GET_IR_NODE_FROM_SUBGRAPH(residual_data, residual_data, fc_pattern);
-      if (!AreScalesPresentForNodes({input, weights, residual_data})) {
+      if (!AreScalesPresentForNodes({residual_data})) {
         MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
         return;
       }
@@ -520,11 +525,6 @@ void CPUQuantizePass::QuantizeFc(Graph* graph, bool with_residual_data) const {
                     residual_scale,
                     is_residual_unsigned,
                     "Scale_in_eltwise");
-    } else {
-      if (!AreScalesPresentForNodes({input, weights})) {
-        MarkAndLogCannotQuantizeOp(fc, "No scale available for the operator");
-        return;
-      }
     }
 
     bool is_input_unsigned{false};
