@@ -98,10 +98,11 @@ class Spectrogram(nn.Layer):
 
     def forward(self, x: Tensor) -> Tensor:
         """
-            input: x (Tensor): Tensor of waveforms with shape `(N, T)`
+        Args: 
+            x (Tensor): Tensor of waveforms with shape `(N, T)`
 
-            return: Tensor: Spectrograms with shape `(N, n_fft//2 + 1, num_frames)`.
-
+        Returns: 
+            Tensor: Spectrograms with shape `(N, n_fft//2 + 1, num_frames)`.
         """
         stft = self._stft(x)
         spectrogram = paddle.pow(paddle.abs(stft), self.power)
