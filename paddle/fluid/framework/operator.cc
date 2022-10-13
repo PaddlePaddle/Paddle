@@ -3020,9 +3020,6 @@ void OperatorWithKernel::BuildPhiKernelContext(
       phi::OneDNNContext* one_dnn_ctx =
           static_cast<phi::OneDNNContext*>(dev_ctx);
       switch (AttrTypeID(attr)) {
-        case proto::AttrType::INT:
-          one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
-          break;
         case proto::AttrType::FLOAT:
           one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(float, attr));
           break;
@@ -3038,27 +3035,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
           one_dnn_ctx->SetDnnAttr(attr_name,
                                   PADDLE_GET_CONST(std::vector<float>, attr));
           break;
-        case proto::AttrType::STRINGS:
-          one_dnn_ctx->SetDnnAttr(
-              attr_name, PADDLE_GET_CONST(std::vector<std::string>, attr));
-          break;
         case proto::AttrType::BOOLEAN:
           one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
-          break;
-        case proto::AttrType::BOOLEANS:
-          one_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::vector<bool>, attr));
-          break;
-        case proto::AttrType::LONG:
-          one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int64_t, attr));
-          break;
-        case proto::AttrType::LONGS:
-          one_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::vector<int64_t>, attr));
-          break;
-        case proto::AttrType::FLOAT64S:
-          one_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::vector<double>, attr));
           break;
         default:
           PADDLE_THROW(platform::errors::Unimplemented(
@@ -3077,42 +3055,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         case proto::AttrType::INT:
           gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
           break;
-        case proto::AttrType::FLOAT:
-          gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(float, attr));
-          break;
-        case proto::AttrType::STRING:
-          gpu_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::string, attr));
-          break;
-        case proto::AttrType::INTS:
-          gpu_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::vector<int>, attr));
-          break;
-        case proto::AttrType::FLOATS:
-          gpu_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::vector<float>, attr));
-          break;
-        case proto::AttrType::STRINGS:
-          gpu_dnn_ctx->SetDnnAttr(
-              attr_name, PADDLE_GET_CONST(std::vector<std::string>, attr));
-          break;
         case proto::AttrType::BOOLEAN:
           gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
-          break;
-        case proto::AttrType::BOOLEANS:
-          gpu_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::vector<bool>, attr));
-          break;
-        case proto::AttrType::LONG:
-          gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int64_t, attr));
-          break;
-        case proto::AttrType::LONGS:
-          gpu_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::vector<int64_t>, attr));
-          break;
-        case proto::AttrType::FLOAT64S:
-          gpu_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::vector<double>, attr));
           break;
         default:
           PADDLE_THROW(platform::errors::Unimplemented(
@@ -3123,6 +3067,36 @@ void OperatorWithKernel::BuildPhiKernelContext(
 #endif
   }
   VLOG(4) << "Done runtime attributes";
+#endif
+
+// For compatible with Op with extra input for onednn backend
+#ifdef PADDLE_WITH_MKLDNN
+  if (phi::OneDNNContext::classof(dev_ctx)) {
+    phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+    auto& extra_input_names =
+        paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
+            Type());
+    for (const auto& input_name : extra_input_names) {
+      auto it = ctx.inputs.find(input_name);
+      if (it == ctx.inputs.end() || it->second.size() == 0) {
+        one_dnn_ctx->SetDnnInput(input_name, nullptr);
+      } else {
+        auto ins_vector = it->second;
+        PADDLE_ENFORCE_EQ(
+            ins_vector.size(),
+            1UL,
+            phi::errors::InvalidArgument(
+                "OneDNN's extra input only allows one input tensor."));
+        auto* var = ins_vector[0];
+        PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "OneDNN's extra input only can be DenseTensor."));
+        one_dnn_ctx->SetDnnInput(input_name, &(var->Get<phi::DenseTensor>()));
+      }
+    }
+  }
+  VLOG(4) << "Done runtime extra inputs";
 #endif
 }
 

@@ -29,7 +29,7 @@ paddle::experimental::Tensor conv2d_ad_func(
     const paddle::experimental::Tensor& filter,
     std::vector<int> strides,
     std::vector<int> paddings,
-    std::string paddding_algorithm,
+    std::string padding_algorithm,
     std::vector<int> dilations,
     int groups,
     std::string data_format) {
@@ -61,7 +61,7 @@ paddle::experimental::Tensor conv2d_ad_func(
                             new_filter,
                             strides,
                             paddings,
-                            paddding_algorithm,
+                            padding_algorithm,
                             dilations,
                             groups,
                             data_format);
@@ -86,7 +86,7 @@ paddle::experimental::Tensor conv2d_ad_func(
                               filter,
                               strides,
                               paddings,
-                              paddding_algorithm,
+                              padding_algorithm,
                               dilations,
                               groups,
                               data_format);
@@ -110,7 +110,7 @@ paddle::experimental::Tensor conv2d_ad_func(
                                                  filter,
                                                  strides,
                                                  paddings,
-                                                 paddding_algorithm,
+                                                 padding_algorithm,
                                                  dilations,
                                                  groups,
                                                  data_format);
@@ -145,7 +145,7 @@ paddle::experimental::Tensor conv2d_ad_func(
     // SetAttributes if needed
     grad_node->SetAttributestrides(strides);
     grad_node->SetAttributepaddings(paddings);
-    grad_node->SetAttributepaddding_algorithm(paddding_algorithm);
+    grad_node->SetAttributepadding_algorithm(padding_algorithm);
     grad_node->SetAttributegroups(groups);
     grad_node->SetAttributedilations(dilations);
     grad_node->SetAttributedata_format(data_format);

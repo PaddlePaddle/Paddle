@@ -16,6 +16,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
 
@@ -87,6 +88,8 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"use_cudnn", ExtraAttrProperty::SCHEDULE},
         {"use_mkldnn", ExtraAttrProperty::SCHEDULE},
         // ONEDNN dedicated attributes
+        {"Activation_scale", ExtraAttrProperty::ONEDNN},
+        {"Bias", ExtraAttrProperty::ONEDNN},
         {"data_format", ExtraAttrProperty::ONEDNN},
         {"force_fp32_output", ExtraAttrProperty::ONEDNN},
         {"fuse_activation", ExtraAttrProperty::ONEDNN},
@@ -108,14 +111,18 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fused_transpose_X", ExtraAttrProperty::ONEDNN},
         {"fused_transpose_Y", ExtraAttrProperty::ONEDNN},
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
+        {"Output_shift_scale", ExtraAttrProperty::ONEDNN},
+        {"ResidualData", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
         {"scale_out", ExtraAttrProperty::ONEDNN},
+        {"Scale_in", ExtraAttrProperty::ONEDNN},
         {"Scale_in_eltwise", ExtraAttrProperty::ONEDNN},
         {"Scale_x", ExtraAttrProperty::ONEDNN},
         {"Scale_y", ExtraAttrProperty::ONEDNN},
         {"Scale_out", ExtraAttrProperty::ONEDNN},
         {"Scale_weights", ExtraAttrProperty::ONEDNN},
+        {"Sum_scale", ExtraAttrProperty::ONEDNN},
         {"x_data_format", ExtraAttrProperty::ONEDNN},
         {"y_data_format", ExtraAttrProperty::ONEDNN},
         // GPUDNN dedicated attributes
@@ -190,6 +197,15 @@ class ExtraInfoUtils {
     return empty_extra_attrs_checker_;
   }
 
+  const std::vector<std::string>& GetExtraInputNamesMap(
+      const std::string& op_type) const {
+    auto iter = g_extra_input_names_map_.find(op_type);
+    if (iter != g_extra_input_names_map_.end()) {
+      return iter->second;
+    }
+    return empty_extra_input_names_;
+  }
+
  private:
   ExtraInfoUtils();
 
@@ -202,6 +218,11 @@ class ExtraInfoUtils {
       g_extra_attrs_checker_;
   std::vector<std::function<void(framework::AttributeMap*, bool)>>
       empty_extra_attrs_checker_{};
+
+  std::unordered_map<std::string, std::vector<std::string>>
+      g_extra_input_names_map_ = {{"conv2d", {"Bias", "ResidualData"}},
+                                  {"conv2d_grad", {"Bias"}}};
+  std::vector<std::string> empty_extra_input_names_;
 };
 
 }  // namespace operators

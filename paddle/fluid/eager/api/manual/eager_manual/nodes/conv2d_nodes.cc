@@ -46,7 +46,7 @@ Conv2dGradNodeFinal::operator()(
   auto& grad_out = hooked_grads[0][0];
   auto& strides = this->strides_;
   auto& paddings = this->paddings_;
-  auto& paddding_algorithm = this->paddding_algorithm_;
+  auto& padding_algorithm = this->padding_algorithm_;
   auto& groups = this->groups_;
   auto& dilations = this->dilations_;
   auto& data_format = this->data_format_;
@@ -84,7 +84,7 @@ Conv2dGradNodeFinal::operator()(
                                     grad_out,
                                     strides,
                                     paddings,
-                                    paddding_algorithm,
+                                    padding_algorithm,
                                     dilations,
                                     groups,
                                     data_format,
@@ -128,7 +128,7 @@ Conv2dGradNodeFinal::operator()(
     // SetAttributes if needed
     grad_node->SetAttributestrides(strides);
     grad_node->SetAttributepaddings(paddings);
-    grad_node->SetAttributepaddding_algorithm(paddding_algorithm);
+    grad_node->SetAttributepadding_algorithm(padding_algorithm);
     grad_node->SetAttributegroups(groups);
     grad_node->SetAttributedilations(dilations);
     grad_node->SetAttributedata_format(data_format);
@@ -206,7 +206,7 @@ Conv2dDoubleGradNodeFinal::operator()(
 
   auto& strides = this->strides_;
   auto& paddings = this->paddings_;
-  auto& paddding_algorithm = this->paddding_algorithm_;
+  auto& padding_algorithm = this->padding_algorithm_;
   auto& groups = this->groups_;
   auto& dilations = this->dilations_;
   auto& data_format = this->data_format_;
@@ -249,7 +249,7 @@ Conv2dDoubleGradNodeFinal::operator()(
                                          grad_filter_grad_optional,
                                          strides,
                                          paddings,
-                                         paddding_algorithm,
+                                         padding_algorithm,
                                          dilations,
                                          groups,
                                          data_format,

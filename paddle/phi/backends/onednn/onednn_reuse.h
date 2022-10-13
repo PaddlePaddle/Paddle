@@ -39,6 +39,67 @@ using memory = dnnl::memory;
 
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
+static void AppendActivation(const OneDNNContext& dev_ctx,
+                             dnnl::post_ops& post_ops,  // NOLINT
+                             float activation_scale = 1.0f) {
+  const auto invalid_attribute =
+      dev_ctx.HasDnnAttr("fuse_activation")
+          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
+                .empty()
+          : true;
+  if (invalid_attribute) return;
+
+  const auto fuse_activation =
+      dev_ctx.HasDnnAttr("fuse_activation")
+          ? PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"))
+          : "";
+  const auto fuse_alpha =
+      dev_ctx.HasDnnAttr("fuse_alpha")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
+          : 0.0f;
+  const auto fuse_beta =
+      dev_ctx.HasDnnAttr("fuse_beta")
+          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
+          : 0.0f;
+
+  if (fuse_activation == "hard_sigmoid") {
+    post_ops.append_eltwise(activation_scale,
+                            dnnl::algorithm::eltwise_linear,
+                            fuse_alpha,
+                            fuse_beta);
+    post_ops.append_eltwise(
+        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+  } else {
+    const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
+        {"abs", dnnl::algorithm::eltwise_abs},
+        {"clip", dnnl::algorithm::eltwise_clip},
+        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+        {"leaky_relu", dnnl::algorithm::eltwise_relu},
+        {"mish", dnnl::algorithm::eltwise_mish},
+        {"relu", dnnl::algorithm::eltwise_relu},
+        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+        {"sigmoid", dnnl::algorithm::eltwise_logistic},
+        {"sqrt", dnnl::algorithm::eltwise_sqrt},
+        {"swish", dnnl::algorithm::eltwise_swish},
+        {"tanh", dnnl::algorithm::eltwise_tanh}};
+
+    const auto& activation_type = activation_map.find(fuse_activation);
+
+    PADDLE_ENFORCE_NE(
+        activation_type,
+        activation_map.end(),
+        phi::errors::InvalidArgument(
+            "Activation '%s' not found in oneDNN algorithms mapper",
+            fuse_activation));
+
+    post_ops.append_eltwise(
+        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+  }
+}
+
 template <typename T,
           typename TForward,
           typename TBackward = onednn_dummy_primitive,
@@ -1110,5 +1171,6 @@ class TransposeOneDNNHandler {
   std::vector<int> logical_axis_;
   dnnl::engine engine_;
 };
+
 }  // namespace funcs
 }  // namespace phi

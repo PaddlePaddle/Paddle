@@ -18,8 +18,8 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/expect.h"
 
 namespace phi {
 
@@ -301,6 +301,24 @@ struct OneDNNContext::Impl {
     dnn_attrs_[attr_name] = attr;
   }
 
+  bool HasDnnInput(const std::string& input_name) const {
+    return dnn_inputs_.count(input_name) != 0UL;
+  }
+
+  const DenseTensor* GetDnnInput(const std::string& input_name) const {
+    auto iter = dnn_inputs_.find(input_name);
+    PADDLE_ENFORCE_NE(
+        iter,
+        dnn_inputs_.end(),
+        phi::errors::NotFound(
+            "Input DenseTensor `%s` is not found in OneDNNContext."));
+    return iter->second;
+  }
+
+  void SetDnnInput(const std::string& input_name, const DenseTensor* input) {
+    dnn_inputs_[input_name] = input;
+  }
+
   std::shared_ptr<BlobMap> p_blobmap_;
   // Map key is pointer of executor and value is a data(iterator in map) needed
   // to erase
@@ -319,9 +337,16 @@ struct OneDNNContext::Impl {
   // Because DeviceContext is a global singleton, you need to ensure thread
   // safety, use the thread_local variable
   static thread_local AttributeMap dnn_attrs_;
+  // For onednn, in addition to extra attrs, there are also extra inputs,
+  // but the number is small. Hope that the implementation can be optimized
+  // to remove this member in the future.
+  static thread_local paddle::flat_hash_map<std::string, const DenseTensor*>
+      dnn_inputs_;
 };
 
 thread_local AttributeMap OneDNNContext::Impl::dnn_attrs_ = {};
+thread_local paddle::flat_hash_map<std::string, const DenseTensor*>
+    OneDNNContext::Impl::dnn_inputs_ = {};
 
 OneDNNContext::OneDNNContext(const Place& place)
     : CPUContext(place), impl_(std::make_unique<Impl>()) {}
@@ -362,6 +387,20 @@ const Attribute& OneDNNContext::GetDnnAttr(const std::string& attr_name) const {
 
 void OneDNNContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
   return impl_->SetDnnAttr(attr_name, std::move(attr));
+}
+
+bool OneDNNContext::HasDnnInput(const std::string& input_name) const {
+  return impl_->HasDnnInput(input_name);
+}
+
+const DenseTensor* OneDNNContext::GetDnnInput(
+    const std::string& input_name) const {
+  return impl_->GetDnnInput(input_name);
+}
+
+void OneDNNContext::SetDnnInput(const std::string& input_name,
+                                const DenseTensor* input) {
+  return impl_->SetDnnInput(input_name, input);
 }
 
 }  // namespace phi

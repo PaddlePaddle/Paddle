@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/fused/fusion_gru_op.h"
 #include "paddle/fluid/operators/fused/mkldnn/fusion_rnn_mkldnn.h"
+#include "paddle/phi/core/expect.h"
 
 namespace paddle {
 namespace operators {

@@ -135,10 +135,14 @@ class OneDNNContext : public CPUContext {
     return OneDNNContextThreadLocals::fetch();
   }
 
-  // Several methods for adapting ONEDNN-specific attributes
+  // Several methods for adapting ONEDNN-specific attributes and inputs
   bool HasDnnAttr(const std::string& attr_name) const;
   const Attribute& GetDnnAttr(const std::string& attr_name) const;
   void SetDnnAttr(const std::string& attr_name, Attribute attr);
+
+  bool HasDnnInput(const std::string& input_name) const;
+  const DenseTensor* GetDnnInput(const std::string& input_name) const;
+  void SetDnnInput(const std::string& input_name, const DenseTensor* input);
 
   static const char* name() { return "OneDNNContext"; }
 

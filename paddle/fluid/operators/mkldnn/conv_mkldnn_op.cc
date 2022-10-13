@@ -14,11 +14,11 @@
 
 #include <tuple>
 
-#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+#include "paddle/phi/core/expect.h"
 
 namespace paddle {
 namespace operators {

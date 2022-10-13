@@ -63,8 +63,8 @@ class Conv2dGradNodeFinal : public egr::GradNodeBase {
   void SetAttributepaddings(const std::vector<int>& paddings) {
     paddings_ = paddings;
   }
-  void SetAttributepaddding_algorithm(const std::string& paddding_algorithm) {
-    paddding_algorithm_ = paddding_algorithm;
+  void SetAttributepadding_algorithm(const std::string& padding_algorithm) {
+    padding_algorithm_ = padding_algorithm;
   }
   void SetAttributegroups(const int& groups) { groups_ = groups; }
   void SetAttributedilations(const std::vector<int>& dilations) {
@@ -82,7 +82,7 @@ class Conv2dGradNodeFinal : public egr::GradNodeBase {
   // Attributes
   std::vector<int> strides_;
   std::vector<int> paddings_;
-  std::string paddding_algorithm_;
+  std::string padding_algorithm_;
   int groups_;
   std::vector<int> dilations_;
   std::string data_format_;
@@ -136,8 +136,8 @@ class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
   void SetAttributepaddings(const std::vector<int>& paddings) {
     paddings_ = paddings;
   }
-  void SetAttributepaddding_algorithm(const std::string& paddding_algorithm) {
-    paddding_algorithm_ = paddding_algorithm;
+  void SetAttributepadding_algorithm(const std::string& padding_algorithm) {
+    padding_algorithm_ = padding_algorithm;
   }
   void SetAttributegroups(const int& groups) { groups_ = groups; }
   void SetAttributedilations(const std::vector<int>& dilations) {
@@ -156,7 +156,7 @@ class Conv2dDoubleGradNodeFinal : public egr::GradNodeBase {
   // Attributes
   std::vector<int> strides_;
   std::vector<int> paddings_;
-  std::string paddding_algorithm_;
+  std::string padding_algorithm_;
   int groups_;
   std::vector<int> dilations_;
   std::string data_format_;

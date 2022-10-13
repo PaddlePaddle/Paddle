@@ -19,7 +19,6 @@ limitations under the License. */
 #include <set>
 
 #include "glog/logging.h"
-#include "paddle/fluid/framework/expect.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -28,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/expect.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
