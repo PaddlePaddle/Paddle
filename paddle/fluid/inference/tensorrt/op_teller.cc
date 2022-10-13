@@ -2108,6 +2108,43 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "expand_v2") {
+      if (!desc.HasAttr("shape")) {
+        return false;
+      }
+      auto expand_v2_inputs = desc.Inputs();
+      if (expand_v2_inputs.find("Shape") != expand_v2_inputs.end()) {
+        if (desc.Input("Shape").size() >= 1) {
+          return false;
+        }
+      }
+      if (expand_v2_inputs.find("expand_shapes_tensor") !=
+          expand_v2_inputs.end()) {
+        if (desc.Input("expand_shapes_tensor").size() >= 1) {
+          return false;
+        }
+      }
+      std::vector<int> shape =
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      int shape_rank = shape.size();
+      int rank = x_shape.size();
+      if (with_dynamic_shape) {
+        for (int i = shape_rank - 1; i >= 0; --i) {
+          int dim = i + rank - shape_rank;
+          int size = (dim >= 0) ? x_shape[dim] : 1;
+          if (shape[i] == -1) {
+            if (dim < 0) return false;
+          }
+        }
+      } else {
+        return false;
+      }
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2229,7 +2266,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "layernorm_shift_partition",
       "lookup_table",
-      "lookup_table_v2"};
+      "lookup_table_v2",
+      "expand_v2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2343,7 +2381,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_token_prune",
       "layernorm_shift_partition",
       "lookup_table",
-      "lookup_table_v2"};
+      "lookup_table_v2",
+      "expand_v2"};
 };
 
 struct GenericPluginTeller : public Teller {
