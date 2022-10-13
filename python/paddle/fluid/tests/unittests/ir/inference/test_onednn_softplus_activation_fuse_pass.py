@@ -26,8 +26,7 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
         activation_type = draw(
             st.sampled_from([
                 'relu', 'gelu', 'tanh', 'sigmoid', 'swish', 'mish', 'sqrt',
-                'hard_swish', 'abs', 'relu6', 'clip', 'hard_sigmoid',
-                'leaky_relu'
+                'hard_swish', 'abs', 'relu6', 'clip', 'leaky_relu'
             ]))
 
         def generate_input():
