@@ -94,6 +94,13 @@ bool DenseTensor::IsSharedWith(const DenseTensor& b) const {
   return holder_ && holder_ == b.Holder();
 }
 
+class CPUAllocation : public phi::Allocation {
+ public:
+  explicit CPUAllocation(size_t size)
+      : phi::Allocation(malloc(size), size, CPUPlace()) {}
+  ~CPUAllocation() { free(ptr_); }
+};
+
 void* DenseTensor::AllocateFrom(Allocator* allocator,
                                 DataType dtype,
                                 size_t requested_size) {
@@ -125,8 +132,9 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
   // allocator. See DeviceContext.Alloc in core/device_context.cc.
   if (!holder_ || holder_->size() < bytes + meta_.offset) {
     meta_.offset = 0;
-    VLOG(10) << "Allocate data with bytes: " << bytes;
-    ResetHolder(allocator->Allocate(bytes));
+    // VLOG(10) << "Allocate data with bytes: " << bytes;
+    // ResetHolder(allocator->Allocate(bytes));
+    holder_ = std::make_shared<CPUAllocation>(bytes);
   }
 
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
