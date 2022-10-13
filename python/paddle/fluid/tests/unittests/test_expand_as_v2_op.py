@@ -82,6 +82,7 @@ class TestExpandAsOpRank4(TestExpandAsBasic):
 
 
 class TestExpandAsOpRank5(TestExpandAsBasic):
+    no_need_check_grad = True
 
     def setUp(self):
         self.op_type = "expand_as_v2"
@@ -93,6 +94,9 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
+
+    def test_check_grad(self):
+        pass
 
 
 class TestExpandAsV2Error(unittest.TestCase):
