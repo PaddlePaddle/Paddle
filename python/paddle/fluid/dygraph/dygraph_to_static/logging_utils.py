@@ -116,7 +116,7 @@ class TranslatorLogger(object):
         self._need_to_echo_code_to_stdout = code_to_stdout
 
     def check_level(self, level):
-        if isinstance(level, ((int, ), type(None))):
+        if isinstance(level, (int, type(None))):
             rv = level
         else:
             raise TypeError("Level is not an integer: {}".format(level))

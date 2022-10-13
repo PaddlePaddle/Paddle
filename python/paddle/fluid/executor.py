@@ -1818,7 +1818,7 @@ class Executor(object):
         return exe.run(feed)
 
     def _check_fetch_list(self, fetch_list):
-        is_fetch_var = lambda var: isinstance(var, (Variable, str, (str, )))
+        is_fetch_var = lambda var: isinstance(var, (Variable, str))
         is_tuple_list = lambda var: isinstance(var, (tuple, list))
 
         if fetch_list is None: return []

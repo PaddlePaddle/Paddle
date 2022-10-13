@@ -1320,7 +1320,7 @@ class TestVarBaseSetitem(unittest.TestCase):
         if _in_legacy_dygraph():
             self.assertEqual(self.tensor_x.inplace_version, 1)
 
-        if isinstance(value, ((int, ), float)):
+        if isinstance(value, (int, float)):
             result = np.zeros((2, 3)).astype(self.dtype) + value
 
         else:
@@ -1425,7 +1425,7 @@ class TestVarBaseSetitemBoolIndex(unittest.TestCase):
         self.tensor_x[index_1] = value
         self.assertEqual(self.tensor_x.inplace_version, 1)
 
-        if isinstance(value, ((int, ), float)):
+        if isinstance(value, (int, float)):
             result = np.zeros((2, 3)).astype(self.dtype) + value
 
         else:
@@ -1496,7 +1496,7 @@ class TestVarBaseSetitemBoolScalarIndex(unittest.TestCase):
         self.tensor_x[index] = value
         self.assertEqual(self.tensor_x.inplace_version, 1)
 
-        if isinstance(value, ((int, ), float)):
+        if isinstance(value, (int, float)):
             result = np.zeros((2, 3)).astype(self.dtype) + value
 
         else:

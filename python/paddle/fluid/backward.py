@@ -1825,7 +1825,7 @@ def append_backward(loss,
         parameters = []
         for i, param in enumerate(parameter_list):
             check_type(param, 'parameter_list[%s]' % i,
-                       (framework.Variable, (str, )),
+                       (framework.Variable, str),
                        'fluid.backward.append_backward')
             if isinstance(param, framework.Variable):
                 parameters.append(param.name)

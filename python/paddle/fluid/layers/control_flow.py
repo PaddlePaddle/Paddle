@@ -142,7 +142,7 @@ def select_input_with_buildin_type(inputs, mask, name):
             raise RuntimeError(
                 f"Exceptions throwed while doing select_input on {name}:\n{e}")
 
-    elif (isinstance(false_var, (support_ret_buildin_type))
+    elif (isinstance(false_var, support_ret_buildin_type)
           and isinstance(false_var, type(true_var))):
         if false_var == true_var:
             return false_var
@@ -1204,7 +1204,7 @@ class While(object):
             })
 
 
-support_ret_buildin_type = (bool, float, (int, ))
+support_ret_buildin_type = (bool, float, int)
 
 
 def assign_skip_lod_tensor_array(input, output):
