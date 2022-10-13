@@ -25,6 +25,7 @@ from filters import to_op_attr_type, to_opmaker_name, to_opmaker_name_cstr, to_p
 from tests import is_base_api, is_vec, is_scalar, is_initializer_list, supports_inplace, supports_no_need_buffer
 from filters import to_input_name, cartesian_prod_mapping
 from parse_utils import to_named_dict
+from generate_op import process_invoke_op
 
 file_loader = FileSystemLoader(Path(__file__).parent / "templates")
 env = Environment(loader=file_loader,
@@ -71,10 +72,19 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
 
     for api in apis:
         api['op_name'] = SPARSE_OP_PREFIX + api['name']
+        api['name'] = api['op_name']
         if api["backward"] is not None:
             api["backward"] = SPARSE_OP_PREFIX + api["backward"]
     for bw_api in backward_apis:
         bw_api['op_name'] = SPARSE_OP_PREFIX + bw_api['name']
+        bw_api['name'] = bw_api['op_name']
+        if 'invoke' in bw_api:
+            bw_api['invoke']['args'] = [
+                param.strip() for param in bw_api['invoke']['args'].split(',')
+            ]
+
+    # prepare for invoke case
+    process_invoke_op(forward_api_dict, backward_api_dict)
 
     # fill backward field for an api if another api claims it as forward
     for name, backward_api in backward_api_dict.items():

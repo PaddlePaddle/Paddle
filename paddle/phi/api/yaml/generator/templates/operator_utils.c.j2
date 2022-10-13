@@ -81,7 +81,11 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_ty
   {% set default_value = attr["default_value"] %}
   {% set typename = attr["typename"] %}
   {% if typename == "DataType" %}{# convert back to VarType #}
+    {% if default_value == "DataType::UNDEFINED" %}
+-1
+    {%- else %}
 static_cast<int>(framework::TransToProtoVarType(experimental::{{default_value}}))
+    {%- endif %}
   {%- elif typename == "DataLayout" %} {# does DataLayout need any processing?#}
 static_cast<int>(experimental::{{default_value}})
   {%- elif typename == "Place" %}{# construct a Place to get the type #}
@@ -94,7 +98,7 @@ static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}
 
 {# --------------------------------------- name mapping ---------------------------------------------- #}
 {% macro name_map(api) %}
-KernelSignature {{api["name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature {{api["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = api["kernel"]["param"] %}
   {{get_input_list(api["inputs"], kernel_args)}};
   paddle::small_vector<const char*> attrs;
@@ -129,7 +133,7 @@ PD_REGISTER_BASE_KERNEL_NAME({{api["op_name"]}}, {{api["name"]}});
 {%- endmacro %}
 
 {% macro register_name_map(api) %}
-PD_REGISTER_ARG_MAPPING_FN({{api["op_name"]}}, phi::{{api["name"] | to_pascal_case}}OpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN({{api["op_name"]}}, phi::{{api["op_name"] | to_pascal_case}}OpArgumentMapping);
 {%- endmacro %}
 
 {% macro get_input_list(inputs, kernel_args) %}{# inline #}
