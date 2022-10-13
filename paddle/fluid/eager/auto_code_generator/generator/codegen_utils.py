@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import yaml
 import re
-import argparse
-import os
 
 ########################
 ### Global Variables ###

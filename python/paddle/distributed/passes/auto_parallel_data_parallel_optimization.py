@@ -16,11 +16,11 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-from paddle.fluid import core, unique_name
+from paddle.fluid import unique_name
 from paddle.fluid.framework import default_main_program
-from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.distributed.auto_parallel.operators.common import is_data_parallel_scale_op, is_data_parallel_reduce_op
-from paddle.distributed.auto_parallel.utils import is_loss_grad_op, is_optimize_op, is_backward_op, ring_id_to_process_group, find_higher_order_backward_op
+from paddle.distributed.auto_parallel.utils import find_higher_order_backward_op, is_loss_grad_op, is_optimize_op, ring_id_to_process_group
 from .pass_base import PassBase, PassType, register_pass
 
 # add new optimizers supporting rescale_grad here
@@ -82,9 +82,11 @@ class DataParallelOptimizationPass(PassBase):
 
         with paddle.static.program_guard(main_program, startup_program):
             self._analyze_program()
-            self._prune_grad_scaling()
-            self._calc_comm_overlap()
-            grad_group = self._fuse_allreduce()
+
+            if self.is_data_parallel_applied():
+                self._prune_grad_scaling()
+                self._calc_comm_overlap()
+                grad_group = self._fuse_allreduce()
 
         # self.summary(grad_group)
 
@@ -166,6 +168,9 @@ class DataParallelOptimizationPass(PassBase):
             not_synchronized_grads
         ) == 0, "Unexception: gradients [{}] is scaled BUT NOT synchronized.".format(
             not_synchronized_grads)
+
+    def is_data_parallel_applied(self):
+        return len(self._group_to_grad_name_map) > 0
 
     def _could_be_prune(self):
 

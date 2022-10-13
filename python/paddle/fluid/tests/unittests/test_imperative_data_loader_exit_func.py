@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import signal
 import unittest
 import multiprocessing
 import time
 
-import paddle.compat as cpt
 from paddle.fluid.framework import _test_eager_guard
 
 import queue
