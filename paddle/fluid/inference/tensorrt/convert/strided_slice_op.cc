@@ -111,10 +111,9 @@ class StridedSliceOpConverter : public OpConverter {
 
       auto* size_tensor =
           Sub(start_tensor, Min(Concat(end_vec_tensor), shape_tensor));
-      std::vector<int> tmp_zero_vec(size_tensor->getDimensions().nbDims, 0);
-      auto zero_t = Add1DConstantLayer(tmp_zero_vec);
+      auto zero_t =
+          Add1DConstantLayer(std::vector<int>(nchw_input_dims.nbDims, 0));
       auto step_tensor = Add1DConstantLayer(trt_step_dims);
-
       size_tensor = Sub(zero_t, FloorDiv(size_tensor, step_tensor));
 
       layer = TRT_ENGINE_ADD_LAYER(
