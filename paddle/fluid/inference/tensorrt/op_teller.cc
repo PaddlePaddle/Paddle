@@ -327,6 +327,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "bmm") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
     if (op_type == "matmul_v2") {
       if (!with_dynamic_shape) {
         return false;
@@ -2115,6 +2121,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mul",
       "matmul",
       "matmul_v2",
+      "bmm",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2227,6 +2234,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mul",
       "matmul",
       "matmul_v2",
+      "bmm",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
