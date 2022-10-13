@@ -26,7 +26,8 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
         activation_type = draw(
             st.sampled_from([
                 'relu', 'gelu', 'tanh', 'sigmoid', 'swish', 'mish', 'sqrt',
-                'hard_swish', 'abs', 'relu6', 'clip', 'hard_sigmoid', 'leaky_relu'
+                'hard_swish', 'abs', 'relu6', 'clip', 'hard_sigmoid',
+                'leaky_relu'
             ]))
 
         def generate_input():
@@ -38,8 +39,10 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
                                },
                                outputs={'Out': ['softplus_out']},
                                attrs={
-                                   'beta': draw(st.floats(min_value=0.5, max_value=2)),
-                                   'threshold': draw(st.floats(min_value=15, max_value=30))
+                                   'beta':
+                                   draw(st.floats(min_value=0.5, max_value=2)),
+                                   'threshold':
+                                   draw(st.floats(min_value=15, max_value=30))
                                })
 
         if activation_type == 'relu6':
