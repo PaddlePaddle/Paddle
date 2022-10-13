@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from collections import Counter
 
-from ..static import Variable, device_guard
+from ..static import Variable
 from ..framework import core, in_dygraph_mode
-from ..fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check, _non_static_mode
+from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
 from ..framework import LayerHelper
-from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
+from ..framework import convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor
-from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops, _legacy_C_ops
@@ -141,10 +139,6 @@ def slice(input, axes, starts, ends):
 
     Returns:
         Tensor:  A ``Tensor``. The data type is same as ``input``.
-
-    Raises:
-        TypeError: The type of ``starts`` must be list, tuple or Tensor.
-        TypeError: The type of ``ends`` must be list, tuple or Tensor.
 
     Examples:
         .. code-block:: python
@@ -420,12 +414,6 @@ def transpose(x, perm, name=None):
 
 def unstack(x, axis=0, num=None):
     """
-    :alias_main: paddle.unstack
-	:alias: paddle.unstack,paddle.tensor.unstack,paddle.tensor.manipulation.unstack
-	:old_api: paddle.fluid.layers.unstack
-
-    **UnStack Layer**
-
     This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
 
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
@@ -440,9 +428,6 @@ def unstack(x, axis=0, num=None):
 
     Returns:
         list(Tensor): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
-
-    Raises:
-        ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
 
     Examples:
         .. code-block:: python
@@ -648,12 +633,16 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')
-    check_type(shape, 'shape', (list, tuple, Variable), 'crop_tensor')
+    check_type(shape, 'shape', (list, tuple, Variable, type(None)),
+               'crop_tensor')
     check_type(offsets, 'offsets', (list, tuple, Variable, type(None)),
                'crop_tensor')
 
     if offsets is None:
         offsets = [0] * len(x.shape)
+
+    if shape is None:
+        shape = x.shape
 
     if in_dygraph_mode():
         return _C_ops.crop_tensor(x, shape, offsets)
@@ -1130,10 +1119,12 @@ def concat(x, axis=0, name=None):
 
 def broadcast_tensors(input, name=None):
     """
-    This OP broadcast a list of tensors following broadcast semantics
+    Broadcast a list of tensors following broadcast semantics
 
-    .. note::
-        If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
+    Note:
+        If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+    .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
         input (list|tuple): ``input`` is a Tensor list or Tensor tuple which is with data type bool,
@@ -1241,12 +1232,9 @@ def flip(x, axis, name=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
 
           image_shape=(3, 2, 2)
-          x = np.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
-          x = x.astype('float32')
-          img = paddle.to_tensor(x)
+          img = paddle.arange(image_shape[0] * image_shape[1] * image_shape[2]).reshape(image_shape)
           tmp = paddle.flip(img, [0,1])
           print(tmp) # [[[10,11],[8, 9]], [[6, 7],[4, 5]], [[2, 3],[0, 1]]]
 
@@ -1427,10 +1415,6 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         Tensor: A tensor with the contents of the input tensor, with input \
                   axes flattened by indicated start axis and end axis. \
                   A Tensor with data type same as input x.
-
-    Raises:
-        ValueError: If x is not a Tensor.
-        ValueError: If start_axis or stop_axis is illegal.
 
     Examples:
 
@@ -1702,12 +1686,12 @@ def stack(x, axis=0, name=None):
             #  [[3., 4.]],
             #  [[5., 6.]]]
 
-	    out = paddle.stack([x1, x2, x3], axis=-2)
-	    print(out.shape)  # [1, 3, 2]
-	    print(out)
-	    # [[[1., 2.],
-	    #   [3., 4.],
-	    #   [5., 6.]]]
+        out = paddle.stack([x1, x2, x3], axis=-2)
+        print(out.shape)  # [1, 3, 2]
+        print(out)
+        # [[[1., 2.],
+        #   [3., 4.],
+        #   [5., 6.]]]
     """
     axis = 0 if axis is None else axis
 
@@ -2117,7 +2101,8 @@ def unique_consecutive(x,
     r"""
     Eliminates all but the first element from every consecutive group of equivalent elements.
 
-    .. note:: This function is different from :func:`paddle.unique` in the sense that this function
+    Note:
+        This function is different from :func:`paddle.unique` in the sense that this function
         only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
 
     Args:
@@ -2671,7 +2656,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
         overwrite (bool): The mode that updating the output when there are same indices.
 
             If True, use the overwrite mode to update the output of the same index,
-	        if False, use the accumulate mode to update the output of the same index.Default value is True.
+            if False, use the accumulate mode to update the output of the same index.Default value is True.
 
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
@@ -2892,15 +2877,12 @@ def chunk(x, chunks, axis=0, name=None):
     Returns:
         list(Tensor): The list of segmented Tensors.
 
-    Example:
+    Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            # x is a Tensor which shape is [3, 9, 5]
-            x_np = np.random.random([3, 9, 5]).astype("int32")
-            x = paddle.to_tensor(x_np)
+            x = paddle.rand([3, 9, 5])
 
             out0, out1, out2 = paddle.chunk(x, chunks=3, axis=1)
             # out0.shape [3, 3, 5]
@@ -4348,8 +4330,9 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr. Supported data type are int and int64.
         axis (int) : The axis to put 1d slices along.
-        reduce (string | optinal) : The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
-    Returns :
+        reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul' and 'multiply'.
+
+    Returns:
         Tensor: The indexed element, same dtype with arr
 
     Examples:
@@ -4455,10 +4438,11 @@ def index_add(x, index, axis, value, name=None):
             index = paddle.to_tensor([0, 2], dtype="int32")
             value = paddle.to_tensor([[1, 1, 1], [1, 1, 1]], dtype="float32")
             outplace_res = paddle.index_add(input_tensor, index, 0, value)
-            print(outplace_res.numpy())
-            # [[2 2 2]
-            #  [1 1 1]
-            #  [2 2 2]]
+            print(outplace_res)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2., 2., 2.],
+            #         [1., 1., 1.],
+            #         [2., 2., 2.]])
     """
     if in_dygraph_mode():
         return _C_ops.index_add(x, index, value, axis)
@@ -4490,7 +4474,7 @@ def index_add(x, index, axis, value, name=None):
 def index_add_(x, index, axis, value, name=None):
     """
     Inplace version of ``index_add`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_tensor_index_add`.
+    Please refer to :ref:`api_paddle_index_add`.
 
     Examples:
         .. code-block:: python
@@ -4502,10 +4486,11 @@ def index_add_(x, index, axis, value, name=None):
             index = paddle.to_tensor([0, 2], dtype="int32")
             value = paddle.to_tensor([[1, 1], [1, 1], [1, 1]], dtype="float32")
             inplace_res = paddle.index_add_(input_tensor, index, 1, value)
-            print(inplace_res.numpy())
-            # [[2, 1, 2]
-            #  [2, 1, 2]
-            #  [2, 1, 2]]
+            print(inplace_res)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[2., 1., 2.],
+            #         [2., 1., 2.],
+            #         [2., 1., 2.]])
     """
     return _C_ops.index_add_(x, index, value, axis)
 

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import collections
 import pickle
@@ -33,7 +31,7 @@ from paddle.fluid.io import _open_file_buffer, _is_file_path, _is_memory_buffer
 from paddle.fluid.framework import Variable, _varbase_creator, _dygraph_tracer, _non_static_mode, ParamBase, EagerParamBase, _current_expected_place, Program
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
-from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX, INFER_PARAMS_INFO_SUFFIX
+from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 try:
     from collections.abc import Iterable
 except:
@@ -575,10 +573,10 @@ def save(obj, path, protocol=4, **configs):
     '''
     Save an object to the specified path.
 
-    .. note::
+    Note:
         Now supports saving ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
-    .. note::
+    Note:
         Different from ``paddle.jit.save``, since the save result of ``paddle.save`` is a single file,
         there is no need to distinguish multiple saved files by adding a suffix. The argument ``path``
         of ``paddle.save`` will be directly used as the saved file name instead of a prefix.
@@ -792,10 +790,10 @@ def load(path, **configs):
     '''
     Load an object can be used in paddle from specified path.
 
-    .. note::
+    Note:
         Now supports loading ``state_dict`` of Layer/Optimizer, Tensor and nested structure containing Tensor, Program.
 
-    .. note::
+    Note:
         In order to use the model parameters saved by paddle more efficiently,
         ``paddle.load`` supports loading ``state_dict`` of Layer from the result of
         other save APIs except ``paddle.save`` , but the argument ``path`` format is
@@ -811,7 +809,7 @@ def load(path, **configs):
         ``paddle.fluid.io.save_params/save_persistables`` , ``path`` need to be a
         directory, such as ``model`` and model is a directory.
 
-    .. note::
+    Note:
         If you load ``state_dict`` from the saved result of static mode API such as
         ``paddle.static.save`` or ``paddle.static.save_inference_model`` ,
         the structured variable name in dynamic mode will cannot be restored.

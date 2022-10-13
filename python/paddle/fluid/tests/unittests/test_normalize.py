@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.nn.functional as F
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import numpy as np
 from paddle.fluid.framework import _test_eager_guard
 

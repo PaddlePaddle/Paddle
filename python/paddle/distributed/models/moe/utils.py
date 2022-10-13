@@ -14,9 +14,9 @@
 
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 
 def _number_count(numbers, upper_range):

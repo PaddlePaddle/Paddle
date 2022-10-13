@@ -15,8 +15,6 @@
 All layers just related to metric.
 """
 
-from __future__ import print_function
-
 import warnings
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant

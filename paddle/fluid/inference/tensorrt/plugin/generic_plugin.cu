@@ -287,7 +287,12 @@ bool GenericPlugin::supportsFormatCombination(
     const nvinfer1::PluginTensorDesc* in_out,
     int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
-  return true;
+  if (op_desc_.Type() == "gather_nd" || op_desc_.Type() == "yolo_box") {
+    if (pos == 0) return in_out[pos].type == nvinfer1::DataType::kFLOAT;
+    if (pos == 1) return in_out[pos].type == nvinfer1::DataType::kINT32;
+  } else {
+    return in_out[pos].type == nvinfer1::DataType::kFLOAT;
+  }
 }
 
 nvinfer1::DataType GenericPlugin::getOutputDataType(

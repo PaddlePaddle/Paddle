@@ -21,14 +21,7 @@ from paddle.fluid import framework
 import contextlib
 from paddle.fluid.framework import in_dygraph_mode
 
-import logging
-
-logger = logging.getLogger(__name__)
-formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
-                              datefmt='%Y-%m-%d %H:%M:%S')
-ch = logging.StreamHandler()
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+from ..utils.log_util import logger
 
 __all__ = []
 
@@ -49,7 +42,7 @@ def detach_variable(inputs):
 def check_recompute_necessary(inputs):
     if not any(input_.stop_gradient == False for input_ in inputs
                if isinstance(input_, (core.eager.Tensor, paddle.Tensor))):
-        logger.warn(
+        logger.warning(
             "[Recompute]: None of the inputs to current recompute block need grad, "
             "therefore there is NO need to recompute this block in backward !")
 
@@ -135,7 +128,6 @@ class LegacyRecomputeFunction(LegacyPyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 
@@ -271,7 +263,6 @@ class RecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import get_rng_state_tracker
         with paddle.fluid.dygraph.guard():
             # TODO need to check the recompute calling is vaild or not
 

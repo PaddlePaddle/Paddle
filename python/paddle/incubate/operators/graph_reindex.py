@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid import core
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 import paddle.utils.deprecated as deprecated
 
 
@@ -109,7 +107,7 @@ def graph_reindex(x,
     """
     if flag_buffer_hashtable:
         if value_buffer is None or index_buffer is None:
-            raise ValueError(f"`value_buffer` and `index_buffer` should not"
+            raise ValueError("`value_buffer` and `index_buffer` should not"
                              "be None if `flag_buffer_hashtable` is True.")
 
     if _non_static_mode():

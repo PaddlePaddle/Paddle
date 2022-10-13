@@ -80,17 +80,17 @@ using ValueVariantType =
             ::infrt::TargetType,
 #ifdef INFRT_WITH_PHI
             ::phi::MetaTensor,
-            ::phi::DenseTensor,
+            ::Tensor,
             backends::CpuPhiContext,
 #ifdef INFRT_WITH_GPU
             backends::GpuPhiContext,
             ::phi::GPUContext,
 #endif  // INFRT_WITH_GPU
             ::phi::CPUContext,
-            std::vector<const ::phi::DenseTensor*>,
-            std::vector<::phi::DenseTensor*>,
-            paddle::experimental::ScalarBase<::phi::DenseTensor>,
-            paddle::experimental::IntArrayBase<::phi::DenseTensor>,
+            std::vector<const ::Tensor*>,
+            std::vector<::Tensor*>,
+            paddle::experimental::ScalarBase<::Tensor>,
+            paddle::experimental::IntArrayBase<::Tensor>,
             std::vector<const ::phi::MetaTensor*>,
             std::vector<::phi::MetaTensor*>,
             ::phi::MetaConfig,
@@ -146,7 +146,7 @@ class Value : public common::Object {
   explicit Value(::phi::GPUContext&& x) : data(std::move(x)) {}
   explicit Value(backends::GpuPhiContext&& x) : data(std::move(x)) {}
 #endif
-  explicit Value(::phi::DenseTensor&& x) : data(std::move(x)) {}
+  explicit Value(::Tensor&& x) : data(std::move(x)) {}
   explicit Value(::phi::MetaTensor&& x) : data(std::move(x)) {}
   explicit Value(::phi::MetaConfig&& x) : data(std::move(x)) {}
 #ifdef INFRT_WITH_TRT

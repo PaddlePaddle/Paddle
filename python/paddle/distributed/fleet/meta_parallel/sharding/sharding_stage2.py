@@ -22,11 +22,7 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-import os
-import contextlib
 import logging
-import time
-import functools
 import numpy as np
 from itertools import chain
 from functools import reduce
@@ -285,7 +281,7 @@ class ShardingStage2(nn.Layer):
             dist.broadcast(buffer,
                            self._global_root_rank,
                            self._group,
-                           use_calc_stream=True)
+                           sync_op=True)
         # Multi stream operation will be supported later
         dist.wait(tensor=buffer, group=self._group, use_calc_stream=True)
 
@@ -340,7 +336,7 @@ class ShardingStage2(nn.Layer):
                             tensor=param.grad,
                             dst=self._group.ranks[dst_rank],
                             group=self._group,
-                            use_calc_stream=True),
+                            sync_op=True),
                                  callback=cleanup))
 
                     # Multi stream operation will be supported later
@@ -396,7 +392,7 @@ class ShardingStage2(nn.Layer):
                                 tensor=grad_storage.buffer,
                                 dst=self._group.ranks[grad_storage.destination],
                                 group=self._group,
-                                use_calc_stream=True),
+                                sync_op=True),
                                      callback=cleanup))
 
                         # Multi stream operation will be supported later

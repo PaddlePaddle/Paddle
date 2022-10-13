@@ -19,22 +19,14 @@
 #     Copyright 2021, Jiaao He. All rights reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
-import collections
-import math
-
 import numpy as np
 import paddle
 import paddle.nn as nn
-import paddle.nn.functional as F
-from paddle.distributed.utils import global_scatter, global_gather
-from paddle.distributed import alltoall, all_gather
+from paddle.distributed.utils.moe_utils import global_scatter, global_gather
 
-from paddle.distributed.fleet.meta_parallel import get_rng_state_tracker
-from paddle.distributed import fleet
 from paddle.autograd import PyLayer
 from .gate import NaiveGate, GShardGate, SwitchGate, BaseGate
 from .utils import count_by_gate
-from paddle import fluid
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid
 
@@ -265,7 +257,6 @@ class MoELayer(nn.Layer):
         from paddle.distributed import fleet
 
         moe_group = Group(fleet.worker_index(),
-                          fleet.worker_num(),
                           0,
                           list(range(fleet.worker_num())))
         mp_group = None

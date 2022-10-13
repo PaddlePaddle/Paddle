@@ -16,18 +16,15 @@ import re
 import os
 import errno
 import pickle
-import warnings
 import logging
 import numpy as np
 import paddle
 
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import static_only
 from .utils import get_dist_attr
-from .converter import Converter
 from .process_group import _g_process_group_map
-from .utils import get_logger
+from ..utils.log_utils import get_logger
 
 
 def check_filename(re_exp, filename):

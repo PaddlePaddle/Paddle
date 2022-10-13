@@ -120,21 +120,22 @@ class Variable {
 
 inline phi::DenseTensor::InplaceVersion* Variable::InplaceVersionCounter() {
   phi::DenseTensor::InplaceVersion* version_counter_ptr(nullptr);
-  if (IsType<framework::LoDTensor>()) {
+  if (IsType<phi::DenseTensor>()) {
     version_counter_ptr =
-        &GetMutable<framework::LoDTensor>()->InplaceVersionCounter();
-  } else if (IsType<framework::Tensor>()) {
+        &GetMutable<phi::DenseTensor>()->InplaceVersionCounter();
+  } else if (IsType<phi::DenseTensor>()) {
     version_counter_ptr =
-        &GetMutable<framework::Tensor>()->InplaceVersionCounter();
+        &GetMutable<phi::DenseTensor>()->InplaceVersionCounter();
 
   } else if (IsType<phi::SelectedRows>()) {
     version_counter_ptr = &GetMutable<phi::SelectedRows>()
                                ->mutable_value()
                                ->InplaceVersionCounter();
   } else {
-    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
-               "TensorInplaceVersion, but received type "
-            << platform::demangle(framework::ToTypeName(Type()));
+    VLOG(4)
+        << "Only supports phi::DenseTensor, LoDTensor, SelectedRows to have "
+           "TensorInplaceVersion, but received type "
+        << platform::demangle(framework::ToTypeName(Type()));
   }
   return version_counter_ptr;
 }
@@ -159,9 +160,10 @@ inline void Variable::BumpInplaceVersion() {
   if (version_counter_ptr) {
     return version_counter_ptr->Bump();
   } else {
-    VLOG(4) << "Only supports Tensor, LoDTensor, SelectedRows to have "
-               "TensorInplaceVersion, but received type "
-            << platform::demangle(framework::ToTypeName(Type()));
+    VLOG(4)
+        << "Only supports phi::DenseTensor, LoDTensor, SelectedRows to have "
+           "TensorInplaceVersion, but received type "
+        << platform::demangle(framework::ToTypeName(Type()));
   }
 }
 }  // namespace framework
