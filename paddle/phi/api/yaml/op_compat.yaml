@@ -1,3 +1,8 @@
+# - op : rnn
+#   backward : rnn_grad
+#   extra :
+#     attrs : [bool is_test = false]
+
 - op : abs
   backward : abs_grad
   extra :
@@ -319,6 +324,12 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : flip
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : floor
   backward : floor_grad
   extra :
@@ -608,11 +619,6 @@
   backward : renorm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : rnn
-  backward : rnn_grad
-  extra :
-    attrs : [bool is_test = false]
 
 - op : round
   backward : round_grad

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import os
 import tempfile
@@ -28,7 +26,6 @@ from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.framework import _test_eager_guard
 
 from predictor_utils import PredictorTools

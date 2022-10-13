@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -21,7 +19,6 @@ import paddle.fluid.framework as framework
 from test_imperative_base import new_program_scope
 
 import numpy as np
-import pickle
 import os
 import tempfile
 

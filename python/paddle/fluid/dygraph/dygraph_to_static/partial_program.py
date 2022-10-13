@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import six
 
@@ -596,16 +595,6 @@ class PartialProgramLayer:
                 name = var.name
                 if (self.program.global_block().has_var(name)
                         and self.program.global_block().var(name).dtype
-                        == paddle.float16):
-                    in_vars[i] = var.astype('float16')
-                    in_vars[i].name = name
-                if (self.forward_program.global_block().has_var(name)
-                        and self.forward_program.global_block().var(name).dtype
-                        == paddle.float16):
-                    in_vars[i] = var.astype('float16')
-                    in_vars[i].name = name
-                if (self.backward_program.global_block().has_var(name)
-                        and self.backward_program.global_block().var(name).dtype
                         == paddle.float16):
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name

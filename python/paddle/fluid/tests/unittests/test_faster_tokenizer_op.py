@@ -12,19 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import io
 import os
 import unittest
 
 import numpy as np
 import paddle
 import paddle.nn as nn
-from paddle.dataset.common import DATA_HOME
 from paddle.fluid.framework import core, _non_static_mode, _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 import sys
 import tempfile

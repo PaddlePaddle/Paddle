@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
 import unittest
-import tempfile
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, check_out_dtype
+from op_test import check_out_dtype
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
-import paddle.inference as paddle_infer
 from test_sum_op import TestReduceOPTensorAxisBase
 
 

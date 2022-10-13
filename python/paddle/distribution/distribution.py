@@ -19,22 +19,14 @@
 #            'sampling_id',
 #            'Uniform']
 
-from __future__ import print_function
-
-import math
 import warnings
 
 import numpy as np
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid.data_feeder import (check_dtype, check_type,
-                                      check_variable_and_dtype, convert_dtype)
+from paddle.fluid.data_feeder import (check_variable_and_dtype, convert_dtype)
 from paddle.fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
-from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
-                                 elementwise_mul, elementwise_sub, nn, ops,
-                                 tensor)
-from paddle.tensor import arange, concat, gather_nd, multinomial
+from paddle.fluid.layers import tensor
 
 
 class Distribution(object):

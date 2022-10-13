@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import multiprocessing
 import os
 import signal
@@ -30,7 +28,7 @@ from paddle.device import get_device
 
 # deprecated module import
 from paddle.fluid import core
-from paddle.fluid.framework import _cpu_num, set_flags
+from paddle.fluid.framework import set_flags
 
 __all__ = []
 

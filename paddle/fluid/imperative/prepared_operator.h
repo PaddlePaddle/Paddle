@@ -38,7 +38,7 @@ DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace imperative {
 
-const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
+const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var);
 
 template <typename VarType>
 static void SetForwardDataTypeOfGradVar(const std::shared_ptr<VarType>& var);
@@ -110,7 +110,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
                 cache_var->Var(), *tensor, tmp_var->MutableVar());
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
-            framework::Tensor out;
+            phi::DenseTensor out;
             TransformData(
                 expected_kernel_key, kernel_type_for_var, *tensor, &out);
             if (NeedTransformDataType(kernel_type_for_var,
@@ -656,7 +656,7 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
         VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;
 
-        framework::Tensor tmp_tensor;
+        phi::DenseTensor tmp_tensor;
         framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
 
         SetTensorToVariable(var->Var(), tmp_tensor, var->MutableVar());

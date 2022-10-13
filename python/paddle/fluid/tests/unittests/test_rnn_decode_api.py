@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import random
 import unittest
 import numpy as np
@@ -30,7 +28,6 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 
 from paddle.fluid.executor import Executor
-from paddle.fluid import framework
 from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()

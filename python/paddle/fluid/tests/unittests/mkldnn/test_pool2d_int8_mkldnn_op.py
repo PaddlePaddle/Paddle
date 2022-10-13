@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-from __future__ import division
-
 import unittest
 import numpy as np
 
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, avg_pool2D_forward_naive, max_pool2D_forward_naive
+from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, max_pool2D_forward_naive
 
 
 class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):

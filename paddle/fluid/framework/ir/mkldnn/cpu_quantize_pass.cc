@@ -229,6 +229,7 @@ void CPUQuantizePass::DequantizeOutput(Graph* g,
                     std::vector<std::string>({dequantize_in_node->Name()}));
   deq_desc.SetOutput("Output", std::vector<std::string>({output->Name()}));
   deq_desc.SetAttr("Scale", scale);
+  deq_desc.SetAttr("is_negative_input", !is_unsigned);
   auto dequantize_op = g->CreateOpNode(&deq_desc);  // OpDesc will be copied.
 
   // update op's output
@@ -332,20 +333,8 @@ bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
 }
 
 void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
-  std::unordered_map<std::string, std::vector<float>> info_map{};
-  GetInfoFromTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
-
-  for (auto iter = info_map.begin(); iter != info_map.end(); iter++) {
-    LoDTensor tensor;
-    const int size = static_cast<int>(iter->second.size());
-    auto* data = tensor.mutable_data<double>({size}, platform::CPUPlace());
-    for (int i = 0; i < size; i++) {
-      data[i] = static_cast<double>(iter->second[i]);
-    }
-
-    auto pair = std::make_pair(false, tensor);
-    var_quant_scales_->insert(std::make_pair(iter->first, pair));
-  }
+  GetInfoFromTheFirstOp(
+      graph, "has_quant_info", "var_quant_scales", var_quant_scales_);
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,
@@ -471,11 +460,7 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope_};
-  auto* fc_input = gpd.mutable_pattern()
-                       ->NewNode("fc_quantizer/input")
-                       ->AsInput()
-                       ->assert_is_op_input("fc", "Input");
-  fc_pattern(fc_input, false);
+  fc_pattern(false /* with_residual */);
 
   int quantize_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -597,6 +582,20 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
       return;
     }
 
+    bool are_all_inputs_unsigned{true};
+    // if all inputs were unsigned, then the output was set to unsigned
+    // during the scale calculation step
+    auto inputs = concat_op->inputs;
+    for (size_t i = 0; i < inputs.size(); i++) {
+      if (AreScalesPresentForVarNames({inputs[i]->Name()})) {
+        auto scale_data = GetScaleDataByName(inputs[i]->Name());
+        if (scale_data.first == false) {
+          are_all_inputs_unsigned = false;
+          break;
+        }
+      }
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(concat_out, concat_out, concat_pattern);
 
     if (!AreScalesPresentForNodes({concat_out})) {
@@ -605,17 +604,12 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
       return;
     }
 
-    // if all inputs were unsigned, then the output was set to unsigned
-    // during the scale calculation step
-    bool are_all_inputs_unsigned{false};
-    auto output_scale =
-        GetScaleValueForNode(concat_out, &are_all_inputs_unsigned);
+    auto output_scale = GetScaleValueForNode(concat_out);
 
     QuantizeInputs(g, concat_op, "X", are_all_inputs_unsigned);
 
     DequantizeOutput(
         g, concat_op, concat_out, "Out", output_scale, are_all_inputs_unsigned);
-
     ++quantize_concat_count;
   };
 
@@ -873,7 +867,7 @@ void CPUQuantizePass::QuantizeElementwise(
 
     auto x_name = elementwise_op->Op()->Input("X");
     auto y_name = elementwise_op->Op()->Input("Y");
-    Node *elementwise_x, *elementwise_y;
+    Node *elementwise_x{nullptr}, *elementwise_y{nullptr};
 
     for (auto& input : elementwise_op->inputs) {
       if (input->Name() == x_name[0]) elementwise_x = input;

@@ -31,7 +31,7 @@ class GradientAccumulator {
   explicit GradientAccumulator(VariableWrapper* var) {
     // var may be initialized, so Synchronous VariableWrapper with Variable
     if (var && var->Var().IsInitialized()) {
-      if (var->Var().IsType<framework::LoDTensor>()) {
+      if (var->Var().IsType<phi::DenseTensor>()) {
         var->SetType(framework::proto::VarType::LOD_TENSOR);
       } else if (var->Var().IsType<phi::SelectedRows>()) {
         var->SetType(framework::proto::VarType::SELECTED_ROWS);

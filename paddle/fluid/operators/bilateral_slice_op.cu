@@ -19,7 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 template <typename T>
@@ -131,10 +130,10 @@ template <typename T>
 class BilateralSliceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* grid = ctx.Input<Tensor>("Grid");
-    auto* guide = ctx.Input<Tensor>("Guide");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* grid = ctx.Input<phi::DenseTensor>("Grid");
+    auto* guide = ctx.Input<phi::DenseTensor>("Guide");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
 
     auto* output_data = output->mutable_data<T>(ctx.GetPlace());
     auto* grid_data = grid->data<T>();
@@ -447,13 +446,17 @@ template <typename T>
 class BilateralSliceGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* guide = ctx.Input<Tensor>("Guide");
-    auto* grid = ctx.Input<Tensor>("Grid");
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* grid_grad = ctx.Output<Tensor>(framework::GradVarName("Grid"));
-    auto* guide_grad = ctx.Output<Tensor>(framework::GradVarName("Guide"));
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* guide = ctx.Input<phi::DenseTensor>("Guide");
+    auto* grid = ctx.Input<phi::DenseTensor>("Grid");
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* grid_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Grid"));
+    auto* guide_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Guide"));
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     const T* input_data = input->data<T>();
     const T* guide_data = guide->data<T>();

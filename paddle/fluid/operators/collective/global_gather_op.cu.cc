@@ -28,9 +28,9 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #if NCCL_VERSION_CODE >= 2703
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    auto local_count = ctx.Input<framework::LoDTensor>("local_count");
-    auto global_count = ctx.Input<framework::LoDTensor>("global_count");
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto local_count = ctx.Input<phi::DenseTensor>("local_count");
+    auto global_count = ctx.Input<phi::DenseTensor>("global_count");
     auto local_count_type =
         framework::TransToProtoVarType(local_count->dtype());
     auto global_count_type =
@@ -43,12 +43,12 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     auto local_count_len = 0;
 
-    framework::Tensor cpu_local_count;
+    phi::DenseTensor cpu_local_count;
     if (platform::is_cpu_place(local_count->place())) {
       cpu_local_count_data = local_count->data<int64_t>();
       local_count_len = local_count->numel();
@@ -59,7 +59,7 @@ struct GlobalGatherFunctor<phi::GPUContext, T> {
       local_count_len = cpu_local_count.numel();
     }
 
-    framework::Tensor cpu_global_count;
+    phi::DenseTensor cpu_global_count;
     if (platform::is_cpu_place(global_count->place())) {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {
@@ -149,9 +149,9 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #if NCCL_VERSION_CODE >= 2703
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    auto local_count = ctx.Input<framework::LoDTensor>("local_count");
-    auto global_count = ctx.Input<framework::LoDTensor>("global_count");
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto local_count = ctx.Input<phi::DenseTensor>("local_count");
+    auto global_count = ctx.Input<phi::DenseTensor>("global_count");
     auto local_count_type =
         framework::TransToProtoVarType(local_count->dtype());
     auto global_count_type =
@@ -164,12 +164,12 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     auto local_count_len = 0;
 
-    framework::Tensor cpu_local_count;
+    phi::DenseTensor cpu_local_count;
     if (platform::is_cpu_place(local_count->place())) {
       cpu_local_count_data = local_count->data<int64_t>();
       local_count_len = local_count->numel();
@@ -180,7 +180,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
       local_count_len = cpu_local_count.numel();
     }
 
-    framework::Tensor cpu_global_count;
+    phi::DenseTensor cpu_global_count;
     if (platform::is_cpu_place(global_count->place())) {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {

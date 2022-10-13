@@ -139,10 +139,8 @@ TEST(EagerVariable, Constructor) {
 
   egr::EagerVariable et3 = egr::EagerVariable(t3);
   VLOG(6) << "SyncToVar";
-  CHECK_EQ(et3.Var().Get<paddle::framework::LoDTensor>().data<float>()[0],
-           5.0f);
-  CHECK_EQ(et3.Var().Get<paddle::framework::LoDTensor>().data<float>()[1],
-           10.0f);
+  CHECK_EQ(et3.Var().Get<phi::DenseTensor>().data<float>()[0], 5.0f);
+  CHECK_EQ(et3.Var().Get<phi::DenseTensor>().data<float>()[1], 10.0f);
   VLOG(6) << "SyncToTensor";
   paddle::experimental::Tensor t4;
   t4.set_impl(et3.GetTensorBase());

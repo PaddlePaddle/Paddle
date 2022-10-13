@@ -17,9 +17,7 @@ import unittest
 import os
 import sys
 import json
-import shutil
 import subprocess
-from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 cluster_json = """
 {

@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import sys
 import time
-import threading
 import subprocess
 import unittest
 import numpy
@@ -123,7 +120,6 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
 
     def test_communicator(self):
         run_server_cmd = """
-from __future__ import print_function
 
 import sys
 import os

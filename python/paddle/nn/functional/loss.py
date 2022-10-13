@@ -17,7 +17,6 @@ import paddle
 from ...fluid.data_feeder import check_variable_and_dtype
 
 # TODO: define loss functions of neural network
-import numpy as np
 import paddle
 import paddle.fluid as fluid
 from ...fluid.layers.nn import _elementwise_op_in_dygraph
@@ -993,17 +992,17 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
 
     .. math::
 
-         loss(x,y) = \frac{1}{n}\sum_{i}z_i
+        loss(x,y) = \frac{1}{n}\sum_{i}z_i
 
 
-    where z_i is given by:
+    where :math:`z_i` is given by:
 
     .. math::
 
         \mathop{z_i} = \left\{\begin{array}{rcl}
-        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\
-        delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
-        \end{array} \right.
+                0.5(x_i - y_i)^2 & & {if |x_i - y_i| < \delta} \\
+                \delta * |x_i - y_i| - 0.5 * \delta^2 & & {otherwise}
+            \end{array} \right.
 
     Parameters:
         input (Tensor): Input tensor, the data type is float32 or float64. Shape is
@@ -1017,12 +1016,11 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-        delta (float, optional): Specifies the hyperparameter delta to be used.
+        delta (float, optional): Specifies the hyperparameter :math:`\delta` to be used.
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
             negative/zero values. Default = 1.0
-        name (str, optional): Name for the operation (optional, default is
-            None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, The tensor variable storing the smooth_l1_loss of input and label.
@@ -1031,14 +1029,12 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            input_data = np.random.rand(3,3).astype("float32")
-            label_data = np.random.rand(3,3).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.rand([3, 3]).astype('float32')
+            label = paddle.rand([3, 3]).astype('float32')
             output = paddle.nn.functional.smooth_l1_loss(input, label)
             print(output)
+            # [0.068004]
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'smooth_l1_loss')
@@ -2382,14 +2378,6 @@ def cross_entropy(input,
         if soft_label == False:
             valid_label = paddle.cast(label != ignore_index,
                                       dtype=label.dtype) * label
-            label_min = paddle.min(valid_label)
-            label_max = paddle.max(valid_label)
-            if label_min < 0:
-                raise ValueError("Target {} is out of lower bound.".format(
-                    label_min.item()))
-            if label_max >= input.shape[axis]:
-                raise ValueError("Target {} is out of upper bound.".format(
-                    label_max.item()))
         if core.is_compiled_with_npu() or core.is_compiled_with_mlu():
             if soft_label == False:
                 _, _, out = _legacy_C_ops.softmax_with_cross_entropy(
@@ -3460,6 +3448,117 @@ def triplet_margin_loss(input,
         negative_dist = paddle.minimum(negative_dist, swap_dist)
 
     loss = paddle.clip(positive_dist - negative_dist + margin, min=0.0)
+
+    if reduction == 'mean':
+        return paddle.mean(loss, name=name)
+    elif reduction == 'sum':
+        return paddle.sum(loss, name=name)
+    elif reduction == 'none':
+        return loss
+
+
+def multi_margin_loss(input,
+                      label,
+                      p: int = 1,
+                      margin: float = 1.0,
+                      weight=None,
+                      reduction='mean',
+                      name=None):
+    r"""
+        Measures a multi-class classification hinge loss between input :math:`input` and label :math:`label`:
+
+        For i-th mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
+        output :math:`label_i` is:
+
+        .. math::
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
+
+        where :math:`0 \leq j \leq \text{C}-1`, :math:`0 \leq i \leq \text{N}-1` and :math:`j \neq label_i`.
+
+        Optionally, you can give non-equal weighting on the classes by passing
+        a 1D :attr:`weight` tensor into the constructor.
+
+        The loss function for i-th sample then becomes:
+
+        .. math::
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
+
+
+    Parameters:
+        input (Tensor): Input tensor, the data type is float32 or float64. Shape is (N, C), where C is number of classes.
+
+        label (Tensor): Label tensor, the data type is int32 or int64. The shape of label is (N,)
+
+        p (int, Optional): The power num. Default: :math:`1`.
+
+        margin (float, Optional): Default: :math:`1`.
+
+        weight (Tensor,optional): a manual rescaling weight given to each class.
+                If given, has to be a Tensor of shape (C,) and the data type is float32, float64.
+                Default is ``'None'`` .
+
+
+        reduction (str, Optional):Indicate how to calculate the loss by batch_size.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+            Default: ``'mean'``
+
+        name (str, Optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Output: Tensor. The tensor variable storing the multi_margin_loss of input and label.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            input = paddle.to_tensor([[1, 5, 3], [0, 3, 2], [1, 4, 1]], dtype=paddle.float32)
+            label = paddle.to_tensor([1, 2, 1], dtype=paddle.int32)
+            loss = F.multi_margin_loss(input, label, margin=1.0, reduction='none')
+            print(loss)
+
+    """
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "'reduction' in 'multi_margin_loss' should be 'sum', 'mean' or 'none', "
+            "but received {}.".format(reduction))
+
+    if not _non_static_mode():
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'multi_margin_loss')
+        check_variable_and_dtype(label, 'label', ['int32', 'int64'],
+                                 'multi_margin_loss')
+    if not (input.shape[0] == label.shape[0]):
+        raise ValueError(
+            "The label's shape[0] should be equal to input's shape[0], "
+            "but received input's shape[0] {} and label's shape[0]:{}. ".format(
+                input.shape[0], label.shape[0]))
+    label = label.reshape((-1, 1))
+    index_sample = paddle.index_sample(input, label)
+    if weight is not None:
+        if not _non_static_mode():
+            check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
+                                     'multi_margin_loss')
+        if not (input.shape[1] == weight.shape[0]):
+            raise ValueError(
+                "The weight's shape[0] should be equal to input's shape[1]"
+                "but received weight's shape[0]: {} and input's shape[1]: {}".
+                format(weight.shape[0], input.shape[1]))
+        weight = paddle.gather(weight, label, axis=0).reshape((-1, 1))
+        loss = paddle.mean(
+            paddle.pow(
+                paddle.clip(weight *
+                            (margin - index_sample + input), min=0.0), p),
+            axis=1) - weight * (margin**p / paddle.shape(input)[1])
+    else:
+        loss = paddle.mean(paddle.pow(
+            paddle.clip(margin - index_sample + input, min=0.0), p),
+                           axis=1) - margin**p / paddle.shape(input)[1]
 
     if reduction == 'mean':
         return paddle.mean(loss, name=name)
