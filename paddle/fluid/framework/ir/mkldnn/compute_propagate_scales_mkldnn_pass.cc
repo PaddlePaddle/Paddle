@@ -19,7 +19,6 @@
 #include <algorithm>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
@@ -394,8 +393,13 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
       auto out_iter = var_quant_scales->find(op_node->Op()->Output("Out")[0]);
       if (out_iter != var_quant_scales->end()) {
         std::vector<std::string> input_names = op_node->Op()->Input("X");
-        for (auto input_name : input_names)
-          (*var_quant_scales)[input_name] = out_iter->second;
+        for (auto input_name : input_names) {
+          auto concat_in_iter = var_quant_scales->find(input_name);
+          if (concat_in_iter == var_quant_scales->end())
+            (*var_quant_scales)[input_name] = out_iter->second;
+          else
+            (*var_quant_scales)[input_name].second = out_iter->second.second;
+        }
       }
     } else if (op_name == "scale") {
       const std::string output_name = op_node->Op()->Output("Out")[0];
@@ -408,6 +412,40 @@ std::unordered_set<std::string> ComputePropagateScalesMkldnnPass::UpdateScales(
     }
   }
   return waiting_for_scale;
+}
+void ComputePropagateScalesMkldnnPass::UpdateReluOutputScales(
+    ir::Graph* graph, StringPairMap* var_quant_scales) const {
+  for (auto* op_node :
+       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
+    if (!op_node->IsOp()) continue;
+    auto op = op_node->Op();
+    bool is_unsigned = false;
+    std::string output_name = "Out";
+    std::string act_name;
+    if (op->Type() == "relu") {
+      is_unsigned = true;
+    } else {
+      if (op->Type() == "conv2d") {
+        act_name = "fuse_activation";
+        output_name = "Output";
+      } else if (op->Type() == "fc") {
+        act_name = "activation_type";
+      }
+      if (!act_name.empty()) {
+        auto act = op->GetAttrIfExists<std::string>(act_name);
+        if (act == "relu" || act == "relu6") {
+          is_unsigned = true;
+        }
+      }
+    }
+    if (is_unsigned) {
+      std::string output_var_name = op->Output(output_name)[0];
+      auto out_iter = var_quant_scales->find(output_var_name);
+      if (out_iter != var_quant_scales->end()) {
+        (*var_quant_scales)[output_var_name].first = true;
+      }
+    }
+  }
 }
 
 void ComputePropagateScalesMkldnnPass::PropagateScales(
@@ -424,21 +462,6 @@ void ComputePropagateScalesMkldnnPass::PropagateScales(
                                   waiting_for_scale.end());
     waiting_for_scale =
         UpdateScales(graph, var_quant_scales, scale_immutable_ops);
-  }
-}
-
-void ComputePropagateScalesMkldnnPass::ConvertStringPairMap(
-    const StringPairMap& var_quant_scales,
-    std::unordered_map<std::string, std::vector<float>>* info_map) const {
-  for (auto iter = var_quant_scales.begin(); iter != var_quant_scales.end();
-       iter++) {
-    auto* data = iter->second.second.data<float>();
-    std::vector<float> data_v;
-    for (int i = 0; i < iter->second.second.numel(); i++) {
-      data_v.push_back(data[i]);
-    }
-
-    info_map->insert(std::make_pair(iter->first, data_v));
   }
 }
 
@@ -461,13 +484,13 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   auto* scope = param_scope();
   GetQuantInfo(graph, &var_quant_scales);
   ComputeWeightScales(graph, scope, &var_quant_scales);
+  UpdateReluOutputScales(graph, &var_quant_scales);
   PropagateScales(graph, &var_quant_scales, scale_immutable_ops);
 
   // save var_quant_scales in the first op's attr
   // for cpu_quantize_pass
-  std::unordered_map<std::string, std::vector<float>> info_map;
-  ConvertStringPairMap(var_quant_scales, &info_map);
-  SaveInfoInTheFirstOp(graph, "has_quant_info", "var_quant_scales", info_map);
+  SaveInfoInTheFirstOp(
+      graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 
 }  // namespace ir
