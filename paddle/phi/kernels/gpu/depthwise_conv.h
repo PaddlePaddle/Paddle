@@ -35,8 +35,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using DataLayout = phi::DataLayout;
-
 /*
  * \brief Compute the depthwise convolution which include
  * forward process and backpropagation process

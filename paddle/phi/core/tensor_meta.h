@@ -47,7 +47,6 @@ using LoD = std::vector<std::vector<size_t>>;
 ///
 struct DenseTensorMeta {
   using DataType = paddle::experimental::DataType;
-  using DataLayout = phi::DataLayout;
 
   DenseTensorMeta() = default;
   DenseTensorMeta(DataType dtype, const DDim& dims);
@@ -100,8 +99,6 @@ inline bool operator==(const StringTensorMeta& lhs,
 }
 
 struct SparseTensorMeta {
-  using DataLayout = phi::DataLayout;
-
   SparseTensorMeta() = default;
   explicit SparseTensorMeta(const DDim& dims);
   explicit SparseTensorMeta(const DDim& dims, const DataLayout& layout);

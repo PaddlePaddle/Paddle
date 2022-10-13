@@ -32,7 +32,6 @@
 namespace phi {
 
 using DataType = paddle::experimental::DataType;
-using DataLayout = phi::DataLayout;
 
 /**
  * [ Naming considerations ]
