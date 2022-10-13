@@ -166,6 +166,16 @@ class PD_INFER_DECL Predictor {
   ///
   void* GetExecStream() const;
 
+  ///
+  /// \brief Register a forward hook function to operate the intermediate tensor
+  /// of op output. when using this function, memory reuse should be tured off.
+  /// The hook function signature is void(const std::string&, const
+  /// std::string&, std::unique_ptr<Tensor>). Here, the first parameter is op's
+  /// type, the second param is output var name of the op, and the third
+  /// parameter is output tensor with the var name.
+  ///
+  void RegisterForwardHook(ForwardHookFunc hookfunc);
+
  private:
   std::unique_ptr<paddle::PaddlePredictor> predictor_;
   friend class paddle_infer::experimental::InternalUtils;

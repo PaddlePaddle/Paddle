@@ -14,7 +14,10 @@
 
 #pragma once
 
+#include <functional>
+#include <memory>
 #include <string>
+#include <vector>
 
 #include "paddle_infer_declare.h"  // NOLINT
 
@@ -28,6 +31,10 @@ namespace paddle_infer {
 /// \brief  Experimental.
 /// Strings for text data.
 using Strings = std::vector<std::string>;
+
+class Tensor;
+using ForwardHookFunc = std::function<void(
+    const std::string&, const std::string&, std::unique_ptr<Tensor>)>;
 
 typedef void (*CallbackFunc)(void*);
 
