@@ -25,7 +25,6 @@ class Image(unittest.TestCase):
     """
     test image resize,flip and chw
     """
-
     def test_resize_flip_chw(self):
         """ resize """
         imgdir = sys.argv[0].replace('test_image.py', 'cat.jpg')
