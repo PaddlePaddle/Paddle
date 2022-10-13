@@ -352,6 +352,7 @@ class TestFP16(unittest.TestCase):
 class TestModulatedDeformableConvV1InvalidInput(unittest.TestCase):
 
     def test_error(self):
+
         def test_invalid_input():
             input = [1, 3, 32, 32]
             offset = fluid.data(name='offset',
