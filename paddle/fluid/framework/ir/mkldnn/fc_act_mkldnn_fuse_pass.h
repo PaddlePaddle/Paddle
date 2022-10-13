@@ -28,9 +28,9 @@ class FuseFCActOneDNNPass : public FusePassBase {
   virtual ~FuseFCActOneDNNPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph *graph) const override;
+  void ApplyImpl(Graph *graph) const override;
 
-  void FuseFCAct(ir::Graph *graph, std::string &act_types) const;
+  void FuseFCAct(Graph *graph, const std::string &act_types) const;
 };
 
 }  // namespace ir

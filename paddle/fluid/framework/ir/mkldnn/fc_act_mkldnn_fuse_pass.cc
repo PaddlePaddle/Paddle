@@ -30,7 +30,8 @@ void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
   for (auto act_type : act_types) FuseFCAct(graph, act_type);
 }
 
-void FuseFCActOneDNNPass::FuseFCAct(Graph *graph, std::string &act_type) const {
+void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
+                                    const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("fc_" + act_type + "_mkldnn_fuse_pass", graph);
@@ -68,13 +69,15 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph, std::string &act_type) const {
     }
 
     if (act_type == "gelu" && act_op->HasAttr("approximate")) {
-      act_type = PADDLE_GET_CONST(bool, act_op->GetAttr("approximate"))
-                     ? "gelu_tanh"
-                     : "gelu_erf";
+      std::string gelu_act_type =
+          PADDLE_GET_CONST(bool, act_op->GetAttr("approximate")) ? "gelu_tanh"
+                                                                 : "gelu_erf";
+      fc_op->SetAttr("fuse_activation", gelu_act_type);
+    } else {
+      fc_op->SetAttr("fuse_activation", act_type);
     }
 
     fc_op->SetAttr("use_mkldnn", true);
-    fc_op->SetAttr("fuse_activation", act_type);
     fc_op->SetOutput("Out", {act_out->Name()});
 
     IR_OP_VAR_LINK(fc, act_out);
