@@ -282,7 +282,7 @@
   kernel :
     func : reshape_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            reshape_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
-           
+
 - backward_op : scale_grad
   forward : scale(Tensor x, float scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, float scale)
