@@ -996,6 +996,69 @@ MLURNNDesc::~MLURNNDesc() {
                                         output));
 }
 
+/* static */ void MLUCnnl::CTCLoss(
+    const ExecutionContext& ctx,
+    const cnnlCTCLossNormalizationMode_t norm_mode,
+    const cnnlCTCLossReduceMode_t reduce_mode,
+    const cnnlCTCLossZeroInfinityMode_t zero_infinity,
+    int blank,
+    int max_input_length,
+    int max_label_length,
+    const cnnlTensorDescriptor_t input_desc,
+    const void* input,
+    const cnnlTensorDescriptor_t labels_desc,
+    const void* labels,
+    const cnnlTensorDescriptor_t input_lengths_desc,
+    const void* input_lengths,
+    const cnnlTensorDescriptor_t label_lengths_desc,
+    const void* label_lengths,
+    const cnnlTensorDescriptor_t loss_desc,
+    void* loss,
+    const cnnlTensorDescriptor_t grads_desc,
+    void* grads) {
+  cnnlHandle_t handle = GetHandleFromCTX(ctx);
+
+  size_t workspace_size = 0;
+  bool is_backward = true;
+  if (grads == nullptr) is_backward = false;
+  cnnlCTCLossDescriptor_t ctc_loss_desc_ = nullptr;
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlCreateCTCLossDescriptor(&ctc_loss_desc_));
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetCTCLossDescriptor(ctc_loss_desc_,
+                                                      norm_mode,
+                                                      reduce_mode,
+                                                      zero_infinity,
+                                                      blank,
+                                                      max_input_length,
+                                                      max_label_length));
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlGetCTCLossWorkspaceSize(
+      handle, ctc_loss_desc_, input_desc, is_backward, &workspace_size));
+
+  Tensor workspace(paddle::experimental::DataType::INT8);
+  workspace.Resize(framework::DDim({static_cast<int64_t>(workspace_size)}));
+  void* workspace_ptr = workspace.mutable_data(ctx.GetPlace());
+
+  PADDLE_ENFORCE_MLU_SUCCESS(cnnlCTCLoss(handle,
+                                         ctc_loss_desc_,
+                                         input_desc,
+                                         input,
+                                         labels_desc,
+                                         labels,
+                                         input_lengths_desc,
+                                         input_lengths,
+                                         label_lengths_desc,
+                                         label_lengths,
+                                         workspace_ptr,
+                                         workspace_size,
+                                         loss_desc,
+                                         loss,
+                                         grads_desc,
+                                         grads));
+  if (ctc_loss_desc_) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlDestroyCTCLossDescriptor(ctc_loss_desc_));
+  }
+}
+
 /* static */ void MLUCnnl::Div(const ExecutionContext& ctx,
                                cnnlComputationPreference_t prefer,
                                const cnnlTensorDescriptor_t in0_desc,
