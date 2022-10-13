@@ -29,8 +29,6 @@ from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
                       op_position_inputs, op_position_output)
 from .utils import INT_DTYPE_2_STRING, get_output_var_list
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 def _orig2prim(op, *args):
@@ -213,8 +211,7 @@ def fill_any_like_orig2prim(op, x):
         return fill_const(value=op.attr('value'), shape=x.shape, dtype=x.dtype)
     return fill_const(value=op.attr('value'),
                       shape=x.shape,
-                      dtype=convert_np_dtype_to_dtype_(
-                          convert_dtype(INT_DTYPE_2_STRING[op.attr('dtype')])))
+                      dtype=paddle.dtype(op.attr('dtype')))
 
 
 @REGISTER_ORIG2PRIM('fill_constant')
@@ -486,31 +483,15 @@ def uniform_random_orig2prim(op, shape_t, shape_tl):
     min_value = op.attr('min')
     max_value = op.attr('max')
     seed = op.attr('seed')
-    dtype = convert_np_dtype_to_dtype_(
-        convert_dtype(INT_DTYPE_2_STRING[op.attr('dtype')]))
-    if shape_tl:
-        return uniform_random(dtype,
-                              min_value,
-                              max_value,
-                              seed,
-                              shape=None,
-                              shape_t=None,
-                              shape_tl=shape_tl)
-    elif shape_t:
-        return uniform_random(dtype,
-                              min_value,
-                              max_value,
-                              seed,
-                              shape=None,
-                              shape_t=shape_t,
-                              shape_tl=None)
+    dtype = paddle.dtype(op.attr('dtype'))
+    shape = op.attr('shape')
     return uniform_random(dtype,
                           min_value,
                           max_value,
                           seed,
-                          shape=op.attr('shape'),
-                          shape_t=None,
-                          shape_tl=None)
+                          shape=shape,
+                          shape_t=shape_t,
+                          shape_tl=shape_tl)
 
 
 @REGISTER_ORIG2PRIM('reduce_sum')

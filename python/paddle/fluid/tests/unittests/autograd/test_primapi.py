@@ -32,7 +32,9 @@ from paddle.incubate.autograd import primx
     (('uniform_random',
       lambda x: paddle.uniform(x, dtype='float32', min=0, max=1.0, seed=1),
       (np.array([1, 2, 3]), ), 'int32'), ('shape', paddle.shape,
-                                          (np.random.rand(50, 5), ), 'int32')))
+                                          (np.random.rand(50, 5), ), 'int32'),
+     ('sigmoid', paddle.nn.functional.sigmoid,
+      (np.random.rand(5, ), ), 'float32')))
 class TestFowardApi(unittest.TestCase):
 
     @classmethod
@@ -261,23 +263,25 @@ class TestWithoutProgramGuard(unittest.TestCase):
 
 
 @utils.place(config.DEVICES)
-@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'), (
-    ('matmul', paddle.matmul,
-     (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
-    ('multiply', paddle.multiply,
-     (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
-    ('add', paddle.add,
-     (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
-    ('input_not_sequence', paddle.tanh,
-     (np.random.rand(5, 5), ), None, 'float64'),
-    ('input_gradients_not_none', paddle.matmul,
-     (np.random.rand(3, 3), np.random.rand(3, 3)),
-     (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
-    ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
-    ('abs', paddle.abs, (np.random.uniform(-10, 10,
-                                           (10, 10)), ), None, 'float32'),
-    ('rsqrt', paddle.rsqrt, (np.random.rand(100, 200), ), None, 'float32'),
-))
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
+    (('matmul', paddle.matmul,
+      (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
+     ('multiply', paddle.multiply,
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+     ('add', paddle.add,
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+     ('input_not_sequence', paddle.tanh,
+      (np.random.rand(5, 5), ), None, 'float64'),
+     ('input_gradients_not_none', paddle.matmul,
+      (np.random.rand(3, 3), np.random.rand(3, 3)),
+      (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
+     ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
+     ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                            (10, 10)), ), None, 'float32'),
+     ('rsqrt', paddle.rsqrt, (np.random.rand(100, 200), ), None, 'float32'),
+     ('sigmoid', paddle.nn.functional.sigmoid,
+      (np.random.rand(5, ), ), None, 'float32')))
 # paddle.where, paddle.pow, paddle.maximum has no double grad definition,
 # can not compute forward grad use double trick
 class TestForwardGrad(unittest.TestCase):
@@ -414,6 +418,8 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
         ('gelu_approximate', lambda x: paddle.nn.functional.gelu(x, True),
          (np.random.rand(200, 189), ), None, 'float32'),
         ('sum', paddle.sum, (np.random.rand(200, 345), ), None, 'float32'),
+        ('sigmoid', paddle.nn.functional.sigmoid,
+         (np.random.rand(5, ), ), None, 'float32'),
         ('sum_with_axis', lambda x: paddle.sum(x, axis=1),
          (np.random.rand(200, 345), ), None, 'float32'),
         ('sum_with_keepdim', lambda x: paddle.sum(x, keepdim=True),

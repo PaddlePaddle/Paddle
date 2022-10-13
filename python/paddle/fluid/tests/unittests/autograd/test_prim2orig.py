@@ -739,7 +739,8 @@ class TestUniformRandomPrim2Orig1(TestAddPPrim2Orig):
         }
         self.output = {
             'Out':
-            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.float64)
         }
         self.attrs = {
             'min': -1.0,
@@ -764,7 +765,8 @@ class TestUniformRandomPrim2Orig2(TestAddPPrim2Orig):
         }
         self.output = {
             'Out':
-            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.float64)
         }
         self.attrs = {
             'min': -1.0,

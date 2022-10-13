@@ -1143,7 +1143,7 @@ class TestUniformRandomOrig2Prim2(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
-class TestOrig2Prim3(TestElementWiseAddOrig2Prim):
+class TestUniformOrig2Prim3(TestElementWiseAddOrig2Prim):
 
     def init_data(self):
         self.op_type = 'uniform_random'
