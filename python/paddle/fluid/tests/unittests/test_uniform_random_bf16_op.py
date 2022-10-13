@@ -14,12 +14,11 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest, convert_uint16_to_float, convert_float_to_uint16
+from op_test import OpTest, convert_uint16_to_float
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 from paddle.fluid.tests.unittests.test_uniform_random_op import output_hist, output_hist_diag
 
 

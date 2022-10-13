@@ -16,11 +16,8 @@
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from op_test import OpTest
 import os
-import random
 
 
 class TestShuffleBatchOpBase(OpTest):

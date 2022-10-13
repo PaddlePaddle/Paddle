@@ -12,21 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import time
 import tempfile
-import copy
 import os
 import numpy as np
-import subprocess
 import paddle
 import paddle.nn as nn
-import paddle.fluid as fluid
-import paddle.static as static
 import paddle.nn.functional as F
-import paddle.utils as utils
-from paddle.fluid import layers
-from paddle.io import Dataset, DataLoader
+from paddle.io import Dataset
 
 from paddle.distributed.fleet import auto
 

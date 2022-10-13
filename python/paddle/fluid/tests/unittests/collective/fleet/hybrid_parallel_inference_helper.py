@@ -82,6 +82,7 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                                                 value=0,
                                                 force_cpu=False,
                                                 name="cond_int")
+                print(cond_int.shape)
                 cond = layers.less_than(x=step_idx, y=max_len)
                 while_op = layers.While(cond, is_test=True)
 

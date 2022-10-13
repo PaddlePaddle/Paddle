@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid import core
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 
 def graph_khop_sampler(row,
@@ -88,8 +86,8 @@ def graph_khop_sampler(row,
     if _non_static_mode():
         if return_eids:
             if sorted_eids is None:
-                raise ValueError(f"`sorted_eid` should not be None "
-                                 f"if return_eids is True.")
+                raise ValueError("`sorted_eid` should not be None "
+                                 "if return_eids is True.")
             edge_src, edge_dst, sample_index, reindex_nodes, edge_eids = \
                 _legacy_C_ops.graph_khop_sampler(row, sorted_eids,
                                               colptr, input_nodes,
@@ -109,8 +107,8 @@ def graph_khop_sampler(row,
 
     if return_eids:
         if sorted_eids is None:
-            raise ValueError(f"`sorted_eid` should not be None "
-                             f"if return_eids is True.")
+            raise ValueError("`sorted_eid` should not be None "
+                             "if return_eids is True.")
         check_variable_and_dtype(sorted_eids, "Eids", ("int32", "int64"),
                                  "graph_khop_sampler")
 

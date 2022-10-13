@@ -93,8 +93,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
-    auto *out =
-        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    auto *out = scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
 
     // Check dims, place and data type of input's elements and infer output's
     // dim

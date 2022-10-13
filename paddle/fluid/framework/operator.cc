@@ -755,17 +755,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
     if (it == outs.end() || it->second.empty()) {
       return false;
     }
-    if (allow_null) {
-      for (auto& output : it->second) {
-        if (output != nullptr) return true;
-      }
-      return false;
-    } else {
+    if (!allow_null) {
       for (auto& output : it->second) {
         if (output == nullptr) return false;
       }
-      return true;
     }
+    return true;
   }
 
   AttrReader Attrs() const override {
@@ -855,9 +850,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
       out_sele_rows->set_rows(in_sele_rows.rows());
       out_sele_rows->set_height(in_sele_rows.height());
-    } else if (in_var->IsType<framework::LoDTensor>()) {
-      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+    } else if (in_var->IsType<phi::DenseTensor>()) {
+      auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
+      auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -1947,7 +1942,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
       expected_kernel_key.library_type_ = LibraryType::kKP;
       kernel_iter = kernels.find(expected_kernel_key);
       // if can't find corresponding kernel when is_xpu_kp_support is on
-      // if the fluid do not register related kernel, it can't work and hava
+      // if the fluid do not register related kernel, it can't work and have
       // error as before
       if (kernel_iter == kernels.end()) {
         expected_kernel_key.library_type_ =
@@ -2696,8 +2691,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       const phi::TensorBase* tensor_in = nullptr;
       auto* var = ins_vector[offset];
-      if (var->IsType<framework::LoDTensor>()) {
-        tensor_in = &(var->Get<framework::LoDTensor>());
+      if (var->IsType<phi::DenseTensor>()) {
+        tensor_in = &(var->Get<phi::DenseTensor>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<phi::SelectedRows>()) {
         tensor_in = &(var->Get<phi::SelectedRows>());
@@ -2744,8 +2739,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
       phi::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset];
       if (var) {
-        if (var->template IsType<framework::LoDTensor>()) {
-          tensor_out = var->template GetMutable<framework::LoDTensor>();
+        if (var->template IsType<phi::DenseTensor>()) {
+          tensor_out = var->template GetMutable<phi::DenseTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<phi::SelectedRows>()) {
           tensor_out = var->template GetMutable<phi::SelectedRows>();

@@ -14,7 +14,7 @@
 
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.fluid.backward import gradients_with_optimizer
+from paddle.fluid.backward import gradients_with_optimizer  # noqa: F401
 import paddle
 
 __all__ = []

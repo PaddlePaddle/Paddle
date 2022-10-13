@@ -14,7 +14,6 @@
 
 import paddle.fluid.core
 import unittest
-import six
 
 
 class TestScope(unittest.TestCase):
