@@ -312,6 +312,13 @@ def concat_orig2prim(op, axis_t, xs):
     return concat(xs, axis=op.attr('axis'))
 
 
+@REGISTER_ORIG2PRIM('sigmoid')
+def sigmoid_orig2prim(op, x):
+    return div(
+        fill_const(value=1.0, shape=x.shape, dtype=x.dtype),
+        (add(fill_const(value=1.0, shape=x.shape, dtype=x.dtype), exp(neg(x)))))
+
+
 @REGISTER_ORIG2PRIM('slice')
 def slice_orig2prim(op, ends_t, ends_tl, x, starts_t, starts_tl):
     assert starts_t is None, 'Can not lower concat into prim ops with startstensor.'

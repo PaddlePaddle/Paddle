@@ -76,9 +76,6 @@ Autograd primitive uniform_random_p operator.
 class UniformRandomPrimOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    // framework::InferShapeVarPtr y_var_ptr = ctx->GetOutputVarPtrs("Y")[0];
-    // auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    // PADDLE_GET(framework::VarDesc *, y_var_ptr)->SetShape(shape);
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "UniformRandomPOp");
 
     PADDLE_ENFORCE_LT(

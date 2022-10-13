@@ -1142,7 +1142,7 @@ class TestUniformRandomOrig2Prim2(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
-class TestUniformRandomOrig2Prim3(TestElementWiseAddOrig2Prim):
+class TestOrig2Prim3(TestElementWiseAddOrig2Prim):
 
     def init_data(self):
         self.op_type = 'uniform_random'
@@ -1157,6 +1157,25 @@ class TestUniformRandomOrig2Prim3(TestElementWiseAddOrig2Prim):
         self.orig2prim_args = (None, None)
         self.all_ops = ['uniform_random', 'uniform_random_p']
         self.out_map = {0: self.output['Out']}
+
+
+class TestSigmoidOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'sigmoid'
+        x = paddle.static.data(name='X', shape=[3], dtype='float32')
+        self.attrs = {}
+        self.input = {'Input': x}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.int32)
+        }
+
+        self.orig2prim_args = (x, )
+        self.all_ops = [
+            'shape', 'fill_constant_p', 'fill_constant_p', 'concat_p'
+        ]
 
 
 if __name__ == '__main__':

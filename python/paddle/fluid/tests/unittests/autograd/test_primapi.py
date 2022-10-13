@@ -31,7 +31,8 @@ from paddle.incubate.autograd import primx
     (utils.TEST_CASE_NAME, 'fun', 'xs', 'dtype'),
     (('uniform_random',
       lambda x: paddle.uniform(x, dtype='float32', min=0, max=1.0, seed=1),
-      (np.array([1, 2, 3]), ), 'int32'), ))
+      (np.array([1, 2, 3]), ), 'int32'), ('shape', paddle.shape,
+                                          (np.random.rand(50, 5), ), 'int32')))
 class TestFowardApi(unittest.TestCase):
 
     @classmethod
