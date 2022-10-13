@@ -434,7 +434,9 @@ def prior_box(input,
               min_max_aspect_ratios_order=False,
               name=None):
     r"""
-        This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+
+    This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+
     Each position of the input produce N prior boxes, N is determined by
     the count of min_sizes, max_sizes and aspect_ratios, The size of the
     box is in range(min_size, max_size) interval, which is generated in
@@ -467,14 +469,10 @@ def prior_box(input,
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        boxes (Tensor): the output prior boxes of PriorBox.
-            4-D tensor, the layout is [H, W, num_priors, 4].
-            H is the height of input, W is the width of input,
+        Tensor: the output prior boxes and the expanded variances of PriorBox.
+            The prior boxes is a 4-D tensor, the layout is [H, W, num_priors, 4],
             num_priors is the total box count of each position of input.
-        variances (Tensor): the expanded variances of PriorBox.
-            4-D tensor, the layput is [H, W, num_priors, 4].
-            H is the height of input, W is the width of input
-            num_priors is the total box count of each position of input
+            The expanded variances is a 4-D tensor, same shape as the prior boxes.
 
     Examples:
         .. code-block:: python
@@ -571,21 +569,31 @@ def box_coder(prior_box,
               box_normalized=True,
               axis=0,
               name=None):
-    """
+    r"""
     Encode/Decode the target bounding box with the priorbox information.
 
     The Encoding schema described below:
+
     .. math::
+
         ox = (tx - px) / pw / pxv
+
         oy = (ty - py) / ph / pyv
+
         ow = \log(\abs(tw / pw)) / pwv
+
         oh = \log(\abs(th / ph)) / phv
+
     The Decoding schema described below:
 
     .. math::
+
         ox = (pw * pxv * tx * + px) - tw / 2
+
         oy = (ph * pyv * ty * + py) - th / 2
+
         ow = \exp(pwv * tw) * pw + tw / 2
+
         oh = \exp(phv * th) * ph + th / 2
 
     where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates,
@@ -630,7 +638,7 @@ def box_coder(prior_box,
             None by default.
 
     Returns:
-        output_box (Tensor): When code_type is 'encode_center_size', the
+        Tensor: output boxes, when code_type is 'encode_center_size', the
             output tensor of box_coder_op with shape [N, M, 4] representing the
             result of N target boxes encoded with M Prior boxes and variances.
             When code_type is 'decode_center_size', N represents the batch size
