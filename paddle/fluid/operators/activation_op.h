@@ -131,7 +131,7 @@ inline void ExtractActivationGradTensor(
     *dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     if (out_var) {
-      *Out = &(out_var->Get<framework::LoDTensor>());
+      *Out = &(out_var->Get<phi::DenseTensor>());
     } else {
       *Out = *dOut;  // fake out
     }

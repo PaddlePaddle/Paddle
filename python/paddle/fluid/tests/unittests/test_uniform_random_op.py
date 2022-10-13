@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import os
-import subprocess
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -608,7 +606,7 @@ class TestRandomValue(unittest.TestCase):
             return
 
         # Different GPU generate different random value. Only test V100 here.
-        if not "V100" in paddle.device.cuda.get_device_name():
+        if "V100" not in paddle.device.cuda.get_device_name():
             return
 
         print("Test Fixed Random number on V100 GPU------>")

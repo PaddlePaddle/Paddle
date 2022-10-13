@@ -17,7 +17,6 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard
 
 
 def numpy_topk(x, k=1, axis=-1, largest=True):

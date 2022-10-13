@@ -15,7 +15,6 @@
 """ Get pull requests. """
 
 import os
-import time
 import os.path
 from github import Github
 

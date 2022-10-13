@@ -22,7 +22,6 @@ parse training set and test set into paddle reader creators.
 
 import six
 import tarfile
-import gzip
 
 import paddle.dataset.common
 import paddle.compat as cpt

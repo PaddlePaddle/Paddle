@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
-
 import paddle
 from paddle.fluid import core
 from .process_mesh import ProcessMesh
 from .process_mesh import get_current_process_mesh
-from .process_mesh import set_current_process_mesh
-from .process_mesh import reset_current_process_mesh
 from .dist_context import get_default_distributed_context
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperatorHelper
@@ -198,23 +194,12 @@ def recompute(op):
     return RecomputeOperator(op)
 
 
-# _g_fetched_tensors = {}
-
-# def fetch(tensor, name=None):
-#     if name is None:
-#         _g_fetched_tensors[tensor.name] = tensor
-#     else:
-#         _g_fetched_tensors[name] = tensor
-
-# def _get_fetches():
-#     return _g_fetched_tensors
-
 _g_collections = {}
 
 
 class CollectionNames(object):
-    FEEDS = "feeds"
     FETCHES = "fetches"
+    LOGGING = "logging"
 
 
 def get_collection(name):
@@ -228,12 +213,13 @@ def get_collection(name):
 def add_to_collection(collection_name, value, value_name=None):
     if collection_name not in _g_collections:
         _g_collections[collection_name] = []
+    if value_name is not None:
+        _g_collections[collection_name].append((value_name, value))
     else:
-        if value_name is not None:
-            _g_collections[collection_name].append((value_name, value))
-        else:
-            _g_collections[collection_name].append((None, value))
+        _g_collections[collection_name].append((None, value))
 
 
-def fetch(tensor, name=None):
+def fetch(tensor, name=None, logging=False):
     add_to_collection(CollectionNames.FETCHES, tensor, name)
+    if logging:
+        add_to_collection(CollectionNames.LOGGING, tensor, name)

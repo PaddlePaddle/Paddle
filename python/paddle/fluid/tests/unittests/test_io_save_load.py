@@ -16,7 +16,7 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 import tempfile
 import os
 

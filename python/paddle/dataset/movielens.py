@@ -27,7 +27,6 @@ import zipfile
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 import re
-import random
 import functools
 import six
 import paddle.compat as cpt

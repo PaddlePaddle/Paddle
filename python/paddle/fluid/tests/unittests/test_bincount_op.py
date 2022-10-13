@@ -18,8 +18,6 @@ import tempfile
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 from op_test import OpTest
 import paddle.inference as paddle_infer
 from paddle.fluid.framework import in_dygraph_mode

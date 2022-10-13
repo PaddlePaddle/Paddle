@@ -14,8 +14,6 @@
 
 import argparse
 import os
-import re
-from itertools import chain
 from pathlib import Path
 
 import yaml

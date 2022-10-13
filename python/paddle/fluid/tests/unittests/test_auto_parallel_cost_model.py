@@ -14,7 +14,6 @@
 
 import unittest
 
-import copy
 import paddle
 import paddle.nn as nn
 import paddle.static as static
@@ -29,7 +28,6 @@ from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.cost_model import estimate_cost
 import paddle.fluid.core as core
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 _global_parallel_strategy = "dp_mp_pp"

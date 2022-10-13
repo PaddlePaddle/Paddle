@@ -16,12 +16,10 @@ import os
 import time
 import sys
 import random
-import math
 import functools
-import contextlib
 import tempfile
 import numpy as np
-from PIL import Image, ImageEnhance
+from PIL import Image
 import paddle
 import paddle.fluid as fluid
 from paddle.dataset.common import download
@@ -158,7 +156,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
     def tearDown(self):
         self.root_path.cleanup()
-        pass
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
