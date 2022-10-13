@@ -12,26 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = []
+from paddle.distributed.rpc.rpc import (
+    init_rpc,
+    shutdown,
+    rpc_async,
+    rpc_sync,
+    get_worker_info,
+    get_all_worker_infos,
+    get_current_worker_info,
+)
 
-from .collective import CollectiveController
-from .collective import CollectiveElasticController
-from .ps import PSController
-from .ipu_controller import IPUController
-from .rpc import RpcController
-
-# the order is extremely important
-_controllers = [
-    IPUController,
-    CollectiveElasticController,
-    PSController,
-    RpcController,
-    CollectiveController,
+__all__ = [
+    "init_rpc",
+    "shutdown",
+    "rpc_async",
+    "rpc_sync",
+    "get_worker_info",
+    "get_all_worker_infos",
+    "get_current_worker_info",
 ]
-
-
-def init(ctx):
-    for c in _controllers:
-        if c.enable(ctx):
-            ctx.print()
-            return c(ctx)

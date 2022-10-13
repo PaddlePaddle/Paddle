@@ -12,26 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = []
+from collections import namedtuple
+import pickle
 
-from .collective import CollectiveController
-from .collective import CollectiveElasticController
-from .ps import PSController
-from .ipu_controller import IPUController
-from .rpc import RpcController
-
-# the order is extremely important
-_controllers = [
-    IPUController,
-    CollectiveElasticController,
-    PSController,
-    RpcController,
-    CollectiveController,
-]
+PythonFunc = namedtuple("PythonFunc", ["func", "args", "kwargs"])
+"""Some Python code interfaces called in C++"""
 
 
-def init(ctx):
-    for c in _controllers:
-        if c.enable(ctx):
-            ctx.print()
-            return c(ctx)
+def _serialize(obj):
+    return pickle.dumps(obj)
+
+
+def _deserialize(obj):
+    return pickle.loads(obj)
+
+
+def _run_py_func(python_func):
+    result = python_func.func(*python_func.args, **python_func.kwargs)
+    return result
