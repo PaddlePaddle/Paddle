@@ -22,7 +22,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 class UnbindOp : public framework::OperatorWithKernel {
  public:

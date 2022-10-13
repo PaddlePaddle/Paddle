@@ -30,11 +30,11 @@ template <class T>
 class Vol2ColFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
-                  const framework::Tensor& vol,
+                  const phi::DenseTensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  framework::Tensor* col,
+                  phi::DenseTensor* col,
                   const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol.dims().size(),
                       4,
@@ -156,11 +156,11 @@ template <class T>
 class Col2VolFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
-                  const framework::Tensor& col,
+                  const phi::DenseTensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  framework::Tensor* vol,
+                  phi::DenseTensor* vol,
                   const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol->dims().size(),
                       4,

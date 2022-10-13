@@ -20,12 +20,15 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
 namespace framework {
+
+using paddle::distributed::auto_parallel::TensorDistAttr;
 
 // convert between std::vector and protobuf repeated.
 template <typename T>
@@ -73,21 +76,22 @@ class VarDesc {
   }
 
   // Explicitly implement the copy constructor for auto parallel
-  VarDesc(const VarDesc &other)
-      : desc_(other.desc_),
-        attrs_(other.attrs_),
-        original_id_(other.original_id_) {}
+  VarDesc(const VarDesc &other);
+
   VarDesc &operator=(const VarDesc &other) {
     desc_ = other.desc_;
     attrs_ = other.attrs_;
     original_id_ = other.original_id_;
+    if (other.dist_attr_) {
+      dist_attr_.reset(new TensorDistAttr(*other.dist_attr_));
+    }
     need_updated_ = true;
     return *this;
   }
 
   proto::VarDesc *Proto() {
-    return &desc_;
     need_updated_ = true;
+    return &desc_;
   }
 
   const proto::VarDesc *Proto() const { return &desc_; }
@@ -187,16 +191,18 @@ class VarDesc {
 
   Attribute GetAttr(const std::string &name) const;
 
-  // The Id() and OriginalId() are only used for auto parallel.
+  bool NeedUpdate() const { return need_updated_; }
+  void SetNeedUpdate(bool need) { need_updated_ = need; }
+
+  // The following methods are only used for auto parallel.
   uint64_t Id() const { return id_; }
   uint64_t OriginalId() const { return original_id_; }
   void SetOriginalId(uint64_t original_id) {
     original_id_ = original_id;
     need_updated_ = true;
   }
-
-  bool NeedUpdate() const { return need_updated_; }
-  void SetNeedUpdate(bool need) { need_updated_ = need; }
+  TensorDistAttr *MutableDistAttr();
+  void SetDistAttr(const TensorDistAttr &dist_attr);
 
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
@@ -204,26 +210,20 @@ class VarDesc {
   proto::VarType::TensorDesc *mutable_tensor_desc();
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
-  // This thread-safe implementation seems to be redudent since the neural
-  // networks are usually constructed in a single thread.
-  static uint64_t GenerateId() {
-    static std::atomic<std::uint64_t> uid{0};
-    return ++uid;
-  }
-
   // it it really needed? or just mantain a ptr from block?
   proto::VarDesc desc_;
   AttributeMap attrs_;
 
   bool need_updated_{false};
 
-  // Note: the id_ is unique for all VarDesc (only for auto parallel).
+  // Note: the following members are only used for auto parallel for now
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> uid{0};
+    return ++uid;
+  }
   uint64_t id_ = GenerateId();
-  // Note: the orignal_id_ is used for referring to the original VarDesc
-  // that the current VarDesc is built from (only for auto parallel).
-  // The default original_id_ is same as the id_, which means the
-  // current VarDesc is not built from the other one.
   uint64_t original_id_ = id_;
+  std::unique_ptr<TensorDistAttr> dist_attr_;
 };
 
 bool operator==(const VarDesc &left, const VarDesc &right);

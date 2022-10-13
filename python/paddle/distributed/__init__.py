@@ -51,6 +51,8 @@ from .collective import batch_isend_irecv  # noqa: F401
 from .collective import P2POp  # noqa: F401
 from .collective import reduce_scatter  # noqa: F401
 
+from .communication import *  # noqa: F401
+
 from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel import shard_tensor  # noqa: F401
 
@@ -63,9 +65,10 @@ from .entry_attr import ShowClickEntry  # noqa: F401
 from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
 from . import cloud_utils  # noqa: F401
-from . import utils  # noqa: F401
 
 from .sharding import *  # noqa: F401
+
+from . import rpc
 
 __all__ = [  # noqa
     "spawn", "launch", "scatter", "broadcast", "ParallelEnv", "new_group",
@@ -75,5 +78,5 @@ __all__ = [  # noqa
     "all_gather_object", "InMemoryDataset", "barrier", "all_reduce", "alltoall",
     "send", "reduce", "recv", "ReduceOp", "wait", "get_rank",
     "ProbabilityEntry", "ParallelMode", "is_initialized", "isend", "irecv",
-    "reduce_scatter"
+    "reduce_scatter", "rpc"
 ]

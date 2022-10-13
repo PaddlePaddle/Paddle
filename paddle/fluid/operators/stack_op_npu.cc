@@ -18,14 +18,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class StackNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto x = ctx.MultiInput<Tensor>("X");
-    auto* y = ctx.Output<Tensor>("Y");
+    auto x = ctx.MultiInput<phi::DenseTensor>("X");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis += (x[0]->dims().size() + 1);
     int num = static_cast<int>(x.size());
@@ -39,7 +39,7 @@ class StackNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    std::vector<paddle::framework::Tensor> x_list;
+    std::vector<phi::DenseTensor> x_list;
     for (int i = 0; i < num; i++) {
       x_list.push_back(*x[i]);
     }
@@ -55,8 +55,8 @@ template <typename T>
 class StackGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto dx = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto dx = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis += dy->dims().size();
     int num = dy->dims()[axis];
@@ -70,7 +70,7 @@ class StackGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    std::vector<paddle::framework::Tensor> dx_list;
+    std::vector<phi::DenseTensor> dx_list;
     for (int i = 0; i < num; i++) {
       dx[i]->mutable_data<T>(ctx.GetPlace());
       dx_list.push_back(*dx[i]);

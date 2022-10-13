@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.compat as cpt
 import numpy as np
 import os
 import contextlib
@@ -102,7 +99,7 @@ class TestPrune(unittest.TestCase):
         except ValueError as e:
             self.assertIn(
                 "All targets of Program._prune_with_input() can only be Variable or Operator",
-                cpt.get_exception_message(e))
+                str(e))
 
 
 def mock(self, program, feed, fetch, optimize_ops):
@@ -194,7 +191,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
     def test_prune_fetches_without_optimizer(self):
         """
-        Prune operators and variables which are not needed to generate 'fetches'. 
+        Prune operators and variables which are not needed to generate 'fetches'.
         """
         program = framework.Program()
         startup_program = framework.Program()
@@ -224,7 +221,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
     def test_prune_fetches_with_optimizer(self):
         """
-        Prune operators and operators which are not needed to generate 'fetches'. 
+        Prune operators and operators which are not needed to generate 'fetches'.
         In train mode, the operators and operators in backward and optimization should be kept.
         """
         program = framework.Program()
@@ -345,7 +342,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         If in next run, the program, feed, fetch are not changed, Executor use the cached pruned program,
         and needn't to call  _prune_program() to prune the program.
         In this test, we hack the Executor._prune_program with a mock function which do nothing but increase
-        Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run() 
+        Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run()
         10 times with the same input arguments.
         '''
         with _mock_guard(mock):
@@ -379,7 +376,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
     def test_prune_with_cache_program2(self):
         '''
         When use_prune=True, Executor should cache the pruned program.
-        If the only difference in fetch_list is  optimize_ops during multiple runs, 
+        If the only difference in fetch_list is  optimize_ops during multiple runs,
         the cache_keys should be different and get different pruned program.
         '''
         with _mock_guard(mock):
@@ -435,7 +432,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         If in next run, the program, feed, fetch are not changed, Executor use the cached pruned program,
         and needn't to call  _prune_program() to prune the program.
         In this test, we hack the Executor._prune_program with a mock function which do nothing but increase
-        Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run() 
+        Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run()
         10 times with the same input arguments.
         '''
         with _mock_guard(mock):
@@ -471,7 +468,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
     def test_prune_with_multi_optimizers(self):
         '''
-        If there are multiple optimizers in the program, we can run specific one by 
+        If there are multiple optimizers in the program, we can run specific one by
         pass the return of optimize.minimize() to fetch_list.
         '''
         exe = fluid.Executor(fluid.CPUPlace())
@@ -598,11 +595,11 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                             fetch_list=[loss1.name],
                             use_prune=False)
             weight2 = np.array(scope.find_var(w1_param_attrs.name).get_tensor())
-        self.assertTrue(np.allclose(weight1, weight2))
+        np.testing.assert_allclose(weight1, weight2, rtol=1e-05)
 
     def test_prune_program_with_tupe_in_fetch_list(self):
         '''
-        If there are multiple optimizers in the program, we can run specific one by 
+        If there are multiple optimizers in the program, we can run specific one by
         pass the return of optimize.minimize() to fetch_list.
         '''
         exe = fluid.Executor(fluid.CPUPlace())

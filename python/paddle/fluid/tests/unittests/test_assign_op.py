@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import op_test
 import numpy as np
 import unittest
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 from paddle.fluid.backward import append_backward
 import paddle.fluid.framework as framework
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 
 class TestAssignOp(op_test.OpTest):
@@ -109,8 +109,8 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
         res = exe.run(main_program,
                       feed={'x': feed_x},
                       fetch_list=[sums.name, x.grad_name])
-        self.assertTrue(np.allclose(res[0], feed_add))
-        self.assertTrue(np.allclose(res[1], ones / 1000.0))
+        np.testing.assert_allclose(res[0], feed_add, rtol=1e-05)
+        np.testing.assert_allclose(res[1], ones / 1000.0, rtol=1e-05)
         paddle.disable_static()
 
 
@@ -158,8 +158,8 @@ class TestAssignOApi(unittest.TestCase):
         res = exe.run(main_program,
                       feed={'x': feed_x},
                       fetch_list=[sums.name, x.grad_name])
-        self.assertTrue(np.allclose(res[0], feed_add))
-        self.assertTrue(np.allclose(res[1], ones / 1000.0))
+        np.testing.assert_allclose(res[0], feed_add, rtol=1e-05)
+        np.testing.assert_allclose(res[1], ones / 1000.0, rtol=1e-05)
         paddle.disable_static()
 
     def test_assign_NumpyArray(self):
@@ -167,41 +167,41 @@ class TestAssignOApi(unittest.TestCase):
             array = np.random.random(size=(100, 10)).astype(np.bool_)
             result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             paddle.assign(array, result1)
-        self.assertTrue(np.allclose(result1.numpy(), array))
+        np.testing.assert_allclose(result1.numpy(), array, rtol=1e-05)
 
     def test_assign_NumpyArray1(self):
         with fluid.dygraph.guard():
             array = np.random.random(size=(100, 10)).astype(np.float32)
             result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             paddle.assign(array, result1)
-        self.assertTrue(np.allclose(result1.numpy(), array))
+        np.testing.assert_allclose(result1.numpy(), array, rtol=1e-05)
 
     def test_assign_NumpyArray2(self):
         with fluid.dygraph.guard():
             array = np.random.random(size=(100, 10)).astype(np.int32)
             result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             paddle.assign(array, result1)
-        self.assertTrue(np.allclose(result1.numpy(), array))
+        np.testing.assert_allclose(result1.numpy(), array, rtol=1e-05)
 
     def test_assign_NumpyArray3(self):
         with fluid.dygraph.guard():
             array = np.random.random(size=(100, 10)).astype(np.int64)
             result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             paddle.assign(array, result1)
-        self.assertTrue(np.allclose(result1.numpy(), array))
+        np.testing.assert_allclose(result1.numpy(), array, rtol=1e-05)
 
     def test_assign_List(self):
         l = [1, 2, 3]
         result = paddle.assign(l)
-        self.assertTrue(np.allclose(result.numpy(), np.array(l)))
+        np.testing.assert_allclose(result.numpy(), np.array(l), rtol=1e-05)
 
     def test_assign_BasicTypes(self):
         result1 = paddle.assign(2)
         result2 = paddle.assign(3.0)
         result3 = paddle.assign(True)
-        self.assertTrue(np.allclose(result1.numpy(), np.array([2])))
-        self.assertTrue(np.allclose(result2.numpy(), np.array([3.0])))
-        self.assertTrue(np.allclose(result3.numpy(), np.array([1])))
+        np.testing.assert_allclose(result1.numpy(), np.array([2]), rtol=1e-05)
+        np.testing.assert_allclose(result2.numpy(), np.array([3.0]), rtol=1e-05)
+        np.testing.assert_allclose(result3.numpy(), np.array([1]), rtol=1e-05)
 
     def test_clone(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -256,6 +256,80 @@ class TestAssignOpErrorApi(unittest.TestCase):
             # not support to assign list(var)
             self.assertRaises(TypeError, paddle.assign, x)
         paddle.disable_static()
+
+
+class TestAssignDoubleGradCheck(unittest.TestCase):
+
+    def assign_wrapper(self, x):
+        return paddle.fluid.layers.assign(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [3, 4, 5], False, dtype)
+        data.persistable = True
+        out = paddle.fluid.layers.assign(data)
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(self.assign_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestAssignTripleGradCheck(unittest.TestCase):
+
+    def assign_wrapper(self, x):
+        return paddle.fluid.layers.assign(x[0])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [3, 4, 5], False, dtype)
+        data.persistable = True
+        out = paddle.fluid.layers.assign(data)
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(self.assign_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == '__main__':

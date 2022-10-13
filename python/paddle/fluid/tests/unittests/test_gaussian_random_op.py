@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle.fluid.executor import Executor
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_uint16_to_float
 from paddle.fluid.framework import _test_eager_guard
 import paddle
@@ -66,8 +61,7 @@ class TestGaussianRandomOp(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
-        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
-                        "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -114,8 +108,7 @@ class TestGaussianRandomBF16Op(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
-        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.05),
-                        "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.05)
 
 
 class TestMeanStdAreInt(TestGaussianRandomOp):
@@ -357,13 +350,15 @@ class TestRandomValue(unittest.TestCase):
             return
 
         # Different GPU generatte different random value. Only test V100 here.
-        if not "V100" in paddle.device.cuda.get_device_name():
+        if "V100" not in paddle.device.cuda.get_device_name():
             return
 
         def _check_random_value(dtype, expect, expect_mean, expect_std):
             x = paddle.randn([32, 3, 1024, 1024], dtype=dtype)
             actual = x.numpy()
-            self.assertTrue(np.allclose(actual[2, 1, 512, 1000:1010], expect))
+            np.testing.assert_allclose(actual[2, 1, 512, 1000:1010],
+                                       expect,
+                                       rtol=1e-05)
             self.assertTrue(np.mean(actual), expect_mean)
             self.assertTrue(np.std(actual), expect_std)
 

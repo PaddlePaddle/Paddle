@@ -18,8 +18,6 @@ import site
 import unittest
 import paddle
 import paddle.static as static
-import tempfile
-import subprocess
 import numpy as np
 from paddle.vision.transforms import Compose, Normalize
 from paddle.utils.cpp_extension.extension_utils import run_cmd
@@ -74,7 +72,7 @@ def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
     paddle.enable_static()
     paddle.set_device(device)
 
-    places = static.cpu_places() if device is 'cpu' else static.cuda_places()
+    places = static.cpu_places() if device == 'cpu' else static.cuda_places()
     with static.scope_guard(static.Scope()):
         with static.program_guard(static.Program()):
             x = static.data(name='X', shape=[None, 8], dtype=dtype)

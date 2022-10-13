@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import itertools
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 from op_test import OpTest
 
@@ -168,11 +165,11 @@ class TestQrAPI(unittest.TestCase):
                 x = paddle.to_tensor(a, dtype=dtype)
                 if mode == "r":
                     r = paddle.linalg.qr(x, mode=mode)
-                    self.assertTrue(np.allclose(r, np_r, atol=1e-5))
+                    np.testing.assert_allclose(r, np_r, rtol=1e-05, atol=1e-05)
                 else:
                     q, r = paddle.linalg.qr(x, mode=mode)
-                    self.assertTrue(np.allclose(q, np_q, atol=1e-5))
-                    self.assertTrue(np.allclose(r, np_r, atol=1e-5))
+                    np.testing.assert_allclose(q, np_q, rtol=1e-05, atol=1e-05)
+                    np.testing.assert_allclose(r, np_r, rtol=1e-05, atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
@@ -239,18 +236,24 @@ class TestQrAPI(unittest.TestCase):
                         fetches = exe.run(fluid.default_main_program(),
                                           feed={"input": a},
                                           fetch_list=[r])
-                        self.assertTrue(np.allclose(fetches[0], np_r,
-                                                    atol=1e-5))
+                        np.testing.assert_allclose(fetches[0],
+                                                   np_r,
+                                                   rtol=1e-05,
+                                                   atol=1e-05)
                     else:
                         q, r = paddle.linalg.qr(x, mode=mode)
                         exe = fluid.Executor(place)
                         fetches = exe.run(fluid.default_main_program(),
                                           feed={"input": a},
                                           fetch_list=[q, r])
-                        self.assertTrue(np.allclose(fetches[0], np_q,
-                                                    atol=1e-5))
-                        self.assertTrue(np.allclose(fetches[1], np_r,
-                                                    atol=1e-5))
+                        np.testing.assert_allclose(fetches[0],
+                                                   np_q,
+                                                   rtol=1e-05,
+                                                   atol=1e-05)
+                        np.testing.assert_allclose(fetches[1],
+                                                   np_r,
+                                                   rtol=1e-05,
+                                                   atol=1e-05)
 
         tensor_shapes = [
             (3, 5),

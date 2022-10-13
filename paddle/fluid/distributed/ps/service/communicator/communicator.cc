@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using phi::SelectedRows;
 
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
@@ -167,17 +167,17 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
       framework::TensorCopy(*tensor, platform::CPUPlace(), temp_tensor);
       paddle::distributed::Region reg(temp_data, tensor->numel());
       regions.emplace_back(std::move(reg));
-      VLOG(1) << "AsyncCommunicator::RpcSendDenseParam Var " << t
-              << " table_id " << table_id << " Temp_data[0] " << temp_data[0]
-              << " Temp_data[-1] " << temp_data[tensor->numel() - 1];
+      VLOG(1) << "rpc_send_dense_param Var " << t << " table_id " << table_id
+              << " Temp_data[0] " << temp_data[0] << " Temp_data[-1] "
+              << temp_data[tensor->numel() - 1];
 #endif
     } else {
       float *w = tensor->mutable_data<float>(place);
       paddle::distributed::Region reg(w, tensor->numel());
-      regions.emplace_back(std::move(reg));
-      VLOG(1) << "AsyncCommunicator::RpcSendDenseParam Var " << t
-              << " talbe_id " << table_id << " Temp_data[0] " << w[0]
-              << " Temp_data[-1] " << w[tensor->numel() - 1];
+      regions.emplace_back(reg);
+      VLOG(1) << "rpc_send_dense_param Var " << t << " talbe_id " << table_id
+              << " Temp_data[0] " << w[0] << " Temp_data[-1] "
+              << w[tensor->numel() - 1];
     }
   }
   auto status =
@@ -243,7 +243,7 @@ void Communicator::RpcSendSparseParam(const std::string &varname,
   std::vector<float *> push_g_vec;
 
   auto *send_var = scope.FindVar(varname);
-  auto *tensor = send_var->GetMutable<framework::LoDTensor>();
+  auto *tensor = send_var->GetMutable<phi::DenseTensor>();
   auto dim = tensor->dims()[1];
   uint64_t sparse_num = static_cast<uint64_t>(tensor->dims()[0]);
   std::vector<uint64_t> sparse_push_keys(sparse_num);
@@ -340,7 +340,7 @@ void Communicator::RpcRecvSparse(const std::string &varname,
                                      platform::TracerEventType::Communication,
                                      1);
   auto *send_var = scope->Var(varname);
-  auto *tensor = send_var->GetMutable<framework::LoDTensor>();
+  auto *tensor = send_var->GetMutable<phi::DenseTensor>();
   auto dim = tensor->dims()[1];
   uint64_t sparse_num = static_cast<uint64_t>(tensor->dims()[0]);
 
@@ -418,7 +418,7 @@ void Communicator::SendGlobalStep(const CommContext &ctx,
 
   auto &var_name = STEP_COUNTER;
   auto *out_var = send_scope->Var(var_name);
-  auto *out_t = out_var->GetMutable<framework::LoDTensor>();
+  auto *out_t = out_var->GetMutable<phi::DenseTensor>();
   auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
   data[0] = static_cast<int64_t>(batches);
   VLOG(3) << "Communicator::SendGlobalStep send: " << batches;
@@ -598,12 +598,12 @@ void AsyncCommunicator::PullSparseToTensorSync(
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
-  framework::LoDTensor *output = nullptr;
+  phi::DenseTensor *output = nullptr;
   float *output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor *tensor = inputs->at(index);
+    const phi::DenseTensor *tensor = inputs->at(index);
     const int64_t *ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -646,10 +646,10 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
     int fea_dim,
     uint64_t padding_id,
     platform::Place place,
-    std::vector<const framework::LoDTensor *> *inputs,
-    const framework::LoDTensor *shows,
-    const framework::LoDTensor *clks,
-    std::vector<framework::LoDTensor *> *outputs) {
+    std::vector<const phi::DenseTensor *> *inputs,
+    const phi::DenseTensor *shows,
+    const phi::DenseTensor *clks,
+    std::vector<phi::DenseTensor *> *outputs) {
   int batch_size = -1;
   bool batch_size_consist = true;
   for (auto *input : *inputs) {
@@ -688,7 +688,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   // const long int* clk_tensor = clks->data<int64_t>();
 
   for (size_t index = 0; index < inputs->size(); ++index) {
-    framework::LoDTensor *g_tensor = outputs->at(index);
+    phi::DenseTensor *g_tensor = outputs->at(index);
     float *g = g_tensor->data<float>();
 
     if (batch_size_consist) {  // TODO(zhaocaibei123): add config
@@ -700,7 +700,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
           batch_size;  // hard code here, because of cvm_grad op
     }
 
-    const framework::LoDTensor *tensor = inputs->at(index);
+    const phi::DenseTensor *tensor = inputs->at(index);
     const int64_t *ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     output_len = 0;
@@ -872,7 +872,7 @@ bool AsyncCommunicator::Check(const std::vector<std::string> &var_tables) {
   if (table_name == STEP_COUNTER) {
     VLOG(3) << "send step_counter into queue";
     auto tmp_var = std::make_shared<Variable>();
-    auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
+    auto *tensor = tmp_var->GetMutable<phi::DenseTensor>();
     tensor->Resize(phi::make_ddim({1}));
     auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
     out_d[0] = 1;
@@ -1070,27 +1070,31 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                const RecvCtxMap &recv_varname_to_ctx,
                                Scope *recv_scope) {
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
-  recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
+  recv_varname_to_ctx_ = std::move(
+      recv_varname_to_ctx);  // dense_map - key: table_id, value: params
   recv_scope_ = std::move(recv_scope);
 
-  PADDLE_ENFORCE_GT(
-      send_varname_to_ctx.size(),
-      0,
-      platform::errors::InvalidArgument("send var contexts can not be zero"));
-
-  for (auto &iter : send_varname_to_ctx_) {
-    auto &ctx = iter.second;
+  for (auto it = send_varname_to_ctx_.begin();
+       it != send_varname_to_ctx_.end();) {
+    auto &ctx = it->second;
     if (!ctx.is_sparse) {
       parallel_task_nums_ += 1;
+      it++;
       continue;
     }
     auto &varnames = ctx.origin_varnames;
-    PADDLE_ENFORCE_EQ(
-        varnames.size(),
-        1,
-        platform::errors::InvalidArgument(
-            "sparse variables can only be merged by one variables"));
-    for (auto &splited_var : ctx.splited_varnames) {
+    if (varnames.empty()) {
+      VLOG(0) << "ERROR! sparse variables num can not be zero";
+    }
+    auto &varname = varnames[0];  // embedding_0.w_0@GRAD
+    auto &ids = ctx.remote_sparse_ids;
+    if (!ids.empty()) {
+      it = send_varname_to_ctx_.erase(it);
+      continue;
+    } else {
+      it++;
+    }
+    for (auto &splited_var : ctx.splited_varnames) {  // embedding_0.w_0.block0
       parallel_task_nums_ += 1;
       sparse_id_queues_.insert(
           std::pair<std::string,
@@ -1101,12 +1105,11 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                   std::shared_ptr<std::vector<int64_t>>>(send_queue_size_)));
     }
   }
-
-  send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
-
-  delta_scope_.reset(new Scope());
-  old_scope_.reset(new Scope());
-  pserver_scope_.reset(new Scope());
+  send_threadpool_ = std::make_unique<ThreadPool>(thread_pool_size_);
+  delta_scope_ = std::make_shared<Scope>();
+  old_scope_ = std::make_shared<Scope>();
+  pserver_scope_ = std::make_shared<Scope>();
+  return;
 }
 
 void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
@@ -1116,10 +1119,12 @@ void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
   for (auto &iter : recv_varname_to_ctx_) {
     auto &table_id = iter.first;
     auto &varnames = iter.second;
-
     auto recv_task = [this, &table_id, &varnames] {
       InitDense(varnames, table_id);
     };
+    if (send_threadpool_ == nullptr) {
+      VLOG(0) << "ERROR! send_threadpool_ is nullptr";
+    }
     tasks.emplace_back(send_threadpool_->enqueue(std::move(recv_task)));
   }
 
@@ -1129,10 +1134,13 @@ void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
 
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
-    if (!ctx.is_sparse) continue;
+    if (!ctx.is_sparse) {
+      continue;
+    }
     auto &varname = ctx.origin_varnames[0];
     auto &table_id = ctx.table_id;
     auto param = varname.substr(0, varname.size() - 5);
+    VLOG(0) << "InitSparse: " << param << ", " << table_id;
     InitSparse(param, table_id);
   }
   return;
@@ -1140,6 +1148,7 @@ void GeoCommunicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
 
 void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
                                 int table_id) {
+  VLOG(1) << "init dense table " << table_id << " begin";
   if (trainer_id_ == 0) {
     RpcSendDenseParam(varnames, table_id, *recv_scope_);
     BarrierWithTable(1);
@@ -1155,13 +1164,13 @@ void GeoCommunicator::InitDense(std::vector<std::string> &varnames,
   // copy to old_scope
   for (auto &t : varnames) {
     auto *global_var = recv_scope_->FindVar(t);
-    global_var->GetMutable<framework::LoDTensor>();
+    global_var->GetMutable<phi::DenseTensor>();
     auto *old_var = old_scope_->Var(t);
-    old_var->GetMutable<framework::LoDTensor>();
+    old_var->GetMutable<phi::DenseTensor>();
     framework::CopyVariable(*global_var, old_var);  // src, dst
     // init pserver_scope_
     auto *pserver_var = pserver_scope_->Var(t);
-    pserver_var->GetMutable<framework::LoDTensor>();
+    pserver_var->GetMutable<phi::DenseTensor>();
     framework::CopyVariable(*global_var, pserver_var);
   }
   VLOG(1) << "init dense table " << table_id << " done";
@@ -1187,12 +1196,12 @@ void GeoCommunicator::SendDense(const CommContext &send_ctx) {
                       platform::errors::Unavailable(
                           "%s is not initialized, please check", param_name));
 
-    auto &t_latest = var_latest->Get<framework::LoDTensor>();
-    auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
+    auto &t_latest = var_latest->Get<phi::DenseTensor>();
+    auto t_timestamp = var_timestamp->GetMutable<phi::DenseTensor>();
 
     phi::CPUContext cpu_ctx;
     auto *var_delta = delta_scope_->Var(varname);
-    auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+    auto *t_delta = var_delta->GetMutable<phi::DenseTensor>();
     t_delta->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
 
     auto blas = phi::funcs::GetBlas<phi::CPUContext, float>(cpu_ctx);
@@ -1223,20 +1232,21 @@ void GeoCommunicator::RecvDense(const CommContext &send_ctx) {
   // 1. recv from pserver
   RpcRecvDense(varnames, table_id, pserver_scope_.get());
 
-  // 2.1 pserver - old => delta; 2.2 latest + delta => latest 2.3 old => pserver
+  // 2.1 pserver - old => delta; 2.2 latest + delta => latest 2.3 old =>
+  // pserver
   phi::CPUContext cpu_ctx;
   for (auto &varname : varnames) {
     auto *var_latest = recv_scope_->FindVar(varname);
-    auto t_latest = var_latest->GetMutable<framework::LoDTensor>();
+    auto t_latest = var_latest->GetMutable<phi::DenseTensor>();
 
     auto *var_old = old_scope_->FindVar(varname);
-    auto t_old = var_old->GetMutable<framework::LoDTensor>();
+    auto t_old = var_old->GetMutable<phi::DenseTensor>();
 
     auto *var_pserver = pserver_scope_->FindVar(varname);
-    auto t_pserver = var_pserver->Get<framework::LoDTensor>();
+    auto t_pserver = var_pserver->Get<phi::DenseTensor>();
 
     auto *var_delta = delta_scope_->Var(varname);
-    auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+    auto *t_delta = var_delta->GetMutable<phi::DenseTensor>();
     t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
 
     auto blas = phi::funcs::GetBlas<phi::CPUContext, float>(cpu_ctx);
@@ -1337,8 +1347,8 @@ void GeoCommunicator::SendSparse(const std::string &varname,
                     platform::errors::Unavailable(
                         "%s is not initialized, please check", param_name));
 
-  auto &t_latest = var_latest->Get<framework::LoDTensor>();
-  auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+  auto &t_latest = var_latest->Get<phi::DenseTensor>();
+  auto *t_old = var_old->GetMutable<phi::DenseTensor>();
 
   auto dims1 = t_latest.dims()[1];
   phi::CPUContext cpu_ctx;
@@ -1417,8 +1427,8 @@ void GeoCommunicator::RecvSparse(const std::string &varname,
   auto *var_latest = recv_scope_->FindVar(param);
   auto *var_old = old_scope_->FindVar(param);
 
-  auto *t_latest = var_latest->GetMutable<framework::LoDTensor>();
-  auto *t_old = var_old->GetMutable<framework::LoDTensor>();
+  auto *t_latest = var_latest->GetMutable<phi::DenseTensor>();
+  auto *t_old = var_old->GetMutable<phi::DenseTensor>();
 
   auto dims1 = t_latest->dims()[1];
   auto numel = keys.size() * dims1;
@@ -1505,8 +1515,8 @@ void FLCommunicator::InitBrpcClient(
   if (_worker_ptr.get() == nullptr) {
     VLOG(0) << "fl-ps > FLCommunicator::InitBrpcClient get _worker_ptr";
     _worker_ptr =
-        fleet->worker_ptr_;  // FleetWrapper::InitWorker must be excuted before,
-                             // but no need for Coordinator
+        fleet->worker_ptr_;  // FleetWrapper::InitWorker must be excuted
+                             // before, but no need for Coordinator
   }
   if (coordinator_client_ptr_ == nullptr) {
     coordinator_client_ptr_.reset(new CoordinatorClient);

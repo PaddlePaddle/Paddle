@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import subprocess
 import unittest
 import numpy as np
 
@@ -35,7 +34,7 @@ multi_out_module = load(
     name='multi_out_jit',
     sources=['multi_out_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cxx_cflags=extra_cc_args,  # test for cflags 
+    extra_cxx_cflags=extra_cc_args,  # test for cflags
     verbose=True)
 
 

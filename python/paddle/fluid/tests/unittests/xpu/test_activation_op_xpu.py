@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -1097,6 +1095,58 @@ for stype in support_types:
 
 def ref_thresholded_relu(x, threshold=1.0):
     out = (x > threshold) * x
+    return out
+
+
+class XPUTestMishOP(XPUOpTestWrapper):
+
+    def __init__(self):
+        self.op_name = 'mish'
+        self.use_dynamic_create_class = False
+
+    class XPUTestMishBase(TestActivationOPBase):
+
+        def set_case(self):
+            self.op_type = "mish"
+            self.dtype = self.in_type
+
+            self.init_config()
+            threshold = np.random.uniform(0, 1)
+            out = ref_mish(self.x, threshold)
+
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True, 'threshold': threshold}
+
+        def init_config(self):
+            self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestMish2(XPUTestMishBase):
+
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [1024, 8]).astype(self.dtype)
+
+    class XPUTestMish3(XPUTestMishBase):
+
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2,
+                                       [4, 512, 15, 15]).astype(self.dtype)
+
+    class XPUTestMish4(XPUTestMishBase):
+
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2,
+                                       [4, 256, 22, 22]).astype(self.dtype)
+
+
+support_types = get_xpu_op_support_types('mish')
+for stype in support_types:
+    create_test_class(globals(), XPUTestMishOP, stype)
+
+
+def ref_mish(x, threshold=20):
+    sp = np.select([x <= threshold, x > threshold], [np.log(1 + np.exp(x)), x])
+    out = x * np.tanh(sp)
     return out
 
 

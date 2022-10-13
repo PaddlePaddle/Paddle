@@ -13,23 +13,18 @@
 # limitations under the License.
 
 import copy
-import paddle
-import paddle.fluid.layers.utils as utils
 
 from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
-from .common import set_comm_op_dist_attr_for_program
-from .dist_default import DistributedDefaultImpl0
 from ..process_group import new_process_group
 from ..utils import is_dim_shard, is_dim_replicate, _get_corresponding_rank
 from ..utils import compute_compatible_dim_mapping, set_dist_op_desc_original_id, _get_comm_group
 from ..dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
-from paddle.fluid import core, unique_name
+from paddle.fluid import core
 from paddle.fluid.framework import Operator
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 
 
@@ -40,29 +35,6 @@ class DistributedPNorm(DistributedOperatorImplContainer):
 
 
 register_distributed_operator_impl_container(DistributedPNorm("p_norm"))
-
-
-def _insert_fill_constant_op(block, op_role):
-    """Insert fill constant op into block at the given index."""
-    helper = LayerHelper("fill_constant", **locals())
-    with paddle.static.program_guard(block.program):
-        out = helper.create_variable_for_type_inference(dtype="int32")
-    inputs = {}
-    attrs = {'force_cpu': False}
-    attrs['str_value'] = str(int("1"))
-    attrs['value'] = int("1")
-    attrs['dtype'] = out.dtype
-    attrs['op_role'] = op_role
-    utils.get_shape_tensor_inputs(inputs=inputs,
-                                  attrs=attrs,
-                                  shape=[0],
-                                  op_type='fill_constant')
-    fill_constant_op = block.append_op(type='fill_constant',
-                                       inputs=inputs,
-                                       outputs={'Out': [out]},
-                                       attrs=attrs)
-    out.stop_gradient = True
-    return out, fill_constant_op
 
 
 # Row Parallel
@@ -181,32 +153,6 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                                  'norm')
         check_dtype(X_var.dtype, 'dtype', ['float16', 'float32', 'float64'],
                     'norm')
-
-        # 1. insert barrier op
-        ref_process_mesh = op_dist_attr.process_mesh
-        constant_out_dims_mapping = [-1]
-        fill_constant_out, fill_constant_op = _insert_fill_constant_op(
-            main_block, src_op.attr('op_role'))
-        # set fill_constant_out tensor dist_attr
-        constant_out_dist_attr = TensorDistributedAttribute()
-        constant_out_dist_attr.process_mesh = ref_process_mesh
-        constant_out_dist_attr.dims_mapping = constant_out_dims_mapping
-        ctx.set_tensor_dist_attr_for_program(fill_constant_out,
-                                             constant_out_dist_attr)
-        # set fill_constant op dist_attr
-        constant_op_dist_attr = OperatorDistributedAttribute()
-        constant_op_dist_attr.process_mesh = ref_process_mesh
-        constant_op_dist_attr.set_output_dims_mapping(
-            fill_constant_out.name, constant_out_dims_mapping)
-        ctx.set_op_dist_attr_for_program(fill_constant_op,
-                                         constant_op_dist_attr)
-        barrier_op = main_block.append_op(type='barrier',
-                                          inputs={'X': [fill_constant_out]},
-                                          outputs={'Out': [fill_constant_out]},
-                                          attrs={'ring_id': group.id})
-        # set barrier op dist attr
-        set_comm_op_dist_attr_for_program(barrier_op, ref_process_mesh,
-                                          constant_out_dist_attr, ctx)
 
         # 2. insert c_allgather op
         # create c_allgather output var

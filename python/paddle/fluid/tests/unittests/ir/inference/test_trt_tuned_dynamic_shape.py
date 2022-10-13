@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 
 paddle.enable_static()
 import paddle.fluid as fluid
-from paddle.inference import Config, Predictor, create_predictor
+from paddle.inference import Config, create_predictor
 
 
 class TRTTunedDynamicShapeTest(unittest.TestCase):

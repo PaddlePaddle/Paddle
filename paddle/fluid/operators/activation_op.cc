@@ -30,37 +30,26 @@ DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
-
 template <typename GradFunctor>
 static constexpr bool CanInplaceAct() {
   return GradFunctor::FwdDeps() == ActBwdOpFwdDeps::kDepOut ||
          GradFunctor::FwdDeps() == ActBwdOpFwdDeps::kNoDeps;
 }
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                    \
-  class OP_NAME##OpMaker                                                     \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
-   public:                                                                   \
-    void Make() override {                                                   \
-      AddInput("X",                                                          \
-               "Input of " #OP_NAME                                          \
-               " operator, an N-D Tensor, with data type float32, "          \
-               "float64 or float16.");                                       \
-      AddOutput("Out",                                                       \
-                "Output of " #OP_NAME                                        \
-                " operator, a Tensor with shape same as input.");            \
-      AddAttr<bool>("use_mkldnn",                                            \
-                    "(bool, default false) Only used in mkldnn kernel")      \
-          .SetDefault(false)                                                 \
-          .AsExtra();                                                        \
-      AddAttr<bool>("use_cudnn",                                             \
-                    "(bool, default false) Only used in cudnn kernel, need " \
-                    "install cudnn")                                         \
-          .SetDefault(false)                                                 \
-          .AsExtra();                                                        \
-      AddComment(OP_COMMENT);                                                \
-    }                                                                        \
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)           \
+  class OP_NAME##OpMaker                                            \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {        \
+   public:                                                          \
+    void Make() override {                                          \
+      AddInput("X",                                                 \
+               "Input of " #OP_NAME                                 \
+               " operator, an N-D Tensor, with data type float32, " \
+               "float64 or float16.");                              \
+      AddOutput("Out",                                              \
+                "Output of " #OP_NAME                               \
+                " operator, a Tensor with shape same as input.");   \
+      AddComment(OP_COMMENT);                                       \
+    }                                                               \
   }
 
 template <ActBwdOpFwdDeps kDepValue, typename T>
@@ -93,28 +82,18 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
 framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const framework::OperatorWithKernel& oper,
                                       const std::string& name) {
-  framework::LibraryType library{framework::LibraryType::kPlain};
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = oper.IndicateVarDataType(ctx, name);
-// FIXME(liuwei1031) temporarily disable the code to unblock users
-// TODO(liuwei1031) figure out the reason behind
-// https://github.com/PaddlePaddle/Paddle/issues/16096
-// and re-enable this in the future
-// #ifdef PADDLE_WITH_CUDA
-//   auto it1 = oper.Attrs().find("use_cudnn");
-//   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
-//     library = framework::LibraryType::kCUDNN;
-//   }
-// #endif
-#ifdef PADDLE_WITH_MKLDNN
-  auto it = oper.Attrs().find("use_mkldnn");
-  if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
-      oper.CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-#endif
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  // FIXME(liuwei1031) temporarily disable the code to unblock users
+  // TODO(liuwei1031) figure out the reason behind
+  // https://github.com/PaddlePaddle/Paddle/issues/16096
+  // and re-enable this in the future
+  // #ifdef PADDLE_WITH_CUDA
+  //   auto it1 = oper.Attrs().find("use_cudnn");
+  //   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+  //     library = framework::LibraryType::kCUDNN;
+  //   }
+  // #endif
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
@@ -134,8 +113,8 @@ class ActivationOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
+      const phi::DenseTensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     // When activation is first oneDNN op (there was some non oneDNN op
     // previously)
@@ -182,9 +161,9 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 };
 
 UNUSED constexpr char SigmoidDoc[] = R"DOC(
-Sigmoid Activation Operator
+Sigmoid Activation
 
-$$out = \\frac{1}{1 + e^{-x}}$$
+$$out = \frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -258,7 +237,8 @@ $$out = \\frac{1}{\\sqrt{x}}$$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$$out = \\lceil x \\rceil$$
+..  math::
+    out = \left \lceil x \right \rceil
 
 )DOC";
 
@@ -274,7 +254,8 @@ Cosine Operator. Computes cosine of x element-wise.
 
 Input range is `(-inf, inf)` and output range is `[-1,1]`.
 
-$$out = cos(x)$$
+..  math::
+    out = cos(x)
 
 )DOC";
 
@@ -304,7 +285,10 @@ $$out = sinh(x)$$
 UNUSED constexpr char CoshDoc[] = R"DOC(
 Cosh Activation Operator.
 
-$$out = cosh(x)$$
+Input range `(-inf, inf)`, output range `(1, inf)`.
+
+..  math::
+    out = \frac{exp(x)+exp(-x)}{2}
 
 )DOC";
 
@@ -405,11 +389,12 @@ class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "Input of acos operator");
-    AddOutput("Out", "Output of acos operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input");
     AddComment(R"DOC(
 Arccosine Operator.
 
-$$out = \cos^{-1}(x)$$
+..  math::
+    out = \cos^{-1}(x)
 
 )DOC");
   }
@@ -421,11 +406,12 @@ class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Input of asin operator, an N-D Tensor, with data type float32, "
              "float64 or float16.");
-    AddOutput("Out", "Output of asin operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input.");
     AddComment(R"DOC(
 Arcsine Operator.
 
-$$out = \sin^{-1}(x)$$
+..  math::
+    out = \sin^{-1}(x)
 
 )DOC");
   }
@@ -437,11 +423,12 @@ class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Input of atan operator, an N-D Tensor, with data type float32, "
              "float64 or float16.");
-    AddOutput("Out", "Output of atan operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input x");
     AddComment(R"DOC(
 Arctangent Operator.
 
-$$out = \tan^{-1}(x)$$
+..  math::
+    out = \tan^{-1}(x)
 
 )DOC");
   }
@@ -458,10 +445,6 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
         "A LoDTensor or Tensor with the same type and size as that of x.");
     AddAttr<float>("alpha", "Slope of the activation function at x < 0.")
         .SetDefault(0.02f);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 LeakyRelu Activation Operator.
 
@@ -483,35 +466,6 @@ class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("beta", "The value of beta for Softplus.").SetDefault(1.0f);
     AddAttr<float>("threshold", "The value of threshold for Softplus.")
         .SetDefault(20.0f);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<bool>(
-        "use_cudnn",
-        "(bool, default false) Only used in cudnn kernel, need install cudnn.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "fuse_activation_type",
-        "Fused activation type used in softplus OneDNN kernel.")
-        .SetDefault("")
-        .AsExtra();
-    AddAttr<float>(
-        "fuse_activation_alpha",
-        "Fused activation alpha parameter type used in softplus OneDNN kernel.")
-        .SetDefault(0.0f)
-        .AsExtra();
-    AddAttr<float>(
-        "fuse_activation_beta",
-        "Fused activation beta parameter type used in softplus OneDNN kernel.")
-        .SetDefault(0.0f)
-        .AsExtra();
-    AddAttr<float>(
-        "fuse_activation_scale",
-        "Fused activation scale parameter type used in softplus OneDNN kernel.")
-        .SetDefault(1.0f)
-        .AsExtra();
     AddComment(R"DOC(
 :strong:`Softplus Activation Operator`
 
@@ -613,10 +567,6 @@ class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output is a multi-dimensional Tensor which has same "
               "dimension and data type as the ``x``.");
     AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 ELU Activation Operator.
 
@@ -654,7 +604,7 @@ class LogitOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1e-6f) the epsilon for input clamp bound")
         .SetDefault(1e-6f);
     AddComment(R"DOC(
-Logit Operator. 
+Logit Operator.
 
 this function is defined as follow:
 $ logit=ln\left ( {\frac {x} {1-x}} \right ) $
@@ -712,10 +662,6 @@ class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("threshold",
                    "The threshold value of Relu6. Default is 6.0. ")
         .SetDefault(6.0f);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Relu6 Activation Operator.
 
@@ -817,10 +763,6 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Swish operator");
     AddOutput("Out", "Output of Swish operator");
     AddAttr<float>("beta", "Constant beta of swish operator").SetDefault(1.0f);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Swish Activation Operator.
 
@@ -841,10 +783,6 @@ class MishOpMaker : public framework::OpProtoAndCheckerMaker {
         "of softplus will be used if absolute value of input is greater than "
         ":attr:`threshold`")
         .SetDefault(20.f);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Mish Activation Operator.
 
@@ -871,10 +809,6 @@ class HardSwishOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(6.0f);
     AddAttr<float>("offset", "The offset parameter of HardSwish operator")
         .SetDefault(3.0f);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 HardSwish Activation Operator.
 
@@ -1408,7 +1342,7 @@ class PowOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "FactorTensor") {
       return expected_kernel_type;
@@ -1436,7 +1370,7 @@ class PowOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "FactorTensor") {
       return expected_kernel_type;

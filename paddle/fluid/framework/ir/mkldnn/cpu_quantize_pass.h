@@ -54,7 +54,7 @@ class CPUQuantizePass : public FusePassBase {
   void QuantizePool(Graph* graph) const;
   void QuantizeConcat(Graph* graph) const;
   void QuantizePriorBox(Graph* graph) const;
-  void QuantizeMatmul(Graph* graph) const;
+  void QuantizeMatmul(Graph* graph, bool with_residual) const;
   void QuantizeElementwise(Graph* graph,
                            const std::string& elementwise_type) const;
   void QuantizeFusionGru(Graph* graph) const;
@@ -109,6 +109,11 @@ class CPUQuantizePass : public FusePassBase {
  private:
   VarQuantScale string_pair_map = {};
   VarQuantScale* const var_quant_scales_ = &string_pair_map;
+
+  // Save the scale values of which weights have been processed to avoid
+  // secondary processing
+  std::vector<std::string> change_weight = {};
+  std::vector<std::string>* const change_weight_ = &change_weight;
 
   void GetQuantInfo(Graph* graph) const;
 };

@@ -47,6 +47,7 @@ find_package(CUDA QUIET)
 find_package(MKL CONFIG QUIET)
 option(WITH_ONEMKL "Compile PaddlePaddle with oneMKL" OFF)
 option(WITH_GPU "Compile PaddlePaddle with NVIDIA GPU" ${CUDA_FOUND})
+option(WITH_MPI "Compile PaddlePaddle with MPI" OFF)
 option(WITH_TENSORRT "Compile PaddlePaddle with NVIDIA TensorRT" OFF)
 option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
@@ -249,7 +250,7 @@ option(WITH_SYSTEM_BLAS "Use system blas library" OFF)
 option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
-       OFF)
+       ON)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
@@ -323,7 +324,7 @@ unset(WITH_RECORD_BUILDTIME CACHE)
 
 # PY_VERSION
 if(NOT PY_VERSION)
-  set(PY_VERSION 3.6)
+  set(PY_VERSION 3.7)
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
@@ -362,6 +363,18 @@ if(WIN32)
         OFF
         CACHE STRING "Disable NCCL when compiling for Windows" FORCE)
   endif()
+endif()
+
+if(NOT WITH_TESTING AND WITH_MULTINODE_TESTING)
+  message(
+    WARNING
+      "Disable WITH_MULTINODE_TESTING when compiling without TESTING. Force WITH_MULTINODE_TESTING=OFF."
+  )
+  set(WITH_MULTINODE_TESTING
+      OFF
+      CACHE STRING
+            "Disable WITH_MULTINODE_TESTING when compiling without TESTING"
+            FORCE)
 endif()
 
 if(NOT WITH_GPU AND WITH_NCCL)
@@ -495,6 +508,10 @@ if(WITH_DISTRIBUTE)
           "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496"
           FORCE)
   endif()
+endif()
+
+if(WITH_MPI)
+  include(mpi)
 endif()
 
 include(third_party

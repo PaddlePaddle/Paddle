@@ -44,9 +44,12 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             return paddle_apis[op](x_t, y_t).numpy()
 
     def assert_check(self, pd_result, np_result, place):
-        self.assertTrue(
-            np.allclose(pd_result, np_result),
-            "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
+        np.testing.assert_allclose(
+            pd_result,
+            np_result,
+            rtol=1e-05,
+            err_msg=
+            '\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'.
             format(place, pd_result[~np.isclose(pd_result, np_result)],
                    np_result[~np.isclose(pd_result, np_result)]))
 

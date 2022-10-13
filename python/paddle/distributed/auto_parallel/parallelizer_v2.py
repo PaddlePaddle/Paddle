@@ -15,24 +15,17 @@
 import copy
 import time
 import logging
-from collections import defaultdict
 
-import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import unique_name
 from paddle.distributed.passes import new_pass
-from paddle.distributed.utils import get_logger
 
 from .reshard import Resharder
 from .partitioner import Partitioner
-from .dist_op import DistributedOperator
-from .dist_saver import DistributedSaver
-from .dist_loader import NonIterableGeneratorLoader
-from .utils import make_data_unshard, set_grad_var_shape
-from .utils import print_program_with_dist_attr, to_list
-from .process_group import get_all_process_groups, get_world_process_group
-from .dist_context import DistributedContext, get_default_distributed_context
+from .utils import set_grad_var_shape
+from .utils import get_logger
+from .process_group import get_world_process_group
 
 
 class Parallelizer:
@@ -66,9 +59,9 @@ class Parallelizer:
                                                    serial_loss)
             # Apply pre optimization passes
             time0 = time.time()
-            self._apply_pre_optimization(serial_main_program,
-                                         serial_startup_program, serial_loss,
-                                         serial_optimizer, params_grads)
+            serial_main_program, serial_startup_program, params_grads = self._apply_pre_optimization(
+                serial_main_program, serial_startup_program, serial_loss,
+                serial_optimizer, params_grads)
             self._logger.info(
                 "within parallel apply_pre_optimization time: {}, mode {}".
                 format(time.time() - time0, self._mode))
@@ -105,9 +98,13 @@ class Parallelizer:
                 format(time.time() - time0, self._mode))
         else:
             # Apply pre optimization passes
-            # self._apply_pre_optimization(serial_main_program,
-            #                              serial_startup_program, None, None,
-            #                              None)
+            time0 = time.time()
+            self._apply_pre_optimization(serial_main_program,
+                                         serial_startup_program, None, None,
+                                         None)
+            self._logger.info(
+                "within parallel apply_pre_optimization time: {}, mode {}".
+                format(time.time() - time0, self._mode))
             # Do logical partition
             time0 = time.time()
             partitioner = Partitioner(self._dist_context, rank)
@@ -143,14 +140,13 @@ class Parallelizer:
 
     def _generate_optimizer(self, main_program, startup_program, optimizer,
                             params_grads):
-        if self._dist_context._dygraph_mode:
-            paddle.disable_static()
-            optimizer = copy.deepcopy(optimizer)
-            paddle.enable_static()
-        else:
-            optimizer = copy.deepcopy(optimizer)
+        # NOTE: `apply_gradients` will add an Accumulator for a parameter only once,
+        # but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
+        optimizer = copy.deepcopy(optimizer)
+        self._dist_context._lr_optimizer = optimizer
         with program_guard(main_program, startup_program):
-            optimizer_ops = optimizer.apply_gradients(params_grads)
+            with unique_name.guard("opt_"):
+                optimizer_ops = optimizer.apply_gradients(params_grads)
         self._completer.complete_update_annotation(main_program)
         return optimizer_ops
 
@@ -158,11 +154,27 @@ class Parallelizer:
                                 optimizer, params_grads):
         if self._strategy is None:
             return
+
+        # apply quantization pass
+        # The pass can be applied when mode must be 'train'
+        if self._mode == 'train' and self._strategy.qat.enable:
+            config = copy.deepcopy(self._strategy.qat.to_dict())
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            auto_parallel_quantization_pass = new_pass(
+                "auto_parallel_quantization", config)
+            auto_parallel_quantization_pass.apply([main_program],
+                                                  [startup_program],
+                                                  self._pass_context)
+            main_program = self._pass_context.get_attr("main_program")
+            startup_program = self._pass_context.get_attr("startup_program")
+            params_grads = self._pass_context.get_attr("params_grads")
+
         # apply amp pass
         # FIXME we disenable amp for eval since it has a little bug with
         # eval program and which will be fixed in future
-        if self._mode == 'train' and self._strategy.amp:
-            config = copy.deepcopy(self._strategy.amp_configs)
+        if self._strategy.amp.enable:
+            config = copy.deepcopy(self._strategy.amp.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["loss"] = loss
@@ -173,15 +185,17 @@ class Parallelizer:
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply([main_program], [startup_program],
                                               self._pass_context)
+                loss = auto_parallel_fp16_pass.get_loss()
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply([main_program], [startup_program],
                                              self._pass_context)
+                loss = auto_parallel_amp_pass.get_loss()
 
         # apply recompute pass
         # recompute is then train-only optimization
-        if self._mode == "train" and self._strategy.recompute:
-            config = copy.deepcopy(self._strategy.recompute_configs)
+        if self._mode == "train" and self._strategy.recompute.enable:
+            config = copy.deepcopy(self._strategy.recompute.to_dict())
             config["dist_context"] = self._dist_context
             config["no_grad_set"] = None
             config["loss"] = loss
@@ -191,12 +205,23 @@ class Parallelizer:
                                                [startup_program],
                                                self._pass_context)
 
+        return main_program, startup_program, params_grads
+
     def _apply_post_optimization(self, main_program, startup_program, rank,
                                  params_grads):
         if self._strategy is None:
             return
-        if self._strategy.sharding:
-            config = copy.deepcopy(self._strategy.sharding_configs)
+
+        # data parallel optimization
+        config = {}
+        config["dist_context"] = self._dist_context
+        config["global_rank"] = rank
+        config["use_sharding"] = self._strategy.sharding.enable
+        dp_pass = new_pass("auto_parallel_data_parallel_optimization", config)
+        dp_pass.apply([main_program], [startup_program], self._pass_context)
+
+        if self._strategy.sharding.enable:
+            config = copy.deepcopy(self._strategy.sharding.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             config["global_rank"] = rank
@@ -204,10 +229,22 @@ class Parallelizer:
                                                    config)
             auto_parallel_sharding_pass.apply([main_program], [startup_program],
                                               self._pass_context)
+            params_grads = self._pass_context.get_attr("params_grads")
 
-        # recompute is then train-only optimization
-        if self._mode == "train" and self._strategy.gradient_merge:
-            config = copy.deepcopy(self._strategy.gradient_merge_configs)
+        # GradClip is train-only optimization
+        if self._mode == "train":
+            config = copy.deepcopy(self._strategy.sharding.to_dict())
+            config["dist_context"] = self._dist_context
+            config["params_grads"] = params_grads
+            config["rank_id"] = rank
+            auto_parallel_clip_pass = new_pass("auto_parallel_grad_clip",
+                                               config)
+            auto_parallel_clip_pass.apply([main_program], [startup_program],
+                                          self._pass_context)
+
+        # gradient_merge is then train-only optimization
+        if self._mode == "train" and self._strategy.gradient_merge.enable:
+            config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
             auto_parallel_gradient_merge_pass = new_pass(

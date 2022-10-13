@@ -26,6 +26,10 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#endif
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
@@ -361,7 +365,10 @@ void SyncBatchNormGradFunctor(
   const auto *saved_inv_var =
       saved_variance.template data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-  auto alloc_ptr = paddle::memory::Alloc(ctx, bytes);
+  auto alloc_ptr = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
 
   const int block = 512;
@@ -411,7 +418,19 @@ void SyncBatchNormGradFunctor(
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto *comm = ctx.nccl_comm();
+  int global_gid = 0;
+  ncclComm_t comm = nullptr;
+
+  if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
+          global_gid)) {
+    auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
+        paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
+            global_gid));
+    comm = nccl_pg->NCCLComm(x->place());
+  } else {
+    comm = ctx.nccl_comm();
+  }
+
   if (comm) {
     int dtype = paddle::platform::ToNCCLDataType(
         paddle::framework::TransToProtoVarType(scale.dtype()));
@@ -424,6 +443,7 @@ void SyncBatchNormGradFunctor(
         ncclSum,
         comm,
         stream));
+    VLOG(3) << "Sync result using all reduce";
   }
 #endif
 

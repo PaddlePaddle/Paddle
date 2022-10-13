@@ -24,8 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class TileOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -40,7 +38,7 @@ class TileOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
       return expected_kernel_type;
@@ -74,7 +72,8 @@ class TileOpMaker : public framework::OpProtoAndCheckerMaker {
               "the corresponding value given by Attr(repeat_times).");
     AddAttr<std::vector<int>>("repeat_times",
                               "The number of repeat times for each dimension.")
-        .SetDefault({});
+        .SetDefault({})
+        .SupportTensor();
     AddComment(R"DOC(
 Tile operator repeats the input by given times number. You should set times
 number for each dimension by providing attribute 'repeat_times'. The rank of X
@@ -131,7 +130,7 @@ class TileGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
       return expected_kernel_type;

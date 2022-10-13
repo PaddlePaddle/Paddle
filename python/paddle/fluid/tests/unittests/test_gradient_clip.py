@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-import six
 from fake_reader import fake_imdb_reader
 from paddle.fluid.clip import _allow_pure_fp16_global_norm_clip
 
@@ -161,9 +158,13 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
             out[i] = scale * out[i]
 
         for u, v in zip(out, out_clip):
-            self.assertTrue(
-                np.allclose(a=u, b=v, rtol=1e-5, atol=1e-8),
-                "gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}"
+            np.testing.assert_allclose(
+                u,
+                v,
+                rtol=1e-05,
+                atol=1e-08,
+                err_msg=
+                'gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}'
                 .format(u, v, u - v))
 
     # test whether the output is right when use 'set_gradient_clip'
@@ -271,8 +272,12 @@ class TestGradientClipByNorm(TestGradientClip):
             norm = np.sqrt(np.sum(np.power(u, 2)))
             scale = self.clip_norm / np.maximum(self.clip_norm, norm)
             u = u * scale
-            self.assertTrue(np.allclose(a=u, b=v, rtol=1e-5, atol=1e-8),
-                            "gradient clip by norm has wrong results!")
+            np.testing.assert_allclose(
+                u,
+                v,
+                rtol=1e-05,
+                atol=1e-08,
+                err_msg='gradient clip by norm has wrong results!')
 
     # test whether the output is right when use grad_clip
     def test_gradient_clip(self):
@@ -315,8 +320,12 @@ class TestGradientClipByValue(TestGradientClip):
             out[i] = np.clip(v, self.min, self.max)
         for u, v in zip(out, out_clip):
             u = np.clip(u, self.min, self.max)
-            self.assertTrue(np.allclose(a=u, b=v, rtol=1e-6, atol=1e-8),
-                            "gradient clip by value has wrong results!")
+            np.testing.assert_allclose(
+                u,
+                v,
+                rtol=1e-06,
+                atol=1e-08,
+                err_msg='gradient clip by value has wrong results!')
 
     # test whether the output is right when use grad_clip
     def test_gradient_clip(self):
@@ -458,8 +467,12 @@ class TestDygraphGradientClipByValue(TestDygraphGradientClip):
         for u, v in zip(grads, grads_clip):
             u = np.clip(u.numpy(), self.min, self.max)
             v = v.numpy()
-            self.assertTrue(np.allclose(a=u, b=v, rtol=1e-6, atol=1e-8),
-                            "gradient clip by value has wrong results!")
+            np.testing.assert_allclose(
+                u,
+                v,
+                rtol=1e-06,
+                atol=1e-08,
+                err_msg='gradient clip by value has wrong results!')
 
 
 class SimpleNet(paddle.nn.Layer):

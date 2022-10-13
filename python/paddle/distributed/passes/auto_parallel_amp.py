@@ -26,6 +26,7 @@ from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_fp32_input, _k
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _valid_types, find_true_post_op, find_true_prev_op
 from paddle.fluid.contrib.mixed_precision.fp16_utils import _is_in_black_varnames, _dtype_to_str, _rename_arg
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
+from ..auto_parallel.utils import is_forward_op, is_backward_op, is_loss_op
 
 world_process_group = get_world_process_group()
 
@@ -37,14 +38,18 @@ class AMPState(object):
         self._op_fp16_dict = {
         }  # op_id --> True/False. 'True' means that the current op is in fp16 mode.
         self._var_name_dict = {}  # fwd_op_id --> {old_name: cast_name}
+        self.is_train = False
 
     def _is_fp16_op(self, op_id):
         return self._op_fp16_dict.get(op_id, None)
 
-    def _build_stats(self, amp_lists, dist_context):
+    def _build_state(self, amp_lists, dist_context):
         ops = self._block.ops
         dist_op_context = dist_context.dist_op_context
         for op in ops:
+            if int(op.attr('op_role')) == 257:
+                self.is_train = True
+
             if int(op.attr('op_role')) == int(OpRole.Forward):
                 self._mark_black_white_ops(amp_lists)
             elif int(op.attr('op_role')) == int(OpRole.Backward):
@@ -57,6 +62,8 @@ class AMPState(object):
                         self._op_fp16_dict[op.desc.original_id()] = False
             elif int(op.attr('op_role')) == int(OpRole.Optimize):
                 break
+
+        return self.is_train
 
     def _mark_black_white_ops(self, amp_lists):
         """
@@ -222,21 +229,33 @@ class AMPState(object):
         loss_op = get_loss_op(self._block)
         loss_op_index = find_op_index(self._block.desc, loss_op.desc)
 
+        appended_grad_times = 0
         idx = loss_op_index + 1
         while idx < len(ops):
             num_cast_ops = 0
             grad_op = ops[idx]
+
+            # NOTE: the map in `grad_var_to_var` may be changed when the var is casted,
+            # which will affect the dist_op to insert allreduce_sum op.
+            op_dist_attr = dist_context.get_op_dist_attr_for_program(grad_op)
+            if is_backward_op(grad_op) and (is_forward_op(ops[idx - 1])
+                                            or is_loss_op(ops[idx - 1])):
+                if not op_dist_attr.is_recompute:
+                    appended_grad_times += 1
+
             grad_op_orig_id = grad_op.desc.original_id()
             dist_op_context = dist_context.dist_op_context
             if grad_op_orig_id in dist_op_context.grad_op_id_to_op_id:
                 if self._is_fp16_op(grad_op_orig_id) == False:  # fp32
                     num_cast_ops = self._insert_cast_op_backward(
                         grad_op, idx, core.VarDesc.VarType.FP16,
-                        core.VarDesc.VarType.FP32, dist_context)
+                        core.VarDesc.VarType.FP32, dist_context,
+                        appended_grad_times)
                 elif self._is_fp16_op(grad_op_orig_id) == True:  # fp16
                     num_cast_ops = self._insert_cast_op_backward(
                         grad_op, idx, core.VarDesc.VarType.FP32,
-                        core.VarDesc.VarType.FP16, dist_context)
+                        core.VarDesc.VarType.FP16, dist_context,
+                        appended_grad_times)
             elif grad_op.type == "sum":
                 in_var_name = grad_op.desc.input_arg_names()[0]
                 src_dtype = self._block.var(in_var_name).dtype
@@ -258,7 +277,7 @@ class AMPState(object):
         _update_backward_cast_ops(params_grads, dist_context)
 
     def _insert_cast_op_backward(self, grad_op, idx, src_dtype, dst_dtype,
-                                 dist_context):
+                                 dist_context, appended_grad_times):
         """ only for backward cast """
 
         def _keep_fp32_input(op, in_name):
@@ -301,7 +320,9 @@ class AMPState(object):
                         consume_op_attr.set_input_dist_attr(
                             cast_name, in_var_dist_attr)
                     else:
-                        assert in_var.dtype == dst_dtype
+                        assert in_var.dtype == dst_dtype, "op [{}] expect input [{}] to be dtype [{}] BUT got [{}]. {}".format(
+                            grad_op.type, in_name, dst_dtype, in_var.dtype,
+                            str(grad_op))
 
         for out_name in grad_op.output_names:
             if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_output(
@@ -328,7 +349,10 @@ class AMPState(object):
                             grad_op)
                         fwd_cast_name = self._var_name_dict[fwd_op_id][
                             out_var_name_prefix]
-                        cast_name = fwd_cast_name + "@GRAD"
+                        suffix = ""
+                        if "@RENAME" in out_var_name:
+                            suffix = out_var_name[out_var_name.find("@RENAME"):]
+                        cast_name = fwd_cast_name + "@GRAD" + suffix
                         cast_var = self._block.vars.get(cast_name)
                         if cast_var is None or cast_var.dtype != dst_dtype:
                             grad_op.desc._rename_output(out_var_name, cast_name)
@@ -347,6 +371,8 @@ class AMPState(object):
                                 stop_gradient=out_var.stop_gradient)
                             set_var_dist_attr(dist_context, cast_var,
                                               ref_mapping, ref_mesh)
+                            dist_op_context.grad_var_to_var[
+                                appended_grad_times][cast_name] = fwd_cast_name
 
                             cast_op = self._block._insert_op(
                                 idx + 1,
@@ -491,9 +517,11 @@ class AMPPass(PassBase):
         self.set_attr("use_dynamic_loss_scaling", False)
         self.set_attr("input_data", [])
         self.set_attr("params_grads", [])
+        self._loss = None
         self._loss_scaling = None
         self._num_good_steps = None
         self._num_bad_steps = None
+        self._loss = None
 
     def _check_self(self):
         if self.get_attr("init_loss_scaling") < 0:
@@ -526,23 +554,25 @@ class AMPPass(PassBase):
             set(self.get_attr("custom_black_list")),
             set(self.get_attr("custom_black_varnames")))
 
-        amp_state = AMPState(main_program.global_block())
-        amp_state._build_stats(amp_lists, self.dist_context)
-
         with paddle.static.program_guard(main_program, startup_program):
+            amp_state = AMPState(main_program.global_block())
+            is_train = amp_state._build_state(amp_lists, self.dist_context)
+
             amp_state.cast_forward_program(self.dist_context)
-            amp_state.cast_backward_program(params_grads, self.dist_context)
-            # TODO (JZ-LIANG)support cast forward program only when inference
-            self._init_amp_var()
-            self._scale_loss()
 
-            if self.get_attr("use_dynamic_loss_scaling"
-                             ) or self.get_attr("init_loss_scaling") != 1.0:
-                grads, found_inf = _check_and_update_gradient(
-                    params_grads, self._loss_scaling, self.dist_context)
+        if is_train:
+            with paddle.static.program_guard(main_program, startup_program):
+                amp_state.cast_backward_program(params_grads, self.dist_context)
+                self._init_amp_var()
+                self._scale_loss()
 
-            if self.get_attr("use_dynamic_loss_scaling"):
-                self._update_loss_scaling(grads, found_inf)
+                if self.get_attr("use_dynamic_loss_scaling"
+                                 ) or self.get_attr("init_loss_scaling") != 1.0:
+                    grads, found_inf = _check_and_update_gradient(
+                        params_grads, self._loss_scaling, self.dist_context)
+
+                if self.get_attr("use_dynamic_loss_scaling"):
+                    self._update_loss_scaling(grads, found_inf)
 
     def _init_amp_var(self):
         self._loss_scaling = paddle.static.create_global_var(
@@ -586,21 +616,17 @@ class AMPPass(PassBase):
             loss_op)
 
         if loss.dtype != core.VarDesc.VarType.FP32:
-            # cast loss here will change the effective loss tensor for the computation graph
-            # and therefore will effect all following passes whose logic is based on the loss tensor(Recompute & Gradient Merge),
-            # so we it is not allowed by now. fixed it in future.
-            raise NotImplementedError(
-                "Loss's generator op is not support in FP16 in Auto Parallel by now, please put that op into your black-list."
-            )
 
             tmp_name = unique_name.generate(loss.name + ".cast_fp32")
-            cast_loss = main_block.create_var(name=tmp_name, dtype=dtype)
+            cast_loss = main_block.create_var(name=tmp_name,
+                                              dtype=core.VarDesc.VarType.FP32)
             loss_dist_attr = self.dist_context.get_tensor_dist_attr_for_program(
                 loss)
             ref_mesh = loss_op_dist_attr.process_mesh
             self.dist_context.set_tensor_dist_attr_for_program(
                 cast_loss, loss_dist_attr)
 
+            # forward
             loss_op_idx = find_op_index(main_block.desc, loss_op.desc)
             cast_op = main_block._insert_op(
                 loss_op_idx + 1,
@@ -617,7 +643,34 @@ class AMPPass(PassBase):
                               core.op_proto_and_checker_maker.OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 cast_op, ref_mesh, [-1], self.dist_context)
-            loss = loss.astype('float32')
+
+            # backward
+            first_backward_op = main_block.ops[loss_op_idx + 2]
+            assert first_backward_op.type == "fill_constant" and int(
+                first_backward_op.all_attrs()[OP_ROLE_KEY]) == 257
+            cast_loss_grad = main_block.create_var(
+                name=unique_name.generate(tmp_name + "@GRAD"),
+                shape=loss.shape,
+                dtype=core.VarDesc.VarType.FP32,
+                persistable=loss.persistable)
+            set_var_dist_attr(self.dist_context, cast_loss_grad, [-1], ref_mesh)
+
+            pre_grad_name = first_backward_op.output_arg_names[0]
+            first_backward_op._rename_output(pre_grad_name, cast_loss_grad.name)
+            cast_grad_op = main_block._insert_op(
+                loss_op_idx + 3,
+                type='cast',
+                inputs={'X': [cast_loss_grad]},
+                outputs={'Out': [pre_grad_name]},
+                attrs={
+                    "in_dtype": core.VarDesc.VarType.FP32,
+                    "out_dtype": core.VarDesc.VarType.FP16,
+                    'op_role': core.op_proto_and_checker_maker.OpRole.Backward,
+                })
+            naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                cast_grad_op, ref_mesh, [-1], self.dist_context)
+            loss_op = cast_op
+            loss = cast_loss
 
         if self.get_attr("use_dynamic_loss_scaling"
                          ) or self.get_attr("init_loss_scaling") != 1.0:
@@ -690,7 +743,7 @@ class AMPPass(PassBase):
 
         else:
             self._scaled_loss = loss
-
+        self._loss = loss
         main_block._sync_with_cpp()
 
     def _update_loss_scaling(self, grads, found_inf):
@@ -754,3 +807,13 @@ class AMPPass(PassBase):
         self.dist_context.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
         main_block._sync_with_cpp()
+
+    def get_loss(self):
+        # the amp / fp16 might change the effective loss variable for network and
+        # therefore would affect the subsequent passes that rely on the loss.
+        # return the effective loss after amp / fp16 pass.
+
+        if self._loss:
+            return self._loss
+        else:
+            return self.get_attr("loss")

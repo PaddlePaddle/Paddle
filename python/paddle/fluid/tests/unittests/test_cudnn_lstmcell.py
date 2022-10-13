@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -157,26 +155,22 @@ class TestCudnnLSTM(unittest.TestCase):
                                                     pre_hidden_np, pre_cell_np,
                                                     weight_ih, bias_ih,
                                                     weight_hh, bias_hh)
-            self.assertTrue(
-                np.allclose(api_hidden_out.numpy(),
-                            np_hidden_out,
-                            rtol=1e-5,
-                            atol=0))
-            self.assertTrue(
-                np.allclose(api_cell_out.numpy(),
-                            np_cell_out,
-                            rtol=1e-5,
-                            atol=0))
-            self.assertTrue(
-                np.allclose(named_api_hidden_out.numpy(),
-                            np_hidden_out,
-                            rtol=1e-5,
-                            atol=0))
-            self.assertTrue(
-                np.allclose(named_api_cell_out.numpy(),
-                            np_cell_out,
-                            rtol=1e-5,
-                            atol=0))
+            np.testing.assert_allclose(api_hidden_out.numpy(),
+                                       np_hidden_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(api_cell_out.numpy(),
+                                       np_cell_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(named_api_hidden_out.numpy(),
+                                       np_hidden_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(named_api_cell_out.numpy(),
+                                       np_cell_out,
+                                       rtol=1e-05,
+                                       atol=0)
 
 
 class TestNonCudnnLSTM(unittest.TestCase):
@@ -250,26 +244,22 @@ class TestNonCudnnLSTM(unittest.TestCase):
                                                         pre_cell_np, gate_w,
                                                         gate_b)
 
-            self.assertTrue(
-                np.allclose(api_hidden_out.numpy(),
-                            np_hidden_out,
-                            rtol=1e-5,
-                            atol=0))
-            self.assertTrue(
-                np.allclose(api_cell_out.numpy(),
-                            np_cell_out,
-                            rtol=1e-5,
-                            atol=0))
-            self.assertTrue(
-                np.allclose(named_api_hidden_out.numpy(),
-                            np_hidden_out,
-                            rtol=1e-5,
-                            atol=0))
-            self.assertTrue(
-                np.allclose(named_api_cell_out.numpy(),
-                            np_cell_out,
-                            rtol=1e-5,
-                            atol=0))
+            np.testing.assert_allclose(api_hidden_out.numpy(),
+                                       np_hidden_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(api_cell_out.numpy(),
+                                       np_cell_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(named_api_hidden_out.numpy(),
+                                       np_hidden_out,
+                                       rtol=1e-05,
+                                       atol=0)
+            np.testing.assert_allclose(named_api_cell_out.numpy(),
+                                       np_cell_out,
+                                       rtol=1e-05,
+                                       atol=0)
 
 
 if __name__ == '__main__':

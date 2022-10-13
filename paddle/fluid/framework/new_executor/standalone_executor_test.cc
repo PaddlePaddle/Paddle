@@ -50,7 +50,7 @@ USE_OP_ITSELF(concat_grad);
 USE_OP_ITSELF(elementwise_mul_grad);
 USE_OP_ITSELF(sigmoid_grad);
 USE_OP_ITSELF(tanh_grad);
-USE_OP(sum);
+USE_OP_ITSELF(sum);
 USE_OP_ITSELF(slice_grad);
 USE_OP_ITSELF(lookup_table_grad);
 USE_OP_ITSELF(sqrt);
@@ -64,6 +64,7 @@ USE_OP_ITSELF(fetch_v2);
 
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(uniform_random_raw, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(uniform_random, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(transpose, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(reshape, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(split, GPU, ALL_LAYOUT);
@@ -100,6 +101,7 @@ PD_DECLARE_KERNEL(slice_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(add_n, GPU, ALL_LAYOUT);
 
 namespace paddle {
 namespace framework {
@@ -138,29 +140,31 @@ ProgramDesc GetLmMainProgram() {
   return main_prog;
 }
 
-// TEST(StandaloneExecutor, run) {
-//   auto place = platform::CUDAPlace(0);
-//   ProgramDesc test_prog = load_from_file("lm_startup_program");
-//   ProgramDesc main_prog = GetLmMainProgram();
+TEST(StandaloneExecutor, run) {
+  auto place = platform::CUDAPlace(0);
+  ProgramDesc startup_prog = load_from_file("lm_startup_program");
+  ProgramDesc main_prog = GetLmMainProgram();
 
-//   Scope scope;
-//   StandaloneExecutor exec(place, test_prog, main_prog, &scope);
-//   exec.Run({}, {}, {});
-//   auto start = std::chrono::steady_clock::now();
+  Scope scope;
+  StandaloneExecutor startup_exec(place, startup_prog);
+  startup_exec.Run(&scope, {}, {});
+  StandaloneExecutor exec(place, main_prog);
+  exec.Run(&scope, {}, {});
+  auto start = std::chrono::steady_clock::now();
 
-//   for (size_t i = 0; i < 10; ++i) {
-//     if (i % 200 == 0) {
-//       std::cout << i << std::endl;
-//     }
+  for (size_t i = 0; i < 10; ++i) {
+    if (i % 200 == 0) {
+      std::cout << i << std::endl;
+    }
 
-//     exec.Run({}, {}, {});
-//   }
+    exec.Run(&scope, {}, {});
+  }
 
-//   auto end = std::chrono::steady_clock::now();
-//   std::chrono::duration<double> diff = end - start;
+  auto end = std::chrono::steady_clock::now();
+  std::chrono::duration<double> diff = end - start;
 
-//   std::cout << "time cost " << diff.count() << std::endl;
-// }
+  std::cout << "time cost " << diff.count() << std::endl;
+}
 
 TEST(InterpreterCore, skip_gc_vars) {
   auto place = platform::CUDAPlace(0);

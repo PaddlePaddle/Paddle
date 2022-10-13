@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import sys
 import time
-import threading
 import subprocess
 import unittest
 import numpy
@@ -28,7 +25,7 @@ import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 
-from paddle.distributed.utils import find_free_ports
+from paddle.distributed.utils.launch_utils import find_free_ports
 
 paddle.enable_static()
 
@@ -123,7 +120,6 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
 
     def test_communicator(self):
         run_server_cmd = """
-from __future__ import print_function
 
 import sys
 import os

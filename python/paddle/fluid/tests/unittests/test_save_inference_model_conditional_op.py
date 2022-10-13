@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
-import numpy as np
 import tempfile
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
 
 

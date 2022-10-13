@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -38,7 +36,7 @@ class TestDiceLossValue(unittest.TestCase):
         union_np = input_np.sum(-1) + label_np.sum(-1)
         dice_np = np.mean(1 - 2 * intersection_np / (union_np + eps))
         dice_paddle = nn.dice_loss(input_, label_, eps)
-        self.assertTrue(np.isclose(dice_np, dice_paddle.numpy()).all())
+        np.testing.assert_allclose(dice_np, dice_paddle.numpy(), rtol=1e-05)
 
 
 class TestDiceLossInvalidInput(unittest.TestCase):

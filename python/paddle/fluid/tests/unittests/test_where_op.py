@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 from op_test import OpTest
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.op import Operator
+from paddle.fluid import Program, program_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import _test_eager_guard
 
@@ -345,7 +341,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
                               fetch_list=[z.name],
                               return_numpy=False)
         expect_out = np.array([[0, 0], [1, 1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[(-1)])
@@ -358,7 +354,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
                               fetch_list=[z.name],
                               return_numpy=False)
         expect_out = np.array([[0], [1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():

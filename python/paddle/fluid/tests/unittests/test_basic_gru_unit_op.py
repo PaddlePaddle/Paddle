@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy
 import paddle.fluid as fluid
@@ -143,7 +141,7 @@ class TestBasicGRUUnit(unittest.TestCase):
         np_out = step(step_input_np, pre_hidden_np, gate_w, gate_b, candidate_w,
                       candidate_b)
 
-        self.assertTrue(np.allclose(api_out, np_out, rtol=1e-4, atol=0))
+        np.testing.assert_allclose(api_out, np_out, rtol=0.0001, atol=0)
 
 
 if __name__ == '__main__':

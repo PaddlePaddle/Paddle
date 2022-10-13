@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -71,9 +69,10 @@ def python_core_api_without_softmax(logits,
     # the API paddle.nn.functional.softmax_with_cross_entropy cannot
     # set use_softmax=False, so add a core api manually
     assert use_softmax is False
-    _, loss = paddle._C_ops.final_state_cross_entropy_with_softmax(
-        logits, label, soft_label, use_softmax, numeric_stable_mode,
-        ignore_index, axis)
+    _, loss = paddle._C_ops.cross_entropy_with_softmax(logits, label,
+                                                       soft_label, use_softmax,
+                                                       numeric_stable_mode,
+                                                       ignore_index, axis)
     return loss
 
 

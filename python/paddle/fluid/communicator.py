@@ -208,7 +208,7 @@ class Communicator(object):
         self.communicator_.push_sparse_param(var_name, table_id, scope)
 
 
-class FLCommunicator(Communicator):
+class FLCommunicator(Communicator):  ## only for coordinator
 
     def __init__(self, ps_hosts, kwargs=None):
         mode = None

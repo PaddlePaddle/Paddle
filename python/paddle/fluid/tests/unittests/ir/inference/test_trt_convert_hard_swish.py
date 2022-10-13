@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 
 
@@ -41,8 +41,8 @@ class TrtConvertHardSwishTest(TrtLayerAutoScanTest):
             return np.ones([1, 3, 32, 32]).astype(np.float32)
 
         for threshold in [6.0, 7.0, 100.0, 0.0, -1.0]:
-            for scale in [5.0, 6.0, 7.0, -1.0, 0.0, 100.0]:
-                for offset in [3.0, 4.0, 5.0, -1.0, 0.0, 100.0]:
+            for scale in [5.0, 7.0, -1.0, 0.0, 100.0]:
+                for offset in [3.0, 5.0, -1.0, 0.0, 100.0]:
                     dics = [{
                         "threshold": threshold,
                         "scale": scale,

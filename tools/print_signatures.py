@@ -25,6 +25,7 @@ import hashlib
 import pkgutil
 import logging
 import argparse
+import paddle
 
 member_dict = collections.OrderedDict()
 
@@ -113,7 +114,7 @@ def visit_all_module(mod):
                         .format(member_name, instance.__name__),
                         file=sys.stderr)
         except:
-            if not cur_name in ErrorSet and not cur_name in skiplist:
+            if cur_name not in ErrorSet and cur_name not in skiplist:
                 ErrorSet.add(cur_name)
 
 
@@ -126,7 +127,6 @@ def get_all_api(root_path='paddle', attr="__all__"):
     """
     walk through the paddle package to collect all the apis.
     """
-    import paddle
     global api_info_dict
     api_counter = 0
     for filefinder, name, ispkg in pkgutil.walk_packages(
@@ -140,7 +140,6 @@ def get_all_api(root_path='paddle', attr="__all__"):
                 continue
         except AttributeError:
             logger.warning("AttributeError occurred when `eval(%s)`", name)
-            pass
         else:
             api_counter += process_module(m, attr)
 
@@ -159,7 +158,6 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
     Return:
         api_info object or None
     """
-    import paddle
     try:
         obj = eval(full_name)
         fc_id = id(obj)
@@ -222,7 +220,6 @@ def process_module(m, attr="__all__"):
 
 
 def check_public_api():
-    import paddle
     modulelist = [  #npqa
         paddle, paddle.amp, paddle.nn, paddle.nn.functional,
         paddle.nn.initializer, paddle.nn.utils, paddle.static, paddle.static.nn,
@@ -271,7 +268,6 @@ def check_public_api():
 
 
 def check_allmodule_callable():
-    import paddle
     modulelist = [paddle]
     for m in modulelist:
         visit_all_module(m)
@@ -296,7 +292,7 @@ def parse_args():
                         dest='skipped',
                         type=str,
                         help='Skip Checking submodules',
-                        default='paddle.fluid.core_avx.eager.ops')
+                        default='paddle.fluid.libpaddle.eager.ops')
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['paddle'])

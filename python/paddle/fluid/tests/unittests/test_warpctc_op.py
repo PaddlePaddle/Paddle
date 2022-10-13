@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import unittest
 import numpy as np
@@ -592,8 +590,11 @@ class TestCTCLossAPICase(unittest.TestCase):
         loss_np_mean = (loss_np / labels_length.numpy()).mean()
         loss_np_sum = loss_np.sum()
 
-        self.assertTrue(np.allclose(loss_pd_mean, loss_np_mean, atol=1))
-        self.assertTrue(np.allclose(loss_pd_sum, loss_np_sum, atol=1))
+        np.testing.assert_allclose(loss_pd_mean,
+                                   loss_np_mean,
+                                   rtol=1e-05,
+                                   atol=1)
+        np.testing.assert_allclose(loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1)
 
     def test_class_api(self):
         self.batch_size = 3
@@ -633,7 +634,7 @@ class TestCTCLossAPICase(unittest.TestCase):
         paddle.enable_static()
         loss_np = np.squeeze(loss_np, axis=-1)
 
-        self.assertTrue(np.allclose(loss_pd, loss_np, atol=1))
+        np.testing.assert_allclose(loss_pd, loss_np, rtol=1e-05, atol=1)
 
 
 if __name__ == "__main__":

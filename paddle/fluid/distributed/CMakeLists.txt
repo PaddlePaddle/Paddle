@@ -1,3 +1,4 @@
+add_subdirectory(auto_parallel)
 add_subdirectory(collective)
 add_subdirectory(store)
 if(WITH_PYTHON)
@@ -41,10 +42,11 @@ set(DISTRIBUTE_COMPILE_FLAGS
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
   set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 endif()
-
+if(LINUX)
+  add_subdirectory(rpc)
+endif()
 add_subdirectory(common)
 add_subdirectory(ps)
 add_subdirectory(test)
 add_subdirectory(index_dataset)
 add_subdirectory(fleet_executor)
-add_subdirectory(auto_parallel)

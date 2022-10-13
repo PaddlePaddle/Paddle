@@ -15,6 +15,7 @@
 import paddle
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 from op_test import OpTest
 
 
@@ -33,6 +34,22 @@ def logsumexp_wrapper(x, axis=None, keepdim=False, allreduce=False):
     if allreduce:
         return paddle.logsumexp(x, None, keepdim)
     return paddle.logsumexp(x, axis, keepdim)
+
+
+def logsumexp_op_grad(x, axis=None, keepdim=False, reduce_all=False):
+    paddle.disable_static()
+    tensor_x = paddle.to_tensor(x)
+    tensor_x.stop_gradient = False
+    out = logsumexp_wrapper(tensor_x, axis, keepdim, reduce_all)
+    grad = paddle.grad(out, [tensor_x])
+    x_grad = grad[0].numpy()
+    paddle.enable_static()
+    return x_grad
+
+
+def logsumexp_ref_grad(x):
+    sum = np.exp(x).sum()
+    return np.exp(x) / sum
 
 
 class TestLogsumexp(OpTest):
@@ -125,6 +142,47 @@ class TestLogsumexp_reduce_all(TestLogsumexp):
             self.user_defined_grad_outputs = [np.ones(1, dtype=self.dtype)]
 
 
+class TestLogsumexp_FP32(TestLogsumexp):
+
+    def set_attrs(self):
+        self.dtype = 'float32'
+
+    def test_check_grad(self):
+        self.__class__.dtype = self.dtype
+        x_grad = logsumexp_op_grad(self.inputs['X'])
+        ref_x_grad = logsumexp_ref_grad(self.inputs['X'])
+        np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-08, atol=1e-08)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestLogsumexp_FP16(TestLogsumexp):
+
+    def set_attrs(self):
+        self.dtype = 'float16'
+
+    def test_check_output(self):
+        ref_x = self.inputs['X'].astype(np.float32)
+        out_ref = ref_logsumexp(ref_x)
+        paddle.disable_static()
+        x = self.inputs['X'].astype(np.float16)
+        tensor_x = paddle.to_tensor(x)
+        out_pad = logsumexp_wrapper(tensor_x)
+        paddle.enable_static()
+        np.testing.assert_allclose(out_pad.numpy(),
+                                   out_ref,
+                                   rtol=1e-03,
+                                   atol=1e-08)
+
+    def test_check_grad(self):
+        self.__class__.dtype = self.dtype
+        ref_x = self.inputs['X'].astype(np.float32)
+        ref_x_grad = logsumexp_ref_grad(ref_x)
+        x = self.inputs['X'].astype(np.float16)
+        x_grad = logsumexp_op_grad(x)
+        np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-03, atol=1e-05)
+
+
 class TestLogsumexpError(unittest.TestCase):
 
     def test_errors(self):
@@ -149,12 +207,12 @@ class TestLogsumexpAPI(unittest.TestCase):
             out = paddle.logsumexp(x, axis, keepdim)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
-        self.assertTrue(np.allclose(res[0], out_ref))
+        np.testing.assert_allclose(res[0], out_ref, rtol=1e-05)
 
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x)
         out = paddle.logsumexp(x, axis, keepdim)
-        self.assertTrue(np.allclose(out.numpy(), out_ref))
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
 
     def test_api(self):
@@ -173,7 +231,7 @@ class TestLogsumexpAPI(unittest.TestCase):
         out3 = paddle.tensor.math.logsumexp(x)
         out_ref = ref_logsumexp(self.x)
         for out in [out1, out2, out3]:
-            self.assertTrue(np.allclose(out.numpy(), out_ref))
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
         paddle.enable_static()
 
 

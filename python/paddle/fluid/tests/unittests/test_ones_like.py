@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -90,9 +88,7 @@ class TestOnesAPI(unittest.TestCase):
         paddle.disable_static(place)
 
         for dtype in [np.float32, np.float64, np.int32, np.int64]:
-            out = _C_ops.final_state_ones(shape,
-                                          convert_np_dtype_to_dtype_(dtype),
-                                          place)
+            out = _C_ops.ones(shape, convert_np_dtype_to_dtype_(dtype), place)
             self.assertEqual((out.numpy() == np.ones(shape, dtype)).all(), True)
 
         paddle.enable_static()

@@ -36,7 +36,7 @@ void CreateCUDATensor(framework::Scope* scope,
                       const std::string& name,
                       const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  auto* tensor = var->GetMutable<phi::DenseTensor>();
   auto dims = phi::make_ddim(shape);
   tensor->Resize(dims);
   platform::CUDAPlace place;
@@ -159,6 +159,8 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
 
   // Execute them.
   LOG(INFO) << "engine_op run";
+  inference::tensorrt::OpTeller::Global().SetOpConverterType(
+      "fc", inference::tensorrt::OpConverterType::Default);
   engine_op->Run(scope, place);
 }
 

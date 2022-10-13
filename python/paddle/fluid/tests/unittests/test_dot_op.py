@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
-from paddle.fluid.op import Operator
-from paddle.fluid import compiler, Program, program_guard
+from op_test import OpTest
+from paddle.fluid import Program, program_guard
 
 
 class DotOp(OpTest):
@@ -131,8 +129,9 @@ class TestDygraph(unittest.TestCase):
         with fluid.dygraph.guard():
             x1 = fluid.dygraph.to_variable(np.array([1, 3]).astype(np.float32))
             y1 = fluid.dygraph.to_variable(np.array([2, 5]).astype(np.float32))
-            self.assertTrue(
-                np.allclose(paddle.dot(x1, y1).numpy(), np.array([17])))
+            np.testing.assert_allclose(paddle.dot(x1, y1).numpy(),
+                                       np.array([17]),
+                                       rtol=1e-05)
 
             x1 = fluid.dygraph.to_variable(
                 np.array([[1, 3], [3, 5]]).astype(np.float32))
@@ -155,7 +154,6 @@ class TestComplexDotOp(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -212,7 +210,6 @@ class TestComplexDotOp2D(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):

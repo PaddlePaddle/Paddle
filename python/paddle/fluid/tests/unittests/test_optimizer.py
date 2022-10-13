@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import tempfile
 import unittest
@@ -22,7 +20,6 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
 import paddle.fluid.core as core
-import paddle.compat as cpt
 import numpy as np
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard, convert_np_dtype_to_dtype_
@@ -992,7 +989,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
         except NotImplementedError as e:
             self.assertEqual(
                 "load function is not supported by Recompute Optimizer for now",
-                cpt.get_exception_message(e))
+                str(e))
 
     def test_dropout(self):
         """
@@ -1041,8 +1038,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
     def test_dropout_with_seed(self):
         """
         when we recompute a dropout op, make sure that the recomputed one
-	    is the same as the original var.
-	    """
+        is the same as the original var.
+        """
 
         def gen_data():
             return {

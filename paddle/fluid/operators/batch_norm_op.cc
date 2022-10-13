@@ -178,35 +178,26 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
   }
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
       platform::errors::InvalidArgument("Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
       platform::errors::InvalidArgument("Bias input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Mean")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Mean")->dtype()),
       platform::errors::InvalidArgument("Mean input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
-      platform::errors::InvalidArgument(
-          "Variance input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Variance")->dtype()),
+                    platform::errors::InvalidArgument(
+                        "Variance input should be of float type"));
 
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-#ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-#endif
-
-  return framework::OpKernelType(
-      input_data_type, ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
@@ -292,14 +283,6 @@ void BatchNormOpMaker::Make() {
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel")
       .AsDispensable()
-      .AsExtra();
-  AddAttr<bool>("use_mkldnn",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>("fuse_with_relu",
-                "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false)
       .AsExtra();
   AddAttr<bool>("use_global_stats",
                 "(bool, default false) Whether to use global mean and "
@@ -403,20 +386,8 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
 
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-#endif
-
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(

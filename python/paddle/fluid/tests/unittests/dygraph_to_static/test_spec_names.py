@@ -14,7 +14,6 @@
 
 import paddle
 from paddle.nn import Layer
-import numpy as np
 import unittest
 
 

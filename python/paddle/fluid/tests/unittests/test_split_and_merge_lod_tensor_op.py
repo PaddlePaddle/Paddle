@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 from paddle.fluid import Program, program_guard
 import paddle
@@ -168,7 +166,9 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         self.check_tensor_same(var_out, expect_out)
 
     def check_tensor_same(self, actual, expect):
-        self.assertTrue(np.allclose(np.array(actual), np.array(expect)))
+        np.testing.assert_allclose(np.array(actual),
+                                   np.array(expect),
+                                   rtol=1e-05)
         self.assertEqual(actual.recursive_sequence_lengths(),
                          expect.recursive_sequence_lengths())
 

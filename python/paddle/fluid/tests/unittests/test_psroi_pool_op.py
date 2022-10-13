@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import math
 import numpy as np
@@ -177,7 +175,7 @@ class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
                                                output_size).numpy()
             expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
                                          1.0, 7, 7)
-            self.assertTrue(np.allclose(out, expect_out))
+            np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         def test_output_size_is_tuple():
             output_size = (7, 7)
@@ -187,7 +185,7 @@ class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
                                                output_size).numpy()
             expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
                                          1.0, 7, 7)
-            self.assertTrue(np.allclose(out, expect_out))
+            np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         def test_dytype_is_float64():
             output_size = (7, 7)
@@ -197,7 +195,7 @@ class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
                 paddle.to_tensor(self.boxes_num, 'int32'), output_size).numpy()
             expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
                                          1.0, 7, 7)
-            self.assertTrue(np.allclose(out, expect_out))
+            np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         places = ['cpu']
         if paddle.fluid.core.is_compiled_with_cuda():
@@ -226,7 +224,7 @@ class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
                                paddle.to_tensor(self.boxes_num)).numpy()
             expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 2,
                                          1.1, 8, 8)
-            self.assertTrue(np.allclose(out, expect_out))
+            np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         def test_output_size_is_tuple():
             psroi_pool_module = paddle.vision.ops.PSRoIPool(8, 1.1)
@@ -235,7 +233,7 @@ class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
                                     paddle.to_tensor(self.boxes_num)).numpy()
             expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 2,
                                          1.1, 8, 8)
-            self.assertTrue(np.allclose(out, expect_out))
+            np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         def test_dytype_is_float64():
             psroi_pool_module = paddle.vision.ops.PSRoIPool(8, 1.1)
@@ -245,7 +243,7 @@ class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
                                                      'int32')).numpy()
             expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 2,
                                          1.1, 8, 8)
-            self.assertTrue(np.allclose(out, expect_out))
+            np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         paddle.disable_static()
         places = ['cpu']
@@ -334,13 +332,13 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
             exe = paddle.static.Executor(place)
             boxes_lod_data = paddle.fluid.create_lod_tensor(
                 self.boxes, [[1, 2]], place)
-            out_res = exe.run(paddle.static.default_main_program(),
-                              feed={
-                                  'x': self.x,
-                                  'boxes': boxes_lod_data
-                              },
-                              fetch_list=[out.name])
-            self.assertTrue(np.allclose(out_res, expect_out))
+            out_res, = exe.run(paddle.static.default_main_program(),
+                               feed={
+                                   'x': self.x,
+                                   'boxes': boxes_lod_data
+                               },
+                               fetch_list=[out.name])
+            np.testing.assert_allclose(out_res, expect_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

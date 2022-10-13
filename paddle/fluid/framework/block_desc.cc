@@ -197,10 +197,11 @@ void BlockDesc::Flush() {
       var_names.emplace_back(var.name());
       var_names_set.insert(var.name());
     }
-
+    VLOG(4) << "vars in desc " << this->desc_->vars().size();
     this->desc_->mutable_vars()->Clear();
     for (const auto &name : var_names) {
       if (vars_.count(name)) {
+        VLOG(4) << "Flush " << name;
         this->desc_->mutable_vars()->Add()->CopyFrom(*vars_[name]->Proto());
         vars_[name]->SetNeedUpdate(false);
       }
@@ -208,6 +209,7 @@ void BlockDesc::Flush() {
 
     for (auto &var_desc : vars_) {
       if (var_names_set.count(var_desc.first) != 1) {
+        VLOG(4) << "Flush " << var_desc.first;
         this->desc_->mutable_vars()->Add()->CopyFrom(*var_desc.second->Proto());
         var_desc.second->SetNeedUpdate(false);
       }
@@ -309,9 +311,28 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
           attr_type == proto::AttrType::VARS) {
         dst_op->UpdateVarAttr(attr_name, attr_value);
       } else if (attr_type == proto::AttrType::BLOCK) {
-        auto block_id = PADDLE_GET_CONST(BlockDesc *, attr_value)->ID();
-        dst_op->SetBlockAttr(attr_name, prog_->MutableBlock(block_id));
-        VLOG(10) << "Set block attr " << attr_name << " id " << block_id;
+        ProgramDesc *program = block->Program();
+        std::vector<framework::BlockDesc *> old_block_desc;
+        for (int i = 0; i < program->Proto()->blocks_size(); ++i) {
+          // record all block desc's ptr from origin block's program
+          old_block_desc.emplace_back(program->MutableBlock(i));
+        }
+        framework::BlockDesc *block_desc =
+            PADDLE_GET_CONST(BlockDesc *, attr_value);
+        if (std::find(old_block_desc.begin(),
+                      old_block_desc.end(),
+                      block_desc) != old_block_desc.end()) {
+          // The block is owned by the origin block's program. Just use id to
+          // get the corresponding block.
+          auto block_id = block_desc->ID();
+          dst_op->SetBlockAttr(attr_name, prog_->MutableBlock(block_id));
+          VLOG(10) << "Set block attr " << attr_name << " id " << block_id;
+        } else {
+          // The block is not owned by the origin block's program. Should copy
+          // the real block desc instead of logical block in the program.
+          dst_op->SetBlockAttr(attr_name, block_desc);
+          VLOG(10) << "Set block attr " << attr_name << " from attr_value";
+        }
       } else if (attr_type == proto::AttrType::BLOCKS) {
         auto old_blocks =
             PADDLE_GET_CONST(std::vector<BlockDesc *>, attr_value);

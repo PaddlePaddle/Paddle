@@ -15,9 +15,8 @@
 import paddle.fluid as fluid
 import unittest
 import numpy as np
-import six
 import paddle
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 
 
 def numpy_cov(np_arr, rowvar=True, ddof=1, fweights=None, aweights=None):
@@ -59,7 +58,7 @@ class Cov_Test(unittest.TestCase):
                                    ddof=1,
                                    fweights=None,
                                    aweights=None)
-                self.assertTrue(np.allclose(np_cov, cov.numpy()))
+                np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_default(self):
         with _test_eager_guard():
@@ -91,7 +90,7 @@ class Cov_Test(unittest.TestCase):
                                    ddof=1,
                                    fweights=None,
                                    aweights=None)
-                self.assertTrue(np.allclose(np_cov, cov.numpy()))
+                np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_rowvar(self):
         with _test_eager_guard():
@@ -123,7 +122,7 @@ class Cov_Test(unittest.TestCase):
                                    ddof=0,
                                    fweights=None,
                                    aweights=None)
-                self.assertTrue(np.allclose(np_cov, cov.numpy()))
+                np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_ddof(self):
         with _test_eager_guard():
@@ -158,7 +157,7 @@ class Cov_Test(unittest.TestCase):
                                    ddof=1,
                                    fweights=np_fw,
                                    aweights=None)
-                self.assertTrue(np.allclose(np_cov, cov.numpy()))
+                np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_fweights(self):
         with _test_eager_guard():
@@ -193,7 +192,7 @@ class Cov_Test(unittest.TestCase):
                                    ddof=1,
                                    fweights=None,
                                    aweights=np_aw)
-                self.assertTrue(np.allclose(np_cov, cov.numpy()))
+                np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_aweights(self):
         with _test_eager_guard():
@@ -230,7 +229,7 @@ class Cov_Test(unittest.TestCase):
                                    ddof=1,
                                    fweights=np_fw,
                                    aweights=np_aw)
-                self.assertTrue(np.allclose(np_cov, cov.numpy()))
+                np.testing.assert_allclose(np_cov, cov.numpy(), rtol=1e-05)
 
     def test_tensor_cov_weights(self):
         with _test_eager_guard():
@@ -259,10 +258,10 @@ class Cov_Test3(unittest.TestCase):
 
         def test_err():
             np_arr = np.random.rand(*self.shape).astype('float64')
-            np_fw = self.fw_s * np.random.rand(*self.fweightshape).astype(
-                'int32')
-            np_aw = self.aw_s * np.random.rand(*self.aweightshape).astype(
-                'float64')
+            np_fw = self.fw_s * np.random.rand(
+                *self.fweightshape).astype('int32')
+            np_aw = self.aw_s * np.random.rand(
+                *self.aweightshape).astype('float64')
             tensor = paddle.to_tensor(np_arr)
             fweights = paddle.to_tensor(np_fw)
             aweights = paddle.to_tensor(np_aw)

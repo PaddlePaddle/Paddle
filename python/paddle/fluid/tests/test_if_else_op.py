@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
@@ -201,9 +199,12 @@ class TestIfElse(unittest.TestCase):
                           fetch_list=[out])
             o2 = self.numpy_cal()
 
-            self.assertTrue(
-                np.allclose(o1, o2, atol=1e-8),
-                "IfElse result : " + str(o1) + "\n Numpy result :" + str(o2))
+            np.testing.assert_allclose(
+                o1,
+                o2,
+                rtol=1e-05,
+                atol=1e-08,
+            )
 
     def test_cpu(self):
         self.compare_ifelse_op_and_numpy(fluid.CPUPlace())

@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -24,23 +27,6 @@ class CheckFiniteAndUnscaleOp : public framework::OperatorWithKernel {
                           const framework::VariableNameMap& outputs,
                           const framework::AttributeMap& attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    if (ctx->HasInputs("X") || ctx->HasOutputs("Out")) {
-      PADDLE_ENFORCE_EQ(
-          ctx->Inputs("X").size(),
-          ctx->Outputs("Out").size(),
-          platform::errors::InvalidArgument(
-              "The input(X) and output(Out) should have same size in "
-              "Operator(check_finite_and_unscale), size of input(X) is %d "
-              "and size of output(Out) is %d.",
-              ctx->Inputs("X").size(),
-              ctx->Outputs("Out").size()));
-      auto x_dims = ctx->GetInputsDim("X");
-      ctx->SetOutputsDim("Out", x_dims);
-    }
-    ctx->SetOutputDim("FoundInfinite", {1});
-  }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -83,52 +69,11 @@ Check if input X contains all finite data, if yes, scale it by input Scale.
 $$Out = X / scale$$
 
 If any tensor in X contains Inf or Nan, the Out will generate a indicator.
-FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of 
-Out should not be used, and its data may not be deterministic. 
+FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of
+Out should not be used, and its data may not be deterministic.
 Otherwise, FoundInfinite will be 0 (False).
 
 )DOC");
-  }
-};
-
-template <typename T>
-class CheckFiniteAndUnscaleCpuKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
-    const auto xs = ctx.MultiInput<framework::Tensor>("X");
-    const auto* scale = ctx.Input<framework::Tensor>("Scale");
-    auto outs = ctx.MultiOutput<framework::Tensor>("Out");
-    auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
-
-    const T* scale_data = scale->data<T>();
-    bool* found_inf_data = found_inf->mutable_data<bool>(dev_ctx.GetPlace());
-
-    *found_inf_data = false;
-    framework::Tensor is_finite =
-        ctx.AllocateTmpTensor<bool, phi::CPUContext>({1}, dev_ctx);
-    bool* is_finite_data = is_finite.template data<bool>();
-
-    auto& dev = *ctx.template device_context<phi::CPUContext>().eigen_device();
-
-    T inverse_scale = Inverse<T>(*scale_data);
-    for (size_t i = 0; i < xs.size(); ++i) {
-      const auto* x = xs[i];
-      auto* out = outs[i];
-      out->mutable_data<T>(dev_ctx.GetPlace());
-      if (!(*found_inf_data)) {
-        framework::TensorIsfinite(*x, &is_finite);
-        *found_inf_data = !(*is_finite_data);
-      }
-      auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-      auto eigen_in = framework::EigenVector<T>::Flatten(*x);
-      if (!(*found_inf_data)) {
-        eigen_out.device(dev) = eigen_in * inverse_scale;
-      } else {
-        eigen_out.device(dev) = eigen_in * static_cast<T>(0);
-      }
-    }
-    return;
   }
 };
 
@@ -137,13 +82,13 @@ class CheckFiniteAndUnscaleCpuKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(check_finite_and_unscale,
+                            CheckFiniteAndUnscaleInferShapeFunctor,
+                            PD_INFER_META(phi::CheckFiniteAndUnscaleInferMeta));
 REGISTER_OPERATOR(
     check_finite_and_unscale,
     ops::CheckFiniteAndUnscaleOp,
     ops::CheckFiniteAndUnscaleOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(check_finite_and_unscale,
-                       ops::CheckFiniteAndUnscaleCpuKernel<float>,
-                       ops::CheckFiniteAndUnscaleCpuKernel<double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    CheckFiniteAndUnscaleInferShapeFunctor);

@@ -163,7 +163,7 @@ TEST(EagerUtils, PassStopGradient) {
                                     auto_grad1.get(),
                                     auto_grad2.get(),
                                     auto_grad3.get());
-  CHECK(auto_grad0->StopGradient() == false);
+  CHECK(auto_grad0->StopGradient() == true);
   CHECK(auto_grad1->StopGradient() == true);
   CHECK(auto_grad2->StopGradient() == true);
   CHECK(auto_grad3->StopGradient() == true);
@@ -176,7 +176,7 @@ TEST(EagerUtils, TrySyncToVar) {
       egr::EagerUtils::TrySyncToVar(tensor)};
 
   paddle::framework::Variable* var = var_bases[0]->MutableVar();
-  const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+  const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
   const float* ptr = framework_tensor.data<float>();
   VLOG(6) << "Check Value for SyncToVarsSingle";
@@ -197,7 +197,7 @@ TEST(EagerUtils, TrySyncToVars) {
 
   {
     paddle::framework::Variable* var = var_bases[0]->MutableVar();
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+    const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
     const float* ptr = framework_tensor.data<float>();
     CHECK_EQ(framework_tensor.numel(), tensors[0].numel());
@@ -209,7 +209,7 @@ TEST(EagerUtils, TrySyncToVars) {
 
   {
     paddle::framework::Variable* var = var_bases[1]->MutableVar();
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+    const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
     const float* ptr = framework_tensor.data<float>();
     VLOG(6) << "Check Value for SyncToVarsMultiple";

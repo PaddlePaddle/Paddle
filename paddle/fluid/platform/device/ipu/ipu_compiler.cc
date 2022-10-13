@@ -42,6 +42,7 @@ struct CustomOpAttrVisitor {
 
   void operator()(int v) const { attrs_->emplace(attr_name_, v); }
   void operator()(float v) const { attrs_->emplace(attr_name_, v); }
+  void operator()(double v) const { attrs_->emplace(attr_name_, v); }
   void operator()(const std::string& v) const {
     attrs_->emplace(attr_name_, v);
   }
@@ -80,13 +81,23 @@ struct CustomOpAttrVisitor {
         "Unsupported calling method for `paddle::blank` type when extracting "
         "custom operator attributes."));
   }
+  void operator()(framework::VarDesc*) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method for `VarDesc*` type when extracting "
+        "custom operator attributes."));
+  }
+  void operator()(const std::vector<framework::VarDesc*>&) const {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Unsupported calling method for `std::vector<framework::VarDesc*>` "
+        "type when extracting custom operator attributes."));
+  }
 };
 
 struct ConstantOpAttrVisitor {
-  ConstantOpAttrVisitor(framework::LoDTensor* tensor, VarType::Type dtype)
+  ConstantOpAttrVisitor(phi::DenseTensor* tensor, VarType::Type dtype)
       : tensor_(tensor), dtype_(dtype) {}
 
-  framework::LoDTensor* tensor_;
+  phi::DenseTensor* tensor_;
   VarType::Type dtype_;
 
   void operator()(const std::vector<int>& vec) const {
@@ -124,6 +135,7 @@ struct ConstantOpAttrVisitor {
       platform::errors::InvalidArgument("Constant value must be a vector"))
   void operator()(int v) const { RAISE_ERROR; }
   void operator()(float v) const { RAISE_ERROR; }
+  void operator()(double v) const { RAISE_ERROR; }
   void operator()(const std::string& v) const { RAISE_ERROR; }
   void operator()(const std::vector<std::string>& v) const { RAISE_ERROR; }
   void operator()(bool v) const { RAISE_ERROR; }
@@ -131,6 +143,10 @@ struct ConstantOpAttrVisitor {
   void operator()(const std::vector<BlockDesc*>& v) const { RAISE_ERROR; }
   void operator()(int64_t v) const { RAISE_ERROR; }
   void operator()(paddle::blank) const { RAISE_ERROR; }
+  void operator()(framework::VarDesc*) const { RAISE_ERROR; }
+  void operator()(const std::vector<framework::VarDesc*>&) const {
+    RAISE_ERROR;
+  }
 #undef RAISE_ERROR
 };
 
@@ -395,7 +411,7 @@ void Compiler::LowerConstants(const Scope* scope) {
       auto tensor_name = GetOpOutputs(op_desc).front();
       auto* var = kid_scope.Var(tensor_name);
       VLOG(10) << "lowering constant: " << tensor_name;
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      auto* tensor = var->GetMutable<phi::DenseTensor>();
       ConstantOpAttrVisitor visitor(tensor, dtype);
       auto value = op_desc->GetAttr("value");
       paddle::visit(visitor, value);
@@ -439,7 +455,7 @@ void Compiler::LowerWeights(const Scope* scope) {
           var,
           platform::errors::NotFound("Tensor %s is not found in the scope",
                                      var_name));
-      auto tensor = var->Get<framework::LoDTensor>();
+      auto tensor = var->Get<phi::DenseTensor>();
       auto dtype = PhiDType2PopartDType(tensor.dtype());
       auto shape = std::vector<int64_t>();
       for (size_t i = 0; i < tensor.dims().size(); ++i) {

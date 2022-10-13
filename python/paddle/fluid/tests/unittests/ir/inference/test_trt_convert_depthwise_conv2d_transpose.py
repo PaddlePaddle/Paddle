@@ -17,7 +17,7 @@ from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 
 
@@ -145,7 +145,7 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-5, 1e-3)
+            attrs, False), (1e-3, 1e-3)
         # self.trt_param.precision = paddle_infer.PrecisionType.Int8
         # yield self.create_inference_config(), generate_trt_nodes_num(
         #     attrs, False), (1e-5, 1e-5)
@@ -157,7 +157,7 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-5, 1e-5)
+            attrs, True), (1e-3, 1e-3)
         # self.trt_param.precision = paddle_infer.PrecisionType.Int8
         # yield self.create_inference_config(), generate_trt_nodes_num(
         #     attrs, True), (1e-5, 1e-5)

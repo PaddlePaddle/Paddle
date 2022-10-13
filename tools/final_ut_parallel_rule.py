@@ -15,10 +15,7 @@
 # limitations under the License.
 
 import os
-import time
 import json
-import datetime
-import codecs
 import sys
 
 
@@ -135,7 +132,7 @@ def classify_cases_by_mem(rootPath):
                                 always_timeout_list[0])
                         always_timeout_list.pop(0)
                     else:
-                        f.write(case_mem_1_line + '\n') 
+                        f.write(case_mem_1_line + '\n')
                     count += 1
                     '''
                     case_mem_1_line = '^job$|^' + index[0] + '$'

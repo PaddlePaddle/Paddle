@@ -29,7 +29,7 @@ namespace phi {
 
 class DenseTensorUtils;
 
-/// \brief The Dense tensor store values in a contiguous sequential block
+/// \brief The Dense tensor stores values in a contiguous sequential block
 /// of memory where all values are represented. Tensors or multi-dimensional
 /// arrays are used in math operators.
 /// During the entire life cycle of a DenseTensor, its device type and key
@@ -192,9 +192,9 @@ class DenseTensor : public TensorBase,
   - Question: In what scenarios will version counters NOT be shared?
   - Answer: Replacing a `Variable`'s data by calling
   `Tensor::ShareDataWith(...)` or `Tensor::ShareBufferWith(...)`. Because they
-  share the same Allocation but not framework::Tensor.
+  share the same Allocation but not phi::DenseTensor.
 
-  - Question: Why put the inplace_version_counter_ in framework::Tensor instead
+  - Question: Why put the inplace_version_counter_ in phi::DenseTensor instead
   of Allocation or Variable?
   - Answer:
    1. Tensor can call ResetHolder() to reset the corresponding Allocation so
