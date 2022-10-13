@@ -150,6 +150,26 @@ int64_t CompatMetaTensor::numel() const {
   }
 }
 
+bool CompatMetaTensor::is_dense() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<phi::DenseTensor>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetType() == proto::VarType::LOD_TENSOR;
+  }
+}
+
+bool CompatMetaTensor::is_tensor_array() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<framework::LoDTensorArray>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetType() == proto::VarType::LOD_TENSOR_ARRAY;
+  }
+}
+
 DDim CompatMetaTensor::dims() const {
   ValidCheck(*this);
   if (is_runtime_) {
@@ -319,7 +339,7 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
   ValidCheck(meta_tensor);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
-    if (var->IsType<phi::DenseTensor>()) {
+    if (var->IsType<phi::DenseTensor>() && meta_tensor.is_dense()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->lod =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetRuntimeLoD();
@@ -329,6 +349,10 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
+    if (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array()) {
+      VLOG(3) << "input metatensor is not LoDTensor or LoDTensorArray.";
+      return;
+    }
     var->SetLoDLevel(
         static_cast<const CompatMetaTensor&>(meta_tensor).GetCompileTimeLoD());
   }
