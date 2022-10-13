@@ -35,6 +35,10 @@ void TransposeKernel(const Context& ctx,
   if (out->numel() == 0) {
     return;
   }
+  if (axis.size() == 0) {
+    phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
+    return;
+  }
   paddle::operators::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
 }
 
