@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/string_tensor.h"
+
 namespace paddle {
 namespace pybind {
 
@@ -1127,7 +1128,37 @@ void AddPyMethodDefs(std::vector<PyMethodDef>* vector, PyMethodDef* methods) {
   }
 }
 
+inline uint64_t GetPosixInUsec2() {
+  struct timeval tv;
+  gettimeofday(&tv, nullptr);
+  return (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
+}
+
+uint64_t start1 = 0;
+uint64_t dealloc1 = 0;
+uint64_t dealloc2 = 0;
+uint64_t dealloc3 = 0;
+
+class tmpclass {
+ public:
+  tmpclass() {}
+  ~tmpclass() {
+    std::cout << "dealloc1 " << dealloc1 << std::endl;
+    std::cout << "dealloc2 " << dealloc2 << std::endl;
+    std::cout << "dealloc3 " << dealloc3 << std::endl;
+  }
+  int a;
+};
+tmpclass a;
+
+
 static void TensorDealloc(TensorObject* self) {
+  // if (self->tensor.impl().use_count() > 1) {
+  //   self->tensor.impl().get()->set_pyobj_need_free(true);
+  //   Py_INCREF(self);
+  //   self->tensor.~Tensor();
+  //   return;
+  // }
   if (self->weakrefs != NULL)
     PyObject_ClearWeakRefs(reinterpret_cast<PyObject*>(self));
   self->tensor.~Tensor();

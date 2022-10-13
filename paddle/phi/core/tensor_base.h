@@ -21,6 +21,10 @@ limitations under the License. */
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/type_registry.h"
+#ifndef PADDLE_NO_PYTHON
+#include <Python.h>
+#include "pybind11/pybind11.h"
+#endif
 
 namespace phi {
 
@@ -28,7 +32,16 @@ class TensorBase {
  public:
   using DDim = phi::DDim;
 
+#ifndef PADDLE_NO_PYTHON
+  virtual ~TensorBase() {
+    if (pyobj_need_free_) {
+      pybind11::gil_scoped_acquire gil;
+      Py_XDECREF(pyobj_);
+    }
+  }
+#else
   virtual ~TensorBase() = default;
+#endif
 
   /// \brief Returns the number of elements contained in tensor.
   /// \return The number of elements contained in tensor.
@@ -73,10 +86,23 @@ class TensorBase {
   /// \return The type information of the derived class.
   TypeInfo<TensorBase> type_info() const { return type_info_; }
 
+#ifndef PADDLE_NO_PYTHON
+  void set_pyobj(PyObject* obj) { pyobj_ = obj; }
+  PyObject* get_pyobj() const { return pyobj_; }
+  void set_pyobj_need_free(bool need_free) { pyobj_need_free_ = need_free; }
+  bool get_pyobj_need_free() const { return pyobj_need_free_; }
+#endif
+
  private:
   template <typename T, typename U>
   friend class TypeInfoTraits;
   TypeInfo<TensorBase> type_info_{TypeInfo<TensorBase>::kUnknownType};
+#ifndef PADDLE_NO_PYTHON
+  PyObject* pyobj_{nullptr};
+#else
+  void* pyobj_{nullptr};
+#endif
+  bool pyobj_need_free_{false};
 };
 
 }  // namespace phi
