@@ -1151,11 +1151,15 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         } else if (self->tensor.dtype() ==
                    paddle::experimental::DataType::BOOL) {
           attrs["bool_values"] = std::vector<int>{value_obj_tmp.cast<bool>()};
+        } else if (self->tensor.dtype() ==
+                   paddle::experimental::DataType::FLOAT16) {
+          attrs["fp16_values"] =
+              std::vector<float>{value_obj_tmp.cast<float>()};
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "When assign a value to a paddle.Tensor, "
               "the data type of the paddle.Tensor must be bool, "
-              "float32, int32 or int64, "
+              "float32, int32, int64 or float16, "
               "please check the type of tensor."));
         }
         attrs["shape"] = std::vector<int64_t>{1};
