@@ -16,6 +16,7 @@
 
 #include <ThreadPool.h>
 
+#include <algorithm>
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -306,6 +307,7 @@ class DatasetImpl : public Dataset {
   int cur_channel_;
   std::vector<T> slots_shuffle_original_data_;
   RecordCandidateList slots_shuffle_rclist_;
+  SlotRecordCandidateList slots_record_shuffle_rclist_;
   int thread_num_;
   int pull_sparse_to_local_thread_num_;
   paddle::framework::DataFeedDesc data_feed_desc_;
@@ -400,6 +402,14 @@ class SlotRecordDataset : public DatasetImpl<SlotRecord> {
   virtual void CreateReaders();
   // release memory
   virtual void ReleaseMemory();
+  virtual void PreprocessChannel(
+      const std::set<std::string>& slots_to_replace,
+      std::unordered_set<uint16_t>& index_slot);  // NOLINT
+  virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace);
+  virtual void GetRandomData(
+      const std::unordered_set<uint16_t>& slots_to_replace,
+      std::vector<SlotRecord>* result);
+
   virtual void GlobalShuffle(int thread_num = -1);
   virtual void DynamicAdjustChannelNum(int channel_num,
                                        bool discard_remaining_ins);

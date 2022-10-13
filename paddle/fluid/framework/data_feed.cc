@@ -181,6 +181,58 @@ void RecordCandidateList::AddAndGet(const Record& record,
   mutex_.unlock();
 }
 
+void SlotRecordCandidateList::ReSize(size_t length) {
+  mutex_.lock();
+  capacity_ = length;
+  CHECK(capacity_ > 0);  // NOLINT
+  candidate_list_.clear();
+  candidate_list_.resize(capacity_);
+  full_ = false;
+  cur_size_ = 0;
+  total_size_ = 0;
+  mutex_.unlock();
+}
+
+void SlotRecordCandidateList::ReInit() {
+  mutex_.lock();
+  full_ = false;
+  cur_size_ = 0;
+  total_size_ = 0;
+  mutex_.unlock();
+}
+
+void SlotRecordCandidateList::AddAndGet(const SlotRecord& record,
+                                        SlotRecordCandidate* result) {
+  mutex_.lock();
+  size_t index = 0;
+  ++total_size_;
+  // VLOG(0) << "Begin get";
+  auto fleet_ptr = FleetWrapper::GetInstance();
+
+  // VLOG(0) << "geting";
+  if (!full_) {
+    // VLOG(0) << "full begin";
+    candidate_list_[cur_size_++] = record;
+    // VLOG(0) << "full mid";
+    full_ = (cur_size_ == capacity_);
+    // VLOG(0) << "full end";
+  } else {
+    CHECK(cur_size_ == capacity_);
+    // VLOG(0) << "no full begin";
+    index = fleet_ptr->LocalRandomEngine()() % total_size_;
+    // VLOG(0) << "no full mid";
+    if (index < capacity_) {
+      candidate_list_[index] = record;
+    }
+    // VLOG(0) << "full end";
+  }
+  // VLOG(0) << "doing";
+  index = fleet_ptr->LocalRandomEngine()() % cur_size_;
+  *result = candidate_list_[index];
+  // VLOG(0) << "End get";
+  mutex_.unlock();
+}
+
 void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
   CheckInit();
   for (size_t i = 0; i < use_slots_.size(); ++i) {
