@@ -15,7 +15,6 @@
 import six
 import paddle
 import unittest
-import numpy as np
 
 from paddle.static import InputSpec
 

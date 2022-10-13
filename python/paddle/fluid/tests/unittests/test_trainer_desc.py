@@ -17,9 +17,6 @@ including config, etc.
 """
 
 import paddle.fluid as fluid
-import numpy as np
-import os
-import shutil
 import unittest
 
 

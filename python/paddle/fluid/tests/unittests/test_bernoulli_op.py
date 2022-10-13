@@ -16,7 +16,6 @@ import unittest
 import paddle
 from op_test import OpTest
 import numpy as np
-import os
 
 
 def output_hist(out):

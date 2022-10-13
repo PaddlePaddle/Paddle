@@ -16,10 +16,6 @@ import unittest
 import platform
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid.op import Operator
-import paddle.compat as cpt
 import paddle.version as ver
 
 

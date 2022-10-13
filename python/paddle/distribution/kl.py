@@ -21,9 +21,10 @@ from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
 from paddle.distribution.normal import Normal
+from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.uniform import Uniform
 from paddle.distribution.laplace import Laplace
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 
 __all__ = ["register_kl", "kl_divergence"]
 
@@ -96,7 +97,7 @@ def register_kl(cls_p, cls_q):
 
 
 def _dispatch(cls_p, cls_q):
-    """Multiple dispatch into concrete implement function"""
+    """Multiple dispatch into concrete implement function."""
 
     # find all matched super class pair of p and q
     matchs = [(super_p, super_q) for super_p, super_q in _REGISTER_TABLE
@@ -210,6 +211,11 @@ def _kl_expfamily_expfamily(p, q):
         kl -= _sum_rightmost(term, len(q.event_shape))
 
     return kl
+
+
+@register_kl(LogNormal, LogNormal)
+def _kl_lognormal_lognormal(p, q):
+    return p._base.kl_divergence(q._base)
 
 
 def _sum_rightmost(value, n):

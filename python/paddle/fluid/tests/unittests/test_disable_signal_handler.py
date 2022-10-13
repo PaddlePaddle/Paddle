@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
-import signal, os
-import paddle
+import signal
 import subprocess
 
 SignalsToTest = {

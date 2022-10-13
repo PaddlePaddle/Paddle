@@ -17,9 +17,8 @@ import numpy as np
 import unittest
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 from paddle.fluid.backward import append_backward
 import paddle.fluid.framework as framework
 import gradient_checker

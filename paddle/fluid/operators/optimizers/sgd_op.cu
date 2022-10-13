@@ -69,7 +69,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+    PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
@@ -108,7 +108,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
             : nullptr;
 
     // Actually, all tensors are LoDTensor except SelectedRows.
-    if (grad_var->IsType<framework::LoDTensor>()) {
+    if (grad_var->IsType<phi::DenseTensor>()) {
       auto* grad = ctx.Input<phi::DenseTensor>("Grad");
 
       int block = 512;

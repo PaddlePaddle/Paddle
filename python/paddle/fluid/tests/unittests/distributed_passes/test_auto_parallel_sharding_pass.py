@@ -18,15 +18,10 @@ import numpy as np
 
 import unittest
 import paddle
-import paddle.nn as nn
 import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet import auto
-from paddle.distributed.passes import new_pass, PassManager
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 sys.path.append("..")
-import auto_parallel_gpt_model as modeling
-from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
 
 
 class TestShardingPass(AutoPallelPassTestBase):

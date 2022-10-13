@@ -17,9 +17,7 @@ import sys
 sys.path.append("..")
 import unittest
 import numpy as np
-import paddle.fluid.core as core
 from paddle import _legacy_C_ops
-from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard

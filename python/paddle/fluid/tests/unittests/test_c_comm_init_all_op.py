@@ -14,7 +14,6 @@
 
 import unittest
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 
 

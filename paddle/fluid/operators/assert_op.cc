@@ -41,7 +41,7 @@ const char kSummarize[] = "summarize";
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 class AssertOp : public framework::OperatorBase {
  public:
@@ -78,7 +78,7 @@ class AssertOp : public framework::OperatorBase {
     const std::vector<std::string> &x_names = Inputs(kData);
     for (const std::string &name : x_names) {
       const framework::Variable *x_var_ptr = scope.FindVar(name);
-      const framework::LoDTensor &x_tensor = x_var_ptr->Get<LoDTensor>();
+      const phi::DenseTensor &x_tensor = x_var_ptr->Get<LoDTensor>();
       formatter.Print(x_tensor, name);
     }
 
