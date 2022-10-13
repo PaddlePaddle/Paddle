@@ -29,6 +29,11 @@ using string::PrettyLogDetail;
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   auto act_types = paddle::platform::GetSupportedActivations();
 
+  // Currently softplus can't be fused with hard_sigmoid
+  act_types.erase(
+      std::remove(act_types.begin(), act_types.end(), "hard_sigmoid"),
+      act_types.end());
+
   for (const auto &act_type : act_types) {
     FuseSoftplusActivation(graph, act_type);
   }
