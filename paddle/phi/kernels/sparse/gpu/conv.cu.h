@@ -785,11 +785,13 @@ template <typename ElementInputA = float,
           typename IntT = int,
           typename ShapeMMAThreadBlock,
           typename ShapeMMAWarp,
-          typename ShapeMMAOp>
-void gather_gemm_scatter(const phi::dtype::float16* const a,
-                         const phi::dtype::float16* const b,
-                         const phi::dtype::float16* const c,
-                         phi::dtype::float16* const d,
+          typename ShapeMMAOp,
+          int NumStages>
+void gather_gemm_scatter(const GPUContext& dev_ctx,
+                         const ElementInputA* const a,
+                         const ElementInputB* const b,
+                         const ElementOutput* const c,
+                         ElementOutput* const d,
                          const int m,
                          const int n,
                          const int k,
@@ -810,22 +812,6 @@ void gather_gemm_scatter(const phi::dtype::float16* const a,
   // This code section describes CUDA SM architecture number
   using SmArch = cutlass::arch::Sm80;
 
-#if 0
-  // This code section describes the tile size a thread block will compute
-  using ShapeMMAThreadBlock =
-      cutlass::gemm::GemmShape<128, 128, 16>;  // <- threadblock tile M = 128, N
-                                               // = 128, K = 32
-  // This code section describes tile size a warp will compute
-  using ShapeMMAWarp =
-      cutlass::gemm::GemmShape<64, 64, 16>;  // <- warp tile M = 64, N = 64, K =
-                                             // 32
-  // This code section describes the size of MMA op
-  using ShapeMMAOp =
-      cutlass::gemm::GemmShape<16, 8, 8>;  // <- MMA Op tile M = 8, N = 8, K = 4
-  // 16, 8, 8 -> Turing
-  // 16, 8, 16 -> Ampere
-#endif
-
   // This code section describes how threadblocks are scheduled on GPU
   using SwizzleThreadBlock =
       cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<>;  // <- ??
@@ -837,18 +823,13 @@ void gather_gemm_scatter(const phi::dtype::float16* const a,
   //
   using EpilogueOp = cutlass::epilogue::thread::LinearCombination<
       ElementOutput,  // <- data type of output matrix
-      128 / cutlass::sizeof_bits<
-                ElementOutput>::value,  // <- this is the number of elements per
-                                        // vectorized memory access. For half
-                                        // precision, it's 8 elements. This
-                                        // becomes the vector width of math
-                                        // instructions in epilogue too
-      ElementAccumulator,               // <- data type of accumulator
-      ElementComputeEpilogue>;  // <- data type for alpha in linear combination
-                                // function
+      std::is_same<ElementOutput, double>::value
+          ? 1
+          : 128 / cutlass::sizeof_bits<ElementOutput>::value,
+      ElementAccumulator,
+      ElementComputeEpilogue>;
 
   // Number of pipelines you want to use
-  constexpr int NumStages = 3;
   // Ampere -> 4/5
   // Turing -> 2
 
@@ -868,8 +849,12 @@ void gather_gemm_scatter(const phi::dtype::float16* const a,
       EpilogueOp,
       SwizzleThreadBlock,
       NumStages,
-      128 / cutlass::sizeof_bits<ElementInputA>::value, /*alignmentA*/
-      128 / cutlass::sizeof_bits<ElementInputB>::value, /*alignmengB*/
+      std::is_same<ElementInputA, double>::value
+          ? 1
+          : 128 / cutlass::sizeof_bits<ElementInputA>::value, /*alignmentA*/
+      std::is_same<ElementInputB, double>::value
+          ? 1
+          : 128 / cutlass::sizeof_bits<ElementInputB>::value, /*alignmengB*/
       cutlass::arch::OpMultiplyAdd,
       cutlass::ComplexTransform::kNone,
       cutlass::ComplexTransform::kNone,
@@ -933,133 +918,9 @@ void gather_gemm_scatter(const phi::dtype::float16* const a,
 
   // CPU reference calculation
 
-  status = gemm_op();
+  status = gemm_op(dev_ctx.stream());
   cudaDeviceSynchronize();
   CUTLASS_CHECK(status);
-}
-
-template <typename ElementA = float,
-          typename ElementB = float,
-          typename ElementAccumulator = float,
-          typename ElementComputeEpilogue = float,
-          typename ElementOutput = float,
-          typename LayoutA = cutlass::layout::RowMajor,
-          typename LayoutB = cutlass::layout::RowMajor,
-          typename LayoutOutput = cutlass::layout::RowMajor,
-          typename IntT = int,
-          typename ShapeMMAThreadBlock,
-          typename ShapeMMAWarp,
-          typename ShapeMMAOp,
-          int NumStages,
-          bool GatherA>
-void group_gemm(const GPUContext& dev_ctx,
-                ElementA** A,
-                ElementB** B,
-                ElementOutput** C,
-                ElementOutput** D,
-                cutlass::gemm::GemmCoord* shape,
-                int64_t* lda,
-                int64_t* ldb,
-                int64_t* ldc,
-                int64_t* ldd,
-                const IntT** ptr_gather_A_indices,
-                int group_count,
-                ElementComputeEpilogue alpha,
-                ElementComputeEpilogue beta) {
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombination<
-      ElementOutput,
-      std::is_same<ElementOutput, double>::value
-          ? 1
-          : 128 / cutlass::sizeof_bits<ElementOutput>::value,
-      ElementAccumulator,
-      ElementAccumulator>;
-
-  using GemmKernel = typename cutlass::gemm::kernel::DefaultGatherGemmGrouped<
-      ElementA,
-      LayoutA,
-      cutlass::ComplexTransform::kNone,
-      std::is_same<ElementA, double>::value
-          ? 1
-          : 128 / cutlass::sizeof_bits<ElementA>::value,
-      ElementB,
-      LayoutB,
-      cutlass::ComplexTransform::kNone,
-      std::is_same<ElementB, double>::value
-          ? 1
-          : 128 / cutlass::sizeof_bits<ElementB>::value,
-      ElementOutput,
-      LayoutOutput,
-      ElementAccumulator,
-      cutlass::arch::OpClassTensorOp,
-      cutlass::arch::Sm80,
-      ShapeMMAThreadBlock,
-      ShapeMMAWarp,
-      ShapeMMAOp,
-      EpilogueOutputOp,
-      cutlass::gemm::threadblock::GemmBatchedIdentityThreadblockSwizzle,
-      NumStages,
-      GatherA>::GemmKernel;
-
-  using GemmGrouped = cutlass::gemm::device::GemmGrouped<GemmKernel>;
-
-  // sufficient
-  cudaDeviceProp properties;
-  int device_idx;
-  cudaError_t result = cudaGetDevice(&device_idx);
-
-  if (result != cudaSuccess) {
-    throw std::runtime_error("cudaGetDevice() API call failed.");
-  }
-
-  result = cudaGetDeviceProperties(&properties, device_idx);
-
-  if (result != cudaSuccess) {
-    throw std::runtime_error("cudaGetDeviceProperties() failed");
-  }
-
-  int occupancy = GemmGrouped::maximum_active_blocks();
-
-  int threadblock_count = properties.multiProcessorCount * occupancy;
-
-  typename EpilogueOutputOp::Params epilogue_op(alpha, beta);
-
-  typename GemmGrouped::Arguments args(shape,
-                                       group_count,
-                                       threadblock_count,
-                                       epilogue_op,
-                                       A,
-                                       B,
-                                       C,
-                                       D,
-                                       lda,
-                                       ldb,
-                                       ldc,
-                                       ldd,
-                                       ptr_gather_A_indices);
-  // Initialize the GEMM object
-  GemmGrouped gemm;
-
-  cutlass::Status status = gemm.initialize(args);
-
-  if (status != cutlass::Status::kSuccess) {
-    std::cerr << "Failed to initialize CUTLASS Grouped GEMM kernel."
-              << std::endl;
-    return;
-  }
-
-  // Run the grouped GEMM object
-  status = gemm.run(dev_ctx.stream());
-
-  if (status != cutlass::Status::kSuccess) {
-    std::cerr << "Failed to run CUTLASS Grouped GEMM kernel." << std::endl;
-  }
-
-  // Wait for completion
-  cudaError_t error = cudaDeviceSynchronize();
-
-  if (error != cudaSuccess) {
-    std::cerr << "Kernel execution error: " << cudaGetErrorString(error);
-  }
 }
 #endif
 

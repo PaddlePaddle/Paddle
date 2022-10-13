@@ -1,11 +1,8 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,12 +19,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/funcs/sparse/scatter.cu.h"
 #include "paddle/phi/kernels/sparse/gpu/conv.cu.h"
-#ifdef PADDLE_WITH_CUTLASS
-#include "paddle/phi/kernels/concat_kernel.h"
-#include "paddle/phi/kernels/funcs/slice.h"
-#endif
 
-#include <inttypes.h>
 #include "glog/logging.h"
 
 namespace phi {
@@ -126,12 +118,6 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
         dev_ctx, x, key, tmp_rulebook, h_counter, out, rulebook, counter);
   }
 
-  phi::DenseTensor out_features =
-      phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
-  T* out_features_ptr = out_features.data<T>();
-  phi::funcs::SetConstant<GPUContext, T> set_zero;
-  set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
-
   if (subm) {
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rulebook_len, 1);
@@ -152,266 +138,196 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                                       unique_value_ptr);
   }
 
-  const T* kernel_ptr = kernel.data<T>();
-
 #ifdef PADDLE_WITH_CUTLASS
-  // currently, only support data type == fp32 and indices type == int32_t using
-  // cutlass
-  if constexpr (std::is_same<T, float>::value &&
-                std::is_same<IntT, int32_t>::value) {
-    if (cutlass && in_channels % 4 == 0 && out_channels % 4 == 0) {
-      thrust::host_vector<cutlass::gemm::GemmCoord> h_shape(kernel_size);
-      thrust::host_vector<const T*> h_ptr_B(kernel_size);
-      thrust::host_vector<T*> h_ptr_D(kernel_size);
-      thrust::host_vector<const IntT*> h_ptr_gather_A_indices(kernel_size);
-
-      int group_count = 0;
-      int group_idx = 0;
-
-      for (int i = 0; i < kernel_size; i++) {
-        if (h_counter_ptr[i] <= 0) {
-          continue;
-        }
-        group_count++;
-        int M = h_counter_ptr[i];
-        int K = in_channels;
-        int N = out_channels;
-        h_shape[group_idx] = cutlass::gemm::GemmCoord(M, N, K);
-
-        const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-        T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
-        h_ptr_B[group_idx] = tmp_kernel_ptr;
-        h_ptr_D[group_idx] = tmp_out_ptr;
-        h_ptr_gather_A_indices[group_idx] = rulebook_ptr + h_offsets_ptr[i];
-        group_idx++;
-      }
-
-      thrust::device_vector<cutlass::gemm::GemmCoord> shape = h_shape;
-      thrust::device_vector<const T*> ptr_B = h_ptr_B;
-      thrust::device_vector<T*> ptr_D = h_ptr_D;
-      thrust::device_vector<const IntT*> ptr_gather_A_indices =
-          h_ptr_gather_A_indices;
-      thrust::device_vector<T*> ptr_A(kernel_size,
-                                      const_cast<T*>(x.values().data<T>()));
-      thrust::device_vector<int64_t> lda(kernel_size, (int64_t)in_channels);
-      thrust::device_vector<int64_t> ldb(kernel_size, (int64_t)out_channels);
-      thrust::device_vector<int64_t> ldd(kernel_size, (int64_t)out_channels);
-
-      using ElementA = T;
-      using ElementB = T;
-      using ElementAccumulator = T;
-      using ElementComputeEpilogue = T;
-      using ElementOutput = T;
-      using LayoutA = cutlass::layout::RowMajor;
-      using LayoutB = cutlass::layout::RowMajor;
-      using LayoutOutput = cutlass::layout::RowMajor;
-      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 128, 16>;
-      using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 16>;
-      using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 8>;
-      constexpr bool GatherA = true;
-      constexpr int NumStages = 3;
-      // group-gather-gemm fusion
-      group_gemm<ElementA,
-                 ElementB,
-                 ElementAccumulator,
-                 ElementComputeEpilogue,
-                 ElementOutput,
-                 LayoutA,
-                 LayoutB,
-                 LayoutOutput,
-                 IntT,
-                 ShapeMMAThreadBlock,
-                 ShapeMMAWarp,
-                 ShapeMMAOp,
-                 NumStages,
-                 GatherA>(
-          dev_ctx,
-          thrust::raw_pointer_cast(ptr_A.data()),
-          const_cast<T**>(thrust::raw_pointer_cast(ptr_B.data())),
-          thrust::raw_pointer_cast(ptr_D.data()),
-          thrust::raw_pointer_cast(ptr_D.data()),
-          thrust::raw_pointer_cast(shape.data()),
-          thrust::raw_pointer_cast(lda.data()),
-          thrust::raw_pointer_cast(ldb.data()),
-          thrust::raw_pointer_cast(ldd.data()),
-          thrust::raw_pointer_cast(ldd.data()),
-          thrust::raw_pointer_cast(ptr_gather_A_indices.data()),
-          group_count,
-          static_cast<T>(1),
-          static_cast<T>(0));
-    }
-  }
-
-  if constexpr (std::is_same<T, double>::value &&
-                std::is_same<IntT, int32_t>::value) {
-    if (cutlass) {
-      thrust::host_vector<cutlass::gemm::GemmCoord> h_shape(kernel_size);
-      thrust::host_vector<const T*> h_ptr_B(kernel_size);
-      thrust::host_vector<T*> h_ptr_D(kernel_size);
-      thrust::host_vector<const IntT*> h_ptr_gather_A_indices(kernel_size);
-
-      int group_count = 0;
-      int group_idx = 0;
-
-      for (int i = 0; i < kernel_size; i++) {
-        if (h_counter_ptr[i] <= 0) {
-          continue;
-        }
-        group_count++;
-        int M = h_counter_ptr[i];
-        int K = in_channels;
-        int N = out_channels;
-        h_shape[group_idx] = cutlass::gemm::GemmCoord(M, N, K);
-
-        const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-        T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
-        h_ptr_B[group_idx] = tmp_kernel_ptr;
-        h_ptr_D[group_idx] = tmp_out_ptr;
-        h_ptr_gather_A_indices[group_idx] = rulebook_ptr + h_offsets_ptr[i];
-        group_idx++;
-      }
-
-      thrust::device_vector<cutlass::gemm::GemmCoord> shape = h_shape;
-      thrust::device_vector<const T*> ptr_B = h_ptr_B;
-      thrust::device_vector<T*> ptr_D = h_ptr_D;
-      thrust::device_vector<const IntT*> ptr_gather_A_indices =
-          h_ptr_gather_A_indices;
-      thrust::device_vector<T*> ptr_A(kernel_size,
-                                      const_cast<T*>(x.values().data<T>()));
-      thrust::device_vector<int64_t> lda(kernel_size, (int64_t)in_channels);
-      thrust::device_vector<int64_t> ldb(kernel_size, (int64_t)out_channels);
-      thrust::device_vector<int64_t> ldd(kernel_size, (int64_t)out_channels);
-
-      using ElementA = T;
-      using ElementB = T;
-      using ElementAccumulator = T;
-      using ElementComputeEpilogue = T;
-      using ElementOutput = T;
-      using LayoutA = cutlass::layout::RowMajor;
-      using LayoutB = cutlass::layout::RowMajor;
-      using LayoutOutput = cutlass::layout::RowMajor;
-      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<32, 16, 16>;
-      using ShapeMMAWarp = cutlass::gemm::GemmShape<16, 16, 16>;
-      using ShapeMMAOp = cutlass::gemm::GemmShape<8, 8, 4>;
-      constexpr bool GatherA = true;
-      constexpr int NumStages = 5;
-      // group-gather-gemm fusion
-      group_gemm<ElementA,
-                 ElementB,
-                 ElementAccumulator,
-                 ElementComputeEpilogue,
-                 ElementOutput,
-                 LayoutA,
-                 LayoutB,
-                 LayoutOutput,
-                 IntT,
-                 ShapeMMAThreadBlock,
-                 ShapeMMAWarp,
-                 ShapeMMAOp,
-                 NumStages,
-                 GatherA>(
-          dev_ctx,
-          thrust::raw_pointer_cast(ptr_A.data()),
-          const_cast<T**>(thrust::raw_pointer_cast(ptr_B.data())),
-          thrust::raw_pointer_cast(ptr_D.data()),
-          thrust::raw_pointer_cast(ptr_D.data()),
-          thrust::raw_pointer_cast(shape.data()),
-          thrust::raw_pointer_cast(lda.data()),
-          thrust::raw_pointer_cast(ldb.data()),
-          thrust::raw_pointer_cast(ldd.data()),
-          thrust::raw_pointer_cast(ldd.data()),
-          thrust::raw_pointer_cast(ptr_gather_A_indices.data()),
-          group_count,
-          static_cast<T>(1),
-          static_cast<T>(0));
-    }
-  }
-
   if constexpr (std::is_same<T, phi::dtype::float16>::value &&
                 std::is_same<IntT, int32_t>::value) {
     if (cutlass && in_channels % 8 == 0 && out_channels % 8 == 0) {
-      thrust::host_vector<cutlass::gemm::GemmCoord> h_shape(kernel_size);
-      thrust::host_vector<const T*> h_ptr_B(kernel_size);
-      thrust::host_vector<T*> h_ptr_D(kernel_size);
-      thrust::host_vector<const IntT*> h_ptr_gather_A_indices(kernel_size);
-
-      int group_count = 0;
-      int group_idx = 0;
-
-      for (int i = 0; i < kernel_size; i++) {
-        if (h_counter_ptr[i] <= 0) {
-          continue;
-        }
-        group_count++;
-        int M = h_counter_ptr[i];
-        int K = in_channels;
-        int N = out_channels;
-        h_shape[group_idx] = cutlass::gemm::GemmCoord(M, N, K);
-
-        const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
-        T* tmp_out_ptr = out_features_ptr + h_offsets_ptr[i] * out_channels;
-        h_ptr_B[group_idx] = tmp_kernel_ptr;
-        h_ptr_D[group_idx] = tmp_out_ptr;
-        h_ptr_gather_A_indices[group_idx] = rulebook_ptr + h_offsets_ptr[i];
-        group_idx++;
-      }
-
-      thrust::device_vector<cutlass::gemm::GemmCoord> shape = h_shape;
-      thrust::device_vector<const T*> ptr_B = h_ptr_B;
-      thrust::device_vector<T*> ptr_D = h_ptr_D;
-      thrust::device_vector<const IntT*> ptr_gather_A_indices =
-          h_ptr_gather_A_indices;
-      thrust::device_vector<T*> ptr_A(kernel_size,
-                                      const_cast<T*>(x.values().data<T>()));
-      thrust::device_vector<int64_t> lda(kernel_size, (int64_t)in_channels);
-      thrust::device_vector<int64_t> ldb(kernel_size, (int64_t)out_channels);
-      thrust::device_vector<int64_t> ldd(kernel_size, (int64_t)out_channels);
-
-      using ElementA = cutlass::half_t;
-      using ElementB = cutlass::half_t;
+      using ElementInputA = cutlass::half_t;
+      using ElementInputB = cutlass::half_t;
       using ElementAccumulator = float;
       using ElementComputeEpilogue = cutlass::half_t;
       using ElementOutput = cutlass::half_t;
-      using LayoutA = cutlass::layout::RowMajor;
-      using LayoutB = cutlass::layout::RowMajor;
+      using LayoutInputA = cutlass::layout::RowMajor;
+      using LayoutInputB = cutlass::layout::RowMajor;
       using LayoutOutput = cutlass::layout::RowMajor;
       using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 128, 32>;
       using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 32>;
       using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 16>;
-      constexpr bool GatherA = true;
       constexpr int NumStages = 3;
-      // group-gather-gemm fusion
-      group_gemm<ElementA,
-                 ElementB,
-                 ElementAccumulator,
-                 ElementComputeEpilogue,
-                 ElementOutput,
-                 LayoutA,
-                 LayoutB,
-                 LayoutOutput,
-                 IntT,
-                 ShapeMMAThreadBlock,
-                 ShapeMMAWarp,
-                 ShapeMMAOp,
-                 NumStages,
-                 GatherA>(dev_ctx,
-                          reinterpret_cast<cutlass::half_t**>(
-                              thrust::raw_pointer_cast(ptr_A.data())),
-                          reinterpret_cast<cutlass::half_t**>(const_cast<T**>(
-                              thrust::raw_pointer_cast(ptr_B.data()))),
-                          reinterpret_cast<cutlass::half_t**>(
-                              thrust::raw_pointer_cast(ptr_D.data())),
-                          reinterpret_cast<cutlass::half_t**>(
-                              thrust::raw_pointer_cast(ptr_D.data())),
-                          thrust::raw_pointer_cast(shape.data()),
-                          thrust::raw_pointer_cast(lda.data()),
-                          thrust::raw_pointer_cast(ldb.data()),
-                          thrust::raw_pointer_cast(ldd.data()),
-                          thrust::raw_pointer_cast(ldd.data()),
-                          thrust::raw_pointer_cast(ptr_gather_A_indices.data()),
-                          group_count,
-                          static_cast<cutlass::half_t>(1),
-                          static_cast<cutlass::half_t>(0));
+
+      auto* out_values = out->mutable_non_zero_elements();
+      T* out_values_ptr = out_values->data<T>();
+      phi::funcs::SetConstant<GPUContext, T> set_zero;
+      set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+
+      const T* kernel_ptr = kernel.data<T>();
+      for (int i = 0; i < kernel_size; i++) {
+        if (h_counter_ptr[i] <= 0) {
+          continue;
+        }
+
+        const int M = h_counter_ptr[i];
+        const int K = in_channels;
+        const int N = out_channels;
+        const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+        const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
+        const IntT* scatter_indices =
+            rulebook_ptr + rulebook_len + h_offsets_ptr[i];
+
+        gather_gemm_scatter<ElementInputA,
+                            ElementInputB,
+                            ElementAccumulator,
+                            ElementComputeEpilogue,
+                            ElementOutput,
+                            LayoutInputA,
+                            LayoutInputB,
+                            LayoutOutput,
+                            IntT,
+                            ShapeMMAThreadBlock,
+                            ShapeMMAWarp,
+                            ShapeMMAOp,
+                            NumStages>(
+            dev_ctx,
+            reinterpret_cast<const cutlass::half_t*>(
+                x.non_zero_elements().data<T>()),
+            reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
+            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
+            reinterpret_cast<cutlass::half_t*>(out_values_ptr),
+            M,
+            N,
+            K,
+            gather_indices,
+            scatter_indices,
+            h_counter_ptr[i],
+            static_cast<cutlass::half_t>(1),
+            static_cast<cutlass::half_t>(1));
+      }
+    }
+  }
+  if constexpr (std::is_same<T, float>::value &&
+                std::is_same<IntT, int32_t>::value) {
+    if (cutlass && in_channels % 4 == 0 && out_channels % 4 == 0) {
+      using ElementInputA = T;
+      using ElementInputB = T;
+      using ElementAccumulator = T;
+      using ElementComputeEpilogue = T;
+      using ElementOutput = T;
+      using LayoutInputA = cutlass::layout::RowMajor;
+      using LayoutInputB = cutlass::layout::RowMajor;
+      using LayoutOutput = cutlass::layout::RowMajor;
+      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<128, 128, 16>;
+      using ShapeMMAWarp = cutlass::gemm::GemmShape<64, 64, 16>;
+      using ShapeMMAOp = cutlass::gemm::GemmShape<16, 8, 8>;
+      constexpr int NumStages = 3;
+
+      auto* out_values = out->mutable_non_zero_elements();
+      T* out_values_ptr = out_values->data<T>();
+      phi::funcs::SetConstant<GPUContext, T> set_zero;
+      set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+
+      const T* kernel_ptr = kernel.data<T>();
+      for (int i = 0; i < kernel_size; i++) {
+        if (h_counter_ptr[i] <= 0) {
+          continue;
+        }
+
+        const int M = h_counter_ptr[i];
+        const int K = in_channels;
+        const int N = out_channels;
+        const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+        const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
+        const IntT* scatter_indices =
+            rulebook_ptr + rulebook_len + h_offsets_ptr[i];
+
+        gather_gemm_scatter<ElementInputA,
+                            ElementInputB,
+                            ElementAccumulator,
+                            ElementComputeEpilogue,
+                            ElementOutput,
+                            LayoutInputA,
+                            LayoutInputB,
+                            LayoutOutput,
+                            IntT,
+                            ShapeMMAThreadBlock,
+                            ShapeMMAWarp,
+                            ShapeMMAOp,
+                            NumStages>(dev_ctx,
+                                       x.non_zero_elements().data<T>(),
+                                       tmp_kernel_ptr,
+                                       out_values_ptr,
+                                       out_values_ptr,
+                                       M,
+                                       N,
+                                       K,
+                                       gather_indices,
+                                       scatter_indices,
+                                       h_counter_ptr[i],
+                                       static_cast<T>(1),
+                                       static_cast<T>(1));
+      }
+    }
+  }
+  if constexpr (std::is_same<T, double>::value &&
+                std::is_same<IntT, int32_t>::value) {
+    if (cutlass) {
+      using ElementInputA = T;
+      using ElementInputB = T;
+      using ElementAccumulator = T;
+      using ElementComputeEpilogue = T;
+      using ElementOutput = T;
+      using LayoutInputA = cutlass::layout::RowMajor;
+      using LayoutInputB = cutlass::layout::RowMajor;
+      using LayoutOutput = cutlass::layout::RowMajor;
+      using ShapeMMAThreadBlock = cutlass::gemm::GemmShape<32, 16, 16>;
+      using ShapeMMAWarp = cutlass::gemm::GemmShape<16, 16, 16>;
+      using ShapeMMAOp = cutlass::gemm::GemmShape<8, 8, 4>;
+      constexpr int NumStages = 5;
+
+      auto* out_values = out->mutable_non_zero_elements();
+      T* out_values_ptr = out_values->data<T>();
+      phi::funcs::SetConstant<GPUContext, T> set_zero;
+      set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
+
+      const T* kernel_ptr = kernel.data<T>();
+      for (int i = 0; i < kernel_size; i++) {
+        if (h_counter_ptr[i] <= 0) {
+          continue;
+        }
+
+        const int M = h_counter_ptr[i];
+        const int K = in_channels;
+        const int N = out_channels;
+        const T* tmp_kernel_ptr = kernel_ptr + i * K * N;
+        const IntT* gather_indices = rulebook_ptr + h_offsets_ptr[i];
+        const IntT* scatter_indices =
+            rulebook_ptr + rulebook_len + h_offsets_ptr[i];
+
+        gather_gemm_scatter<ElementInputA,
+                            ElementInputB,
+                            ElementAccumulator,
+                            ElementComputeEpilogue,
+                            ElementOutput,
+                            LayoutInputA,
+                            LayoutInputB,
+                            LayoutOutput,
+                            IntT,
+                            ShapeMMAThreadBlock,
+                            ShapeMMAWarp,
+                            ShapeMMAOp,
+                            NumStages>(dev_ctx,
+                                       x.non_zero_elements().data<T>(),
+                                       tmp_kernel_ptr,
+                                       out_values_ptr,
+                                       out_values_ptr,
+                                       M,
+                                       N,
+                                       K,
+                                       gather_indices,
+                                       scatter_indices,
+                                       h_counter_ptr[i],
+                                       static_cast<T>(1),
+                                       static_cast<T>(1));
+      }
     }
   }
   if (!cutlass ||
@@ -425,7 +341,12 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
     // 2. gather
     phi::DenseTensor in_features =
         phi::Empty<T>(dev_ctx, {rulebook_len, in_channels});
+    phi::DenseTensor out_features =
+        phi::Empty<T>(dev_ctx, {rulebook_len, out_channels});
     T* in_features_ptr = in_features.data<T>();
+    T* out_features_ptr = out_features.data<T>();
+    phi::funcs::SetConstant<GPUContext, T> set_zero;
+    set_zero(dev_ctx, &out_features, static_cast<T>(0.0f));
 
     Gather<T, IntT>(dev_ctx,
                     x.values().data<T>(),
@@ -436,7 +357,11 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
 
     // 3. call gemm for every werght
     auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+    auto* out_values = out->mutable_values();
+    T* out_values_ptr = out_values->data<T>();
+    set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
 
+    const T* kernel_ptr = kernel.data<T>();
     for (int i = 0; i < kernel_size; i++) {
       if (h_counter_ptr[i] <= 0) {
         continue;
@@ -461,24 +386,18 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                 static_cast<T>(0),
                 tmp_out_ptr);
     }
-#ifdef PADDLE_WITH_CUTLASS
+
+    // 4. scatter
+    phi::funcs::sparse::ScatterV2<T>(dev_ctx,
+                                     out_features_ptr,
+                                     out_index.data<int>(),
+                                     unique_value.data<int>(),
+                                     out->nnz(),
+                                     kernel_size,
+                                     out_channels,
+                                     1,
+                                     out_values_ptr);
   }
-#endif
-
-  auto* out_values = out->mutable_values();
-  T* out_values_ptr = out_values->data<T>();
-  set_zero(dev_ctx, out_values, static_cast<T>(0.0f));
-
-  // 4. scatter
-  phi::funcs::sparse::ScatterV2<T>(dev_ctx,
-                                   out_features_ptr,
-                                   out_index.data<int>(),
-                                   unique_value.data<int>(),
-                                   out->nnz(),
-                                   kernel_size,
-                                   out_channels,
-                                   1,
-                                   out_values_ptr);
 }
 
 /**
