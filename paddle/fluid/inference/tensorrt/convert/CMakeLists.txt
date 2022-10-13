@@ -79,7 +79,7 @@ list(
   layernorm_shift_partition_op.cc
   generic_and_custom_plugin_creater.cc
   fused_lookup_tables_op.cc
-  expand_v2)
+  expand_v2_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
