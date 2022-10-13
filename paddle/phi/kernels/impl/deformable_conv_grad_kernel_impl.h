@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -58,14 +60,14 @@ HOSTDEVICE T DmcnGetGradientWeight(T argmax_h,
   return weight;
 }
 
-template <typename T>
-HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h,
-                                     T argmax_w,
-                                     const int height,
-                                     const int width,
-                                     const T* im_data,
-                                     const int data_width,
-                                     const int bp_dir) {
+template <typename T, typename MT>
+HOSTDEVICE MT DmcnGetCoordinateWeight(MT argmax_h,
+                                      MT argmax_w,
+                                      const int height,
+                                      const int width,
+                                      const T* im_data,
+                                      const int data_width,
+                                      const int bp_dir) {
   if (argmax_h <= -1 || argmax_h >= height || argmax_w <= -1 ||
       argmax_w >= width) {
     return 0;
@@ -76,43 +78,51 @@ HOSTDEVICE T DmcnGetCoordinateWeight(T argmax_h,
   int argmax_h_high = argmax_h_low + 1;
   int argmax_w_high = argmax_w_low + 1;
 
-  T weight = 0;
+  MT weight = 0;
 
   if (bp_dir == 0) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
                   ? -1 * (argmax_w_low + 1 - argmax_w) *
-                        im_data[argmax_h_low * data_width + argmax_w_low]
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_low])
                   : 0;
 
     weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
                   ? -1 * (argmax_w - argmax_w_low) *
-                        im_data[argmax_h_low * data_width + argmax_w_high]
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_high])
                   : 0;
 
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
                   ? (argmax_w_low + 1 - argmax_w) *
-                        im_data[argmax_h_high * data_width + argmax_w_low]
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_low])
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
                   ? (argmax_w - argmax_w_low) *
-                        im_data[argmax_h_high * data_width + argmax_w_high]
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_high])
                   : 0;
   } else if (bp_dir == 1) {
     weight += (argmax_h_low >= 0 && argmax_w_low >= 0)
                   ? -1 * (argmax_h_low + 1 - argmax_h) *
-                        im_data[argmax_h_low * data_width + argmax_w_low]
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_low])
                   : 0;
     weight += (argmax_h_low >= 0 && argmax_w_high <= width - 1)
                   ? (argmax_h_low + 1 - argmax_h) *
-                        im_data[argmax_h_low * data_width + argmax_w_high]
+                        static_cast<MT>(
+                            im_data[argmax_h_low * data_width + argmax_w_high])
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_low >= 0)
                   ? -1 * (argmax_h - argmax_h_low) *
-                        im_data[argmax_h_high * data_width + argmax_w_low]
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_low])
                   : 0;
     weight += (argmax_h_high <= height - 1 && argmax_w_high <= width - 1)
                   ? (argmax_h - argmax_h_low) *
-                        im_data[argmax_h_high * data_width + argmax_w_high]
+                        static_cast<MT>(
+                            im_data[argmax_h_high * data_width + argmax_w_high])
                   : 0;
   }
 
@@ -135,7 +145,7 @@ void ModulatedDeformableCol2imCoord(const Context& dev_ctx,
                                     T* grad_offset,
                                     T* grad_mask);
 
-template <typename T, typename Context>
+template <typename T, typename MT, typename Context>
 void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const T* data_col,
                                const T* data_offset,
@@ -147,7 +157,7 @@ void ModulatedDeformableCol2im(const Context& dev_ctx,
                                const std::vector<int>& stride,
                                const std::vector<int>& dilation,
                                const int deformable_group,
-                               T* grad_im);
+                               MT* grad_im);
 
 template <typename T, typename Context>
 void FilterGradAddup(const Context& dev_ctx,
@@ -176,7 +186,7 @@ void DeformableConvGradKernel(const Context& dev_ctx,
                               DenseTensor* filter_grad,
                               DenseTensor* mask_grad) {
   const int batch_size = static_cast<int>(x.dims()[0]);
-
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   DDim input_shape = phi::slice_ddim(x.dims(), 1, x.dims().size());
   std::vector<int64_t> input_shape_vec = phi::vectorize(input_shape);
   std::vector<int64_t> filter_shape_vec(phi::vectorize(filter.dims()));
@@ -292,20 +302,42 @@ void DeformableConvGradKernel(const Context& dev_ctx,
           mask_grad_data_ptr);
     }
     if (dx) {
-      T* dx_ptr = dx->data<T>();
-      // get grad of input
-      ModulatedDeformableCol2im(dev_ctx,
-                                col_buffer_ptr,
-                                offset_ptr + i * im2col_step * input_offset_dim,
-                                mask_data_ptr,
-                                input_shape_vec,
-                                col_buffer_shape_vec,
-                                filter_shape_vec,
-                                paddings,
-                                strides,
-                                dilations,
-                                deformable_groups,
-                                dx_ptr + i * im2col_step * input_dim);
+      if (x.dtype() == DataType::FLOAT16) {
+        DenseTensor mt_dx = phi::EmptyLike<MT, Context>(dev_ctx, *dx);
+        MT* mt_dx_ptr = dev_ctx.template Alloc<MT>(&mt_dx);
+
+        ModulatedDeformableCol2im(
+            dev_ctx,
+            col_buffer_ptr,
+            offset_ptr + i * im2col_step * input_offset_dim,
+            mask_data_ptr,
+            input_shape_vec,
+            col_buffer_shape_vec,
+            filter_shape_vec,
+            paddings,
+            strides,
+            dilations,
+            deformable_groups,
+            mt_dx_ptr + i * im2col_step * input_dim);
+
+        DenseTensor t_dx = phi::Cast<MT, Context>(dev_ctx, mt_dx, x.dtype());
+        dx->ShareDataWith(t_dx);
+      } else {
+        MT* mt_dx_ptr = dev_ctx.template Alloc<MT>(dx);
+        ModulatedDeformableCol2im(
+            dev_ctx,
+            col_buffer_ptr,
+            offset_ptr + i * im2col_step * input_offset_dim,
+            mask_data_ptr,
+            input_shape_vec,
+            col_buffer_shape_vec,
+            filter_shape_vec,
+            paddings,
+            strides,
+            dilations,
+            deformable_groups,
+            mt_dx_ptr + i * im2col_step * input_dim);
+      }
       dx->Resize(x.dims());
     }
 
