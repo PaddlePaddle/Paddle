@@ -1087,19 +1087,20 @@ class TestShapeOrig2Prim(TestElementWiseAddOrig2Prim):
 
     def init_data(self):
         self.op_type = 'shape'
-        x = paddle.static.data(name='X', shape=[5, 8], dtype='int32')
+        X = paddle.static.data(name='X', shape=[5, 8], dtype='int32')
         self.attrs = {}
-        self.input = {'Input': x}
+        self.input = {'Input': X}
         self.output = {
             'Out':
             self.layer_help.create_variable_for_type_inference(
                 dtype=paddle.int32)
         }
 
-        self.orig2prim_args = (x, )
+        self.orig2prim_args = (X, )
         self.all_ops = [
             'shape', 'fill_constant_p', 'fill_constant_p', 'concat_p'
         ]
+        self.out_map = {0: self.output['Out']}
 
 
 class TestUniformRandomOrig2Prim1(TestElementWiseAddOrig2Prim):
@@ -1163,19 +1164,22 @@ class TestSigmoidOrig2Prim(TestElementWiseAddOrig2Prim):
 
     def init_data(self):
         self.op_type = 'sigmoid'
-        x = paddle.static.data(name='X', shape=[3], dtype='float32')
+        X = paddle.static.data(name='X', shape=[3], dtype='float32')
+
         self.attrs = {}
-        self.input = {'Input': x}
+        self.input = {'X': X}
         self.output = {
             'Out':
             self.layer_help.create_variable_for_type_inference(
-                dtype=paddle.int32)
+                dtype=paddle.float32)
         }
 
-        self.orig2prim_args = (x, )
+        self.orig2prim_args = (X, )
         self.all_ops = [
-            'shape', 'fill_constant_p', 'fill_constant_p', 'concat_p'
+            'sigmoid', 'div_p', 'fill_constant_p', 'add_p', 'fill_constant_p',
+            'exp_p', 'fill_constant_p', 'sub_p'
         ]
+        self.out_map = {0: self.output['Out']}
 
 
 if __name__ == '__main__':
