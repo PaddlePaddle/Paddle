@@ -402,7 +402,7 @@ class CustomParser {
                             const char* str,
                             std::vector<Record>* instances) {
     return 0;
-  };
+  }
   virtual bool ParseOneInstance(
       const std::string& line,
       std::function<void(std::vector<SlotRecord>&, int)>
@@ -892,8 +892,8 @@ struct BufState {
 
 class GraphDataGenerator {
  public:
-  GraphDataGenerator(){};
-  virtual ~GraphDataGenerator(){};
+  GraphDataGenerator() {}
+  virtual ~GraphDataGenerator() {}
   void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc);
   void AllocResource(const paddle::platform::Place& place,
                      std::vector<phi::DenseTensor*> feed_vec);
@@ -906,7 +906,7 @@ class GraphDataGenerator {
   void FillOneStep(uint64_t* start_ids,
                    uint64_t* walk,
                    int len,
-                   NeighborSampleResult& sample_res,
+                   NeighborSampleResult& sample_res,  // NOLINT
                    int cur_degree,
                    int step,
                    int* len_per_row);
@@ -1599,7 +1599,7 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual bool ParseOneInstanceFromPipe(Record* instance);
   virtual void ParseOneInstanceFromSo(const char* str,
                                       Record* instance,
-                                      CustomParser* parser){};
+                                      CustomParser* parser) {}
   virtual int ParseInstanceFromSo(int len,
                                   const char* str,
                                   std::vector<Record>* instances,

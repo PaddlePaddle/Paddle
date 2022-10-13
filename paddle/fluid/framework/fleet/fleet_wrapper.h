@@ -299,7 +299,7 @@ class FleetWrapper {
   // flush all push requests
   void ClientFlush();
   // load from paddle model
-  void LoadFromPaddleModel(Scope& scope,
+  void LoadFromPaddleModel(Scope& scope,             // NOLINT
                            const uint64_t table_id,  // NOLINT
                            std::vector<std::string> var_list,
                            std::string model_path,
