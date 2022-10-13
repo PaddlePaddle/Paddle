@@ -56,13 +56,7 @@ int CPUBfloat16PlacementPass::SetMkldnnDataType(ir::Graph* graph) const {
     // Only float input can be converted to bfloat16
     if (op_in->Var()->GetDataType() != proto::VarType::FP32) return;
 
-    bool op_always_included =
-        std::find(always_included_ops.begin(),
-                  always_included_ops.end(),
-                  op->Name()) != always_included_ops.end();
-    if ((op_always_included || op->Op()->HasAttr("mkldnn_data_type") ||
-         op->Op()->HasProtoAttr("mkldnn_data_type")) &&
-        !platform::HasOpINT8DataType(op->Op())) {
+    if (platform::HasOpINT8DataType(op->Op()) == false) {
       VLOG(4) << "---    marked " << op->Op()->Type()
               << " operator to bfloat16 ";
       op->Op()->SetAttr("mkldnn_data_type", std::string("bfloat16"));

@@ -31,7 +31,6 @@ class CPUBfloat16PlacementPass : public Pass {
   int SetMkldnnDataType(ir::Graph* graph) const;
   int RemoveOrphanedOperators(ir::Graph* graph) const;
   int RemoveUnsupportedOperators(ir::Graph* graph) const;
-  const std::vector<std::string> always_included_ops = {"bilinear_interp_v2"};
 };
 
 }  // namespace ir
