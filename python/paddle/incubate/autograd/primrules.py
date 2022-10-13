@@ -327,6 +327,15 @@ def slice_orig2prim(op, ends_t, ends_tl, x, starts_t, starts_tl):
     return y
 
 
+@REGISTER_ORIG2PRIM('shape')
+def shape_orig2prim(op, x):
+    input_shape = x.shape
+    shape_tensor_list = [
+        fill_const(shape=[1], dtype=x.dtype, value=i) for i in x.shape
+    ]
+    return concat(shape_tensor_list, axis=0)
+
+
 @REGISTER_ORIG2PRIM('p_norm')
 def p_norm_orig2prim(op, x):
 

@@ -1083,5 +1083,25 @@ class TestFillConstantOrig2Prim(TestElementWiseAddOrig2Prim):
         self.out_map = {0: self.output['Out']}
 
 
+class TestShapeOrig2Prim(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'shape'
+        x = paddle.static.data(name='X', shape=[5, 8], dtype='int32')
+        self.attrs = {}
+        self.input = {'Input': x}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.int32)
+        }
+
+        self.orig2prim_args = (x, )
+        self.all_ops = [
+            'shape', 'fill_constant_p', 'fill_constant_p', 'concat_p'
+        ]
+        self.out_map = {0: self.output['Out']}
+
+
 if __name__ == '__main__':
     unittest.main()
