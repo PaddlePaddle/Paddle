@@ -1131,15 +1131,9 @@ class TestUniformRandomOrig2Prim3(TestElementWiseAddOrig2Prim):
         self.output = {
             'Out':
             self.layer_help.create_variable_for_type_inference(
-                dtype=paddle.float64)
+                dtype=paddle.float32)
         }
-        self.attrs = {
-            'shape': [1, 2, 3],
-            'min': -1.0,
-            'max': 1.0,
-            'seed': 0,
-            'dtype': paddle.float64
-        }
+        self.attrs = {'shape': [1, 2]}
 
         self.orig2prim_args = (None, None)
         self.all_ops = ['uniform_random', 'uniform_random_p']

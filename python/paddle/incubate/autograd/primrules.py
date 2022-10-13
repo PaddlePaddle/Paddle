@@ -489,8 +489,8 @@ def uniform_random_orig2prim(op, shape_t, shape_tl):
                               shape_t=shape_t,
                               shape_tl=None)
     return uniform_random(dtype,
-                          min,
-                          max,
+                          min_value,
+                          max_value,
                           seed,
                           shape=op.attr('shape'),
                           shape_t=None,
