@@ -73,7 +73,7 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-static DDim GetDimsDebug(const ScopeBase& scope,
+static DDim GetDimsDebug(const Scope& scope,
                          const std::string& name,
                          bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
@@ -97,13 +97,13 @@ static DDim GetDimsDebug(const ScopeBase& scope,
   }
 }
 
-static bool VarInited(const ScopeBase& scope, const std::string& name) {
+static bool VarInited(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) return false;
   return var->IsInitialized();
 }
 
-static std::string GetDtype(const ScopeBase& scope, const std::string& name) {
+static std::string GetDtype(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return "";
@@ -129,7 +129,7 @@ static std::string GetDtype(const ScopeBase& scope, const std::string& name) {
   }
 }
 
-static std::string GetPlace(const ScopeBase& scope, const std::string& name) {
+static std::string GetPlace(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return "";
@@ -158,7 +158,7 @@ static std::string GetPlace(const ScopeBase& scope, const std::string& name) {
   }
 }
 
-static int GetRowSize(const ScopeBase& scope, const std::string& name) {
+static int GetRowSize(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return -1;
@@ -171,7 +171,7 @@ static int GetRowSize(const ScopeBase& scope, const std::string& name) {
   return -1;
 }
 
-static LoD GetLoDDebug(const ScopeBase& scope, const std::string& name) {
+static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
 
@@ -349,7 +349,7 @@ const std::vector<std::string>& OperatorBase::Outputs(
   return it->second;
 }
 
-std::string OperatorBase::DebugStringEx(const ScopeBase* scope) const {
+std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
 
