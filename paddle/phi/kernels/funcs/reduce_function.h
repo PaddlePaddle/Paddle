@@ -68,6 +68,7 @@ namespace funcs {
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 namespace details {
 
+// Return 2^[floor(log2(n))]
 static inline int GetLastPow2(int n) {
   n |= (n >> 1);
   n |= (n >> 2);
@@ -485,7 +486,7 @@ struct ReduceConfig {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
 #endif
     } else if (reduce_rank == 1) {
-      reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
+      reduce_type = static_cast<int>(ReduceType::kReduceAny);
       if (rank == 3 && not_higher) {
         reduce_type = static_cast<int>(ReduceType::kReduceAny);
       }
@@ -540,7 +541,7 @@ struct ReduceConfig {
     // set grid size.
     // Whether to set grid.y larger than 1, there are 3 following rules:
     // 1. The number that each thread process should no less than
-    //    min_reduce_num_per_threadbut no more than max_reduce_num_per_thread;
+    //    min_reduce_num_per_thread but no more than max_reduce_num_per_thread;
     // 2. It should maximize the utilization of SM.
     // So we choose the minimum between input_split_num_1 and input_split_num_3
     // to make each thread process as mush data as possible. Meanwhile,
@@ -1039,8 +1040,36 @@ CubTensorReduceImpl(const Tx* x_data,
                     int reduce_num,
                     const KPDevice& dev_ctx,
                     KPStream stream) {
-  PADDLE_THROW(phi::errors::InvalidArgument(
-      "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
+  half* in = (half*)(void*)x_data;
+  half* out = (half*)(void*)y_data;
+  auto reducer = ReduceOp<half>();
+  auto transform_half = kps::IdentityFunctor<half, half>();
+  cub::TransformInputIterator<half,
+                              kps::IdentityFunctor<half, half>,
+                              const half*>
+      trans_x(in, transform_half);
+  size_t temp_storage_bytes = 0;
+  cub::DeviceReduce::Reduce(nullptr,
+                            temp_storage_bytes,
+                            trans_x,
+                            out,
+                            reduce_num,
+                            reducer,
+                            reducer.initial(),
+                            stream);
+  phi::DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
+      dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
+
+  auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
+
+  cub::DeviceReduce::Reduce(temp_storage,
+                            temp_storage_bytes,
+                            trans_x,
+                            out,
+                            reduce_num,
+                            reducer,
+                            reducer.initial(),
+                            stream);
 }
 #endif  // PADDLE_WITH_XPU_KP
 
