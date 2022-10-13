@@ -34,7 +34,7 @@ _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
 _g_gradient_clip_ops = [
     "sum", "sqrt", "fill_constant", "elementwise_max", "elementwise_div"
 ]
-_g_sublock_ops = ["while", "conditional_block"]
+_g_subblock_ops = ["while", "conditional_block"]
 
 
 def get_var_with_recursion(var_name, block, program):
@@ -1665,9 +1665,9 @@ class Resharder:
                         op.desc.set_input(proto.inputs[0].name,
                                           op.input("X") + while_op_X_append)
 
-    def _get_while_op_input_attrs(self, op, var_name):
+    def _get_subblock_input_attrs(self, op, var_name):
         # NOTE: Multi while loop is not supported
-        assert op.type == "while"
+        assert op.type in _g_subblock_ops
         sub_block = self.auto_parallel_main_prog.blocks[op.attr("sub_block").id]
         ops = sub_block.ops
         input_attrs = []
@@ -1718,8 +1718,8 @@ class Resharder:
     def get_op_input_attrs(self, op, var_name):
         op_input_attrs = []
 
-        if op.type == "while":
-            op_input_attrs = self._get_while_op_input_attrs(op, var_name)
+        if op.type in _g_subblock_ops:
+            op_input_attrs = self._get_subblock_input_attrs(op, var_name)
         else:
             op_input_attrs = self._get_common_op_input_attrs(op, var_name)
 
@@ -1823,7 +1823,7 @@ class Resharder:
             if dist_op is not None:
                 op_input_dist_attrs = [
                 ]  # [(op_process_mesh, op_input_dims_mapping), (op_process_mesh, op_input_dims_mapping)]
-                if op.type in _g_sublock_ops:
+                if op.type in _g_subblock_ops:
                     if not self.is_condition_replicative(op):
                         raise ValueError(
                             "Please check the condition due to the dims mapping is not replicative."
@@ -1991,11 +1991,12 @@ class Resharder:
         idx = 0
         # skip reader and ops whose process mesh is union
         skip_ops = [
-            "create_py_reader", "create_double_buffer_reader", "read", "while",
+            "create_py_reader", "create_double_buffer_reader", "read",
             "write_to_array", "read_from_array"
         ]
         global _g_special_ops
         skip_ops += _g_special_ops
+        skip_ops += _g_subblock_ops
         while idx < len(block.ops):
             pre_op_count = len(block.ops)
             op = block.ops[idx]
