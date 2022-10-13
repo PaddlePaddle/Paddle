@@ -20,9 +20,9 @@ import paddle
 
 from . import primops
 from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
-                      fill_const, gather, ge, gt, log, matmul, max, mul, ne,
-                      neg, reduce_sum, reshape, scatter_add, select, set_value,
-                      sin, slice_assign, slice_select, split, sqrt, sub, tanh,
+                      fill_const, gather, ge, gt, log, matmul, mul, ne, neg,
+                      reduce_sum, reshape, scatter_add, select, set_value, sin,
+                      slice_assign, slice_select, split, sqrt, sub, tanh,
                       transpose, bernoulli, rsqrt, uniform_random)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
