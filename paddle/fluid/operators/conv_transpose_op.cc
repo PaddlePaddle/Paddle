@@ -49,15 +49,6 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     }
   }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   phi::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN);
-  }
-#endif
-
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 

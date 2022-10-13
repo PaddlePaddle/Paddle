@@ -53,7 +53,6 @@ class SoftmaxOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
     }
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type,
@@ -62,15 +61,6 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                                      framework::LibraryType::kCUDNN);
     }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     phi::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };
@@ -158,15 +148,6 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
                                      framework::LibraryType::kCUDNN);
     }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     phi::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };
