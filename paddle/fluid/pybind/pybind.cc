@@ -182,6 +182,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
+#if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
+    !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
+    !defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/pybind/rpc.h"
+#endif
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -2601,6 +2607,21 @@ All parameter, weight, gradient are variables in Paddle.
   BindNeighborSampleResult(&m);
   BindGraphGpuWrapper(&m);
 #endif
+#endif
+#if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
+    !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
+    !defined(PADDLE_WITH_HIP)
+  BindWorkerInfo(&m);
+  BindFuture(&m);
+  InitAndSetAgentInstance(&m);
+  InvokeRpc(&m);
+  StartWorker(&m);
+  StartClient(&m);
+  StopWorker(&m);
+  GetWorkerInfo(&m);
+  GetWorkerInfoByRank(&m);
+  GetCurrentWorkerInfo(&m);
+  GetAllWorkerInfos(&m);
 #endif
 }
 }  // namespace pybind

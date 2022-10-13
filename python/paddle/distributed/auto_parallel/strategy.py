@@ -114,6 +114,13 @@ class TuningConfig(BaseConfig):
         super(TuningConfig, self).__init__(category, config_dict)
 
 
+class DatasetConfig(BaseConfig):
+
+    def __init__(self, config_dict=None):
+        category = constants.DATASET
+        super(DatasetConfig, self).__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
     The `Strategy` object is used to configure the paralleization and optimization beheviors.
@@ -178,3 +185,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.TUNING, None)
         self.tuning = TuningConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.DATASET, None)
+        self.dataset = DatasetConfig(config_dict)
