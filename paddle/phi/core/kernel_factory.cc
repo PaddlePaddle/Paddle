@@ -48,7 +48,7 @@ KernelFactory& KernelFactory::Instance() {
 
 bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
   if (deprecated_op_names.find(op_type) == deprecated_op_names.end()) {
-    if (phi::OpUtilsMap::Instance().HasArgumentMappingFn(op_type)) {
+    if (phi::OpUtilsMap::Instance().Contains(op_type)) {
       return true;
     } else if (kernels_.find(op_type) != kernels_.end()) {
       return true;
