@@ -707,7 +707,6 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
     // skip if the dtype of immutable_in is not float32
     auto dtype = immutable_in->Var()->GetDataType();
     if (dtype != proto::VarType::FP32) {
-      VLOG(0) << "dytpe: " << dtype;
       MarkAndLogCannotQuantizeOp(immutable_op, "The input dtype is not float.");
       return;
     }
