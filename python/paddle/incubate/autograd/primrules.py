@@ -78,6 +78,8 @@ equal
 elementwise_pow
 dropout
 uniform_random
+shape
+sigmoid
 
 These original ops are partially supported:
 

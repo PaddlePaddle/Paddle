@@ -523,18 +523,11 @@ def uniform_random(dtype,
     helper = LayerHelper('uniform_random_p', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype)
-    if shape_tl:
-        helper.append_op(type=helper.layer_type,
-                         inputs={'ShapeTensorList': shape_tl},
-                         outputs={'Out': out},
-                         attrs=attrs)
-    elif shape_t:
-        helper.append_op(type=helper.layer_type,
-                         inputs={'ShapeTensor': shape_t},
-                         outputs={'Out': out},
-                         attrs=attrs)
-    else:
-        helper.append_op(type=helper.layer_type,
-                         outputs={'Out': out},
-                         attrs=attrs)
+    helper.append_op(type=helper.layer_type,
+                     inputs={
+                         'ShapeTensorList': shape_tl,
+                         'ShapeTensor': shape_t
+                     },
+                     outputs={'Out': out},
+                     attrs=attrs)
     return out
