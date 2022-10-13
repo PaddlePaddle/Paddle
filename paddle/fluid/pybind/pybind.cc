@@ -848,6 +848,8 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
+  m.def("set_current_thread_name", &paddle::platform::SetCurrentThreadName);
+
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
 
