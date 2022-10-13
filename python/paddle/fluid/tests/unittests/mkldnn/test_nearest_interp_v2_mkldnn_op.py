@@ -64,7 +64,7 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
         pass
 
     def init_data_type(self):
-        pass
+        self.dtype = np.float32
 
     def setUp(self):
         self.op_type = "nearest_interp_v2"
@@ -73,7 +73,6 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
         self.use_mkldnn = True
         self.input_shape = [1, 1, 2, 2]
         self.data_layout = 'NCHW'
-        self.dtype = np.float32
         # priority: actual_shape > out_size > scale > out_h & out_w
         self.out_h = 1
         self.out_w = 1
@@ -196,11 +195,9 @@ class TestNearestNeighborInterpV2MKLDNNSame(TestNearestInterpV2MKLDNNOp):
 
 
 def create_test_class(parent):
-
-    class TestFp32Case(parent):
-
-        def init_data_type(self):
-            self.dtype = np.float32
+    '''
+    Create tests for bf16, int, uint8. By default parent class works on fp32.
+    '''
 
     class TestBf16Case(parent):
 
@@ -217,11 +214,9 @@ def create_test_class(parent):
         def init_data_type(self):
             self.dtype = np.uint8
 
-    TestFp32Case.__name__ = "{0}_{1}".format(parent.__name__, "FP32")
     TestBf16Case.__name__ = "{0}_{1}".format(parent.__name__, "BF16")
     TestInt8Case.__name__ = "{0}_{1}".format(parent.__name__, "INT8")
     TestUint8Case.__name__ = "{0}_{1}".format(parent.__name__, "UINT8")
-    globals()[TestFp32Case.__name__] = TestFp32Case
     globals()[TestBf16Case.__name__] = TestBf16Case
     globals()[TestInt8Case.__name__] = TestInt8Case
     globals()[TestUint8Case.__name__] = TestUint8Case
