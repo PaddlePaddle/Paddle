@@ -58,6 +58,7 @@
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/split.h"
 
@@ -2165,6 +2166,9 @@ void AnalysisPredictor::RunForwardHook() {
         if (op->Type() == "fetch") continue;
         for (auto &output : op->Outputs()) {
           for (auto &var_name : output.second) {
+            auto *var = sub_scope_->FindVar(var_name);
+            auto dense_tensor = var->Get<phi::DenseTensor>();
+            if (!dense_tensor.initialized()) continue;
             auto tensor = GetOutputTensor(var_name);
             hookfunc_(op->Type(), var_name, std::move(tensor));
           }
