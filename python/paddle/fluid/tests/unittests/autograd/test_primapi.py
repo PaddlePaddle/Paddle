@@ -23,6 +23,66 @@ import autograd.numpy as anp
 import autograd.scipy as ascipy
 import config
 import utils
+from paddle.incubate.autograd import primx
+
+
+@utils.place(config.DEVICES)
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'xs', 'dtype'),
+    (('uniform_random',
+      lambda x: paddle.uniform(x, dtype='float32', min=0, max=1.0, seed=1),
+      (np.array([1, 2, 3]), ), 'int32'), ))
+class TestFowardApi(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
+
+    def setUp(self):
+        paddle.enable_static()
+        paddle.incubate.autograd.enable_prim()
+
+    def tearDown(self):
+        paddle.incubate.autograd.disable_prim()
+        paddle.disable_static()
+
+    def test_grad(self):
+
+        def expected():
+            paddle.incubate.autograd.disable_prim()
+            sp = paddle.static.Program()
+            mp = paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                feed, static_xs = utils.gen_static_inputs_and_feed(
+                    self.xs, stop_gradient=False)
+                out = self.fun(*static_xs)
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            out = exe.run(mp, feed=feed, fetch_list=out)
+            paddle.incubate.autograd.enable_prim()
+            return out
+
+        def actual():
+            paddle.incubate.autograd.enable_prim()
+            sp = paddle.static.Program()
+            mp = paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                feed, static_xs = utils.gen_static_inputs_and_feed(
+                    self.xs, stop_gradient=False)
+                out = self.fun(*static_xs)
+                primx.orig2prim(mp.block(0))
+                primx.prim2orig(mp.block(0))
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            out = exe.run(mp, feed=feed, fetch_list=out)
+            paddle.incubate.autograd.disable_prim()
+            return out
+
+        expected = expected()
+        actual = actual()
+        self.assertEqual(type(actual), type(expected))
+        for i, j in zip(actual, expected):
+            np.testing.assert_allclose(i, j, atol=1e-3, rtol=1e-3)
 
 
 @utils.place(config.DEVICES)
@@ -85,7 +145,7 @@ class TestDropoutGrad(unittest.TestCase):
         actual = actual()
         self.assertEqual(type(actual), type(expected))
         for i, j in zip(actual, expected):
-            np.testing.assert_allclose(np.sum(i), np.sum(j), rtol=1e-3)
+            np.testing.assert_allclose(np.sum(i), np.sum(j), rtol=1e-1)
 
 
 @utils.place(config.DEVICES)

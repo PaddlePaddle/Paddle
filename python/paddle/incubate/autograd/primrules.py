@@ -23,7 +23,7 @@ from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
                       fill_const, gather, ge, gt, log, matmul, mul, ne, neg,
                       reduce_sum, reshape, scatter_add, select, set_value, sin,
                       slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, bernoulli, rsqrt)
+                      transpose, bernoulli, rsqrt, uniform_random)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
@@ -79,6 +79,7 @@ select
 equal
 elementwise_pow
 dropout
+uniform_random
 
 These original ops are partially supported:
 
@@ -473,6 +474,38 @@ def dropout_orig2prim(op, seed_t, x):
         )
 
 
+@REGISTER_ORIG2PRIM('uniform_random')
+def uniform_random_orig2prim(op, shape_t, shape_tl):
+    min_value = op.attr('min')
+    max_value = op.attr('max')
+    seed = op.attr('seed')
+    dtype = convert_np_dtype_to_dtype_(
+        convert_dtype(INT_DTYPE_2_STRING[op.attr('dtype')]))
+    if shape_tl:
+        return uniform_random(dtype,
+                              min_value,
+                              max_value,
+                              seed,
+                              shape=None,
+                              shape_t=None,
+                              shape_tl=shape_tl)
+    elif shape_t:
+        return uniform_random(dtype,
+                              min_value,
+                              max_value,
+                              seed,
+                              shape=None,
+                              shape_t=shape_t,
+                              shape_tl=None)
+    return uniform_random(dtype,
+                          min_value,
+                          max_value,
+                          seed,
+                          shape=op.attr('shape'),
+                          shape_t=None,
+                          shape_tl=None)
+
+
 @REGISTER_ORIG2PRIM('reduce_sum')
 def reduce_sum_orig2prim(op, x):
     axes = tuple(range(0, len(
@@ -674,6 +707,27 @@ def bernoulli_prim2orig(op):
                     fill_value=op.attr('p'),
                     dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
     return paddle.bernoulli(t)
+
+
+@REGISTER_PRIM2ORIG('uniform_random_p')
+def uniform_random_prim2orig(op, shape_t, shape_tl):
+    if shape_tl:
+        return paddle.uniform(shape=shape_tl,
+                              dtype=INT_DTYPE_2_STRING[op.attr('dtype')],
+                              min=op.attr('min'),
+                              max=op.attr('max'),
+                              seed=op.attr('seed'))
+    elif shape_t:
+        return paddle.uniform(shape=shape_t,
+                              dtype=INT_DTYPE_2_STRING[op.attr('dtype')],
+                              min=op.attr('min'),
+                              max=op.attr('max'),
+                              seed=op.attr('seed'))
+    return paddle.uniform(shape=op.attr('shape'),
+                          dtype=INT_DTYPE_2_STRING[op.attr('dtype')],
+                          min=op.attr('min'),
+                          max=op.attr('max'),
+                          seed=op.attr('seed'))
 
 
 @REGISTER_PRIM2ORIG('select_p')
@@ -1067,6 +1121,16 @@ def rsqrt_jvp(op, x_dot):
     c2 = fill_const(value=-2.0, shape=y.shape, dtype=y.dtype)
     y_dot = mul(x_dot, div(div(y, x), c2))
     return y_dot
+
+
+#TODO(wanghao) : uniform_random_p shouldn't have jvp rules.
+#But for compatibility, we return None in uniform_random_jvp.
+#We want users not to compute meaningless derivatives.
+#In the future we will add pruning logic to be compatible
+#with operators which has no derivatives defined but with inputs.
+@REGISTER_JVP('uniform_random_p')
+def uniform_random_jvp(op, shape_t_dot, shape_tl_dot):
+    return None
 
 
 ## Register transpose rules

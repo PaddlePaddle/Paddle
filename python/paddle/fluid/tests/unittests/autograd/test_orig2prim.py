@@ -1100,6 +1100,62 @@ class TestShapeOrig2Prim(TestElementWiseAddOrig2Prim):
         self.all_ops = [
             'shape', 'fill_constant_p', 'fill_constant_p', 'concat_p'
         ]
+
+
+class TestUniformRandomOrig2Prim1(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'uniform_random'
+        X = paddle.static.data(name='X', shape=[1], dtype='int32')
+
+        self.input = {
+            'ShapeTensorList': [X],
+        }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (None, [X])
+        self.all_ops = ['uniform_random', 'uniform_random_p']
+        self.out_map = {0: self.output['Out']}
+
+
+class TestUniformRandomOrig2Prim2(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'uniform_random'
+        X = paddle.static.data(name='X', shape=[4], dtype='int32')
+
+        self.input = {
+            'ShapeTensor': X,
+        }
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.orig2prim_args = (X, None)
+        self.all_ops = ['uniform_random', 'uniform_random_p']
+        self.out_map = {0: self.output['Out']}
+
+
+class TestUniformRandomOrig2Prim3(TestElementWiseAddOrig2Prim):
+
+    def init_data(self):
+        self.op_type = 'uniform_random'
+        self.input = {}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.float32)
+        }
+        self.attrs = {'shape': [1, 2]}
+
+        self.orig2prim_args = (None, None)
+        self.all_ops = ['uniform_random', 'uniform_random_p']
         self.out_map = {0: self.output['Out']}
 
 
