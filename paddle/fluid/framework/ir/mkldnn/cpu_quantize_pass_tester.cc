@@ -63,7 +63,8 @@ void SetOp(ProgramDesc* prog,
     op->SetAttr("Scale_out", 1.0f);
     op->SetAttr("Scale_weights", std::vector<float>{1.0f});
   } else if (type == "pool2d" || type == "transpose2" || type == "reshape2" ||
-             type == "nearest_interp" || type == "nearest_interp_v2") {
+             type == "nearest_interp" || type == "nearest_interp_v2" ||
+             type == "split") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
   } else if (type == "slice" || type == "shape") {
@@ -561,7 +562,8 @@ const std::vector<std::string> immutables = {"reshape2",
                                              "slice",
                                              "shape",
                                              "nearest_interp",
-                                             "nearest_interp_v2"};
+                                             "nearest_interp_v2",
+                                             "split"};
 
 class TestImmutables : public testing::TestWithParam<std::string> {};
 
