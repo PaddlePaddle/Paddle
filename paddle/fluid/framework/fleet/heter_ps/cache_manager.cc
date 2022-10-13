@@ -71,7 +71,13 @@ void CacheManager::clear_sign2fids() {
 
 void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   VLOG(0) << "build_sign2fids: keylen:" << len;
+  platform::Timer timeline;
+  std::stringstream time_ss;
+  double total_time = 0.0;
+  timeline.Start();
   // pre-build the sign2fid_, in order not to use mutex
+  sign2fid_.reserve(len*3);
+
   PADDLE_ENFORCE_GT(dev_feasign_cnts_.size(), 0,
       platform::errors::External("maybe not call CacheManager::init()"));
   if (sign2fid_.find(0) == sign2fid_.end()) {
@@ -104,10 +110,15 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
   if (need_resize > 0) {
     fid2meta_.resize(need_resize * worker_num_);
   }
-  VLOG(0) << "build_sign2fids: worker_num:" << worker_num_
-          << ", curr_reserve_size:" << curr_reserve_size
-          << ", need_resize:" << need_resize;
-  VLOG(0) << "build_sign2fids: resize fid2meta from " << origin_size << " to " << fid2meta_.size();
+  timeline.Pause();
+  total_time += timeline.ElapsedSec();
+  time_ss << "prebuild:" << timeline.ElapsedSec();
+  timeline.Start();
+
+  //VLOG(0) << "build_sign2fids: worker_num:" << worker_num_
+  //        << ", curr_reserve_size:" << curr_reserve_size
+  //        << ", need_resize:" << need_resize;
+  //VLOG(0) << "build_sign2fids: resize fid2meta from " << origin_size << " to " << fid2meta_.size();
   // build sign 2 fids
   std::vector<std::thread> threads(thread_num_);
   int split_len = len % thread_num_ == 0 ? (len / thread_num_) : (len / thread_num_ + 1);
@@ -138,10 +149,60 @@ void CacheManager::build_sign2fids(const FeatureKey* d_keys, size_t len) {
     thd.join();
   }
   VLOG(3) << "build_sign2fids: exit";
+  timeline.Pause();
+  total_time += timeline.ElapsedSec();
+  time_ss << "build-sign2fid:" << timeline.ElapsedSec();
+  VLOG(0) << "build_sign2fids: time cost:" << total_time << "s, details:"<< time_ss.str();
+}
+
+void CacheManager::build_sign2fids(const std::vector<std::vector<FeatureKey>> & all_device_keys) {
+  platform::Timer timeline;
+  std::stringstream time_ss;
+  double total_time = 0.0;
+  timeline.Start();
+
+  PADDLE_ENFORCE_EQ(worker_num_, (int)all_device_keys.size());
+
+  int total_key_size = 0;
+  int max_device_size = 0;
+  int tmp_size = 0;
+  for (auto & d_keys : all_device_keys) {
+    tmp_size = d_keys.size();
+    total_key_size += tmp_size;
+    max_device_size = max_device_size < tmp_size ? tmp_size : max_device_size;
+  }
+  sign2fid_.reserve(int(total_key_size * 2));
+  fid2meta_.resize((max_device_size + 1) * worker_num_ + 1);
+ 
+  std::vector<int> device_offsets(all_device_keys.size(), 0);
+  sign2fid_[0] = 0;
+  device_offsets[0]++;
+  fid2meta_[0] = {0};
+
+  for (size_t i = 0; i < all_device_keys.size(); i++) {
+    tmp_size = all_device_keys[i].size();
+    for (int j = 0; j < tmp_size; j++) {
+      if (all_device_keys[i][j] == 0) {
+        continue;
+      }
+      int offset = device_offsets[i]++;
+      int tmp_fid = i + offset * worker_num_; 
+      sign2fid_[all_device_keys[i][j]] = tmp_fid;
+      fid2meta_[tmp_fid] = {all_device_keys[i][j]};
+    }
+    dev_feasign_cnts_[i]->store(device_offsets[i]);
+  }
+
+  timeline.Pause();
+  total_time += timeline.ElapsedSec();
+  time_ss << "build-sign2fid:" << timeline.ElapsedSec();
+  VLOG(0) << "build_sign2fids: time cost:" << total_time << "s, details:"<< time_ss.str();
 }
 
 uint32_t CacheManager::query_sign2fid(const FeatureKey & key) {
-  return sign2fid_[key];
+  auto iter = sign2fid_.find(key);
+  PADDLE_ENFORCE_EQ((iter != sign2fid_.end()), true); 
+  return iter->second;
 }
 
 uint64_t CacheManager::query_fid2sign(const uint32_t & fid) {
@@ -214,8 +275,32 @@ std::string CacheManager::dump_to_file() {
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
 std::shared_ptr<BatchFidSeq> CacheManager::parse_uniq_fids(
-     const std::vector<std::deque<Record>::iterator> & train_data_iters, 
+     std::vector<std::deque<Record>::iterator> & train_data_iters, 
            int iter_offset, int batch_sz, const std::vector<bool> & slot_is_dense) {
+  // convert feasign to fid
+  //platform::Timer timeline;
+  //std::stringstream time_ss;
+  //double total_time = 0.0;
+  //timeline.Start();
+
+  if (need_parse_ins_sign2fid_) {
+    for (size_t train_data_idx = 0; train_data_idx < train_data_iters.size(); ++train_data_idx) {
+      auto it = train_data_iters[train_data_idx] + iter_offset;
+      for (int j = 0; j < batch_sz; ++j) {
+        Record & cur_rec = *(it + j);
+        for (auto & fea : cur_rec.uint64_feasigns_) {
+          if (!slot_is_dense[fea.slot()]) { // slot with lod info
+            fea.sign().uint64_feasign_ = query_sign2fid(fea.sign().uint64_feasign_);
+          }
+        }
+      }
+    }
+  }
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << "sign2fid:" << timeline.ElapsedSec();
+  //timeline.Start();
+
   // caculate max slot & fid
   uint32_t max_fid = 0;
   int max_slot = 0;
@@ -317,6 +402,11 @@ std::shared_ptr<BatchFidSeq> CacheManager::parse_uniq_fids(
     seq->h_fidseq_bucket[offset] = fidseq[j];
   }
 
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ", prepare-fidseq:" << timeline.ElapsedSec();
+  //VLOG(0) << "parse_uniq_fids: total_time:" << total_time << ", detail:" << time_ss.str();
+
   return seq;
 }
 
@@ -350,7 +440,8 @@ void CacheManager::build_batch_fidseq(std::vector<std::deque<Record> *> & all_ch
       train_data_iters[i] = all_chan_recs[i]->begin();
     }
 
-    ParallelThreadPool build_fidseq_pool(12);
+    //ParallelThreadPool build_fidseq_pool(48);
+    ParallelThreadPool build_fidseq_pool(24);
     int thread_num = build_fidseq_pool.get_thread_num();
     fidseq_chan_->SetBlockSize(1);
     fidseq_chan_->SetCapacity(3 * thread_num);
@@ -366,34 +457,6 @@ void CacheManager::build_batch_fidseq(std::vector<std::deque<Record> *> & all_ch
         auto batch_fidseq = parse_uniq_fids(train_data_iters, i, current_batch_sz, slot_is_dense);
 
         std::shared_ptr<std::vector<uint32_t>> fidseq_before_opt = std::make_shared<std::vector<uint32_t>>();
-        //{ // before opt
-        //  // process batch data for every chan_recs
-        //  std::set<uint32_t> current_bfid_set;
-        //  std::set<int> slot_has_val;
-        //  for (size_t train_data_idx = 0; train_data_idx < train_data_iters.size(); ++train_data_idx) {
-        //    auto it = train_data_iters[train_data_idx] + i;
-        //    for (int j = 0; j < current_batch_sz; ++j) {
-        //      const Record & cur_rec = *(it++);
-        //      for (auto & fea : cur_rec.uint64_feasigns_) {
-        //        slot_has_val.insert(fea.slot());
-        //        PADDLE_ENFORCE_LT(fea.slot(), slot_is_dense.size());
-        //        if (slot_is_dense[fea.slot()]) {
-        //          continue;
-        //        }
-        //        current_bfid_set.insert((uint32_t)fea.sign().uint64_feasign_); // feasign already converted to fid(uint32_t)
-        //      }
-        //    }
-        //  } // process finished
-        //  if (slot_has_val.size() < slot_is_dense.size()) {
-        //    current_bfid_set.insert(0); // add 0 as padding feasign
-        //  }
-        //  fidseq_before_opt->assign(current_bfid_set.begin(), current_bfid_set.end());
-        
-        //  PADDLE_ENFORCE_EQ(batch_fidseq->h_fidseq.size(), fidseq_before_opt->size());
-        //  for (size_t j = 0; j < batch_fidseq->h_fidseq.size(); ++j) {
-        //    PADDLE_ENFORCE_EQ(batch_fidseq->h_fidseq[j], (*fidseq_before_opt)[j]);
-        //  }
-        //}
         while (true) {
           std::unique_lock<std::mutex> lock(cv_mtx);
           if (tid == writer_idx.load()) {
@@ -408,6 +471,7 @@ void CacheManager::build_batch_fidseq(std::vector<std::deque<Record> *> & all_ch
     });
     build_fidseq_pool.wait_task();
     fidseq_chan_->Close();
+    need_parse_ins_sign2fid_ = false;
   });
 
   timeline.Pause();

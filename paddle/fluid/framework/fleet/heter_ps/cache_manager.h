@@ -145,13 +145,17 @@ class CacheManager {
 
   void clear_sign2fids();
   void build_sign2fids(const FeatureKey* d_keys, size_t len);
+  void build_sign2fids(const std::vector<std::vector<FeatureKey>> & all_device_keys);
   uint32_t query_sign2fid(const FeatureKey & key);
   uint64_t query_fid2sign(const uint32_t & fid);
   uint32_t get_max_fid();
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
+  void set_need_parse_ins_sign2fid() {
+    need_parse_ins_sign2fid_ = true;
+  }
   std::shared_ptr<BatchFidSeq> parse_uniq_fids(
-      const std::vector<std::deque<Record>::iterator> & train_data_iters,
+      std::vector<std::deque<Record>::iterator> & train_data_iters,
                                            int iter_offset, int batch_sz, 
                                  const std::vector<bool> & slot_is_dense);
   void build_batch_fidseq(
@@ -228,6 +232,7 @@ class CacheManager {
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
   // for batch fid sequence
+  bool need_parse_ins_sign2fid_ = true;
   std::thread build_fidseq_thread_;
   std::shared_ptr<
       paddle::framework::ChannelObject<std::shared_ptr<BatchFidSeq>>> fidseq_chan_ = nullptr;

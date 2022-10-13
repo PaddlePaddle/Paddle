@@ -798,83 +798,22 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   cache_manager->init(24, batch_size, device_num);
 
   VLOG(0) << "BuildGPUTask: build_sign2fids";
-  for (int i = 0; i < device_num; i++) {
-    cache_manager->build_sign2fids(gpu_task->device_keys_[i].data(), gpu_task->device_keys_[i].size());
-  }
-  VLOG(0) << "BuildGPUTask: get inputchannel from dataset";
-  // convert feasign to fid in dataset
-  MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
-  CHECK(dataset != nullptr) << "only support MultiSlotDataset";
-  auto input_channel = dataset->GetInputChannel();
-
-  VLOG(0) << "BuildGPUTask: query sign2fid for dataset";
-  auto & slot_is_dense = data_readers[0]->GetUseSlotIsDense();
-  auto & used_slots = data_readers[0]->GetUseSlotAlias();
-  CHECK(slot_is_dense.size() == used_slots.size())
-    << "slot_is_dense size:" << slot_is_dense.size()
-    << ", used_slots size:" << used_slots.size();
-  std::deque<Record>& vec_data = const_cast<std::deque<Record>&>(input_channel->GetData());
-  VLOG(0) << "BuildGPUTask: input_channel size:" << vec_data.size();
-
-  platform::Timer sign2fid_timeline;
-  //sign2fid_timeline.Start();
-  //for (auto it = vec_data.begin(); it != vec_data.end(); it++) {
-  //  auto & feasigns = it->uint64_feasigns_;
-  //  for (unsigned int j = 0; j < feasigns.size(); j++) {
-  //    auto slot_idx = feasigns[j].slot();
-  //    CHECK(slot_idx < slot_is_dense.size())
-  //        << "error slot_idx:" << slot_idx
-  //        << ", used_slots size:" << used_slots.size();
-  //    if (!slot_is_dense[slot_idx]) { // slot with lod info
-  //      //feasigns[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasigns[j].sign().uint64_feasign_);
-  //    }
-  //  }
+  //for (int i = 0; i < device_num; i++) {
+  //  cache_manager->build_sign2fids(gpu_task->device_keys_[i].data(), gpu_task->device_keys_[i].size());
   //}
-  //sign2fid_timeline.Pause();
-  //VLOG(0) << "opt-base:" << sign2fid_timeline.ElapsedSec();  
-
-  sign2fid_timeline.Start();
-  auto sign2fid_thread_func = [&, this] (int tid) {
-    int thread_num = sign2fid_thread_pool_.get_thread_num();
-    int mean_data_size = vec_data.size() / thread_num;
-    mean_data_size += ((vec_data.size() % thread_num == 0) ? 0 : 1);
-    int begin_pos = tid * mean_data_size;
-    int left_data_size = vec_data.size() - begin_pos;
-    auto end_iter = vec_data.end();
-    if (mean_data_size < left_data_size) {
-      end_iter = vec_data.begin() + begin_pos + mean_data_size;
-    }
-  
-    for (auto it = vec_data.begin() + begin_pos; it < end_iter; ++it) {
-      auto & feasigns = it->uint64_feasigns_;
-      for (unsigned int j = 0; j < feasigns.size(); j++) {
-        auto slot_idx = feasigns[j].slot();
-        //CHECK(slot_idx < slot_is_dense.size())
-        //    << "error slot_idx:" << slot_idx
-        //    << ", used_slots size:" << used_slots.size();
-        if (!slot_is_dense[slot_idx]) { // slot with lod info
-          feasigns[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasigns[j].sign().uint64_feasign_);
-        }
-      }
-    }
-  };
-  sign2fid_thread_pool_.set_task(sign2fid_thread_func);
-  sign2fid_thread_pool_.wait_task();
-  sign2fid_timeline.Pause();
-  VLOG(0) << "BuildGPUTask: query sign2fid for device keys:" << sign2fid_timeline.ElapsedSec() << "s";
-  // convert feasign to fid in device_keys_
-  for (int i = 0; i < device_num; i++) {
+  cache_manager->build_sign2fids(gpu_task->device_keys_);
+  cache_manager->set_need_parse_ins_sign2fid();
+#endif //PADDLE_WITH_XPU_KP
+  auto build_func = [this, &cache_manager, &gpu_task, &feature_keys_count](int i) {
+    VLOG(3) << "building table: " << i;
+#ifdef PADDLE_WITH_XPU_KP
     auto& feasigns = gpu_task->device_keys_[i];
     auto& fids = gpu_task->device_fid_keys_[i];
     fids.resize(feasigns.size(), 0);
     for (unsigned int j = 0; j < feasigns.size(); j++) {
       fids[j] = cache_manager->query_sign2fid(feasigns[j]);
     }
-  }
-#endif //PADDLE_WITH_XPU_KP
-  auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
-    VLOG(3) << "building table: " << i;
-#ifdef PADDLE_WITH_XPU_KP
+
     this->HeterPs_->build_ps(i, gpu_task->device_fid_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], feature_keys_count[i], 1);
