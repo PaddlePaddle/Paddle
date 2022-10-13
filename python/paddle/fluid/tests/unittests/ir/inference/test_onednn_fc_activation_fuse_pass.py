@@ -20,7 +20,7 @@ import unittest
 import hypothesis.strategies as st
 
 
-class TestFCActivationMkldnnFusePass(PassAutoScanTest):
+class TestFCActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_program_config(self, draw):
         fc_in = draw(st.sampled_from([32, 64]))
