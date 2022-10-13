@@ -40,7 +40,7 @@ def hz_to_mel(freq: Union[Tensor, float],
 
     Returns:
         Union[Tensor, float]: Frequency in mels.
-    
+
     Examples:
         .. code-block:: python
 
@@ -93,7 +93,7 @@ def mel_to_hz(mel: Union[float, Tensor],
 
     Returns:
         Union[float, Tensor]: Frequencies in Hz.
-    
+
     Examples:
         .. code-block:: python
 
@@ -174,7 +174,7 @@ def fft_frequencies(sr: int, n_fft: int, dtype: str = 'float32') -> Tensor:
 
     Returns:
         Tensor: FFT frequencies in Hz with shape `(n_fft//2 + 1,)`.
-    
+
     Examples:
         .. code-block:: python
 
@@ -209,7 +209,7 @@ def compute_fbank_matrix(sr: int,
 
     Returns:
         Tensor: Mel transform matrix with shape `(n_mels, n_fft//2 + 1)`.
-    
+
     Examples:
         .. code-block:: python
 
@@ -273,7 +273,7 @@ def power_to_db(spect: Tensor,
 
     Returns:
         Tensor: Power spectrogram in db scale.
-    
+
     Examples:
         .. code-block:: python
 
@@ -315,11 +315,11 @@ def create_dct(n_mfcc: int,
 
     Returns:
         Tensor: The DCT matrix with shape `(n_mels, n_mfcc)`.
-    
+
     Examples:
         .. code-block:: python
 
-            import paddle 
+            import paddle
             n_mfcc = 23
             n_mels = 257
             dct = paddle.audio.functional.create_dct(n_mfcc, n_mels)

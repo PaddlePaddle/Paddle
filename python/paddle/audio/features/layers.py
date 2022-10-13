@@ -45,10 +45,10 @@ class Spectrogram(nn.Layer):
         center (bool, optional): Whether to pad `x` to make that the :math:`t \times hop\\_length` at the center of `t`-th frame. Defaults to True.
         pad_mode (str, optional): Choose padding pattern when `center` is `True`. Defaults to 'reflect'.
         dtype (str, optional): Data type of input and window. Defaults to 'float32'.
-    
+
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of Spectrogram.
-    
+
     Examples:
         .. code-block:: python
 
@@ -129,7 +129,7 @@ class MelSpectrogram(nn.Layer):
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of MelSpectrogram.
-    
+
     Examples:
         .. code-block:: python
 
@@ -226,7 +226,7 @@ class LogMelSpectrogram(nn.Layer):
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of LogMelSpectrogram.
-    
+
     Examples:
         .. code-block:: python
 
@@ -324,7 +324,7 @@ class MFCC(nn.Layer):
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of MFCC.
-    
+
     Examples:
         .. code-block:: python
 
