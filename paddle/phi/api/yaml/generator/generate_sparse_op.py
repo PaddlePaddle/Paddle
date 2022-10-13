@@ -14,8 +14,6 @@
 
 import argparse
 import os
-import re
-from itertools import chain
 from pathlib import Path
 
 import yaml
@@ -85,6 +83,11 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
 
     # prepare for invoke case
     process_invoke_op(forward_api_dict, backward_api_dict)
+    for bw_api in backward_apis:
+        if 'invoke' in bw_api:
+            if bw_api['invoke']['func'] in forward_api_dict:
+                bw_api['invoke'][
+                    'func'] = SPARSE_OP_PREFIX + bw_api['invoke']['func']
 
     # fill backward field for an api if another api claims it as forward
     for name, backward_api in backward_api_dict.items():
