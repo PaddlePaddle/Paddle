@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/embedding_kernel.h"
 
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -35,6 +37,16 @@ __global__ void EmbeddingFW(T *output,
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
+    if (padding_idx == false || idy != padding_idx) {
+      PADDLE_ENFORCE(id >= 0,
+                     "Id should no less than 0 but received an id value: %lld.",
+                     id);
+      PADDLE_ENFORCE(
+          id < N,
+          "Id should smaller than %lld but received an id value: %lld.",
+          N,
+          id);
+    }
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += blockDim.x) {
