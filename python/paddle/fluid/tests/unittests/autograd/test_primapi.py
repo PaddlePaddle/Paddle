@@ -27,11 +27,11 @@ from paddle.incubate.autograd import primx
 
 
 @utils.place(config.DEVICES)
-@utils.parameterize(
-    (utils.TEST_CASE_NAME, 'fun', 'xs', 'dtype'),
-    (('uniform_random',
-      lambda x: paddle.uniform(x, dtype='float32', min=0, max=1.0, seed=1),
-      (np.array([1, 2, 3]), ), 'int32'), ))
+@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'xs', 'dtype'), (
+    ('uniform_random',
+     lambda: paddle.uniform([1, 2, 3], dtype='float32', min=0, max=1.0, seed=1),
+     (), 'int32'), ('sigmoid', paddle.nn.functional.sigmoid,
+                    (np.random.rand(5, ), ), 'float32')))
 class TestFowardApi(unittest.TestCase):
 
     @classmethod
@@ -260,23 +260,25 @@ class TestWithoutProgramGuard(unittest.TestCase):
 
 
 @utils.place(config.DEVICES)
-@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'), (
-    ('matmul', paddle.matmul,
-     (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
-    ('multiply', paddle.multiply,
-     (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
-    ('add', paddle.add,
-     (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
-    ('input_not_sequence', paddle.tanh,
-     (np.random.rand(5, 5), ), None, 'float64'),
-    ('input_gradients_not_none', paddle.matmul,
-     (np.random.rand(3, 3), np.random.rand(3, 3)),
-     (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
-    ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
-    ('abs', paddle.abs, (np.random.uniform(-10, 10,
-                                           (10, 10)), ), None, 'float32'),
-    ('rsqrt', paddle.rsqrt, (np.random.rand(100, 200), ), None, 'float32'),
-))
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
+    (('matmul', paddle.matmul,
+      (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
+     ('multiply', paddle.multiply,
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+     ('add', paddle.add,
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+     ('input_not_sequence', paddle.tanh,
+      (np.random.rand(5, 5), ), None, 'float64'),
+     ('input_gradients_not_none', paddle.matmul,
+      (np.random.rand(3, 3), np.random.rand(3, 3)),
+      (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
+     ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
+     ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                            (10, 10)), ), None, 'float32'),
+     ('rsqrt', paddle.rsqrt, (np.random.rand(100, 200), ), None, 'float32'),
+     ('sigmoid', paddle.nn.functional.sigmoid,
+      (np.random.rand(5, ), ), None, 'float32')))
 # paddle.where, paddle.pow, paddle.maximum has no double grad definition,
 # can not compute forward grad use double trick
 class TestForwardGrad(unittest.TestCase):
@@ -413,6 +415,8 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
         ('gelu_approximate', lambda x: paddle.nn.functional.gelu(x, True),
          (np.random.rand(200, 189), ), None, 'float32'),
         ('sum', paddle.sum, (np.random.rand(200, 345), ), None, 'float32'),
+        ('sigmoid', paddle.nn.functional.sigmoid,
+         (np.random.rand(5, ), ), None, 'float32'),
         ('sum_with_axis', lambda x: paddle.sum(x, axis=1),
          (np.random.rand(200, 345), ), None, 'float32'),
         ('sum_with_keepdim', lambda x: paddle.sum(x, keepdim=True),
@@ -598,6 +602,7 @@ exp_ag = lambda xs: anp.exp(xs[0])
 pow_ag = lambda xs: xs[0]**xs[1]
 log_ag = lambda xs: anp.log(xs[0])
 erf_ag = lambda xs: ascipy.special.erf(xs[0])
+sigmoid_ag = lambda xs: 1.0 / (1 + anp.exp(-xs[0]))
 
 
 def gelu_ag(x, approximate=False):
@@ -611,22 +616,26 @@ def gelu_ag(x, approximate=False):
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
-    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'),
-    (('multiply', multiply_pd, multiply_ag,
-      (np.random.rand(3, 5), ), None, 'float32'),
-     ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
-     ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
-     ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
-     ('pow', paddle.pow, pow_ag,
-      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
-     ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
-     ('erf', paddle.erf, erf_ag, (np.random.rand(100, 200), ), None, 'float32'),
-     ('gelu', paddle.nn.functional.gelu, lambda xs: gelu_ag(xs[0]),
-      (np.random.rand(10, 20, 30), ), None, 'float32'),
-     ('gelu_approximate',
-      lambda x: paddle.nn.functional.gelu(x, approximate=True),
-      lambda xs: gelu_ag(xs[0], approximate=True),
-      (np.random.rand(10, 20, 30), ), None, 'float32')))
+    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'), (
+        ('multiply', multiply_pd, multiply_ag,
+         (np.random.rand(3, 5), ), None, 'float32'),
+        ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
+        ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
+        ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
+        ('pow', paddle.pow, pow_ag,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+        ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
+        ('erf', paddle.erf, erf_ag,
+         (np.random.rand(100, 200), ), None, 'float32'),
+        ('gelu', paddle.nn.functional.gelu, lambda xs: gelu_ag(xs[0]),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('gelu_approximate',
+         lambda x: paddle.nn.functional.gelu(x, approximate=True),
+         lambda xs: gelu_ag(xs[0], approximate=True),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('sigmoid', paddle.nn.functional.sigmoid, sigmoid_ag,
+         (np.random.rand(10, 20), ), None, 'float32'),
+    ))
 class TestGradWithHigherOrder(unittest.TestCase):
 
     def setUp(self):
