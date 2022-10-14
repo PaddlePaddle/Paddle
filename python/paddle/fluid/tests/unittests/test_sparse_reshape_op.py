@@ -33,17 +33,21 @@ class TestReshape(unittest.TestCase):
         Compare the output of paddle.reshape and the output of
         paddle.incubate.sparse.reshape.
         """
-        mask = paddle.randint(0, 2, x_shape).astype("float32")
-        origin_x = (paddle.rand(x_shape, dtype='float32') + 1) * mask
+        mask = np.random.randint(0, 2, x_shape)
+        np_x = np.random.randint(-100, 100, x_shape) * mask
 
-        dense_x = origin_x.detach()
+        # check cpu kernel
+        dense_x = paddle.to_tensor(np_x, place=paddle.CPUPlace())
         dense_x.stop_gradient = False
         dense_out = paddle.reshape(dense_x, new_shape)
 
         if format == "coo":
-            sp_x = origin_x.detach().to_sparse_coo(len(x_shape))
+            sp_x = paddle.to_tensor(np_x,
+                                    place=paddle.CPUPlace()).to_sparse_coo(
+                                        len(x_shape))
         else:
-            sp_x = origin_x.detach().to_sparse_csr()
+            sp_x = paddle.to_tensor(np_x,
+                                    place=paddle.CPUPlace()).to_sparse_csr()
         sp_x.stop_gradient = False
         sp_out = paddle.incubate.sparse.reshape(sp_x, new_shape)
 
@@ -54,8 +58,35 @@ class TestReshape(unittest.TestCase):
         dense_out.backward()
         sp_out.backward()
         np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
-                                   (dense_x.grad * mask).numpy(),
+                                   dense_x.grad.numpy() *
+                                   np_x.astype('bool').astype('int'),
                                    rtol=1e-05)
+
+        # check gpu kernel
+        if paddle.device.is_compiled_with_cuda():
+            dense_x = paddle.to_tensor(np_x, place=paddle.CUDAPlace(0))
+            dense_x.stop_gradient = False
+            dense_out = paddle.reshape(dense_x, new_shape)
+
+            if format == "coo":
+                sp_x = paddle.to_tensor(
+                    np_x, place=paddle.CUDAPlace(0)).to_sparse_coo(len(x_shape))
+            else:
+                sp_x = paddle.to_tensor(
+                    np_x, place=paddle.CUDAPlace(0)).to_sparse_csr()
+            sp_x.stop_gradient = False
+            sp_out = paddle.incubate.sparse.reshape(sp_x, new_shape)
+
+            np.testing.assert_allclose(sp_out.to_dense().numpy(),
+                                       dense_out.numpy(),
+                                       rtol=1e-05)
+
+            dense_out.backward()
+            sp_out.backward()
+            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                       dense_x.grad.numpy() *
+                                       np_x.astype('bool').astype('int'),
+                                       rtol=1e-05)
 
     def test_reshape_2d(self):
         self.check_result([2, 5], [
