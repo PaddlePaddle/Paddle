@@ -129,17 +129,19 @@ phi::DataType ConvertPrecision(AnalysisConfig::Precision precision) {
   }
 }
 
-phi::Backend ConvertBackend(AnalysisConfig::Backend backend) {
+phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
   switch (backend) {
-    case AnalysisConfig::Backend::kGPU:
+    case paddle_infer::PlaceType::kGPU:
       // NOTE: phi also support phi::Backend::GPUDNN.
       return phi::Backend::GPU;
-    case AnalysisConfig::Backend::kNPU:
+    case paddle_infer::PlaceType::kNPU:
       return phi::Backend::NPU;
-    case AnalysisConfig::Backend::kXPU:
+    case paddle_infer::PlaceType::kXPU:
       return phi::Backend::XPU;
-    case AnalysisConfig::Backend::kCPU:
+    case paddle_infer::PlaceType::kCPU:
       return phi::Backend::CPU;
+    case paddle_infer::PlaceType::kIPU:
+      return phi::Backend::IPU;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU, "
@@ -2320,7 +2322,7 @@ void ConvertToMixedPrecision(const std::string &model_file,
                              const std::string &mixed_model_file,
                              const std::string &mixed_params_file,
                              PrecisionType mixed_precision,
-                             BackendType backend,
+                             paddle_infer::PlaceType backend,
                              bool keep_io_types,
                              std::unordered_set<std::string> black_list) {
   auto phi_backend = paddle::ConvertBackend(backend);
