@@ -53,7 +53,7 @@ class ESC50(AudioClassificationDataset):
 
             import paddle
 
-            archieve = {
+            archive = {
                 'url':
                 'https://bj.bcebos.com/paddleaudio/datasets/ESC-50-master-lite.zip',
                 'md5': '1e9ba53265143df5b2804a743f2d1956',
@@ -61,8 +61,8 @@ class ESC50(AudioClassificationDataset):
             mode = 'dev'
             esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
                                                     feat_type='raw',
-                                                    archieve=archieve)
-            # use the default archieve will download the whole dataset.
+                                                    archive=archive)
+            # use the default archive will download the whole dataset.
             # esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
             #                                         feat_type='raw')
             for elem in esc50_dataset:
@@ -83,7 +83,7 @@ class ESC50(AudioClassificationDataset):
                 # [feature_dim, length] , label_id
     """
 
-    archieve = {
+    archive = {
         'url': 'https://paddleaudio.bj.bcebos.com/datasets/ESC-50-master.zip',
         'md5': '7771e4b9d86d0945acce719c7a59305a',
     }
@@ -155,10 +155,10 @@ class ESC50(AudioClassificationDataset):
                  mode: str = 'train',
                  split: int = 1,
                  feat_type: str = 'raw',
-                 archieve=None,
+                 archive=None,
                  **kwargs):
-        if archieve is not None:
-            self.archieve = archieve
+        if archive is not None:
+            self.archive = archive
         files, labels = self._get_data(mode, split)
         super(ESC50, self).__init__(files=files,
                                     labels=labels,
@@ -175,9 +175,9 @@ class ESC50(AudioClassificationDataset):
     def _get_data(self, mode: str, split: int) -> Tuple[List[str], List[int]]:
         if not os.path.isdir(os.path.join(DATA_HOME, self.audio_path)) or \
             not os.path.isfile(os.path.join(DATA_HOME, self.meta)):
-            download.get_path_from_url(self.archieve['url'],
+            download.get_path_from_url(self.archive['url'],
                                        DATA_HOME,
-                                       self.archieve['md5'],
+                                       self.archive['md5'],
                                        decompress=True)
 
         meta_info = self._get_meta_info()

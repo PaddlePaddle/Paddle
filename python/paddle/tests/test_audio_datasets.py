@@ -33,7 +33,7 @@ class TestAudioDatasets(unittest.TestCase):
             Toronto emotional speech set (TESS) https://tspace.library.utoronto.ca/handle/1807/24487
             https://doi.org/10.5683/SP2/E8H2MF
         """
-        archieve = {
+        archive = {
             'url':
             'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set_lite.zip',
             'md5': '9ffb5e3adf28d4d6b787fa94bd59b975',
@@ -41,7 +41,7 @@ class TestAudioDatasets(unittest.TestCase):
         tess_dataset = paddle.audio.datasets.TESS(mode=mode,
                                                   feat_type='mfcc',
                                                   n_mfcc=params,
-                                                  archieve=archieve)
+                                                  archive=archive)
         idx = np.random.randint(0, 30)
         elem = tess_dataset[idx]
         self.assertTrue(elem[0].shape[0] == params)
@@ -76,14 +76,14 @@ class TestAudioDatasets(unittest.TestCase):
             ESC: Dataset for Environmental Sound Classification
             http://dx.doi.org/10.1145/2733373.2806390
         """
-        archieve = {
+        archive = {
             'url':
             'https://bj.bcebos.com/paddleaudio/datasets/ESC-50-master-lite.zip',
             'md5': '1e9ba53265143df5b2804a743f2d1956',
         }  # small part of ESC50 dataset for test.
         esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
                                                     feat_type='raw',
-                                                    archieve=archieve)
+                                                    archive=archive)
         idx = np.random.randint(0, 6)
         elem = esc50_dataset[idx]
         self.assertTrue(elem[0].shape[0] == 220500)
@@ -92,7 +92,7 @@ class TestAudioDatasets(unittest.TestCase):
         esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
                                                     feat_type='mfcc',
                                                     n_mfcc=params,
-                                                    archieve=archieve)
+                                                    archive=archive)
         idx = np.random.randint(0, 6)
         elem = esc50_dataset[idx]
         self.assertTrue(elem[0].shape[0] == params)

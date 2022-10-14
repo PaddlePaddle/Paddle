@@ -59,7 +59,7 @@ class TESS(AudioClassificationDataset):
 
             import paddle
 
-            archieve = {
+            archive = {
                 'url':
                 'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set_lite.zip',
                 'md5': '9ffb5e3adf28d4d6b787fa94bd59b975',
@@ -67,8 +67,8 @@ class TESS(AudioClassificationDataset):
             mode = 'dev'
             tess_dataset = paddle.audio.datasets.TESS(mode=mode,
                                                     feat_type='raw',
-                                                    archieve=archieve)
-            # use the default archieve will download the whole dataset.
+                                                    archive=archive)
+            # use the default archive will download the whole dataset.
             # tess_dataset = paddle.audio.datasets.TESS(mode=mode,
             #                                        feat_type='raw')
             for elem in tess_dataset:
@@ -81,7 +81,7 @@ class TESS(AudioClassificationDataset):
             tess_dataset = paddle.audio.datasets.TESS(mode=mode,
                                                     feat_type='mfcc',
                                                     n_mfcc=40,
-                                                    archieve=archieve)
+                                                    archive=archive)
             for elem in tess_dataset:
                 audio = elem[0]
                 label = elem[1]
@@ -90,7 +90,7 @@ class TESS(AudioClassificationDataset):
                 # [feature_dim, num_frames] , label_id
     """
 
-    archieve = {
+    archive = {
         'url':
         'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set.zip',
         'md5': '1465311b24d1de704c4c63e4ccc470c7',
@@ -115,14 +115,14 @@ class TESS(AudioClassificationDataset):
                  n_folds=5,
                  split=1,
                  feat_type='raw',
-                 archieve=None,
+                 archive=None,
                  **kwargs):
         """
 
         """
         assert split <= n_folds, f'The selected split should not be larger than n_fold, but got {split} > {n_folds}'
-        if archieve is not None:
-            self.archieve = archieve
+        if archive is not None:
+            self.archive = archive
         files, labels = self._get_data(mode, seed, n_folds, split)
         super(TESS, self).__init__(files=files,
                                    labels=labels,
@@ -139,9 +139,9 @@ class TESS(AudioClassificationDataset):
     def _get_data(self, mode, seed, n_folds,
                   split) -> Tuple[List[str], List[int]]:
         if not os.path.isdir(os.path.join(DATA_HOME, self.audio_path)):
-            download.get_path_from_url(self.archieve['url'],
+            download.get_path_from_url(self.archive['url'],
                                        DATA_HOME,
-                                       self.archieve['md5'],
+                                       self.archive['md5'],
                                        decompress=True)
 
         wav_files = []
