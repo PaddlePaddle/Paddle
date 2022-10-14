@@ -503,7 +503,7 @@ class Engine:
             outputs = []
             losses = []
             metrics = []
-            inputs = self._inputs
+            inputs = self._inputs if self._inputs else []
             labels = self._labels if self._labels else []
             serial_main_prog = self._orig_main_prog.clone()
             serial_startup_prog = self._orig_startup_prog.clone()

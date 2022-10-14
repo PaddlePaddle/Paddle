@@ -1674,6 +1674,103 @@ class TripletMarginLoss(Layer):
                                      name=self.name)
 
 
+class MultiMarginLoss(Layer):
+    r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss) between
+        input :math:`input` and label :math:`label`:
+
+        For i-th mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
+        output :math:`label_i` is:
+
+        .. math::
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
+
+        where :math:`0 \leq j \leq \text{C}-1`, :math:`0 \leq i \leq \text{N}-1` and :math:`j \neq label_i`.
+
+        Optionally, you can give non-equal weighting on the classes by passing
+        a 1D :attr:`weight` tensor into the constructor.
+
+        The loss function for i-th sample then becomes:
+
+        .. math::
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
+
+
+        Parameters:
+
+            p (int, Optional):The norm degree for pairwise distance. Default: :math:`1`.
+
+            margin (float, Optional):Default: :math:`1`.
+
+            weight (Tensor,optional): a manual rescaling weight given to each class.
+                    If given, has to be a Tensor of shape (C,) and the data type is float32, float64.
+                    Default is ``'None'`` .
+
+            reduction (str, optional): Indicate how to calculate the loss by batch_size,
+                    the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                    If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                    If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                    If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                    Default: ``'mean'``
+
+            name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
+
+        Call parameters:
+            input (Tensor): Input tensor, the data type is float32 or float64.
+
+            label (Tensor): Label tensor, 0<= label < input.shape[1], the data type is int32 or int64.
+
+        Shape:
+            input: 2-D Tensor, the shape is [N, C], N is batch size and `C` means number of classes.
+
+            label: 1-D Tensor, the shape is [N,].
+
+            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the label.
+
+        Returns:
+            A callable object of MultiMarginLoss.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import paddle.nn as nn
+
+                input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
+                label = paddle.to_tensor([0, 1, 2], dtype=paddle.int32)
+
+                multi_margin_loss = nn.MultiMarginLoss(reduction='mean')
+                loss = multi_margin_loss(input, label)
+                print(loss)
+        """
+
+    def __init__(self,
+                 p: int = 1,
+                 margin: float = 1.0,
+                 weight=None,
+                 reduction="mean",
+                 name=None):
+        super(MultiMarginLoss, self).__init__()
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' in 'MultiMarginLoss' should be 'sum', 'mean' or 'none', "
+                "but received {}.".format(reduction))
+        self.p = p
+        self.margin = margin
+        self.weight = weight
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input, label):
+        return F.multi_margin_loss(input,
+                                   label,
+                                   p=self.p,
+                                   margin=self.margin,
+                                   weight=self.weight,
+                                   reduction=self.reduction,
+                                   name=self.name)
+
+
 class SoftMarginLoss(Layer):
     r"""
     Creates a criterion that measures a two-class soft margin loss between input predictions ``input``
