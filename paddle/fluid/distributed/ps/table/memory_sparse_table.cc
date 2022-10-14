@@ -46,7 +46,7 @@ int32_t MemorySparseTable::Initialize() {
   profiler.register_profiler("pserver_sparse_select_all");
   InitializeValue();
   _shards_task_pool.resize(_task_pool_size);
-  for (int i = 0; i < static_cast<int>(_shards_task_pool.size()); ++i) {
+  for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
   }
   VLOG(0) << "initalize MemorySparseTable succ";
