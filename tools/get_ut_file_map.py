@@ -127,17 +127,6 @@ def notsuccessfuc(rootPath):
             count = count + 1
             utNotSuccess = utNotSuccess + '^%s$|' % ut
 
-    # ut not exec
-    get_all_uts(rootPath)
-    with open("/paddle/build/all_uts_paddle", "r") as f:
-        data = f.readlines()
-    for ut in data:
-        ut = ut.replace('\n', '').strip()
-        if ut not in files:
-            print(ut)
-            count = count + 1
-            utNotSuccess = utNotSuccess + '^%s$|' % ut
-
     if utNotSuccess != '':
         print("utNotSuccess count: %s" % count)
         f = open('%s/build/utNotSuccess' % rootPath, 'w')
