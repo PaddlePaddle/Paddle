@@ -54,7 +54,7 @@ class InternalStorage:
                     size, dtype=np.float32)
             self.buffer = core.eager.Tensor(value=value, place=core.CPUPlace())
             if dtype == Type.bf16.value:
-                self.buffer = paddle.cast(self.buffer, dtype = paddle.bfloat16)
+                self.buffer = paddle.cast(self.buffer, dtype=paddle.bfloat16)
         else:
             self.buffer = paddle.zeros(size, dtype=dtype)
 
