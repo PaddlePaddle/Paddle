@@ -30,7 +30,7 @@ PP_MESH_0 = auto.ProcessMesh([0])
 PP_MESH_1 = auto.ProcessMesh([1])
 epoch_num = 1
 batch_size = 2
-batch_num = 100
+batch_num = 10
 hidden_size = 1024
 sequence_len = 512
 image_size = hidden_size
@@ -125,13 +125,7 @@ def train_high_level(fetch):
                    dropout_ratio=0.1,
                    initializer_range=0.02)
     loss = paddle.nn.CrossEntropyLoss()
-    base_lr = 1e-3
-    boundaries = [5, 8]
-    values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
-    lr = paddle.optimizer.lr.PiecewiseDecay(boundaries=boundaries,
-                                            values=values,
-                                            verbose=False)
-    optimizer = paddle.optimizer.Adam(learning_rate=lr,
+    optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
                                       beta1=0.9,
                                       beta2=0.999,
                                       epsilon=1e-08,
@@ -143,19 +137,13 @@ def train_high_level(fetch):
 
     engine = auto.Engine(mlp, loss, optimizer, metric, strategy=strategy)
 
-    callbacks = paddle.callbacks.ProgBarLogger(log_freq=5, verbose=2)
-
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     eval_dataset1 = MyDataset(5 * batch_size)
     history = engine.fit(train_data=train_dataset,
                          epochs=2,
                          batch_size=batch_size,
-                         valid_data=eval_dataset1,
-                         valid_freq=2,
-                         log_freq=10,
-                         verbose=3,
-                         callbacks=[callbacks])
+                         valid_data=eval_dataset1)
 
     # eval
     eval_dataset2 = MyDataset(batch_size)
@@ -366,7 +354,7 @@ def train_non_builtin_data_vars():
 
 if __name__ == "__main__":
     train_high_level(fetch=True)
-    # train_high_level(fetch=False)
-    # train_low_level()
-    # train_builtin_data_vars()
-    # train_non_builtin_data_vars()
+    train_high_level(fetch=False)
+    train_low_level()
+    train_builtin_data_vars()
+    train_non_builtin_data_vars()
