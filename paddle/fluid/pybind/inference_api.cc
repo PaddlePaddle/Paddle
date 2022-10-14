@@ -616,13 +616,6 @@ void BindAnalysisConfig(py::module *m) {
       .value("Bfloat16", AnalysisConfig::Precision::kBf16)
       .export_values();
 
-  py::enum_<AnalysisConfig::Backend>(analysis_config, "Backend")
-      .value("CPU", AnalysisConfig::Backend::kCPU)
-      .value("GPU", AnalysisConfig::Backend::kGPU)
-      .value("NPU", AnalysisConfig::Backend::kNPU)
-      .value("XPU", AnalysisConfig::Backend::kXPU)
-      .export_values();
-
   analysis_config.def(py::init<>())
       .def(py::init<const AnalysisConfig &>())
       .def(py::init<const std::string &>())
