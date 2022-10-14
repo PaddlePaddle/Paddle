@@ -720,11 +720,9 @@ class DynamicGraphAdapter(object):
                                   **self._amp_custom_lists,
                                   level=self._amp_level):
             if self._nranks > 1:
-                outputs = self.ddp_model.forward(
-                    *[to_variable(x) for x in inputs])
+                outputs = self.ddp_model(*[to_variable(x) for x in inputs])
             else:
-                outputs = self.model.network.forward(
-                    *[to_variable(x) for x in inputs])
+                outputs = self.model.network(*[to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -759,7 +757,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.network(*[to_variable(x) for x in inputs])
 
         # Transfrom data to expected device
         expected_device = paddle.device.get_device()
@@ -814,7 +812,7 @@ class DynamicGraphAdapter(object):
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
         self._input_info = _update_input_info(inputs)
-        outputs = self.model.network.forward(*inputs)
+        outputs = self.model.network(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
             outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
 
