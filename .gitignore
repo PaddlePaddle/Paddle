@@ -79,3 +79,5 @@ paddle/fluid/pybind/tmp_eager_op_function_impl.h
 paddle/fluid/pybind/eager_op_function_impl.h
 paddle/fluid/pybind/eager_op_function_impl.h
 paddle/fluid/pybind/op_function_impl.h
+
+python/paddle/fluid/tests/unittests/ir/inference/run.sh
