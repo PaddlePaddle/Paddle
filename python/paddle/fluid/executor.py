@@ -1674,7 +1674,7 @@ class Executor(object):
             else:
                 global_block = program.global_block()
             for varname in global_block.vars:
-                vardesc = global_block.desc.find_var(cpt.to_bytes(varname))
+                vardesc = global_block.desc.find_var(varname.encode())
                 varobj = global_block.vars[varname]
 
                 # Can not check var build by fluid.layers.data(), bucause fluid.layers.data() had not set need_check_feed

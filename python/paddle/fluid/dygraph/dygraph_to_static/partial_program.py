@@ -833,8 +833,7 @@ class PartialProgramLayer:
         # be user wanted result.
         for param in params:
             grad_name = param.name + core.grad_var_suffix()
-            grad_var = train_program.desc.block(0).find_var(
-                cpt.to_bytes(grad_name))
+            grad_var = train_program.desc.block(0).find_var(grad_name.encode())
             # NOTE: cannot find var desc maybe no problem, such as in batch_norm
             if grad_var is None:
                 continue
