@@ -1707,7 +1707,6 @@ PDNode *patterns::ConvBias::operator()(
   // Filter
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
-                              ->assert_is_persistable_var()
                               ->assert_is_op_input(conv_type, "Filter");
   // intermediate variable, will be removed in the IR after fuse.
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
