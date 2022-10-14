@@ -2167,7 +2167,7 @@ void AnalysisPredictor::RunOutputHook() {
         for (auto &output : op->Outputs()) {
           for (auto &var_name : output.second) {
             auto *var = sub_scope_->FindVar(var_name);
-            if (!var) continue;
+            if (!var || !var->IsType<phi::DenseTensor>()) continue;
             auto dense_tensor = var->Get<phi::DenseTensor>();
             if (!dense_tensor.initialized()) continue;
             std::shared_ptr<ZeroCopyTensor> tensor = GetOutputTensor(var_name);
