@@ -213,7 +213,7 @@ int32_t GraphTable::add_node_to_ssd(
                  ch,
                  sizeof(int) * 2 + sizeof(uint64_t),
                  str) == 0) {
-      uint64_t *stored_data = ((uint64_t *)str.c_str()); // NOLINT
+      uint64_t *stored_data = ((uint64_t *)str.c_str());  // NOLINT
       int n = str.size() / sizeof(uint64_t);
       char *new_data = new char[n * sizeof(uint64_t) + len];
       memcpy(new_data, stored_data, n * sizeof(uint64_t));
@@ -221,14 +221,14 @@ int32_t GraphTable::add_node_to_ssd(
       _db->put(src_id % shard_num % task_pool_size_,
                ch,
                sizeof(int) * 2 + sizeof(uint64_t),
-               (char *)new_data, // NOLINT
+               (char *)new_data,  // NOLINT
                n * sizeof(uint64_t) + len);
       delete[] new_data;
     } else {
       _db->put(src_id % shard_num % task_pool_size_,
                ch,
                sizeof(int) * 2 + sizeof(uint64_t),
-               (char *)data, // NOLINT
+               (char *)data,  // NOLINT
                len);
     }
   }
@@ -254,7 +254,7 @@ char *GraphTable::random_sample_neighbor_from_ssd(
                ch,
                sizeof(int) * 2 + sizeof(uint64_t),
                str) == 0) {
-    uint64_t *data = ((uint64_t *)str.c_str()); // NOLINT
+    uint64_t *data = ((uint64_t *)str.c_str());  // NOLINT
     int n = str.size() / sizeof(uint64_t);
     std::unordered_map<int, int> m;
     // std::vector<uint64_t> res;
@@ -281,7 +281,7 @@ char *GraphTable::random_sample_neighbor_from_ssd(
       // res.push_back(data[pos]);
     }
     for (int i = 0; i < actual_size; i += 8) {
-      VLOG(2) << "sampled an neighbor " << *(uint64_t *)&buff[i]; // NOLINT
+      VLOG(2) << "sampled an neighbor " << *(uint64_t *)&buff[i];  // NOLINT
     }
     return buff;
   }
@@ -311,7 +311,7 @@ int64_t GraphTable::load_graph_to_memory_from_ssd(int idx,
           if (_db->get(i, ch, sizeof(int) * 2 + sizeof(uint64_t), str) == 0) {
             count[i] += (int64_t)str.size();
             for (size_t j = 0; j < str.size(); j += sizeof(uint64_t)) {
-              uint64_t id = *(uint64_t *)(str.c_str() + j); // NOLINT
+              uint64_t id = *(uint64_t *)(str.c_str() + j);  // NOLINT
               add_comm_edge(idx, v, id);
             }
           }
@@ -364,15 +364,16 @@ void GraphTable::make_partitions(int idx, int64_t byte_size, int device_len) {
       continue;
     }
     std::string key = iters[next]->key().ToString();
-    int type_idx = *(int *)key.c_str(); // NOLINT
-    int temp_idx = *(int *)(key.c_str() + sizeof(int)); // NOLINT
+    int type_idx = *(int *)key.c_str();                  // NOLINT
+    int temp_idx = *(int *)(key.c_str() + sizeof(int));  // NOLINT
     if (type_idx != 0 || temp_idx != idx) {
       iters[next]->Next();
       next++;
       continue;
     }
     std::string value = iters[next]->value().ToString();
-    std::uint64_t i_key = *(uint64_t *)(key.c_str() + sizeof(int) * 2); // NOLINT
+    std::uint64_t i_key = 
+        *(uint64_t *)(key.c_str() + sizeof(int) * 2);  // NOLINT
     for (int i = 0; i < part_len; i++) {
       if (memory_remaining[i] < (int64_t)value.size()) {
         score[i] = -100000.0;
@@ -381,7 +382,7 @@ void GraphTable::make_partitions(int idx, int64_t byte_size, int device_len) {
       }
     }
     for (size_t j = 0; j < value.size(); j += sizeof(uint64_t)) {
-      uint64_t v = *((uint64_t *)(value.c_str() + j)); // NOLINT
+      uint64_t v = *((uint64_t *)(value.c_str() + j));  // NOLINT
       int index = -1;
       if (id_map.find(v) != id_map.end()) {
         index = id_map[v];
@@ -518,7 +519,7 @@ int32_t GraphTable::load_edges_to_ssd(const std::string &path,
       add_node_to_ssd(0,
                       idx,
                       src_id,
-                      (char *)dist_data.data(), // NOLINT
+                      (char *)dist_data.data(),  // NOLINT
                       static_cast<int>(dist_data.size() * sizeof(uint64_t)));
     }
   }
@@ -544,7 +545,7 @@ int32_t GraphTable::dump_edges_to_ssd(int idx) {
             add_node_to_ssd(0,
                             idx,
                             v[j]->get_id(),
-                            (char *)s.data(), // NOLINT
+                            (char *)s.data(),  // NOLINT
                             s.size() * sizeof(uint64_t));
           }
           return cost;
@@ -901,7 +902,8 @@ void BasicBfsGraphSampler::init(size_t gpu_num, GraphTable *graph_table,
 std::vector<Node *> GraphShard::get_batch(int start, int end, int step) {
   if (start < 0) start = 0;
   std::vector<Node *> res;
-  for (int pos = start; pos < std::min(end, (int)bucket.size()); pos += step) { // NOLINT
+  for (int pos = start; pos < std::min(end, (int)bucket.size()); 
+       pos += step) {  // NOLINT
     res.push_back(bucket[pos]);
   }
   return res;
@@ -1002,7 +1004,7 @@ GraphNode *GraphShard::add_graph_node(uint64_t id) {
     node_location[id] = bucket.size();
     bucket.push_back(new GraphNode(id));
   }
-  return (GraphNode *)bucket[node_location[id]]; // NOLINT
+  return (GraphNode *)bucket[node_location[id]];  // NOLINT
 }
 
 GraphNode *GraphShard::add_graph_node(Node *node) {
@@ -1011,17 +1013,17 @@ GraphNode *GraphShard::add_graph_node(Node *node) {
     node_location[id] = bucket.size();
     bucket.push_back(node);
   }
-  return (GraphNode *)bucket[node_location[id]]; // NOLINT
+  return (GraphNode *)bucket[node_location[id]];  // NOLINT
 }
 
 FeatureNode *GraphShard::add_feature_node(uint64_t id, bool is_overlap) {
   if (node_location.find(id) == node_location.end()) {
     node_location[id] = bucket.size();
     bucket.push_back(new FeatureNode(id));
-    return (FeatureNode *)bucket[node_location[id]]; // NOLINT
+    return (FeatureNode *)bucket[node_location[id]];  // NOLINT
   }
   if (is_overlap) {
-    return (FeatureNode *)bucket[node_location[id]]; // NOLINT
+    return (FeatureNode *)bucket[node_location[id]];  // NOLINT
   }
 
   return NULL;
@@ -1099,7 +1101,8 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype,
             std::string etype_path = epath + "/" + etypes[i];
             auto etype_path_list = paddle::framework::localfs_list(etype_path);
             std::string etype_path_str;
-            if (part_num > 0 && part_num < (int)etype_path_list.size()) { // NOLINT
+            if (part_num > 0 && 
+                part_num < (int)etype_path_list.size()) {  // NOLINT
               std::vector<std::string> sub_etype_path_list(
                   etype_path_list.begin(), etype_path_list.begin() + part_num);
               etype_path_str =
@@ -1116,7 +1119,7 @@ int32_t GraphTable::load_node_and_edge_file(std::string etype,
           } else {
             auto npath_list = paddle::framework::localfs_list(npath);
             std::string npath_str;
-            if (part_num > 0 && part_num < (int)npath_list.size()) { // NOLINT
+            if (part_num > 0 && part_num < (int)npath_list.size()) {  // NOLINT
               std::vector<std::string> sub_npath_list(
                   npath_list.begin(), npath_list.begin() + part_num);
               npath_str = paddle::string::join_strings(sub_npath_list, delim);
@@ -1154,7 +1157,8 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
   res.clear();
   auto &shards = type_id == 0 ? edge_shards[idx] : feature_shards[idx];
   std::vector<std::future<size_t>> tasks;
-  for (size_t i = 0; i < shards.size() && index < (int)ranges.size(); i++) { // NOLINT
+  for (size_t i = 0; i < shards.size() && index < (int)ranges.size(); 
+       i++) {  // NOLINT
     end = total_size + shards[i]->get_size();
     start = total_size;
     while (start < end && index < static_cast<int>(ranges.size())) {
@@ -1178,7 +1182,8 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
               res.reserve(res.size() + num);
               for (auto &id : keys) {
                 res.push_back(id);
-                std::swap(res[rand() % res.size()], res[(int)res.size() - 1]); // NOLINT
+                std::swap(res[rand() % res.size()], 
+                          res[(int)res.size() - 1]);  // NOLINT
               }
               mutex.unlock();
 
@@ -2145,7 +2150,8 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   if (use_cache) {
     cache_size_limit = graph.cache_size_limit();
     cache_ttl = graph.cache_ttl();
-    make_neighbor_sample_cache((size_t)cache_size_limit, (size_t)cache_ttl); // NOLINT
+    make_neighbor_sample_cache((size_t)cache_size_limit, 
+                               (size_t)cache_ttl); // NOLINT
   }
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
