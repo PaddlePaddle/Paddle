@@ -278,14 +278,8 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
             elif self.dims == 3:
                 self.input_shape = [1, 4, 6]
                 return np.random.random([1, 4, 6]).astype(np.float32)
-            elif self.dims == 2:
-                self.input_shape = [4, 6]
-                return np.random.random([4, 6]).astype(np.float32)
-            elif self.dims == 1:
-                self.input_shape = [6]
-                return np.random.random([6]).astype(np.float32)
 
-        for dims in [4, 3, 2, 1]:
+        for dims in [4, 3]:
             for shape in [[10, 12, -1, -1], [8, 64, -1, -1]]:
                 dics = [
                     {
@@ -396,14 +390,6 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
                 self.dynamic_shape.opt_input_shape = {
                     "expand_v2_input": [1, 4, 6]
                 }
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {"expand_v2_input": [4, 6]}
-                self.dynamic_shape.max_input_shape = {"expand_v2_input": [4, 6]}
-                self.dynamic_shape.opt_input_shape = {"expand_v2_input": [4, 6]}
-            elif self.dims == 1:
-                self.dynamic_shape.min_input_shape = {"expand_v2_input": [6]}
-                self.dynamic_shape.max_input_shape = {"expand_v2_input": [6]}
-                self.dynamic_shape.opt_input_shape = {"expand_v2_input": [6]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
