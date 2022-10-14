@@ -715,11 +715,9 @@ class DynamicGraphAdapter(object):
                                   **self._amp_custom_lists,
                                   level=self._amp_level):
             if self._nranks > 1:
-                outputs = self.ddp_model(
-                    *[to_variable(x) for x in inputs])
+                outputs = self.ddp_model(*[to_variable(x) for x in inputs])
             else:
-                outputs = self.model.network(
-                    *[to_variable(x) for x in inputs])
+                outputs = self.model.network(*[to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
