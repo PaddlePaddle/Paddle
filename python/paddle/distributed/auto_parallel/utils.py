@@ -27,6 +27,10 @@ from paddle.distributed.auto_parallel.process_group import get_all_process_group
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
+__not_shape_var_type__ = [
+    core.VarDesc.VarType.READER, core.VarDesc.VarType.STEP_SCOPES
+]
+
 
 def is_valid_list_index(list, index):
     if index >= -len(list) and index < len(list):
