@@ -1673,7 +1673,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
     CollectShapeRangeInfo();
   }
 
-  RunForwardHook();
+  RunOutputHook();
 
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
@@ -2148,14 +2148,14 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   exe.Run(save_program, scope(), 0, true, true);
 }
 
-void AnalysisPredictor::RegisterForwardHook(ForwardHookFunc hookfunc) {
-  hookfunc_ = hookfunc;
+void AnalysisPredictor::RegisterOutputHook(OutputHookFunc hookfunc) {
+  hookfuncs_.emplace_back(std::move(hookfunc));
 }
 
-void AnalysisPredictor::RunForwardHook() {
-  if (hookfunc_) {
+void AnalysisPredictor::RunOutputHook() {
+  if (!hookfuncs_.empty()) {
     if (config_.enable_memory_optim()) {
-      LOG(WARNING) << "If you want to run forward hook function, you should "
+      LOG(WARNING) << "If you want to run output hook function, you should "
                       "use config.EnableMemoryOptim(false) to turn off memory "
                       "reuse!";
       return;
@@ -2167,10 +2167,13 @@ void AnalysisPredictor::RunForwardHook() {
         for (auto &output : op->Outputs()) {
           for (auto &var_name : output.second) {
             auto *var = sub_scope_->FindVar(var_name);
+            if (!var) continue;
             auto dense_tensor = var->Get<phi::DenseTensor>();
             if (!dense_tensor.initialized()) continue;
-            auto tensor = GetOutputTensor(var_name);
-            hookfunc_(op->Type(), var_name, std::move(tensor));
+            std::shared_ptr<ZeroCopyTensor> tensor = GetOutputTensor(var_name);
+            for (auto &hookfunc : hookfuncs_) {
+              hookfunc(op->Type(), var_name, tensor);
+            }
           }
         }
       }
@@ -2365,8 +2368,8 @@ void Predictor::ClearIntermediateTensor() {
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
-void Predictor::RegisterForwardHook(ForwardHookFunc hookfunc) {
-  predictor_->RegisterForwardHook(hookfunc);
+void Predictor::RegisterOutputHook(OutputHookFunc hookfunc) {
+  predictor_->RegisterOutputHook(hookfunc);
 }
 
 void *Predictor::GetExecStream() const { return predictor_->GetExecStream(); }

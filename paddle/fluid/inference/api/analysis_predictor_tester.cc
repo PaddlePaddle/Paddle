@@ -612,7 +612,7 @@ TEST(Predictor, Streams) {
 }
 #endif
 
-TEST(AnalysisPredictor, ForwardHookFunc) {
+TEST(AnalysisPredictor, OutputHookFunc) {
   Config config;
   config.SetModel(FLAGS_dirname);
   config.EnableUseGpu(100, 0);
@@ -620,10 +620,10 @@ TEST(AnalysisPredictor, ForwardHookFunc) {
   auto predictor = CreatePredictor(config);
   auto hookfunc = [](const std::string& type,
                      const std::string& var_name,
-                     std::unique_ptr<Tensor> tensor) {
+                     std::shared_ptr<Tensor> tensor) {
     LOG(INFO) << "in hook function";
   };
-  predictor->RegisterForwardHook(hookfunc);
+  predictor->RegisterOutputHook(hookfunc);
 
   auto w0 = predictor->GetInputHandle("firstw");
   auto w1 = predictor->GetInputHandle("secondw");

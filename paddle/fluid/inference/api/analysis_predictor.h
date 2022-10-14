@@ -273,14 +273,14 @@ class AnalysisPredictor : public PaddlePredictor {
   std::string GetSerializedProgram() const override;
 
   ///
-  /// \brief Register a forward hook function to operate the intermediate tensor
+  /// \brief Register a output hook function to operate the intermediate tensor
   /// of op output. when using this function, memory reuse should be tured off.
   /// The hook function signature is void(const std::string&, const
-  /// std::string&, std::unique_ptr<Tensor>). Here, the first parameter is op's
+  /// std::string&, std::shared_ptr<Tensor>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  void RegisterForwardHook(ForwardHookFunc hookfunc) override;
+  void RegisterOutputHook(OutputHookFunc hookfunc) override;
 
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
@@ -429,7 +429,7 @@ class AnalysisPredictor : public PaddlePredictor {
   void InitDeviceContexts();
   void InitResourceManager(void *stream);
 
-  void RunForwardHook();
+  void RunOutputHook();
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related
@@ -522,7 +522,7 @@ class AnalysisPredictor : public PaddlePredictor {
   int predictor_id_;
 
  private:
-  ForwardHookFunc hookfunc_{nullptr};
+  std::vector<OutputHookFunc> hookfuncs_;
 
   // Some status here that help to determine the status inside the predictor.
   bool status_is_cloned_{false};
