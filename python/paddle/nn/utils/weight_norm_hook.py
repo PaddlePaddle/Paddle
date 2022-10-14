@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-import numpy as np
-from ... import fluid
-from ...fluid import dygraph
 from ...fluid import layers as F
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...framework import in_dygraph_mode
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 __all__ = []
 
@@ -164,7 +161,7 @@ class WeightNorm(object):
 
 def weight_norm(layer, name='weight', dim=0):
     r"""
-    This weight_norm layer applies weight normalization to a parameter according to the
+    Applies weight normalization to a parameter according to the
     following formula:
 
     .. math::
@@ -193,11 +190,9 @@ def weight_norm(layer, name='weight', dim=0):
     Examples:
         .. code-block:: python
 
-          import numpy as np
           from paddle.nn import Conv2D
           from paddle.nn.utils import weight_norm
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
           conv = Conv2D(3, 5, 3)
           wn = weight_norm(conv)
           print(conv.weight_g.shape)
@@ -218,7 +213,7 @@ def remove_weight_norm(layer, name='weight'):
         name(str, optional): Name of the weight parameter. Default: 'weight'.
 
     Returns:
-        Origin layer without weight norm
+        Layer, the origin layer without weight norm
 
     Examples:
         .. code-block:: python

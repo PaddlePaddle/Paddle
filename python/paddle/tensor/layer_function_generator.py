@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import re
-import functools
 import warnings
 import string
 
 from six.moves import cStringIO
 from ..static import Variable
 from ..fluid.proto import framework_pb2
-from ..framework import OpProtoHolder, core, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from ..framework import OpProtoHolder, _non_static_mode, convert_np_dtype_to_dtype_, core, in_dygraph_mode
 from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype
-import paddle
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []

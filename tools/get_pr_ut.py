@@ -16,7 +16,6 @@
 import os
 import json
 import re
-import sys
 import time
 import subprocess
 import requests
@@ -38,8 +37,8 @@ class PRChecker(object):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
         self.repo = self.github.get_repo('PaddlePaddle/Paddle')
         self.py_prog_oneline = re.compile('\d+\|\s*#.*')
-        self.py_prog_multiline_a = re.compile('\d+\|\s*r?""".*?"""', re.DOTALL)
-        self.py_prog_multiline_b = re.compile("\d+\|\s*r?'''.*?'''", re.DOTALL)
+        self.py_prog_multiline_a = re.compile('"""(.*?)"""', re.DOTALL)
+        self.py_prog_multiline_b = re.compile("'''(.*?)'''", re.DOTALL)
         self.cc_prog_online = re.compile('\d+\|\s*//.*')
         self.cc_prog_multiline = re.compile('\d+\|\s*/\*.*?\*/', re.DOTALL)
         self.lineno_prog = re.compile('@@ \-\d+,\d+ \+(\d+),(\d+) @@')

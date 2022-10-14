@@ -233,7 +233,7 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
 write_cuda_env_config_py(filename='@PADDLE_BINARY_DIR@/python/paddle/cuda_env.py')
 
 def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
-    cnt = '''from __future__ import print_function
+    cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
@@ -420,22 +420,9 @@ packages=['paddle',
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
-# Note(wangzhongpu):
-# When compiling paddle under python36, the dependencies belonging to python2.7 will be imported, resulting in errors when installing paddle
-if sys.version_info >= (3,6) and sys.version_info < (3,7):
-    setup_requires_tmp = []
-    for setup_requires_i in setup_requires:
-        if "<\"3.6\"" in setup_requires_i or "<\"3.5\"" in setup_requires_i or "<=\"3.5\"" in setup_requires_i:
-            continue
-        setup_requires_tmp+=[setup_requires_i]
-    setup_requires = setup_requires_tmp
-if sys.version_info >= (3,5) and sys.version_info < (3,6):
-    setup_requires_tmp = []
-    for setup_requires_i in setup_requires:
-        if "<\"3.5\"" in setup_requires_i:
-            continue
-        setup_requires_tmp+=[setup_requires_i]
-    setup_requires = setup_requires_tmp
+if sys.version_info < (3,7):
+    raise RuntimeError("Paddle only support Python version>=3.7 now")
+
 if sys.version_info >= (3,7):
     setup_requires_tmp = []
     for setup_requires_i in setup_requires:
@@ -750,12 +737,8 @@ else:
         yield
 
 # Log for PYPI
-if sys.version_info > (3,0):
-    with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r", encoding='UTF-8') as f:
-        long_description = f.read()
-else:
-    with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r")as f:
-        long_description = unicode(f.read(), 'UTF-8')
+with open("@PADDLE_BINARY_DIR@/python/paddle/README.rst", "r", encoding='UTF-8') as f:
+    long_description = f.read()
 
 # strip *.so to reduce package size
 if '${WITH_STRIP}' == 'ON':

@@ -29,26 +29,16 @@ http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 
 """
 
-from __future__ import print_function
-
-import itertools
 import functools
 from .common import download
 import tarfile
 
 from paddle.dataset.image import load_image_bytes
-from paddle.dataset.image import load_image
 from paddle.dataset.image import simple_transform
-from paddle.dataset.image import batch_images_from_tar
 
 from paddle.reader import map_readers, xmap_readers
-from paddle import compat as cpt
 import paddle.utils.deprecated as deprecated
-import os
-import numpy as np
 from multiprocessing import cpu_count
-import six
-from six.moves import cPickle as pickle
 from paddle.utils import try_import
 
 __all__ = []

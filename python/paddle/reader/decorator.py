@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from threading import Thread
-import subprocess
 import multiprocessing
 import six
 import sys
@@ -26,9 +25,7 @@ from six.moves import map
 from six.moves import zip
 import itertools
 import random
-import zlib
 
-import paddle.compat as cpt
 from paddle.fluid.reader import QUEUE_GET_TIMEOUT
 
 __all__ = []
@@ -263,9 +260,6 @@ def compose(*readers, **kwargs):
 
     Returns:
         the new data reader (Reader).
-
-    Raises:
-        ComposeNotAligned: outputs of readers are not aligned. This will not raise if check_alignment is set to False.
 
     Examples:
         .. code-block:: python

@@ -14,12 +14,9 @@
 
 import abc
 import numpy as np
-from functools import wraps
 
 import paddle
-from .utils import to_list
-from paddle.fluid.layers.utils import flatten
-from paddle.io import DataLoader, BatchSampler, IterableDataset
+from paddle.io import BatchSampler, IterableDataset
 from paddle.fluid.dataloader.batch_sampler import _InfiniteIterableSampler
 from paddle.fluid.dataloader.dataloader_iter import _DatasetKind, default_collate_fn, default_convert_fn
 
@@ -34,7 +31,7 @@ class DistributedDataLoader(metaclass=abc.ABCMeta):
 
         self.dataset = dataset
         self.epochs = epochs
-        self.drop_lost = drop_last
+        self.drop_last = drop_last
 
         if batch_size is None:
             self.batch_size = None
@@ -105,7 +102,7 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
             self.collate_fn = collate_fn or default_convert_fn
         self.dataset_fetcher = _DatasetKind.create_fetcher(
             self.dataset_kind, self.dataset, self.auto_collate_batch,
-            self.collate_fn, self.drop_lost)
+            self.collate_fn, self.drop_last)
 
         self._steps = self._infer_steps()
         self._inner_dataloader = self._create_inner_dataloader()
@@ -153,7 +150,7 @@ class NonIterableGeneratorLoader(DistributedDataLoader):
                     self.dataset_fetcher = _DatasetKind.create_fetcher(
                         self.dataset_kind, self.dataset,
                         self.auto_collate_batch, self.collate_fn,
-                        self.drop_lost)
+                        self.drop_last)
                     break
 
                 partial_data = []

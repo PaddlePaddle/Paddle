@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid.backward import calc_gradient
 import numpy as np
 
 

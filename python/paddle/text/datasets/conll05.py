@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import gzip
 import tarfile
 import numpy as np
-import six
-from six.moves import cPickle as pickle
 
 from paddle.io import Dataset
 import paddle.compat as cpt
@@ -302,10 +298,10 @@ class Conll05st(Dataset):
 
             .. code-block:: python
 
-            	from paddle.text.datasets import Conll05st
+                from paddle.text.datasets import Conll05st
 
-            	conll05st = Conll05st()
-            	word_dict, predicate_dict, label_dict = conll05st.get_dict()
+                conll05st = Conll05st()
+                word_dict, predicate_dict, label_dict = conll05st.get_dict()
         """
         return self.word_dict, self.predicate_dict, self.label_dict
 
@@ -317,9 +313,9 @@ class Conll05st(Dataset):
 
             .. code-block:: python
 
-            	from paddle.text.datasets import Conll05st
+                from paddle.text.datasets import Conll05st
 
-            	conll05st = Conll05st()
-            	emb_file = conll05st.get_embedding()
+                conll05st = Conll05st()
+                emb_file = conll05st.get_embedding()
         """
         return self.emb_file

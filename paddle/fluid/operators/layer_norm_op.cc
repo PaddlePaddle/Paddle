@@ -24,8 +24,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 using DataLayout = framework::DataLayout;
 
 class LayerNormOp : public framework::OperatorWithKernel {
@@ -114,7 +114,8 @@ class LayerNormOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
     if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        begin_norm_axis == ctx.Input<Tensor>("X")->dims().size() - 1) {
+        begin_norm_axis ==
+            ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,

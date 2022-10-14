@@ -38,7 +38,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_input_type)) {
       auto input_image_type = framework::TransToProtoVarType(
-          ctx.Input<framework::Tensor>("Image")->dtype());
+          ctx.Input<phi::DenseTensor>("Image")->dtype());
       int customized_type_value =
           framework::OpKernelType::kDefaultCustomizedTypeValue;
       if (input_image_type == framework::DataTypeTrait<float>::DataType()) {

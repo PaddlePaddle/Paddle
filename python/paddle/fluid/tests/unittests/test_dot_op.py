@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
-from paddle.fluid.op import Operator
-from paddle.fluid import compiler, Program, program_guard
+from op_test import OpTest
+from paddle.fluid import Program, program_guard
 
 
 class DotOp(OpTest):
@@ -156,7 +154,6 @@ class TestComplexDotOp(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -213,7 +210,6 @@ class TestComplexDotOp2D(OpTest):
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):

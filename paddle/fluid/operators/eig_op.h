@@ -40,9 +40,7 @@
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
-
-inline int BatchCount(const Tensor& matrix) {
+inline int BatchCount(const phi::DenseTensor& matrix) {
   int count = 1;
   int num_dims = matrix.dims().size();
   for (int i = 0; i < num_dims - 2; ++i) {
@@ -51,7 +49,7 @@ inline int BatchCount(const Tensor& matrix) {
   return count;
 }
 
-inline int MatrixStride(const Tensor& matrix) {
+inline int MatrixStride(const phi::DenseTensor& matrix) {
   framework::DDim dims_list = matrix.dims();
   int num_dims = dims_list.size();
   return dims_list[num_dims - 1] * dims_list[num_dims - 2];

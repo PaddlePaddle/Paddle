@@ -56,4 +56,4 @@ void CastKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    cast, OneDNN, ALL_LAYOUT, phi::CastKernel, float, phi::dtype::bfloat16) {}
+    cast, OneDNN, ONEDNN, phi::CastKernel, float, phi::dtype::bfloat16) {}

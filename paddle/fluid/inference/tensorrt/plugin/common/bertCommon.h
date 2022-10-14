@@ -14,8 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
-#define PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
+#pragma once
 
 #include <cublas_v2.h>
 #include <cuda_fp16.h>
@@ -96,8 +95,8 @@ template <typename T>
 inline void serFromDev(char** buffer, const T* data, size_t nbElem) {
   const size_t len = sizeof(T) * nbElem;
   cudaMemcpy(
-      buffer, static_cast<const void*>(data), len, cudaMemcpyDeviceToHost);
-  buffer += len;
+      *buffer, static_cast<const void*>(data), len, cudaMemcpyDeviceToHost);
+  *buffer += len;
 }
 
 template <typename T>
@@ -174,8 +173,8 @@ struct WeightsWithOwnership : public nvinfer1::Weights {
     const auto nbBytes = getWeightsSize(*this, type);
     auto destBuf = new char[nbBytes];
     this->values = destBuf;
-    std::copy_n(srcBuf, nbBytes, destBuf);
-    srcBuf += nbBytes;
+    std::copy_n(*srcBuf, nbBytes, destBuf);
+    *srcBuf += nbBytes;
   }
 };
 
@@ -220,5 +219,3 @@ inline nvinfer1::DataType fieldTypeToDataType(
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-
-#endif  // PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_

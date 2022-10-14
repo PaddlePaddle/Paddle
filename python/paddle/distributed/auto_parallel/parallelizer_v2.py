@@ -15,24 +15,17 @@
 import copy
 import time
 import logging
-from collections import defaultdict
 
-import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import _non_static_mode, unique_name
+from paddle.fluid.framework import unique_name
 from paddle.distributed.passes import new_pass
 
 from .reshard import Resharder
 from .partitioner import Partitioner
-from .dist_op import DistributedOperator
-from .dist_saver import DistributedSaver
-from .dist_loader import NonIterableGeneratorLoader
-from .utils import make_data_unshard, set_grad_var_shape
-from .utils import print_program_with_dist_attr, to_list
+from .utils import set_grad_var_shape
 from .utils import get_logger
-from .process_group import get_all_process_groups, get_world_process_group
-from .dist_context import DistributedContext, get_default_distributed_context
+from .process_group import get_world_process_group
 
 
 class Parallelizer:
@@ -105,9 +98,13 @@ class Parallelizer:
                 format(time.time() - time0, self._mode))
         else:
             # Apply pre optimization passes
-            # self._apply_pre_optimization(serial_main_program,
-            #                              serial_startup_program, None, None,
-            #                              None)
+            time0 = time.time()
+            self._apply_pre_optimization(serial_main_program,
+                                         serial_startup_program, None, None,
+                                         None)
+            self._logger.info(
+                "within parallel apply_pre_optimization time: {}, mode {}".
+                format(time.time() - time0, self._mode))
             # Do logical partition
             time0 = time.time()
             partitioner = Partitioner(self._dist_context, rank)
@@ -176,7 +173,7 @@ class Parallelizer:
         # apply amp pass
         # FIXME we disenable amp for eval since it has a little bug with
         # eval program and which will be fixed in future
-        if self._mode == 'train' and self._strategy.amp.enable:
+        if self._strategy.amp.enable:
             config = copy.deepcopy(self._strategy.amp.to_dict())
             config["dist_context"] = self._dist_context
             config["params_grads"] = params_grads
@@ -188,10 +185,12 @@ class Parallelizer:
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply([main_program], [startup_program],
                                               self._pass_context)
+                loss = auto_parallel_fp16_pass.get_loss()
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply([main_program], [startup_program],
                                              self._pass_context)
+                loss = auto_parallel_amp_pass.get_loss()
 
         # apply recompute pass
         # recompute is then train-only optimization

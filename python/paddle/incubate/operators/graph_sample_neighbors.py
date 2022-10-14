@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid import core
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 import paddle.utils.deprecated as deprecated
 
 
@@ -98,12 +96,12 @@ def graph_sample_neighbors(row,
     if return_eids:
         if eids is None:
             raise ValueError(
-                f"`eids` should not be None if `return_eids` is True.")
+                "`eids` should not be None if `return_eids` is True.")
 
     if flag_perm_buffer:
         if perm_buffer is None:
             raise ValueError(
-                f"`perm_buffer` should not be None if `flag_perm_buffer`"
+                "`perm_buffer` should not be None if `flag_perm_buffer`"
                 "is True.")
 
     if _non_static_mode():

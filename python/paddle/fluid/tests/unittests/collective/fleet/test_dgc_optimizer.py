@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -21,8 +19,6 @@ import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
 import paddle.fluid.regularizer as regularizer
 import paddle.fluid.clip as clip
-import paddle.compat as cpt
-from paddle.fluid.backward import append_backward
 
 paddle.enable_static()
 
