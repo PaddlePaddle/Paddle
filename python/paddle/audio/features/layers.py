@@ -24,6 +24,7 @@ from ..functional import create_dct
 from ..functional import power_to_db
 from ..functional.window import get_window
 
+
 class Spectrogram(nn.Layer):
     """Compute spectrogram of given signals, typically audio waveforms.
     The spectorgram is defined as the complex norm of the short-time Fourier transformation.
@@ -40,6 +41,8 @@ class Spectrogram(nn.Layer):
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of Spectrogram.
+
+
 
     Examples:
         .. code-block:: python
@@ -90,10 +93,10 @@ class Spectrogram(nn.Layer):
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        Args: 
+        Args:
             x (Tensor): Tensor of waveforms with shape `(N, T)`
 
-        Returns: 
+        Returns:
             Tensor: Spectrograms with shape `(N, n_fft//2 + 1, num_frames)`.
         """
         stft = self._stft(x)
