@@ -76,7 +76,7 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
                                      outputs={'Out': ['activation_output']},
                                      beta=draw(
                                          st.floats(min_value=0.1,
-                                                   max_value=1.0)))
+                                                   max_value=10.0)))
         else:
             activation_op = OpConfig(activation_type,
                                      inputs={'X': ['softplus_out']},
