@@ -83,10 +83,10 @@ def cuda_from_cache(key):
 
 
 def rebuild_tensor(cls, lodtensor, metadata):
-    if cls == paddle.fluid.framework.ParamBase:
-        tensor = paddle.fluid.framework.ParamBase(lodtensor.shape(),
-                                                  lodtensor._dtype(),
-                                                  **metadata)
+    if cls == paddle.fluid.framework.EagerParamBase:
+        tensor = paddle.fluid.framework.EagerParamBase(lodtensor.shape(),
+                                                       lodtensor._dtype(),
+                                                       **metadata)
         tensor.value().get_tensor()._share_data_with(lodtensor)
     else:
         size, stop_gradient = metadata
@@ -109,7 +109,7 @@ def reduce_tensor(tensor):
     # TODO: add serializing name and  hooks check
     if tensor.place.is_cpu_place() or tensor.place.is_gpu_place(
     ) or tensor.place.is_cuda_pinned_place():
-        if type(tensor) == paddle.fluid.framework.ParamBase:
+        if type(tensor) == paddle.fluid.framework.EagerParamBase:
             metadata = copy.deepcopy(tensor.__dict__)
         else:
             metadata = (tensor.size, tensor.stop_gradient)
@@ -182,6 +182,7 @@ def init_reductions():
         return
 
     ForkingPickler.register(paddle.Tensor, reduce_tensor)
-    ForkingPickler.register(paddle.fluid.core.VarBase, reduce_tensor)
-    ForkingPickler.register(paddle.fluid.framework.ParamBase, reduce_tensor)
+    ForkingPickler.register(paddle.fluid.core.eager.Tensor, reduce_tensor)
+    ForkingPickler.register(paddle.fluid.framework.EagerParamBase,
+                            reduce_tensor)
     ForkingPickler.register(paddle.fluid.core.LoDTensor, reduce_lodtensor)
