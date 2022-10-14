@@ -34,7 +34,7 @@ __global__ void EmbeddingFW(T *output,
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
-    if (padding_idx == false || idy != padding_idx) {
+    if (PaddingFlag == false || id != padding_idx) {
       PADDLE_ENFORCE(id >= 0,
                      "Id should no less than 0 but received an id value: %lld.",
                      id);
