@@ -23,6 +23,7 @@ def getFNDAFile(rootPath, test):
     filename = '%s/build/ut_map/%s/coverage.info.tmp' % (rootPath, test)
     fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
     os.system('touch %s' % fn_filename)
+    print("getFNDAFile of %s" % test)
     f = open(filename)
     lines = f.readlines()
     for line in lines:
@@ -82,17 +83,20 @@ def analysisFNDAFile(rootPath, test):
 
 
 def getCovinfo(rootPath, test):
+    print("getCoveinfo of %s" % test)
     ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
     os.system(
         'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
         % ut_map_path)
     os.system(
-        "cd %s && lcov --extract coverage.info '/paddle/paddle/fluid/framework/*' '/paddle/paddle/fluid/imperative/*' '/paddle/paddle/fluid/inference/*' '/paddle/paddle/fluid/memory/*' '/paddle/paddle/fluid/operators/*' '/paddle/paddle/fluid/string/*' '/paddle/paddle/fluid/distributed/*' '/paddle/paddle/fluid/platform/*' '/paddle/paddle/fluid/pybind/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
+        "cd %s && lcov --extract coverage.info '/paddle/paddle/phi/*' '/paddle/paddle/utils/*' '/paddle/paddle/fluid/framework/*' '/paddle/paddle/fluid/imperative/*' '/paddle/paddle/fluid/inference/*' '/paddle/paddle/fluid/memory/*' '/paddle/paddle/fluid/operators/*' '/paddle/paddle/fluid/string/*' '/paddle/paddle/fluid/distributed/*' '/paddle/paddle/fluid/platform/*' '/paddle/paddle/fluid/pybind/*' '/paddle/build/*' -o coverage.info.tmp --rc lcov_branch_coverage=0 > /dev/null 2>&1"
         % ut_map_path)
+    print("----------code go here-------")
     os.system('rm -rf %s/paddle' % ut_map_path)
     os.system('rm -rf %s/coverage.info' % ut_map_path)
     getFNDAFile(rootPath, test)
     analysisFNDAFile(rootPath, test)
+    os.system('rm -rf %s/coverage.info.tmp' % ut_map_path)
 
 
 if __name__ == "__main__":
