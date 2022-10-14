@@ -417,10 +417,10 @@ class CompiledProgram(object):
         for node in self._graph.nodes():
             if node.is_var() and node.var() is not None and node.var().persistable() and \
                     node.var().type() != core.VarDesc.VarType.RAW:
-                name = node.name().decode()
+                name = node.name()
                 if self._program is not None and _should_broadcast_or_not_exists(
                         self._program, name):
-                    self._persistable_vars.append(node.name().decode())
+                    self._persistable_vars.append(node.name())
 
         places = list(map(_place_obj, places))
 
@@ -432,9 +432,9 @@ class CompiledProgram(object):
 
         return core.ParallelExecutor(
             places, self._persistable_vars,
-            self._loss_name.decode() if self._loss_name else six.u(''),
-            self._scope, self._local_scopes, self._exec_strategy,
-            self._build_strategy, self._graph)
+            self._loss_name if self._loss_name else six.u(''), self._scope,
+            self._local_scopes, self._exec_strategy, self._build_strategy,
+            self._graph)
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)

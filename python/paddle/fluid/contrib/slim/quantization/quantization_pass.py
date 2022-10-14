@@ -1337,7 +1337,7 @@ class ConvertToInt8Pass(object):
     def _convert_to_int8(self, graph, var_node):
         int8_var_node_name = var_node.name() + ".int8"
         int8_var_node = graph.create_persistable_node(
-            name=int8_var_node_name.decode(),
+            name=int8_var_node_name,
             var_type=var_node.type(),
             shape=var_node.shape(),
             var_dtype=core.VarDesc.VarType.INT8)

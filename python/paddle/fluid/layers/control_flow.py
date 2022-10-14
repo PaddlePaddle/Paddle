@@ -2431,7 +2431,7 @@ class ConditionalBlock(object):
         for inner_input_name in params:
             inner_var = parent_block._find_var_recursive(inner_input_name)
             if inner_var:
-                param_list.append(inner_var.name.decode())
+                param_list.append(inner_var.name)
 
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             conditional_block_op.desc, set(), [grad_sub_block.desc])

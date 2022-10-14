@@ -125,7 +125,8 @@ def _append_loaded_suffix(name):
     e.g. x ==> x.load_0, x.load_0 ==> x.load_0.load_0
     """
     suffix = LOADED_VAR_SUFFIX
-    name = name.decode()
+    assert isinstance(name, str)
+    # name = name.decode()
     new_name = unique_name.generate_with_ignorable_key('.'.join((name, suffix)))
     return new_name
 

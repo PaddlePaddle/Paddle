@@ -423,13 +423,8 @@ def _some_in_set_(cands, s):
     """
     if len(cands) == 0:
         return False
-    # Assert Check
-    assert all([isinstance(cand, str) for cand in cands])
-    assert all([isinstance(item, str) for item in s])
-    literal_set = s
-    literal_cands = cands
-    for c in literal_cands:
-        if c in literal_set:
+    for c in cands:
+        if c in s:
             return True
     return False
 
@@ -440,7 +435,6 @@ def _strip_grad_suffix_(name):
     e.g. x@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
     """
-    name = name.decode()
     pos = name.find(core.grad_var_suffix())
     new_name = name[:pos] if pos != -1 else name
     new_pos = name.rfind('grad/')
@@ -452,7 +446,7 @@ def _append_grad_suffix_(name):
     Append grad suffix to the given variable name
     e.g. x ==> x@GRAD
     """
-    return name.decode() + core.grad_var_suffix()
+    return name + core.grad_var_suffix()
 
 
 def _accumulate_gradients_by_sum_op_(var_name,
@@ -970,7 +964,7 @@ def _append_backward_ops_with_checkpoints_(block,
                                 "invoke op: %s" %
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, no_grad_dict[block.idx].decode(), [])  # may be a set
+                op.desc, no_grad_dict[block.idx], [])
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -996,7 +990,7 @@ def _append_backward_ops_with_checkpoints_(block,
                                 "invoke op: %s" %
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, no_grad_dict[block.idx].decode(), [])  # may be a set
+                op.desc, no_grad_dict[block.idx], [])
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -1057,12 +1051,8 @@ def _append_backward_ops_with_checkpoints_(block,
 
         # 3.c. add backward ops for all ops in current segment
         for op_desc in reversed(added_descs):
-            if isinstance(no_grad_dict[block.idx], set):
-                print("no_grad_dict[block.idx] is a set!!!!!!!!!!!!!!!")
-                for s in no_grad_dict[block.idx]:
-                    print(type(s))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op_desc, no_grad_dict[block.idx].decode(), [])  # may be a set
+                op_desc, no_grad_dict[block.idx], [])
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -1246,7 +1236,7 @@ def _append_backward_ops_(block,
 
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, no_grad_dict[block.idx].decode(), grad_sub_block_list)
+            op.desc, no_grad_dict[block.idx], grad_sub_block_list)
 
         # record the mapping between fwd and bwd
         if grad_op_id_to_fwd_op is not None:
@@ -1848,7 +1838,7 @@ def append_backward(loss,
     params_and_grads = []
     op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
     for param in parameters:
-        if param.decode() not in grad_info_map:
+        if param not in grad_info_map:
             continue
         grad_info = grad_info_map[param]
         grad_block = grad_info[1]

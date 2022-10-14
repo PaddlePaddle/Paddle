@@ -1390,7 +1390,6 @@ class Variable(object):
         self.error_clip = error_clip
 
         is_new_var = False
-        name = name.decode()
         self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
         if self.desc is None:
@@ -1757,8 +1756,7 @@ class Variable(object):
         if with_details:
             additional_attr = ("error_clip", )
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name, getattr(self,
-                                                            attr_name).decode())
+                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
 
         return res_str
 
@@ -1900,7 +1898,7 @@ class Variable(object):
                                                 dtype='float32')
             print("name of current Var is: {}".format(new_variable.name))
         """
-        return self.desc.name().decode()
+        return self.desc.name()
 
     @property
     def grad_name(self):
@@ -2807,7 +2805,7 @@ class Operator(object):
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
                             elif isinstance(arg, (Variable, core.VarBase)):
-                                in_arg_names.append(arg.name.decode())
+                                in_arg_names.append(arg.name)
                             else:
                                 raise TypeError(
                                     "The type of '%s' in operator %s should be "
@@ -2843,7 +2841,7 @@ class Operator(object):
                         if isinstance(arg, six.string_types):
                             out_arg_names.append(arg)
                         else:
-                            out_arg_names.append(arg.name.decode())
+                            out_arg_names.append(arg.name)
                         # TODO(minqiyang): could we remove variable's op in static mode?
                         if not _non_static_mode():
                             if isinstance(arg, six.string_types):
@@ -3660,8 +3658,8 @@ class Block(object):
         Rename variable in vars and ops' inputs and outputs
 
         Args:
-            name(str): the name that need to be renamed.
-            new_name(str): the name that need to rename to.
+            name(bytes): the name that need to be renamed.
+            new_name(bytes): the name that need to rename to.
 
         Raises:
             ValueError: If this block doesn't have this the giving name,
@@ -6643,8 +6641,7 @@ class Parameter(Variable):
             additional_attr = ("trainable", "optimize_attr", "regularizer",
                                "do_model_average", "need_clip")
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name, getattr(self,
-                                                            attr_name).decode())
+                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str
