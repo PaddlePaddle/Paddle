@@ -45,7 +45,6 @@ void DeformableConvKernel(const Context& dev_ctx,
     im2col_step = temp_step;
   }
 
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   std::vector<int64_t> filter_shape_vec(phi::vectorize(filter.dims()));
   std::vector<int64_t> output_shape_vec(phi::vectorize(out->dims()));
 
