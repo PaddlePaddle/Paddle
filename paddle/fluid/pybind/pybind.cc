@@ -2612,7 +2612,8 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
     !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && defined(PADDLE_WITH_DISTRIBUTE) &&  \
+    defined(PADDLE_WITH_PSCORE)
   BindWorkerInfo(&m);
   BindFuture(&m);
   InitAndSetAgentInstance(&m);
