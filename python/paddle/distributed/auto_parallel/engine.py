@@ -42,7 +42,7 @@ from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .dist_loader import DistributedDataLoaderFromGenerator, DistributedDataLoader
-from .utils import to_list, get_dist_attr
+from .utils import to_list, get_dist_attr, get_lr
 from .process_group import new_process_group, get_all_process_groups
 from .dist_context import DistributedContext, get_default_distributed_context
 from .strategy import Strategy
@@ -128,11 +128,11 @@ class Engine:
             )
         self._model = model
 
-        # if loss and not isinstance(loss,
-        #                            paddle.nn.Layer) and not callable(loss):
-        #     raise TypeError(
-        #         "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
-        #     )
+        if loss and not isinstance(loss,
+                                   paddle.nn.Layer) and not callable(loss):
+            raise TypeError(
+                "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
+            )
         self._loss = loss
 
         if optimizer and not isinstance(
@@ -406,7 +406,6 @@ class Engine:
                         lr=None,
                         fetch_names=None,
                         fetch_indices=None,
-                        profiler_log="",
                         mode=None):
         logs = {}
         if epoch is not None:
@@ -825,9 +824,9 @@ class Engine:
                         return_numpy=self._strategy.return_numpy)
                 except core.EOFException:
                     break
-                lr = self._get_lr(self._optimizer)
+                lr = get_lr(self._optimizer)
                 logs = self._prepare_logger(outs, epoch, step, lr, fetch_names,
-                                            fetch_indices, "", self._mode)
+                                            fetch_indices, self._mode)
                 cbks.on_batch_end('train', step, logs)
 
             if valid_data and (epoch + 1) % valid_freq == 0:
@@ -951,7 +950,7 @@ class Engine:
             except core.EOFException:
                 break
             logs = self._prepare_logger(outs, None, step, None, fetch_names,
-                                        fetch_indices, "", self._mode)
+                                        fetch_indices, self._mode)
             cbks.on_batch_end('eval', step, logs)
         cbks.on_end('eval', logs)
         self._reset_metrics()
@@ -1054,29 +1053,27 @@ class Engine:
             except core.EOFException:
                 break
             logs = self._prepare_logger(outs, None, step, None, fetch_names,
-                                        fetch_indices, "", self._mode)
+                                        fetch_indices, self._mode)
             cbks.on_batch_end('predict', step, logs)
             outputs.append(list(logs["outputs"].values()))
         cbks.on_end('predict', logs)
         return outputs
 
-    def dataloader(
-            self,
-            dataset,
-            # return_list=True,
-            batch_size=1,
-            shuffle=False,
-            drop_last=False,
-            collate_fn=None,
-            num_workers=0,
-            use_buffer_reader=True,
-            use_shared_memory=True,
-            timeout=0,
-            worker_init_fn=None,
-            epochs=1,
-            steps_per_epoch=None,
-            sample_split=1,
-            mode=None):
+    def dataloader(self,
+                   dataset,
+                   batch_size=1,
+                   shuffle=False,
+                   drop_last=False,
+                   collate_fn=None,
+                   num_workers=0,
+                   use_buffer_reader=True,
+                   use_shared_memory=True,
+                   timeout=0,
+                   worker_init_fn=None,
+                   epochs=1,
+                   steps_per_epoch=None,
+                   sample_split=1,
+                   mode=None):
         if mode is not None:
             self.to_mode(mode)
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
@@ -1216,10 +1213,9 @@ class Engine:
                                   fetch_list=fetch_names,
                                   use_program_cache=self._strategy.use_cache,
                                   return_numpy=self._strategy.return_numpy)
-        self._prepare_logger(outs, None, None, None, fetch_names, fetch_indices,
-                             "", self._mode)
-        history = self._prepare_history(outs, fetch_indices, self._mode)
-        return history
+        logs = self._prepare_logger(outs, None, None, None, fetch_names,
+                                    fetch_indices, self._mode)
+        return logs
 
     def _prepare_dataloader(self,
                             dataset,
@@ -1324,13 +1320,6 @@ class Engine:
                 copy_var.desc.set_original_id(var.desc.original_id())
                 feed_list.append(copy_var)
 
-        # # remove the first three ops if multi run fit/evaluate/predict
-        # self._op_size = len(dist_main_block.ops)
-        # if dist_main_block.ops[0].type == 'create_py_reader':
-        #     op_size -= 3
-        #     for _ in range(3):
-        #         dist_main_block._remove_op(0, sync=False)
-
         places = paddle.static.cuda_places()
         with static.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = DistributedDataLoaderFromGenerator(
@@ -1351,21 +1340,6 @@ class Engine:
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks)
         self._prepare_reader()
-        # # move read op from the end of program to the start of program
-        # new_op_size = len(dist_main_block.ops)
-        # for _ in range(new_op_size - 1, op_size - 1, -1):
-        #     op = dist_main_block.ops[new_op_size - 1]
-        #     new_op_desc = dist_main_block.desc._prepend_op()
-        #     new_op_desc.copy_from(op.desc)
-        #     new_op = Operator(dist_main_block,
-        #                       new_op_desc,
-        #                       type=new_op_desc.type())
-        #     dist_main_block.ops.insert(0, new_op)
-        #     dist_op = DistributedOperator(new_op)
-        #     dist_context.add_dist_op_for_program(dist_op)
-        # for _ in range(new_op_size - op_size):
-        #     dist_main_block._remove_op(new_op_size, sync=False)
-        # dist_main_block._sync_with_cpp()
         return dataloader
 
     def _tune(self, tune_data, tune_sample_split=None, batch_size=1):
@@ -1596,20 +1570,6 @@ class Engine:
         self._state_dict, self._dist_attr = self._saver.load(
             path, load_optimizer)
         return self._state_dict, self._dist_attr
-
-    def _get_lr(self, optimizer):
-        if isinstance(optimizer, paddle.optimizer.Optimizer):
-            return optimizer.get_lr()
-        elif isinstance(optimizer, paddle.fluid.optimizer.Optimizer):
-            if isinstance(optimizer._learning_rate, float):
-                return optimizer._learning_rate
-            else:
-                return optimizer._learning_rate()
-        else:
-            raise TypeError(
-                    "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
-                        " or `paddle.fluid.optimizer.Optimizer`, but got {}.".format(type(optimizer))
-                )
 
     @property
     def main_program(self):
