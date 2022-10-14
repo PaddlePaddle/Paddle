@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_kernel.h"
-
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/data_type.h"
