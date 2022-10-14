@@ -2109,6 +2109,9 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "expand_v2") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
       if (!desc.HasAttr("shape")) {
         return false;
       }
@@ -2123,24 +2126,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         if (desc.Input("expand_shapes_tensor").size() >= 1) {
           return false;
         }
-      }
-      std::vector<int> shape =
-          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
-      auto* block = desc.Block();
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      int shape_rank = shape.size();
-      int rank = x_shape.size();
-      if (with_dynamic_shape) {
-        for (int i = shape_rank - 1; i >= 0; --i) {
-          int dim = i + rank - shape_rank;
-          if (shape[i] == -1) {
-            if (dim < 0) return false;
-          }
-        }
-      } else {
-        return false;
       }
     }
 
