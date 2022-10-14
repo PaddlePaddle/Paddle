@@ -24,10 +24,10 @@ template <typename DeviceContext, typename T>
 class BeamSearchOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* ids = context.Input<framework::LoDTensor>("ids");
-    auto* scores = context.Input<framework::LoDTensor>("scores");
-    auto* pre_ids = context.Input<framework::LoDTensor>("pre_ids");
-    auto* pre_scores = context.Input<framework::LoDTensor>("pre_scores");
+    auto* ids = context.Input<phi::DenseTensor>("ids");
+    auto* scores = context.Input<phi::DenseTensor>("scores");
+    auto* pre_ids = context.Input<phi::DenseTensor>("pre_ids");
+    auto* pre_scores = context.Input<phi::DenseTensor>("pre_scores");
 
     PADDLE_ENFORCE_NOT_NULL(scores,
                             platform::errors::NotFound(
@@ -46,9 +46,8 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     int end_id = context.Attr<int>("end_id");
     bool is_accumulated = context.Attr<bool>("is_accumulated");
 
-    auto selected_ids = context.Output<framework::LoDTensor>("selected_ids");
-    auto selected_scores =
-        context.Output<framework::LoDTensor>("selected_scores");
+    auto selected_ids = context.Output<phi::DenseTensor>("selected_ids");
+    auto selected_scores = context.Output<phi::DenseTensor>("selected_scores");
     auto* parent_idx = context.Output<phi::DenseTensor>("parent_idx");
     PADDLE_ENFORCE_NOT_NULL(
         selected_ids,

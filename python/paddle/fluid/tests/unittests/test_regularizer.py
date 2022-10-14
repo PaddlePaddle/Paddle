@@ -21,7 +21,6 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.fluid.optimizer as optimizer
 import paddle.fluid.regularizer as regularizer
 from paddle.fluid.backward import append_backward
 

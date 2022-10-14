@@ -14,14 +14,11 @@
 
 import unittest
 import numpy as np
-import six
 import paddle.fluid.core as core
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.fluid import compiler, Program, program_guard
 
 
 def ref_selu(x,

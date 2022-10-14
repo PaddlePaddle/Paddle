@@ -15,7 +15,6 @@
 from paddle.framework import core
 from paddle.fluid import unique_name
 from .pass_base import PassBase, PassType, register_pass
-from collections import OrderedDict
 import numpy as np
 
 

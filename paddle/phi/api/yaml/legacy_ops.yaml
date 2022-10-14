@@ -962,15 +962,6 @@
   intermediate : xshape
   backward : flatten_grad
 
-- op : flip
-  args : (Tensor x, int[] axis)
-  output : Tensor
-  infer_meta :
-    func : FlipInferMeta
-  kernel :
-    func : flip
-  backward : flip_grad
-
 - op : floor
   args : (Tensor x)
   output : Tensor(out)

@@ -20,6 +20,8 @@
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/phi/core/expect.h"
 
+#include "paddle/phi/core/visit_type.h"
+
 namespace paddle {
 namespace operators {
 namespace {
@@ -774,7 +776,22 @@ class ConvMKLDNNHandlerT
 
 }  // anonymous namespace
 
-template <typename T, typename K>
+#define PD_VISIT_FLOAT_AND_INT8_TYPES(TYPE, NAME, ...)                    \
+  [&] {                                                                   \
+    const auto& __dtype__ = TYPE;                                         \
+    switch (__dtype__) {                                                  \
+      PD_PRIVATE_CASE_TYPE(                                               \
+          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)          \
+      PD_PRIVATE_CASE_TYPE(                                               \
+          NAME, ::paddle::DataType::INT8, int8_t, __VA_ARGS__)            \
+      default:                                                            \
+        PD_THROW("function " #NAME " is not implemented for data type `", \
+                 __dtype__,                                               \
+                 "`");                                                    \
+    }                                                                     \
+  }()
+
+template <typename T>
 class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -828,48 +845,52 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.HasInput("Bias") ? ctx.Input<phi::DenseTensor>("Bias") : nullptr;
     auto* output = ctx.Output<phi::DenseTensor>("Output");
 
-    ConvMKLDNNHandlerT<T, K, T_out> handler(
-        ctx,
-        dev_ctx,
-        mkldnn_engine,
-        ctx.GetPlace(),
-        input,
-        filter,
-        bias,
-        output,
-        ctx.InputName("Input") + ctx.InputName("Filter"));
+    PD_VISIT_FLOAT_AND_INT8_TYPES(
+        filter->dtype(), "ConvMKLDNNHandlerT", ([&] {
+          ConvMKLDNNHandlerT<T, data_t, T_out> handler(
+              ctx,
+              dev_ctx,
+              mkldnn_engine,
+              ctx.GetPlace(),
+              input,
+              filter,
+              bias,
+              output,
+              ctx.InputName("Input") + ctx.InputName("Filter"));
 
-    auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
+          auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
-    auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-        filter, ctx.Attr<int>("groups"), is_conv3d, is_test);
+          auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
+              filter, ctx.Attr<int>("groups"), is_conv3d, is_test);
 
-    std::shared_ptr<dnnl::memory> dst_memory_p;
-    if (fuse_residual_conn) {
-      auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
-      dst_memory_p =
-          handler.AcquireDstMemoryWithResidual(output, residual_param);
-    } else {
-      dst_memory_p = handler.template AcquireDstMemory<T_out>(output);
-    }
+          std::shared_ptr<dnnl::memory> dst_memory_p;
+          if (fuse_residual_conn) {
+            auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
+            dst_memory_p =
+                handler.AcquireDstMemoryWithResidual(output, residual_param);
+          } else {
+            dst_memory_p = handler.template AcquireDstMemory<T_out>(output);
+          }
 
-    auto conv_p = handler.AcquireForwardPrimitive();
+          auto conv_p = handler.AcquireForwardPrimitive();
 
-    std::unordered_map<int, dnnl::memory> args = {
-        {DNNL_ARG_SRC, *src_memory_p},
-        {DNNL_ARG_WEIGHTS, *weights_memory_p},
-        {DNNL_ARG_DST, *dst_memory_p}};
+          std::unordered_map<int, dnnl::memory> args = {
+              {DNNL_ARG_SRC, *src_memory_p},
+              {DNNL_ARG_WEIGHTS, *weights_memory_p},
+              {DNNL_ARG_DST, *dst_memory_p}};
 
-    if (bias) {
-      auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(bias, is_test);
-      args.insert({DNNL_ARG_BIAS, *bias_memory_p});
-    }
+          if (bias) {
+            auto bias_memory_p =
+                handler.AcquireBiasMemoryWithReorder(bias, is_test);
+            args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+          }
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    conv_p->execute(astream, args);
-    astream.wait();
+          auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+          conv_p->execute(astream, args);
+          astream.wait();
 
-    output->set_mem_desc(dst_memory_p->get_desc());
+          output->set_mem_desc(dst_memory_p->get_desc());
+        }));
   }
 
   template <typename T_out>
@@ -905,90 +926,113 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.HasInput("Bias") ? ctx.Input<phi::DenseTensor>("Bias") : nullptr;
     auto* output = ctx.Output<phi::DenseTensor>("Output");
 
-    ConvMKLDNNHandlerT<T, K, T_out> handler(
-        ctx,
-        dev_ctx,
-        mkldnn_engine,
-        ctx.GetPlace(),
-        input,
-        filter,
-        bias,
-        output,
-        ctx.InputName("Input") + ctx.InputName("Filter"));
+    PD_VISIT_FLOAT_AND_INT8_TYPES(
+        filter->dtype(), "ConvMKLDNNHandlerT", ([&] {
+          ConvMKLDNNHandlerT<T, data_t, T_out> handler(
+              ctx,
+              dev_ctx,
+              mkldnn_engine,
+              ctx.GetPlace(),
+              input,
+              filter,
+              bias,
+              output,
+              ctx.InputName("Input") + ctx.InputName("Filter"));
 
-    auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
+          auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
-    const auto& scale_weights_data =
-        ctx.Attr<std::vector<float>>("Scale_weights");
-    const bool is_multi_channel = scale_weights_data.size() > 1;
-    const int& groups = ctx.Attr<int>("groups");
-    int mask_reorder =
-        is_multi_channel ? ((groups != 1) ? (1 << 1) + (1 << 0) : 1 << 0) : 0;
-    auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-        filter, groups, false, true, scale_weights_data, mask_reorder);
+          const auto& scale_weights_data =
+              ctx.Attr<std::vector<float>>("Scale_weights");
+          const bool is_multi_channel = scale_weights_data.size() > 1;
+          const int& groups = ctx.Attr<int>("groups");
+          int mask_reorder =
+              is_multi_channel ? ((groups != 1) ? (1 << 1) + (1 << 0) : 1 << 0)
+                               : 0;
+          auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
+              filter, groups, false, true, scale_weights_data, mask_reorder);
 
-    std::shared_ptr<dnnl::memory> dst_memory_p;
-    if (fuse_residual_conn) {
-      auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
-      PADDLE_ENFORCE_EQ(
-          output->dims(),
-          residual_param->dims(),
-          platform::errors::InvalidArgument(
-              "Output and elementwise parameter need to have the "
-              "same dimension sizes, but got output's dimension = %d"
-              " and residual param's dimension =%d .",
-              output->dims().size(),
-              residual_param->dims().size()));
-      dst_memory_p =
-          handler.AcquireDstMemoryWithResidual(output, residual_param);
-      need_s8_to_u8 = (platform::MKLDNNGetDataType<T_out>() ==
-                       dnnl::memory::data_type::s8) &&
-                      unsigned_output;
-    } else {
-      dst_memory_p = handler.template AcquireDstMemory<T_out>(output);
-    }
+          std::shared_ptr<dnnl::memory> dst_memory_p;
+          if (fuse_residual_conn) {
+            auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
+            PADDLE_ENFORCE_EQ(
+                output->dims(),
+                residual_param->dims(),
+                platform::errors::InvalidArgument(
+                    "Output and elementwise parameter need to have the "
+                    "same dimension sizes, but got output's dimension = %d"
+                    " and residual param's dimension =%d .",
+                    output->dims().size(),
+                    residual_param->dims().size()));
+            dst_memory_p =
+                handler.AcquireDstMemoryWithResidual(output, residual_param);
+            need_s8_to_u8 = (platform::MKLDNNGetDataType<T_out>() ==
+                             dnnl::memory::data_type::s8) &&
+                            unsigned_output;
+          } else {
+            dst_memory_p = handler.template AcquireDstMemory<T_out>(output);
+          }
 
-    auto conv_p = handler.AcquireForwardPrimitive();
+          auto conv_p = handler.AcquireForwardPrimitive();
 
-    std::unordered_map<int, dnnl::memory> args = {
-        {DNNL_ARG_SRC, *src_memory_p},
-        {DNNL_ARG_WEIGHTS, *weights_memory_p},
-        {DNNL_ARG_DST, *dst_memory_p}};
+          std::unordered_map<int, dnnl::memory> args = {
+              {DNNL_ARG_SRC, *src_memory_p},
+              {DNNL_ARG_WEIGHTS, *weights_memory_p},
+              {DNNL_ARG_DST, *dst_memory_p}};
 
-    if (bias) {
-      std::vector<float> bias_scales;
-      auto p_scales_tuple =
-          std::make_shared<std::tuple<float, std::vector<float>>>(
-              std::make_tuple(static_cast<float>(mask_reorder), bias_scales));
-      if (ctx.HasAttr("Bias_scales")) {
-        bias_scales = ctx.Attr<std::vector<float>>("Bias_scales");
-        p_scales_tuple =
-            std::make_shared<std::tuple<float, std::vector<float>>>(
-                std::make_tuple(static_cast<float>(mask_reorder), bias_scales));
-      } else {
-        p_scales_tuple = handler.get_int8_bias_scales(ctx);
-      }
-      auto bias_memory_p =
-          handler.AcquireBiasMemoryWithReorder(bias,
-                                               true,
-                                               std::get<1>(*p_scales_tuple),
-                                               std::get<0>(*p_scales_tuple));
-      args.insert({DNNL_ARG_BIAS, *bias_memory_p});
-    }
+          if (bias) {
+            std::vector<float> bias_scales;
+            auto p_scales_tuple =
+                std::make_shared<std::tuple<float, std::vector<float>>>(
+                    std::make_tuple(static_cast<float>(mask_reorder),
+                                    bias_scales));
+            if (ctx.HasAttr("Bias_scales")) {
+              bias_scales = ctx.Attr<std::vector<float>>("Bias_scales");
+              p_scales_tuple =
+                  std::make_shared<std::tuple<float, std::vector<float>>>(
+                      std::make_tuple(static_cast<float>(mask_reorder),
+                                      bias_scales));
+            } else {
+              p_scales_tuple = handler.get_int8_bias_scales(ctx);
+            }
+            auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(
+                bias,
+                true,
+                std::get<1>(*p_scales_tuple),
+                std::get<0>(*p_scales_tuple));
+            args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+          }
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    conv_p->execute(astream, args);
-    astream.wait();
+          auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+          conv_p->execute(astream, args);
+          astream.wait();
 
-    if (need_s8_to_u8) {
-      output->mutable_data<uint8_t>(ctx.GetPlace());
-    }
+          if (need_s8_to_u8) {
+            output->mutable_data<uint8_t>(ctx.GetPlace());
+          }
 
-    output->set_mem_desc(dst_memory_p->get_desc());
+          output->set_mem_desc(dst_memory_p->get_desc());
+        }));
   }
 };
 
-template <typename T, typename K>
+#define PD_VISIT_FLOAT_AND_BF16_TYPES(TYPE, NAME, ...)                    \
+  [&] {                                                                   \
+    const auto& __dtype__ = TYPE;                                         \
+    switch (__dtype__) {                                                  \
+      PD_PRIVATE_CASE_TYPE(                                               \
+          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)          \
+      PD_PRIVATE_CASE_TYPE(NAME,                                          \
+                           ::paddle::DataType::BFLOAT16,                  \
+                           ::phi::dtype::bfloat16,                        \
+                           __VA_ARGS__)                                   \
+      default:                                                            \
+        PD_THROW("function " #NAME " is not implemented for data type `", \
+                 __dtype__,                                               \
+                 "`");                                                    \
+    }                                                                     \
+  }()
+
+template <typename T>
 class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -1013,119 +1057,123 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
 
     if (!input_grad && !filter_grad) return;
 
-    // TODO(jczaja): Are all tensors really needed?
-    ConvMKLDNNHandlerT<T, K, T> handler(
-        ctx,
-        dev_ctx,
-        ctx.GetPlace(),
-        input,
-        filter,
-        bias,
-        output_grad,
-        filter_grad,
-        input_grad,
-        ctx.InputName("Input") + ctx.InputName("Filter"));
-
-    // create mkldnn memory from input tensors (data/weights)
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-
-    if (filter_grad) {
-      auto src_memory_p =
-          handler.AcquireSrcMemoryWithReorderFromWeightsPrimitive(input);
-      auto diff_dst_memory_p =
-          handler.AcquireDiffDstMemoryWithReorderFromWeightsPrimitive(
-              output_grad);
-
-      // For convoluition with groups write filter grad into
-      // oneDNN buffer and then we reorder it into filter_grad tensor
-      int g = std::max(ctx.Attr<int>("groups"), 1);
-      auto diff_weights_memory_p =
-          g > 1 ? handler.AcquireDiffWeightsMemory()
-                : handler.AcquireDiffWeightsMemory(filter_grad);
-
-      auto conv_bwd_weights_p = handler.AcquireBackwardWeightsPrimitive();
-
-      conv_bwd_weights_p->execute(
-          astream,
-          {{DNNL_ARG_SRC, *src_memory_p},
-           {DNNL_ARG_DIFF_DST, *diff_dst_memory_p},
-           {DNNL_ARG_DIFF_WEIGHTS, *diff_weights_memory_p}});
-      astream.wait();
-
-      // For convolution with groups convert from blocked to NCHW
-      // otherwise there will be problems in next operators working on this data
-      if (g > 1) {
-        // in OneDNN groups in convolution are treated as separate dimension
-        // which is not the case in paddlepaddle
-
-        dnnl::memory::data_type in_type = framework::ToMKLDNNDataType(
-            framework::TransToProtoVarType(filter->dtype()));
-        // for 3d conv with groups (six dimensional data reorder to goidhw)
-        // for 2d conv with groups (five dimensional data reorder to goihw)
-        // auto weights_tz = phi::vectorize(filter->dims());
-
-        auto weights_tz = diff_weights_memory_p->get_desc().dims();
-        dnnl::memory::format_tag out_format =
-            weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
-                                   : dnnl::memory::format_tag::goihw;
-        platform::ReorderMKLDNNHandler handler(
-            weights_tz,
-            framework::TransToProtoVarType(filter->dtype()),
-            in_type,
-            mkldnn_engine);
-        auto reorder_dst_memory_p =
-            handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());
-
-        auto reorder_p =
-            handler.AcquireReorder(reorder_dst_memory_p, diff_weights_memory_p);
-
-        {
-          platform::RecordEvent record_reorder(
-              "int_reorder",
-              platform::TracerEventType::UserDefined,
-              2,
-              platform::EventRole::kUniqueOp);
-          reorder_p->execute(
-              astream, *diff_weights_memory_p, *reorder_dst_memory_p);
-          astream.wait();
-        }
-
-        // So here we have a data in goihw , which can be interpreted as OIHW
-        // (OIDHW for conv3d)
-        // because filter_grad shape is set for OIHW (OIDHW for conv3d)
-        dnnl::memory::format_tag target_format =
-            weights_tz.size() == 6 ? dnnl::memory::format_tag::oidhw
-                                   : dnnl::memory::format_tag::oihw;
-        filter_grad->set_mem_desc(
-            dnnl::memory::desc(phi::vectorize<int64_t>(filter_grad->dims()),
-                               in_type,
-                               target_format));
-      } else {
-        filter_grad->set_mem_desc(diff_weights_memory_p->get_desc());
-      }
-    }
-    if (input_grad) {
-      auto weights_memory_p =
-          handler.AcquireWeightsMemoryWithReorderFromDataPrimitive(
+    PD_VISIT_FLOAT_AND_BF16_TYPES(
+        filter->dtype(), "ConvMKLDNNHandlerT", ([&] {
+          // TODO(jczaja): Are all tensors really needed?
+          ConvMKLDNNHandlerT<T, data_t, T> handler(
+              ctx,
+              dev_ctx,
+              ctx.GetPlace(),
+              input,
               filter,
-              ctx.Attr<int>("groups"),
-              ctx.Attr<std::vector<int>>("strides").size() == 3U);
+              bias,
+              output_grad,
+              filter_grad,
+              input_grad,
+              ctx.InputName("Input") + ctx.InputName("Filter"));
 
-      auto diff_dst_memory_p =
-          handler.AcquireDiffDstMemoryWithReorderMemoryFromDataPrimitive(
-              output_grad);
-      auto diff_src_memory_p = handler.AcquireDiffSrcMemory(input_grad);
+          // create mkldnn memory from input tensors (data/weights)
+          auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
-      auto conv_bwd_data_p = handler.AcquireBackwardPrimitive();
+          if (filter_grad) {
+            auto src_memory_p =
+                handler.AcquireSrcMemoryWithReorderFromWeightsPrimitive(input);
+            auto diff_dst_memory_p =
+                handler.AcquireDiffDstMemoryWithReorderFromWeightsPrimitive(
+                    output_grad);
 
-      conv_bwd_data_p->execute(astream,
-                               {{DNNL_ARG_WEIGHTS, *weights_memory_p},
-                                {DNNL_ARG_DIFF_DST, *diff_dst_memory_p},
-                                {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
-      astream.wait();
+            // For convoluition with groups write filter grad into
+            // oneDNN buffer and then we reorder it into filter_grad tensor
+            int g = std::max(ctx.Attr<int>("groups"), 1);
+            auto diff_weights_memory_p =
+                g > 1 ? handler.AcquireDiffWeightsMemory()
+                      : handler.AcquireDiffWeightsMemory(filter_grad);
 
-      input_grad->set_mem_desc(diff_src_memory_p->get_desc());
-    }
+            auto conv_bwd_weights_p = handler.AcquireBackwardWeightsPrimitive();
+
+            conv_bwd_weights_p->execute(
+                astream,
+                {{DNNL_ARG_SRC, *src_memory_p},
+                 {DNNL_ARG_DIFF_DST, *diff_dst_memory_p},
+                 {DNNL_ARG_DIFF_WEIGHTS, *diff_weights_memory_p}});
+            astream.wait();
+
+            // For convolution with groups convert from blocked to NCHW
+            // otherwise there will be problems in next operators working on
+            // this data
+            if (g > 1) {
+              // in OneDNN groups in convolution are treated as separate
+              // dimension which is not the case in paddlepaddle
+
+              dnnl::memory::data_type in_type = framework::ToMKLDNNDataType(
+                  framework::TransToProtoVarType(filter->dtype()));
+              // for 3d conv with groups (six dimensional data reorder to
+              // goidhw) for 2d conv with groups (five dimensional data reorder
+              // to goihw) auto weights_tz = phi::vectorize(filter->dims());
+
+              auto weights_tz = diff_weights_memory_p->get_desc().dims();
+              dnnl::memory::format_tag out_format =
+                  weights_tz.size() == 6 ? dnnl::memory::format_tag::goidhw
+                                         : dnnl::memory::format_tag::goihw;
+              platform::ReorderMKLDNNHandler handler(
+                  weights_tz,
+                  framework::TransToProtoVarType(filter->dtype()),
+                  in_type,
+                  mkldnn_engine);
+              auto reorder_dst_memory_p = handler.AcquireDstMemory(
+                  filter_grad, out_format, ctx.GetPlace());
+
+              auto reorder_p = handler.AcquireReorder(reorder_dst_memory_p,
+                                                      diff_weights_memory_p);
+
+              {
+                platform::RecordEvent record_reorder(
+                    "int_reorder",
+                    platform::TracerEventType::UserDefined,
+                    2,
+                    platform::EventRole::kUniqueOp);
+                reorder_p->execute(
+                    astream, *diff_weights_memory_p, *reorder_dst_memory_p);
+                astream.wait();
+              }
+
+              // So here we have a data in goihw , which can be interpreted as
+              // OIHW (OIDHW for conv3d) because filter_grad shape is set for
+              // OIHW (OIDHW for conv3d)
+              dnnl::memory::format_tag target_format =
+                  weights_tz.size() == 6 ? dnnl::memory::format_tag::oidhw
+                                         : dnnl::memory::format_tag::oihw;
+              filter_grad->set_mem_desc(dnnl::memory::desc(
+                  phi::vectorize<int64_t>(filter_grad->dims()),
+                  in_type,
+                  target_format));
+            } else {
+              filter_grad->set_mem_desc(diff_weights_memory_p->get_desc());
+            }
+          }
+          if (input_grad) {
+            auto weights_memory_p =
+                handler.AcquireWeightsMemoryWithReorderFromDataPrimitive(
+                    filter,
+                    ctx.Attr<int>("groups"),
+                    ctx.Attr<std::vector<int>>("strides").size() == 3U);
+
+            auto diff_dst_memory_p =
+                handler.AcquireDiffDstMemoryWithReorderMemoryFromDataPrimitive(
+                    output_grad);
+            auto diff_src_memory_p = handler.AcquireDiffSrcMemory(input_grad);
+
+            auto conv_bwd_data_p = handler.AcquireBackwardPrimitive();
+
+            conv_bwd_data_p->execute(astream,
+                                     {{DNNL_ARG_WEIGHTS, *weights_memory_p},
+                                      {DNNL_ARG_DIFF_DST, *diff_dst_memory_p},
+                                      {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
+            astream.wait();
+
+            input_grad->set_mem_desc(diff_src_memory_p->get_desc());
+          }
+        }));
   }
 };
 
@@ -1134,119 +1182,40 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FP32,
-                                    ops::kConvMKLDNNFP32,
-                                    ops::ConvMKLDNNOpKernel<float, float>);
+REGISTER_OP_KERNEL(conv2d,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::ConvMKLDNNOpKernel<float>,
+                   ops::ConvMKLDNNOpKernel<paddle::platform::bfloat16>,
+                   ops::ConvMKLDNNOpKernel<uint8_t>,
+                   ops::ConvMKLDNNOpKernel<int8_t>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    conv2d,
-    MKLDNN,
-    ::paddle::platform::CPUPlace,
-    BF16,
-    ops::kConvMKLDNNFP32,
-    ops::ConvMKLDNNOpKernel<paddle::platform::bfloat16, float>);
+REGISTER_OP_KERNEL(conv2d_grad,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::ConvMKLDNNGradOpKernel<float>,
+                   ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    U8,
-                                    ops::kConvMKLDNNINT8,
-                                    ops::ConvMKLDNNOpKernel<uint8_t, float>);
+REGISTER_OP_KERNEL(depthwise_conv2d,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::ConvMKLDNNOpKernel<float>,
+                   ops::ConvMKLDNNOpKernel<paddle::platform::bfloat16>,
+                   ops::ConvMKLDNNOpKernel<uint8_t>,
+                   ops::ConvMKLDNNOpKernel<int8_t>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    U8WS8,
-                                    ops::kConvMKLDNNINT8WS8,
-                                    ops::ConvMKLDNNOpKernel<uint8_t, int8_t>);
+REGISTER_OP_KERNEL(depthwise_conv2d_grad,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::ConvMKLDNNGradOpKernel<float>,
+                   ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    S8,
-                                    ops::kConvMKLDNNINT8,
-                                    ops::ConvMKLDNNOpKernel<int8_t, float>);
+REGISTER_OP_KERNEL(conv3d,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::ConvMKLDNNOpKernel<float>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    S8WS8,
-                                    ops::kConvMKLDNNINT8WS8,
-                                    ops::ConvMKLDNNOpKernel<int8_t, int8_t>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv2d_grad,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FP32,
-                                    ops::kConvMKLDNNFP32,
-                                    ops::ConvMKLDNNGradOpKernel<float, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    conv2d_grad,
-    MKLDNN,
-    ::paddle::platform::CPUPlace,
-    BF16,
-    ops::kConvMKLDNNFP32,
-    ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16,
-                                paddle::platform::bfloat16>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(depthwise_conv2d,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FP32,
-                                    ops::kConvMKLDNNFP32,
-                                    ops::ConvMKLDNNOpKernel<float, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    depthwise_conv2d,
-    MKLDNN,
-    ::paddle::platform::CPUPlace,
-    BF16,
-    ops::kConvMKLDNNFP32,
-    ops::ConvMKLDNNOpKernel<paddle::platform::bfloat16, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(depthwise_conv2d,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    U8,
-                                    ops::kConvMKLDNNINT8,
-                                    ops::ConvMKLDNNOpKernel<uint8_t, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(depthwise_conv2d,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    S8,
-                                    ops::kConvMKLDNNINT8,
-                                    ops::ConvMKLDNNOpKernel<int8_t, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(depthwise_conv2d_grad,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FP32,
-                                    ops::kConvMKLDNNFP32,
-                                    ops::ConvMKLDNNGradOpKernel<float, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    depthwise_conv2d_grad,
-    MKLDNN,
-    ::paddle::platform::CPUPlace,
-    BF16,
-    ops::kConvMKLDNNFP32,
-    ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv3d,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FP32,
-                                    ops::kConvMKLDNNFP32,
-                                    ops::ConvMKLDNNOpKernel<float, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(conv3d_grad,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FP32,
-                                    ops::kConvMKLDNNFP32,
-                                    ops::ConvMKLDNNGradOpKernel<float, float>);
+REGISTER_OP_KERNEL(conv3d_grad,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::ConvMKLDNNGradOpKernel<float>);

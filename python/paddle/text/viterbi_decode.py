@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ..nn import Layer
-from ..fluid.framework import core, _non_static_mode, in_dygraph_mode
+from ..fluid.framework import _non_static_mode, in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
 from paddle import _C_ops, _legacy_C_ops

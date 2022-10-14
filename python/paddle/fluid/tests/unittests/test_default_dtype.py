@@ -15,10 +15,6 @@
 import unittest
 import numpy as np
 from paddle.framework import set_default_dtype, get_default_dtype
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.dygraph import Linear
-import paddle.fluid.core as core
 
 
 class TestDefaultType(unittest.TestCase):

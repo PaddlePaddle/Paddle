@@ -19,7 +19,7 @@ import warnings
 import json
 import paddle
 import paddle.nn as nn
-from paddle.io import Dataset, DataLoader, BatchSampler, SequenceSampler
+from paddle.io import DataLoader, Dataset
 import sys
 import os
 
