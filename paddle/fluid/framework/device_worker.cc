@@ -240,7 +240,7 @@ void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
       continue;
     }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    framework::LoDTensor cpu_tensor;
+    phi::DenseTensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       tensor = &cpu_tensor;
@@ -345,7 +345,7 @@ void DeviceWorker::DumpField(const Scope& scope,
                 << "] is not initialized, so it was skipped.";
         continue;
       }
-      framework::LoDTensor cpu_tensor;
+      phi::DenseTensor cpu_tensor;
       if (platform::is_gpu_place(tensor->place())) {
         TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
         cpu_tensor.set_lod(tensor->lod());
@@ -428,7 +428,7 @@ void DeviceWorker::DumpField(const Scope& scope,
               << "] is not initialized, so it was skipped.";
       continue;
     }
-    framework::LoDTensor cpu_tensor;
+    phi::DenseTensor cpu_tensor;
     if (platform::is_gpu_place(tensor->place())) {
       TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
       cpu_tensor.set_lod(tensor->lod());
@@ -458,6 +458,7 @@ void DeviceWorker::DumpField(const Scope& scope,
     }
     writer_ << ars[i];
   }
+  writer_.Flush();
 }
 
 }  // namespace framework

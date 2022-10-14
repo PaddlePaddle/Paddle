@@ -16,9 +16,7 @@ import os
 import shutil
 import unittest
 import tempfile
-import tarfile
 from test_dist_fleet_base import TestFleetBase
-from paddle.dataset.common import download, DATA_HOME
 
 
 class TestDistCtrInfer(TestFleetBase):

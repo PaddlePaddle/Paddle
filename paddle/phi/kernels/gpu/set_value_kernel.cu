@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/set_value_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
 
@@ -27,7 +28,9 @@ PD_REGISTER_KERNEL(set_value,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16) {}
+                   paddle::platform::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(set_value_with_tensor,
                    GPU,
                    ALL_LAYOUT,
@@ -37,4 +40,6 @@ PD_REGISTER_KERNEL(set_value_with_tensor,
                    int,
                    int64_t,
                    bool,
-                   paddle::platform::float16) {}
+                   paddle::platform::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

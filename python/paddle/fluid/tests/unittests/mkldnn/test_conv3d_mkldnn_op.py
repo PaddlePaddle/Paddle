@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.test_conv3d_op import TestConv3DOp, TestCase1, TestWithGroup1, TestWithGroup2, TestWith1x1, TestWithInput1x1Filter1x1, TestConv3DOp_2
+from paddle.fluid.tests.unittests.test_conv3d_op import TestCase1, TestConv3DOp, TestWith1x1, TestWithGroup1, TestWithGroup2, TestWithInput1x1Filter1x1
 
 
 class TestMKLDNN(TestConv3DOp):

@@ -25,8 +25,7 @@ import paddle
 from paddle.distributed.fleet import auto
 from .cost_model import estimate_cost
 from .dist_op import DistributedOperator
-from .process_group import _g_process_group_map
-from .process_group import ProcessGroup, get_process_group
+from .process_group import get_process_group
 from .operators.common import is_elementwise_op
 from .operators.common import get_distributed_operator_impl_container
 from .utils import update_op_dims_mapping_by_default_dist_impl

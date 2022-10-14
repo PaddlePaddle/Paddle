@@ -57,7 +57,6 @@ class TestIpuStrategy(unittest.TestCase):
         options = {
             'cache_path': 'paddle_cache',
             'log_dir': 'paddle_log',
-            'partials_type_matmuls': 'half',
             'partials_type_matmuls': 'float',
         }
         ipu_strategy.set_options(options)

@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:

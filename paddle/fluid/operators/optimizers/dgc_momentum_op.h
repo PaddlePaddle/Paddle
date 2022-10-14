@@ -132,7 +132,7 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
 
     auto* learning_rate = context.Input<phi::DenseTensor>("LearningRate");
     bool multi_precision = context.Attr<bool>("multi_precision");
-    if (param_var->IsType<framework::LoDTensor>()) {
+    if (param_var->IsType<phi::DenseTensor>()) {
       auto* param = context.Input<phi::DenseTensor>("Param");
       auto* param_out = context.Output<phi::DenseTensor>("ParamOut");
       auto* master_param_out =

@@ -2292,6 +2292,50 @@ class MLUCnnl {
       void* diff_x);
 };
 
+class MLUOP {
+ public:
+  static void OpYoloBox(const ExecutionContext& ctx,
+                        const mluOpTensorDescriptor_t x_desc,
+                        const void* x,
+                        const mluOpTensorDescriptor_t img_size_desc,
+                        const void* img_size,
+                        const mluOpTensorDescriptor_t anchors_desc,
+                        const void* anchors,
+                        const int class_num,
+                        const float conf_thresh,
+                        const int downsample_ratio,
+                        const bool clip_bbox,
+                        const float scale,
+                        const bool iou_aware,
+                        const float iou_aware_factor,
+                        const mluOpTensorDescriptor_t boxes_desc,
+                        void* boxes,
+                        const mluOpTensorDescriptor_t scores_desc,
+                        void* scores);
+
+  static void OpPriorBox(const ExecutionContext& ctx,
+                         const mluOpTensorDescriptor_t min_sizes_desc,
+                         const void* min_sizes,
+                         const mluOpTensorDescriptor_t aspect_ratios_desc,
+                         const void* aspect_ratios,
+                         const mluOpTensorDescriptor_t variances_desc,
+                         const void* variances,
+                         const mluOpTensorDescriptor_t max_sizes_desc,
+                         const void* max_sizes,
+                         const int height,
+                         const int width,
+                         const int im_height,
+                         const int im_width,
+                         const float step_h,
+                         const float step_w,
+                         const float offset,
+                         const bool clip,
+                         const bool min_max_aspect_ratios_order,
+                         const mluOpTensorDescriptor_t output_desc,
+                         void* output,
+                         const mluOpTensorDescriptor_t var_desc,
+                         void* var);
+};
 const std::map<const std::string, std::pair<std::vector<int>, std::vector<int>>>
     TransPermMap = {
         // trans_mode, (forward_perm, backward_perm)

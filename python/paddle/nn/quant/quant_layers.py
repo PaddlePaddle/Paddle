@@ -14,7 +14,6 @@
 
 import paddle
 from paddle.framework import core
-from paddle.fluid import dygraph_utils
 from paddle.utils import unique_name
 from paddle.framework import ParamAttr
 from paddle.fluid.framework import _varbase_creator
@@ -23,7 +22,7 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.nn import functional as F
 import logging
 from paddle.fluid.log_helper import get_logger
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.nn import Layer
 from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus

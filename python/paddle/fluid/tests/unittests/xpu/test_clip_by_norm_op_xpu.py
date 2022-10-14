@@ -17,11 +17,8 @@ import sys
 sys.path.append("..")
 import unittest
 import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test_xpu import OpTest, XPUOpTest
+from op_test_xpu import XPUOpTest
 import paddle
-from paddle.fluid import Program, program_guard
 
 
 class TestXPUClipByNormOp(XPUOpTest):
