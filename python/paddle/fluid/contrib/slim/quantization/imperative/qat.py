@@ -478,11 +478,6 @@ class ImperativeQuantizeOutputs(object):
                 InputSpec or example Tensor. If None, all input variables of 
                 the original Layer's forward method would be the inputs of
                 the saved model. Default None.
-<<<<<<< HEAD
-            onnx_format (bool, optional): Whether to export the quantized model 
-                with format of ONNX. Default is False.
-=======
->>>>>>> 0af0a87... fix dygraph new format export in QAT
             **config (dict, optional): Other save configuration options for
                 compatibility. We do not recommend using these configurations,
                 they may be removed in the future. If not necessary, DO NOT use
