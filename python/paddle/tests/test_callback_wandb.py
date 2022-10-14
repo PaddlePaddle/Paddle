@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import shutil
-import stat
 import tempfile
 import unittest
 
@@ -36,10 +33,6 @@ class TestWandbCallbacks(unittest.TestCase):
 
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
-
-    def tearDown(self):
-        os.chmod(self.save_dir, stat.S_IWUSR)
-        shutil.rmtree(self.save_dir)
 
     def func_wandb_callback(self):
         inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
