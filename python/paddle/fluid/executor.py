@@ -27,7 +27,6 @@ from .framework import convert_np_dtype_to_dtype_, _apply_pass
 from . import core
 from . import unique_name
 from . import compiler
-from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
