@@ -15,11 +15,9 @@
 import paddle.fluid.core as core
 import paddle
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard, EagerParamBase, _in_legacy_dygraph, in_dygraph_mode, _current_expected_place, _disable_legacy_dygraph
-from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.framework import EagerParamBase, _current_expected_place, _disable_legacy_dygraph, _test_eager_guard, in_dygraph_mode
 import unittest
 import copy
-import paddle.compat as cpt
 
 
 class EagerScaleTestCase(unittest.TestCase):

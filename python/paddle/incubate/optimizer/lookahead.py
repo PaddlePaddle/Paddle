@@ -13,11 +13,10 @@
 # limitations under the License.
 
 from paddle.optimizer import Optimizer
-from paddle.fluid import core, framework, layers, unique_name
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+from paddle.fluid import framework, layers, unique_name
+from paddle.fluid.framework import Variable
 from paddle.fluid.layer_helper import LayerHelper
 import paddle
-import numpy as np
 from paddle.fluid.dygraph import base as imperative_base
 
 __all__ = []

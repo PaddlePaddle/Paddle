@@ -147,6 +147,12 @@
     data_type: out_grad
   no_need_buffer: x
 
+- backward_op : flip_grad
+  forward : flip (Tensor x, int[] axis) -> Tensor(out)
+  args : (Tensor out_grad, int[] axis)
+  output : Tensor(x_grad)
+  invoke : flip(out_grad, axis)
+
 - backward_op : graph_send_uv_grad
   forward : graph_send_uv (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD") -> Tensor(out)
   args: (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, Tensor out_grad, str message_op = "ADD")

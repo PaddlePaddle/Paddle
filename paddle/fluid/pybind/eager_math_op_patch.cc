@@ -178,7 +178,7 @@ static PyObject* tensor__add__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other = CastPyArg2AttrFloat(other_obj, 0);
     }
 
     {
@@ -195,8 +195,8 @@ static PyObject* tensor__add__method(TensorObject* self,
         CastPyArg2Scalar(other_obj, "__add__", 0);
     {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -276,7 +276,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other = CastPyArg2AttrFloat(other_obj, 0);
     }
     {
       eager_gil_scoped_release guard;
@@ -292,8 +292,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
         CastPyArg2Scalar(other_obj, "__sub__", 0);
     {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -369,7 +369,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other = CastPyArg2AttrFloat(other_obj, 0);
     }
     {
       eager_gil_scoped_release guard;
@@ -385,8 +385,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
         CastPyArg2Scalar(other_obj, "__rsub__", 0);
     {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -464,7 +464,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other = CastPyArg2AttrFloat(other_obj, 0);
     }
     {
       eager_gil_scoped_release guard;
@@ -480,11 +480,12 @@ static PyObject* tensor__mul__method(TensorObject* self,
         CastPyArg2Scalar(other_obj, "__mul__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -560,7 +561,7 @@ static PyObject* tensor__div__method(TensorObject* self,
     if (PyFloat_Check(other_obj)) {
       other = CastPyArg2AttrFloat(other_obj, 0);
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other = CastPyArg2AttrFloat(other_obj, 0);
     }
     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
         _supported_int_dtype_.end()) {
@@ -581,11 +582,12 @@ static PyObject* tensor__div__method(TensorObject* self,
         CastPyArg2Scalar(other_obj, "__div__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -673,7 +675,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       other_float = CastPyArg2AttrFloat(other_obj, 0);
       has_other_float = true;
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_float = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other_float = CastPyArg2AttrFloat(other_obj, 0);
       has_other_float = true;
     }
     if (_supported_int_dtype_.find(self_tensor.dtype()) !=
@@ -696,11 +698,12 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
         CastPyArg2Scalar(other_obj, "__rdiv__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -791,7 +794,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_float = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other_float = CastPyArg2AttrFloat(other_obj, 0);
       has_other_float = true;
     }
   }
@@ -809,11 +812,12 @@ static PyObject* tensor__gt__method(TensorObject* self,
         CastPyArg2Scalar(other_obj, "__gt__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -876,7 +880,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_float = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other_float = CastPyArg2AttrFloat(other_obj, 0);
       has_other_float = true;
     }
   }
@@ -894,11 +898,12 @@ static PyObject* tensor__ge__method(TensorObject* self,
         CastPyArg2Scalar(other_obj, "__ge__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -962,7 +967,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_float = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other_float = CastPyArg2AttrFloat(other_obj, 0);
       has_other_float = true;
     }
   }
@@ -974,17 +979,18 @@ static PyObject* tensor__mod__method(TensorObject* self,
     other_tensor = full_ad_func(self_tensor.shape(),
                                 phi::Scalar(other_float),
                                 self_tensor.dtype(),
-                                place);
+                                self_tensor.place());
   } else if (!PyCheckTensor(other_obj)) {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__mod__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -1047,7 +1053,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_float = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other_float = CastPyArg2AttrFloat(other_obj, 0);
       has_other_float = true;
     }
   }
@@ -1056,17 +1062,21 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   paddle::experimental::Tensor other_tensor;
   if (has_other_float) {
     eager_gil_scoped_release guard;
-    other_tensor =
-        full_ad_func({1}, phi::Scalar(other_float), self_tensor.dtype(), place);
+    other_tensor = full_ad_func({1},
+                                phi::Scalar(other_float),
+                                self_tensor.dtype(),
+                                self_tensor.place());
   } else if (!PyCheckTensor(other_obj)) {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__matmul__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
-      other_tensor = full_ad_func({1}, value, self_tensor.dtype(), place);
+      other_tensor =
+          full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -1147,7 +1157,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_float = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other_float = CastPyArg2AttrFloat(other_obj, 0);
       has_other_float = true;
     }
   }
@@ -1159,17 +1169,18 @@ static PyObject* tensor__lt__method(TensorObject* self,
     other_tensor = full_ad_func(self_tensor.shape(),
                                 phi::Scalar(other_float),
                                 self_tensor.dtype(),
-                                place);
+                                self_tensor.place());
   } else if (!PyCheckTensor(other_obj)) {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__lt__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);
@@ -1232,7 +1243,7 @@ static PyObject* tensor__le__method(TensorObject* self,
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
-      other_float = static_cast<float>(CastPyArg2AttrInt(other_obj, 0));
+      other_float = CastPyArg2AttrFloat(other_obj, 0);
       has_other_float = true;
     }
   }
@@ -1244,17 +1255,18 @@ static PyObject* tensor__le__method(TensorObject* self,
     other_tensor = full_ad_func(self_tensor.shape(),
                                 phi::Scalar(other_float),
                                 self_tensor.dtype(),
-                                place);
+                                self_tensor.place());
   } else if (!PyCheckTensor(other_obj)) {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__le__", 0);
     if (PyComplex_Check(other_obj)) {
       eager_gil_scoped_release guard;
-      other_tensor = full_ad_func({1}, value, DataType::COMPLEX64, place);
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
     } else {
       eager_gil_scoped_release guard;
-      other_tensor =
-          full_ad_func(self_tensor.shape(), value, self_tensor.dtype(), place);
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   } else {
     other_tensor = CastPyArg2Tensor(other_obj, 0);

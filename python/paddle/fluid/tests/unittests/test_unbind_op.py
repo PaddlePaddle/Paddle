@@ -18,7 +18,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
-from paddle.fluid import compiler, Program, program_guard, core
+from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 

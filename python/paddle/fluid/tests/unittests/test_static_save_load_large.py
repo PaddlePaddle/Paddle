@@ -19,7 +19,6 @@ import paddle.fluid.framework as framework
 from test_imperative_base import new_program_scope
 
 import numpy as np
-import pickle
 import os
 import tempfile
 

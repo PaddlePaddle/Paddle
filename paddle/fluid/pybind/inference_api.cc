@@ -616,13 +616,6 @@ void BindAnalysisConfig(py::module *m) {
       .value("Bfloat16", AnalysisConfig::Precision::kBf16)
       .export_values();
 
-  py::enum_<AnalysisConfig::Backend>(analysis_config, "Backend")
-      .value("CPU", AnalysisConfig::Backend::kCPU)
-      .value("GPU", AnalysisConfig::Backend::kGPU)
-      .value("NPU", AnalysisConfig::Backend::kNPU)
-      .value("XPU", AnalysisConfig::Backend::kXPU)
-      .export_values();
-
   analysis_config.def(py::init<>())
       .def(py::init<const AnalysisConfig &>())
       .def(py::init<const std::string &>())
@@ -673,6 +666,14 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("ipu_replica_num") = 1,
            py::arg("ipu_available_memory_proportion") = 1.0,
            py::arg("ipu_enable_half_partial") = false)
+      .def("set_ipu_custom_info",
+           &AnalysisConfig::SetIpuCustomInfo,
+           py::arg("ipu_custom_ops_info") =
+               std::vector<std::vector<std::string>>({}),
+           py::arg("ipu_custom_patterns") = std::map<std::string, bool>({}))
+      .def("load_ipu_config",
+           &AnalysisConfig::LoadIpuConfig,
+           py::arg("config_path"))
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
       .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)
@@ -782,9 +783,6 @@ void BindAnalysisConfig(py::module *m) {
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
       .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &AnalysisConfig::EnableMkldnnBfloat16)
-      .def("set_calibration_file_path",
-           &AnalysisConfig::SetCalibrationFilePath,
-           py::arg("calibration_file_path") = std::string(""))
 #ifdef PADDLE_WITH_MKLDNN
       .def("quantizer_config",
            &AnalysisConfig::mkldnn_quantizer_config,

@@ -17,7 +17,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 from op_test import OpTest
 import gradient_checker
 from decorator_helper import prog_scope
