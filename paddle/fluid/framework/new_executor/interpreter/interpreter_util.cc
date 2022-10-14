@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 
 #include <algorithm>
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
@@ -719,6 +719,21 @@ void AddFetch(const std::vector<std::string>& fetch_names,
     op->CheckAttrs();
     i++;
   }
+}
+
+bool IsCommunicationOp(const std::string& op_name) {
+  const std::set<std::string> special_comm_op_set = {
+      "send",
+      "recv",
+      "send_v2",
+      "recv_v2",
+  };
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  return false;
 }
 
 }  // namespace interpreter

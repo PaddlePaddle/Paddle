@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/kernel_context.h"
