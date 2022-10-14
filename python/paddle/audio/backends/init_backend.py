@@ -115,12 +115,12 @@ def set_backend(backend_name: str):
             import paddle
             paddle.audio.backends.set_backend('wave_backend')
             # if have installed paddleaudio >= 1.0.2
-            paddle.audio.backends.set_backend('soundfile')
+            # paddle.audio.backends.set_backend('soundfile')
     """
     if backend_name not in list_available_backends():
         raise NotImplementedError()
 
-    if backend_name is "wave_backend":
+    if backend_name == "wave_backend":
         module = wave_backend
     else:
         import paddleaudio

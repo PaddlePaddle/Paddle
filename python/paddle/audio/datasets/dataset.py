@@ -13,7 +13,6 @@
 # limitations under the License.
 from typing import List
 
-import numpy as np
 import paddle
 
 from ..features import MelSpectrogram

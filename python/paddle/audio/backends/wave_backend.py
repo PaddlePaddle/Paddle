@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import paddle
 
 import wave
-import warnings
 import numpy as np
 from pathlib import Path
 
@@ -46,13 +44,6 @@ def info(filepath: str) -> AudioInfo:
 
     Returns:
         AudioInfo: info of the given audio.
-
-    Example:
-        .. code-block:: python
-
-            import paddle
-            wav_path = './test.wav'
-            paddle.audio.backends.wave_backend.info(wav_path)
     """
     if hasattr(filepath, 'read'):
         file_obj = filepath
@@ -97,14 +88,6 @@ def load(filepath: Union[str, Path],
 
     Return:
         Tuple[paddle.Tensor, int]: (audio_content, sample rate)
-
-    Exampels:
-        .. code-block:: python
-
-            import paddle
-            wav_path = './test.wav'
-            wav_data, sample_rate = paddle.audio.backends.load(wav_path)
-            # [num_frames, channels]
     """
     if hasattr(filepath, 'read'):
         file_obj = filepath
@@ -165,20 +148,6 @@ def save(
             if False, means input tensor is (time, channels)
         encoding: only support PCM16 now.
         bits_per_sample: bits per sample, only support 16 bits now.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            sample_rate = 16000
-            wav_duration = 0.5
-            num_channels = 1
-            num_frames = sample_rate * wav_duration
-            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
-            waveform = wav_data.tile([num_channels, 1])
-
-            paddle.audio.backends.wave_backend.save(waveform)
     """
     assert src.ndim == 2, "Expected 2D tensor"
 

@@ -44,10 +44,20 @@ def info(filepath: str) -> AudioInfo:
         .. code-block:: python
 
             import paddle
-            wav_path = './test.wav'
-            paddle.audio.backends.info(wav_path)
+
+            sample_rate = 16000
+            wav_duration = 0.5
+            num_channels = 1
+            num_frames = sample_rate * wav_duration
+            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            waveform = wav_data.tile([num_channels, 1])
+            filepath = "./test.wav"
+
+            paddle.audio.backends.save(filepath, waveform, sample_rate)
+            wav_data_read, sr = paddle.audio.backends.load(wav_path)
+            wav_info = paddle.audio.backends.info(wav_path)
     """
-    # for doc API
+    # for API doc
     raise NotImplementedError("please set audio backend")
 
 
@@ -76,10 +86,20 @@ def load(filepath: Union[str, Path],
         .. code-block:: python
 
             import paddle
-            wav_path = './test.wav'
-            wav_data, sample_rate = paddle.audio.backends.load(wav_path)
-            # [num_frames, channels]
+
+            sample_rate = 16000
+            wav_duration = 0.5
+            num_channels = 1
+            num_frames = sample_rate * wav_duration
+            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            waveform = wav_data.tile([num_channels, 1])
+            filepath = "./test.wav"
+
+            paddle.audio.backends.save(filepath, waveform, sample_rate)
+            wav_data_read, sr = paddle.audio.backends.load(wav_path)
+            wav_info = paddle.audio.backends.info(wav_path)
     """
+    # for API doc
     raise NotImplementedError("please set audio backend")
 
 
@@ -115,7 +135,11 @@ def save(
             num_frames = sample_rate * wav_duration
             wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
             waveform = wav_data.tile([num_channels, 1])
+            filepath = "./test.wav"
 
-            paddle.audio.backends.save(waveform)
+            paddle.audio.backends.save(filepath, waveform, sample_rate)
+            wav_data_read, sr = paddle.audio.backends.load(wav_path)
+            wav_info = paddle.audio.backends.info(wav_path)
     """
+    # for API doc
     raise NotImplementedError("please set audio backend")

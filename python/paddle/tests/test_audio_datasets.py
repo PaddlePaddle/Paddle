@@ -14,7 +14,6 @@
 import unittest
 
 import numpy as np
-import os
 import paddle
 import itertools
 from parameterized import parameterized
@@ -38,7 +37,7 @@ class TestAudioDatasets(unittest.TestCase):
             'url':
             'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set_lite.zip',
             'md5': '9ffb5e3adf28d4d6b787fa94bd59b975',
-        }  #small part of TESS dataset for test.
+        }  # small part of TESS dataset for test.
         tess_dataset = paddle.audio.datasets.TESS(mode=mode,
                                                   feat_type='mfcc',
                                                   n_mfcc=params,

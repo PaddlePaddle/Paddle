@@ -52,9 +52,19 @@ class ESC50(AudioClassificationDataset):
         .. code-block:: python
 
             import paddle
-            mode = dev
+
+            archieve = {
+                'url':
+                'https://bj.bcebos.com/paddleaudio/datasets/ESC-50-master-lite.zip',
+                'md5': '1e9ba53265143df5b2804a743f2d1956',
+            }  # small part of ESC50 dataset for test.
+            mode = 'dev'
             esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
-                                                    feat_type='raw')
+                                                    feat_type='raw',
+                                                    archieve=archieve)
+            # use the default archieve will download the whole dataset.
+            # esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+            #                                         feat_type='raw')
             for elem in esc50_dataset:
                 audio = elem[0]
                 label = elem[1]

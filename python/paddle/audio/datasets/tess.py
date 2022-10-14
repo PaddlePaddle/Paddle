@@ -58,9 +58,19 @@ class TESS(AudioClassificationDataset):
         .. code-block:: python
 
             import paddle
-            mode = dev
+
+            archieve = {
+                'url':
+                'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set_lite.zip',
+                'md5': '9ffb5e3adf28d4d6b787fa94bd59b975',
+            }  # small part of TESS dataset for test.
+            mode = 'dev'
             tess_dataset = paddle.audio.datasets.TESS(mode=mode,
-                                                    feat_type='raw')
+                                                    feat_type='raw',
+                                                    archieve=archieve)
+            # use the default archieve will download the whole dataset.
+            # tess_dataset = paddle.audio.datasets.TESS(mode=mode,
+            #                                        feat_type='raw')
             for elem in tess_dataset:
                 audio = elem[0]
                 label = elem[1]
@@ -70,7 +80,8 @@ class TESS(AudioClassificationDataset):
 
             tess_dataset = paddle.audio.datasets.TESS(mode=mode,
                                                     feat_type='mfcc',
-                                                    n_mfcc=40)
+                                                    n_mfcc=40,
+                                                    archieve=archieve)
             for elem in tess_dataset:
                 audio = elem[0]
                 label = elem[1]

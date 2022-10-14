@@ -100,7 +100,6 @@ class TestAudioBackends(unittest.TestCase):
             pass
 
         try:
-            import paddleaudio
             backends = paddle.audio.backends.list_available_backends()
             for backend in backends:
                 self.assertTrue(backend in ["wave_backend", "soundfile"])
