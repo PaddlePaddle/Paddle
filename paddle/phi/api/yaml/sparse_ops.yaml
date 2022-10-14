@@ -111,7 +111,7 @@
   backward : cast_grad
 
 - op : conv3d
-  args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
+  args : (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key="")
   output : Tensor(out), Tensor(rulebook), Tensor(counter)
   infer_meta :
     func : sparse::Conv3dInferMeta

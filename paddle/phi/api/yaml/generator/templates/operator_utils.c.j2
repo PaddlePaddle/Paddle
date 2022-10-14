@@ -130,21 +130,21 @@ All possible KernelSignatures returned by {{api["name"] | to_pascal_case }}OpArg
 
 {% macro get_kernel_dispatch(inputs, kernel_config) %}{# inline #}
 {%- for kernel_func in kernel_config["func"] %}
-  {% set input_idx = 0 %}
+  {% set input_idx = namespace(idx=0) %}
   {% set kernel_in_type_list = kernel_config["dispatch"][kernel_func][0] %}
 
   if ( {%- for input in inputs %}
     {%- if input["name"] in kernel_config["param"] %}
-      {%- if kernel_in_type_list[input_idx] == "dense" %}
+      {%- if kernel_in_type_list[input_idx.idx] == "dense" %}
 ctx.IsDenseTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
-      {%- elif kernel_in_type_list[input_idx] == "selected_rows" %}
+      {%- elif kernel_in_type_list[input_idx.idx] == "selected_rows" %}
 ctx.IsSelectedRowsInput("{{input["name"]}}"){{" && " if not loop.last}}
-      {%- elif kernel_in_type_list[input_idx] == "sparse_coo" %}
+      {%- elif kernel_in_type_list[input_idx.idx] == "sparse_coo" %}
 ctx.IsSparseCooTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
-      {%- elif kernel_in_type_list[input_idx] == "sparse_csr" %}
+      {%- elif kernel_in_type_list[input_idx.idx] == "sparse_csr" %}
 ctx.IsSparseCsrTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
       {%- endif %}
-    {% set input_idx = input_idx + 1 %}
+      {% set input_idx.idx = input_idx.idx + 1 %}
     {%- endif %}
   {%- endfor %}) {
     kernel_name = "{{kernel_func}}";
