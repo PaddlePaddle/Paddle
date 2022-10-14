@@ -33,6 +33,44 @@ class ESC50(AudioClassificationDataset):
     Reference:
         ESC: Dataset for Environmental Sound Classification
         http://dx.doi.org/10.1145/2733373.2806390
+
+    Ags:
+            mode (:obj:`str`, `optional`, defaults to `train`):
+                It identifies the dataset mode (train or dev).
+            split (:obj:`int`, `optional`, defaults to 1):
+                It specify the fold of dev dataset.
+            feat_type (:obj:`str`, `optional`, defaults to `raw`):
+                It identifies the feature type that user wants to extrace of an audio file.
+            archive(:obj, dict, defaults to None):
+                it tells where to download the audio archive.
+
+    Returns:
+        :ref:`api_paddle_io_Dataset`. An instance of ESC50 dataset.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            mode = dev
+            esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+                                                    feat_type='raw')
+            for elem in esc50_dataset:
+                audio = elem[0]
+                label = elem[1]
+                # do something with audio, label
+                print(audio.shape, label)
+                # [audio_data_length] , label_id
+
+            esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
+                                                    feat_type='mfcc',
+                                                    n_mfcc=40)
+            for elem in esc50_dataset:
+                audio = elem[0]
+                label = elem[1]
+                # do something with mfcc feature, label
+                print(audio.shape, label)
+                # [feature_dim, length] , label_id
     """
 
     archieve = {
@@ -109,17 +147,6 @@ class ESC50(AudioClassificationDataset):
                  feat_type: str = 'raw',
                  archieve=None,
                  **kwargs):
-        """
-        Ags:
-            mode (:obj:`str`, `optional`, defaults to `train`):
-                It identifies the dataset mode (train or dev).
-            split (:obj:`int`, `optional`, defaults to 1):
-                It specify the fold of dev dataset.
-            feat_type (:obj:`str`, `optional`, defaults to `raw`):
-                It identifies the feature type that user wants to extrace of an audio file.
-            archive(:obj, dict, defaults to None):
-                it tells where to download the audio archive.
-        """
         if archieve is not None:
             self.archieve = archieve
         files, labels = self._get_data(mode, split)

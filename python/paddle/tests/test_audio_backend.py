@@ -19,7 +19,7 @@ import os
 import paddle.audio
 
 
-class TestAudioDatasets(unittest.TestCase):
+class TestAudioBackends(unittest.TestCase):
 
     def setUp(self):
         self.initParmas()
@@ -139,7 +139,7 @@ class TestAudioDatasets(unittest.TestCase):
         except NotImplementedError:
             pass
         try:
-            wav_info = paddle.audio.backends.load(wave_wav_path)
+            wav_data = paddle.audio.backends.load(wave_wav_path)
         except NotImplementedError:
             pass
 

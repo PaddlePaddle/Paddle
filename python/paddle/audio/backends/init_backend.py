@@ -44,6 +44,14 @@ def list_available_backends() -> List[str]:
 
     Returns:
         List[str]: The list of available backends.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            backends = paddle.audio.backends.list_available_backends()
+            # return ['wave_backend']
+            # return ['wave_backend', 'soundfile'], if have installed paddleaudio >= 1.0.2
     """
     backends = []
     try:
@@ -76,6 +84,13 @@ def get_current_audio_backend() -> str:
     Returns:
         str: The name of the current backend,
         the wave_backend or backend imported from paddleaudio
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            backends = paddle.audio.backends.get_current_audio_backend()
+            # wave_backend or soundfile
     """
     current_backend = None
     if "paddleaudio" in sys.modules:
@@ -93,6 +108,14 @@ def set_backend(backend_name: str):
         backend (str): one of the list_audio_backend.
         "wave_backend" is the default.
         "soundfile" imported from paddleaudio.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.audio.backends.set_backend('wave_backend')
+            # if have installed paddleaudio >= 1.0.2
+            paddle.audio.backends.set_backend('soundfile')
     """
     if backend_name not in list_available_backends():
         raise NotImplementedError()

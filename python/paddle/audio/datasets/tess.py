@@ -35,6 +35,48 @@ class TESS(AudioClassificationDataset):
     Reference:
         Toronto emotional speech set (TESS) https://tspace.library.utoronto.ca/handle/1807/24487
         https://doi.org/10.5683/SP2/E8H2MF
+
+    Ags:
+            mode (:obj:`str`, `optional`, defaults to `train`):
+                It identifies the dataset mode (train or dev).
+            seed (:obj:`int`, `optional`, defaults to 0):
+                Set the random seed to shuffle samples.
+            n_folds (:obj:`int`, `optional`, defaults to 5):
+                Split the dataset into n folds. 1 fold for dev dataset and n-1 for train dataset.
+            split (:obj:`int`, `optional`, defaults to 1):
+                It specify the fold of dev dataset.
+            feat_type (:obj:`str`, `optional`, defaults to `raw`):
+                It identifies the feature type that user wants to extrace of an audio file.
+            archive(:obj, dict, defaults to None):
+                it tells where to download the audio archive.
+
+    Returns:
+        :ref:`api_paddle_io_Dataset`. An instance of TESS dataset.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            mode = dev
+            tess_dataset = paddle.audio.datasets.TESS(mode=mode,
+                                                    feat_type='raw')
+            for elem in tess_dataset:
+                audio = elem[0]
+                label = elem[1]
+                # do something with audio, label
+                print(audio.shape, label)
+                # [audio_data_length] , label_id
+
+            tess_dataset = paddle.audio.datasets.TESS(mode=mode,
+                                                    feat_type='mfcc',
+                                                    n_mfcc=40)
+            for elem in tess_dataset:
+                audio = elem[0]
+                label = elem[1]
+                # do something with mfcc feature, label
+                print(audio.shape, label)
+                # [feature_dim, num_frames] , label_id
     """
 
     archieve = {
@@ -65,19 +107,7 @@ class TESS(AudioClassificationDataset):
                  archieve=None,
                  **kwargs):
         """
-        Ags:
-            mode (:obj:`str`, `optional`, defaults to `train`):
-                It identifies the dataset mode (train or dev).
-            seed (:obj:`int`, `optional`, defaults to 0):
-                Set the random seed to shuffle samples.
-            n_folds (:obj:`int`, `optional`, defaults to 5):
-                Split the dataset into n folds. 1 fold for dev dataset and n-1 for train dataset.
-            split (:obj:`int`, `optional`, defaults to 1):
-                It specify the fold of dev dataset.
-            feat_type (:obj:`str`, `optional`, defaults to `raw`):
-                It identifies the feature type that user wants to extrace of an audio file.
-            archive(:obj, dict, defaults to None):
-                it tells where to download the audio archive.
+
         """
         assert split <= n_folds, f'The selected split should not be larger than n_fold, but got {split} > {n_folds}'
         if archieve is not None:
