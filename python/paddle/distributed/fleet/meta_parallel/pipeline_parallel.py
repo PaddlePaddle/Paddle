@@ -48,7 +48,8 @@ class PipelineParallel(MetaParallelBase):
             'accumulate_steps']
         # If sent tensor are not the same from different hosts,
         # they shouldn't been sent partially and then concated as a whole tensor.
-        self._allow_partial = self._strategy.pipeline_configs['allow_partial']
+        self._enable_partial_send_recv = self._strategy.pipeline_configs[
+            'enable_partial_send_recv']
         self._using_cache = self._strategy.pipeline_configs['p2p_cache_shape']
 
         self.num_stages = self._hcg.get_pipe_parallel_world_size()
@@ -60,7 +61,8 @@ class PipelineParallel(MetaParallelBase):
         self._real_pp_world_size = self.num_stages
         self._real_pp_rank = self.stage_id
 
-        p2p.initialize_p2p_groups(hcg, self._using_cache, self._allow_partial)
+        p2p.initialize_p2p_groups(hcg, self._using_cache,
+                                  self._enable_partial_send_recv)
 
         self.global_rank = self._hcg.get_global_rank()
         self.micro_batch_id = 0

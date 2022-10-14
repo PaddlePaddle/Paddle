@@ -24,11 +24,11 @@ _hcg = None
 _use_cache = False
 
 
-def initialize_p2p_groups(hcg, use_cache=True, allow_partial=True):
-    global _hcg, _use_cache, _allow_partial
+def initialize_p2p_groups(hcg, use_cache=True, enable_partial_send_recv=True):
+    global _hcg, _use_cache, _enable_partial_send_recv
     _hcg = hcg
     _use_cache = use_cache
-    _allow_partial = allow_partial
+    _enable_partial_send_recv = enable_partial_send_recv
     send_next_group, send_prev_group, recv_next_group, recv_prev_group = _hcg.get_p2p_groups(
     )
 
@@ -158,7 +158,7 @@ _send_recv_meta = SendRecvMeta()
 
 
 def _is_valid_send_recv_partial(tensor, mp_degree):
-    if not _allow_partial:
+    if not _enable_partial_send_recv:
         return False
     tensor_numel = np.prod(tensor.shape)
     assert tensor_numel != 0, "can't send/recv zero element"
