@@ -229,30 +229,12 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 
 #ifdef PADDLE_WITH_MKLDNN
   if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    int customized_type_value =
-        (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
-         input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
-            ? OperatorWithKernel::IndicateVarDataType(ctx, "Filter") ==
-                      framework::DataTypeTrait<int8_t>::DataType()
-                  ? kConvMKLDNNINT8WS8
-                  : kConvMKLDNNINT8
-            : kConvMKLDNNFP32;
     return framework::OpKernelType(input_data_type,
                                    ctx.GetPlace(),
                                    framework::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN,
-                                   customized_type_value);
+                                   framework::LibraryType::kMKLDNN);
   }
 #endif
-
-  // #ifndef PADDLE_WITH_ASCEND_CL
-  //   if (input_data_type == framework::proto::VarType::FP16) {
-  //     PADDLE_ENFORCE_EQ(
-  //         library, framework::LibraryType::kCUDNN,
-  //         platform::errors::InvalidArgument(
-  //             "float16 can only be used when CUDNN or NPU is used"));
-  //   }
-  // #endif
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
@@ -517,8 +499,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
     return framework::OpKernelType(data_type,
                                    ctx.GetPlace(),
                                    framework::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN,
-                                   kConvMKLDNNFP32);
+                                   framework::LibraryType::kMKLDNN);
   }
 #endif
 

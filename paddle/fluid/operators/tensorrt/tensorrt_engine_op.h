@@ -554,6 +554,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #if IS_TRT_VERSION_GE(6000)
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+        // If this x is a shape tensor, we need call setInputShapeBinding
+        if (engine->engine()->isShapeBinding(bind_index) &&
+            engine->engine()->bindingIsInput(bind_index)) {
+          std::vector<int> shape_v(t.numel());
+          paddle::memory::Copy(platform::CPUPlace(),
+                               shape_v.data(),
+                               platform::CUDAPlace(),
+                               t.data<int32_t>(),
+                               t.numel() * sizeof(int),
+                               nullptr);
+          trt_context->setInputShapeBinding(bind_index, shape_v.data());
+        }
 #endif
       }
       runtime_batch = t_shape[0];
