@@ -102,7 +102,10 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   }
 
   bool HasAttr(const std::string& name) const override {
-    return attrs_.count(name) != 0 || default_attrs_.count(name) != 0;
+    if (attrs_.find(name) == attrs_.end()) {
+      return default_attrs_.find(name) != default_attrs_.end();
+    }
+    return true;
   }
 
   const framework::AttributeMap& Attrs() const override { return attrs_; }
