@@ -59,6 +59,7 @@ _fake_dequant_op_list = [
 _fake_quant_dequant_op_list = [
     'fake_quantize_dequantize_moving_average_abs_max',
     "fake_channel_wise_quantize_dequantize_abs_max",
+    "fake_quantize_dequantize_abs_max",
 ]
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
