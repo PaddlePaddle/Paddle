@@ -45,7 +45,8 @@ def get_var_with_recursion(var_name, block, program):
         parent_block = program.blocks[block.parent_idx]
         if var_name in parent_block.vars:
             var = parent_block.vars[var_name]
-    assert var is not None
+    assert var is not None, \
+        "{} is not found".format(var.name)
 
     return var
 
@@ -1838,8 +1839,8 @@ class Resharder:
 
                 idx_offset = 0
                 for var_name in input_var_names:
-                    # skip lod_tensor_blocking_queue_0
-                    if var_name == "lod_tensor_blocking_queue_0":
+                    # skip lod_tensor_blocking_queue_? name
+                    if "lod_tensor_blocking_queue" in var_name:
                         continue
                     var = get_var_with_recursion(var_name, block,
                                                  self.auto_parallel_main_prog)

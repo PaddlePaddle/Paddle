@@ -127,6 +127,13 @@ class TestCase9(TestTransposeOp):
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
+class TestCase_ZeroDim(TestTransposeOp):
+
+    def initTestCase(self):
+        self.shape = ()
+        self.axis = ()
+
+
 class TestAutoTuneTransposeOp(OpTest):
 
     def setUp(self):
@@ -599,6 +606,24 @@ class TestTransposeTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestTransposeAPI_ZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
+        x = paddle.rand([])
+        x.stop_gradient = False
+        out = paddle.transpose(x, [])
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

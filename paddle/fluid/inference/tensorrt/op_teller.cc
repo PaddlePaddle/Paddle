@@ -327,6 +327,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "bmm") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
     if (op_type == "matmul_v2") {
       if (!with_dynamic_shape) {
         return false;
@@ -2115,6 +2121,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mul",
       "matmul",
       "matmul_v2",
+      "bmm",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2227,6 +2234,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mul",
       "matmul",
       "matmul_v2",
+      "bmm",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2352,6 +2360,14 @@ struct GenericPluginTeller : public Teller {
     if (op_type == "yolo_box") {
       if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
         return false;
+    }
+    if (op_type == "pad3d") {
+      auto pad3d_inputs = desc.Inputs();
+      if (pad3d_inputs.find("Paddings") != pad3d_inputs.end()) {
+        if (desc.Input("Paddings").size() >= 1) {
+          return false;
+        }
+      }
     }
     if (use_no_calib_int8) {
       return false;
