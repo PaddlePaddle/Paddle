@@ -3000,11 +3000,21 @@ def triangular_solve(x,
                      unitriangular=False,
                      name=None):
     r"""
-    Computes the solution of a system of equations with a triangular coefficient matrix `x` and
-    multiple right-hand sides `y` .
+    Computes the solution of a system of equations with a triangular coefficient.  `x` is coefficient matrix
+    `y` is multiple right-hand sides of equations.
 
-    Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs
-    is also batches.
+    Input `x` and `y` is 2D matrices or batches of 2D matrices. If the inputs are batches, the outputs is also
+    batches.
+
+    Equations can be described as:
+
+    .. math::
+        x * Out = y
+
+    Solution of Equations is:
+
+    .. math::
+        Out = x ^ {-1} * y
 
     Args:
         x (Tensor): The input triangular coefficient matrix. Its shape should be `[*, M, M]`, where `*` is zero or
@@ -3031,7 +3041,6 @@ def triangular_solve(x,
             #               -x3 = 5
 
             import paddle
-
             x = paddle.to_tensor([[1, 1, 1],
                                   [0, 2, 1],
                                   [0, 0,-1]], dtype="float64")
