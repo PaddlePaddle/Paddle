@@ -824,6 +824,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       // param, so here an empty Tensor is added for the param with
       // stop_gradient=True
       param_grad->emplace_back(std::move(t_grad));
+      param_grad->back().set_name(t.name() + "@GRAD");
     }
   }
 
