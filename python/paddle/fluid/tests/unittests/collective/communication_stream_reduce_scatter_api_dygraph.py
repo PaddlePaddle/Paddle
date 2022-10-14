@@ -17,6 +17,7 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 import test_collective_api_base as test_collective_base
+# from paddle.distributed.communication.stream import _reduce_scatter_base
 
 
 class StreamReduceScatterTestCase():
@@ -77,11 +78,10 @@ class StreamReduceScatterTestCase():
 
         # case 3: test the legacy API
         result_tensor = paddle.empty_like(t1)
-        task = dist.stream._reduce_scatter_base(
-            result_tensor,
-            tensor,
-            sync_op=self._sync_op,
-            use_calc_stream=self._use_calc_stream)
+        task = _reduce_scatter_base(result_tensor,
+                                    tensor,
+                                    sync_op=self._sync_op,
+                                    use_calc_stream=self._use_calc_stream)
         if not self._sync_op:
             task.wait()
         if rank == 0:
