@@ -113,8 +113,14 @@ class TestLogcumsumexp(unittest.TestCase):
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
 
         if use_gpu:
-            y = paddle.logcumsumexp(data, dtype='float16')
-            self.assertTrue(y.dtype == core.VarDesc.VarType.FP16)
+            y_fp16 = paddle.logcumsumexp(data.astype('float16'),
+                                         dtype='float16')
+            self.assertTrue(y_fp16.dtype == core.VarDesc.VarType.FP16)
+            y_fp32 = paddle.logcumsumexp(data.astype('float32'),
+                                         dtype='float32')
+            np.testing.assert_allclose(y_fp16.numpy(),
+                                       y_fp32.numpy(),
+                                       rtol=1e-03)
 
         y = paddle.logcumsumexp(data, axis=-2)
         z = np_logcumsumexp(data_np, axis=-2)
@@ -169,9 +175,6 @@ class TestLogcumsumexp(unittest.TestCase):
 
             if use_gpu:
                 self.assertTrue(out[5].dtype == np.float16)
-                data_np_fp16 = data_np.astype(np.float16)
-                z = np_logcumsumexp(data_np_fp16)
-                np.testing.assert_allclose(z, out[5], rtol=5e-03)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
@@ -274,55 +277,35 @@ class TestLogcumsumexpOp4(BaseTestCases.BaseOpTest):
         }
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestLogcumsumexpFP16(BaseTestCases.BaseOpTest):
+class TestLogcumsumexpFP16(unittest.TestCase):
 
-    def input_and_attrs(self):
-        return np.arange(100, dtype=np.float16).reshape(10, 10), {
-            'axis': 1,
-            'dtype': 'float16'
-        }
+    def check_main(self, x_np, dtype, axis=None):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np.astype(dtype))
+        x.stop_gradient = False
+        y = paddle.logcumsumexp(x, dtype=dtype, axis=axis)
+        x_g = paddle.grad(y, [x])
+        y_np = y.numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
 
-    def test_check_output(self):
-        self.check_output(atol=1e-3)
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
 
-    def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        user_defined_grads=[
-                            np_logcumsumexp_grad(self.inputs['X'],
-                                                 1 / self.inputs['X'].size,
-                                                 **self.attrs)
-                        ],
-                        max_relative_error=1e-03)
+        np.random.seed(20)
+        x_np = np.random.random([4, 5])
 
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-03)
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestLogcumsumexpReverseFP16(BaseTestCases.BaseOpTest):
-
-    def input_and_attrs(self):
-        return np.arange(100, dtype=np.float16).reshape(10, 10), {
-            'axis': 0,
-            'flatten': True,
-            'reverse': True,
-            'exclusive': True,
-            'dtype': 'float16'
-        }
-
-    def test_check_output(self):
-        self.check_output(atol=1e-3)
-
-    def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        user_defined_grads=[
-                            np_logcumsumexp_grad(self.inputs['X'],
-                                                 1 / self.inputs['X'].size,
-                                                 **self.attrs)
-                        ],
-                        max_relative_error=1e-03)
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16', axis=1)
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32', axis=1)
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=2e-03)
 
 
 if __name__ == '__main__':

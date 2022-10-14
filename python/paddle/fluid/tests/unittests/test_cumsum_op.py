@@ -50,8 +50,18 @@ class TestCumsumOp(unittest.TestCase):
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
 
         if use_gpu:
-            y = paddle.cumsum(data, dtype='float16')
-            self.assertTrue(y.dtype == core.VarDesc.VarType.FP16)
+            data_fp16 = data_np.astype("float16")
+            x_fp16 = paddle.to_tensor(data_fp16)
+            y_fp16 = paddle.cumsum(x_fp16)
+
+            data_fp32 = data_np.astype("float32")
+            x_fp32 = paddle.to_tensor(data_fp32)
+            y_fp32 = paddle.cumsum(x_fp32)
+
+            self.assertTrue(y_fp16.dtype == core.VarDesc.VarType.FP16)
+            np.testing.assert_allclose(y_fp32.numpy(),
+                                       y_fp16.numpy(),
+                                       rtol=1e-03)
 
         y = paddle.cumsum(data, dtype=np.int32)
         self.assertTrue(y.dtype == core.VarDesc.VarType.INT32)
@@ -72,10 +82,6 @@ class TestCumsumOp(unittest.TestCase):
             y6 = paddle.cumsum(x, axis=-2)
             fetch_list = [y.name, y2.name, y3.name, y4.name, y5.name, y6.name]
 
-            if use_gpu:
-                y7 = paddle.cumsum(x, dtype='float16')
-                fetch_list.append(y7)
-
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -91,9 +97,11 @@ class TestCumsumOp(unittest.TestCase):
             self.assertTrue(out[4].dtype == np.int32)
 
             if use_gpu:
-                self.assertTrue(out[6].dtype == np.float16)
-                z = np.cumsum(data_np.astype(np.float16))
-                np.testing.assert_allclose(z, out[6], rtol=5e-03)
+                y7 = paddle.cumsum(x, dtype="float16")
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                outs = exe.run(feed={'X': data_np}, fetch_list=[y7.name])
+                self.assertTrue(outs[0].dtype == np.float16)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
@@ -210,21 +218,30 @@ class TestSumOp7(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestCumsumFP16(OpTest):
+class TestCumsumFP16(unittest.TestCase):
 
-    def setUp(self):
-        self.op_type = "cumsum"
-        self.inputs = {'X': np.random.random((10)).astype(np.float16)}
-        self.attrs = {'dtype': 'float16'}
-        self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np.astype(dtype))
+        x.stop_gradient = False
+        y = paddle.cumsum(x, dtype=dtype)
+        x_g = paddle.grad(y, [x])
+        y_np = y.numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
 
-    def test_check_output(self):
-        self.check_output()
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        np.random.seed(20)
+        x_np = np.random.random([4, 5])
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-03)
 
 
 class TestSumOpExclusive1(OpTest):
