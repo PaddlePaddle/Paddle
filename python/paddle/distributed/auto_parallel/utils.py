@@ -28,19 +28,6 @@ from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
 
-def get_logger(log_level, name="auto_parallel"):
-    logger = logging.getLogger(name)
-    logger.propagate = False
-    if not logger.handlers:
-        logger.setLevel(log_level)
-        log_handler = logging.StreamHandler()
-        log_format = logging.Formatter(
-            '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
-        log_handler.setFormatter(log_format)
-        logger.addHandler(log_handler)
-    return logger
-
-
 def is_valid_list_index(list, index):
     if index >= -len(list) and index < len(list):
         return True

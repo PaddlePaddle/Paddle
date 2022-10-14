@@ -30,7 +30,7 @@ PP_MESH_0 = auto.ProcessMesh([0])
 PP_MESH_1 = auto.ProcessMesh([1])
 epoch_num = 1
 batch_size = 2
-batch_num = 10
+batch_num = 100
 hidden_size = 1024
 sequence_len = 512
 image_size = hidden_size
@@ -113,7 +113,7 @@ class MLPLayer(nn.Layer):
         if is_feed:
             my_feed_vars.append((out, out.shape))
         if is_fetch:
-            auto.fetch(out, "my_out", logging=True)
+            auto.fetch(out, "my_fetch", logging=True)
         return out
 
 
@@ -125,7 +125,13 @@ def train_high_level(fetch):
                    dropout_ratio=0.1,
                    initializer_range=0.02)
     loss = paddle.nn.CrossEntropyLoss()
-    optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+    base_lr = 1e-3
+    boundaries = [5, 8]
+    values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
+    lr = paddle.optimizer.lr.PiecewiseDecay(boundaries=boundaries,
+                                            values=values,
+                                            verbose=False)
+    optimizer = paddle.optimizer.Adam(learning_rate=lr,
                                       beta1=0.9,
                                       beta2=0.999,
                                       epsilon=1e-08,
@@ -137,13 +143,19 @@ def train_high_level(fetch):
 
     engine = auto.Engine(mlp, loss, optimizer, metric, strategy=strategy)
 
+    callbacks = paddle.callbacks.ProgBarLogger(log_freq=5, verbose=2)
+
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     eval_dataset1 = MyDataset(5 * batch_size)
-    engine.fit(train_data=train_dataset,
-               epochs=2,
-               batch_size=batch_size,
-               valid_data=eval_dataset1)
+    history = engine.fit(train_data=train_dataset,
+                         epochs=2,
+                         batch_size=batch_size,
+                         valid_data=eval_dataset1,
+                         valid_freq=2,
+                         log_freq=10,
+                         verbose=3,
+                         callbacks=[callbacks])
 
     # eval
     eval_dataset2 = MyDataset(batch_size)
@@ -151,7 +163,7 @@ def train_high_level(fetch):
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size=batch_size)
+    outputs = engine.predict(test_dataset, batch_size=batch_size)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
@@ -354,7 +366,7 @@ def train_non_builtin_data_vars():
 
 if __name__ == "__main__":
     train_high_level(fetch=True)
-    train_high_level(fetch=False)
-    train_low_level()
-    train_builtin_data_vars()
-    train_non_builtin_data_vars()
+    # train_high_level(fetch=False)
+    # train_low_level()
+    # train_builtin_data_vars()
+    # train_non_builtin_data_vars()

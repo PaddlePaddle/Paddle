@@ -96,5 +96,5 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_interface MODULES test_interface)
   py_test_modules(test_strategy MODULES test_strategy)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization)
-
+  py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
 endif()
