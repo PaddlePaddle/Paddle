@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
 from typing import List
 import unittest
+import os
 
 
 class TrtConvertUnfold(TrtLayerAutoScanTest):
@@ -96,7 +97,19 @@ class TrtConvertUnfold(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 2), 1e-5
 
+    def add_skip_trt_case(self):
+
+        def teller1(program_config, predictor_config):
+            if len(self.dynamic_shape.min_input_shape) != 0 and os.name == 'nt':
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_SUPPORT,
+            "The output has diff between gpu and trt in Windows.")
+
     def test(self):
+        self.add_skip_case()
         self.run_test()
 
 
