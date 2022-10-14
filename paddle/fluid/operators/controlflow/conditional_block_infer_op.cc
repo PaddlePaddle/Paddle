@@ -14,6 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
+DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -79,9 +84,9 @@ class ConditionalBlockInferOp : public ConditionalOp {
 
       if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
         auto &pdesc = *block->Program();
-        exec.reset(New framework::Executor(dev_place));
+        exec.reset(new framework::Executor(dev_place));
         if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
-        ctc = exec->Prepare(
+        ctx = exec->Prepare(
             pdesc, block->ID(), std::vector<std::string>(), false);
 #ifdef PADDLE_WITH_MKLDNN
         platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
@@ -94,8 +99,8 @@ class ConditionalBlockInferOp : public ConditionalOp {
   }
 
  private:
-  mutable std::shared_ptr<Executor> exec{nullptr};
-  mutable std::unique_ptr<ExecutorPrepareContext> ctx{nullptr};
+  mutable std::shared_ptr<framework::Executor> exec{nullptr};
+  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
 };
 
 }  // namespace operators
