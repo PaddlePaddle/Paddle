@@ -30,7 +30,6 @@ namespace tensorrt {
 
 class ExpandV2OpConverter : public OpConverter {
  public:
-  ExpandV2OpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
@@ -95,5 +94,4 @@ class ExpandV2OpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(expand, ExpandV2OpConverter);
 REGISTER_TRT_OP_CONVERTER(expand_v2, ExpandV2OpConverter);
