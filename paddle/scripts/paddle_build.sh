@@ -1825,7 +1825,7 @@ function precise_card_test_single {
     set +x
     testcases=$1
     num=$2
-    for case in $(echo $testcases | tr "$|^" "\n")
+    for case in $(echo $testcases | tr "$|^" "\n" ｜ sed '/^$/d')
     do
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
@@ -2015,7 +2015,7 @@ set -x
     #precise_card_test_single "$exclusive_tests"
     ljd_testcases1='^test_op_signature$|^variant_test$'
     precise_card_test_single "$ljd_testcases1" 1
-    ljd_testcases2='^test_white_list$|^test_install_check$|^test_parallel_executor_test_while_train$'
+    ljd_testcases2='^test_white_lists$|^test_install_check$|^test_parallel_executor_test_while_train$'
     precise_card_test_single "$ljd_testcases2" 2
     wait;
     #get notSuccessut including the failed uniitests and not executed unittests

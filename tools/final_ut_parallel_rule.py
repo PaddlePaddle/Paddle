@@ -125,16 +125,6 @@ def classify_cases_by_mem(rootPath):
                     case_mem_1_line = case_mem_1_line + '|^' + index[0] + '$'
                 else:
                     f_not_0.write(case_mem_1_line + '\n')
-                    '''
-                    if len(always_timeout_list
-                           ) != 0 and cardType == 'single_card_tests' and count > 25:
-                        f.write(case_mem_1_line + '|^%s$\n' %
-                                always_timeout_list[0])
-                        always_timeout_list.pop(0)
-                    else:
-                        f.write(case_mem_1_line + '\n')
-                    count += 1
-                    '''
                     case_mem_1_line = '^job$|^' + index[0] + '$'
                     mem_1_sum = index[1]
             f_not_0.write(case_mem_1_line + '\n')
