@@ -44,13 +44,18 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
                                    draw(st.floats(min_value=15, max_value=30))
                                })
 
-        if activation_type == 'relu6':
+        if activation_type == 'clip':
+            activation_op = OpConfig(
+                activation_type,
+                inputs={'X': ['softplus_out']},
+                outputs={'Out': ['activation_output']},
+                min=draw(st.floats(min_value=0.1, max_value=0.49)),
+                max=draw(st.floats(min_value=0.5, max_value=1.0)))
+        elif activation_type == "gelu":
             activation_op = OpConfig(activation_type,
-                                     inputs={'X': ['softplus_out']},
-                                     outputs={'Out': ['activation_output']},
-                                     threshold=draw(
-                                         st.floats(min_value=1.0,
-                                                   max_value=10.0)))
+                                     inputs={"X": ["softplus_out"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     approximate=draw(st.booleans()))
         elif activation_type == 'leaky_relu':
             activation_op = OpConfig(activation_type,
                                      inputs={'X': ['softplus_out']},
@@ -58,6 +63,13 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
                                      alpha=draw(
                                          st.floats(min_value=0.1,
                                                    max_value=1.0)))
+        elif activation_type == 'relu6':
+            activation_op = OpConfig(activation_type,
+                                     inputs={'X': ['softplus_out']},
+                                     outputs={'Out': ['activation_output']},
+                                     threshold=draw(
+                                         st.floats(min_value=1.0,
+                                                   max_value=10.0)))
         elif activation_type == 'swish':
             activation_op = OpConfig(activation_type,
                                      inputs={'X': ['softplus_out']},
@@ -65,13 +77,6 @@ class TestSoftplusActivationOneDNNFusePass(PassAutoScanTest):
                                      beta=draw(
                                          st.floats(min_value=0.1,
                                                    max_value=1.0)))
-        elif activation_type == 'clip':
-            activation_op = OpConfig(
-                activation_type,
-                inputs={'X': ['softplus_out']},
-                outputs={'Out': ['activation_output']},
-                min=draw(st.floats(min_value=0.1, max_value=0.49)),
-                max=draw(st.floats(min_value=0.5, max_value=1.0)))
         else:
             activation_op = OpConfig(activation_type,
                                      inputs={'X': ['softplus_out']},

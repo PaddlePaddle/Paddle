@@ -44,13 +44,18 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                              "in_num_col_dims": 1,
                          })
 
-        if activation_type == "relu6":
+        if activation_type == "clip":
+            activation_op = OpConfig(
+                activation_type,
+                inputs={"X": ["fc_output"]},
+                outputs={"Out": ["activation_output"]},
+                min=draw(st.floats(min_value=0.1, max_value=0.49)),
+                max=draw(st.floats(min_value=0.5, max_value=1.0)))
+        elif activation_type == "gelu":
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
                                      outputs={"Out": ["activation_output"]},
-                                     threshold=draw(
-                                         st.floats(min_value=1.0,
-                                                   max_value=10.0)))
+                                     approximate=draw(st.booleans()))
         elif activation_type == "leaky_relu":
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
@@ -58,6 +63,13 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                                      alpha=draw(
                                          st.floats(min_value=0.1,
                                                    max_value=1.0)))
+        elif activation_type == "relu6":
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["fc_output"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     threshold=draw(
+                                         st.floats(min_value=1.0,
+                                                   max_value=10.0)))
         elif activation_type == "swish":
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
@@ -65,13 +77,6 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                                      beta=draw(
                                          st.floats(min_value=0.1,
                                                    max_value=1.0)))
-        elif activation_type == "clip":
-            activation_op = OpConfig(
-                activation_type,
-                inputs={"X": ["fc_output"]},
-                outputs={"Out": ["activation_output"]},
-                min=draw(st.floats(min_value=0.1, max_value=0.49)),
-                max=draw(st.floats(min_value=0.5, max_value=1.0)))
         else:
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
