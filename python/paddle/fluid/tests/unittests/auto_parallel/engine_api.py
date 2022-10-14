@@ -25,6 +25,7 @@ from paddle.io import Dataset
 from paddle.distributed.fleet import auto
 
 paddle.enable_static()
+
 global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
 PP_MESH_0 = auto.ProcessMesh([0])
 PP_MESH_1 = auto.ProcessMesh([1])
@@ -143,7 +144,8 @@ def train_high_level(fetch):
     history = engine.fit(train_data=train_dataset,
                          epochs=2,
                          batch_size=batch_size,
-                         valid_data=eval_dataset1)
+                         valid_data=eval_dataset1,
+                         log_freq=1)
 
     # eval
     eval_dataset2 = MyDataset(batch_size)

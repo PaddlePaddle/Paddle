@@ -128,11 +128,11 @@ class Engine:
             )
         self._model = model
 
-        if loss and not isinstance(loss,
-                                   paddle.nn.Layer) and not callable(loss):
-            raise TypeError(
-                "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
-            )
+        # if loss and not isinstance(loss,
+        #                            paddle.nn.Layer) and not callable(loss):
+        #     raise TypeError(
+        #         "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
+        #     )
         self._loss = loss
 
         if optimizer and not isinstance(
@@ -1439,7 +1439,7 @@ class Engine:
         return metrics_name
 
     def _switch_mode(self, mode):
-        self.mode = mode
+        self.to_mode(mode)
         self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
     def to_mode(self, mode):
