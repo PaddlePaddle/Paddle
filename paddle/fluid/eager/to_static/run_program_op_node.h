@@ -823,14 +823,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       // In eager mode, the number of param_grad should be the same as
       // param, so here an empty Tensor is added for the param with
       // stop_gradient=True
-      if (!t_grad.defined()) {
-        param_grad->emplace_back();
-      } else if (t_grad.is_dense_tensor()) {
-        param_grad->emplace_back(std::make_shared<phi::DenseTensor>());
-      } else if (t_grad.is_selected_rows()) {
-        param_grad->emplace_back(std::make_shared<phi::SelectedRows>());
-      }
-      param_grad->back().set_name(t.name() + "@GRAD");
+      param_grad->emplace_back(std::move(t_grad));
     }
   }
 
