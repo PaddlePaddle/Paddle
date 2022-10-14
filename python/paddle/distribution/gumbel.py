@@ -49,10 +49,10 @@ class Gumbel(TransformedDistribution):
           from paddle.distribution.gumbel import Gumbel
 
           # Gumbel distributed with loc=0, scale=1
-          dist = Gumbel(paddle.full([0.0]), paddle.full([1.0]))
+          dist = Gumbel(paddle.full([1], 0.0)), paddle.full([1.0]))
           dist.sample()
           # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [4.14814520])
-          value = paddle.full([0.5])
+          value = paddle.full([1], 0.5)
           dist.prob(value)
           # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.33070430])
           dist.log_prob(value)
