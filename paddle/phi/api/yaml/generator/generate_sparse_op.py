@@ -116,7 +116,7 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
                                  api_dict=api_dict)
         f.write(msg)
 
-    ks_template = env.get_template('ks.c.j2')
+    ks_template = env.get_template('sparse_ks.c.j2')
     with open(output_arg_map_path, 'wt') as f:
         msg = ks_template.render(apis=apis, backward_apis=backward_apis)
         f.write(msg)
