@@ -24,14 +24,6 @@ from ..functional import create_dct
 from ..functional import power_to_db
 from ..functional.window import get_window
 
-__all__ = [
-    'Spectrogram',
-    'MelSpectrogram',
-    'LogMelSpectrogram',
-    'MFCC',
-]
-
-
 class Spectrogram(nn.Layer):
     """Compute spectrogram of given signals, typically audio waveforms.
     The spectorgram is defined as the complex norm of the short-time Fourier transformation.
