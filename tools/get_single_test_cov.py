@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import json
-import time
 import sys
 import re
 

@@ -27,7 +27,6 @@ images per class.
 
 """
 
-import itertools
 import numpy
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated

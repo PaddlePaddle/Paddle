@@ -16,7 +16,7 @@
 """basic collective operations in python"""
 """remote file system"""
 
-from ..utils.fs import FS, LocalFS, HDFSClient
+from ..utils.fs import FS
 from paddle.fluid.proto import framework_pb2
 from paddle.fluid.framework import Program
 from paddle.fluid import debugger

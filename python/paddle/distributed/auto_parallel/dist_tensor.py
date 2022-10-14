@@ -19,7 +19,6 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.framework import Parameter, Block, Variable
 from .dist_attribute import TensorDistributedAttribute
-from .dist_attribute import get_tensor_dist_attr_field_keys
 from .utils import _linear_idx2coordinate
 
 
