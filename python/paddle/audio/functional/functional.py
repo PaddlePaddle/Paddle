@@ -19,15 +19,7 @@ from typing import Union
 import paddle
 from paddle import Tensor
 
-__all__ = [
-    'hz_to_mel',
-    'mel_to_hz',
-    'mel_frequencies',
-    'fft_frequencies',
-    'compute_fbank_matrix',
-    'power_to_db',
-    'create_dct',
-]
+__all__ = []
 
 
 def hz_to_mel(freq: Union[Tensor, float],

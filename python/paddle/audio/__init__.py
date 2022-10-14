@@ -12,7 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import features
-from . import functional
+from .features import Spectrogram
+from .features import MelSpectrogram
+from .features import LogMelSpectrogram
+from .features import MFCC
+from .functional import hz_to_mel
+from .functional import mel_to_hz
+from .functional import mel_frequencies
+from .functional import fft_frequencies
+from .functional import compute_fbank_matrix
+from .functional import power_to_db
+from .functional import create_dct
 
-__all__ = ["functional", "features"]
+__all__ = [
+    'hz_to_mel',
+    'mel_to_hz',
+    'mel_frequencies',
+    'fft_frequencies',
+    'compute_fbank_matrix',
+    'power_to_db',
+    'create_dct',
+    'Spectrogram',
+    'MelSpectrogram',
+    'LogMelSpectrogram',
+    'MFCC'
+]
