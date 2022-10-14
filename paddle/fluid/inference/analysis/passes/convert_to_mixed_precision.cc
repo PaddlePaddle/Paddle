@@ -32,6 +32,8 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/inference/analysis/argument.h"
+#include "paddle/fluid/inference/analysis/passes/ir_graph_clean_pass.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
@@ -195,8 +197,6 @@ framework::ir::Node* ConvertToMixedPrecisionPass::GetRealNode(
 
 inline bool ConvertToMixedPrecisionPass::NodeVarHasDtype(
     framework::ir::Node* node) {
-  if (node->IsCtrlVar()) return false;
-
   if (node->IsVar() &&
       (node->Var()->GetType() ==
            paddle::framework::proto::VarType::SELECTED_ROWS ||
@@ -221,7 +221,6 @@ inline bool ConvertToMixedPrecisionPass::VarIsMultiPrecisionOpsOut(
   bool ret{false};
 
   for (auto* out : op_node->outputs) {
-    if (out->IsCtrlVar()) continue;
     auto* real_node = GetRealNode(block_idx, out);
     if (!real_node->Var()->Persistable() &&
         vars_appear_multi_in_one_block_[block_idx].count(out->Name())) {
@@ -408,6 +407,13 @@ void ConvertToMixedPrecisionPass::LoadAndPrepare() {
       inference::Load(&executor_, &scope_, model_file_, params_file_);
   main_graph_ = std::unique_ptr<framework::ir::Graph>(
       new framework::ir::Graph(*program_desc_));
+
+  // Remove all control var
+  IrInferCleanGraphPass pass;
+  Argument arg;
+  arg.SetMainGraphNotOwned(main_graph_.get());
+  pass.Run(&arg);
+
   vars_appear_multi_in_one_block_.resize(program_desc_->Size());
 }
 
@@ -488,7 +494,6 @@ void ConvertToMixedPrecisionPass::ConvertAllFp64ToFp32(
 
     auto inputs = op_node->inputs;
     for (auto* in_node : inputs) {
-      if (in_node->IsCtrlVar()) continue;
       auto* in_var = in_node->Var();
       if (!in_var->Persistable() &&
           in_var->GetDataType() == framework::proto::VarType::FP64) {
@@ -599,7 +604,6 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
       {
         bool has_float_input{false};
         for (auto in_node : op_node->inputs) {
-          if (in_node->IsCtrlVar()) continue;
           auto* real_node = GetRealNode(block_idx, in_node);
           if (real_node->Var()->GetDataType() == proto::VarType::FP16 ||
               real_node->Var()->GetDataType() == proto::VarType::FP32 ||
@@ -633,7 +637,6 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
 
         // Process inputs.
         for (auto* in_node : inputs) {
-          if (in_node->IsCtrlVar()) continue;
           ProcessInputNode(true,
                            in_node,
                            op_node,
@@ -672,7 +675,6 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
       VLOG(3) << "not to run fp16 op_type: " << op_type;
       auto ins = op_node->inputs;
       for (auto* in_node : ins) {
-        if (in_node->IsCtrlVar()) continue;
         auto* in_var = in_node->Var();
         if (in_var->GetDataType() == to_type) {
           AddCastOp(graph,
@@ -694,7 +696,6 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
   // 4. if output_op's dtype is not compatible to output dtype, then just
   // insert cast.
   for (auto* node : output_nodes) {
-    if (node->IsCtrlVar()) continue;
     auto var = node->Var();
     if (keep_io_types_ && var->GetDataType() == to_type) {
       // fp16/bf16 -> fp32.
@@ -763,7 +764,7 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
 
   std::unordered_set<std::string> weights_should_be_fp32;
   for (auto* node : main_graph_->Nodes()) {
-    if (!(node->IsVar() && !node->IsCtrlVar())) continue;
+    if (!(node->IsVar())) continue;
     if (NodeVarHasDtype(node)) {
       if (node->Var()->Persistable() &&
           node->Var()->GetDataType() ==
