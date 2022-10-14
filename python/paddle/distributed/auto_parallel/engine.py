@@ -1139,8 +1139,10 @@ class Engine:
             self.to_mode(mode)
         if inputs or labels:
             self._skip_build = True
+            self._inputs_spec = inputs_spec
+            self._labels_spec = labels_spec
             self._inputs, self._labels = self._prepare_data_tensor(
-                inputs_spec, labels_spec, inputs, labels)
+                self._inputs_spec, self._labels_spec, inputs, labels)
             self._orig_main_prog = main_program
             if self._orig_main_prog is None:
                 self._orig_main_prog = static.default_main_program()
@@ -1152,9 +1154,11 @@ class Engine:
             else:
                 self._switch_mode(self._mode)
         elif inputs_spec or labels_spec:
+            self._inputs_spec = inputs_spec
+            self._labels_spec = labels_spec
             self._outside_dataloader = True
             self._inputs, self._labels = self._prepare_data_tensor(
-                inputs_spec, labels_spec)
+                self._inputs_spec, self._labels_spec)
             self._orig_main_prog = main_program
             if self._orig_main_prog is None:
                 self._orig_main_prog = static.default_main_program()
