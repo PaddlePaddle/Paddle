@@ -20,7 +20,7 @@ import unittest
 import hypothesis.strategies as st
 
 
-class TestFCActivationMkldnnFusePass(PassAutoScanTest):
+class TestFCActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_program_config(self, draw):
         fc_in = draw(st.sampled_from([32, 64]))
@@ -48,13 +48,18 @@ class TestFCActivationMkldnnFusePass(PassAutoScanTest):
                              "in_num_col_dims": 1,
                          })
 
-        if activation_type == "relu6":
+        if activation_type == "clip":
+            activation_op = OpConfig(
+                activation_type,
+                inputs={"X": ["fc_output"]},
+                outputs={"Out": ["activation_output"]},
+                min=draw(st.floats(min_value=0.1, max_value=0.49)),
+                max=draw(st.floats(min_value=0.5, max_value=1.0)))
+        elif activation_type == "gelu":
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
                                      outputs={"Out": ["activation_output"]},
-                                     threshold=draw(
-                                         st.floats(min_value=1.0,
-                                                   max_value=10.0)))
+                                     approximate=draw(st.booleans()))
         elif activation_type == "leaky_relu":
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
@@ -62,20 +67,18 @@ class TestFCActivationMkldnnFusePass(PassAutoScanTest):
                                      alpha=draw(
                                          st.floats(min_value=0.1,
                                                    max_value=1.0)))
+        elif activation_type == "relu6":
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["fc_output"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     threshold=6)
         elif activation_type == "swish":
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
                                      outputs={"Out": ["activation_output"]},
                                      beta=draw(
                                          st.floats(min_value=0.1,
-                                                   max_value=1.0)))
-        elif activation_type == "clip":
-            activation_op = OpConfig(
-                activation_type,
-                inputs={"X": ["fc_output"]},
-                outputs={"Out": ["activation_output"]},
-                min=draw(st.floats(min_value=0.1, max_value=0.49)),
-                max=draw(st.floats(min_value=0.5, max_value=1.0)))
+                                                   max_value=10.0)))
         else:
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
