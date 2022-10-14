@@ -23,8 +23,8 @@ class TestTranspose(unittest.TestCase):
     def check_result(self, x_shape, dims, format):
         with _test_eager_guard():
             mask = paddle.randint(0, 2, x_shape).astype("float32")
-            # To make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
-            # add one here, or the backward checks may fail.
+            # "+ 1" to make sure that all zero elements in "origin_x" is caused by multiplying by "mask",
+            # or the backward checks may fail.
             origin_x = (paddle.rand(x_shape, dtype='float32') + 1) * mask
             dense_x = origin_x.detach()
             dense_x.stop_gradient = False
