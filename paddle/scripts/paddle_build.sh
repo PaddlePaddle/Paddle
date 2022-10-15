@@ -1825,7 +1825,7 @@ function precise_card_test_single {
     set +x
     testcases=$1
     num=$2
-    for case in $(echo $testcases | tr "$|^" "\n" ｜ sed '/^$/d')
+    for case in $(echo $testcases | tr "$|^" "\n" | awk '!/^$/')
     do
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
