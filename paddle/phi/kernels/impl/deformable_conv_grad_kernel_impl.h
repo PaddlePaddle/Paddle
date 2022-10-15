@@ -302,10 +302,14 @@ void DeformableConvGradKernel(const Context& dev_ctx,
           mask_grad_data_ptr);
     }
     if (dx) {
-      DenseTensor mt_dx = phi::EmptyLike<MT, Context>(dev_ctx, *dx);
-      MT* mt_dx_ptr = (x.dtype() == DataType::FLOAT16)
-                          ? (dev_ctx.template Alloc<MT>(&mt_dx))
-                          : (dev_ctx.template Alloc<MT>(dx));
+      MT* mt_dx_ptr = NULL;
+      DenseTensor mt_dx;
+      if (x.dtype() == DataType::FLOAT16) {
+        mt_dx = phi::EmptyLike<MT, Context>(dev_ctx, *dx);
+        mt_dx_ptr = dev_ctx.template Alloc<MT>(&mt_dx);
+      } else {
+        mt_dx_ptr = dev_ctx.template Alloc<MT>(dx);
+      }
       ModulatedDeformableCol2im(dev_ctx,
                                 col_buffer_ptr,
                                 offset_ptr + i * im2col_step * input_offset_dim,
