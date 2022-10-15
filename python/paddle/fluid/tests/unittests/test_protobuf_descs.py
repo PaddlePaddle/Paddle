@@ -111,7 +111,7 @@ class TestVarDesc(unittest.TestCase):
     def test_shape(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
-        var = block.var('my_var'.encode())
+        var = block.var(b'my_var')
         var.set_type(core.VarDesc.VarType.SELECTED_ROWS)
         src_shape = [3, 2, 10, 8]
         var.set_shape(src_shape)
@@ -122,7 +122,7 @@ class TestVarDesc(unittest.TestCase):
     def test_multiple_shape(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
-        var = block.var('my_reader'.encode())
+        var = block.var(b'my_reader')
         var.set_type(core.VarDesc.VarType.READER)
         src_shapes = [[2, 3, 3], [4, 5], [6, 7, 8, 9]]
         var.set_shapes(src_shapes)
@@ -133,7 +133,7 @@ class TestVarDesc(unittest.TestCase):
     def test_dtype(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
-        var = block.var('my_var'.encode())
+        var = block.var(b'my_var')
         var.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var.set_dtype(core.VarDesc.VarType.INT32)
         self.assertEqual(core.VarDesc.VarType.INT32, var.dtype())
@@ -142,7 +142,7 @@ class TestVarDesc(unittest.TestCase):
     def test_multiple_dtype(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
-        var = block.var('my_reader'.encode())
+        var = block.var(b'my_reader')
         var.set_type(core.VarDesc.VarType.READER)
         src_types = [
             core.VarDesc.VarType.INT32, core.VarDesc.VarType.FP64,
@@ -155,7 +155,7 @@ class TestVarDesc(unittest.TestCase):
     def test_multiple_lod_level(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
-        var = block.var('my_reader'.encode())
+        var = block.var(b'my_reader')
         var.set_type(core.VarDesc.VarType.READER)
         src_types = [3, 1, 2]
         var.set_lod_levels(src_types)
@@ -170,12 +170,12 @@ class TestBlockDesc(unittest.TestCase):
         self.assertIsNotNone(program_desc)
         block = program_desc.block(0)
         self.assertIsNotNone(block)
-        var1 = block.var("var1".encode())
-        var2 = block.var("var2".encode())
-        var3 = block.var("var3".encode())
+        var1 = block.var(b"var1")
+        var2 = block.var(b"var2")
+        var3 = block.var(b"var3")
         all_vars = block.all_vars()
         self.assertEqual(set(all_vars), {var1, var2, var3})
-        var2_re = block.find_var("var2".encode())
+        var2_re = block.find_var(b"var2")
         self.assertEqual(var2_re, var2)
 
     def test_add_op(self):
