@@ -127,6 +127,17 @@ def notsuccessfuc(rootPath):
             count = count + 1
             utNotSuccess = utNotSuccess + '^%s$|' % ut
 
+    # ut not exec
+    get_all_uts(rootPath)
+    with open("/paddle/build/all_uts_paddle", "r") as f:
+        data = f.readlines()
+    for ut in data:
+        ut = ut.replace('\n', '').strip()
+        if ut not in files:
+            print(ut)
+            count = count + 1
+            utNotSuccess = utNotSuccess + '^%s$|' % ut
+
     if utNotSuccess != '':
         print("utNotSuccess count: %s" % count)
         f = open('%s/build/utNotSuccess' % rootPath, 'w')
@@ -147,13 +158,13 @@ def ut_file_map_supplement(rootPath):
         load_dict_old = json.load(f)
 
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
-    """
+
     with open(all_uts_paddle, 'r') as f:
         all_uts_paddle_list = []
         for ut in f.readlines():
-           all_uts_paddle_list.append(ut.strip())
+            all_uts_paddle_list.append(ut.strip())
         f.close()
-    """
+
     with open("/pre_test_tmp/ut_file_map.json", "w") as f:
         json.dump(load_dict_new, f, indent=4)
         print("load_dict_new success!!")

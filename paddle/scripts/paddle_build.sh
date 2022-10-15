@@ -2009,14 +2009,10 @@ set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
     #run all unittest to get the coverage information of .c and .h files
-    #precise_card_test_single "$single_card_tests" 1
-    #precise_card_test_single "$single_card_tests_1" 1
-    #precise_card_test_single "$multiple_card_tests" 2
-    #precise_card_test_single "$exclusive_tests"
-    ljd_testcases1='^test_op_signature$|^variant_test$'
-    precise_card_test_single "$ljd_testcases1" 1
-    ljd_testcases2='^test_white_lists$|^test_install_check$|^test_parallel_executor_test_while_train$'
-    precise_card_test_single "$ljd_testcases2" 2
+    precise_card_test_single "$single_card_tests" 1
+    precise_card_test_single "$single_card_tests_1" 1
+    precise_card_test_single "$multiple_card_tests" 2
+    precise_card_test_single "$exclusive_tests"
     wait;
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
@@ -2028,7 +2024,6 @@ set -x
     python ${PADDLE_ROOT}/tools/handle_h_cu_file.py 'analy_h_cu_file' $tmp_dir ${PADDLE_ROOT}
 
     wait;
-    
 
     #generate python coverage and generate python file to tests_map_file
     python ${PADDLE_ROOT}/tools/pyCov_multithreading.py ${PADDLE_ROOT}
