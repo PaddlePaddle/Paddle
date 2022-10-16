@@ -44,7 +44,7 @@ class CostEstimator:
         )  # {`op_id`: {"reshard": [], "dist_op": [], "local_cost": local_cost}}}
         self._bubble_time_mapping = {}
         self._ordered_ops = []
-        self.memories = {}
+        self.max_memories = {}
         self.max_memory = None
 
     @property
@@ -268,7 +268,7 @@ class CostEstimator:
             return result
 
         memories = {}
-        self.memories = {}
+        self.max_memories = {}
         var_info = {
         }  # var_name: [[process_mesh, dims_mapping], [id]], [[process_mesh, dims_mapping], [id]]}
 
@@ -278,6 +278,10 @@ class CostEstimator:
         self._ordered_ops.sort(key=lambda x: x[0])
 
         for op_id, op in self._ordered_ops:
+            if op.type in [
+                    "create_py_reader", "create_double_buffer_reader", "read"
+            ]:
+                continue
             dist_op = dist_context.get_dist_op_for_program(op)
             process_mesh = dist_op.dist_attr.process_mesh
             for var_name in op.input_arg_names:
@@ -327,6 +331,10 @@ class CostEstimator:
 
         has_used_vars = set()
         for op_id, op in self._ordered_ops:
+            if op.type in [
+                    "create_py_reader", "create_double_buffer_reader", "read"
+            ]:
+                continue
             can_free_memories = {}
             can_free_vars = set()
             dist_op = dist_context.get_dist_op_for_program(op)
@@ -385,11 +393,11 @@ class CostEstimator:
 
             # Calc peak memory
             for process in memories:
-                if process not in self.memories:
-                    memories[process] = memories[process]
+                if process not in self.max_memories:
+                    self.max_memories[process] = memories[process]
                 else:
-                    if memories[process] > self.memories[process]:
-                        self.memories[process] = memories[process]
+                    if memories[process] > self.max_memories[process]:
+                        self.max_memories[process] = memories[process]
 
             # Free memory
             for process in can_free_memories:
@@ -397,7 +405,7 @@ class CostEstimator:
                     memories[process] -= can_free_memories[process]
 
         # Calculate the max memory in all ranks
-        max_memory = max(self.memories.values())
+        max_memory = max(self.max_memories.values())
         self.max_memory = max_memory
 
         return max_memory
@@ -412,37 +420,37 @@ class CostEstimator:
         self._estimate_core(dist_context, resharder, block)
 
         return self.global_cost
-    
+
     def pretty_print_cost(self):
         self._pretty_print_global_cost()
         self._pretty_print_memory_cost()
 
     def _print_tag(self, max_len, length):
         tag = "+" + "-" * max_len
-        for i in range(len(header)):
+        for i in range(length):
             print(tag, end="")
-            if i == len(header) - 1:
+            if i == length - 1:
                 print("+")
 
     def _print_vals(self, vals, max_len):
         for idx, val in enumerate(vals):
-            s = "|" + str(vals).center(max_len)
+            s = "|" + str(val).center(max_len)
             print(s, end="")
             if idx == len(vals) - 1:
                 print("|")
 
     def _pretty_print_memory_cost(self):
         """Print memory of every rank prettily."""
-        if not self.memories or not self.max_memory:
+        if not self.max_memories or not self.max_memory:
             raise ValueError("Please calculate memory cost before print.")
 
         # Padding automatically
         max_len = 0
         header = ["Rank", "Memory(B)"]
-        for memory in (self.memories.values+header):
+        for memory in (list(self.max_memories.values()) + header):
             if len(str(memory)) > max_len:
                 max_len = len(str(memory))
-        max_len += 4 # for pretty print of center
+        max_len += 4  # for pretty print of center
 
         # Print tag
         self._print_tag(max_len, len(header))
@@ -453,28 +461,26 @@ class CostEstimator:
         # Print tag
         self._print_tag(max_len, len(header))
 
-        # Print rank and memory
+        # Print rank and its memory
         for i in range(len(self.max_memories)):
-            memory = self.memories[i]
+            memory = self.max_memories[i]
             vals = [i, memory]
             self._print_vals(vals, max_len)
-        
-        # Print tag
-        self._print_tag(max_len, len(header))
+            self._print_tag(max_len, len(header))
 
     def _pretty_print_global(self):
         """Print global execution time and max memory prettily."""
-        if not self.memories or not self.max_memory:
+        if not self.max_memories or not self.max_memory:
             raise ValueError("Please calculate cost before print.")
 
         # Padding automatically
         max_len = 0
         header = ["Execution Time(ms)", "Max Memory(B)"]
         vals = [self.global_cost.time, self.max_memory]
-        for memory in (vals+header):
+        for memory in (vals + header):
             if len(str(memory)) > max_len:
                 max_len = len(str(memory))
-        max_len += 4 # for pretty print of center
+        max_len += 4  # for pretty print of center
 
         # Print tag
         self._print_tag(max_len, len(header))
@@ -487,11 +493,13 @@ class CostEstimator:
 
         # Print exec time and max memory
         self._print_vals(vals, max_len)
-        
+
         # Print tag
-        self._print_tag(max_len, len(header))        
+        self._print_tag(max_len, len(header))
 
     def pretty_print_cost(self):
         """Print cost prettily."""
+        print("The global execution time and max memory are as follows:")
         self._pretty_print_global()
+        print("The memory of every rank is as follows:")
         self._pretty_print_memory_cost()

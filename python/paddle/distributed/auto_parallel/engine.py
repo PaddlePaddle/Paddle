@@ -49,6 +49,7 @@ from .strategy import Strategy
 from .interface import CollectionNames, get_collection
 from ..utils.log_utils import get_logger
 from .cost import CostEstimator
+from .completion import Completer
 
 
 class Engine:
@@ -202,6 +203,7 @@ class Engine:
         self._planned_mode = None
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
+        self._losses = None
 
         self.history = None
 
@@ -488,6 +490,7 @@ class Engine:
             outputs = self.program_helper.output_vars
             labels = self.program_helper.label_vars
             losses = self.program_helper.loss_vars
+            self._losses = losses
             metrics = self.program_helper.metric_vars
 
             self._inputs = inputs
@@ -513,6 +516,7 @@ class Engine:
                     outputs = to_list(self._model(*inputs))
                     if mode != "predict" and self._loss:
                         losses = to_list(self._loss(*(outputs + labels)))
+                        self._losses = losses
 
                     if mode != "predict" and (outputs or labels):
                         for metric in self._metrics:
@@ -520,6 +524,7 @@ class Engine:
                                 to_list(metric.compute(*(outputs + labels))))
             else:
                 losses = to_list(self._loss)
+                self.losses = losses
 
         default_ctx = get_default_distributed_context()
         if not default_ctx.has_annotation:
@@ -1595,11 +1600,11 @@ class Engine:
                     "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
                         " or `paddle.fluid.optimizer.Optimizer`, but got {}.".format(type(optimizer))
                 )
-    
+
     def cost(self, mode="train"):
         """
-        Get and Print cost, including memory of every rank, 
-        max memory among all ranks, and the global cost of one step based on 
+        Get and Print cost, including memory of every rank,
+        max memory among all ranks, and the global cost of one step based on
         communication cost(computation cost is 0 by default).
         In the future, the flops information of every rank and global cost including
         computation cost will be added.
@@ -1610,87 +1615,75 @@ class Engine:
         Returns:
             Return the global execution time and max memory.
 
-        Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import paddle.vision.transforms as T
-            from paddle.distributed.fleet import auto
-            from paddle.vision.datasets import MNIST
-            
-            paddle.enable_static()
-            transform = T.Compose([
-                T.Transpose(),
-                T.Normalize([127.5], [127.5])
-            ])
-            train_dataset = MNIST(mode='train', transform=transform)
-            valid_dataset = MNIST(mode='test', transform=transform)
-
-            model = paddle.vision.models.LeNet()
-            loss = paddle.nn.CrossEntropyLoss()
-            optimizer = paddle.optimizer.Adam(
-                learning_rate=0.001, parameters=model.parameters())
-            metrics = paddle.metric.Accuracy(topk=(1, 2))
-
-            engine = auto.Engine(model, loss, optimizer, metrics)
-            # get cost
-            engine.cost()
-
         """
         if _non_static_mode() or self._dygraph_mode:
-            raise ValueError("Please call `engine._prepare_program('mode')` firstly when in the static graph mode.")
+            raise ValueError(
+                "Please call `engine._prepare_program('mode')` firstly when in the static graph mode."
+            )
 
         # Check mode
         accepted_modes = ["train", "predict", "eval"]
         if mode not in accepted_modes:
-            raise ValueError("The mode {} is not in accepted modes {}".format(mode, accepted_modes))
-        
+            raise ValueError("The mode {} is not in accepted modes {}".format(
+                mode, accepted_modes))
+
         # Check parallel mode
         if self._strategy.auto_mode == "full":
-            print("The cost will be calcudated in the search process when the auto mode is full.")
+            print(
+                "The cost will be calcudated in the search process when the auto mode is full."
+            )
             return
-         # Construct cost estimator by original main program
-        serial_main_prog = self._orig_main_prog.clone()
-        serial_startup_prog = self._orig_startup_prog.clone()
-        losses = to_list(self._loss)
-        dist_context = DistributedContext(
-            serial_main_prog, serial_startup_prog, self._optimizer, losses,
-            feed_vars, fetch_vars, self._cluster, self._strategy)
-       
-        if mode == "eval" or mode == "predict":
-            cost_estimator = CostEstimator(
-                self._orig_main_prog.clone(),
-                self._cluster)
-        elif mode == "train":
-            # get serial main program with backward
-            serial_main_program = self._orig_main_prog.clone()
-            serial_startup_program = self._orig_startup_prog.clone()
-            serial_optimizer = self.optimizer
 
+        # Construct cost estimator by original main program
+        serial_main_prog = self._serial_main_progs[mode].clone(
+        ) if mode in self._serial_main_progs else self._orig_main_prog.clone()
+        serial_startup_prog = self._serial_startup_progs[mode].clone(
+        ) if mode in self._serial_startup_progs else self._orig_startup_prog.clone(
+        )
+        losses = to_list(
+            self._loss) if (not isinstance(self._loss, paddle.nn.Layer)
+                            and not callable(self._loss)) else self._losses
+        assert losses
+
+        dist_context = DistributedContext(serial_main_prog, serial_startup_prog,
+                                          self._optimizer, losses, {},
+                                          {"loss": losses}, self._cluster,
+                                          self._strategy)
+        completer = Completer(dist_context)
+        completer.complete_forward_annotation()
+        dist_context.block_state.parse_forward_blocks(
+            dist_context.serial_main_program)
+
+        if mode == "eval" or mode == "predict":
+            cost_estimator = CostEstimator(serial_main_prog, self._cluster)
+        elif mode == "train":
+            # Get serial main program with backward
+            serial_optimizer = self._optimizer
+            parallelizer = Parallelizer(mode, completer, dist_context)
             # Generate backward
-            serial_loss = self._dist_context.serial_fetch_vars["loss"][0]
-            params_grads = self._parallelizer._generate_backward(
-                serial_main_program, serial_startup_program, serial_loss)
+            loss_name = dist_context.serial_fetch_vars["loss"][0].name
+            serial_loss = serial_main_prog.global_block()._var_recursive(
+                loss_name)
+            params_grads = parallelizer._generate_backward(
+                serial_main_prog, serial_startup_prog, serial_loss)
 
             # Generate optimizer
-            optimizer_ops = self._parallelizer._generate_optimizer(
-                serial_main_program, serial_startup_program, serial_optimizer,
+            optimizer_ops = parallelizer._generate_optimizer(
+                serial_main_prog, serial_startup_prog, serial_optimizer,
                 params_grads)
-            cost_estimator = CostEstimator(serial_main_program,
-                                            self._cluster,
-                                            loop_count=self._loop_count)
-        
+            cost_estimator = CostEstimator(serial_main_prog, self._cluster)
+
         # Estimate the exec cost
-        cost_estimator = CostEstimator(self.serial_main_program, self._cluster)
-        global_cost = cost_estimator.estimate(self.dist_context)
+        cost_estimator = CostEstimator(serial_main_prog, self._cluster)
+        global_cost = cost_estimator.estimate(dist_context)
 
         # Estimate the max memories
-        max_memory = cost_estimator._estimate_max_memory_by_dist_op(self.dist_context)
-        max_memories = cost_estimator.max_memories
-        
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context)
+
         # Print the cost
         cost_estimator.pretty_print_cost()
+
         return global_cost.time, max_memory
 
     @property
