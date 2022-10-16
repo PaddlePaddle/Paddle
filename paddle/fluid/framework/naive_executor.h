@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -23,10 +24,6 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-
-namespace phi {
-class DenseTensor;
-}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -40,6 +37,8 @@ class Scope;
 
 class NaiveExecutor {
  public:
+  using HookFunc = std::function<void(OperatorBase*)>;
+
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
 
   ~NaiveExecutor();
@@ -66,13 +65,13 @@ class NaiveExecutor {
   // Get an tensor to operating directly, without the need for feed_ops.
   LoDTensor* FindTensor(const std::string& name);
 
-  Scope* scope() { return scope_; }
-
-  void CleanFeedFetchOps();
+  Scope* GetScope() { return scope_; }
 
   void ResetTrtOps(int num);
 
- protected:
+  void RegisterHook(HookFunc hookfunc);
+
+ private:
   void CreateOps(const ProgramDesc& desc,
                  int block_id,
                  bool with_feed_fetch_ops);
@@ -82,6 +81,9 @@ class NaiveExecutor {
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   Scope* scope_;
+
+  bool hookfunc_registered_{false};
+  HookFunc hookfunc_;
 };
 
 }  // namespace framework

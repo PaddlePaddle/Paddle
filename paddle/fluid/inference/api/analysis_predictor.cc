@@ -32,6 +32,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/var_type_traits.h"
@@ -593,6 +594,23 @@ bool AnalysisPredictor::PrepareExecutor() {
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
                           platform::errors::PreconditionNotMet(
                               "The sub_scope should not be nullptr."));
+
+  auto hook = [this](framework::OperatorBase *op) {
+    for (auto &output : op->Outputs()) {
+      for (auto &var_name : output.second) {
+        auto *var = this->sub_scope_->FindVar(var_name);
+        if (!var || !var->IsType<phi::DenseTensor>()) continue;
+        auto dense_tensor = var->Get<phi::DenseTensor>();
+        if (!dense_tensor.initialized()) continue;
+        std::shared_ptr<ZeroCopyTensor> tensor =
+            this->GetOutputTensor(var_name);
+        for (auto &hookfunc : this->hookfuncs_) {
+          hookfunc(op->Type(), var_name, tensor);
+        }
+      }
+    }
+  };
+  executor_->RegisterHook(hook);
 
   return true;
 }
@@ -1524,10 +1542,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
   } else {
-    scope = executor_->scope();
+    scope = executor_->GetScope();
   }
 #else
-  scope = executor_->scope();
+  scope = executor_->GetScope();
 #endif
   PADDLE_ENFORCE_NOT_NULL(
       scope->FindVar(name),
@@ -1579,10 +1597,10 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   if (config_.dist_config().use_dist_model()) {
     scope = scope_.get();
   } else {
-    scope = executor_->scope();
+    scope = executor_->GetScope();
   }
 #else
-  scope = executor_->scope();
+  scope = executor_->GetScope();
 #endif
   PADDLE_ENFORCE_NOT_NULL(
       scope->FindVar(name),
@@ -1964,7 +1982,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
   for (auto *var : global_block->AllVars()) {
     if (!IsPersistable(var)) {
       const std::string name = var->Name();
-      auto *variable = executor_->scope()->FindVar(name);
+      auto *variable = executor_->GetScope()->FindVar(name);
       if (variable != nullptr && variable->IsType<phi::DenseTensor>() &&
           name != "feed" && name != "fetch") {
         VLOG(3) << "Clear Intermediate Tensor: " << name;
@@ -2143,6 +2161,16 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   platform::CPUPlace place;
   framework::Executor exe(place);
   exe.Run(save_program, scope(), 0, true, true);
+}
+
+void AnalysisPredictor::RegisterOutputHook(Exp_OutputHookFunc hookfunc) {
+  if (config_.enable_memory_optim()) {
+    LOG(WARNING) << "If you want to run output hook function, you should "
+                    "use config.EnableMemoryOptim(false) to turn off memory "
+                    "reuse!";
+    return;
+  }
+  hookfuncs_.emplace_back(std::move(hookfunc));
 }
 
 template <>
@@ -2332,6 +2360,10 @@ void Predictor::ClearIntermediateTensor() {
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
+void Predictor::RegisterOutputHook(Exp_OutputHookFunc hookfunc) {
+  predictor_->RegisterOutputHook(hookfunc);
+}
+
 void *Predictor::GetExecStream() const { return predictor_->GetExecStream(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
@@ -2413,10 +2445,10 @@ PredictorPool::PredictorPool(const Config &config, size_t size) {
   for (size_t i = 0; i < size - 1; i++) {
     if (config.tensorrt_engine_enabled()) {
       Config config_tmp(copy_config);
-      preds_.push_back(
-          std::move(std::unique_ptr<Predictor>(new Predictor(config_tmp))));
+      preds_.emplace_back(
+          std::unique_ptr<Predictor>(new Predictor(config_tmp)));
     } else {
-      preds_.push_back(std::move(main_pred_->Clone()));
+      preds_.emplace_back(main_pred_->Clone());
     }
   }
 }

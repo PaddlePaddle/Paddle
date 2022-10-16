@@ -53,6 +53,9 @@ void NaiveExecutor::Run() {
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
     op->Run(*scope_, place_);
+    if (hookfunc_registered_) {
+      hookfunc_(op.get());
+    }
   }
 }
 
@@ -127,14 +130,9 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   return tensor;
 }
 
-void NaiveExecutor::CleanFeedFetchOps() {
-  std::vector<std::unique_ptr<OperatorBase>> ops;
-  for (auto &op : ops_) {
-    if (op->Type() != "feed" && op->Type() != "fetch") {
-      ops.emplace_back(std::move(op));
-    }
-  }
-  ops_.swap(ops);
+void NaiveExecutor::RegisterHook(HookFunc hookfunc) {
+  hookfunc_ = std::move(hookfunc);
+  hookfunc_registered_ = true;
 }
 
 NaiveExecutor::~NaiveExecutor() {
