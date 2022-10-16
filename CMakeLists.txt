@@ -250,6 +250,8 @@ option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
+option(OP_LIST "Compile operators in op_list for inference lib" "")
+option(KERNEL_LIST "Compile phi kernels in kernel_list for inference lib" "")
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
