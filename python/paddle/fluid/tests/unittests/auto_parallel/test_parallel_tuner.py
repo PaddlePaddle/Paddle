@@ -13,26 +13,13 @@
 # limitations under the License.
 
 import unittest
-import os
-import json
 
 import paddle
-import numpy as np
-import paddle.nn as nn
-import paddle.utils as utils
 import paddle.static as static
-import paddle.nn.functional as F
 
 from paddle.distributed import fleet
-import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.cluster import Cluster
-# from paddle.distributed.auto_parallel.cluster import Cluster, get_default_cluster
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.utils import make_data_unshard
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute, TensorDistributedAttribute
-from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context, set_default_distributed_context
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.auto_parallel.dist_context import DistributedContext, set_default_distributed_context
 from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 import sys
@@ -40,7 +27,6 @@ import sys
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion
-from test_cluster import cluster_json
 
 paddle.enable_static()
 

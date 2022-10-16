@@ -14,8 +14,7 @@
 
 from .completion import Completer
 from .dist_context import get_default_distributed_context
-
-# from .tuner.parallel_tuner import ParallelTuner
+from .tuner.parallel_tuner import ParallelTuner
 
 
 class Planner:

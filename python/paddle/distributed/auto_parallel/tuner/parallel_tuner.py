@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,30 +14,22 @@
 
 import time
 import math
-import time
-import datetime
 import copy
 import hashlib
 import itertools
 from collections import defaultdict
 import numpy as np
-import paddle
 from ..process_mesh import ProcessMesh
 from ..completion import Completer
 from ..parallelizer_v2 import Parallelizer
 from ..dist_context import _node_id
 from ..dist_op import DistributedOperator
-from ..dist_attribute import TensorDistributedAttribute
-from ..dist_attribute import OperatorDistributedAttribute
 from ..operators.common import find_compatible_distributed_operator_impls
-from ..operators.common import is_elementwise_op
-from ..utils import print_program_with_dist_attr
 from .trial import Trial, TrialStatus
 from .tunable_space import TunableSpace
 from .tunable_variable import Boolean, IntRange
 from ..cost import CostEstimator
 from .tunable_variable import Boolean, IntRange
-from ..process_group import get_all_process_groups
 
 
 class ParallelTuner:
