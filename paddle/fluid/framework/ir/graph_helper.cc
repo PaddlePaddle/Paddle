@@ -509,6 +509,7 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
 void ReplaceAllReduceOp(const Node &node,
                         proto::BlockDesc *block,
                         std::vector<OpDesc> *ops) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   bool is_fused = (node.Name() == "fused_all_reduce");
   details::OpHandleBase &op_handle =
       const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
@@ -585,6 +586,11 @@ void ReplaceAllReduceOp(const Node &node,
             ->GradMergeCondName();
     all_reduce_op_desc.SetInput("Cond", {cond_name});
   }
+#else
+  PADDLE_THROW(
+      platform::errors::Unimplemented("ReplaceAllReduceOp is only implemented "
+                                      "for paddle compiled with NCCL/RCCL."));
+#endif
 }
 
 void UpdateControlOpSkipEagerDeletionVars(const Node &node,
