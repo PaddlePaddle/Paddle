@@ -117,7 +117,7 @@ endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_subgraph_pass PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_trt_activation_pass PROPERTIES TIMEOUT 240)
+  set_tests_properties(test_trt_activation_pass PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_conv_pass PROPERTIES TIMEOUT 120)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
@@ -158,7 +158,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
      AND WITH_GPU)
     set_tests_properties(test_emb_eltwise_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                          120)
-    set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 160)
+    set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_simplify_with_basic_ops_pass_autoscan
                          PROPERTIES TIMEOUT 60)
     set_tests_properties(test_adaptive_pool2d_convert_global_pass_autoscan
