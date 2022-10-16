@@ -44,7 +44,7 @@ class ParallelTuner:
 
     def __init__(self,
                  dist_context,
-                 mode="main",
+                 mode="train",
                  max_trials=25,
                  tuner_id=None,
                  seed=None,
@@ -577,34 +577,6 @@ class ParallelTuner:
             else:
                 start_idx += 1
                 op_id_to_process_mesh[op_id] = process_mesh_list[start_idx - 1]
-        return op_id_to_process_mesh
-
-    def _apply_pipeline_partition_random(self, process_mesh_list):
-        op_id_to_process_mesh = {}
-        total_ops = len(self._dist_context._dist_ops_for_program)
-        total_stages = len(process_mesh_list)
-        ops_per_stages = total_ops // total_stages
-        if ops_per_stages == 0:
-            return None
-
-        random_times = total_stages - 1
-        pipeline_starts = [0, total_ops]
-        random_start = 0
-        while random_start < total_stages - 1:
-            partition_index = np.random.randint(1, total_ops)
-            if partition_index not in pipeline_starts:
-                pipeline_starts.append(partition_index)
-                random_start += 1
-        pipeline_starts.sort()
-
-        start = 1
-        sorted_op_ids = sorted(self._dist_context._dist_ops_for_program.keys())
-        for idx, op_id in enumerate(sorted_op_ids):
-            if idx < pipeline_starts[start]:
-                op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
-            else:
-                start += 1
-                op_id_to_process_mesh[op_id] = process_mesh_list[start - 1]
         return op_id_to_process_mesh
 
     def _amend_dist_attr(self):
