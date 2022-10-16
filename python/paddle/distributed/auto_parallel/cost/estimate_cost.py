@@ -44,6 +44,8 @@ class CostEstimator:
         )  # {`op_id`: {"reshard": [], "dist_op": [], "local_cost": local_cost}}}
         self._bubble_time_mapping = {}
         self._ordered_ops = []
+        self.memories = {}
+        self.max_memory = None
 
     @property
     def loop_count(self):
@@ -122,7 +124,7 @@ class CostEstimator:
         for i in range(loop_count):
             for op in ops:
                 self._detailed_cost[op.desc.id()] = OrderedDict()
-                # if in the while sub block, the detail of cost is the last cost
+                # If in the while sub block, the detail of cost is the last cost
                 detail = self._detailed_cost[op.desc.id()]
                 detail["reshard_cost"] = OrderedDict()  #
                 detail["dist_op_cost"] = []
@@ -146,15 +148,15 @@ class CostEstimator:
                     var = get_var_with_recursion(var_name, block, self.program)
                     reshard_cost = resharder.get_cost(op, var, self.cluster)
 
-                    # calc reshard cost
+                    # Calc reshard cost
                     if reshard_cost is not None:
                         detail["reshard_cost"][var_name] = reshard_cost
 
                         comm_costs = reshard_cost[0]
                         local_comp_cost = reshard_cost[1]
                         for comm_cost in comm_costs:
-                            # time is cumulative in global cost and local cost, but memory and flops just are cumulative in global cost.
-                            # comm sync
+                            # Time is cumulative in global cost and local cost, but memory and flops just are cumulative in global cost.
+                            # Comm sync
                             for item in comm_cost:
                                 group_ranks, cost = item
                                 max_time = None
@@ -182,7 +184,7 @@ class CostEstimator:
                             for comp_cost in local_comp_cost[rank]:
                                 self.local_cost(rank).time += comp_cost.time
 
-                # calc dist op cost
+                # Calc dist op cost
                 dist_op = dist_context.get_dist_op_for_program(op)
                 op_dist_attr = dist_op.dist_attr
                 processes = op_dist_attr.process_mesh.processes
@@ -200,7 +202,7 @@ class CostEstimator:
                     continue
                 for item in dist_op_cost:
                     if isinstance(item, list):
-                        # comm sync
+                        # Comm sync
                         for comm_op_cost in item:
                             max_time = None
                             cost_time = {}
@@ -221,9 +223,9 @@ class CostEstimator:
                                 self._bubble_time_mapping[rank] += (
                                     max_time - cost_time[rank])
                     elif isinstance(item, dict):
-                        # op just one
+                        # Op just one
                         for rank in processes:
-                            # dp+pp+mp
+                            # DP+PP+MP
                             if rank not in item:
                                 continue
                             self.local_cost(rank).time += item[rank].time
@@ -266,7 +268,7 @@ class CostEstimator:
             return result
 
         memories = {}
-        max_memories = {}
+        self.memories = {}
         var_info = {
         }  # var_name: [[process_mesh, dims_mapping], [id]], [[process_mesh, dims_mapping], [id]]}
 
@@ -287,7 +289,7 @@ class CostEstimator:
                                                 input_dims_mapping)
                 if key not in var_info[var_name]:
                     var_info[var_name][key] = {}
-                # it is even partition now
+                # It is even partition now
                 if "memory" not in var_info[var_name][key]:
                     var = dist_op.get_serial_input(var_name)
                     global_sizes = var.shape
@@ -336,14 +338,14 @@ class CostEstimator:
                                                 input_dims_mapping)
                 has_used_var = var_name + key
                 var = dist_op.get_serial_input(var_name)
-                # not used
+                # Not used
                 if var_name + key not in has_used_vars:
                     has_used_vars.add(has_used_var)
                     for process in process_mesh.processes:
                         if process not in memories:
                             memories[process] = 0
                         memories[process] += var_info[var_name][key]["memory"]
-                # used
+                # Used
                 else:
                     if op_id == var_info[var_name][key]["position"][-1]:
                         if has_used_var not in can_free_vars:
@@ -362,14 +364,14 @@ class CostEstimator:
                                                 output_dims_mapping)
                 has_used_var = var_name + key
                 var = dist_op.get_serial_output(var_name)
-                # not used
+                # Not used
                 if var_name + key not in has_used_vars:
                     has_used_vars.add(has_used_var)
                     for process in process_mesh.processes:
                         if process not in memories:
                             memories[process] = 0
                         memories[process] += var_info[var_name][key]["memory"]
-                # used
+                # Used
                 else:
                     if op_id == var_info[var_name][key]["position"][-1]:
                         if has_used_var not in can_free_vars:
@@ -381,21 +383,22 @@ class CostEstimator:
                                     can_free_memories[process] += var_info[
                                         var_name][key]["memory"]
 
-            # calc peak memory
+            # Calc peak memory
             for process in memories:
-                if process not in max_memories:
-                    max_memories[process] = memories[process]
+                if process not in self.memories:
+                    memories[process] = memories[process]
                 else:
-                    if memories[process] > max_memories[process]:
-                        max_memories[process] = memories[process]
+                    if memories[process] > self.memories[process]:
+                        self.memories[process] = memories[process]
 
-            # free memory
+            # Free memory
             for process in can_free_memories:
                 if process in memories:
                     memories[process] -= can_free_memories[process]
 
         # Calculate the max memory in all ranks
-        max_memory = max(max_memories.values())
+        max_memory = max(self.memories.values())
+        self.max_memory = max_memory
 
         return max_memory
 
@@ -409,3 +412,86 @@ class CostEstimator:
         self._estimate_core(dist_context, resharder, block)
 
         return self.global_cost
+    
+    def pretty_print_cost(self):
+        self._pretty_print_global_cost()
+        self._pretty_print_memory_cost()
+
+    def _print_tag(self, max_len, length):
+        tag = "+" + "-" * max_len
+        for i in range(len(header)):
+            print(tag, end="")
+            if i == len(header) - 1:
+                print("+")
+
+    def _print_vals(self, vals, max_len):
+        for idx, val in enumerate(vals):
+            s = "|" + str(vals).center(max_len)
+            print(s, end="")
+            if idx == len(vals) - 1:
+                print("|")
+
+    def _pretty_print_memory_cost(self):
+        """Print memory of every rank prettily."""
+        if not self.memories or not self.max_memory:
+            raise ValueError("Please calculate memory cost before print.")
+
+        # Padding automatically
+        max_len = 0
+        header = ["Rank", "Memory(B)"]
+        for memory in (self.memories.values+header):
+            if len(str(memory)) > max_len:
+                max_len = len(str(memory))
+        max_len += 4 # for pretty print of center
+
+        # Print tag
+        self._print_tag(max_len, len(header))
+
+        # Print header
+        self._print_vals(header, max_len)
+
+        # Print tag
+        self._print_tag(max_len, len(header))
+
+        # Print rank and memory
+        for i in range(len(self.max_memories)):
+            memory = self.memories[i]
+            vals = [i, memory]
+            self._print_vals(vals, max_len)
+        
+        # Print tag
+        self._print_tag(max_len, len(header))
+
+    def _pretty_print_global(self):
+        """Print global execution time and max memory prettily."""
+        if not self.memories or not self.max_memory:
+            raise ValueError("Please calculate cost before print.")
+
+        # Padding automatically
+        max_len = 0
+        header = ["Execution Time(ms)", "Max Memory(B)"]
+        vals = [self.global_cost.time, self.max_memory]
+        for memory in (vals+header):
+            if len(str(memory)) > max_len:
+                max_len = len(str(memory))
+        max_len += 4 # for pretty print of center
+
+        # Print tag
+        self._print_tag(max_len, len(header))
+
+        # Print header
+        self._print_vals(header, max_len)
+
+        # Print tag
+        self._print_tag(max_len, len(header))
+
+        # Print exec time and max memory
+        self._print_vals(vals, max_len)
+        
+        # Print tag
+        self._print_tag(max_len, len(header))        
+
+    def pretty_print_cost(self):
+        """Print cost prettily."""
+        self._pretty_print_global()
+        self._pretty_print_memory_cost()
