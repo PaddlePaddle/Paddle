@@ -1613,7 +1613,7 @@ class Engine:
             mode (str): The engine mode must be in ["train", "predict", "eval"]. Default: "train".
 
         Returns:
-            Return the global execution time and max memory.
+            Return the global execution time (ms) and max memory (B).
 
         """
         if _non_static_mode() or self._dygraph_mode:

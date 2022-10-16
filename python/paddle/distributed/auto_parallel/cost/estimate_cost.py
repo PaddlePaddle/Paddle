@@ -421,10 +421,6 @@ class CostEstimator:
 
         return self.global_cost
 
-    def pretty_print_cost(self):
-        self._pretty_print_global_cost()
-        self._pretty_print_memory_cost()
-
     def _print_tag(self, max_len, length):
         tag = "+" + "-" * max_len
         for i in range(length):
@@ -446,8 +442,11 @@ class CostEstimator:
 
         # Padding automatically
         max_len = 0
-        header = ["Rank", "Memory(B)"]
-        for memory in (list(self.max_memories.values()) + header):
+        header = ["Rank", "Memory(MiB)"]
+        memories = [
+            int(item // 1e6) for item in list(self.max_memories.values())
+        ]
+        for memory in (memories + header):
             if len(str(memory)) > max_len:
                 max_len = len(str(memory))
         max_len += 4  # for pretty print of center
@@ -463,7 +462,7 @@ class CostEstimator:
 
         # Print rank and its memory
         for i in range(len(self.max_memories)):
-            memory = self.max_memories[i]
+            memory = memories[i]
             vals = [i, memory]
             self._print_vals(vals, max_len)
             self._print_tag(max_len, len(header))
@@ -475,8 +474,8 @@ class CostEstimator:
 
         # Padding automatically
         max_len = 0
-        header = ["Execution Time(ms)", "Max Memory(B)"]
-        vals = [self.global_cost.time, self.max_memory]
+        header = ["Execution Time(ms)", "Max Memory(MiB)"]
+        vals = [round(self.global_cost.time, 3), int(self.max_memory // 1e6)]
         for memory in (vals + header):
             if len(str(memory)) > max_len:
                 max_len = len(str(memory))
