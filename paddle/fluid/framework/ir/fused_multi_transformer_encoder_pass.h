@@ -236,6 +236,112 @@ struct FusedMultiTransformerEncoderFuseQKVPattern : public PatternBase {
   PATTERN_DECL_NODE(ffn_output);
 };
 
+struct MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern
+    : public PatternBase {
+  MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern(
+      PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern,
+                    name_scope,
+                    "multi_devices_fused_multi_transformer_encoder_fuse_qkv") {}
+
+  PDNode* operator()();
+
+  // Q, K, V path
+  PATTERN_DECL_NODE(input0);
+  PATTERN_DECL_NODE(layer_norm);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_mean);
+  PATTERN_DECL_NODE(layer_norm_variance);
+  PATTERN_DECL_NODE(layer_norm_out);
+  PATTERN_DECL_NODE(c_identity);
+  PATTERN_DECL_NODE(c_identity_out);
+  PATTERN_DECL_NODE(matmul0);
+  PATTERN_DECL_NODE(matmul0_w);
+  PATTERN_DECL_NODE(matmul0_out);
+  PATTERN_DECL_NODE(eltadd0);    // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(eltadd0_b);  // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(eltadd0_out);
+  PATTERN_DECL_NODE(reshape2_0);
+  PATTERN_DECL_NODE(reshape2_0_out);
+  PATTERN_DECL_NODE(transpose2_0);
+  PATTERN_DECL_NODE(transpose2_0_out);
+
+  PATTERN_DECL_NODE(split0)
+  PATTERN_DECL_NODE(split0_q_out)
+  PATTERN_DECL_NODE(split0_k_out)
+  PATTERN_DECL_NODE(split0_v_out)
+
+  // Q, K matmul
+  PATTERN_DECL_NODE(matmul_qk);
+  PATTERN_DECL_NODE(matmul_qk_out);
+  PATTERN_DECL_NODE(eltadd_qk);
+  PATTERN_DECL_NODE(eltadd_qk_b);
+  PATTERN_DECL_NODE(eltadd_qk_out);
+  PATTERN_DECL_NODE(softmax_qk);
+  PATTERN_DECL_NODE(softmax_qk_out);
+  PATTERN_DECL_NODE(dropout_qk);
+  PATTERN_DECL_NODE(dropout_qk_out);
+
+  // QK, V matmul
+  PATTERN_DECL_NODE(matmul_qkv);
+  PATTERN_DECL_NODE(matmul_qkv_out);
+  PATTERN_DECL_NODE(reshape2_qkv);
+  PATTERN_DECL_NODE(reshape2_qkv_out);
+  PATTERN_DECL_NODE(transpose2_qkv);
+  PATTERN_DECL_NODE(transpose2_qkv_out);
+
+  // while loop
+  PATTERN_DECL_NODE(while0);
+
+  // out linear
+  PATTERN_DECL_NODE(matmul_linear);
+  PATTERN_DECL_NODE(matmul_linear_w);
+  PATTERN_DECL_NODE(matmul_linear_out);
+  PATTERN_DECL_NODE(c_allreduce_sum);
+  PATTERN_DECL_NODE(c_allreduce_sum_out);
+  PATTERN_DECL_NODE(eltadd_linear);
+  PATTERN_DECL_NODE(eltadd_linear_b);
+  PATTERN_DECL_NODE(eltadd_linear_out);
+  PATTERN_DECL_NODE(dropout_linear);
+  PATTERN_DECL_NODE(dropout_linear_out);
+
+  // output elementwise_add
+  PATTERN_DECL_NODE(eltadd_out)
+  PATTERN_DECL_NODE(attention_output);
+
+  // Feed Forward nodes
+  PATTERN_DECL_NODE(ffn_layer_norm);
+  PATTERN_DECL_NODE(ffn_layer_norm_scale);
+  PATTERN_DECL_NODE(ffn_layer_norm_bias);
+  PATTERN_DECL_NODE(ffn_layer_norm_mean);
+  PATTERN_DECL_NODE(ffn_layer_norm_variance);
+  PATTERN_DECL_NODE(ffn_layer_norm_out);
+  PATTERN_DECL_NODE(ffn_c_identity);
+  PATTERN_DECL_NODE(ffn_c_identity_out);
+  PATTERN_DECL_NODE(ffn_matmul0);
+  PATTERN_DECL_NODE(ffn_matmul0_w);
+  PATTERN_DECL_NODE(ffn_matmul0_out);
+  PATTERN_DECL_NODE(ffn_eltadd0);    // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(ffn_eltadd0_b);  // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(ffn_eltadd0_out);
+  PATTERN_DECL_NODE(ffn_gelu);
+  PATTERN_DECL_NODE(ffn_gelu_out);
+  PATTERN_DECL_NODE(ffn_matmul1);
+  PATTERN_DECL_NODE(ffn_matmul1_w);
+  PATTERN_DECL_NODE(ffn_matmul1_out);
+  PATTERN_DECL_NODE(ffn_c_allreduce_sum);
+  PATTERN_DECL_NODE(ffn_c_allreduce_sum_out);
+  PATTERN_DECL_NODE(ffn_eltadd1);    // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(ffn_eltadd1_b);  // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(ffn_eltadd1_out);
+  PATTERN_DECL_NODE(ffn_dropout);
+  PATTERN_DECL_NODE(ffn_dropout_out);
+
+  // output elementwise_add
+  PATTERN_DECL_NODE(ffn_eltadd_out)
+  PATTERN_DECL_NODE(ffn_output);
+};
 }  // namespace patterns
 
 class FusedMultiTransformerEncoderPass : public FusePassBase {
@@ -270,6 +376,23 @@ class FusedMultiTransformerEncoderFuseQKVPass : public FusePassBase {
                   Scope* scope) const;
 };
 
+class MultiDevicesFusedMultiTransformerEncoderFuseQKVPass
+    : public FusePassBase {
+ public:
+  MultiDevicesFusedMultiTransformerEncoderFuseQKVPass();
+  virtual ~MultiDevicesFusedMultiTransformerEncoderFuseQKVPass() {}
+
+ protected:
+  void ApplyImpl(Graph* graph) const;
+
+  const std::string name_scope_{
+      "multi_devices_fused_multi_transformer_encoder_fuse_qkv"};
+
+ private:
+  int BuildFusion(Graph* graph,
+                  const std::string& name_scope,
+                  Scope* scope) const;
+};
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

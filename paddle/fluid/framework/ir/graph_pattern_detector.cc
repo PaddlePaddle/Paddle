@@ -453,7 +453,8 @@ PDNode *PDNode::assert_var_not_persistable() {
 
 PDNode *PDNode::assert_is_persistable_var() {
   assert_is_var();
-  asserts_.emplace_back([=](Node *x) { return x->Var()->Persistable(); });
+  asserts_.emplace_back(
+      [=](Node *x) { return x->Var() && x->Var()->Persistable(); });
   return this;
 }
 
