@@ -509,7 +509,6 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
 void ReplaceAllReduceOp(const Node &node,
                         proto::BlockDesc *block,
                         std::vector<OpDesc> *ops) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   bool is_fused = (node.Name() == "fused_all_reduce");
   details::OpHandleBase &op_handle =
       const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
@@ -586,11 +585,6 @@ void ReplaceAllReduceOp(const Node &node,
             ->GradMergeCondName();
     all_reduce_op_desc.SetInput("Cond", {cond_name});
   }
-#else
-  PADDLE_THROW(
-      platform::errors::Unimplemented("ReplaceAllReduceOp is only implemented "
-                                      "for paddle compiled with NCCL/RCCL."));
-#endif
 }
 
 void UpdateControlOpSkipEagerDeletionVars(const Node &node,
@@ -648,11 +642,13 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       ops->emplace_back();
       auto &desc = ops->back();
       ReplaceScaleLossGradOp(*n, &desc);
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     } else if ((n->Name() == "allreduce" || n->Name() == "fused_all_reduce") &&
                n->IsWrappedBy<details::NCCLOpHandleBase>()) {
       VLOG(4) << "convert op node " << n->Name() << " to desc c_allreduce_sum";
       ReplaceAllReduceOp(*n, block, ops);
       VLOG(4) << n->ToString();
+#endif
     } else if (n->Op()) {
       VLOG(4) << "convert op node to desc " << n->Op()->Type();
       if (is_fused_opt(n)) {
