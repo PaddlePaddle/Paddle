@@ -99,6 +99,7 @@ def train(fetch):
                                                      grad_clip=None)
 
     dist_strategy = auto.Strategy()
+    # Set full mode
     dist_strategy.auto_mode = "semi"
 
     # init engine
