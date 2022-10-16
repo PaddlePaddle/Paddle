@@ -620,7 +620,6 @@ function(prune_pybind_h)
 
   # add USE_OP_ITSELF for all op in op_list
   foreach(op_name IN LISTS op_list)
-    message(${op_name})
     file(APPEND ${pybind_file_prune} "USE_OP_ITSELF(${op_name});\n")
   endforeach()
 
