@@ -648,7 +648,8 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       ops->emplace_back();
       auto &desc = ops->back();
       ReplaceScaleLossGradOp(*n, &desc);
-    } else if (n->Name() == "allreduce" || n->Name() == "fused_all_reduce") {
+    } else if ((n->Name() == "allreduce" || n->Name() == "fused_all_reduce") &&
+               n->IsWrappedBy<details::NCCLOpHandleBase>()) {
       VLOG(4) << "convert op node " << n->Name() << " to desc c_allreduce_sum";
       ReplaceAllReduceOp(*n, block, ops);
       VLOG(4) << n->ToString();
