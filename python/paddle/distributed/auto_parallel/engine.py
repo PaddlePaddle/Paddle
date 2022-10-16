@@ -682,7 +682,7 @@ class Engine:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
-            if self._strategy.auto_search:
+            if self._strategy.auto_mode == "full":
                 has_recv_by_socket = []
                 # This is a magic number
                 magic_num = 500
