@@ -648,11 +648,13 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       ops->emplace_back();
       auto &desc = ops->back();
       ReplaceScaleLossGradOp(*n, &desc);
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     } else if ((n->Name() == "allreduce" || n->Name() == "fused_all_reduce") &&
                n->IsWrappedBy<details::NCCLOpHandleBase>()) {
       VLOG(4) << "convert op node " << n->Name() << " to desc c_allreduce_sum";
       ReplaceAllReduceOp(*n, block, ops);
       VLOG(4) << n->ToString();
+#endif
     } else if (n->Op()) {
       VLOG(4) << "convert op node to desc " << n->Op()->Type();
       if (is_fused_opt(n)) {
