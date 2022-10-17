@@ -650,7 +650,8 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       ReplaceScaleLossGradOp(*n, &desc);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     } else if ((n->Name() == "allreduce" || n->Name() == "fused_all_reduce") &&
-               n->IsWrappedBy<details::NCCLOpHandleBase>()) {
+               dynamic_cast<details::NCCLOpHandleBase *>(
+                   &(n->Wrapper<details::OpHandleBase>())) != nullptr) {
       VLOG(4) << "convert op node " << n->Name() << " to desc c_allreduce_sum";
       ReplaceAllReduceOp(*n, block, ops);
       VLOG(4) << n->ToString();
