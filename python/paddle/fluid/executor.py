@@ -768,7 +768,7 @@ class _ExecutorCache(object):
                 converted_program.lr_sheduler = inner_program.lr_sheduler
 
             inner_program = converted_program
-            print(f"Program after convert:\n {inner_program}", flush=True)
+            # print(f"Program after convert:\n {inner_program}", flush=True)
         else:
             build_strategy = None
             from paddle.incubate.autograd import prim_enabled, prim2orig
