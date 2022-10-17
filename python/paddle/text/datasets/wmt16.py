@@ -22,7 +22,6 @@ from collections import defaultdict
 
 import paddle
 from paddle.io import Dataset
-import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = []
@@ -170,14 +169,14 @@ class WMT16(Dataset):
 
         with open(dict_path, "wb") as fout:
             fout.write(
-                cpt.to_bytes("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)))
+                ("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)).encode())
             for idx, word in enumerate(
                     sorted(six.iteritems(word_dict),
                            key=lambda x: x[1],
                            reverse=True)):
                 if idx + 3 == dict_size: break
-                fout.write(cpt.to_bytes(word[0]))
-                fout.write(cpt.to_bytes('\n'))
+                fout.write(word[0].encode())
+                fout.write(b'\n')
 
     def _load_data(self):
         # the index for start mark, end mark, and unk are the same in source

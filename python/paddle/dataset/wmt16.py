@@ -34,7 +34,6 @@ import tarfile
 from collections import defaultdict
 
 import paddle
-import paddle.compat as cpt
 import paddle.utils.deprecated as deprecated
 
 __all__ = []
@@ -62,15 +61,14 @@ def __build_dict(tar_file, dict_size, save_path, lang):
                 word_dict[w] += 1
 
     with open(save_path, "wb") as fout:
-        fout.write(
-            cpt.to_bytes("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)))
+        fout.write(("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)).encode())
         for idx, word in enumerate(
                 sorted(six.iteritems(word_dict),
                        key=lambda x: x[1],
                        reverse=True)):
             if idx + 3 == dict_size: break
-            fout.write(cpt.to_bytes(word[0]))
-            fout.write(cpt.to_bytes('\n'))
+            fout.write(word[0].encode())
+            fout.write(b'\n')
 
 
 def __load_dict(tar_file, dict_size, lang, reverse=False):
