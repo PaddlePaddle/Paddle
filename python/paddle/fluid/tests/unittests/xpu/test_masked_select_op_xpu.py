@@ -19,7 +19,6 @@ import sys
 sys.path.append("..")
 
 import paddle
-import paddle.fluid as fluid
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 

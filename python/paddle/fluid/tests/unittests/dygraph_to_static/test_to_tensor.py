@@ -15,11 +15,7 @@
 import numpy
 import paddle
 import unittest
-import os
-import tempfile
-import paddle.inference as paddle_infer
 from paddle.fluid.framework import program_guard, Program
-import numpy as np
 from paddle.fluid import core
 
 

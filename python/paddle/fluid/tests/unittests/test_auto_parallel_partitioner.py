@@ -14,8 +14,6 @@
 
 import unittest
 import unittest.mock
-from io import StringIO
-import numpy as np
 
 import paddle
 import paddle.nn as nn
@@ -24,12 +22,8 @@ import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.tensor as tensor
 from paddle.fluid import layers
-from paddle.nn.layer.transformer import _convert_param_attr_to_list
 from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
-from paddle.distributed.auto_parallel.utils import append_distributed_attr_suffix
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
@@ -234,9 +228,8 @@ def distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
 def distributed_attr_check_for_program(dist_main_prog, dist_context):
     have_dist_attr = True
     for block in dist_main_prog.blocks:
-        for tensor in block.vars.values():
-            var_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                tensor)
+        for var in block.vars.values():
+            var_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
             if var_dist_attr is None:
                 have_dist_attr = False
 

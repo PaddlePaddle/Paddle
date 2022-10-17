@@ -22,19 +22,16 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-import copy
 import logging
 import warnings
 
-import numpy as np
 from collections import OrderedDict
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from paddle.distributed.collective import _get_global_group, new_group, broadcast, wait
+from paddle.distributed.collective import _get_global_group, broadcast, new_group
 
 from .group_sharded_storage import ParamStorage, GradStorage
 from .group_sharded_utils import Type, device_guard, GroupShardedClipGrad
@@ -72,6 +69,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                  offload=False,
                  device="gpu",
                  pertrain_sync_models=True,
+                 dp_group=None,
                  **kw):
 
         super().__init__(learning_rate=optim._learning_rate, parameters=params)
@@ -124,6 +122,8 @@ class GroupShardedOptimizerStage2(Optimizer):
         self._group = new_group(
             _get_global_group().ranks) if group is None else group
 
+        # only support to combine stage2 and dp hybrid parallel now.
+        self._dp_group = dp_group
         self.world_size = self._group.nranks
         self._rank = self._group.rank
         self._global_root_rank = self._group.ranks[0]
@@ -175,6 +175,12 @@ class GroupShardedOptimizerStage2(Optimizer):
                       group=self._group,
                       sync_op=True)
 
+            if self._dp_group:
+                broadcast(p,
+                          src=self._dp_group.ranks[0],
+                          group=self._dp_group,
+                          sync_op=True)
+
     def _update_task(self, task):
         if self._reduce_overlap:
             assert task is not None
@@ -187,7 +193,10 @@ class GroupShardedOptimizerStage2(Optimizer):
         # Enable gradients' reduces overlap with backward calculation.
         self._reduce_overlap = reduce_overlap
 
-    def _set_broadcast_overlap(self, broadcast_overlap, layers=None):
+    def _set_broadcast_overlap(self,
+                               broadcast_overlap,
+                               layers=None,
+                               num_groups=None):
         # Enable post optimizer broadcasts overlap with the forward calculation of next batch.
         self._broadcast_overlap = broadcast_overlap
         if self._broadcast_overlap:
@@ -204,6 +213,27 @@ class GroupShardedOptimizerStage2(Optimizer):
                     "The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
                     "overlap broadcast may harm the performance.")
                 self._broadcast_order_params = self._local_params
+
+        if num_groups is None or num_groups > len(self._broadcast_order_params):
+            warnings.warn(
+                "The num_groups for broadcast is larger than the number of params to be broadcast. "
+                "It will set to default value: 1 (use the default sharding group)."
+            )
+            num_groups = 1
+
+        assert isinstance(
+            num_groups,
+            int) and num_groups > 0, "num_groups should be a positive integer"
+
+        self._number_of_broadcast_groups = num_groups
+        self._broadcast_groups = [
+            None for _ in range(self._number_of_broadcast_groups)
+        ]
+        self._broadcast_groups[0] = self._group
+
+        ranks = self._group.ranks
+        for i in range(1, self._number_of_broadcast_groups):
+            self._broadcast_groups[i] = new_group(ranks)
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -487,14 +517,17 @@ class GroupShardedOptimizerStage2(Optimizer):
     def _broadcast_params_overlap_forward(self):
         # Exchange all the shards with the other ranks,
         # but overlap the broadcast with next batch's calculation.
+        group_idx = 0
+
         param2task = {}
         for x in self._broadcast_order_params:
             if x.trainable:
-                task = broadcast(
-                    tensor=x,
-                    src=self._group.ranks[self._param2rank[x.name]],
-                    group=self._group,
-                    sync_op=False)
+                group = self._broadcast_groups[group_idx]
+                group_idx = (group_idx + 1) % self._number_of_broadcast_groups
+                task = broadcast(tensor=x,
+                                 src=group.ranks[self._param2rank[x.name]],
+                                 group=group,
+                                 sync_op=False)
                 assert x.name not in param2task
                 param2task[x.name] = task
 

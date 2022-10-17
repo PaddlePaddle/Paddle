@@ -349,8 +349,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
           "Cannot find var: `%s` in op `%s`.", var_name, op_type));
 
   const phi::DenseTensor* tensor{nullptr};
-  if (var->IsType<framework::LoDTensor>()) {
-    tensor = &var->Get<framework::LoDTensor>();
+  if (var->IsType<phi::DenseTensor>()) {
+    tensor = &var->Get<phi::DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     tensor = &var->Get<phi::SelectedRows>().value();
   } else {
@@ -418,7 +418,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
       return;
     }
 
-    framework::LoDTensor cpu_tensor;
+    phi::DenseTensor cpu_tensor;
     cpu_tensor.Resize(tensor->dims());
     float* cpu_data = static_cast<float*>(
         cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype()));
@@ -450,7 +450,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,
-                         const framework::ScopeBase& scope,
+                         const framework::Scope& scope,
                          const std::string& var_name,
                          const platform::Place& place) {
   auto* var = scope.FindVar(var_name);
@@ -486,7 +486,7 @@ static phi::DenseTensor& npu_float_status() {
 }
 
 void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
-                                 const framework::ScopeBase& scope,
+                                 const framework::Scope& scope,
                                  const platform::Place& place) {
   if (!platform::is_npu_place(place)) return;
 
@@ -511,8 +511,8 @@ void PrintNpuVarInfo(const std::string& op_type,
                      const framework::Variable* var,
                      const platform::Place& place) {
   const phi::DenseTensor* tensor{nullptr};
-  if (var->IsType<framework::LoDTensor>()) {
-    tensor = &var->Get<framework::LoDTensor>();
+  if (var->IsType<phi::DenseTensor>()) {
+    tensor = &var->Get<phi::DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     tensor = &var->Get<phi::SelectedRows>().value();
   } else {
@@ -555,7 +555,7 @@ void PrintNpuVarInfo(const std::string& op_type,
 }
 
 void PrintNPUOpValueInfo(const framework::OperatorBase& op,
-                         const framework::ScopeBase& scope,
+                         const framework::Scope& scope,
                          const platform::Place& place) {
   LOG(WARNING) << "There are `nan` or `inf` in operator (" << op.Type()
                << "), here we print some tensor value info of this op.";
@@ -573,7 +573,7 @@ void PrintNPUOpValueInfo(const framework::OperatorBase& op,
 }
 
 static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
-                                  const framework::ScopeBase& scope,
+                                  const framework::Scope& scope,
                                   const platform::Place& place) {
   if (!platform::is_npu_place(place)) return;
 
@@ -609,7 +609,7 @@ static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
 #endif
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
-                        const framework::ScopeBase& exec_scope,
+                        const framework::Scope& exec_scope,
                         const platform::Place& place) {
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 

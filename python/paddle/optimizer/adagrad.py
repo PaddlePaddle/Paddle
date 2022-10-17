@@ -13,9 +13,7 @@
 # limitations under the License.
 
 from .optimizer import Optimizer
-from ..fluid import core
 from ..fluid import framework
-from ..fluid.framework import Variable
 
 __all__ = []
 

@@ -592,12 +592,12 @@ struct FC : public PatternBase {
 // op: fc
 // named node:
 // fc
-// w, bias, output
+// w, bias, output, residual_data
 struct FCMKLDNN : public PatternBase {
   FCMKLDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc_mkldnn") {}
 
-  PDNode* operator()(PDNode* x, bool with_bias);
+  PDNode* operator()(bool with_residual_data);
 
   // declare operator node's name
   PATTERN_DECL_NODE(fc);
@@ -606,6 +606,7 @@ struct FCMKLDNN : public PatternBase {
   PATTERN_DECL_NODE(weights);
   PATTERN_DECL_NODE(bias);
   PATTERN_DECL_NODE(output);
+  PATTERN_DECL_NODE(residual_data);
 };
 
 // Embedding

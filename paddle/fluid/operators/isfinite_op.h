@@ -169,7 +169,7 @@ class OverflowKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
     Functor functor;
-    if (x->IsType<framework::LoDTensor>()) {
+    if (x->IsType<phi::DenseTensor>()) {
       auto* in = ctx.Input<phi::DenseTensor>("X");
       functor(*in, out);
     } else if (x->IsType<phi::SelectedRows>()) {

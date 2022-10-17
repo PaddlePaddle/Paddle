@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Dict
 import itertools
 import re
 
-from jinja2.filters import do_xmlattr
 from type_mapping import (input_types_map, optional_input_types_map,
                           attr_types_map, opmaker_attr_types_map,
                           output_type_map)
 from type_mapping import (dense_input_types_map, dense_optional_input_types_map,
-                          dense_output_types_map, sr_input_types_map,
-                          sr_optional_input_types_map, sr_output_types_map,
+                          dense_output_types_map, sr_output_types_map,
                           phi_attr_types_map)
 
 

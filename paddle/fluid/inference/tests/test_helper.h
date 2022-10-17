@@ -43,7 +43,7 @@ bool cpu_place_used(const paddle::PaddlePlace& place) {
 }  // namespace paddle
 
 template <typename T>
-void SetupTensor(paddle::framework::LoDTensor* input,
+void SetupTensor(phi::DenseTensor* input,
                  paddle::framework::DDim dims,
                  T lower,
                  T upper) {
@@ -58,7 +58,7 @@ void SetupTensor(paddle::framework::LoDTensor* input,
 }
 
 template <typename T>
-void SetupTensor(paddle::framework::LoDTensor* input,
+void SetupTensor(phi::DenseTensor* input,
                  paddle::framework::DDim dims,
                  const std::vector<T>& data) {
   CHECK_EQ(phi::product(dims), static_cast<int64_t>(data.size()));
@@ -67,7 +67,7 @@ void SetupTensor(paddle::framework::LoDTensor* input,
 }
 
 template <typename T>
-void SetupLoDTensor(paddle::framework::LoDTensor* input,
+void SetupLoDTensor(phi::DenseTensor* input,
                     const paddle::framework::LoD& lod,
                     T lower,
                     T upper) {
@@ -77,7 +77,7 @@ void SetupLoDTensor(paddle::framework::LoDTensor* input,
 }
 
 template <typename T>
-void SetupLoDTensor(paddle::framework::LoDTensor* input,
+void SetupLoDTensor(phi::DenseTensor* input,
                     paddle::framework::DDim dims,
                     const paddle::framework::LoD lod,
                     const std::vector<T>& data) {
@@ -88,8 +88,8 @@ void SetupLoDTensor(paddle::framework::LoDTensor* input,
 }
 
 template <typename T>
-void CheckError(const paddle::framework::LoDTensor& output1,
-                const paddle::framework::LoDTensor& output2) {
+void CheckError(const phi::DenseTensor& output1,
+                const phi::DenseTensor& output2) {
   // Check lod information
   EXPECT_EQ(output1.lod(), output2.lod());
 
@@ -167,7 +167,7 @@ std::vector<std::vector<int64_t>> GetFeedTargetShapes(
 
 template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
-                   const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
+                   const std::vector<phi::DenseTensor*>& cpu_feeds,
                    const std::vector<paddle::framework::FetchType*>& cpu_fetchs,
                    const int repeat = 1,
                    const bool is_combined = false) {
@@ -215,7 +215,7 @@ void TestInference(const std::string& dirname,
       inference_program->GetFetchTargetNames();
 
   // 4. Prepare inputs: set up maps for feed targets
-  std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
+  std::map<std::string, const phi::DenseTensor*> feed_targets;
   for (size_t i = 0; i < feed_target_names.size(); ++i) {
     // Please make sure that cpu_feeds[i] is right for feed_target_names[i]
     feed_targets[feed_target_names[i]] = cpu_feeds[i];

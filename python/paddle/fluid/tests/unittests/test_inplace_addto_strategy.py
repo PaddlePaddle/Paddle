@@ -16,8 +16,6 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid.backward import calc_gradient
 import numpy as np
 
 

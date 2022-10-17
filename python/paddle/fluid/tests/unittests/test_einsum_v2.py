@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import numpy as np
-import contextlib
 import unittest
 import paddle
 from paddle.fluid import core
-from paddle.fluid.dygraph.amp.auto_cast import _is_gpu_bfloat16_supported
 
 import os
 
