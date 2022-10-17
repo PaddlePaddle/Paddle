@@ -193,7 +193,13 @@ void Relu6Kernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(round, OneDNN, ONEDNN, phi::RoundKernel, float) {}
-
+PD_REGISTER_KERNEL(tanh,
+                   OneDNN,
+                   ONEDNN,
+                   phi::TanhKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   double) {}
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(                             \
       name, OneDNN, ONEDNN, phi::func, float, phi::dtype::bfloat16) {}
@@ -210,4 +216,3 @@ PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
-PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)

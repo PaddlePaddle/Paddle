@@ -258,12 +258,13 @@ void Relu6GradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(relu_grad,
+PD_REGISTER_KERNEL(tanh_grad,
                    OneDNN,
                    ONEDNN,
-                   phi::ReluGradKernel,
+                   phi::TanhGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   double) {}
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(                                  \
@@ -280,4 +281,4 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sigmoid_grad, SigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sqrt_grad, SqrtGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(tanh_grad, TanhGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu_grad, ReluGradKernel)
