@@ -22,6 +22,8 @@ from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.dist_context import DistributedContext, set_default_distributed_context
 from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.planner_v2 import Planner
+from paddle.distributed.auto_parallel.strategy import Strategy
 import sys
 
 sys.path.append("..")
@@ -149,6 +151,21 @@ class TestParallelTuner(unittest.TestCase):
                                             max_trials=3,
                                             mode="train")
         self.parallel_tuner.tune()
+
+    def test_tune_with_planner(self):
+        set_default_distributed_context(DistributedContext())
+        train_program, start_program, dataloader, loss, optimizer, feed_vars, fetch_vars = get_program_v3(
+        )
+        cluster = Cluster()
+        cluster.gen_default_config_cluster(node_count=1, device_count=8)
+        strategy = Strategy()
+        strategy.auto_mode = "full"
+        dist_context = DistributedContext(train_program, start_program,
+                                          optimizer, loss, feed_vars,
+                                          fetch_vars, cluster, strategy)
+        dist_context.initialize()
+        planner = Planner("train", dist_context)
+        planner.plan()
 
 
 if __name__ == "__main__":

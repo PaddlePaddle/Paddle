@@ -99,7 +99,6 @@ def train(fetch):
                                                      grad_clip=None)
 
     dist_strategy = auto.Strategy()
-    # Set full mode
     dist_strategy.auto_mode = "semi"
 
     # init engine
@@ -128,33 +127,5 @@ def train(fetch):
     temp_dir.cleanup()
 
 
-def train_full(fetch):
-    mlp = MLPLayer(hidden_size=hidden_size,
-                   intermediate_size=4 * hidden_size,
-                   dropout_ratio=0.1,
-                   initializer_range=0.02)
-    loss = paddle.nn.CrossEntropyLoss()
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
-                                                     beta1=0.9,
-                                                     beta2=0.999,
-                                                     epsilon=1e-08,
-                                                     grad_clip=None)
-
-    dist_strategy = auto.Strategy()
-    dist_strategy.auto_mode = "full"
-
-    # init engine
-    engine = auto.Engine(mlp,
-                         loss,
-                         optimizer,
-                         paddle.metric.Accuracy(),
-                         strategy=dist_strategy)
-
-    # train
-    train_dataset = MyDataset(batch_num * batch_size)
-    engine.fit(train_dataset, batch_size=batch_size)
-
-
 if __name__ == "__main__":
     train(True)
-    train_full(True)
