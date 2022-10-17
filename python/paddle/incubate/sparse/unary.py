@@ -678,19 +678,17 @@ def reshape(x, shape, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             x_shape = [6, 2, 3]
             new_shape = [1, 0, 2, -1, 3]
             format = "coo"
 
-            mask = np.random.randint(0, 2, x_shape)
-            np_x = np.random.randint(-100, 100, x_shape) * mask
+            dense_x = paddle.randint(-100, 100, x_shape) * paddle.randint(0, 2, x_shape)
 
             if format == "coo":
-                sp_x = paddle.to_tensor(np_x).to_sparse_coo(len(x_shape))
+                sp_x = dense_x.to_sparse_coo(len(x_shape))
             else:
-                sp_x = paddle.to_tensor(np_x).to_sparse_csr()
+                sp_x = dense_x.to_sparse_csr()
             sp_out = paddle.incubate.sparse.reshape(sp_x, new_shape)
 
             print(sp_out)
