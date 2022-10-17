@@ -708,7 +708,7 @@ class Pad2dOp : public framework::OperatorWithKernel {
                 .data.format_desc.blocking.inner_nblks == 0) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -720,15 +720,14 @@ class Pad2dOp : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+        (tensor.layout() != phi::DataLayout::kMKLDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_format");
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_,
-          tensor.place(),
-          framework::StringToDataLayout(data_format));
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(),
+                                     phi::StringToDataLayout(data_format));
     }
 #endif
     return framework::OpKernelType(

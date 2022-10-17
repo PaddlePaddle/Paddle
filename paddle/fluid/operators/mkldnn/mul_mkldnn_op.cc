@@ -24,7 +24,6 @@ class DenseTensor;
 namespace paddle {
 namespace operators {
 
-using framework::DataLayout;
 using framework::DDim;
 using framework::ExecutionContext;
 using LoDTensor = phi::DenseTensor;

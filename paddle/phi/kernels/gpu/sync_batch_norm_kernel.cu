@@ -48,8 +48,7 @@ void SyncBatchNormKernel(const Context &ctx,
 
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout layout = phi::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_statistics);
   const auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -94,11 +93,11 @@ void SyncBatchNormKernel(const Context &ctx,
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
     const int threads = 256;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
-    if (layout == paddle::framework::DataLayout::kNCHW) {
-      KeLocalStats<T, threads, paddle::framework::DataLayout::kNCHW>
+    if (layout == phi::DataLayout::kNCHW) {
+      KeLocalStats<T, threads, phi::DataLayout::kNCHW>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     } else {
-      KeLocalStats<T, threads, paddle::framework::DataLayout::kNHWC>
+      KeLocalStats<T, threads, phi::DataLayout::kNHWC>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
@@ -159,8 +158,8 @@ void SyncBatchNormKernel(const Context &ctx,
   }
 
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
-  if (layout == paddle::framework::DataLayout::kNCHW) {
-    KeNormAffine<T, paddle::framework::DataLayout::kNCHW>
+  if (layout == phi::DataLayout::kNCHW) {
+    KeNormAffine<T, phi::DataLayout::kNCHW>
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,
@@ -172,7 +171,7 @@ void SyncBatchNormKernel(const Context &ctx,
                                       x_numel,
                                       y_d);
   } else {
-    KeNormAffine<T, paddle::framework::DataLayout::kNHWC>
+    KeNormAffine<T, phi::DataLayout::kNHWC>
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,
