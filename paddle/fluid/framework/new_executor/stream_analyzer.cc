@@ -41,10 +41,10 @@ class ContextManager {
 
   std::shared_future<std::unique_ptr<platform::DeviceContext>> Get(
       const std::string& type, const platform::Place& place) {
-    std::lock_guard<std::mutex> lk(ctx_mtx);
+    std::lock_guard<std::mutex> lk(ctx_mtx_);
     VLOG(6) << "Get dev_ctx for " << type << " - " << place;
 
-    DeviceContextMap& ctxs = ctx_pool[type];
+    DeviceContextMap& ctxs = ctx_pool_[type];
     if (ctxs.find(place) == ctxs.end()) {
       platform::EmplaceDeviceContexts(
           &ctxs,
@@ -58,8 +58,8 @@ class ContextManager {
   ContextManager() {}
   DISABLE_COPY_AND_ASSIGN(ContextManager);
 
-  std::mutex ctx_mtx;
-  std::unordered_map<std::string, DeviceContextMap> ctx_pool;
+  std::mutex ctx_mtx_;
+  std::unordered_map<std::string, DeviceContextMap> ctx_pool_;
 };
 
 /*
@@ -199,6 +199,14 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    // NOTE(Ruibiao): Here supports multi-stream overlap for c_allreduce_sum
+    // with use_cal_stream==false by returning a device context getting from the
+    // global NCCLCommContext instance. Because when use_calc_stream==false, in
+    // OP kernel, the NCCL communication will be launched to the stream directly
+    // getting from the global NCCLCommContext instance rather than the
+    // DeviceContext passed from executor (see CAllReduceOpCUDAKernel in
+    // c_allreduce_op.h). Now it is just a temporary solution for ONLY
+    // c_allreduce_sum which is used in ResNet50 distributed training.
     if (op_type == "c_allreduce_sum" &&
         op->Attr<bool>("use_calc_stream") == false) {
       int ring_id = op->Attr<int>("ring_id");
