@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from collections import defaultdict
-from paddle.fluid.framework import Program, Block, Operator
+from paddle.fluid.framework import Block, Program
 from paddle.fluid.framework import _non_static_mode
 import paddle.fluid.core as core
 import paddle.distributed.fleet as fleet
@@ -345,7 +345,7 @@ class HybridParallelInferenceHelper(object):
         for each_block in self._main_program.blocks:
             for op in each_block.ops:
                 for var_name in op.input_arg_names:
-                    if not var_name in params or var_name in self._param_device_map:
+                    if var_name not in params or var_name in self._param_device_map:
                         continue
                     device = op.attr(self._op_device_key)
 
@@ -404,7 +404,7 @@ class HybridParallelInferenceHelper(object):
                 block._remove_op(op_idx)
 
         for var_name in list(block.vars.keys()):
-            if not var_name in used_var_names:
+            if var_name not in used_var_names:
                 block._remove_var(var_name)
 
         return used_var_names
@@ -688,8 +688,10 @@ class HybridParallelInferenceHelper(object):
                         })
                 else:
                     var_shape = list(var.shape)
-                    var_shape[0] = self.micro_batch_size if var_shape[
-                        0] < 0 else var_shape[0]
+                    print(var_name)
+                    if len(var.shape) > 0:
+                        var_shape[0] = self.micro_batch_size if var_shape[
+                            0] < 0 else var_shape[0]
                     block._insert_op_without_sync(
                         index=index,
                         type='recv_v2',
@@ -739,9 +741,9 @@ class HybridParallelInferenceHelper(object):
         startup_block = self._startup_program.global_block()
 
         if debug:
-            with open(f'main_program.txt', 'w') as f:
+            with open('main_program.txt', 'w') as f:
                 f.write(str(self._main_program))
-            with open(f'startup_program.txt', 'w') as f:
+            with open('startup_program.txt', 'w') as f:
                 f.write(str(self._startup_program))
 
         # step1: add op_device attribute for all ops

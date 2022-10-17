@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
@@ -22,12 +21,6 @@ from op_test_xpu import XPUOpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle.fluid.tests.unittests.op_test import (OpTest,
-                                                  convert_float_to_uint16,
-                                                  convert_uint16_to_float)
-from paddle import _C_ops, _legacy_C_ops
-import op_test
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 

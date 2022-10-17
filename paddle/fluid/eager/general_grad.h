@@ -557,6 +557,9 @@ class GeneralGrad {
           } else {
             copied_next_node = orig_next_node->Copy();
             orig_to_copied_node_map_[orig_next_node.get()] = copied_next_node;
+            VLOG(3) << "Copied Node: " << orig_next_node->name()
+                    << " ptr: " << orig_next_node
+                    << " to ptr: " << copied_next_node;
             copied_grad_nodes_.push_back(copied_next_node);
           }
 

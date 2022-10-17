@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
-from paddle.fluid.framework import grad_var_name
+from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
 from paddle.fluid.tests.unittests.test_batch_norm_op import TestBatchNormOpInference, TestBatchNormOpTraining, _reference_training, _reference_grad
 from mkldnn_op_test import check_if_mkldnn_batchnorm_primitives_exist_in_bwd
 

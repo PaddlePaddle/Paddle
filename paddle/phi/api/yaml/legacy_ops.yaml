@@ -648,12 +648,15 @@
   backward : cumsum_grad
 
 - op : decode_jpeg
-  args : (Tensor x, str mode)
+  args : (Tensor x, str mode, Place place)
   output : Tensor(out)
   infer_meta :
     func : DecodeJpegInferMeta
+    param : [x, mode]
   kernel :
     func : decode_jpeg
+    param : [x, mode]
+    backend : place
 
 - op : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
@@ -958,15 +961,6 @@
   view : (x -> out)
   intermediate : xshape
   backward : flatten_grad
-
-- op : flip
-  args : (Tensor x, int[] axis)
-  output : Tensor
-  infer_meta :
-    func : FlipInferMeta
-  kernel :
-    func : flip
-  backward : flip_grad
 
 - op : floor
   args : (Tensor x)
@@ -2988,6 +2982,21 @@
     func: overlap_add
   backward: overlap_add_grad
 
+- op: rnn
+  args: (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, Tensor dropout_state_in, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false)
+  output: Tensor(out), Tensor(dropout_state_out), Tensor[](state){pre_state.size()}, Tensor(reserve)
+  infer_meta:
+    func: RnnInferMeta
+    param : [x, pre_state, weight_list, sequence_length, dropout_prob, is_bidirec, input_size, hidden_size, num_layers, mode, seed, is_test]
+  kernel:
+    func: rnn
+    param : [x, pre_state, weight_list, sequence_length, dropout_prob, is_bidirec, input_size, hidden_size, num_layers, mode, seed, is_test]
+    data_type: x
+  backward: rnn_grad
+  optional : sequence_length
+  intermediate : reserve
+  view : (dropout_state_in -> dropout_state_out)
+
 - op: uniform_random_inplace
   args: (Tensor x, float min, float max, int seed, int diag_num, int diag_step, float diag_val)
   output: Tensor(out)
@@ -3018,3 +3027,12 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
+
+- op: bincount
+  args: (Tensor x, Tensor weights, Scalar minlength)
+  output: Tensor(out)
+  infer_meta:
+    func: BincountInferMeta
+  kernel:
+    func: bincount
+  optional: weights

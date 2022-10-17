@@ -13,17 +13,9 @@
 # limitations under the License.
 """This is unit test of Test filter_instag Op."""
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from op_test import OpTest
-import random
-from decorator_helper import prog_scope
-from paddle.fluid.op import Operator
 """This is Test Case 1"""
 
 

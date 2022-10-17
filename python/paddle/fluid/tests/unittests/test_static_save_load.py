@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Adam
-from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
-from paddle.fluid.executor import global_scope
 import numpy as np
-import six
 import pickle
 import os
 import errno

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 
 os.environ['FLAGS_enable_eager_mode'] = '1'
@@ -22,12 +20,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.autograd import PyLayer
 from paddle.distributed.fleet.utils import recompute
 import random
-from paddle.incubate.distributed.fleet import recompute_sequential
-
-import paddle.fluid.layers as layers
 
 
 def get_fc_block(block_idx, input_size, is_last=False):

@@ -1126,6 +1126,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def _reader_thread_loop_for_multiprocess(self, legacy_expected_place):
         # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
+        core.set_current_thread_name("Dataloader_" + str(id(self)))
         _set_expected_place(legacy_expected_place)
 
         while not self._thread_done_event.is_set():
@@ -1169,6 +1170,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
     def _reader_thread_loop_for_singleprocess(self, legacy_expected_place):
         try:
             # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
+            core.set_current_thread_name("Dataloader_" + str(id(self)))
             _set_expected_place(legacy_expected_place)
 
             for sample in self._batch_reader():
@@ -1419,6 +1421,7 @@ class GeneratorLoader(DataLoaderBase):
         def __thread_main__(legacy_expected_place):
             try:
                 # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
+                core.set_current_thread_name("Dataloader_" + str(id(self)))
                 _set_expected_place(legacy_expected_place)
 
                 while not self._queue.wait_for_inited(1):

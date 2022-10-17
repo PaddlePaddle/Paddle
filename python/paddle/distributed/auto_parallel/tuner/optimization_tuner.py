@@ -24,20 +24,19 @@ import pickle
 import json
 import logging
 import subprocess
-import traceback
 
 import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.distributed.passes import new_pass, PassContext
 
-from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.reshard import Resharder
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.process_group import clear_all_process_groups, get_all_process_groups
 from paddle.distributed.auto_parallel.utils import debug_program
-from paddle.distributed.auto_parallel.utils import make_data_unshard, set_grad_var_shape
+from paddle.distributed.auto_parallel.utils import set_grad_var_shape
 
 from ..utils import get_logger
 from .config import TuningConfig
@@ -136,12 +135,24 @@ def _copy_context(ref_dist_context):
 
     for key, var_list in ref_dist_context._serial_fetch_vars.items():
         new_var_list = []
-        for var in var_list:
-            block_idx = var.block.idx
-            var_name = var.name
-            var = new_dist_context._serial_main_program.blocks[
-                block_idx]._var_recursive(var_name)
-            new_var_list.append(var)
+        # metrics is a list of list
+        if key == "metrics":
+            for inner_var_list in var_list:
+                new_inner_var_list = []
+                for var in inner_var_list:
+                    block_idx = var.block.idx
+                    var_name = var.name
+                    var = new_dist_context._serial_main_program.blocks[
+                        block_idx]._var_recursive(var_name)
+                    new_inner_var_list.append(var)
+                new_var_list.append(new_inner_var_list)
+        else:
+            for var in var_list:
+                block_idx = var.block.idx
+                var_name = var.name
+                var = new_dist_context._serial_main_program.blocks[
+                    block_idx]._var_recursive(var_name)
+                new_var_list.append(var)
         new_dist_context._serial_fetch_vars[key] = new_var_list
 
     # copy information in forward and backward
@@ -271,10 +282,12 @@ class OptimizationTuner:
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply([main_program], [startup_program],
                                               pass_context)
+                dist_context.serial_loss = auto_parallel_fp16_pass.get_loss()
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply([main_program], [startup_program],
                                              pass_context)
+                dist_context.serial_loss = auto_parallel_amp_pass.get_loss()
 
         if new_strategy.recompute.enable:
             config = copy.deepcopy(new_strategy.recompute.to_dict())

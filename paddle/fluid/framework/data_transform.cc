@@ -31,19 +31,19 @@ class Variable;
 namespace paddle {
 namespace framework {
 
-static void PassTensorData(Tensor *from, Tensor *to) {
+static void PassTensorData(phi::DenseTensor *from, phi::DenseTensor *to) {
   to->ShareDataWith(*from);
-  *from = Tensor();
+  *from = phi::DenseTensor();
 }
 
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
-                   const Tensor &input_tensor,
-                   Tensor *output_tensor) {
+                   const phi::DenseTensor &input_tensor,
+                   phi::DenseTensor *output_tensor) {
   bool transformed = false;
-  Tensor in;
+  phi::DenseTensor in;
   in.ShareDataWith(input_tensor);
-  Tensor out;
+  phi::DenseTensor out;
   const DataLayout lin = kernel_type_for_var.data_layout_;
   const DataLayout lout = expected_kernel_type.data_layout_;
   // do layout transform
@@ -120,7 +120,7 @@ void TransformData(const OpKernelType &expected_kernel_type,
 }
 
 void SetTensorToVariable(const Variable &in_var,
-                         const Tensor &tensor,
+                         const phi::DenseTensor &tensor,
                          Variable *out_var) {
   if (in_var.IsType<LoDTensor>()) {
     auto &in_lod_tensor = in_var.Get<LoDTensor>();

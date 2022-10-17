@@ -69,9 +69,9 @@ class CompareOp : public framework::OperatorWithKernel {
     if (force_cpu) {
       kt.place_ = platform::CPUPlace();
     } else {
-      if (ctx.Input<framework::LoDTensor>("X")->place().GetType() !=
+      if (ctx.Input<phi::DenseTensor>("X")->place().GetType() !=
           phi::AllocationType::GPUPINNED) {
-        kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+        kt.place_ = ctx.Input<phi::DenseTensor>("X")->place();
       } else {
         kt.place_ = ctx.GetPlace();
       }

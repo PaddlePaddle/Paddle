@@ -14,11 +14,10 @@
 # limitations under the License.
 
 # TODO: define loss functions of neural network
-import numpy as np
 import paddle.fluid as fluid
 import paddle
 from .. import functional as F
-from paddle.fluid.framework import _varbase_creator, in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import in_dygraph_mode
 from .. import Layer
 from paddle import in_dynamic_mode
 
@@ -570,15 +569,11 @@ class MSELoss(Layer):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            input_data = np.array([1.5]).astype("float32")
-            label_data = np.array([1.7]).astype("float32")
-
             mse_loss = paddle.nn.loss.MSELoss()
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([1.5])
+            label = paddle.to_tensor([1.7])
             output = mse_loss(input, label)
             print(output)
             # [0.04000002]
@@ -617,10 +612,10 @@ class MSELoss(Layer):
 
 class L1Loss(Layer):
     r"""
-    This interface is used to construct a callable object of the ``L1Loss`` class.
+    Construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of ``input`` and ``label`` as follows.
 
-     If `reduction` set to ``'none'``, the loss is:
+    If `reduction` set to ``'none'``, the loss is:
 
     .. math::
         Out = \lvert input - label\rvert
@@ -656,12 +651,9 @@ class L1Loss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            input_data = np.array([[1.5, 0.8], [0.2, 1.3]]).astype("float32")
-            label_data = np.array([[1.7, 1], [0.4, 0.5]]).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.to_tensor([[1.5, 0.8], [0.2, 1.3]])
+            label = paddle.to_tensor([[1.7, 1], [0.4, 0.5]])
 
             l1_loss = paddle.nn.L1Loss()
             output = l1_loss(input, label)
@@ -900,9 +892,10 @@ class NLLLoss(Layer):
 
 class KLDivLoss(Layer):
     r"""
-    This interface calculates the Kullback-Leibler divergence loss
-    between Input(X) and Input(Target). Notes that Input(X) is the
-    log-probability and Input(Target) is the probability.
+    Generate a callable object of 'KLDivLoss' to calculate the
+    Kullback-Leibler divergence loss between Input(X) and
+    Input(Target). Notes that Input(X) is the log-probability
+    and Input(Target) is the probability.
 
     KL divergence loss is calculated as follows:
 
@@ -930,35 +923,30 @@ class KLDivLoss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
             import paddle.nn as nn
 
             shape = (5, 20)
-            x = np.random.uniform(-10, 10, shape).astype('float32')
-            target = np.random.uniform(-10, 10, shape).astype('float32')
+            x = paddle.uniform(shape, min=-10, max=10).astype('float32')
+            target = paddle.uniform(shape, min=-10, max=10).astype('float32')
 
             # 'batchmean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='batchmean')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[1]
 
             # 'mean' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='mean')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[1]
 
             # 'sum' reduction, loss shape will be [1]
             kldiv_criterion = nn.KLDivLoss(reduction='sum')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[1]
 
             # 'none' reduction, loss shape is same with X shape
             kldiv_criterion = nn.KLDivLoss(reduction='none')
-            pred_loss = kldiv_criterion(paddle.to_tensor(x),
-                                        paddle.to_tensor(target))
+            pred_loss = kldiv_criterion(x, target)
             # shape=[5, 20]
     """
 
@@ -1149,16 +1137,16 @@ class SmoothL1Loss(Layer):
 
     .. math::
 
-         loss(x,y) = \frac{1}{n}\sum_{i}z_i
+        loss(x, y) = \frac{1}{n}\sum_{i}z_i
 
-    where z_i is given by:
+    where :math:`z_i` is given by:
 
     .. math::
 
         \mathop{z_i} = \left\{\begin{array}{rcl}
-        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\
-        delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
-        \end{array} \right.
+                0.5(x_i - y_i)^2 & & {if |x_i - y_i| < \delta} \\
+                \delta * |x_i - y_i| - 0.5 * \delta^2 & & {otherwise}
+            \end{array} \right.
 
     Parameters:
         reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -1167,12 +1155,11 @@ class SmoothL1Loss(Layer):
             If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-        delta (float, optional): Specifies the hyperparameter delta to be used.
+        delta (float, optional): Specifies the hyperparameter :math:`\delta` to be used.
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
-            negative/zero values. Default = 1.0
-        name (str, optional): Name for the operation (optional, default is
-            None). For more information, please refer to :ref:`api_guide_Name`.
+            negative/zero values. Default value is :math:`1.0`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Call Parameters:
 
@@ -1190,14 +1177,12 @@ class SmoothL1Loss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            input_data = np.random.rand(3,3).astype("float32")
-            label_data = np.random.rand(3,3).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.rand([3, 3]).astype("float32")
+            label = paddle.rand([3, 3]).astype("float32")
             loss = paddle.nn.SmoothL1Loss()
             output = loss(input, label)
             print(output)
+            # [0.049606]
     """
 
     def __init__(self, reduction='mean', delta=1.0, name=None):
@@ -1230,7 +1215,7 @@ class MultiLabelSoftMarginLoss(Layer):
         :math:`y` and :math:`x` must have the same size.
 
         Parameters:
-	        weight (Tensor,optional): a manual rescaling weight given to each class.
+            weight (Tensor,optional): a manual rescaling weight given to each class.
                     If given, has to be a Tensor of size C and the data type is float32, float64.
                     Default is ``'None'`` .
             reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -1294,7 +1279,7 @@ class MultiLabelSoftMarginLoss(Layer):
 
 class HingeEmbeddingLoss(Layer):
     r"""
-    This operator calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
+    Create a callable object of `HingeEmbeddingLoss` to calculates hinge_embedding_loss. Measures the loss given an input tensor :math:`x` and a labels tensor :math:`y`(containing 1 or -1).
     This is usually used for measuring whether two inputs are similar or dissimilar, e.g. using the L1 pairwise distance as :math:`x`,
     and is typically used for learning nonlinear embeddings or semi-supervised learning.
 
@@ -1493,7 +1478,7 @@ class TripletMarginWithDistanceLoss(Layer):
     where the default `distance_function`
 
     .. math::
-    	d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_2
+        d(x_i, y_i) = \left\lVert {\bf x}_i - {\bf y}_i \right\rVert_2
 
     or user can define their own distance function. `margin` is a nonnegative margin representing the minimum difference
     between the positive and negative distances that is required for the loss to be 0. If `swap` is true, it will compare distance of (input, negative) with
@@ -1521,15 +1506,15 @@ class TripletMarginWithDistanceLoss(Layer):
 
     Shapes:
         input (Tensor):Input tensor, the data type is float32 or float64.
-	the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
+    the shape is [N, \*], N is batch size and `\*` means any number of additional dimensions, available dtype is float32, float64.
 
         positive (Tensor):Positive tensor, the data type is float32 or float64.
-	The shape of label is the same as the shape of input.
+    The shape of label is the same as the shape of input.
 
         negative (Tensor):Negative tensor, the data type is float32 or float64.
-	The shape of label is the same as the shape of input.
+    The shape of label is the same as the shape of input.
 
-	    output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
+        output(Tensor): The tensor variable storing the triplet_margin_with_distance_loss of input and positive and negative.
 
     Return：
         A callable object of TripletMarginWithDistanceLoss
@@ -1687,6 +1672,103 @@ class TripletMarginLoss(Layer):
                                      swap=self.swap,
                                      reduction=self.reduction,
                                      name=self.name)
+
+
+class MultiMarginLoss(Layer):
+    r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss) between
+        input :math:`input` and label :math:`label`:
+
+        For i-th mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
+        output :math:`label_i` is:
+
+        .. math::
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
+
+        where :math:`0 \leq j \leq \text{C}-1`, :math:`0 \leq i \leq \text{N}-1` and :math:`j \neq label_i`.
+
+        Optionally, you can give non-equal weighting on the classes by passing
+        a 1D :attr:`weight` tensor into the constructor.
+
+        The loss function for i-th sample then becomes:
+
+        .. math::
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
+
+
+        Parameters:
+
+            p (int, Optional):The norm degree for pairwise distance. Default: :math:`1`.
+
+            margin (float, Optional):Default: :math:`1`.
+
+            weight (Tensor,optional): a manual rescaling weight given to each class.
+                    If given, has to be a Tensor of shape (C,) and the data type is float32, float64.
+                    Default is ``'None'`` .
+
+            reduction (str, optional): Indicate how to calculate the loss by batch_size,
+                    the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                    If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                    If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                    If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                    Default: ``'mean'``
+
+            name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
+
+        Call parameters:
+            input (Tensor): Input tensor, the data type is float32 or float64.
+
+            label (Tensor): Label tensor, 0<= label < input.shape[1], the data type is int32 or int64.
+
+        Shape:
+            input: 2-D Tensor, the shape is [N, C], N is batch size and `C` means number of classes.
+
+            label: 1-D Tensor, the shape is [N,].
+
+            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the label.
+
+        Returns:
+            A callable object of MultiMarginLoss.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import paddle.nn as nn
+
+                input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
+                label = paddle.to_tensor([0, 1, 2], dtype=paddle.int32)
+
+                multi_margin_loss = nn.MultiMarginLoss(reduction='mean')
+                loss = multi_margin_loss(input, label)
+                print(loss)
+        """
+
+    def __init__(self,
+                 p: int = 1,
+                 margin: float = 1.0,
+                 weight=None,
+                 reduction="mean",
+                 name=None):
+        super(MultiMarginLoss, self).__init__()
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' in 'MultiMarginLoss' should be 'sum', 'mean' or 'none', "
+                "but received {}.".format(reduction))
+        self.p = p
+        self.margin = margin
+        self.weight = weight
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input, label):
+        return F.multi_margin_loss(input,
+                                   label,
+                                   p=self.p,
+                                   margin=self.margin,
+                                   weight=self.weight,
+                                   reduction=self.reduction,
+                                   name=self.name)
 
 
 class SoftMarginLoss(Layer):

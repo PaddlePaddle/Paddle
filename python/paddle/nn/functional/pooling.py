@@ -18,7 +18,6 @@ from ...tensor.manipulation import unsqueeze, squeeze
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
-from paddle.fluid import core
 from paddle.fluid.framework import _in_legacy_dygraph, Variable
 from paddle.fluid.framework import in_dygraph_mode, _non_static_mode
 
@@ -547,12 +546,6 @@ def max_pool1d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the input is not a 3-D tensor.
-        ShapeError: If the output's shape calculated is not greater than 0.
-
     Examples:
         .. code-block:: python
 
@@ -1079,11 +1072,6 @@ def max_pool2d(x,
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
 
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
-
     Examples:
         .. code-block:: python
 
@@ -1219,11 +1207,6 @@ def max_pool3d(x,
 
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-
-    Raises:
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is "VALID", but `ceil_mode` is True.
-        ShapeError: If the output's shape calculated is not greater than 0.
 
     Examples:
         .. code-block:: python
@@ -1652,8 +1635,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     Returns:
             Tensor: The output tensor of adaptive pooling result. The data type is same
                       as input tensor.
-    Raises:
-            ValueError: 'output_size' should be an integer.
+
     Examples:
         .. code-block:: python
 

@@ -11,16 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import six
-import numpy as np
 
 from paddle import framework
 import paddle
 from paddle.fluid import core
 from paddle.fluid.dygraph.parallel import _split_tensors, sync_params_buffers, build_groups
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
-from collections import OrderedDict
 from .log_util import logger
 
 __all__ = []

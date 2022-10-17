@@ -16,7 +16,6 @@ import paddle.fluid as fluid
 import paddle.nn.functional as F
 import unittest
 import numpy as np
-import six
 import paddle
 from paddle.fluid.framework import _test_eager_guard
 

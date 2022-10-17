@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import math
 import time
@@ -24,7 +22,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative, ProgramTranslator
+from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 

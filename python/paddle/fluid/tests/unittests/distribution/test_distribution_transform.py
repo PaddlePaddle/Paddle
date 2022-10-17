@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 import paddle
-from paddle.distribution import constraint, transform, variable
+from paddle.distribution import transform, variable
 
 import config
 import parameterize as param
