@@ -612,38 +612,52 @@ TEST(Predictor, Streams) {
 #endif
 
 TEST(AnalysisPredictor, OutputHookFunc) {
-  Config config;
-  config.SetModel(FLAGS_dirname);
-  config.EnableUseGpu(100, 0);
-
-  auto predictor = CreatePredictor(config);
   auto hookfunc = [](const std::string& type,
                      const std::string& var_name,
                      std::shared_ptr<Tensor> tensor) {
     LOG(INFO) << "in hook function";
   };
-  predictor->RegisterOutputHook(hookfunc);
-  auto w0 = predictor->GetInputHandle("firstw");
-  auto w1 = predictor->GetInputHandle("secondw");
-  auto w2 = predictor->GetInputHandle("thirdw");
-  auto w3 = predictor->GetInputHandle("forthw");
-  w0->Reshape({4, 1});
-  w1->Reshape({4, 1});
-  w2->Reshape({4, 1});
-  w3->Reshape({4, 1});
-  auto* w0_data = w0->mutable_data<int64_t>(PlaceType::kCPU);
-  auto* w1_data = w1->mutable_data<int64_t>(PlaceType::kCPU);
-  auto* w2_data = w2->mutable_data<int64_t>(PlaceType::kCPU);
-  auto* w3_data = w3->mutable_data<int64_t>(PlaceType::kCPU);
-  for (int i = 0; i < 4; i++) {
-    w0_data[i] = i;
-    w1_data[i] = i;
-    w2_data[i] = i;
-    w3_data[i] = i;
-  }
-  predictor->Run();
 
-  predictor->TryShrinkMemory();
+  {
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableUseGpu(100, 0);
+
+    auto predictor = CreatePredictor(config);
+
+    predictor->RegisterOutputHook(hookfunc);
+    auto w0 = predictor->GetInputHandle("firstw");
+    auto w1 = predictor->GetInputHandle("secondw");
+    auto w2 = predictor->GetInputHandle("thirdw");
+    auto w3 = predictor->GetInputHandle("forthw");
+    w0->Reshape({4, 1});
+    w1->Reshape({4, 1});
+    w2->Reshape({4, 1});
+    w3->Reshape({4, 1});
+    auto* w0_data = w0->mutable_data<int64_t>(PlaceType::kCPU);
+    auto* w1_data = w1->mutable_data<int64_t>(PlaceType::kCPU);
+    auto* w2_data = w2->mutable_data<int64_t>(PlaceType::kCPU);
+    auto* w3_data = w3->mutable_data<int64_t>(PlaceType::kCPU);
+    for (int i = 0; i < 4; i++) {
+      w0_data[i] = i;
+      w1_data[i] = i;
+      w2_data[i] = i;
+      w3_data[i] = i;
+    }
+    predictor->Run();
+    predictor->TryShrinkMemory();
+  }
+
+  {
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableMemoryOptim();
+    config.EnableUseGpu(100, 0);
+
+    auto predictor = CreatePredictor(config);
+
+    predictor->RegisterOutputHook(hookfunc);
+  }
 }
 
 }  // namespace paddle_infer
