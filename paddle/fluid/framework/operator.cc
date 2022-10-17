@@ -2296,9 +2296,9 @@ Scope* OperatorWithKernel::PrepareData(
               << (new_expected_kernel_key ? *new_expected_kernel_key
                                           : expected_kernel_key);
 
-      // In the inference scenerio, the scopes will be reused across the
-      // batches, so the `new_scope` here will result in GPU memroy explosion
-      // over the  running of operators.
+      // In the inference scenario, the scopes will be reused across the
+      // batches, so the `new_scope` here will result in GPU memory explosion
+      // over the running of operators.
       // We use a thread_local cache to fix that issue, the key in the cache is
       // the combination of the `scope` argument, from_kernel_type,
       // target_kernel_type.
