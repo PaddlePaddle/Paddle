@@ -90,7 +90,7 @@ def rebuild_tensor(cls, lodtensor, metadata):
         tensor.value().get_tensor()._share_data_with(lodtensor)
     else:
         size, stop_gradient = metadata
-        tensor = paddle.fluid.core.VarBase()
+        tensor = paddle.fluid.core.eager.Tensor()
         if lodtensor._is_initialized():
             tensor.value().get_tensor()._share_data_with(lodtensor)
         else:
