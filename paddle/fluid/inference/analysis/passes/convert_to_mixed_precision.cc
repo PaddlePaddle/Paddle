@@ -35,7 +35,9 @@
 #include "paddle/fluid/inference/analysis/argument.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_clean_pass.h"
 #include "paddle/fluid/inference/io.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -122,15 +124,13 @@ class ConvertToMixedPrecisionPass {
   void FixCastAttr(framework::ir::Graph* graph);
   void SaveMixedModel();
   void ConvertTensorDtype(int block_idx);
-  void ProcessInputNode(
-      bool support_precision,
-      ir::Node* in_node,
-      ir::Node* op_node,
-      int* suffix,
-      framework::BlockDesc* block_desc,
-      std::unordered_map<framework::ir::Node*, framework::ir::Node*>* cast_map,
-      framework::proto::VarType::Type to_type,
-      int block_idx);
+  void ProcessInputNode(bool support_precision,
+                        ir::Node* in_node,
+                        ir::Node* op_node,
+                        int* suffix,
+                        framework::BlockDesc* block_desc,
+                        framework::proto::VarType::Type to_type,
+                        int block_idx);
 
   void ProcessOutputNode(int block_idx,
                          ir::Node* var_node,
@@ -166,6 +166,7 @@ class ConvertToMixedPrecisionPass {
   framework::Executor executor_;
   framework::Scope scope_;
 
+  std::unordered_map<framework::ir::Node*, framework::ir::Node*> cast_map_;
   std::unordered_map<std::string,
                      std::pair<framework::proto::VarType::Type, int>>
       vars_in_multi_block_map_;
@@ -246,7 +247,6 @@ void ConvertToMixedPrecisionPass::ProcessInputNode(
     ir::Node* op_node,
     int* suffix,
     framework::BlockDesc* block_desc,
-    std::unordered_map<framework::ir::Node*, framework::ir::Node*>* cast_map,
     framework::proto::VarType::Type to_type,
     int block_idx) {
   auto* real_node = GetRealNode(block_idx, in_node);
@@ -267,7 +267,7 @@ void ConvertToMixedPrecisionPass::ProcessInputNode(
       if (WeightsShouldNotConvert(in_node)) return;
       in_var->SetDataType(to_type);
       in_var_type = to_type;
-      VLOG(3) << " in_node name " << in_var->Name() << " from " << prev_type
+      VLOG(3) << "   in_node name " << in_var->Name() << " from " << prev_type
               << " to " << to_type;
     } else if (!in_var->Persistable() && IsFloatVarType(in_var_type) &&
                in_var_type != to_type) {
@@ -278,10 +278,9 @@ void ConvertToMixedPrecisionPass::ProcessInputNode(
                 to_type,
                 suffix,
                 block_desc,
-                cast_map);
-      VLOG(3) << " in_node name " << in_var->Name() << "(" << prev_type
-              << ") to " << (*cast_map)[in_node]->Name() << "(" << to_type
-              << ")";
+                &cast_map_);
+      VLOG(3) << "   in_node name " << in_var->Name() << "(" << prev_type
+              << ") to " << cast_map_[in_node]->Name() << "(" << to_type << ")";
     }
   } else {
     if (!in_var->Persistable() && IsFloatVarType(in_var_type) &&
@@ -293,10 +292,9 @@ void ConvertToMixedPrecisionPass::ProcessInputNode(
                 to_type,
                 suffix,
                 block_desc,
-                cast_map);
-      VLOG(3) << " in_node name " << in_var->Name() << "(" << prev_type
-              << ") to " << (*cast_map)[in_node]->Name() << "(" << to_type
-              << ")";
+                &cast_map_);
+      VLOG(3) << "   in_node name " << in_var->Name() << "(" << prev_type
+              << ") to " << cast_map_[in_node]->Name() << "(" << to_type << ")";
     }
   }
 }
@@ -313,7 +311,7 @@ void ConvertToMixedPrecisionPass::ProcessOutputNode(
     if (OutShouldNotConvert(var_node)) return;
     out_var->SetDataType(to_type);
   }
-  VLOG(3) << " out_node name " << var_node->Name() << " from dtype "
+  VLOG(3) << "   out_node name " << var_node->Name() << " from dtype "
           << prev_type << " to " << out_var->GetDataType();
 }
 
@@ -415,6 +413,7 @@ void ConvertToMixedPrecisionPass::LoadAndPrepare() {
   pass.Run(&arg);
 
   vars_appear_multi_in_one_block_.resize(program_desc_->Size());
+  FindVarsInMultiBlock();
 }
 
 void ConvertToMixedPrecisionPass::FindVarsInMultiBlock() {
@@ -543,7 +542,7 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
   auto* block_desc = op_nodes[0]->Op()->Block();
   int num_low_precision = 0;
   std::vector<framework::ir::Node*> output_nodes;
-  std::unordered_map<framework::ir::Node*, framework::ir::Node*> cast_map;
+
   for (auto* op_node : op_nodes) {
     if (!op_node->IsOp()) continue;
     auto op_type = op_node->Op()->Type();
@@ -637,16 +636,10 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
 
         // Process inputs.
         for (auto* in_node : inputs) {
-          ProcessInputNode(true,
-                           in_node,
-                           op_node,
-                           &suffix_,
-                           block_desc,
-                           &cast_map,
-                           to_type,
-                           block_idx);
-          if (names_map.count(in_node->Name()) && cast_map.count(in_node)) {
-            names_map[in_node->Name()] = cast_map[in_node]->Name();
+          ProcessInputNode(
+              true, in_node, op_node, &suffix_, block_desc, to_type, block_idx);
+          if (names_map.count(in_node->Name()) && cast_map_.count(in_node)) {
+            names_map[in_node->Name()] = cast_map_[in_node]->Name();
           }
         }
         VLOG(2) << " process output nodes:";
@@ -662,7 +655,6 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
                            op_node,
                            &suffix_,
                            block_desc,
-                           &cast_map,
                            framework::proto::VarType::FP32,
                            block_idx);
         }
@@ -684,9 +676,9 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
                     framework::proto::VarType::FP32,
                     &suffix_,
                     block_desc,
-                    &cast_map);
+                    &cast_map_);
           VLOG(3) << "-- " << in_node->Name() << "(" << to_type << ") to "
-                  << cast_map[in_node]->Name() << "("
+                  << cast_map_[in_node]->Name() << "("
                   << framework::proto::VarType::FP32 << ")";
         }
       }
@@ -706,7 +698,7 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
                 framework::proto::VarType::FP32,
                 &suffix_,
                 block_desc,
-                &cast_map);
+                &cast_map_);
     } else if (!keep_io_types_ &&
                var->GetDataType() == framework::proto::VarType::FP32) {
       // fp32 -> fp16/bf16
@@ -717,7 +709,7 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
                 to_type,
                 &suffix_,
                 block_desc,
-                &cast_map);
+                &cast_map_);
     }
   }
 
@@ -775,40 +767,36 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
     }
   }
 
+#define CONVERT_TENSOR_DTYPE(DTYPE, dtype)                                   \
+  mixed_tensor.set_type(DTYPE);                                              \
+  auto* mixed_data = mixed_tensor.mutable_data<dtype>(platform::CPUPlace()); \
+  for (int i = 0; i < t->numel(); i++) {                                     \
+    mixed_data[i] = static_cast<dtype>(data[i]);                             \
+  }                                                                          \
+  t->clear();                                                                \
+  paddle::framework::TensorCopySync(mixed_tensor, place, t)
+
   for (const auto& param_name : parameters) {
     auto* var = scope_.FindLocalVar(param_name);
-    if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<phi::DenseTensor>()) {
-      auto* t = var->GetMutable<framework::LoDTensor>();
+    if (var->IsType<phi::DenseTensor>()) {
+      auto* t = var->GetMutable<phi::DenseTensor>();
       if (t->dtype() != phi::DataType::FLOAT32) continue;
-
       phi::DenseTensor mixed_tensor;
       mixed_tensor.Resize(t->dims());
       auto* data = t->mutable_data<float>(platform::CPUPlace());
-
       if (mixed_precision_ == phi::DataType::FLOAT16 &&
           !weights_should_be_fp32.count(param_name)) {
-        mixed_tensor.set_type(paddle::experimental::DataType::FLOAT16);
-        auto* mixed_data =
-            mixed_tensor.mutable_data<float16>(platform::CPUPlace());
-        for (int i = 0; i < t->numel(); i++) {
-          mixed_data[i] = static_cast<float16>(data[i]);
-        }
-        t->clear();
-        paddle::framework::TensorCopySync(mixed_tensor, place, t);
+        CONVERT_TENSOR_DTYPE(paddle::experimental::DataType::FLOAT16,
+                             phi::dtype::float16);
       } else if (mixed_precision_ == phi::DataType::BFLOAT16 &&
                  !weights_should_be_fp32.count(param_name)) {
-        mixed_tensor.set_type(paddle::experimental::DataType::BFLOAT16);
-        auto* mixed_data =
-            mixed_tensor.mutable_data<bfloat16>(platform::CPUPlace());
-        for (int i = 0; i < t->numel(); i++) {
-          mixed_data[i] = static_cast<bfloat16>(data[i]);
-        }
-        t->clear();
-        paddle::framework::TensorCopySync(mixed_tensor, place, t);
+        CONVERT_TENSOR_DTYPE(paddle::experimental::DataType::BFLOAT16,
+                             phi::dtype::bfloat16);
       }
     }
   }
+
+#undef CONVERT_TENSOR_DTYPE
 
   auto SerializeParams = [&]() -> std::string {
     std::ostringstream os;
