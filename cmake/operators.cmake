@@ -605,7 +605,14 @@ function(prune_pybind_h)
   list(APPEND op_list "tensorrt_engine")
 
   # add fused_op in op_list
+  list(APPEND op_list "fc")
   list(APPEND op_list "conv2d_fusion")
+  list(APPEND op_list "fusion_seqconv_eltadd_relu")
+  list(APPEND op_list "fusion_seqpool_cvm_concat")
+  list(APPEND op_list "fusion_gru")
+  list(APPEND op_list "fusion_seqexpand_concat_fc")
+  list(APPEND op_list "fusion_repeated_fc_relu")
+  list(APPEND op_list "fusion_squared_mat_sub")
 
   # add plugin_op in op_list
   list(APPEND op_list "anchor_generator")
@@ -620,7 +627,6 @@ function(prune_pybind_h)
 
   # add USE_OP_ITSELF for all op in op_list
   foreach(op_name IN LISTS op_list)
-    message(${op_name})
     file(APPEND ${pybind_file_prune} "USE_OP_ITSELF(${op_name});\n")
   endforeach()
 
