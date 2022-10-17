@@ -130,32 +130,13 @@ def conv3d(x,
     * :math:`b`: Bias value, a 1-D tensor with shape [M].
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
-    Example:
-
-        - Input:
-
-          Input shape: :math:`(N, D_{in}, H_{in}, W_{in}, C_{in})`
-
-          Filter shape: :math:`(D_f, H_f, W_f, C_{in}, C_{out})`
-
-        - Output:
-          Output shape: :math:`(N, D_{out}, H_{out}, W_{out}, C_{out})`
-
-        Where
-
-        ..  math::
-
-            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
-
     Args:
         x (Tensor): The input is 5-D SparseCooTensor with shape [N, D, H, W, C], the data
             type of input is float16 or float32 or float64.
         weight (Tensor): The convolution kernel, a Tensor with shape [kD, kH, kW, C/g, M],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
-        bias (Tensor, optional): The bias, a Tensor of shape [M, ], currently, only support bias is None.
+        bias (Tensor, optional): The bias, a Tensor of shape [M].
         stride (int|list|tuple): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width).
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
@@ -245,32 +226,13 @@ def subm_conv3d(x,
     * :math:`b`: Bias value, a 1-D tensor with shape [M].
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
-    Example:
-
-        - Input:
-
-          Input shape: :math:`(N, D_{in}, H_{in}, W_{in}, C_{in})`
-
-          Filter shape: :math:`(D_f, H_f, W_f, C_{in}, C_{out})`
-
-        - Output:
-          Output shape: :math:`(N, D_{out}, H_{out}, W_{out}, C_{out})`
-
-        Where
-
-        ..  math::
-
-            D_{out}&= \\frac{(D_{in} + 2 * paddings[0] - (dilations[0] * (D_f - 1) + 1))}{strides[0]} + 1 \\\\
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[1] - (dilations[1] * (H_f - 1) + 1))}{strides[1]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[2] - (dilations[2] * (W_f - 1) + 1))}{strides[2]} + 1
-
     Args:
         x (Tensor): The input is 5-D SparseCooTensor with shape [N, D, H, W, C], the data
             type of input is float16 or float32 or float64.
         weight (Tensor): The convolution kernel, a Tensor with shape [kD, kH, kW, C/g, M],
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
-        bias (Tensor, optional): The bias, a Tensor of shape [M, ], currently, only support bias is None.
+        bias (Tensor, optional): The bias, a Tensor of shape [M].
         stride (int|list|tuple): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width).
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
