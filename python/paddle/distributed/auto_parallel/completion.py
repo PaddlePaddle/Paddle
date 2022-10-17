@@ -17,7 +17,7 @@ import time
 
 from paddle.fluid import core
 
-from .utils import is_gradient_clip_op
+from .utils import is_gradient_clip_op, print_program_with_dist_attr
 from .operators import find_compatible_distributed_operator_impls
 from .dist_context import _node_id
 from .dist_attribute import TensorDistributedAttribute
@@ -363,7 +363,14 @@ class Completer:
     def _update_dims_mapping_for_special(self):
         # Set the dims_mapping of a tensor to the dims_mapping inside the op which produces it
         op_nodes = self._dist_context._serial_ordered_op_nodes
+        # NOTE: this list may be changed if Paddle changes the existing rules.
+        related_reader_ops = [
+            "create_py_reader", "create_double_buffer_reader", "read"
+        ]
         for op_node in op_nodes:
+            if op_node.op() is not None \
+                and op_node.op().type() in related_reader_ops:
+                continue
             op_dist_attr = self._dist_context.get_dist_attr_for_graph(op_node)
             for tensor_node in op_node.outputs:
                 if tensor_node.is_var() and tensor_node.var() is not None:
@@ -403,6 +410,7 @@ class Completer:
                 reach_fix_point = False
             else:
                 reach_fix_point = True
+        # NOTE: this will be removed after changing the reshard rule
         self._update_dims_mapping_for_special()
 
     def _update_process_mesh_by_nearest(self, op_node, nearest_op_node):
@@ -768,6 +776,9 @@ class Completer:
         else:
             self._dist_context._serial_main_program = serial_main_program
 
+        print("$$$$$$$$$$$$$$$$$$$ before completion")
+        print_program_with_dist_attr(self._dist_context.serial_main_program,
+                                     self._dist_context)
         start_time = time.time()
         # print("start time", start_time, flush=True)
         if not self._dist_context.data_parallel:
@@ -792,12 +803,18 @@ class Completer:
             # print_program_with_dist_attr(self._dist_context.serial_main_program,
             #                              self._dist_context)
 
+        print("$$$$$$$$$$$$$$$$$$$ after completion")
+        print_program_with_dist_attr(self._dist_context.serial_main_program,
+                                     self._dist_context)
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
 
         # Do the validation check and amend some completion
         self._dist_context.amend_dist_attr_for_program()
 
+        print("$$$$$$$$$$$$$$$$$$$ after amend")
+        print_program_with_dist_attr(self._dist_context.serial_main_program,
+                                     self._dist_context)
         self._dist_context.validate_dist_attr_for_program()
 
         end_time = time.time()
