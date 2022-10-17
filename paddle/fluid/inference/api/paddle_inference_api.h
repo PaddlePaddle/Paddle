@@ -166,7 +166,7 @@ class PD_INFER_DECL Predictor {
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  void RegisterOutputHook(Exp_OutputHookFunc hookfunc);
+  void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc);
 
   ///
   /// \brief Get the execution stream on devices with a concept of stream,

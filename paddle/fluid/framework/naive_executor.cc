@@ -130,8 +130,8 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   return tensor;
 }
 
-void NaiveExecutor::RegisterHook(HookFunc hookfunc) {
-  hookfunc_ = std::move(hookfunc);
+void NaiveExecutor::RegisterHook(const HookFunc &hookfunc) {
+  hookfunc_ = hookfunc;
 }
 
 void NaiveExecutor::EnableHook() { hook_enabled_ = true; }

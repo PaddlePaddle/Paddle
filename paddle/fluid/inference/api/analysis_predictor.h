@@ -280,7 +280,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  void RegisterOutputHook(Exp_OutputHookFunc hookfunc) override;
+  void RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) override;
 
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass

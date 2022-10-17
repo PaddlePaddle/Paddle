@@ -69,7 +69,7 @@ class NaiveExecutor {
 
   void ResetTrtOps(int num);
 
-  void RegisterHook(HookFunc hookfunc);
+  void RegisterHook(const HookFunc& hookfunc);
 
   void EnableHook();
 

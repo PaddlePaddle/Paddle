@@ -298,7 +298,7 @@ class PD_INFER_DECL PaddlePredictor {
   /// type, the second param is output var name of the op, and the third
   /// parameter is output tensor with the var name.
   ///
-  virtual void RegisterOutputHook(Exp_OutputHookFunc hookfunc) {}
+  virtual void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc) {}
 
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,

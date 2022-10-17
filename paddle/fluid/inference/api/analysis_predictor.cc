@@ -2163,7 +2163,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   exe.Run(save_program, scope(), 0, true, true);
 }
 
-void AnalysisPredictor::RegisterOutputHook(Exp_OutputHookFunc hookfunc) {
+void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
   if (config_.enable_memory_optim()) {
     LOG(WARNING) << "If you want to run output hook function, you should "
                     "use config.EnableMemoryOptim(false) to turn off memory "
@@ -2171,7 +2171,7 @@ void AnalysisPredictor::RegisterOutputHook(Exp_OutputHookFunc hookfunc) {
     return;
   }
   executor_->EnableHook();
-  hookfuncs_.emplace_back(std::move(hookfunc));
+  hookfuncs_.push_back(hookfunc);
 }
 
 template <>
@@ -2361,7 +2361,7 @@ void Predictor::ClearIntermediateTensor() {
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
-void Predictor::RegisterOutputHook(Exp_OutputHookFunc hookfunc) {
+void Predictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
   predictor_->RegisterOutputHook(hookfunc);
 }
 
