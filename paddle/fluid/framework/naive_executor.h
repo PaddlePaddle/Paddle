@@ -71,6 +71,8 @@ class NaiveExecutor {
 
   void RegisterHook(HookFunc hookfunc);
 
+  void EnableHook();
+
  private:
   void CreateOps(const ProgramDesc& desc,
                  int block_id,
@@ -82,7 +84,7 @@ class NaiveExecutor {
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   Scope* scope_;
 
-  bool hookfunc_registered_{false};
+  bool hook_enabled_{false};
   HookFunc hookfunc_;
 };
 

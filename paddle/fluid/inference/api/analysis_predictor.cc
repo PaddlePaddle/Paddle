@@ -2170,6 +2170,7 @@ void AnalysisPredictor::RegisterOutputHook(Exp_OutputHookFunc hookfunc) {
                     "reuse!";
     return;
   }
+  executor_->EnableHook();
   hookfuncs_.emplace_back(std::move(hookfunc));
 }
 

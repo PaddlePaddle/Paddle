@@ -53,7 +53,7 @@ void NaiveExecutor::Run() {
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
     op->Run(*scope_, place_);
-    if (hookfunc_registered_) {
+    if (hook_enabled_) {
       hookfunc_(op.get());
     }
   }
@@ -132,8 +132,9 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
 
 void NaiveExecutor::RegisterHook(HookFunc hookfunc) {
   hookfunc_ = std::move(hookfunc);
-  hookfunc_registered_ = true;
 }
+
+void NaiveExecutor::EnableHook() { hook_enabled_ = true; }
 
 NaiveExecutor::~NaiveExecutor() {
 #ifdef PADDLE_WITH_MKLDNN
