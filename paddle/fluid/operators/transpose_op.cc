@@ -80,7 +80,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     // as we are producing non-oneDNN result
     if (ctx->IsRunMKLDNNKernel() && (x_dims.size() >= 3) &&
         (paddle::platform::MKLDNNDeviceContext::tls()
-             .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC)) {
+             .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC)) {
       auto dims = phi::vectorize<int>(x_dims);
       std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
       x_dims = x_dims.reshape(dims);
@@ -99,7 +99,7 @@ class TransposeOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     auto &data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
   }
 };
@@ -195,7 +195,7 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
   }
 };
@@ -232,7 +232,7 @@ class Transpose2Op : public TransposeOp {
     framework::proto::VarType::Type data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "X");
     std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
   }
 };
@@ -337,7 +337,7 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx,
                                                 framework::GradVarName("Out"));
     std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
   }
 };

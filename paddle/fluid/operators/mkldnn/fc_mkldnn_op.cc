@@ -26,7 +26,6 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::prop_kind;
 using dnnl::stream;
-using framework::DataLayout;
 using framework::DDim;
 using framework::ExecutionContext;
 using LoDTensor = phi::DenseTensor;
