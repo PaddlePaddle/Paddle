@@ -34,6 +34,20 @@ pip install paddlepaddle-gpu
 
 PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型更高效。**每日登陆即送8小时**，[前往使用免费算力](https://aistudio.baidu.com/aistudio/index)。
 
+#### 支持列表
+|    System    | CPU (32bit) | CPU (64bit) | GPU (32bit) | GPU (64bit) |
+|:------------:|:-----------:|:-----------:|:-----------:|:-----------:|
+| Linux (GCC7) | ![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)|![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)| - |![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)|
+| Linux (GCC8) | ![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)|![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)| - |![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)|
+| Linux (Clang) | ![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)|![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)| - |![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)|
+| Linux (ARM) | ![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)|![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)| - | - |
+| Windows (VS2017) | ![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)|![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)| - | ![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat) |
+| Windows (VS2019) | ![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)|![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)| - | ![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat) |
+| Windows (VS2020) | ![](https://img.shields.io/badge/build-failing-red.svg?style=flat)|![](https://img.shields.io/badge/build-failing-red.svg?style=flat)| - | ![](https://img.shields.io/badge/build-failing-red.svg?style=flat) |
+| MacOS | - |![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)| - | - |
+| MacOS (ARM) | - |![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)| - | - |
+
+
 ## 四大领先技术
 
 - **开发便捷的产业级深度学习框架**
