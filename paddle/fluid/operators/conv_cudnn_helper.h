@@ -144,6 +144,39 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
   }
 }
 
+static void SetConvolutionMathType(const phi::GPUContext& ctx,
+                                   const platform::ConvolutionDescriptor& cdesc,
+                                   cudnnDataType_t dtype,
+                                   bool use_tensor_op_math) {
+  int compute_capability = ctx.GetComputeCapability();
+  cudnnMathType_t math_type = CUDNN_DEFAULT_MATH;
+
+  if (use_tensor_op_math) {
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    if (dtype == CUDNN_DATA_HALF && compute_capability >= 70) {
+      VLOG(5) << "Enable Tensor Core for FLOAT16";
+      math_type = CUDNN_TENSOR_OP_MATH;
+#if CUDA_VERSION >= 11000 && CUDNN_VERSION_MIN(8, 1, 0)
+    } else if (dtype == CUDNN_DATA_BFLOAT16 && compute_capability >= 80) {
+      VLOG(5) << "Enable Tensor Core for BFLOAT16";
+      math_type = CUDNN_TENSOR_OP_MATH;
+#endif  // CUDA_VERSION >= 11000 && CUDNN_VERSION_MIN(8, 1, 0)
+    }
+#endif  // CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+  }
+
+#if CUDA_VERSION >= 11000
+  if (dtype == CUDNN_DATA_FLOAT && compute_capability >= 80 &&
+      !cdesc.allow_tf32_) {
+    VLOG(5) << "Disable TensorFloat (Tensor Core) for FLOAT";
+    math_type = CUDNN_FMA_MATH;
+  }
+#endif  // CUDA_VERSION >= 11000
+
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      platform::dynload::cudnnSetConvolutionMathType(cdesc.desc(), math_type));
+}
+
 template <typename PerfT>
 struct SearchAlgorithmBase {};
 
@@ -160,6 +193,8 @@ struct SearchAlgorithmBase<cudnnConvolutionFwdAlgoPerf_t> {
   constexpr static AlgoT kDeterministicAlgo = static_cast<AlgoT>(1);
   constexpr static phi::autotune::AlgorithmType kAlgoType =
       phi::autotune::AlgorithmType::kConvForward;
+
+  static const std::string GetPerfName() { return "ConvForward"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionFwdAlgo_t algo) {
@@ -300,6 +335,8 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdDataAlgoPerf_t> {
   constexpr static phi::autotune::AlgorithmType kAlgoType =
       phi::autotune::AlgorithmType::kConvBackwardData;
 
+  static const std::string GetPerfName() { return "ConvBackwardData"; }
+
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionBwdDataAlgo_t algo) {
     size_t workspace_size = 0;
@@ -437,6 +474,8 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
       CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
   constexpr static phi::autotune::AlgorithmType kAlgoType =
       phi::autotune::AlgorithmType::kConvBackwardFilter;
+
+  static const std::string GetPerfName() { return "ConvBackwardFilter"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionBwdFilterAlgo_t algo) {
@@ -604,6 +643,9 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
                          SearchResult<AlgoT>* algo_result) {
     for (size_t i = 0; i != perf_results.size(); ++i) {
       const auto& result = perf_results[i];
+      // if (result.algo == 3 || result.algo == 5) {
+      //   continue;
+      // }
       if (result.status == CUDNN_STATUS_SUCCESS &&
           (result.memory <= workspace_limit)) {
         if ((result.mathType == CUDNN_TENSOR_OP_MATH) &&
@@ -646,8 +688,9 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
                                   bool deterministic,
                                   const phi::GPUContext& ctx) {
     SearchResult<AlgoT> result;
+    bool use_autotune = false;
     auto dtype = platform::CudnnDataType<T>::type;
-    SetConvMathType(ctx, dtype, args.cdesc);
+    SetConvolutionMathType(ctx, args.cdesc, dtype, true);
 
     if (deterministic) {
       result = FindAlgoDeterministic(args);
@@ -665,8 +708,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
         result.algo = static_cast<AlgoT>(t.algo);
         result.workspace_size = t.workspace_size;
       } else {
-        bool use_autotune =
-            phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+        use_autotune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result =
               SearchAlgorithmBase<PerfT>::template FindAlgoExhaustiveSearch<T>(
@@ -679,39 +721,15 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
         cache.Set(key, node);
       }
     }
-    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
-            << ", deterministic=" << deterministic
-            << ", choose algo=" << result.algo
-            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
-    return result;
-  }
-
-  static void SetConvMathType(const phi::GPUContext& ctx,
-                              cudnnDataType_t dtype,
-                              const platform::ConvolutionDescriptor& cdesc) {
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    if (ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
-          cdesc.desc(), CUDNN_TENSOR_OP_MATH));
-      VLOG(5) << "Enable Tensor Core for FLOAT16";
-#if CUDA_VERSION >= 11000
-#if CUDNN_VERSION_MIN(8, 1, 0)
-    } else if (ctx.GetComputeCapability() >= 80 &&
-               dtype == CUDNN_DATA_BFLOAT16) {
-      VLOG(5) << "Enable Tensor Core for BFLOAT16";
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
-          cdesc.desc(), CUDNN_TENSOR_OP_MATH));
-#endif  // CUDNN_VERSION_MIN(8, 1, 0)
-    } else if (dtype == CUDNN_DATA_FLOAT && !cdesc.allow_tf32_) {
-      VLOG(5) << "Disable TensorFloat (Tensor Core) for FLOAT";
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
-          cdesc.desc(), CUDNN_FMA_MATH));
-#endif  // CUDA_VERSION >= 11000
-    } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
-          cdesc.desc(), CUDNN_DEFAULT_MATH));
+    if (std::is_same<PerfT, cudnnConvolutionBwdFilterAlgoPerf_t>::value) {
+      VLOG(3) << "[cuDNN " << SearchAlgorithmBase<PerfT>::GetPerfName()
+              << "] exhaustive_search=" << exhaustive_search
+              << ", use_autotune=" << use_autotune
+              << ", deterministic=" << deterministic
+              << ", choose algo=" << result.algo
+              << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
     }
-#endif
+    return result;
   }
 
  protected:
