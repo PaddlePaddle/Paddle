@@ -197,14 +197,6 @@ class ProcessGroupNCCL : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream) override;
 
-  std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
-      std::vector<phi::DenseTensor>& in_tensors,
-      std::vector<phi::DenseTensor>& out_tensors,
-      int offset,
-      int length,
-      bool sync_op,
-      bool use_calc_stream) override;
-
   std::shared_ptr<ProcessGroup::Task> AllToAll(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors) override;
