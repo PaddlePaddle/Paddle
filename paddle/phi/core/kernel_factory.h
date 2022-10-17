@@ -271,9 +271,7 @@ class KernelFactory {
 
   KernelNameMap& kernels() { return kernels_; }
 
-  bool HasCompatiblePhiKernel(const std::string& op_type) const {
-    return kernels_.find(TransToPhiKernelName(op_type)) != kernels_.end();
-  }
+  bool HasCompatiblePhiKernel(const std::string& op_type) const;
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
                                         const KernelKey& kernel_key,

@@ -231,14 +231,6 @@ class Transpose2Op : public TransposeOp {
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-      return framework::OpKernelType(data_type,
-                                     ctx.GetPlace(),
-                                     phi::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     std::string data_format = ctx.Attr<std::string>("data_format");
     phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
