@@ -18,10 +18,6 @@ from typing import Union
 import paddle
 from paddle import Tensor
 
-__all__ = [
-    'get_window',
-]
-
 
 def _cat(x: List[Tensor], data_type: str) -> Tensor:
     l = [paddle.to_tensor(_, data_type) for _ in x]
