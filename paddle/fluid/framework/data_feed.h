@@ -811,6 +811,9 @@ class DataFeed {
     return use_slots_is_dense_;
   }
 
+  virtual const std::vector<bool>& GetUint64UseSlotIsDense() {
+    return uint64_use_slots_is_dense_;
+  }
   // This function is used for binding feed_vec memory
   virtual void AddFeedVar(Variable* var, const std::string& name);
 
@@ -890,6 +893,7 @@ class DataFeed {
   // data_feed_desc(proto object)
   std::vector<std::string> use_slots_;
   std::vector<bool> use_slots_is_dense_;
+  std::vector<bool> uint64_use_slots_is_dense_;
 
   // the alias of all slots, and its order is determined by data_feed_desc(proto
   // object)
@@ -995,6 +999,8 @@ class InMemoryDataFeed : public DataFeed {
   virtual void LoadIntoMemory();
   virtual void LoadIntoMemoryFromSo();
   virtual void SetRecord(T* records) { records_ = records; }
+  virtual T*  GetRecord() { return records_; }
+  virtual std::vector<std::pair<int, int>>&  GetBatchOffsets() { return batch_offsets_; }
   void AddBatchOffset(const std::pair<int, int>& offset) {
     batch_offsets_.push_back(offset);
   }

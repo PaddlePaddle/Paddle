@@ -56,7 +56,6 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 #include "paddle/fluid/framework/fleet/heter_ps/parallel_thread_pool.h"
-
 namespace paddle {
 namespace framework {
 
@@ -65,6 +64,8 @@ namespace framework {
 
 class Dataset;
 class Record;
+class SlotRecordObject;
+using SlotRecord = SlotRecordObject*;
 
 #ifdef PADDLE_WITH_PSLIB
 class AfsWrapper {
@@ -111,6 +112,7 @@ class PSGPUWrapper {
   void build_batch_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,
                           const std::vector<bool> & slot_is_dense);
   void prepare_next_batch(int thread_id);
+  void build_batch_fidseq(std::vector<paddle::framework::DataFeed*> all_readers);
 #endif
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,

@@ -158,9 +158,13 @@ class CacheManager {
       std::vector<std::deque<Record>::iterator> & train_data_iters,
                                            int iter_offset, int batch_sz, 
                                  const std::vector<bool> & slot_is_dense);
+  std::shared_ptr<BatchFidSeq> parse_uniq_fids(
+      std::vector<paddle::framework::DataFeed*> all_readers, size_t offset_index);
   void build_batch_fidseq(
       std::vector<std::deque<Record> *> & all_chan_recs,
                 const std::vector<bool> & slot_is_dense);
+  void build_batch_fidseq(
+      std::vector<paddle::framework::DataFeed*> all_readers);
   void prepare_next_batch(int worker_id);
   void convert_fid2bfid(int dev_id, uint32_t * fids, int fid_len);
   void get_device_fidseq_bucket(int dev_id, uint32_t ** out_keys, int * out_key_len);

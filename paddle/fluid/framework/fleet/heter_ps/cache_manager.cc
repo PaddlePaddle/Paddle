@@ -410,6 +410,135 @@ std::shared_ptr<BatchFidSeq> CacheManager::parse_uniq_fids(
   return seq;
 }
 
+std::shared_ptr<BatchFidSeq> CacheManager::parse_uniq_fids(
+     std::vector<paddle::framework::DataFeed*> all_readers, size_t offset_index) {
+    SlotRecord* ins_vec =  reinterpret_cast<SlotRecordInMemoryDataFeed*>(all_readers[0])->GetRecord();
+    auto & uint64_slot_is_dense = all_readers[0]->GetUint64UseSlotIsDense();
+    //all readers use the same ins_vec, but have different offsets.
+    uint32_t max_fid = 0;
+    for (size_t reader_idx = 0; reader_idx < all_readers.size(); ++reader_idx) {
+        std::vector<std::pair<int, int>>& offset = 
+            reinterpret_cast<SlotRecordInMemoryDataFeed*>(all_readers[reader_idx])->GetBatchOffsets();
+        if (offset_index >= offset.size()) {
+            continue;
+        }
+        std::pair<int, int>& cur_batch = offset[offset_index];
+        int batch_size = cur_batch.second;
+        SlotRecord* cur_ins_vec = &ins_vec[cur_batch.first];
+        for (int ins_idx = 0; ins_idx < batch_size; ++ins_idx) {
+            SlotRecord& cur_rec = cur_ins_vec[ins_idx];
+            auto& feasigns = cur_rec->slot_uint64_feasigns_.slot_values;
+            auto& slot_offsets = cur_rec->slot_uint64_feasigns_.slot_offsets;
+            for (unsigned int slot_idx = 0; slot_idx < slot_offsets.size() - 1; ++slot_idx) {
+                if (uint64_slot_is_dense[slot_idx]) {
+                    continue;
+                }
+                unsigned int start_idx = slot_offsets[slot_idx];
+                unsigned int end_idx = slot_offsets[slot_idx + 1];
+                for (unsigned int feasign_idx = start_idx; feasign_idx < end_idx; ++feasign_idx) {
+                    if (need_parse_ins_sign2fid_) {
+                        feasigns[feasign_idx] = query_sign2fid(feasigns[feasign_idx]);
+                    }
+                    max_fid = max_fid > feasigns[feasign_idx]? max_fid : feasigns[feasign_idx];
+                }
+            }
+        }
+    }
+    
+    bool has_blank_slot = false;
+    int uint64_fid_bit_vec_size = (max_fid / 64) + 1;
+    std::vector<std::bitset<64>> fid_bit_vec(uint64_fid_bit_vec_size);
+    for (size_t reader_idx = 0; reader_idx < all_readers.size(); ++ reader_idx) {
+        std::vector<std::pair<int, int>>& offset =
+            reinterpret_cast<SlotRecordInMemoryDataFeed*>(all_readers[reader_idx])->GetBatchOffsets();
+        if (offset_index >= offset.size()) {
+            continue;
+        }
+        std::pair<int, int>& cur_batch = offset[offset_index];
+        int batch_size = cur_batch.second;
+        const SlotRecord* cur_ins_vec = &ins_vec[cur_batch.first];
+        for (int ins_idx = 0; ins_idx < batch_size; ++ins_idx) {
+            const SlotRecord& cur_rec = cur_ins_vec[ins_idx];
+            auto& feasigns = cur_rec->slot_uint64_feasigns_.slot_values;
+            auto& slot_offsets = cur_rec->slot_uint64_feasigns_.slot_offsets;
+            for (unsigned int slot_idx = 0; slot_idx < slot_offsets.size() - 1; ++slot_idx) {
+                if (uint64_slot_is_dense[slot_idx]) {
+                    continue;
+                }
+                unsigned int start_idx = slot_offsets[slot_idx];
+                unsigned int end_idx = slot_offsets[slot_idx + 1];
+                for (unsigned int feasign_idx = start_idx; feasign_idx < end_idx; ++feasign_idx) {
+                    int vec_idx = feasigns[feasign_idx] / 64;
+                    int bit_offset = feasigns[feasign_idx] % 64;
+                    fid_bit_vec[vec_idx].set(bit_offset);
+                }
+            }
+
+            //judge blank slot
+            if (!has_blank_slot) {
+                for (size_t k = 1; k < cur_rec->slot_uint64_feasigns_.slot_offsets.size(); ++k) {
+                    if (cur_rec->slot_uint64_feasigns_.slot_offsets[k] == cur_rec->slot_uint64_feasigns_.slot_offsets[k - 1]) {
+                        fid_bit_vec[0].set(0);
+                        has_blank_slot = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // count total fids
+    int total_fid_count = 0;
+    for (auto & bs : fid_bit_vec) {
+        total_fid_count += bs.count();
+    }
+
+    // create BatchFidSeq
+    auto seq = std::make_shared<BatchFidSeq>();
+    seq->h_bucket_sizes.resize(worker_num_);
+
+    // dump fidseq
+    auto & fidseq = seq->h_fidseq;
+    fidseq.resize(total_fid_count);
+    uint32_t offset = 0;
+    for (size_t j = 0; j < fid_bit_vec.size(); ++j) {
+        uint64_t val = fid_bit_vec[j].to_ulong();
+        while (val) {
+            uint64_t next_val = (val - 1) & val;
+            uint64_t pos_val = val - next_val;
+            fidseq[offset++] = (uint64_t)log2(pos_val) + j * 64;
+            val = next_val;
+        }
+    }
+    PADDLE_ENFORCE_EQ(offset, total_fid_count);
+
+    // count bucket size
+    std::vector<int> fidseq_buckets_count(worker_num_, 0);
+    for (int j = 0; j < (int)fidseq.size(); ++j) {
+        int bucket_idx = fidseq[j] % worker_num_;
+        ++fidseq_buckets_count[bucket_idx];
+    }
+
+    // find max bucket size
+    int max_bucket_size = 0;
+    for (int j = 0; j < worker_num_; ++j) {
+        max_bucket_size = max_bucket_size < fidseq_buckets_count[j] ? fidseq_buckets_count[j] : max_bucket_size;
+        seq->h_bucket_sizes[j] = fidseq_buckets_count[j];
+        fidseq_buckets_count[j] = 0;
+    }
+    seq->max_bucket_size = max_bucket_size;
+
+    // make buckets
+    int total_fedseq_bucket_size = max_bucket_size * worker_num_;
+    seq->h_fidseq_bucket.resize(total_fedseq_bucket_size, 0);
+    for (int j = 0; j < (int)fidseq.size(); ++j) {
+        int bucket_idx = fidseq[j] % worker_num_;
+        int offset = bucket_idx * max_bucket_size + fidseq_buckets_count[bucket_idx]++;
+        seq->h_fidseq_bucket[offset] = fidseq[j];
+    }
+    return seq;
+}
+
 void CacheManager::build_batch_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,
                                             const std::vector<bool> & slot_is_dense) {
   platform::Timer timeline;
@@ -484,6 +613,69 @@ void CacheManager::build_batch_fidseq(std::vector<std::deque<Record> *> & all_ch
   total_time += timeline.ElapsedSec();
   time_ss << ",wait-data-ready:" << timeline.ElapsedSec();
   VLOG(0) << "build_batch_fidseq total_time:" << total_time << "s, details:" << time_ss.str();
+}
+
+void CacheManager::build_batch_fidseq(std::vector<paddle::framework::DataFeed*> all_readers) {
+    platform::Timer timeline;
+    std::stringstream time_ss;
+    double total_time = 0.0;
+    timeline.Start();
+
+    if (build_fidseq_thread_.joinable()) {
+        build_fidseq_thread_.join();
+    }
+    PADDLE_ENFORCE_GT(all_readers.size(), 0,
+        platform::errors::External("all_readers size error"));
+
+    fidseq_chan_ = paddle::framework::MakeChannel<std::shared_ptr<BatchFidSeq>>();
+ 
+    build_fidseq_thread_ = std::thread([all_readers, this] () {
+        size_t max_train_loop_size = 0;
+        for (size_t i = 0; i < all_readers.size(); ++i) {
+            std::vector<std::pair<int, int>>& offset = 
+                reinterpret_cast<SlotRecordInMemoryDataFeed*>(all_readers[i])->GetBatchOffsets();
+            max_train_loop_size = offset.size() > max_train_loop_size? offset.size() : max_train_loop_size;
+        }
+
+        ParallelThreadPool build_fidseq_pool(24);
+        int thread_num = build_fidseq_pool.get_thread_num();
+        fidseq_chan_->SetBlockSize(1);
+        fidseq_chan_->SetCapacity(3 * thread_num);
+
+        std::mutex cv_mtx;
+        std::condition_variable write_cv;
+
+        std::atomic<int> writer_idx{0};
+        build_fidseq_pool.set_task([&, this] (int tid) {
+            for (size_t i = tid; i < max_train_loop_size; i += thread_num) {
+                auto batch_fidseq = parse_uniq_fids(all_readers, i);
+                while (true) {
+                    std::unique_lock<std::mutex> lock(cv_mtx);
+                    if (tid == writer_idx.load()) {
+                        fidseq_chan_->Put(std::move(batch_fidseq));
+                        writer_idx.store((tid + 1) % thread_num);
+                        write_cv.notify_all();
+                        break;
+                    }
+                    write_cv.wait_for(lock, std::chrono::milliseconds(30));
+                }
+            }
+        });
+        build_fidseq_pool.wait_task();
+        fidseq_chan_->Close();
+        need_parse_ins_sign2fid_ = false;
+    });
+
+    timeline.Pause();
+    total_time += timeline.ElapsedSec();
+    time_ss << "lauch-async-thread:" << timeline.ElapsedSec();
+    timeline.Start();
+
+    while (!fidseq_chan_->Closed() && fidseq_chan_->Size() == 0) { }
+    timeline.Pause();
+    total_time += timeline.ElapsedSec();
+    time_ss << ",wait-data-ready:" << timeline.ElapsedSec();
+    VLOG(0) << "build_batch_fidseq total_time:" << total_time << "s, details:" << time_ss.str();
 }
 
 void CacheManager::prepare_next_batch(int worker_id) {

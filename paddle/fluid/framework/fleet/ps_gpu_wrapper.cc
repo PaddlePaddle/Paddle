@@ -163,15 +163,27 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
     len_per_thread = total_len / thread_keys_thread_num_;
     remain = total_len % thread_keys_thread_num_;
     VLOG(0) << "total len: " << total_len;
-    auto gen_func = [this](const std::deque<SlotRecord>& total_data,
+    auto data_readers = gpu_task->dataset_->GetReaders();
+    auto & uint64_slot_is_dense = data_readers[0]->GetUint64UseSlotIsDense();
+    auto gen_func = [this, &uint64_slot_is_dense](const std::deque<SlotRecord>& total_data,
                            int begin_index, int end_index, int i) {
       for (auto iter = total_data.begin() + begin_index;
            iter != total_data.begin() + end_index; iter++) {
         const auto& ins = *iter;
         const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
-        for (const auto feasign : feasign_v) {
-          int shard_id = feasign % thread_keys_shard_num_;
-          this->thread_keys_[i][shard_id].insert(feasign);
+        const auto& slot_offsets = ins->slot_uint64_feasigns_.slot_offsets;
+        for (unsigned int slot_idx = 0; slot_idx < slot_offsets.size() - 1; ++slot_idx) {
+#ifdef PADDLE_WITH_XPU_KP
+            if (uint64_slot_is_dense[slot_idx]) {
+                continue;
+            }
+#endif
+            unsigned int start_idx = slot_offsets[slot_idx];
+            unsigned int end_idx = slot_offsets[slot_idx + 1];
+            for (unsigned int feasign_idx = start_idx; feasign_idx < end_idx; ++feasign_idx) {
+                int shard_id = feasign_v[feasign_idx] % thread_keys_shard_num_;
+                this->thread_keys_[i][shard_id].insert(feasign_v[feasign_idx]);
+            }
         }
       }
     };
@@ -204,6 +216,10 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
       }
       */
     };
+#ifdef PADDLE_WITH_XPU_KP
+    this->thread_keys_[0][0].insert(0); // add 0 for padding feasign
+#endif
+
     for (int i = 0; i < thread_keys_thread_num_; i++) {
       if (!multi_mf_dim_) {
         VLOG(0) << "yxf::psgpu wrapper genfunc";
@@ -790,7 +806,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_XPU_KP
   // build cachemanager
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
-  auto data_readers = dataset_->GetReaders();
+  auto data_readers = gpu_task->dataset_->GetReaders();
   CHECK(data_readers.size() > 0);
   int batch_size = data_readers[0]->GetDefaultBatchSize();
   VLOG(0) << "BuildGPUTask: batchsize:" << batch_size
@@ -852,6 +868,7 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
 
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();
+  gpu_task->dataset_ = dataset_;
   data_ready_channel_->Put(gpu_task);
   VLOG(3) << "End LoadIntoMemory(), dataset[" << dataset_ << "]";
 }
@@ -866,6 +883,7 @@ void PSGPUWrapper::HandlePreloadDoneData(bool is_shuffle) {
 
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();
+  gpu_task->dataset_ = dataset_;
   data_ready_channel_->Put(gpu_task);
   VLOG(3) << "End HandlePreloadDoneData(), dataset[" << dataset_ << "]";
   timer.Pause();
@@ -984,6 +1002,13 @@ void PSGPUWrapper::build_batch_fidseq(
   VLOG(0) << "PSGPUWrapper::build_batch_fidseq called";
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
   cache_manager->build_batch_fidseq(all_chan_recs, slot_is_dense);
+}
+
+void PSGPUWrapper::build_batch_fidseq(
+        std::vector<paddle::framework::DataFeed*> all_readers) {
+  VLOG(0) << "PSGPUWrapper::build_batch_fidseq called SlotRecord";
+  auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
+  cache_manager->build_batch_fidseq(all_readers);
 }
 
 void PSGPUWrapper::prepare_next_batch(int thread_id) {
