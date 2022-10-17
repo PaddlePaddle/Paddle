@@ -299,21 +299,6 @@ class AutoTuneCache {
     return cudnn_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 
-  CudnnAlgorithmsCacheMap& GetConvForward() {
-    return cudnn_auto_tune_map_[static_cast<int64_t>(
-        AlgorithmType::kConvForward)];
-  }
-
-  CudnnAlgorithmsCacheMap& GetConvBackwardData() {
-    return cudnn_auto_tune_map_[static_cast<int64_t>(
-        AlgorithmType::kConvBackwardData)];
-  }
-
-  CudnnAlgorithmsCacheMap& GetConvBackwardFilter() {
-    return cudnn_auto_tune_map_[static_cast<int64_t>(
-        AlgorithmType::kConvBackwardFilter)];
-  }
-
   AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
 
   void Clean() {
