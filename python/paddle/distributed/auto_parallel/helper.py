@@ -23,8 +23,8 @@ from paddle.fluid.executor import global_scope
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 
 from .utils import to_list
+from .utils import get_logger
 from .converter import Converter
-from ..utils.log_utils import get_logger
 
 
 class ProxyLayer(Layer):
