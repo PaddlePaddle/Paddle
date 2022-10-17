@@ -13,7 +13,6 @@
  *     limitations under the License. */
 
 #include "paddle/fluid/framework/data_set.h"
-
 #include "gflags/gflags.h"
 #include "google/protobuf/text_format.h"
 #if (defined PADDLE_WITH_DISTRIBUTE) && (defined PADDLE_WITH_PSCORE)
@@ -1630,12 +1629,12 @@ void SlotRecordDataset::GetRandomData(
           VLOG(0) << "origin slot_values_i: " << j;
       }
     */
-    int off_size =
-        static_cast<int>(new_rec->slot_uint64_feasigns_.slot_offsets.size());
-    // VLOG(0) << "rec slot_offset size: " << off_size;
-    int val_size =
-        static_cast<int>(new_rec->slot_uint64_feasigns_.slot_values.size());
-    // VLOG(0) << "rec slot_val size: " << val_size;
+    // int off_size =
+    //     static_cast<int>(new_rec->slot_uint64_feasigns_.slot_offsets.size());
+    //  VLOG(0) << "rec slot_offset size: " << off_size;
+    // int val_size =
+    //     static_cast<int>(new_rec->slot_uint64_feasigns_.slot_values.size());
+    //  VLOG(0) << "rec slot_val size: " << val_size;
 
     slots_record_shuffle_rclist_.AddAndGet(rec, &rand_rec);
     // VLOG(0) << "shuffle_done";
