@@ -26,10 +26,11 @@ from ..fluid.inference import get_trt_runtime_version  # noqa: F401
 from ..fluid.inference import convert_to_mixed_precision  # noqa: F401
 from ..fluid.inference import get_num_bytes_of_data_type  # noqa: F401
 from ..fluid.inference import PredictorPool  # noqa: F401
+from ..fluid.inference import InternalUtils  # noqa: F401
 
 __all__ = [  # noqa
     'Config', 'DataType', 'PlaceType', 'PrecisionType', 'BackendType', 'Tensor',
     'Predictor', 'create_predictor', 'get_version', 'get_trt_compile_version',
     'convert_to_mixed_precision', 'get_trt_runtime_version',
-    'get_num_bytes_of_data_type', 'PredictorPool'
+    'get_num_bytes_of_data_type', 'PredictorPool', 'InternalUtils'
 ]

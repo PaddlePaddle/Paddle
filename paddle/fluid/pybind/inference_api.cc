@@ -842,9 +842,15 @@ void BindAnalysisConfig(py::module *m) {
 
 void BindInternalUtils(py::module *m) {
   py::class_<InternalUtils> internal_utils(*m, "InternalUtils");
-  internal_utils.def(py::init<>())
-      .def("set_transformer_posid", &InternalUtils::SetTransformerPosid)
-      .def("set_transformer_maskid", &InternalUtils::SetTransformerMaskid);
+  internal_utils
+      .def_static("set_transformer_posid",
+                  [](paddle_infer::Config &config, std::string tensor_name) {
+                    InternalUtils::SetTransformerPosid(&config, tensor_name);
+                  })
+      .def_static("set_transformer_maskid",
+                  [](paddle_infer::Config &config, std::string tensor_name) {
+                    InternalUtils::SetTransformerMaskid(&config, tensor_name);
+                  });
 }
 
 void BindLiteNNAdapterConfig(py::module *m) {
