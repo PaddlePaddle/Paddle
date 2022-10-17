@@ -54,6 +54,7 @@ public:
     unsigned int start_index = 0;
     for (int k = 0; k < n; k++) {
         auto dx = dxs[k];
+        // T* dx_data = dx->mutable_data_l3<T>(ctx.GetPlace());
         T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
         auto lod = dx->lod();
         cpu_dx_list[k] = reinterpret_cast<unsigned long long>(dx_data);
@@ -70,7 +71,7 @@ public:
     xpu_memcpy(dx_vec_param.xpu, &cpu_dx_list[0], n * sizeof(uint64_t), XPU_HOST_TO_DEVICE);
     lod_vec_param.xpu = reinterpret_cast<unsigned long long*>(RAII_GUARD.alloc_l3_or_gm<unsigned long long>(n));
     xpu_memcpy(lod_vec_param.xpu, &xpu_lod_list[0], n * sizeof(unsigned long long), XPU_HOST_TO_DEVICE);
-    int r = xpu::sequence_sum_pool_cvm_grad<T>(xpu_context, dy_data, cvm_data, 
+    int r = xpu::sequence_sum_pool_cvm_grad<T>(xpu_context, dy_data, cvm_data,
                                dx_vec_param, lod_vec_param,
                                item_size, batch_size, n, dy_offset, use_cvm);
      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
@@ -103,6 +104,7 @@ public:
     out->set_lod(y_lod);
     auto place = ctx.GetPlace();
     T* y_data = out->mutable_data<T>(place);
+    // T* y_data = out->mutable_data_l3<T>(place);
     int w = ins[0]->numel() / x0_dims[0];
     if(use_cvm) {
       PADDLE_ENFORCE_EQ(y_dims[1] % w, 0,
