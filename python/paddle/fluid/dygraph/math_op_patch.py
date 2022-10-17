@@ -416,6 +416,8 @@ def monkey_patch_math_varbase():
         '__lt__',
         '__le__',
         '__floordiv__',
+        '__pow__',
+        '__rpow__',
     ]
 
     global _already_patch_varbase
