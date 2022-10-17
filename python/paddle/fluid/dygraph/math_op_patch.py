@@ -392,8 +392,6 @@ def monkey_patch_math_varbase():
                                      True)),
         ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
                                       None)),
-        ('__floordiv__',
-         _binary_creator_('__floordiv__', 'floor_divide', False, None, True)),
         # for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None, True)),
@@ -417,6 +415,7 @@ def monkey_patch_math_varbase():
         '__ge__',
         '__lt__',
         '__le__',
+        '__floordiv__',
     ]
 
     global _already_patch_varbase
