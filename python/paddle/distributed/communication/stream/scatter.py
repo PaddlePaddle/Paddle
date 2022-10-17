@@ -28,11 +28,11 @@ def _check_tensor_shape(tensor, shape, nranks=1):
 def _check_tensor_list_shape(tensor_list, shape, nranks=1):
     if len(tensor_list) != nranks:
         raise RuntimeError(
-            f"The tensor_list for scatter is not correctly-sized.")
+            "The tensor_list for scatter is not correctly-sized.")
     for tensor in tensor_list:
         if tensor.shape != shape:
             raise RuntimeError(
-                f"The tensor_list for scatter is not correctly-sized.")
+                "The tensor_list for scatter is not correctly-sized.")
 
 
 def _scatter_tensor_in_dygraph(out_tensor, in_tensor, src, group, sync_op,
