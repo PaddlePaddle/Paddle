@@ -17,6 +17,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -28,10 +29,13 @@ enum { kTransposeMKLDNNFP32 = 1, kTransposeMKLDNNINT8 = 2 };
 template <typename DeviceContext, typename T>
 inline void TransCompute(const int dim,
                          const DeviceContext& dev_ctx,
-                         const framework::Tensor& in,
-                         framework::Tensor* out,
+                         const phi::DenseTensor& in,
+                         phi::DenseTensor* out,
                          const std::vector<int>& axis) {
   switch (dim) {
+    case 0:
+      phi::Copy<DeviceContext>(dev_ctx, in, dev_ctx.GetPlace(), false, out);
+      break;
     case 1:
       phi::funcs::Transpose<DeviceContext, T, 1> trans1;
       trans1(dev_ctx, in, out, axis);

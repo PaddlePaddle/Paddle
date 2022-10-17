@@ -14,8 +14,6 @@
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.nn.layer import transformer
 import paddle.nn.functional as F
 import paddle.incubate.nn.functional as incubate_f

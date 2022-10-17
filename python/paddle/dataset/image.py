@@ -30,8 +30,6 @@ the image layout as follows.
   be keep consistent between the training and inference period.
 """
 
-from __future__ import print_function
-
 import six
 import numpy as np
 # FIXME(minqiyang): this is an ugly fix for the numpy bug reported here
@@ -194,7 +192,7 @@ def load_image(file, is_color=True):
     # Here, use constant 1 and 0
     # 1: COLOR, 0: GRAYSCALE
     flag = 1 if is_color else 0
-    im = cv2.imread(file, flag)
+    im = cv2.imread(file.encode('utf-8').decode('utf-8'), flag)
     return im
 
 

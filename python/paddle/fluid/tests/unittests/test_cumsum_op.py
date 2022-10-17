@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import tempfile
@@ -22,7 +20,6 @@ from op_test import OpTest
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
 import paddle.inference as paddle_infer
 import gradient_checker
 from decorator_helper import prog_scope
@@ -356,6 +353,9 @@ class TestTensorAxis(unittest.TestCase):
             relu_out = paddle.nn.functional.relu(linear_out)
             axis = paddle.full([1], 2, dtype='int64')
             out = paddle.cumsum(relu_out, axis=axis)
+            loss = paddle.mean(out)
+            sgd = paddle.optimizer.SGD(learning_rate=0.)
+            sgd.minimize(paddle.mean(out))
 
             exe = paddle.static.Executor(self.place)
             exe.run(starup_prog)

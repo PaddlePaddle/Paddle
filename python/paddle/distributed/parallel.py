@@ -13,15 +13,11 @@
 # limitations under the License.
 
 import os
-import six
 import warnings
 from multiprocessing import Process  # noqa: F401
 from multiprocessing import Manager  # noqa: F401
 import time
-import sys
 import paddle
-
-from paddle import compat as cpt
 
 # deprecated module import
 from paddle.fluid import core
@@ -31,11 +27,9 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
-from paddle.distributed import collective
 from paddle.distributed.collective import _set_group_map
 from paddle.distributed.collective import _set_group_map_by_name
 from paddle.distributed.collective import _get_group_map_by_name
-from paddle.distributed.collective import _group_map_by_name
 from paddle.distributed.collective import _default_group_name
 from paddle.distributed.collective import _valid_backend_list
 from paddle.distributed.collective import _set_default_backend
@@ -43,6 +37,7 @@ from paddle.distributed.collective import _set_default_store
 from paddle.distributed.collective import _new_process_group_impl
 from paddle.distributed.collective import Group
 from paddle.distributed.collective import _set_group_map_backend
+from paddle.distributed.communication.group import _add_new_group
 
 __all__ = []
 
@@ -75,7 +70,7 @@ def _is_cpuonly(backend):
     if (backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'] and
         (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
          or core.is_compiled_with_npu()
-         or core.is_compiled_with_mlu())) or backend is 'xccl':
+         or core.is_compiled_with_mlu())) or backend == 'xccl':
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
@@ -95,7 +90,7 @@ def init_parallel_env():
     """
     Initialize parallel training environment in dynamic graph mode.
 
-    .. note::
+    Note:
         Now initialize both `NCCL` and `GLOO` contexts for communication.
 
     Args:
@@ -258,15 +253,11 @@ def init_parallel_env():
                                      _default_group_name,
                                      pg_options=None)
         ranks = list(range(world_size))
-        group = Group(rank,
-                      world_size,
-                      id=0,
-                      ranks=ranks,
-                      pg=pg,
-                      name=_default_group_name)
+        group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)
         _set_group_map_by_name(_default_group_name, group)
         _set_group_map(0, group)
         _set_group_map_backend(group, backend)
+        _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
 
         paddle.distributed.barrier(group=group)

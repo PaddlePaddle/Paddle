@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid import core
 import sys
 
 sys.path.append("..")
-from op_test import OpTest
 
 alignment = 256
 import paddle

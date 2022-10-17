@@ -19,7 +19,7 @@ message Slot {
   required string type = 2;
   optional bool is_dense = 3 [ default = false ];
   optional bool is_used = 4 [ default = false ];
-  repeated int32 shape = 5; // we can define N-D Tensor
+  repeated int32 shape = 5; // we can define N-D phi::DenseTensor
 }
 
 message MultiSlotDesc {

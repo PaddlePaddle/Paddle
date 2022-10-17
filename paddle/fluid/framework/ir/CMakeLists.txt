@@ -19,7 +19,8 @@ cc_library(
 cc_library(
   graph_helper
   SRCS graph_helper.cc
-  DEPS graph program_utils scale_loss_grad_op_handle)
+  DEPS graph program_utils scale_loss_grad_op_handle
+       grad_merge_all_reduce_op_handle)
 cc_library(
   pass
   SRCS pass.cc
@@ -114,19 +115,23 @@ pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
 pass_library(dense_fc_to_sparse_pass inference)
 pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
+pass_library(common_subexpression_elimination_pass inference)
 target_link_libraries(generate_pass pass_desc_proto)
 
 if(WITH_TENSORRT)
   pass_library(trt_map_matmul_to_mul_pass inference)
-  pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(trt_multihead_matmul_fuse_pass inference)
   pass_library(trt_skip_layernorm_fuse_pass inference)
-  pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_skip_layernorm_fuse_pass inference)
   pass_library(set_transformer_input_convert_pass inference)
   pass_library(remove_padding_recover_padding_pass inference)
   pass_library(delete_remove_padding_recover_padding_pass inference)
   pass_library(layernorm_shift_partition_fuse_pass inference)
+endif()
+
+if(WITH_TENSORRT AND NOT WIN32)
+  pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
+  pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -322,6 +327,10 @@ cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
+cc_test(
+  test_common_subexpression_elimination_pass_cc
+  SRCS common_subexpression_elimination_pass_tester.cc
+  DEPS common_subexpression_elimination_pass)
 cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc

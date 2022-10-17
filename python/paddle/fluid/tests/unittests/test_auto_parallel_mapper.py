@@ -12,28 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import tempfile
 import unittest
 import os
 import json
-import collections
-import math
 import numpy as np
 
 import paddle
 import paddle.nn as nn
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-import paddle.tensor as tensor
 import paddle.utils as utils
 import paddle.static as static
 from paddle.fluid import core
 from paddle.fluid import layers
-from paddle.fluid.framework import _non_static_mode
-from paddle.nn.layer.transformer import _convert_param_attr_to_list
-from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
+from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.distributed import fleet
 
 from paddle.distributed.fleet import auto
@@ -42,15 +35,7 @@ from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.process_group import get_all_process_groups
-from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cluster import DeviceType
-from paddle.distributed.auto_parallel.cluster import LinkType
-from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
-from paddle.distributed.auto_parallel.mapper import build_process_graph
-from paddle.distributed.auto_parallel.mapper import build_cluster_graph
 from paddle.distributed.auto_parallel.mapper import mapping
 from paddle.distributed.auto_parallel.mapper import get_dtype_bytes
 from paddle.distributed.auto_parallel.mapper import get_comm_volume

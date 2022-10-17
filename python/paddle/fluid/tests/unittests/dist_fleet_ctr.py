@@ -15,8 +15,6 @@
 Distribute CTR model for test fleet api
 """
 
-from __future__ import print_function
-
 import shutil
 import tempfile
 import time
@@ -28,8 +26,6 @@ import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
-from paddle.distributed.fleet.utils.ps_util import DistributedInfer
-import paddle.distributed.fleet as fleet
 
 paddle.enable_static()
 

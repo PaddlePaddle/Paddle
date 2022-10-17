@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import requests
 import hashlib
 import os
 import errno
 import shutil
-import six
 import sys
 import importlib
 import paddle.dataset
@@ -57,7 +54,6 @@ def must_mkdirs(path):
     except OSError as exc:
         if exc.errno != errno.EEXIST:
             raise
-        pass
 
 
 must_mkdirs(DATA_HOME)

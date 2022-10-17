@@ -12,22 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from io import BytesIO
 import os
-import sys
-import six
 import platform
 import tempfile
 
 import paddle
-import paddle.nn as nn
-import paddle.optimizer as opt
 import paddle.fluid as fluid
-from paddle.fluid.optimizer import Adam
 import paddle.fluid.framework as framework
 from test_imperative_base import new_program_scope
 

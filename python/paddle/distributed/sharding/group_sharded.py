@@ -14,7 +14,6 @@
 
 import os
 import logging
-from enum import Enum
 
 import paddle
 
@@ -46,7 +45,8 @@ def group_sharded_parallel(model,
                            sync_buffers=False,
                            buffer_max_size=2**23,
                            segment_size=2**20,
-                           sync_comm=False):
+                           sync_comm=False,
+                           dp_group=None):
     """
     Use group_sharded_parallel can perform group shared configuration on the model, optimizer and GradScaler. Level has three string options, 'os', 'os_g' and 'p_g_os' corresponds to three different usage scenarios: optimizer state segmentation, optimizer state + gradient segmentation, and parameter + gradient + optimizer state segmentation.
     Usually, optimizer state + gradient segmentation is actually a re optimization of optimizer state segmentation, so optimizer state + gradient segmentation can be used to realize optimizer state segmentation.
@@ -62,6 +62,7 @@ def group_sharded_parallel(model,
         buffer_max_size (int, optional): The max size of the buffer used to integrate gradient in `os_g`. The larger the size, the more GPU memory will be used. Defaults to 2**23, which means that the dimension of the buffer is 2**23.
         segment_size (int, optional): The smallest size of parameter to be sharded in `p_g_os`. Defaults to 2**20, indicating that the dimension of the minimum segmented parameter is 2**20.
         sync_comm (bool, optional): Whether to use synchronous communication, only in `p_g_os` used. Defaults to False, indicating that asynchronous communication is used.
+        dp_group(Group, optional): dp communication group, only support to combine stage2 and dp hybrid communication now.
 
     Returns:
         model: A wrapper for group sharded given model.
@@ -124,12 +125,14 @@ def group_sharded_parallel(model,
                 params=optimizer._parameter_list,
                 optim=optimizer,
                 group=group,
-                offload=offload)
+                offload=offload,
+                dp_group=dp_group)
             model = GroupShardedStage2(model,
                                        optimizer,
                                        group=group,
                                        sync_buffers=sync_buffers,
-                                       buffer_max_size=buffer_max_size)
+                                       buffer_max_size=buffer_max_size,
+                                       dp_group=dp_group)
         else:
             optimizer = ShardingOptimizerStage2(params=model.parameters(),
                                                 optim=optimizer,
@@ -177,7 +180,7 @@ def save_group_sharded_model(model, output, optimizer=None):
     """
     Group sharded encapsulated model and optimizer state saving module.
 
-    .. note::
+    Note:
         If using save_group_sharded_model saves the model. When loading again, you need to set the model or optimizer state before using group_sharded_parallel.
 
     Args:

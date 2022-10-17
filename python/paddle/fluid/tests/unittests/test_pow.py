@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
 
 import paddle
-import paddle.tensor as tensor
 from paddle.static import Program, program_guard
 
 DYNAMIC = 1

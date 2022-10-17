@@ -1,23 +1,23 @@
 if(WITH_GPU)
   nv_test(
     test_phi_tensor
-    SRCS test_pten_tensor.cc
+    SRCS test_phi_tensor.cc
     DEPS phi_tensor glog)
 elseif(WITH_ROCM)
   hip_test(
     test_phi_tensor
-    SRCS test_pten_tensor.cc
+    SRCS test_phi_tensor.cc
     DEPS phi_tensor glog)
 else()
   cc_test(
     test_phi_tensor
-    SRCS test_pten_tensor.cc
+    SRCS test_phi_tensor.cc
     DEPS phi_tensor glog)
 endif()
 
 cc_test(
   test_phi_exception
-  SRCS test_pten_exception.cc
+  SRCS test_phi_exception.cc
   DEPS gtest)
 
 set(COMMON_API_TEST_DEPS phi_tensor phi_api phi_api_utils)
