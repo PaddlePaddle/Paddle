@@ -516,6 +516,17 @@ void ReplaceAllReduceOp(const Node &node,
       const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
   auto &in_var_handles = op_handle.Inputs();
 
+  // Even if PADDLE_WITH_NCCL is defined, if the program runs on CPU,
+  // nccl_ctxs_ in NCCLOpHandleBase will be nullptr, and calling the
+  // GetComm() method will report an error.
+  // There is bugs in all_reduce_op_handle method on CPU devices, skip
+  // this case in temporary.
+  if (dynamic_cast<details::NCCLOpHandleBase *>(&op_handle)->GetNcclContext() ==
+      nullptr) {
+    VLOG(4) << "Skip replacing allreduce op because nccl_ctxs_ is nullptr.";
+    return;
+  }
+
   std::string all_reduce_var_name;
   // If fused, add check_memory_continue OP to fuse inputs
   if (is_fused) {
@@ -666,10 +677,14 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
       ops->emplace_back();
       auto &desc = ops->back();
       ReplaceScaleLossGradOp(*n, &desc);
-    } else if (n->Name() == "allreduce" || n->Name() == "fused_all_reduce") {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    } else if ((n->Name() == "allreduce" || n->Name() == "fused_all_reduce") &&
+               dynamic_cast<details::NCCLOpHandleBase *>(
+                   &(n->Wrapper<details::OpHandleBase>())) != nullptr) {
       VLOG(4) << "convert op node " << n->Name() << " to desc c_allreduce_sum";
       ReplaceAllReduceOp(*n, block, ops);
       VLOG(4) << n->ToString();
+#endif
     } else if (n->Op()) {
       VLOG(4) << "convert op node to desc " << n->Op()->Type();
       if (is_fused_opt(n)) {

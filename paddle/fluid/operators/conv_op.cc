@@ -222,37 +222,19 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #endif  // PADDLE_WITH_CUDA
     return framework::OpKernelType(input_data_type,
                                    ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout,
+                                   phi::DataLayout::kAnyLayout,
                                    framework::LibraryType::kCUDNN);
   }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
 #ifdef PADDLE_WITH_MKLDNN
   if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    int customized_type_value =
-        (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
-         input_data_type == framework::DataTypeTrait<uint8_t>::DataType())
-            ? OperatorWithKernel::IndicateVarDataType(ctx, "Filter") ==
-                      framework::DataTypeTrait<int8_t>::DataType()
-                  ? kConvMKLDNNINT8WS8
-                  : kConvMKLDNNINT8
-            : kConvMKLDNNFP32;
     return framework::OpKernelType(input_data_type,
                                    ctx.GetPlace(),
-                                   framework::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN,
-                                   customized_type_value);
+                                   phi::DataLayout::kMKLDNN,
+                                   framework::LibraryType::kMKLDNN);
   }
 #endif
-
-  // #ifndef PADDLE_WITH_ASCEND_CL
-  //   if (input_data_type == framework::proto::VarType::FP16) {
-  //     PADDLE_ENFORCE_EQ(
-  //         library, framework::LibraryType::kCUDNN,
-  //         platform::errors::InvalidArgument(
-  //             "float16 can only be used when CUDNN or NPU is used"));
-  //   }
-  // #endif
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
@@ -265,15 +247,15 @@ framework::OpKernelType ConvOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
-    auto dl = framework::StringToDataLayout(data_format);
+    auto dl = phi::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for conv
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != phi::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -508,7 +490,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   if (platform::CanCUDNNBeUsed(ctx)) {
     return framework::OpKernelType(data_type,
                                    ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout,
+                                   phi::DataLayout::kAnyLayout,
                                    framework::LibraryType::kCUDNN);
   }
 #endif
@@ -516,9 +498,8 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   if (this->CanMKLDNNBeUsed(ctx, data_type)) {
     return framework::OpKernelType(data_type,
                                    ctx.GetPlace(),
-                                   framework::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN,
-                                   kConvMKLDNNFP32);
+                                   phi::DataLayout::kMKLDNN,
+                                   framework::LibraryType::kMKLDNN);
   }
 #endif
 
@@ -534,15 +515,15 @@ framework::OpKernelType ConvOpGrad::GetKernelTypeForVar(
   // bias are having shape in NCHW order
   if (((var_name == "Input") ||
        (var_name == framework::GradVarName("Output"))) &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
-    auto dl = framework::StringToDataLayout(data_format);
+    auto dl = phi::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != phi::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -696,7 +677,7 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
       framework::OpKernelType::kDefaultCustomizedTypeValue;
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = "AnyLayout";
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
