@@ -57,7 +57,7 @@ def declarative_unsupport_argument_warning(func_name, input_names, inputs,
     for name, inp, sup in zip(input_names, inputs, support_values):
         if inp != sup:
             warnings.warn(f"{func_name} has unsupported parameter in jit: " +
-                          + "{name}, jit will discard it")
+                          f"{name}, jit will discard it")
 
 
 def _switch_to_static_graph_(func):
