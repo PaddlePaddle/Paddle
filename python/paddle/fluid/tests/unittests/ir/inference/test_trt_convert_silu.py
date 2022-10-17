@@ -21,7 +21,7 @@ from typing import Any, Dict, List
 import unittest
 
 
-class TrtConvertSwishTest(TrtLayerAutoScanTest):
+class TrtConvertSiluTest(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
