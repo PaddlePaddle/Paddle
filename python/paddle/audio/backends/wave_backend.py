@@ -21,8 +21,6 @@ from pathlib import Path
 from typing import Optional, Tuple, Union
 from .backend import AudioInfo
 
-__all__ = ['load', 'info', 'save']
-
 
 def _error_message():
     package = "paddleaudio"
