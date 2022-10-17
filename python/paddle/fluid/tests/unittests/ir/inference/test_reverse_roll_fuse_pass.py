@@ -1,4 +1,4 @@
-#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ from functools import partial
 import unittest
 import hypothesis.strategies as st
 
+
 class ReverseRollPass(PassAutoScanTest):
     """
        |
@@ -38,7 +39,7 @@ class ReverseRollPass(PassAutoScanTest):
     """
 
     def sample_predictor_configs(self, program_config):
-        # trt dynamic_shape
+        # trt with dynamic_shape
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
             max_batch_size=4,
@@ -197,7 +198,6 @@ class ReverseRoll2Pass(PassAutoScanTest):
     """
 
     def sample_predictor_configs(self, program_config):
-        # trt dynamic_shape
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
             max_batch_size=4,
