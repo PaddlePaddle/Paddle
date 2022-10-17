@@ -19,6 +19,7 @@ import paddle.inference as paddle_infer
 from functools import partial
 import unittest
 import hypothesis.strategies as st
+import math
 
 
 class ReverseRollPass(PassAutoScanTest):
