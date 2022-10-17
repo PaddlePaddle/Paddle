@@ -19,14 +19,12 @@ import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
-
 import hypothesis
 from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestMergeLayernormFusePass(PassAutoScanTest):
-
     #       input
     #         | [?x3136x96]
     #       reshape2                                                            input
@@ -46,7 +44,6 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # trt dynamic_shape fp32
         config = self.create_trt_inference_config()
-
         config.enable_tensorrt_engine(
             max_batch_size=1,
             workspace_size=1 << 20,
@@ -58,7 +55,6 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
                                           {"input_data": [4, 3136, 384]},
                                           {"input_data": [1, 3136, 96]})
         yield config, ["merge_layernorm"], (1e-5, 1e-5)
-
         # trt dynamic_shape fp16
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
@@ -208,7 +204,6 @@ class TestMergeLayernormFusePass(PassAutoScanTest):
                 TensorConfig(data_gen=partial(generate_input, attrs))
             },
             outputs=['layer_norm_out'])
-
         return program_config
 
     def test(self):

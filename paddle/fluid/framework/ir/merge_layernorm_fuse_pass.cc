@@ -179,7 +179,6 @@ void MergeLayernormFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
-
 REGISTER_PASS(merge_layernorm_fuse_pass,
               paddle::framework::ir::MergeLayernormFusePass);
 REGISTER_PASS_CAPABILITY(merge_layernorm_fuse_pass)
