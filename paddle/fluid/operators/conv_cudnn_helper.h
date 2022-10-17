@@ -784,7 +784,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
         result.workspace_size = t.workspace_size;
         result.exhaustive_search = t.exhaustive_search;
       }
-      if (result.exhaustive_search) {
+      if (!result.exhaustive_search) {
         bool need_update_cache = false;
         // In conv2d_tranpose, enable_autotune is set to false because some
         // algorithm picked by exhaustive search method produce wrong result.
@@ -797,7 +797,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
               SearchAlgorithmBase<PerfT>::template FindAlgoExhaustiveSearch<T>(
                   args, ctx);
           need_update_cache = true;
-        } else if (find_in_cache) {
+        } else if (!find_in_cache) {
           result = SearchAlgorithmBase<PerfT>::FindAlgoHeuristic(args, ctx);
           need_update_cache = true;
         }
