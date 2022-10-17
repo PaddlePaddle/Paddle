@@ -755,10 +755,11 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
   using AlgoT = typename SearchAlgorithmBase<PerfT>::AlgoT;
 
   template <typename T>
-  static SearchResult<AlgoT> Find(const ConvArgs& args,
+  static SearchResult<AlgoT> Find(const phi::GPUContext& ctx,
+                                  const ConvArgs& args,
                                   bool exhaustive_search,
                                   bool deterministic,
-                                  const phi::GPUContext& ctx) {
+                                  bool enable_autotune = true) {
     SearchResult<AlgoT> result;
     bool use_autotune = false;
     auto dtype = platform::CudnnDataType<T>::type;
@@ -768,33 +769,45 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
       result = SearchAlgorithmBase<PerfT>::FindAlgoDeterministic(args);
     } else {
       // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
-      // 2. Once turning on auto-tune, runn heuristic search(default) before
+      // 2. Once turning on auto-tune, run heuristic (default) before
       //    auto-tune process, run exhaustive_search during mentioned process.
+      //    Auto tune is only enabled between specified range.
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
       auto key = args.Convert2ConvCacheKey<T>();
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetConv(
           SearchAlgorithmBase<PerfT>::kAlgoType);
-      bool is_searched_result = false;
-      if (cache.Find(key)) {
+      bool find_in_cache = cache.Find(key);
+      if (find_in_cache) {
         auto t = cache.Get(key);
         result.algo = static_cast<AlgoT>(t.algo);
         result.workspace_size = t.workspace_size;
-        is_searched_result = t.exhaustive_search;
+        result.exhaustive_search = t.exhaustive_search;
       }
-      if (!is_searched_result) {
-        use_autotune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+      if (result.exhaustive_search) {
+        bool need_update_cache = false;
+        // In conv2d_tranpose, enable_autotune is set to false because some
+        // algorithm picked by exhaustive search method produce wrong result.
+        use_autotune = enable_autotune &&
+                       phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
+          // Once autotune is enabled, the autotuned result can rewrite the
+          // previous result in cache found by heuristic method.
           result =
               SearchAlgorithmBase<PerfT>::template FindAlgoExhaustiveSearch<T>(
                   args, ctx);
-        } else {
+          need_update_cache = true;
+        } else if (find_in_cache) {
           result = SearchAlgorithmBase<PerfT>::FindAlgoHeuristic(args, ctx);
+          need_update_cache = true;
         }
-        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                    result.workspace_size,
-                                    exhaustive_search || use_autotune);
-        cache.Set(key, node);
+        if (need_update_cache) {
+          phi::autotune::ConvAutoTuneResult node(
+              static_cast<int64_t>(result.algo),
+              result.workspace_size,
+              exhaustive_search || use_autotune);
+          cache.Set(key, node);
+        }
       }
     }
     VLOG(3) << "[cuDNN " << SearchAlgorithmBase<PerfT>::GetPerfName()

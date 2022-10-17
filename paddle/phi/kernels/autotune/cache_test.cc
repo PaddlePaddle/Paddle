@@ -37,7 +37,7 @@ TEST(AlgosCache, AlgosCache) {
   phi::autotune::ConvCacheKey key(
       x_shape, w_shape, paddings, strides, dilations, dtype, 0, 0);
   EXPECT_EQ(cache.Find(key), false);
-  phi::autotune::DnnNode node(
+  phi::autotune::ConvAutoTuneResult node(
       static_cast<int64_t>(ConvAlgos::GEMMKernel), 0, false);
   cache.Set(key, node);
   EXPECT_EQ(cache.Size(), 1);
@@ -49,7 +49,7 @@ TEST(AlgosCache, AlgosCache) {
   phi::autotune::ConvCacheKey key1(
       x_shape, w_shape, paddings, strides, dilations, dtype, 0, 1);
   EXPECT_EQ(cache.Find(key1), false);
-  phi::autotune::DnnNode node1(
+  phi::autotune::ConvAutoTuneResult node1(
       static_cast<int64_t>(ConvAlgos::CuDNNKernel_1), 0, false);
   cache.Set(key1, node1);
   EXPECT_EQ(cache.Size(), 2);

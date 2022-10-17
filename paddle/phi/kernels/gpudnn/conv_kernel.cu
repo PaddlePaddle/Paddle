@@ -55,8 +55,7 @@ void ConvCudnnKernel(const Context& ctx,
 
   bool exhaustive_search = FLAGS_cudnn_exhaustive_search || exhaustive_search_t;
   bool deterministic = FLAGS_cudnn_deterministic;
-  auto exhaustive_deterministic = exhaustive_search && deterministic;
-  PADDLE_ENFORCE_EQ(exhaustive_deterministic,
+  PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
                     phi::errors::InvalidArgument(
                         "Cann't set exhaustive_search True and "
@@ -314,7 +313,7 @@ void ConvCudnnKernel(const Context& ctx,
   paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-  fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
+  fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
   workspace_size = fwd_result.workspace_size;
 #endif
 

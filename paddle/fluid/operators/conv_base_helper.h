@@ -40,9 +40,6 @@ using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 template <typename AlgoT>
 struct SearchResult {
   SearchResult() {}
-  explicit SearchResult(const phi::autotune::DnnNode& node)
-      : algo(static_cast<AlgoT>(node.algo)),
-        workspace_size(node.workspace_size) {}
 
   explicit SearchResult(AlgoT a) : algo(a) {}
   explicit SearchResult(AlgoT a, float t, size_t size)
@@ -51,6 +48,7 @@ struct SearchResult {
   AlgoT algo = static_cast<AlgoT>(0);
   float time = -1.f;
   size_t workspace_size = 0;
+  bool exhaustive_search = false;
 };
 
 template <typename T>

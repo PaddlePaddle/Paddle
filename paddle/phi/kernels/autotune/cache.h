@@ -56,9 +56,9 @@ struct hash<std::vector<T>> {
 namespace phi {
 namespace autotune {
 
-struct DnnNode {
-  DnnNode() {}
-  DnnNode(int64_t a, size_t size, bool search)
+struct ConvAutoTuneResult {
+  ConvAutoTuneResult() {}
+  ConvAutoTuneResult(int64_t a, size_t size, bool search)
       : algo(a), workspace_size(size), exhaustive_search(search) {}
 
   int64_t algo;
@@ -138,7 +138,7 @@ class CudnnAlgorithmsCacheMap {
  public:
   CudnnAlgorithmsCacheMap() : cache_mutex_(new std::mutex()) { hash_.clear(); }
 
-  DnnNode Get(const ConvCacheKey& key) {
+  ConvAutoTuneResult Get(const ConvCacheKey& key) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
     PADDLE_ENFORCE_NE(
         hash_.find(key),
@@ -166,7 +166,7 @@ class CudnnAlgorithmsCacheMap {
     cache_misses_ = 0;
   }
 
-  void Set(const ConvCacheKey& key, DnnNode algo) {
+  void Set(const ConvCacheKey& key, ConvAutoTuneResult algo) {
     std::lock_guard<std::mutex> lock(*cache_mutex_);
     if (hash_.size() > static_cast<size_t>(FLAGS_search_cache_max_number)) {
       hash_.clear();
@@ -191,7 +191,10 @@ class CudnnAlgorithmsCacheMap {
   int64_t Size() const { return hash_.size(); }
 
  private:
-  std::unordered_map<ConvCacheKey, DnnNode, ConvCacheKeyHash, ConvCacheKeyEqual>
+  std::unordered_map<ConvCacheKey,
+                     ConvAutoTuneResult,
+                     ConvCacheKeyHash,
+                     ConvCacheKeyEqual>
       hash_;
   std::shared_ptr<std::mutex> cache_mutex_;
 
