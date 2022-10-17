@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops
 import paddle.fluid as fluid
-from paddle import compat as cpt
 from paddle.fluid import core, framework
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.framework import _in_eager_mode_
@@ -298,7 +297,7 @@ class RunProgramOpTest(unittest.TestCase):
         grad_name = name + core.grad_var_suffix()
         for i in range(self.program_desc.num_blocks()):
             block = self.program_desc.block(i)
-            var_desc = block.find_var_recursive(cpt.to_bytes(grad_name))
+            var_desc = block.find_var_recursive(grad_name.encode())
             return var_desc.type() if var_desc is not None else None
 
 

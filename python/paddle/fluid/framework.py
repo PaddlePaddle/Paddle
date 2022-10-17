@@ -1389,10 +1389,10 @@ class Variable(metaclass=VariableMetaClass):
 
         is_new_var = False
         name = cpt.to_text(name)
-        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
+        self.desc = self.block.desc.find_var(name.encode())
 
         if self.desc is None:
-            self.desc = self.block.desc.var(cpt.to_bytes(name))
+            self.desc = self.block.desc.var(name.encode())
             is_new_var = True
 
         if is_new_var:
@@ -3688,9 +3688,9 @@ class Block(object):
         else:
             raise ValueError("unsupported var type: %s", type(v))
         orig_var_type = v.type
-        self.desc._rename_var(cpt.to_bytes(name), cpt.to_bytes(new_name))
+        self.desc._rename_var(name.encode(), new_name.encode())
         # NOTE: v is destroyed by C++ after calling _rename_var.
-        d = self.desc.find_var(cpt.to_bytes(new_name))
+        d = self.desc.find_var(new_name.encode())
         if var_type == "Parameter":
             if in_dygraph_mode():
                 var = EagerParamBase(d.shape(),
@@ -3741,7 +3741,7 @@ class Block(object):
     def _remove_var(self, name, sync=True):
         if sync == True:
             self._sync_with_cpp()
-        self.desc._remove_var(cpt.to_bytes(name))
+        self.desc._remove_var(name.encode())
         del self.vars[name]
 
     def create_parameter(self, *args, **kwargs):
@@ -3950,7 +3950,7 @@ class Block(object):
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
-            if not self.desc.find_var(cpt.to_bytes(var)):
+            if not self.desc.find_var(var.encode()):
                 self.vars.pop(var)
 
         # sync operators from cpp
@@ -5829,7 +5829,7 @@ class Program(object):
                 root_block._remove_op(0, read_op_idx + 1)
             for var in root_block.all_vars():
                 if var.type() == core.VarDesc.VarType.READER:
-                    root_block._remove_var(cpt.to_bytes(var.name()))
+                    root_block._remove_var(var.name().encode())
 
         # change all `is_test` attributes to True
         for i in range(res.desc.num_blocks()):

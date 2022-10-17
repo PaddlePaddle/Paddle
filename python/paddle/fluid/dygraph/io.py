@@ -144,7 +144,7 @@ def _append_loaded_suffix_to_var(program_desc):
         var_desc.set_name(new_name)
         for block_idx in range(program_desc.num_blocks()):
             block = program_desc.block(block_idx)
-            block._rename_var(cpt.to_bytes(old_name), cpt.to_bytes(new_name))
+            block._rename_var(old_name.encode(), new_name.encode())
             for op_idx in range(block.op_size()):
                 op = block.op(op_idx)
                 op._rename_input(old_name, new_name)
@@ -223,8 +223,7 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
             else:
                 name_new = name_old
             if name_old != name_new:
-                cur_block._rename_var(cpt.to_bytes(name_old),
-                                      cpt.to_bytes(name_new))
+                cur_block._rename_var(name_old.encode(), name_new.encode())
             if not is_double_grad_var:
                 dict_rename_var_old_new[name_old] = name_new
                 dict_rename_var_new_old[name_new] = name_old
@@ -258,11 +257,11 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
                         op._rename_input(
                             input_arg_name,
                             dict_rename_var_old_new[input_arg_name])
-                        if cur_block.has_var(cpt.to_bytes(input_arg_name)):
+                        if cur_block.has_var(input_arg_name.encode()):
                             cur_block._rename_var(
-                                cpt.to_bytes(input_arg_name),
-                                cpt.to_bytes(
-                                    dict_rename_var_old_new[input_arg_name]))
+                                input_arg_name.encode(),
+                                dict_rename_var_old_new[input_arg_name].encode(
+                                ))
             for output_arg_name in op.output_arg_names():
                 if output_arg_name in dict_rename_var_old_new:
                     if output_arg_name != dict_rename_var_old_new[
@@ -270,11 +269,11 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
                         op._rename_output(
                             output_arg_name,
                             dict_rename_var_old_new[output_arg_name])
-                        if cur_block.has_var(cpt.to_bytes(output_arg_name)):
+                        if cur_block.has_var(output_arg_name.encode()):
                             cur_block._rename_var(
-                                cpt.to_bytes(output_arg_name),
-                                cpt.to_bytes(
-                                    dict_rename_var_old_new[output_arg_name]))
+                                output_arg_name.encode(),
+                                dict_rename_var_old_new[output_arg_name].encode(
+                                ))
     program_desc.flush()
     return dict_rename_var_new_old, dict_rename_var_old_new
 
@@ -411,25 +410,25 @@ class _ProgramHolder(object):
             op = root_block.op(i)
             if op.type() == 'feed':
                 ops_to_remove.append(i)
-                feed_var_name = cpt.to_bytes(op.input('X')[0])
+                feed_var_name = op.input('X')[0].encode()
                 root_block._remove_var(feed_var_name)
                 self._input_descs.append(
-                    root_block.find_var(cpt.to_bytes(op.output('Out')[0])))
+                    root_block.find_var(op.output('Out')[0].encode()))
             elif op.type() == 'scale' and op.output('Out')[0].startswith(
                     'save_infer_model/scale_'):
                 ops_to_remove.append(i)
-                out_var_name = cpt.to_bytes(op.output('Out')[0])
+                out_var_name = op.output('Out')[0].encode()
                 root_block._remove_var(out_var_name)
                 self._output_descs.append(
-                    root_block.find_var(cpt.to_bytes(op.input('X')[0])))
+                    root_block.find_var(op.input('X')[0].encode()))
             elif op.type() == 'fetch':
                 ops_to_remove.append(i)
-                fetch_var_name = cpt.to_bytes(op.output('Out')[0])
+                fetch_var_name = op.output('Out')[0].encode()
                 root_block._remove_var(fetch_var_name)
                 # NOTE: some old pre-train models have no extra scale_op
                 if not op.input('X')[0].startswith('save_infer_model/scale_'):
                     self._output_descs.append(
-                        root_block.find_var(cpt.to_bytes(op.input('X')[0])))
+                        root_block.find_var(op.input('X')[0].encode()))
             else:
                 if op.has_attr("op_callstack"):
                     op.remove_attr("op_callstack")
@@ -935,7 +934,7 @@ def _run_dygraph(instance, input, program_holder):
     # be user wanted result.
     for persistable_var in persistable_vars:
         grad_var_name = persistable_var.name + core.grad_var_suffix()
-        grad_var = trace_program.block(0).find_var(cpt.to_bytes(grad_var_name))
+        grad_var = trace_program.block(0).find_var(grad_var_name.encode())
         # NOTE: cannot find var desc maybe not problem,
         # such as in batch_norm
         if grad_var is None:

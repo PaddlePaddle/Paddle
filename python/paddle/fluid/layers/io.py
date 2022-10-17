@@ -477,6 +477,7 @@ def _py_reader(capacity,
         def __provider_thread__(legacy_expected_place):
             try:
                 # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
+
                 _set_expected_place(legacy_expected_place)
 
                 for tensors in func():

@@ -535,8 +535,8 @@ class Engine:
             outputs = []
             losses = []
             metrics = []
-            inputs = self._inputs
-            labels = self._labels
+            inputs = self._inputs if self._inputs else []
+            labels = self._labels if self._labels else []
             serial_main_prog = self._orig_main_prog.clone()
             serial_startup_prog = self._orig_startup_prog.clone()
             if not self._skip_build:
@@ -848,12 +848,12 @@ class Engine:
                     history = self._prepare_history(outs, fetch_indices,
                                                     self._mode)
 
-                # if valid_data and epoch % valid_freq == 0:
-                #     self.evaluate(valid_data, valid_sample_split, batch_size,
-                #                   valid_steps, collate_fn, callbacks)
-                #     self._switch_mode("train")
-                # else:
-                #     self._reset_metrics()
+                if valid_data and epoch % valid_freq == 0:
+                    self.evaluate(valid_data, valid_sample_split, batch_size,
+                                  valid_steps, collate_fn, callbacks)
+                    self._switch_mode("train")
+                else:
+                    self._reset_metrics()
             return history
 
     def evaluate(self,
@@ -1139,8 +1139,10 @@ class Engine:
             self.to_mode(mode)
         if inputs or labels:
             self._skip_build = True
+            self._inputs_spec = inputs_spec
+            self._labels_spec = labels_spec
             self._inputs, self._labels = self._prepare_data_tensor(
-                inputs_spec, labels_spec, inputs, labels)
+                self._inputs_spec, self._labels_spec, inputs, labels)
             self._orig_main_prog = main_program
             if self._orig_main_prog is None:
                 self._orig_main_prog = static.default_main_program()
@@ -1152,9 +1154,11 @@ class Engine:
             else:
                 self._switch_mode(self._mode)
         elif inputs_spec or labels_spec:
+            self._inputs_spec = inputs_spec
+            self._labels_spec = labels_spec
             self._outside_dataloader = True
             self._inputs, self._labels = self._prepare_data_tensor(
-                inputs_spec, labels_spec)
+                self._inputs_spec, self._labels_spec)
             self._orig_main_prog = main_program
             if self._orig_main_prog is None:
                 self._orig_main_prog = static.default_main_program()
