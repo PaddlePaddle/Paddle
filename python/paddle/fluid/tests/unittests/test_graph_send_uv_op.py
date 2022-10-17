@@ -15,8 +15,6 @@
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 
 from op_test import OpTest
@@ -271,3 +269,7 @@ class API_GeometricSendUVTest(unittest.TestCase):
     def test_api_eager_dygraph(self):
         with _test_eager_guard():
             self.test_compute_all_dygraph()
+
+
+if __name__ == "__main__":
+    unittest.main()

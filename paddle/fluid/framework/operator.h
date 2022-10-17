@@ -168,7 +168,7 @@ class OperatorBase {
   virtual void Stop() {}
 
   /// if scope is not null, also show dimensions of arguments
-  virtual std::string DebugStringEx(const ScopeBase* scope) const;
+  virtual std::string DebugStringEx(const Scope* scope) const;
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   virtual bool SupportGPU() const { return false; }
@@ -323,10 +323,16 @@ class ExecutionContext {
   virtual const Attribute& GetAttr(const std::string& name) const {
     auto iter = op_.Attrs().find(name);
     if (iter == op_.Attrs().end()) {
-      return op_.RuntimeAttrs().at(name);
-    } else {
-      return iter->second;
+      iter = op_.RuntimeAttrs().find(name);
+      PADDLE_ENFORCE_NE(
+          iter,
+          op_.RuntimeAttrs().end(),
+          platform::errors::NotFound("(%s) is not found in AttributeMap and "
+                                     "RuntimeAttributeMap of (%s) operator.",
+                                     name,
+                                     op_.Type()));
     }
+    return iter->second;
   }
 
   virtual bool HasInput(const std::string& name) const;
@@ -621,7 +627,8 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
-  bool SupportsKernelType(const OpKernelType& kernel_type) const;
+  bool SupportsKernelType(const OpKernelType& kernel_type,
+                          const ExecutionContext& exe_ctx) const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;

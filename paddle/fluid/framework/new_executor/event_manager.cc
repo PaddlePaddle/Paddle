@@ -21,11 +21,13 @@ namespace framework {
 namespace interpreter {
 void WaitEvent(const Instruction& instruction, const platform::Place& place) {
   // If InterpreterCore in on CPUPlace, do nothing.
-  if (platform::is_cpu_place(place)) return;
+  if (platform::is_cpu_place(place)) {
+    return;
+  }
 
   VLOG(3) << "Deal StreamWaitEventOrSync for " << instruction.OpBase()->Type();
 
-  for (auto& event_iter : instruction.InputEvents()) {
+  for (const auto& event_iter : instruction.InputEvents()) {
     platform::RecordEvent record(
         "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
     VLOG(3) << "wait var_id: " << event_iter.var_id_
@@ -37,9 +39,11 @@ void WaitEvent(const Instruction& instruction, const platform::Place& place) {
 
 void RecordEvent(const Instruction& instruction, const platform::Place& place) {
   // If InterpreterCore in on CPUPlace, do nothing.
-  if (platform::is_cpu_place(place)) return;
+  if (platform::is_cpu_place(place)) {
+    return;
+  }
 
-  for (auto& event : instruction.OutputEvents()) {
+  for (const auto& event : instruction.OutputEvents()) {
     platform::RecordEvent record(
         "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
     VLOG(3) << "Record event in out_var_id: " << event.var_id_;

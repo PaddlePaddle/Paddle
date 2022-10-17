@@ -88,6 +88,9 @@ namespace distributed {
     case experimental::DataType::BOOL:       \
       func<bool>(args);                      \
       break;                                 \
+    case experimental::DataType::BFLOAT16:   \
+      func<bfloat16>(args);                  \
+      break;                                 \
     default:                                 \
       VLOG(0) << "Error: Unknown DataType."; \
       exit(-1);                              \
@@ -293,6 +296,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
     const AllreduceOptions& opts) {
+  return AllReduce(inputs, outputs, opts, true);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllReduce(
+    std::vector<phi::DenseTensor>& inputs,
+    std::vector<phi::DenseTensor>& outputs,
+    const AllreduceOptions& opts,
+    bool sync_op) {
   auto tag = next_tag();
   std::shared_ptr<GlooTask> task;
   auto context = get_context();

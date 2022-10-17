@@ -22,7 +22,6 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
 
 paddle.enable_static()
 

@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.io import IterableDataset, BatchSampler, DataLoader, get_worker_info
+from paddle.io import DataLoader, IterableDataset, get_worker_info
 
 
 class RangeIterableDatasetSplit(IterableDataset):

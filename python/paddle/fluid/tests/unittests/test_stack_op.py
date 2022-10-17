@@ -17,8 +17,9 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest, convert_float_to_uint16
-import paddle.fluid.core as core
 from paddle.fluid.framework import Program, program_guard
+
+paddle.enable_static()
 
 
 class TestStackOpBase(OpTest):
@@ -98,6 +99,12 @@ class TestStackOp6(TestStackOpBase):
 
     def initParameters(self):
         self.axis = 3
+
+
+class TestStackOp_ZeroDim(TestStackOpBase):
+
+    def initParameters(self):
+        self.input_dim = ()
 
 
 class TestStackBF16Op(OpTest):
@@ -292,6 +299,27 @@ class TestStackOpWithNegativeShape(unittest.TestCase):
         np.testing.assert_allclose(out[0],
                                    np.array([[1, 1, 1], [0, 0, 0]]),
                                    rtol=1e-05)
+
+
+class TestStackAPI_ZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
+        x1 = paddle.rand([])
+        x2 = paddle.rand([])
+        x1.stop_gradient = False
+        x2.stop_gradient = False
+        out = paddle.stack([x1, x2])
+        out.backward()
+
+        self.assertEqual(out.shape, [2])
+        self.assertEqual(x1.grad.shape, [])
+        self.assertEqual(x2.grad.shape, [])
+        self.assertEqual(out.grad.shape, [2])
+
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

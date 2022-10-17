@@ -100,6 +100,18 @@
     func : atanh_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            atanh_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
+- backward_op : batch_norm_grad
+  forward : batch_norm (Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor mean_out, Tensor variance_out, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x, scale, bias]
+  kernel :
+    func : batch_norm_coo_grad {sparse_coo, dense, dense, dense, dense, dense, dense, dense, sparse_coo -> sparse_coo, dense, dense}
+    data_type : out_grad
+  optional : mean_out, variance_out, reserve_space
+
 - backward_op : cast_grad
   forward : cast(Tensor x, DataType index_dtype, DataType value_dtype) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, DataType value_dtype)
@@ -112,8 +124,8 @@
            cast_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
     data_type : out_grad
 
-- backward_op : conv3d_coo_grad
-  forward : conv3d_coo (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key) -> Tensor(out), Tensor(rulebook), Tensor(counter)
+- backward_op : conv3d_grad
+  forward : conv3d (Tensor x, Tensor kernel, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key) -> Tensor(out), Tensor(rulebook), Tensor(counter)
   args : (Tensor x, Tensor kernel, Tensor out, Tensor rulebook, Tensor counter, Tensor out_grad, int[] paddings, int[] dilations, int[] strides, int groups, bool subm, str key)
   output : Tensor(x_grad), Tensor(kernel_grad)
   infer_meta :
@@ -260,6 +272,17 @@
     func : relu_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
            relu_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
 
+- backward_op : reshape_grad
+  forward : reshape(Tensor x, IntArray shape) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : reshape_coo_grad {sparse_coo, sparse_coo -> sparse_coo},
+           reshape_csr_grad {sparse_csr, sparse_csr -> sparse_csr}
+
 - backward_op : scale_grad
   forward : scale(Tensor x, float scale, float bias, bool bias_after_scale) -> Tensor(out)
   args : (Tensor out_grad, float scale)
@@ -343,6 +366,18 @@
   kernel :
     func : subtract_coo_coo_grad{sparse_coo, sparse_coo, sparse_coo -> sparse_coo, sparse_coo},
            subtract_csr_csr_grad{sparse_csr, sparse_csr, sparse_csr -> sparse_csr, sparse_csr}
+
+- backward_op : sync_batch_norm_grad
+  forward : sync_batch_norm(Tensor x, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu) -> Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor reserve_space, Tensor out_grad, float momentum, float epsilon, str data_layout, bool is_test, bool use_global_stats, bool trainable_statistics, bool fuse_with_relu)
+  output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [x, scale, bias]
+  kernel :
+    func : sync_batch_norm_coo_grad{sparse_coo, dense, dense, dense, dense, dense, sparse_coo -> sparse_coo, dense, dense}
+    data_type : out_grad
+  optional : reserve_space
 
 - backward_op : tan_grad
   forward : tan(Tensor x) -> Tensor(out)

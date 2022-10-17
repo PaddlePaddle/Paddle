@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from paddle.fluid import core
-import paddle.fluid as fluid
 
 np.random.random(123)
 

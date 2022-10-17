@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 import paddle
 from op_test import OpTest
-from gradient_checker import grad_check
 
 
 def valid_eigh_result(A, eigh_value, eigh_vector, uplo):
