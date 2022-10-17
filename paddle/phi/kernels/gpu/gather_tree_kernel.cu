@@ -36,10 +36,10 @@ __global__ void GatherTree(const T *ids_data,
     auto parent = parents_data[idx];
     for (int step = max_length - 2; step >= 0; step--) {
       PADDLE_ENFORCE((parent < beam_size),
-          "The parents must be less than beam size, but recieved"
-          "parents %ld is greater than or equal to beam size %ld. ",
-          parent,
-          beam_size);
+                     "The parents must be less than beam size, but recieved"
+                     "parents %ld is greater than or equal to beam size %ld. ",
+                     parent,
+                     beam_size);
 
       idx = step * batch_size * beam_size + batch * beam_size;
       out_data[idx + beam] = ids_data[idx + parent];
