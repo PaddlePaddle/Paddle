@@ -4,6 +4,7 @@ list(
   CONVERT_FILES
   matmul_op.cc
   matmul_v2_op.cc
+  bmm_op.cc
   conv2d_op.cc
   fc_op.cc
   pool2d_op.cc
