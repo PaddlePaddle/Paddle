@@ -48,8 +48,8 @@ from .dist_context import DistributedContext, get_default_distributed_context
 from .strategy import Strategy
 from .interface import CollectionNames, get_collection
 from ..utils.log_utils import get_logger
-from .cost import CostEstimator
-from .completion import Completer
+from .utils import initialize_pg_in_full_mode
+from .cost.estimate_cost import get_cost_from_engine
 
 
 class Engine:
@@ -129,12 +129,6 @@ class Engine:
                 "'model must be sub classes of `paddle.nn.Layer` or any callable function."
             )
         self._model = model
-
-        # if loss and not isinstance(loss,
-        #                            paddle.nn.Layer) and not callable(loss):
-        #     raise TypeError(
-        #         "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
-        #     )
         self._loss = loss
 
         if optimizer and not isinstance(
@@ -654,11 +648,13 @@ class Engine:
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
 
-            # NOTE: add the comm init control in the future for auto search
-            for process_group in all_process_groups:
-                if self._cur_rank not in process_group.ranks:
-                    continue
-                process_group.instantiate()
+            if self._strategy.auto_mode == "full":
+                initialize_pg_in_full_mode(all_process_groups, cur_rank)
+            else:
+                for process_group in all_process_groups:
+                    if self._cur_rank not in process_group.ranks:
+                        continue
+                    process_group.instantiate()
 
         place = _get_device()
         if isinstance(place, fluid.CUDAPlace):
@@ -1028,16 +1024,9 @@ class Engine:
 
         test_dataloader = self._prepare_dataloader_from_generator(
             dataset=test_data,
-            # feed_list=feed_list,
             capacity=70,
-            # use_double_buffer=use_double_buffer,
             iterable=False,
-            # return_list=return_list,
-            # use_multiprocess=use_multiprocess,
-            # drop_last=drop_last,
-            # places=places,
             batch_size=batch_size,
-            # epochs=epochs,
             steps_per_epoch=steps,
             collate_fn=collate_fn)
 
@@ -1106,21 +1095,19 @@ class Engine:
             steps_per_epoch=steps_per_epoch)
         return dataloader
 
-    def dataloader_from_generator(
-            self,
-            dataset,
-            capacity=70,
-            use_double_buffer=True,
-            iterable=True,
-            # return_list=False,
-            use_multiprocess=False,
-            drop_last=True,
-            batch_size=1,
-            epochs=1,
-            steps_per_epoch=None,
-            collate_fn=None,
-            sample_split=1,
-            mode=None):
+    def dataloader_from_generator(self,
+                                  dataset,
+                                  capacity=70,
+                                  use_double_buffer=True,
+                                  iterable=True,
+                                  use_multiprocess=False,
+                                  drop_last=True,
+                                  batch_size=1,
+                                  epochs=1,
+                                  steps_per_epoch=None,
+                                  collate_fn=None,
+                                  sample_split=1,
+                                  mode=None):
         if mode is not None:
             self.to_mode(mode)
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
@@ -1133,14 +1120,12 @@ class Engine:
             self._switch_mode(self._mode)
         dataloader = self._prepare_dataloader_from_generator(
             dataset=dataset,
-            # feed_list=feed_list,
             capacity=capacity,
             use_double_buffer=use_double_buffer,
             iterable=iterable,
             return_list=False,
             use_multiprocess=use_multiprocess,
             drop_last=drop_last,
-            # places=places,
             batch_size=batch_size,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
@@ -1193,20 +1178,7 @@ class Engine:
             assert self._inputs_spec and self._labels_spec, \
                 "Please call the dataloader(...) before calling prepare(...)"
 
-    def run(
-        self,
-        data=None,
-        # program=None,
-        feed=None,
-        fetch_list=None,
-        # feed_var_name='feed',
-        # fetch_var_name='fetch',
-        # scope=None,
-        # return_numpy=True,
-        # use_program_cache=False,
-        # return_merged=True,
-        # use_prune=False,
-        mode=None):
+    def run(self, data=None, feed=None, fetch_list=None, mode=None):
         if mode is not None:
             self.to_mode(mode)
         feed_dict = self._prepare_feed(data, feed, self._mode)
@@ -1577,31 +1549,7 @@ class Engine:
             path, load_optimizer)
         return self._state_dict, self._dist_attr
 
-
-    @staticmethod
-    def _get_lr_scheduler(program):
-        lr_sheduler = None
-        if hasattr(program, 'lr_sheduler'):
-            from paddle.optimizer.lr import LRScheduler
-            lr_sheduler = program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-        return lr_sheduler
-
-    def _get_lr(self, optimizer):
-        if isinstance(optimizer, paddle.optimizer.Optimizer):
-            return optimizer.get_lr()
-        elif isinstance(optimizer, paddle.fluid.optimizer.Optimizer):
-            if isinstance(optimizer._learning_rate, float):
-                return optimizer._learning_rate
-            else:
-                return optimizer._learning_rate()
-        else:
-            raise TypeError(
-                    "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
-                        " or `paddle.fluid.optimizer.Optimizer`, but got {}.".format(type(optimizer))
-                )
-
-    def cost(self, mode="train"):
+    def cost(self, inputs_spec=None, labels_spec=None, mode="train"):
         """
         Get and Print cost, including memory of every rank,
         max memory among all ranks, and the global cost of one step based on
@@ -1610,23 +1558,14 @@ class Engine:
         computation cost will be added.
 
         Args:
+            inputs_spec(InputSpec): The specification of inputs. Default: None.
+            labels_spec(InputSpec): The specification of labels. Default: None.
             mode (str): The engine mode must be in ["train", "predict", "eval"]. Default: "train".
 
         Returns:
             Return the global execution time (ms) and max memory (B).
 
         """
-        if _non_static_mode() or self._dygraph_mode:
-            raise ValueError(
-                "Please call `engine._prepare_program('mode')` firstly when in the static graph mode."
-            )
-
-        # Check mode
-        accepted_modes = ["train", "predict", "eval"]
-        if mode not in accepted_modes:
-            raise ValueError("The mode {} is not in accepted modes {}".format(
-                mode, accepted_modes))
-
         # Check parallel mode
         if self._strategy.auto_mode == "full":
             print(
@@ -1634,55 +1573,27 @@ class Engine:
             )
             return
 
-        # Construct cost estimator by original main program
-        serial_main_prog = self._serial_main_progs[mode].clone(
-        ) if mode in self._serial_main_progs else self._orig_main_prog.clone()
-        serial_startup_prog = self._serial_startup_progs[mode].clone(
-        ) if mode in self._serial_startup_progs else self._orig_startup_prog.clone(
-        )
-        losses = to_list(
-            self._loss) if (not isinstance(self._loss, paddle.nn.Layer)
-                            and not callable(self._loss)) else self._losses
-        assert losses
+        # Check mode
+        accepted_modes = ["train", "predict", "eval"]
+        if mode not in accepted_modes:
+            raise ValueError("The mode {} is not in accepted modes {}".format(
+                mode, accepted_modes))
+        self.to_mode(mode)
 
-        dist_context = DistributedContext(serial_main_prog, serial_startup_prog,
-                                          self._optimizer, losses, {},
-                                          {"loss": losses}, self._cluster,
-                                          self._strategy)
-        completer = Completer(dist_context)
-        completer.complete_forward_annotation()
-        dist_context.block_state.parse_forward_blocks(
-            dist_context.serial_main_program)
+        if inputs_spec is not None:
+            self._inputs_spec, self._labels_spec = inputs_spec, labels_spec
+            self._inputs, self._labels = self._prepare_data_tensor(
+                self._inputs_spec, self._labels_spec)
+            self._build(mode)
+            self._plan(mode)
+        else:
+            if _non_static_mode() or self._dygraph_mode:
+                raise ValueError(
+                    "Please call `engine._prepare_program('mode')` firstly when in the static graph mode."
+                )
 
-        if mode == "eval" or mode == "predict":
-            cost_estimator = CostEstimator(serial_main_prog, self._cluster)
-        elif mode == "train":
-            # Get serial main program with backward
-            serial_optimizer = self._optimizer
-            parallelizer = Parallelizer(mode, completer, dist_context)
-            # Generate backward
-            loss_name = dist_context.serial_fetch_vars["loss"][0].name
-            serial_loss = serial_main_prog.global_block()._var_recursive(
-                loss_name)
-            params_grads = parallelizer._generate_backward(
-                serial_main_prog, serial_startup_prog, serial_loss)
-
-            # Generate optimizer
-            optimizer_ops = parallelizer._generate_optimizer(
-                serial_main_prog, serial_startup_prog, serial_optimizer,
-                params_grads)
-            cost_estimator = CostEstimator(serial_main_prog, self._cluster)
-
-        # Estimate the exec cost
-        cost_estimator = CostEstimator(serial_main_prog, self._cluster)
-        global_cost = cost_estimator.estimate(dist_context)
-
-        # Estimate the max memories
-        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
-            dist_context)
-
-        # Print the cost
-        cost_estimator.pretty_print_cost()
+        # Estimate the exec cost and max memory
+        global_cost, max_memory = get_cost_from_engine(self, mode)
 
         return global_cost.time, max_memory
 

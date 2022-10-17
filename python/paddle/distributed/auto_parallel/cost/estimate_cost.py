@@ -502,3 +502,61 @@ class CostEstimator:
         self._pretty_print_global()
         print("The memory of every rank is as follows:")
         self._pretty_print_memory_cost()
+
+
+def get_cost_from_engine(engine, mode):
+    from ..utils import to_list
+    # Construct cost estimator by original main program
+    serial_main_prog = engine._serial_main_progs[mode].clone(
+    ) if mode in engine._serial_main_progs else engine._orig_main_prog.clone()
+
+    serial_startup_prog = engine._serial_startup_progs[mode].clone(
+    ) if mode in engine._serial_startup_progs else engine._orig_startup_prog.clone(
+    )
+    losses = to_list(
+        engine._loss) if (not isinstance(engine._loss, paddle.nn.Layer)
+                          and not callable(engine._loss)) else engine._losses
+
+    if mode in engine._dist_contexts:
+        dist_context = engine._dist_contexts[mode]
+        completer = engine._planners[mode].completer
+    else:
+        from ..completion import Completer
+        from ..dist_context import DistributedContext
+        dist_context = DistributedContext(serial_main_prog, serial_startup_prog,
+                                          engine._optimizer, losses, {},
+                                          {"loss": losses}, engine._cluster,
+                                          engine._strategy)
+        completer = Completer(dist_context)
+        completer.complete_forward_annotation()
+        dist_context.block_state.parse_forward_blocks(
+            dist_context.serial_main_program)
+
+    if mode == "eval" or mode == "predict":
+        cost_estimator = CostEstimator(serial_main_prog, engine._cluster)
+    elif mode == "train":
+        from ..parallelizer_v2 import Parallelizer
+        # Get serial main program with backward
+        serial_optimizer = engine._optimizer
+        parallelizer = Parallelizer(mode, completer, dist_context)
+        # Generate backward
+        loss_name = dist_context.serial_loss.name
+        serial_loss = serial_main_prog.global_block()._var_recursive(loss_name)
+        params_grads = parallelizer._generate_backward(serial_main_prog,
+                                                       serial_startup_prog,
+                                                       serial_loss)
+
+        # Generate optimizer
+        optimizer_ops = parallelizer._generate_optimizer(
+            serial_main_prog, serial_startup_prog, serial_optimizer,
+            params_grads)
+        cost_estimator = CostEstimator(serial_main_prog, engine._cluster)
+
+    # Estimate global_cost and  max memory
+    global_cost = cost_estimator.estimate(dist_context)
+    max_memory = cost_estimator._estimate_max_memory_by_dist_op(dist_context)
+
+    # Print the cost
+    cost_estimator.pretty_print_cost()
+
+    return global_cost, max_memory
