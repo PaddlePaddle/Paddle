@@ -22,12 +22,14 @@ from .utils import paddle_2_number, paddle_2_number, number_2_dtype
 
 _hcg = None
 _use_cache = False
+_enable_partial_send_recv = True
 
 
-def initialize_p2p_groups(hcg, use_cache=True):
-    global _hcg, _use_cache
+def initialize_p2p_groups(hcg, use_cache=True, enable_partial_send_recv=True):
+    global _hcg, _use_cache, _enable_partial_send_recv
     _hcg = hcg
     _use_cache = use_cache
+    _enable_partial_send_recv = enable_partial_send_recv
     send_next_group, send_prev_group, recv_next_group, recv_prev_group = _hcg.get_p2p_groups(
     )
 
@@ -157,7 +159,8 @@ _send_recv_meta = SendRecvMeta()
 
 
 def _is_valid_send_recv_partial(tensor, mp_degree):
-
+    if not _enable_partial_send_recv:
+        return False
     tensor_numel = np.prod(tensor.shape)
     assert tensor_numel != 0, "can't send/recv zero element"
     return mp_degree > 1 and tensor_numel % mp_degree == 0
