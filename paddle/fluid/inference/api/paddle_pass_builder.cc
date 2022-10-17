@@ -282,7 +282,6 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "conv_eltwiseadd_bn_fuse_pass",            //
                   "conv_transpose_bn_fuse_pass",             //
                   "conv_transpose_eltwiseadd_bn_fuse_pass",  //
-                  "common_subexpression_elimination_pass",   //
                   "is_test_pass",                            //
                   "constant_folding_pass",
                   // following pass should be located in the last, since
