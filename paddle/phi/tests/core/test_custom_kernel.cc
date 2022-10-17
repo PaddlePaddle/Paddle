@@ -246,7 +246,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   double fake_attr_double = 3.0;
   int64_t fake_attr_int64 = 4;
   phi::DataType fake_attr_dtype = phi::DataType::UINT32;
-  paddle::framework::LoDTensor tmp_tensor;
+  phi::DenseTensor tmp_tensor;
   tmp_tensor.mutable_data<uint8_t>({1}, phi::TransToPhiPlace(backend));
   phi::Scalar fake_attr_scalar{tmp_tensor};
   phi::IntArray fake_attr_int_array;

@@ -15,8 +15,6 @@
 import os
 import unittest
 import time
-import threading
-import numpy
 import tempfile
 
 import paddle

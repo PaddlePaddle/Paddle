@@ -39,7 +39,6 @@
 #include "paddle/fluid/platform/init.h"
 
 using AtomicVectorSizeT = std::vector<std::atomic<size_t>>;
-constexpr size_t kPrepareWorkQueueIdx = 2;
 
 namespace paddle {
 namespace framework {
@@ -48,13 +47,7 @@ class AsyncWorkQueue {
  public:
   AsyncWorkQueue(size_t host_num_threads,
                  size_t deivce_num_threads,
-                 size_t prepare_num_threads,
                  EventsWaiter* waiter);
-
-  std::future<std::unique_ptr<AtomicVectorSizeT>> PrepareAtomicDeps(
-      const std::vector<size_t>& dependecy_count);
-  std::future<std::unique_ptr<AtomicVectorSizeT>> PrepareAtomicVarRef(
-      const std::vector<VariableMetaInfo>& vec_meta_info);
 
   // void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }
 
@@ -71,30 +64,22 @@ class AsyncWorkQueue {
   std::unique_ptr<WorkQueueGroup> queue_group_;
 };
 
-std::unique_ptr<AtomicVectorSizeT> PrepareAtomicDeps(
-    const std::vector<size_t>& dependecy_count);
-std::unique_ptr<AtomicVectorSizeT> PrepareAtomicVarRef(
-    const std::vector<VariableMetaInfo>& vec_meta_info);
-
 void LogDeviceMemoryStats(const platform::Place& place);
 
-void build_variable_scope(const framework::BlockDesc& block,
-                          VariableScope* var_scope,
-                          bool use_local_scope = true);
+void BuildVariableScope(const framework::BlockDesc& block,
+                        VariableScope* var_scope,
+                        bool use_local_scope = true);
 
-void build_op_func_list(const platform::Place& place,
-                        const framework::BlockDesc& block,
-                        const std::set<std::string>& skip_gc_vars,
-                        std::vector<OpFuncNode>* vec_func_list,
-                        VariableScope* scope,
-                        bool use_local_scope = true,
-                        bool used_for_jit = false);
+void BuildOpFuncList(const platform::Place& place,
+                     const framework::BlockDesc& block,
+                     const std::set<std::string>& skip_gc_vars,
+                     std::vector<OpFuncNode>* vec_func_list,
+                     VariableScope* scope,
+                     bool use_local_scope = true,
+                     bool used_for_jit = false);
 
-void add_fetch(const std::vector<std::string>& fetch_names,
-               framework::BlockDesc* block);
-
-std::vector<size_t> merge_vector(const std::vector<size_t>& first,
-                                 const std::vector<size_t>& second);
+void AddFetch(const std::vector<std::string>& fetch_names,
+              framework::BlockDesc* block);
 
 }  // namespace interpreter
 }  // namespace framework

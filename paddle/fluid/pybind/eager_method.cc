@@ -162,8 +162,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
-      auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
-          selected_rows->mutable_value());
+      auto* dense_tensor =
+          static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
 
       // deep copy
       paddle::memory::Copy(
@@ -197,8 +197,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
-      auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
-          selected_rows->mutable_value());
+      auto* dense_tensor =
+          static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
       paddle::platform::GpuMemcpySync(
           pybind11::detail::array_proxy(array)->data,
           dense_tensor->data(),
@@ -224,8 +224,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
-      auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
-          selected_rows->mutable_value());
+      auto* dense_tensor =
+          static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
       paddle::memory::Copy(
           place,
           reinterpret_cast<void*>(pybind11::detail::array_proxy(array)->data),
@@ -251,8 +251,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
-      auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
-          selected_rows->mutable_value());
+      auto* dense_tensor =
+          static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
       phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
           ->MemoryCopyD2H(
               pybind11::detail::array_proxy(array)->data,
@@ -646,13 +646,11 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
                         "Tensor %s has not been initialized! please initialize "
                         "src tensor before share_buffer_with to other.",
                         self->tensor.name()));
-  auto* src_tensor =
-      static_cast<paddle::framework::Tensor*>(self->tensor.impl().get());
+  auto* src_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   if (!dst_ptr->defined()) {
     dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
   }
-  auto dst_tensor =
-      static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
+  auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
   dst_tensor->ShareBufferWith(*src_tensor);
   dst_tensor->ShareDataTypeWith(*src_tensor);
   RETURN_PY_NONE
@@ -676,10 +674,8 @@ static PyObject* tensor__is_shared_buffer_with(TensorObject* self,
   if (!self->tensor.defined() || !dst_ptr->defined()) {
     return ToPyObject(res);
   }
-  auto* self_ptr =
-      static_cast<paddle::framework::Tensor*>(self->tensor.impl().get());
-  auto dst_tensor =
-      static_cast<paddle::framework::Tensor*>(dst_ptr->impl().get());
+  auto* self_ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
   res = dst_tensor->IsSharedBufferWith(*self_ptr);
   return ToPyObject(res);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -762,8 +758,7 @@ static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
     return ToPyObject(&empty_tensor);
   }
   if (self->tensor.is_dense_tensor()) {
-    auto* tensor =
-        static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
+    auto* tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
     VLOG(6) << "tensor: " << tensor->IsInitialized();
     return ToPyObject(tensor);
   } else {
@@ -803,8 +798,8 @@ static PyObject* tensor_method__get_tensor_from_selected_rows(
       selected_rows->initialized(),
       paddle::platform::errors::Fatal("SelectedRows must be initialized."));
 
-  auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
-      selected_rows->mutable_value());
+  auto* dense_tensor =
+      static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
   VLOG(1) << "dense_tensor: " << dense_tensor->IsInitialized();
 
   auto t = paddle::experimental::Tensor(
@@ -1221,11 +1216,15 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         } else if (self->tensor.dtype() ==
                    paddle::experimental::DataType::BOOL) {
           attrs["bool_values"] = std::vector<int>{value_obj_tmp.cast<bool>()};
+        } else if (self->tensor.dtype() ==
+                   paddle::experimental::DataType::FLOAT16) {
+          attrs["fp16_values"] =
+              std::vector<float>{value_obj_tmp.cast<float>()};
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "When assign a value to a paddle.Tensor, "
               "the data type of the paddle.Tensor must be bool, "
-              "float32, int32 or int64, "
+              "float32, int32, int64 or float16, "
               "please check the type of tensor."));
         }
         attrs["shape"] = std::vector<int64_t>{1};
@@ -1830,8 +1829,7 @@ static PyObject* tensor__grad_value(TensorObject* self,
     RETURN_PY_NONE
   }
   if (grad->is_dense_tensor()) {
-    auto* grad_tensor =
-        static_cast<paddle::framework::LoDTensor*>(grad->impl().get());
+    auto* grad_tensor = static_cast<phi::DenseTensor*>(grad->impl().get());
     return ToPyObject(grad_tensor);
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
@@ -1880,8 +1878,7 @@ static PyObject* tensor_method__uva(TensorObject* self,
                         "Unified virtual addressing only support "
                         "CPU Tensor currently."));
   int device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
-  auto* self_tensor =
-      static_cast<paddle::framework::LoDTensor*>(self->tensor.impl().get());
+  auto* self_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
   tensor_uva(self_tensor, device_id);
 
   RETURN_PY_NONE

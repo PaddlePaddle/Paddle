@@ -31,8 +31,8 @@ void MLUReduceOp(const framework::ExecutionContext& context,
       platform::is_mlu_place(context.GetPlace()),
       true,
       platform::errors::Unavailable("This kernel only runs on MLU."));
-  auto* input = context.Input<Tensor>("X");
-  auto* output = context.Output<Tensor>("Out");
+  auto* input = context.Input<phi::DenseTensor>("X");
+  auto* output = context.Output<phi::DenseTensor>("Out");
   output->mutable_data<T>(context.GetPlace());
 
   bool reduce_all = context.Attr<bool>("reduce_all");

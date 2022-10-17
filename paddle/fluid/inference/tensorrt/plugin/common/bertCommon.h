@@ -14,8 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
-#define PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_
+#pragma once
 
 #include <cublas_v2.h>
 #include <cuda_fp16.h>
@@ -220,5 +219,3 @@ inline nvinfer1::DataType fieldTypeToDataType(
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
-
-#endif  // PADDLE_FLUID_INFERENCE_TENSORRT_PLUGIN_COMMON_BERTCOMMON_H_

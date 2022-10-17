@@ -41,13 +41,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 // for debug
 // #define _DEBUG_FUSED_MULTI_TRANSFORMER
 
 template <typename T>
-static void AllReduce(framework::Tensor &tensor,  // NOLINT
+static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                       const int ring_id,
                       const int count,
                       const phi::GPUContext &ctx) {

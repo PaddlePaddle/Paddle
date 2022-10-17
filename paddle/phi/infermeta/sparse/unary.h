@@ -24,5 +24,12 @@ void IndicesInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ValuesInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void TransposeInferMeta(const MetaTensor& x,
+                        const std::vector<int>& axis,
+                        MetaTensor* out);
+
+void TransposeGradInferMeta(const MetaTensor& x,
+                            const std::vector<int>& axis,
+                            MetaTensor* out);
 }  // namespace sparse
 }  // namespace phi

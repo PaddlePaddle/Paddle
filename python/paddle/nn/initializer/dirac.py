@@ -19,7 +19,7 @@ from ...fluid import framework
 from ...fluid.framework import _current_expected_place
 from paddle import in_dynamic_mode
 from paddle.utils import unique_name
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from ... import fluid
 
 __all__ = []

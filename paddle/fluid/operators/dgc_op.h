@@ -53,11 +53,11 @@ template <typename DeviceContext, typename T>
 class DGCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto u = ctx.Input<framework::Tensor>("U");
-    auto v = ctx.Input<framework::Tensor>("V");
-    auto g = ctx.Input<framework::Tensor>("Grad");
+    auto u = ctx.Input<phi::DenseTensor>("U");
+    auto v = ctx.Input<phi::DenseTensor>("V");
+    auto g = ctx.Input<phi::DenseTensor>("Grad");
 
-    auto grad_out = ctx.Output<framework::Tensor>("Grad_out");
+    auto grad_out = ctx.Output<phi::DenseTensor>("Grad_out");
 
     // attrs
     float m = ctx.Attr<float>("m");
@@ -67,7 +67,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto rampup_step = ctx.Attr<float>("rampup_step");
 
     // nranks
-    auto nranks_tensor = ctx.Input<framework::Tensor>("nranks");
+    auto nranks_tensor = ctx.Input<phi::DenseTensor>("nranks");
     const int nranks = static_cast<const int>(*nranks_tensor->data<float>());
     PADDLE_ENFORCE_GT(nranks,
                       1,
@@ -76,7 +76,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
                           "use multi card or multi machine GPU"));
 
     // regularization
-    auto p = ctx.Input<framework::Tensor>("Param");
+    auto p = ctx.Input<phi::DenseTensor>("Param");
     float regular_coeff = ctx.Attr<float>("regular_coeff");
     int regular_type = ctx.Attr<int>("regular_type");
 
@@ -110,7 +110,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
     }
 
     // current step
-    auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
+    auto current_step_tensor = ctx.Input<phi::DenseTensor>("current_step");
     const float* current_step = current_step_tensor->data<float>();
 
     if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
@@ -140,14 +140,14 @@ class DGCOpKernel : public framework::OpKernel<T> {
              << ",  current_step:" << *current_step << ", ratio:" << ratio
              << ", k:" << k << ", nranks:" << nranks;
 
-    auto k_out = ctx.Output<framework::Tensor>("k");
+    auto k_out = ctx.Output<phi::DenseTensor>("k");
     T* k_out_data = k_out->data<T>();
     *k_out_data = k;
 
-    auto u_out = ctx.Output<framework::Tensor>("U_out");
-    auto v_out = ctx.Output<framework::Tensor>("V_out");
-    auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
-    auto gather_buff = ctx.Output<framework::Tensor>("GatherBuff");
+    auto u_out = ctx.Output<phi::DenseTensor>("U_out");
+    auto v_out = ctx.Output<phi::DenseTensor>("V_out");
+    auto encode_grad_out = ctx.Output<phi::DenseTensor>("EncodeGrad");
+    auto gather_buff = ctx.Output<phi::DenseTensor>("GatherBuff");
 
     // FIXME(gongwb): use cublas.
     auto u_out_e = framework::EigenVector<T>::Flatten(*u_out);

@@ -144,6 +144,7 @@ def monkey_patch_math_varbase():
         return int(var.numpy().flatten()[0])
 
     def _len_(var):
+        assert var.ndim > 0, "len() of a 0D tensor is wrong"
         if var.type == core.VarDesc.VarType.VOCAB:
             return len(var.value().get_map_tensor())
         elif var.type == core.VarDesc.VarType.STRINGS:
@@ -393,10 +394,6 @@ def monkey_patch_math_varbase():
                                       None)),
         ('__floordiv__',
          _binary_creator_('__floordiv__', 'floor_divide', False, None, True)),
-        ('__mod__', _binary_creator_('__mod__', 'remainder', False, None,
-                                     True)),
-        ('__matmul__',
-         _binary_creator_('__matmul__', "matmul", False, None, True)),
         # for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None, True)),
@@ -414,6 +411,8 @@ def monkey_patch_math_varbase():
         '__truediv__',
         '__rdiv__',
         '__rtruediv__',
+        '__mod__',
+        '__matmul__',
         '__gt__',
         '__ge__',
         '__lt__',

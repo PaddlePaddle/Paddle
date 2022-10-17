@@ -15,10 +15,9 @@
 from ...fluid.initializer import Initializer
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid import framework
-from ...tensor import diag, transpose, sign, qr, reshape
 from paddle.utils import unique_name
 from ...fluid.dygraph import no_grad
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 __all__ = []
 

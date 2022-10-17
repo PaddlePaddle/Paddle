@@ -47,7 +47,7 @@ namespace distributed {
 
 class PSCore;
 
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using framework::Scope;
 using framework::Variable;
 using phi::SelectedRows;
@@ -71,13 +71,13 @@ class PSWrapper {
   PSWrapper() {}
   // init server
 
-  virtual int32_t Initialize(InitContext& context) = 0;
+  virtual int32_t Initialize(InitContext& context) = 0;  // NOLINT
 
   virtual void Stop() = 0;
 
-  virtual void Load(WrapperContext& context) = 0;
+  virtual void Load(WrapperContext& context) = 0;  // NOLINT
 
-  virtual void Save(WrapperContext& context) = 0;
+  virtual void Save(WrapperContext& context) = 0;  // NOLINT
 };
 
 }  // end namespace distributed

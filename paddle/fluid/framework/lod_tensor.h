@@ -22,18 +22,18 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace framework {
 
 using LoDTensor = phi::DenseTensor;
 
-// Split Tensor and copy to each place specified in places.
+// Split phi::DenseTensor and copy to each place specified in places.
 std::vector<LoDTensor> SplitLoDTensor(
     const LoDTensor& src, const std::vector<platform::Place> places);
 

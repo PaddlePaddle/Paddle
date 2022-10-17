@@ -391,10 +391,10 @@ def _infer_var_data_type_shape_(grad_var_name, block):
     """
     Infer the data type and shape of given grad variable
     """
-    grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
+    grad_var = block.desc.find_var(grad_var_name.encode())
     fwd_name = _strip_grad_suffix_(grad_var_name)
-    if block.desc.has_var_recursive(cpt.to_bytes(fwd_name)):
-        fwd_var = block.desc.find_var_recursive(cpt.to_bytes(fwd_name))
+    if block.desc.has_var_recursive(fwd_name.encode()):
+        fwd_var = block.desc.find_var_recursive(fwd_name.encode())
         grad_var.set_dtype(fwd_var.dtype())
         grad_var.set_shape(fwd_var.shape())
     else:
@@ -1457,7 +1457,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             if grad_var_ins:
                 existing_grad_var_ins = [
                     var for var in grad_var_ins
-                    if block.desc.has_var_recursive(cpt.to_bytes(var))
+                    if block.desc.has_var_recursive(var.encode())
                     or var in parent_op_vars
                 ]
                 if not existing_grad_var_ins:
@@ -1476,10 +1476,10 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
-            if block.desc.has_var_recursive(cpt.to_bytes(
-                    grad_var_name)) or grad_var_name == core.empty_var_name():
+            if block.desc.has_var_recursive(grad_var_name.encode(
+            )) or grad_var_name == core.empty_var_name():
                 continue
-            block.desc.var(cpt.to_bytes(grad_var_name))
+            block.desc.var(grad_var_name.encode())
             new_vars.add(grad_var_name)
             if grad_var_name not in grad_to_var:
                 continue
@@ -1930,8 +1930,8 @@ def _get_output_names(cur_block, targets):
             if _some_in_set_(op.desc.output_arg_names(), current_output_names):
                 for name in op.desc.input_arg_names():
                     current_output_names.add(name)
-                    if not block.desc.find_var(cpt.to_bytes(name)) \
-                            and parent_block.desc.find_var(cpt.to_bytes(name)):
+                    if not block.desc.find_var(name.encode()) \
+                            and parent_block.desc.find_var(name.encode()):
                         parent_block_output_names.add(name)
 
         block = parent_block

@@ -23,14 +23,14 @@ namespace operators {
 
 // FIXME(yuyang18): Should we assume the fetch operator always generate
 // CPU outputs?
-static void DataCopy(const framework::LoDTensor &src_item,
+static void DataCopy(const phi::DenseTensor &src_item,
                      const std::string &fetch_var_name,
-                     framework::LoDTensor *dst_item) {
+                     phi::DenseTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
     if (src_item.layout() == framework::DataLayout::kMKLDNN) {
-      framework::Tensor out;
+      phi::DenseTensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
       VLOG(4) << "innerTransDataLayoutFromMKLDNN";
@@ -115,9 +115,9 @@ class FetchOp : public framework::OperatorBase {
       fetch_list->resize(col + 1);
     }
 
-    if (fetch_var->IsType<framework::LoDTensor>()) {
-      auto &src_item = fetch_var->Get<framework::LoDTensor>();
-      auto *dst_item = &(PADDLE_GET(framework::LoDTensor, fetch_list->at(col)));
+    if (fetch_var->IsType<phi::DenseTensor>()) {
+      auto &src_item = fetch_var->Get<phi::DenseTensor>();
+      auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
       DataCopy(src_item, fetch_var_name, dst_item);
     } else if (fetch_var->IsType<framework::Vocab>()) {
       auto &src_item = fetch_var->Get<framework::Vocab>();

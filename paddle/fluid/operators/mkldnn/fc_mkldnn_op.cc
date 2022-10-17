@@ -29,9 +29,7 @@ using dnnl::stream;
 using framework::DataLayout;
 using framework::DDim;
 using framework::ExecutionContext;
-using framework::LoDTensor;
-using framework::Tensor;
-using phi::vectorize;
+using LoDTensor = phi::DenseTensor;
 using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::MKLDNNGetDataType;
@@ -49,10 +47,10 @@ class FCMKLDNNHandler
  public:
   FCMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                   const platform::MKLDNNDeviceContext& dev_ctx,
-                  const Tensor* x,
-                  const Tensor* weights,
-                  const Tensor* bias,
-                  Tensor* out,
+                  const phi::DenseTensor* x,
+                  const phi::DenseTensor* weights,
+                  const phi::DenseTensor* bias,
+                  phi::DenseTensor* out,
                   const int in_num_col_dims,
                   dnnl::engine mkldnn_engine,
                   platform::Place cpu_place)
@@ -138,6 +136,7 @@ class FCMKLDNNHandler
 
       post_ops.append_eltwise(scale, algo_map[activation_type], alpha, beta);
     }
+
     attrs->set_post_ops(post_ops);
   }
 
@@ -225,7 +224,8 @@ class FCMKLDNNHandler
   const platform::MKLDNNDeviceContext& dev_ctx_;
 
  public:
-  std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(const Tensor* x) {
+  std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
+      const phi::DenseTensor* x) {
     const T_in* x_data = x->data<T_in>();
 
     auto user_md = x->mem_desc();
@@ -240,7 +240,7 @@ class FCMKLDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
-      const Tensor* bias,
+      const phi::DenseTensor* bias,
       const float scale_in,
       const std::vector<float>& scale_weights) {
     const float* bias_data = bias->data<float>();
@@ -276,7 +276,7 @@ class FCMKLDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
-      const Tensor* weights, const std::vector<float>& scale_data) {
+      const phi::DenseTensor* weights, const std::vector<float>& scale_data) {
     const std::string weights_key = this->memory_key_ + "@weights";
     auto memory_p = std::static_pointer_cast<dnnl::memory>(
         this->dev_ctx_.GetBlob(weights_key));
@@ -312,10 +312,10 @@ class FCMKLDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
-      const ExecutionContext& ctx, Tensor* out) {
+      const ExecutionContext& ctx, phi::DenseTensor* out) {
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
-      auto* residual_param = ctx.Output<Tensor>("ResidualData");
+      auto* residual_param = ctx.Output<phi::DenseTensor>("ResidualData");
 
       PADDLE_ENFORCE_EQ(
           out->dims(),
@@ -330,8 +330,8 @@ class FCMKLDNNHandler
       out->ShareDataWith(*residual_param);
     }
     return this->template AcquireDstMemory<T_out>(out);
-  }
-};
+  }  // namespace operators
+};   // namespace paddle
 
 template <typename T_in, typename T_w>
 class FCMKLDNNKernel : public framework::OpKernel<T_in> {
@@ -360,8 +360,8 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<LoDTensor>("Input");
-    const auto* weights = ctx.Input<Tensor>("W");
-    const auto* bias = ctx.Input<Tensor>("Bias");
+    const auto* weights = ctx.Input<phi::DenseTensor>("W");
+    const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
     auto out = ctx.Output<LoDTensor>("Out");
 
     auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
@@ -409,7 +409,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
   void RecomputeOutputDims(const ExecutionContext& ctx,
                            const LoDTensor* x,
-                           const Tensor* weights,
+                           const phi::DenseTensor* weights,
                            LoDTensor* out) const {
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     bool padding_weights = ctx.Attr<bool>("padding_weights");

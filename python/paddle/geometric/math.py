@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layer_helper import LayerHelper, _non_static_mode
+from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
