@@ -597,7 +597,6 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
              !VarIsMultiPrecisionOpsOut(block_idx, op_node)) {
       bool support_precision =
           OpSupportPrecision(op_type, backend_, mixed_precision_, black_list_);
-      VLOG(2) << " support low precision " << support_precision;
 
       // if op not has float input, we will not choose the low precision kernel.
       {
@@ -617,6 +616,7 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
           VLOG(2) << " op doesn't has float input, just skip.";
         }
       }
+      VLOG(2) << " support low precision " << support_precision;
 
       if (support_precision) {
         VLOG(2) << " process input nodes:";
@@ -688,12 +688,19 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
   // 4. if output_op's dtype is not compatible to output dtype, then just
   // insert cast.
   for (auto* node : output_nodes) {
+    ir::Node* fetch_op{nullptr};
+    for (auto* op_node : node->outputs) {
+      if (op_node->IsOp() && op_node->Op()->Type() == "fetch") {
+        fetch_op = op_node;
+      }
+    }
+    CHECK_NOTNULL(fetch_op);
     auto var = node->Var();
     if (keep_io_types_ && var->GetDataType() == to_type) {
       // fp16/bf16 -> fp32.
       AddCastOp(graph,
                 node,
-                node->outputs[0],
+                fetch_op,
                 to_type,
                 framework::proto::VarType::FP32,
                 &suffix_,
@@ -704,7 +711,7 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
       // fp32 -> fp16/bf16
       AddCastOp(graph,
                 node,
-                node->outputs[0],
+                fetch_op,
                 framework::proto::VarType::FP32,
                 to_type,
                 &suffix_,
