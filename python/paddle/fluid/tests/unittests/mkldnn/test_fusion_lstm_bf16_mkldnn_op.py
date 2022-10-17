@@ -14,11 +14,9 @@
 
 import unittest
 import numpy as np
-import struct
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
-from paddle.fluid.tests.unittests.test_fusion_lstm_op import TestFusionLSTMOp, fc, ACTIVATION, fusion_lstm
-from paddle.fluid.tests.unittests.test_fusion_gru_op import fusion_gru
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.test_fusion_lstm_op import ACTIVATION, fusion_lstm
 
 
 @unittest.skipIf(not core.supports_bfloat16(),

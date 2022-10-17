@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 import random
 import numpy as np
-import six
 import paddle.fluid as fluid
 import paddle
 import warnings
@@ -26,9 +24,8 @@ from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass
 from paddle.fluid.contrib.slim.quantization import OutScaleForInferencePass
 from paddle.fluid.contrib.slim.quantization import AddQuantDequantPass
-from paddle.fluid import (core, Program, Variable, program_guard, layers)
+from paddle.fluid import (core, Program, Variable)
 from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
-from inference_pass_test import InferencePassTest
 from paddle.fluid.core import create_paddle_predictor
 from paddle.fluid.core import AnalysisConfig
 

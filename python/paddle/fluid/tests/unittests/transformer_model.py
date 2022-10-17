@@ -15,7 +15,6 @@
 from functools import partial
 import numpy as np
 
-import os
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 

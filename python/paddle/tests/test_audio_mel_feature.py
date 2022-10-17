@@ -15,11 +15,9 @@ import unittest
 
 import librosa
 import numpy as np
-import os
 import paddle
 
 import paddle.audio
-from scipy import signal
 import itertools
 from parameterized import parameterized
 

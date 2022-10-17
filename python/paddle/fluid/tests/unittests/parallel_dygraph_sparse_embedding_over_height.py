@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid as fluid
 from parallel_dygraph_sparse_embedding import SimpleNet, fake_sample_reader, TestSparseEmbedding
 
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from test_dist_base import runtime_main
 
 # global configs
 # using small `vocab_size` to test rows number over height
