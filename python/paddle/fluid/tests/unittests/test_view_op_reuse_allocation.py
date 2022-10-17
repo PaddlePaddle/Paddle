@@ -16,9 +16,8 @@ import unittest
 
 import numpy as np
 
-from op_test import OpTest
 import paddle
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 
 
 # NOTE(pangyoki): Tensor View Strategy.

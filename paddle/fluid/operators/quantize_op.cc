@@ -15,9 +15,6 @@
 #include "paddle/fluid/operators/quantize_op.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -27,7 +24,7 @@ framework::OpKernelType QuantOp::GetExpectedKernelType(
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
       ctx.GetPlace(),
-      framework::DataLayout::kMKLDNN,
+      phi::DataLayout::kMKLDNN,
       framework::LibraryType::kMKLDNN);
 }
 

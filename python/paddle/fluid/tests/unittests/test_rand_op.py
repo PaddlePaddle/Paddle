@@ -14,12 +14,11 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
 
 import paddle.fluid.core as core
 from paddle import rand
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 import paddle
 
 

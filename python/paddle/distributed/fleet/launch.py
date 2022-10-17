@@ -57,16 +57,12 @@ launch a process on each of the given gpu card or cpu machine.
 import shutil
 import sys
 import tempfile
-from sys import version
-import subprocess
 import os
 import time
 import six
 import copy
 import pathlib
-import argparse
 from argparse import ArgumentParser, REMAINDER
-import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet import launch_utils
 

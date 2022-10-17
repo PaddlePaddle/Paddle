@@ -16,12 +16,9 @@ import os
 import time
 import sys
 import random
-import math
 import functools
-import contextlib
-import tempfile
 import numpy as np
-from PIL import Image, ImageEnhance
+from PIL import Image
 import paddle
 import paddle.fluid as fluid
 from paddle.dataset.common import download
@@ -151,13 +148,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.infer_iterations = 50000 if os.environ.get(
             'DATASET') == 'full' else 2
 
-        self.root_path = tempfile.TemporaryDirectory()
-        self.int8_model = os.path.join(self.root_path.name,
-                                       "post_training_quantization")
+        self.int8_model = "post_training_quantization"
         print("self.int8_model: ", self.int8_model)
 
     def tearDown(self):
-        self.root_path.cleanup()
+        cmd = 'rm -rf post_training_quantization'
+        os.system(cmd)
         pass
 
     def cache_unzipping(self, target_folder, zip_path):
@@ -265,16 +261,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                  is_use_cache_file=False,
                                  is_optimize_model=False,
                                  onnx_format=False):
-        try:
-            os.system("mkdir " + self.int8_model)
-        except Exception as e:
-            print("Failed to create {} due to {}".format(
-                self.int8_model, str(e)))
-            sys.exit(-1)
-
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        scope = fluid.global_scope()
         val_reader = val()
 
         ptq = PostTrainingQuantization(executor=exe,
@@ -308,18 +296,18 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         model_cache_folder = self.download_data(data_urls, data_md5s, model)
 
-        print("Start FP32 inference for {0} on {1} images ...".format(
-            model, infer_iterations * batch_size))
-        (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
-            os.path.join(model_cache_folder, "model"), batch_size,
-            infer_iterations)
-
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
         self.generate_quantized_model(os.path.join(model_cache_folder, "model"),
                                       quantizable_op_type, algo, round_type,
                                       is_full_quantize, is_use_cache_file,
                                       is_optimize_model, onnx_format)
+
+        print("Start FP32 inference for {0} on {1} images ...".format(
+            model, infer_iterations * batch_size))
+        (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
+            os.path.join(model_cache_folder, "model"), batch_size,
+            infer_iterations)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
@@ -344,10 +332,10 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.assertLess(delta_value, diff_threshold)
 
 
-class TestMKLDNNInt8ForMobilenetv1AvgONNXFormat(TestPostTrainingQuantization):
+class TestMKLDNNInt8ForResnet50AvgONNXFormat(TestPostTrainingQuantization):
 
-    def test_onnx_format_avg_mobilenetv1(self):
-        model = "MobileNet-V1"
+    def test_onnx_format_avg_resnet50(self):
+        model = "resnet50"
         algo = "avg"
         round_type = "round"
         data_urls = [
@@ -374,67 +362,6 @@ class TestMKLDNNInt8ForMobilenetv1AvgONNXFormat(TestPostTrainingQuantization):
                       is_optimize_model,
                       diff_threshold,
                       onnx_format=True)
-
-
-class TestMKLDNNInt8ForMobilenetv1Avg(TestPostTrainingQuantization):
-
-    def test_avg_mobilenetv1(self):
-        model = "MobileNet-V1"
-        algo = "avg"
-        round_type = "round"
-        data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
-        ]
-        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
-        quantizable_op_type = [
-            "conv2d",
-            "depthwise_conv2d",
-            "mul",
-        ]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = False
-        diff_threshold = 0
-        self.run_test(model,
-                      algo,
-                      round_type,
-                      data_urls,
-                      data_md5s,
-                      quantizable_op_type,
-                      is_full_quantize,
-                      is_use_cache_file,
-                      is_optimize_model,
-                      diff_threshold,
-                      onnx_format=False)
-
-
-class TestMKLDNNInt8ForMobilenetv1AbsMax(TestPostTrainingQuantization):
-
-    def test_abs_max_mobilenetv1(self):
-        model = "MobileNet-V1"
-        algo = "abs_max"
-        round_type = "round"
-        data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
-        ]
-        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
-        quantizable_op_type = ["conv2d", "depthwise_conv2d", "mul"]
-        is_full_quantize = False
-        is_use_cache_file = False
-        is_optimize_model = False
-        # The accuracy diff of post-training quantization (abs_max) maybe bigger
-        diff_threshold = 0
-        self.run_test(model,
-                      algo,
-                      round_type,
-                      data_urls,
-                      data_md5s,
-                      quantizable_op_type,
-                      is_full_quantize,
-                      is_use_cache_file,
-                      is_optimize_model,
-                      diff_threshold,
-                      onnx_format=False)
 
 
 if __name__ == '__main__':

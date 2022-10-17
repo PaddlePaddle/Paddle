@@ -154,13 +154,13 @@ class TestMultinomialException(unittest.TestCase):
         self.main_program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
 
-        with paddle.static.program_guard(main_program, startup_program):
+        with paddle.static.program_guard(self.main_program, startup_program):
             probs = paddle.static.data('probs', self.probs.shape,
                                        self.probs.dtype)
             dist = paddle.distribution.Multinomial(self.total_count, probs)
         self.feed = {'probs': self.probs}
 
-        executor.run(startup_program)
+        self.executor.run(startup_program)
 
     def TestInit(self):
         with self.assertRaises(ValueError):

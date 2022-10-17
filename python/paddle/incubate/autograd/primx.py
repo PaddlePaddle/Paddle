@@ -15,7 +15,6 @@
 from collections import OrderedDict
 
 import paddle
-from paddle import compat as cpt
 from paddle.fluid import framework as framework
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
@@ -51,7 +50,7 @@ def topo_path(xs, ys, block=None):
 
     # Initialize reached vars
     for x in xs:
-        assert x is None or x.block == block, f'x is not None and x.block != block'
+        assert x is None or x.block == block, 'x is not None and x.block != block'
         reached_vars[id(x)] = x
 
     # Reaching test, returning whether an op is reached from the given input
@@ -174,7 +173,7 @@ class Transform(object):
 
     def __init__(self, block):
         assert block == default_main_program().current_block(
-        ), f'only support transform on current block of main program.'
+        ), 'only support transform on current block of main program.'
         self.block = block
         self.vars = self.init_vars(block)
         self.var2dot = VarMap('var2dot', self.vars)
@@ -220,7 +219,7 @@ class Transform(object):
         block = self.block
         for var in vars_to_erase:
             name = var.name
-            block.desc._remove_var(cpt.to_bytes(name))
+            block.desc._remove_var(name.encode())
             del block.vars[name]
         block._sync_with_cpp()
 
@@ -318,8 +317,8 @@ class Transform(object):
             the list outputs of the resulting transposed program
 
         """
-        assert all(v is not None for v in xs_dot), f'`xs_dot` includes None.'
-        assert all(v is not None for v in ys_dot), f'`ys_dot` includes None.'
+        assert all(v is not None for v in xs_dot), '`xs_dot` includes None.'
+        assert all(v is not None for v in ys_dot), '`ys_dot` includes None.'
 
         if ys_bar is None:
             ys_bar = []
@@ -512,7 +511,7 @@ def _lower(block, reverse, blacklist):
         assert var_name in to_bind_rev, 'var_name "{}" is not in to_bind_rev.'.format(
             var_name)
         if var_name != to_bind_rev[var_name]:
-            block.desc._remove_var(cpt.to_bytes(var_name))
+            block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
     block._sync_with_cpp()
 
@@ -537,7 +536,7 @@ def orig2prim(block=None):
 
     block = default_main_program().current_block() if block is None else block
     assert block == default_main_program().current_block(
-    ), f'block is neither None nor current block of main program'
+    ), 'block is neither None nor current block of main program'
     _lower(block, reverse=False, blacklist=[])
 
 
@@ -582,6 +581,6 @@ def prim2orig(block=None, blacklist=None):
 
     block = default_main_program().current_block() if block is None else block
     assert block == default_main_program().current_block(
-    ), f'block is neither None nor current block of main program'
+    ), 'block is neither None nor current block of main program'
     blacklist = [] if blacklist is None else blacklist
     _lower(block, reverse=True, blacklist=blacklist)

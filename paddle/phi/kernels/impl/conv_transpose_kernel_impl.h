@@ -37,8 +37,7 @@ void ConvTransposeRawKernel(const Context& ctx,
                             const std::vector<int>& dilations,
                             const std::string& data_format,
                             DenseTensor* out) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format);
   // The filter will be reshaped, so it should not be constant
   DenseTensor filter_ = filter;
   std::vector<int> paddings_ = paddings;

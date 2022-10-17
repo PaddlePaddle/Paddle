@@ -20,7 +20,7 @@
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 class BilateralSliceOp : public framework::OperatorWithKernel {
  public:

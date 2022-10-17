@@ -17,7 +17,7 @@ import paddle
 from paddle.distributed import fleet
 from paddle.vision.models import ResNet
 from paddle.vision.models.resnet import BottleneckBlock
-from paddle.io import Dataset, BatchSampler, DataLoader
+from paddle.io import DataLoader, Dataset
 
 base_lr = 0.1
 momentum_rate = 0.9

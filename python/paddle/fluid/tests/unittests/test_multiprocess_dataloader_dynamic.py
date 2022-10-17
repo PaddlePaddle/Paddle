@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 import six
 import time
 import unittest
-import multiprocessing
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.io import Dataset, BatchSampler, DataLoader
+from paddle.io import DataLoader
 from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.dygraph.base import to_variable
 
 from test_multiprocess_dataloader_static import RandomDataset, RandomBatchedDataset, prepare_places
 from test_multiprocess_dataloader_static import EPOCH_NUM, BATCH_SIZE, IMAGE_SIZE, SAMPLE_NUM, CLASS_NUM

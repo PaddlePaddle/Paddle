@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid.framework import Program, default_main_program, program_guard, grad_var_name
+from paddle.fluid.framework import Program, default_main_program, program_guard
 import paddle
 import paddle.fluid.layers as layers
 import paddle.fluid as fluid

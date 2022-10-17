@@ -76,7 +76,7 @@ class OpConverter {
           static std::unordered_set<std::string> add_tensor_op_set{
               "add", "mul", "sub", "div", "max", "min", "pow"};
           static std::unordered_set<std::string> add_weight_op_set{
-              "add", "mul", "sub", "div", "pow"};
+              "add", "mul", "sub", "div", "max", "min", "pow"};
           PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
                             1UL,
                             platform::errors::InvalidArgument(
@@ -146,6 +146,13 @@ class OpConverter {
         // reshape2 == reshape
         if (op_desc.Type() == "reshape2") {
           it = Registry<OpConverter>::Global().Lookup("reshape");
+          PADDLE_ENFORCE_NOT_NULL(
+              it,
+              platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+        }
+        if (op_desc.Type() == "lookup_table_v2") {
+          it = Registry<OpConverter>::Global().Lookup("lookup_table");
           PADDLE_ENFORCE_NOT_NULL(
               it,
               platform::errors::Unimplemented("no OpConverter for optype [%s]",

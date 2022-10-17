@@ -555,13 +555,13 @@ class ReduceOp : public framework::OperatorWithKernel {
   static bool HasOptimizedOneDNNKernel(const framework::ExecutionContext& ctx) {
     // native reduce kernels don't support bf16
     // so oneDNN kernel is enforced in that case
-    if (ctx.Input<framework::LoDTensor>("X")->dtype() ==
+    if (ctx.Input<phi::DenseTensor>("X")->dtype() ==
         experimental::DataType::BFLOAT16)
       return true;
 
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
     const bool reduce_all = ctx.Attr<bool>("reduce_all");
-    int ndims = ctx.Input<framework::LoDTensor>("X")->dims().size();
+    int ndims = ctx.Input<phi::DenseTensor>("X")->dims().size();
 
     if (reduce_all) {
       return true;
@@ -586,7 +586,7 @@ class ReduceOp : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    if (ctx.Input<paddle::framework::LoDTensor>("X")->dims().size() > 5)
+    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5)
       return framework::OpKernelType(input_data_type, ctx.GetPlace());
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -594,7 +594,7 @@ class ReduceOp : public framework::OperatorWithKernel {
         HasOptimizedOneDNNKernel(ctx)) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -621,7 +621,7 @@ class ReduceOpUseInputPlace : public ReduceOp {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    kt.place_ = ctx.Input<phi::DenseTensor>("X")->place();
     return kt;
   }
 };
@@ -686,7 +686,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
         CanMKLDNNReduceGradBeUsed()) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif

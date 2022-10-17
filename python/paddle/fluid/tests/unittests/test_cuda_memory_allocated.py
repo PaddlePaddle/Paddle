@@ -14,7 +14,6 @@
 
 import paddle
 import unittest
-import numpy as np
 from paddle.fluid import core
 from paddle.device.cuda import device_count, memory_allocated
 

@@ -15,15 +15,13 @@
 from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
-from ..fluid.framework import Variable, _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import Variable, in_dygraph_mode
 from ..fluid import layers
 from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
 import warnings
 from ..fluid.dygraph import base as imperative_base
 from collections import defaultdict
-import numpy as np
-import time
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops

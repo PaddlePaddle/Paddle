@@ -12,14 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import os
-import time
-import six
-import copy
 import json
 import unittest
-import paddle.fluid as fluid
 
 import paddle.distributed.fleet.ascend_utils as ascend_utils
 

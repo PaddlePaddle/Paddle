@@ -17,8 +17,6 @@ import numpy as np
 import paddle
 import paddle.incubate
 from paddle.fluid import core
-from paddle.vision.models import ResNet
-from paddle.vision.models.resnet import BottleneckBlock, BasicBlock
 
 paddle.enable_static()
 np.random.seed(0)
