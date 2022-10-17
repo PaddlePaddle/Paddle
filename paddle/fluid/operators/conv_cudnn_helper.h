@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace paddle {
@@ -51,11 +52,9 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
   }
 
   auto in_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *input);
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *out, new_out_dims);
+      phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
+  auto out_t = phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+      *out, new_out_dims);
 
   phi::funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_t, in_t, offsets, extents);
@@ -776,11 +775,14 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
       auto key = args.Convert2ConvCacheKey<T>();
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetConv(
           SearchAlgorithmBase<PerfT>::kAlgoType);
+      bool is_searched_result = false;
       if (cache.Find(key)) {
         auto t = cache.Get(key);
         result.algo = static_cast<AlgoT>(t.algo);
         result.workspace_size = t.workspace_size;
-      } else {
+        is_searched_result = t.exhaustive_search;
+      }
+      if (!is_searched_result) {
         use_autotune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result =
@@ -790,7 +792,8 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
           result = SearchAlgorithmBase<PerfT>::FindAlgoHeuristic(args, ctx);
         }
         phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                    result.workspace_size);
+                                    result.workspace_size,
+                                    exhaustive_search || use_autotune);
         cache.Set(key, node);
       }
     }

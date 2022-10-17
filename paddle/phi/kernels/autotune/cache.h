@@ -58,10 +58,12 @@ namespace autotune {
 
 struct DnnNode {
   DnnNode() {}
-  explicit DnnNode(int64_t a, size_t size) : algo(a), workspace_size(size) {}
+  DnnNode(int64_t a, size_t size, bool search)
+      : algo(a), workspace_size(size), exhaustive_search(search) {}
 
   int64_t algo;
   size_t workspace_size = 0;
+  bool exhaustive_search = false;
 };
 
 template <typename... Args>
@@ -73,40 +75,41 @@ size_t GetKey(Args&&... args) {
 
 struct ConvCacheKey {
   ConvCacheKey() {}
-  explicit ConvCacheKey(const std::vector<int64_t>& x_dims,
-                        const std::vector<int64_t>& w_dims,
-                        const std::vector<int>& strides,
-                        const std::vector<int>& paddings,
-                        const std::vector<int>& dilations,
-                        phi::DataType dtype,
-                        int groups,
-                        int64_t data_layout)
-      : x_dims_(x_dims),
-        w_dims_(w_dims),
-        strides_(strides),
-        paddings_(paddings),
-        dilations_(dilations),
-        dtype_(dtype),
-        groups_(groups),
-        data_layout_(data_layout) {}
+  ConvCacheKey(const std::vector<int64_t>& arg_x_dims,
+               const std::vector<int64_t>& arg_w_dims,
+               const std::vector<int>& arg_strides,
+               const std::vector<int>& arg_paddings,
+               const std::vector<int>& arg_dilations,
+               phi::DataType arg_dtype,
+               int arg_groups,
+               int64_t arg_data_layout)
+      : x_dims(arg_x_dims),
+        w_dims(arg_w_dims),
+        strides(arg_strides),
+        paddings(arg_paddings),
+        dilations(arg_dilations),
+        dtype(arg_dtype),
+        groups(arg_groups),
+        data_layout(arg_data_layout) {}
   size_t hash_value() const {
-    return GetKey(x_dims_,
-                  w_dims_,
-                  strides_,
-                  paddings_,
-                  dilations_,
-                  static_cast<int64_t>(dtype_),
-                  groups_,
-                  data_layout_);
+    return GetKey(x_dims,
+                  w_dims,
+                  strides,
+                  paddings,
+                  dilations,
+                  static_cast<int64_t>(dtype),
+                  groups,
+                  data_layout);
   }
-  std::vector<int64_t> x_dims_;
-  std::vector<int64_t> w_dims_;
-  std::vector<int> strides_;
-  std::vector<int> paddings_;
-  std::vector<int> dilations_;
-  phi::DataType dtype_;
-  int groups_;
-  int64_t data_layout_;
+
+  std::vector<int64_t> x_dims;
+  std::vector<int64_t> w_dims;
+  std::vector<int> strides;
+  std::vector<int> paddings;
+  std::vector<int> dilations;
+  phi::DataType dtype;
+  int groups;
+  int64_t data_layout;
 };
 
 struct ConvCacheKeyHash {
@@ -118,14 +121,14 @@ struct ConvCacheKeyHash {
 struct ConvCacheKeyEqual {
   size_t operator()(const ConvCacheKey& first,
                     const ConvCacheKey& second) const {
-    if (first.x_dims_ != second.x_dims_) return false;
-    if (first.w_dims_ != second.w_dims_) return false;
-    if (first.strides_ != second.strides_) return false;
-    if (first.paddings_ != second.paddings_) return false;
-    if (first.dilations_ != second.dilations_) return false;
-    if (first.dtype_ != second.dtype_) return false;
-    if (first.groups_ != second.groups_) return false;
-    if (first.data_layout_ != second.data_layout_) return false;
+    if (first.x_dims != second.x_dims) return false;
+    if (first.w_dims != second.w_dims) return false;
+    if (first.strides != second.strides) return false;
+    if (first.paddings != second.paddings) return false;
+    if (first.dilations != second.dilations) return false;
+    if (first.dtype != second.dtype) return false;
+    if (first.groups != second.groups) return false;
+    if (first.data_layout != second.data_layout) return false;
 
     return true;
   }
