@@ -3640,7 +3640,6 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
 
 PDNode *patterns::ReverseRollPattern::operator()(PDNode *in) {
   in->AsInput();
-
   auto reshape2_00_op =
       pattern->NewNode(reshape2_00_op_repr())->assert_is_op("reshape2");
 

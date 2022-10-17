@@ -12,8 +12,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/reverse_roll_op_plugin.h"
+#include <vector>
 
 namespace paddle {
 namespace inference {
@@ -26,9 +26,9 @@ namespace plugin {
 // grid(W, H, batch)
 // block(min(1024, dim))
 
-template<typename T>
-__global__ void reverse_roll(T*        dst,
-                             const T*  src,
+template <typename T>
+__global__ void reverse_roll(T *dst,
+                             const T *src,
                              const int batch,
                              const int window_num,
                              const int window_len,
@@ -36,81 +36,98 @@ __global__ void reverse_roll(T*        dst,
                              const int H,
                              const int W,
                              const int shift_size,
-                             const int dim)
-{
-    const int batch_idx     = blockIdx.z;
-    const int H_idx_shifted = (blockIdx.y + shift_size) % H;
-    const int W_idx_shifted = (blockIdx.x + shift_size) % W;
-    const int H_idx         = blockIdx.y;
-    const int W_idx         = blockIdx.x;
-    const int window_idx    = H_idx / window_size * (W / window_size) + W_idx / window_size;
-    const int idx_in_window = (H_idx % window_size) * window_size + (W_idx % window_size);
-    const int input_offset  = (batch_idx * window_num + window_idx) * window_len + idx_in_window;
-    const int output_offset = (batch_idx * H + H_idx_shifted) * W + W_idx_shifted;
-    for (int tid = threadIdx.x; tid < dim; tid += blockDim.x) {
-        dst[output_offset * dim + tid] = src[input_offset * dim + tid];
-    }
+                             const int dim) {
+  const int batch_idx = blockIdx.z;
+  const int H_idx_shifted = (blockIdx.y + shift_size) % H;
+  const int W_idx_shifted = (blockIdx.x + shift_size) % W;
+  const int H_idx = blockIdx.y;
+  const int W_idx = blockIdx.x;
+  const int window_idx =
+      H_idx / window_size * (W / window_size) + W_idx / window_size;
+  const int idx_in_window =
+      (H_idx % window_size) * window_size + (W_idx % window_size);
+  const int input_offset =
+      (batch_idx * window_num + window_idx) * window_len + idx_in_window;
+  const int output_offset = (batch_idx * H + H_idx_shifted) * W + W_idx_shifted;
+  for (int tid = threadIdx.x; tid < dim; tid += blockDim.x) {
+    dst[output_offset * dim + tid] = src[input_offset * dim + tid];
+  }
 }
 
 // src is [batch*window_num, window_len, dim]
 // dst is [batch, H, W, dim] + rolled
 // grid(W, H, batch)
 // block(min(1024, dim))
-template<typename T>
-void invokeReverseRoll(T*           dst,
-                       const T*     src,
-                       int          batch,
-                       int          window_num,
-                       int          window_len,
-                       int          window_size,
-                       int          H,
-                       int          W,
-                       int          dim,
-                       int          shift_size,
-                       cudaStream_t stream)
-{
-    dim3 grid(W, H, batch);
-    int  blockSize = dim;
-    if (std::is_same<T, half>::value && (dim % 2 == 0)) {
-        blockSize = dim / 2;
-        if (blockSize > 1024) {
-            blockSize = 1024;
-        }
-        using T2 = half2;
-        reverse_roll<<<grid, blockSize, 0, stream>>>(
-            (T2*)dst, (const T2*)src, batch, window_num, window_len, window_size, H, W, shift_size, dim / 2);
+template <typename T>
+void invokeReverseRoll(T *dst,
+                       const T *src,
+                       int batch,
+                       int window_num,
+                       int window_len,
+                       int window_size,
+                       int H,
+                       int W,
+                       int dim,
+                       int shift_size,
+                       cudaStream_t stream) {
+  dim3 grid(W, H, batch);
+  int blockSize = dim;
+  if (std::is_same<T, half>::value && (dim % 2 == 0)) {
+    blockSize = dim / 2;
+    if (blockSize > 1024) {
+      blockSize = 1024;
     }
-    else {
-        if (blockSize > 1024) {
-            blockSize = 1024;
-        }
-        reverse_roll<<<grid, blockSize, 0, stream>>>(
-            dst, src, batch, window_num, window_len, window_size, H, W, shift_size, dim);
+    using T2 = half2;
+    reverse_roll<<<grid, blockSize, 0, stream>>>(
+        reinterpret_cast<T2 *>(dst),
+        reinterpret_cast<const T2 *>(src),
+        batch,
+        window_num,
+        window_len,
+        window_size,
+        H,
+        W,
+        shift_size,
+        dim / 2);
+  } else {
+    if (blockSize > 1024) {
+      blockSize = 1024;
     }
+    reverse_roll<<<grid, blockSize, 0, stream>>>(dst,
+                                                 src,
+                                                 batch,
+                                                 window_num,
+                                                 window_len,
+                                                 window_size,
+                                                 H,
+                                                 W,
+                                                 shift_size,
+                                                 dim);
+  }
 }
 
-template void invokeReverseRoll(float*       dst,
-                                const float* src,
-                                int          batch,
-                                int          window_num,
-                                int          window_len,
-                                int          window_size,
-                                int          H,
-                                int          W,
-                                int          dim,
-                                int          shift_size,
+template void invokeReverseRoll(float *dst,
+                                const float *src,
+                                int batch,
+                                int window_num,
+                                int window_len,
+                                int window_size,
+                                int H,
+                                int W,
+                                int dim,
+                                int shift_size,
                                 cudaStream_t stream);
 
-template void invokeReverseRoll(half*        dst,
-                                const half*  src,
-                                int          batch,
-                                int          window_num,
-                                int          window_len,
-                                int          window_size,
-                                int          H,
-                                int          W,
-                                int          dim,
-                                int          shift_size,
+template void invokeReverseRoll(half *dst,
+                                const half *src,
+                                int batch,
+                                int window_num,
+                                int window_len,
+                                int window_size,
+                                int H,
+                                int W,
+                                int dim,
+                                int shift_size,
                                 cudaStream_t stream);
 
 void ReverseRollPluginDynamic::configurePlugin(
@@ -153,13 +170,12 @@ nvinfer1::DataType ReverseRollPluginDynamic::getOutputDataType(
     int index,
     const nvinfer1::DataType *input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(
-      index,
-      0,
-      platform::errors::InvalidArgument(
-          "The ReverseRoll only has one input, so the "
-          "index value should be 0, but get %d.",
-          index));
+  PADDLE_ENFORCE_EQ(index,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "The ReverseRoll only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   return input_types[0];
 }
 
@@ -168,14 +184,13 @@ nvinfer1::DimsExprs ReverseRollPluginDynamic::getOutputDimensions(
     const nvinfer1::DimsExprs *inputs,
     int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(
-      output_index,
-      0,
-      platform::errors::InvalidArgument(
-          "There is only one output of the ReverseRoll, "
-          "so the index should be zero,"
-          "but it's (%d)",
-          output_index));
+  PADDLE_ENFORCE_EQ(output_index,
+                    0,
+                    platform::errors::InvalidArgument(
+                        "There is only one output of the ReverseRoll, "
+                        "so the index should be zero,"
+                        "but it's (%d)",
+                        output_index));
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       1,
@@ -186,14 +201,12 @@ nvinfer1::DimsExprs ReverseRollPluginDynamic::getOutputDimensions(
 
   nvinfer1::DimsExprs ret;
   ret.nbDims = 3;
-  ret.d[0] = expr_builder.operation(
-      nvinfer1::DimensionOperation::kFLOOR_DIV,
-      *inputs[0].d[0],
-      *expr_builder.constant(window_num_));
-  ret.d[1] = expr_builder.operation(
-                nvinfer1::DimensionOperation::kPROD,
-                *inputs[0].d[1],
-                *expr_builder.constant(window_num_));
+  ret.d[0] = expr_builder.operation(nvinfer1::DimensionOperation::kFLOOR_DIV,
+                                    *inputs[0].d[0],
+                                    *expr_builder.constant(window_num_));
+  ret.d[1] = expr_builder.operation(nvinfer1::DimensionOperation::kPROD,
+                                    *inputs[0].d[1],
+                                    *expr_builder.constant(window_num_));
   ret.d[2] = inputs[0].d[2];
   return ret;
 }
@@ -206,45 +219,42 @@ int ReverseRollPluginDynamic::enqueue(
     cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = input_desc[0].dims;
   auto input_type = input_desc[0].type;
-  int batch = input_dims.d[0]/window_num_;
+  int batch = input_dims.d[0] / window_num_;
   int dim = input_dims.d[2];
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(3) << "TRT Plugin DataType selected. ReverseRoll-->fp32";
-    invokeReverseRoll(
-        reinterpret_cast<float *>(outputs[0]),
-        reinterpret_cast<const float *>(inputs[0]),
-        batch,
-        window_num_,
-        window_len_,
-        window_size_,
-        input_resolution_,
-        input_resolution_,
-        dim,
-        shift_size_,
-        stream);
+    invokeReverseRoll(reinterpret_cast<float *>(outputs[0]),
+                      reinterpret_cast<const float *>(inputs[0]),
+                      batch,
+                      window_num_,
+                      window_len_,
+                      window_size_,
+                      input_resolution_,
+                      input_resolution_,
+                      dim,
+                      shift_size_,
+                      stream);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(3) << "TRT Plugin DataType selected. ReverseRoll-->fp16";
-    invokeReverseRoll(
-        reinterpret_cast<half *>(outputs[0]),
-        reinterpret_cast<const half *>(inputs[0]),
-        batch,
-        window_num_,
-        window_len_,
-        window_size_,
-        input_resolution_,
-        input_resolution_,
-        dim,
-        shift_size_,
-        stream);
+    invokeReverseRoll(reinterpret_cast<half *>(outputs[0]),
+                      reinterpret_cast<const half *>(inputs[0]),
+                      batch,
+                      window_num_,
+                      window_len_,
+                      window_size_,
+                      input_resolution_,
+                      input_resolution_,
+                      dim,
+                      shift_size_,
+                      stream);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The ReverseRoll TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
-
 }
 
-} // plugin
-} // tensorrt
-} // inference
-} // paddle
+}  // namespace plugin
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle
