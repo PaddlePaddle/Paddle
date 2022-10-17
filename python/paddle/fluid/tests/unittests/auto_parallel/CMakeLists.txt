@@ -62,7 +62,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                                                 TIMEOUT 50)
   py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
   set_tests_properties(test_engine_callbacks
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 30)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
