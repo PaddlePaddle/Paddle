@@ -619,7 +619,14 @@ function(prune_pybind_h)
   list(APPEND op_list "tensorrt_engine")
 
   # add fused_op in op_list
+  list(APPEND op_list "fc")
   list(APPEND op_list "conv2d_fusion")
+  list(APPEND op_list "fusion_seqconv_eltadd_relu")
+  list(APPEND op_list "fusion_seqpool_cvm_concat")
+  list(APPEND op_list "fusion_gru")
+  list(APPEND op_list "fusion_seqexpand_concat_fc")
+  list(APPEND op_list "fusion_repeated_fc_relu")
+  list(APPEND op_list "fusion_squared_mat_sub")
 
   # add plugin_op in op_list
   list(APPEND op_list "anchor_generator")
