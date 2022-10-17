@@ -22,7 +22,6 @@ to initialize SRL model.
 
 import tarfile
 import gzip
-import itertools
 import paddle.dataset.common
 import paddle.compat as cpt
 import paddle.utils.deprecated as deprecated

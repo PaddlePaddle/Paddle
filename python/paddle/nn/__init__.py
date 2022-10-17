@@ -109,6 +109,7 @@ from .layer.loss import CTCLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
 from .layer.loss import CosineEmbeddingLoss  # noqa: F401
+from .layer.loss import MultiMarginLoss
 from .layer.loss import TripletMarginWithDistanceLoss
 from .layer.loss import TripletMarginLoss
 from .layer.loss import SoftMarginLoss
@@ -319,6 +320,7 @@ __all__ = [  # noqa
     'Identity',
     'CosineEmbeddingLoss',
     'RReLU',
+    'MultiMarginLoss',
     'TripletMarginWithDistanceLoss',
     'TripletMarginLoss',
     'SoftMarginLoss',
