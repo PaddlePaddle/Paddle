@@ -14,7 +14,6 @@
 
 import unittest
 from paddle.fluid import core
-from paddle import compat as cpt
 
 
 class TestGetAllRegisteredOpKernels(unittest.TestCase):

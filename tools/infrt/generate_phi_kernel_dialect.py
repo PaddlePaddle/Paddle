@@ -14,7 +14,6 @@
 
 import json
 import yaml
-import sys
 import os
 from get_compat_kernel_signature import get_compat_kernels_info
 

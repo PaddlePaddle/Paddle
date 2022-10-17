@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from ..ps.utils.public import *
-from paddle.framework import core
 from .pass_base import PassBase, register_pass
 from paddle.optimizer.lr import LRScheduler
-from paddle.optimizer.lr import ExponentialDecay, NoamDecay, PiecewiseDecay, NaturalExpDecay, InverseTimeDecay
-from paddle.fluid.layers.learning_rate_scheduler import exponential_decay, noam_decay, piecewise_decay, natural_exp_decay, inverse_time_decay
+from paddle.optimizer.lr import ExponentialDecay, InverseTimeDecay, NaturalExpDecay, NoamDecay
+from paddle.fluid.layers.learning_rate_scheduler import exponential_decay, inverse_time_decay, natural_exp_decay, noam_decay
 
 
 @register_pass("add_lr_decay_table_pass")

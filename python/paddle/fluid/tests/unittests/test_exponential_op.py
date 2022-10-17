@@ -16,7 +16,6 @@ import unittest
 import paddle
 import numpy as np
 from op_test import OpTest
-import os
 
 paddle.seed(100)
 

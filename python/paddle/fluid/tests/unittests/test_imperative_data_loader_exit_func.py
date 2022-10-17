@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import signal
 import unittest
 import multiprocessing
 import time
 
-import paddle.compat as cpt
 from paddle.fluid.framework import _test_eager_guard
 
 import queue
@@ -36,7 +34,6 @@ class TestDygraphDataLoaderCleanUpFunc(unittest.TestCase):
 
     def func_test_clear_queue_set(self):
         test_queue = queue.Queue(self.capacity)
-        global multiprocess_queue_set
         multiprocess_queue_set.add(test_queue)
         for i in range(0, self.capacity):
             test_queue.put(i)
@@ -58,7 +55,7 @@ class TestRegisterExitFunc(unittest.TestCase):
         try:
             CleanupFuncRegistrar.register(5)
         except TypeError as ex:
-            self.assertIn("is not callable", cpt.get_exception_message(ex))
+            self.assertIn("is not callable", str(ex))
             exception = ex
         self.assertIsNotNone(exception)
 

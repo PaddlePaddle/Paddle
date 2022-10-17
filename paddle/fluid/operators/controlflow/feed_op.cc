@@ -36,9 +36,8 @@ class FeedVariableVisitor {
                                const platform::Place &place)
       : out_var_(out_var), place_(place) {}
 
-  void operator()(const framework::LoDTensor &in_tensor) const {
-    framework::LoDTensor *out_tensor =
-        out_var_->GetMutable<framework::LoDTensor>();
+  void operator()(const phi::DenseTensor &in_tensor) const {
+    phi::DenseTensor *out_tensor = out_var_->GetMutable<phi::DenseTensor>();
     if (platform::is_same_place(in_tensor.place(), place_)) {
       out_tensor->ShareDataWith(in_tensor);
 #ifdef PADDLE_WITH_IPU

@@ -20,7 +20,6 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
 import paddle.fluid.core as core
-import paddle.compat as cpt
 import numpy as np
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard, convert_np_dtype_to_dtype_
@@ -990,7 +989,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
         except NotImplementedError as e:
             self.assertEqual(
                 "load function is not supported by Recompute Optimizer for now",
-                cpt.get_exception_message(e))
+                str(e))
 
     def test_dropout(self):
         """

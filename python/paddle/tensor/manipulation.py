@@ -14,16 +14,15 @@
 
 from collections import Counter
 
-from ..static import Variable, device_guard
+from ..static import Variable
 from ..framework import core, in_dygraph_mode
-from ..fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check, _non_static_mode
+from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
 from ..framework import LayerHelper
-from ..framework import OpProtoHolder, convert_np_dtype_to_dtype_, dygraph_only
+from ..framework import convert_np_dtype_to_dtype_, dygraph_only
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor
-from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops, _legacy_C_ops
@@ -634,12 +633,16 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop_tensor', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'crop_tensor')
-    check_type(shape, 'shape', (list, tuple, Variable), 'crop_tensor')
+    check_type(shape, 'shape', (list, tuple, Variable, type(None)),
+               'crop_tensor')
     check_type(offsets, 'offsets', (list, tuple, Variable, type(None)),
                'crop_tensor')
 
     if offsets is None:
         offsets = [0] * len(x.shape)
+
+    if shape is None:
+        shape = x.shape
 
     if in_dygraph_mode():
         return _C_ops.crop_tensor(x, shape, offsets)

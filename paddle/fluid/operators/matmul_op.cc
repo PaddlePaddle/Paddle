@@ -434,13 +434,13 @@ class MatMulDoubleGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto x = *context.Input<phi::DenseTensor>("X");
     auto y = *context.Input<phi::DenseTensor>("Y");
-    auto dout = *context.Input<framework::LoDTensor>("DOut");
-    auto *ddx = context.Input<framework::LoDTensor>("DDX");
-    auto *ddy = context.Input<framework::LoDTensor>("DDY");
+    auto dout = *context.Input<phi::DenseTensor>("DOut");
+    auto *ddx = context.Input<phi::DenseTensor>("DDX");
+    auto *ddy = context.Input<phi::DenseTensor>("DDY");
 
-    auto *dx = context.Output<framework::LoDTensor>("DX");
-    auto *dy = context.Output<framework::LoDTensor>("DY");
-    auto *ddout = context.Output<framework::LoDTensor>("DDOut");
+    auto *dx = context.Output<phi::DenseTensor>("DX");
+    auto *dy = context.Output<phi::DenseTensor>("DY");
+    auto *ddout = context.Output<phi::DenseTensor>("DDOut");
 
     bool transpose_x = context.Attr<bool>("transpose_X");
     bool transpose_y = context.Attr<bool>("transpose_Y");
@@ -697,15 +697,6 @@ class MatMulOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -889,15 +880,6 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };

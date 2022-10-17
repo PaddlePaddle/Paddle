@@ -627,12 +627,12 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id,
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
   pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
-  framework::LoDTensor* output = nullptr;
+  phi::DenseTensor* output = nullptr;
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor* tensor = inputs->at(index);
+    const phi::DenseTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -1150,7 +1150,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   CHECK(batch_size > 0);  // NOLINT
 
   std::vector<float> g;
-  for (const framework::LoDTensor* g_tensor : *outputs) {
+  for (const phi::DenseTensor* g_tensor : *outputs) {
     size_t origin = g.size();
     size_t add = g_tensor->numel();
     g.resize(origin + add);
@@ -1170,8 +1170,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   size_t global_idx = 0;
   if (click_name != "") {
     CHECK(var != nullptr);  // NOLINT
-    framework::LoDTensor* label_tensor =
-        var->GetMutable<framework::LoDTensor>();
+    phi::DenseTensor* label_tensor = var->GetMutable<phi::DenseTensor>();
     CHECK(label_tensor != nullptr);  // NOLINT
     int64_t* label_ptr = label_tensor->data<int64_t>();
 
@@ -1200,7 +1199,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   size_t output_len = 0;
   size_t input_idx = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    const framework::LoDTensor* tensor = inputs->at(index);
+    const phi::DenseTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {

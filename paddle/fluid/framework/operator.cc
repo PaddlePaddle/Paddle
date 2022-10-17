@@ -50,6 +50,7 @@ class DenseTensor;
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
 
 #ifdef PADDLE_WITH_MLU
@@ -72,7 +73,7 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-static DDim GetDimsDebug(const ScopeBase& scope,
+static DDim GetDimsDebug(const Scope& scope,
                          const std::string& name,
                          bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
@@ -96,13 +97,13 @@ static DDim GetDimsDebug(const ScopeBase& scope,
   }
 }
 
-static bool VarInited(const ScopeBase& scope, const std::string& name) {
+static bool VarInited(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) return false;
   return var->IsInitialized();
 }
 
-static std::string GetDtype(const ScopeBase& scope, const std::string& name) {
+static std::string GetDtype(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return "";
@@ -128,7 +129,7 @@ static std::string GetDtype(const ScopeBase& scope, const std::string& name) {
   }
 }
 
-static std::string GetPlace(const ScopeBase& scope, const std::string& name) {
+static std::string GetPlace(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return "";
@@ -157,7 +158,7 @@ static std::string GetPlace(const ScopeBase& scope, const std::string& name) {
   }
 }
 
-static int GetRowSize(const ScopeBase& scope, const std::string& name) {
+static int GetRowSize(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return -1;
@@ -170,7 +171,7 @@ static int GetRowSize(const ScopeBase& scope, const std::string& name) {
   return -1;
 }
 
-static LoD GetLoDDebug(const ScopeBase& scope, const std::string& name) {
+static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
 
@@ -348,7 +349,7 @@ const std::vector<std::string>& OperatorBase::Outputs(
   return it->second;
 }
 
-std::string OperatorBase::DebugStringEx(const ScopeBase* scope) const {
+std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
 
@@ -850,9 +851,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
       out_sele_rows->set_rows(in_sele_rows.rows());
       out_sele_rows->set_height(in_sele_rows.height());
-    } else if (in_var->IsType<framework::LoDTensor>()) {
-      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+    } else if (in_var->IsType<phi::DenseTensor>()) {
+      auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
+      auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
       out_lod_tensor->Resize(in_lod_tensor.dims());
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -1352,7 +1353,7 @@ bool OperatorWithKernel::SupportsMKLDNN(
 }
 
 bool OperatorWithKernel::SupportsKernelType(
-    const OpKernelType& kernel_type) const {
+    const OpKernelType& kernel_type, const ExecutionContext& exe_ctx) const {
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
   if (kernels_iter == all_op_kernels.end()) return false;
@@ -1386,16 +1387,38 @@ bool OperatorWithKernel::SupportsKernelType(
   }
 #endif
 
+// NOTE(jiahongyu): If MKLDNN can be used, the function SupportsKernelType needs
+// to check whether current op supports MKLDNN kernel. There are three
+// statements in if condition: The first statement checks whether library_type_
+// are changed by other high priority backends; the second checks whether this
+// op has specific implementation; the third checks whether mkldnn kernel can be
+// used.
+#ifdef PADDLE_WITH_MKLDNN
+  if (kernel_type.library_type_ == framework::LibraryType::kPlain &&
+      !paddle::platform::in_mkldnn_white_list(type_) &&
+      this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
+    auto tmp_kernel_type = kernel_type;
+    tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
+    tmp_kernel_type.data_layout_ = framework::DataLayout::kMKLDNN;
+    return kernels.find(tmp_kernel_type) != kernels.end();
+  }
+#endif
+
   return kernel_iter != kernels.end();
 }
 
 bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
+  // NOTE(jiahongyu): Only mkldnn kernels need to check "use_mkldnn" attribute,
+  // hence we first call function SupportsMKLDNN. If we check "use_mkldnn"
+  // attribute first, it will cause error because some codes add "use_mkldnn"
+  // attribute to non-mkldnn ops.
+  if (!this->SupportsMKLDNN(data_type)) {
+    return false;
+  }
   const std::string use_mkldnn_attr = "use_mkldnn";
-  bool use_mkldnn_ctx = ctx.HasAttr(use_mkldnn_attr) &&
-                        ctx.Attr<bool>(use_mkldnn_attr) &&
-                        platform::is_cpu_place(ctx.GetPlace());
-  return use_mkldnn_ctx && this->SupportsMKLDNN(data_type);
+  return ctx.HasAttr(use_mkldnn_attr) && ctx.Attr<bool>(use_mkldnn_attr) &&
+         platform::is_cpu_place(ctx.GetPlace());
 }
 
 void OperatorWithKernel::InferShape(InferShapeContext* ctx) const {
@@ -1544,6 +1567,23 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
     } else {
       phi_kernel_name = kernel_signature_->name;
+
+// NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
+// LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
+// values are kPlain, so we need to modify the library_type and data_layout_
+// here. There are three statements in if condition: The first statement checks
+// whether library_type_ are changed by other high priority backends; the second
+// checks whether this op has specific implementation; the third checks whether
+// mkldnn kernel can be used.
+#ifdef PADDLE_WITH_MKLDNN
+      if (kernel_type_->library_type_ == framework::LibraryType::kPlain &&
+          !paddle::platform::in_mkldnn_white_list(type_) &&
+          this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
+        kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
+        kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
+      }
+#endif
+
 // NOTE(Liu-xiandong):In my ctest, this branch do not be executed,
 // I can't understand it, it's really confusing.
 // But we still need to keep this to avoid errors.
@@ -1771,6 +1811,23 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
     const ExecutionContext& ctx) const {
   auto expected_kernel_key = this->GetExpectedKernelType(ctx);
+
+// NOTE(jiahongyu): PADDLE_WITH_MKLDNN codes are moved outside function
+// GetExpectedKernelType, so that if MKLDNN can be used, the library_type_ and
+// data_layout_ of expected_kernel_key need to be adjusted. There are three
+// statements in if condition: The first statement checks whether library_type_
+// are changed by other high priority backends; the second checks whether this
+// op has specific implementation; the third checks whether mkldnn kernel can be
+// used.
+#ifdef PADDLE_WITH_MKLDNN
+  if (expected_kernel_key.library_type_ == framework::LibraryType::kPlain &&
+      !paddle::platform::in_mkldnn_white_list(type_) &&
+      this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
+    expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+  }
+#endif
+
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
       expected_kernel_key.place_ = platform::CPUPlace();
@@ -2239,9 +2296,9 @@ Scope* OperatorWithKernel::PrepareData(
               << (new_expected_kernel_key ? *new_expected_kernel_key
                                           : expected_kernel_key);
 
-      // In the inference scenerio, the scopes will be reused across the
-      // batches, so the `new_scope` here will result in GPU memroy explosion
-      // over the  running of operators.
+      // In the inference scenario, the scopes will be reused across the
+      // batches, so the `new_scope` here will result in GPU memory explosion
+      // over the running of operators.
       // We use a thread_local cache to fix that issue, the key in the cache is
       // the combination of the `scope` argument, from_kernel_type,
       // target_kernel_type.
@@ -2691,8 +2748,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
     for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
       const phi::TensorBase* tensor_in = nullptr;
       auto* var = ins_vector[offset];
-      if (var->IsType<framework::LoDTensor>()) {
-        tensor_in = &(var->Get<framework::LoDTensor>());
+      if (var->IsType<phi::DenseTensor>()) {
+        tensor_in = &(var->Get<phi::DenseTensor>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var->IsType<phi::SelectedRows>()) {
         tensor_in = &(var->Get<phi::SelectedRows>());
@@ -2739,8 +2796,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
       phi::TensorBase* tensor_out = nullptr;
       auto* var = outs_vector[offset];
       if (var) {
-        if (var->template IsType<framework::LoDTensor>()) {
-          tensor_out = var->template GetMutable<framework::LoDTensor>();
+        if (var->template IsType<phi::DenseTensor>()) {
+          tensor_out = var->template GetMutable<phi::DenseTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<phi::SelectedRows>()) {
           tensor_out = var->template GetMutable<phi::SelectedRows>();

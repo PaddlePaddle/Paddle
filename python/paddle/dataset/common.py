@@ -17,7 +17,6 @@ import hashlib
 import os
 import errno
 import shutil
-import six
 import sys
 import importlib
 import paddle.dataset
@@ -55,7 +54,6 @@ def must_mkdirs(path):
     except OSError as exc:
         if exc.errno != errno.EEXIST:
             raise
-        pass
 
 
 must_mkdirs(DATA_HOME)

@@ -14,7 +14,6 @@
 
 import paddle.fluid.framework as framework
 from paddle.fluid import core
-from paddle import compat as cpt
 
 
 # collect original ops: op which has both inference and grid defination
@@ -59,7 +58,7 @@ QUANT = "quant"
 
 
 def get_attr_default_value(op_name):
-    return core.get_op_attrs_default_value(cpt.to_bytes(op_name))
+    return core.get_op_attrs_default_value(op_name.encode())
 
 
 def get_vars_info(op_vars_proto):

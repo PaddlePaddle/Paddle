@@ -2450,10 +2450,10 @@ class ConditionalBlock(object):
 
         new_vars = set()
         for grad_var_name in new_op_desc.output_arg_names():
-            if grad_sub_block.desc.has_var_recursive(cpt.to_bytes(
-                    grad_var_name)) or grad_var_name == core.empty_var_name():
+            if grad_sub_block.desc.has_var_recursive(grad_var_name.encode(
+            )) or grad_var_name == core.empty_var_name():
                 continue
-            grad_sub_block.desc.var(cpt.to_bytes(grad_var_name))
+            grad_sub_block.desc.var(grad_var_name.encode())
             new_vars.add(grad_var_name)
             if grad_var_name not in op_grad_to_var:
                 continue

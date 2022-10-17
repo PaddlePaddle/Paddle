@@ -17,10 +17,8 @@ when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction li
 """
 
 import os
-import sys
 import re
 import glob
-import io
 
 
 def find_type_files(cur_dir, file_type, file_list=[]):
@@ -77,7 +75,7 @@ def prune_phi_kernels():
 
         op_name = os.path.split(op_file)[1]
         all_matches = []
-        with io.open(op_file, 'r', encoding='utf-8') as f:
+        with open(op_file, 'r', encoding='utf-8') as f:
             content = ''.join(f.readlines())
             op_pattern = r'PD_REGISTER_KERNEL\(.*?\).*?\{.*?\}'
             op, op_count = find_kernel(content, op_pattern)
@@ -87,7 +85,7 @@ def prune_phi_kernels():
         for p in all_matches:
             content = content.replace(p, '')
 
-        with io.open(op_file, 'w', encoding='utf-8') as f:
+        with open(op_file, 'w', encoding='utf-8') as f:
             f.write(u'{}'.format(content))
 
     print('We erase all grad op and kernel for Paddle-Inference lib.')
@@ -115,7 +113,7 @@ def append_fluid_kernels():
     for op in op_white_list:
         append_str = append_str + "file(APPEND ${pybind_file} \"USE_OP__(%s);\\n\")\n" % op
 
-    with io.open(file_name, 'r', encoding='utf-8') as f:
+    with open(file_name, 'r', encoding='utf-8') as f:
         content = ''.join(f.readlines())
 
     location_str = "nv_library(\n  tensorrt_op_teller\n  SRCS op_teller.cc\n  DEPS framework_proto device_context)"
@@ -126,7 +124,7 @@ def append_fluid_kernels():
               (location_str, file_name))
         return False
 
-    with io.open(file_name, 'w', encoding='utf-8') as f:
+    with open(file_name, 'w', encoding='utf-8') as f:
         f.write(u'{}'.format(new_content))
 
     #2. add op and kernel register
@@ -140,7 +138,7 @@ def append_fluid_kernels():
                         recursive=True)
 
     for op_file in all_op:
-        with io.open(op_file, 'r', encoding='utf-8') as f:
+        with open(op_file, 'r', encoding='utf-8') as f:
             content = ''.join(f.readlines())
 
         for op in op_white_list:
@@ -157,7 +155,7 @@ def append_fluid_kernels():
                 if len(matches) > 0:
                     content = content.replace(matches[0],
                                               matches[0].replace(k, k + "__"))
-                    with io.open(op_file, 'w', encoding='utf-8') as f:
+                    with open(op_file, 'w', encoding='utf-8') as f:
                         f.write(u'{}'.format(content))
 
     return True
