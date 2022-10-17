@@ -35,14 +35,14 @@ class ESC50(AudioClassificationDataset):
         http://dx.doi.org/10.1145/2733373.2806390
 
     Ags:
-            mode (:obj:`str`, `optional`, defaults to `train`):
-                It identifies the dataset mode (train or dev).
-            split (:obj:`int`, `optional`, defaults to 1):
-                It specify the fold of dev dataset.
-            feat_type (:obj:`str`, `optional`, defaults to `raw`):
-                It identifies the feature type that user wants to extrace of an audio file.
-            archive(:obj, dict, defaults to None):
-                it tells where to download the audio archive.
+            mode (str, optional):
+                It identifies the dataset mode (train or dev). Default:train.
+            split (int, optional):
+                It specify the fold of dev dataset. Default:1.
+            feat_type (str, optional):
+                It identifies the feature type that user wants to extrace of an audio file. Default:raw.
+            archive(dict, optional):
+                it tells where to download the audio archive. Default:None.
 
     Returns:
         :ref:`api_paddle_io_Dataset`. An instance of ESC50 dataset.
@@ -53,18 +53,9 @@ class ESC50(AudioClassificationDataset):
 
             import paddle
 
-            archive = {
-                'url':
-                'https://bj.bcebos.com/paddleaudio/datasets/ESC-50-master-lite.zip',
-                'md5': '1e9ba53265143df5b2804a743f2d1956',
-            }  # small part of ESC50 dataset for test.
             mode = 'dev'
             esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
-                                                    feat_type='raw',
-                                                    archive=archive)
-            # use the default archive will download the whole dataset.
-            # esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
-            #                                         feat_type='raw')
+                                                    feat_type='raw')
             for elem in esc50_dataset:
                 audio = elem[0]
                 label = elem[1]

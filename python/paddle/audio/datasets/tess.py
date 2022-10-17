@@ -13,7 +13,6 @@
 # limitations under the License.
 import collections
 import os
-import random
 from typing import List
 from typing import Tuple
 
@@ -37,18 +36,16 @@ class TESS(AudioClassificationDataset):
         https://doi.org/10.5683/SP2/E8H2MF
 
     Ags:
-            mode (:obj:`str`, `optional`, defaults to `train`):
-                It identifies the dataset mode (train or dev).
-            seed (:obj:`int`, `optional`, defaults to 0):
-                Set the random seed to shuffle samples.
-            n_folds (:obj:`int`, `optional`, defaults to 5):
-                Split the dataset into n folds. 1 fold for dev dataset and n-1 for train dataset.
-            split (:obj:`int`, `optional`, defaults to 1):
-                It specify the fold of dev dataset.
-            feat_type (:obj:`str`, `optional`, defaults to `raw`):
-                It identifies the feature type that user wants to extrace of an audio file.
-            archive(:obj, dict, defaults to None):
-                it tells where to download the audio archive.
+            mode (str, optional):
+                It identifies the dataset mode (train or dev). Defaults to train.
+            n_folds (int, optional):
+                Split the dataset into n folds. 1 fold for dev dataset and n-1 for train dataset. Defaults to 5.
+            split (int, optional):
+                It specify the fold of dev dataset. Defaults to 1.
+            feat_type (str, optional):
+                It identifies the feature type that user wants to extrace of an audio file. Defaults to raw.
+            archive(dict):
+                it tells where to download the audio archive. Defaults to None.
 
     Returns:
         :ref:`api_paddle_io_Dataset`. An instance of TESS dataset.
@@ -59,18 +56,9 @@ class TESS(AudioClassificationDataset):
 
             import paddle
 
-            archive = {
-                'url':
-                'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set_lite.zip',
-                'md5': '9ffb5e3adf28d4d6b787fa94bd59b975',
-            }  # small part of TESS dataset for test.
             mode = 'dev'
             tess_dataset = paddle.audio.datasets.TESS(mode=mode,
-                                                    feat_type='raw',
-                                                    archive=archive)
-            # use the default archive will download the whole dataset.
-            # tess_dataset = paddle.audio.datasets.TESS(mode=mode,
-            #                                        feat_type='raw')
+                                                    feat_type='raw')
             for elem in tess_dataset:
                 audio = elem[0]
                 label = elem[1]
@@ -111,7 +99,6 @@ class TESS(AudioClassificationDataset):
 
     def __init__(self,
                  mode='train',
-                 seed=0,
                  n_folds=5,
                  split=1,
                  feat_type='raw',
@@ -123,7 +110,7 @@ class TESS(AudioClassificationDataset):
         assert split <= n_folds, f'The selected split should not be larger than n_fold, but got {split} > {n_folds}'
         if archive is not None:
             self.archive = archive
-        files, labels = self._get_data(mode, seed, n_folds, split)
+        files, labels = self._get_data(mode, n_folds, split)
         super(TESS, self).__init__(files=files,
                                    labels=labels,
                                    feat_type=feat_type,
@@ -136,8 +123,7 @@ class TESS(AudioClassificationDataset):
             ret.append(self.meta_info(*basename_without_extend.split('_')))
         return ret
 
-    def _get_data(self, mode, seed, n_folds,
-                  split) -> Tuple[List[str], List[int]]:
+    def _get_data(self, mode, n_folds, split) -> Tuple[List[str], List[int]]:
         if not os.path.isdir(os.path.join(DATA_HOME, self.audio_path)):
             download.get_path_from_url(self.archive['url'],
                                        DATA_HOME,
@@ -150,10 +136,6 @@ class TESS(AudioClassificationDataset):
                 if file.endswith('.wav'):
                     wav_files.append(os.path.join(root, file))
 
-        random.seed(seed)  # shuffle samples to split data
-        random.shuffle(
-            wav_files
-        )  # make sure using the same seed to create train and dev dataset
         meta_info = self._get_meta_info(wav_files)
 
         files = []
