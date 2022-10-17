@@ -14,11 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/conv_base_helper.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
@@ -160,6 +158,8 @@ struct SearchAlgorithmBase<cudnnConvolutionFwdAlgoPerf_t> {
   using AlgoT = cudnnConvolutionFwdAlgo_t;
   constexpr static phi::autotune::AlgorithmType kAlgoType =
       phi::autotune::AlgorithmType::kConvForward;
+
+  static const std::string GetPerfName() { return "ConvForward"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionFwdAlgo_t algo) {
@@ -333,6 +333,8 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdDataAlgoPerf_t> {
   using AlgoT = cudnnConvolutionBwdDataAlgo_t;
   constexpr static phi::autotune::AlgorithmType kAlgoType =
       phi::autotune::AlgorithmType::kConvBackwardData;
+
+  static const std::string GetPerfName() { return "ConvBackwardData"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionBwdDataAlgo_t algo) {
@@ -513,6 +515,8 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
   using AlgoT = cudnnConvolutionBwdFilterAlgo_t;
   constexpr static phi::autotune::AlgorithmType kAlgoType =
       phi::autotune::AlgorithmType::kConvBackwardFilter;
+
+  static const std::string GetPerfName() { return "ConvBackwardFilter"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionBwdFilterAlgo_t algo) {
@@ -757,6 +761,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
                                   bool deterministic,
                                   const phi::GPUContext& ctx) {
     SearchResult<AlgoT> result;
+    bool use_autotune = false;
     auto dtype = platform::CudnnDataType<T>::type;
     SetConvMathType(ctx, dtype, args.cdesc);
 
@@ -776,8 +781,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
         result.algo = static_cast<AlgoT>(t.algo);
         result.workspace_size = t.workspace_size;
       } else {
-        bool use_autotune =
-            phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+        use_autotune = phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
           result =
               SearchAlgorithmBase<PerfT>::template FindAlgoExhaustiveSearch<T>(
@@ -790,7 +794,9 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
         cache.Set(key, node);
       }
     }
-    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+    VLOG(3) << "[cuDNN " << SearchAlgorithmBase<PerfT>::GetPerfName()
+            << "] exhaustive_search=" << exhaustive_search
+            << ", use_autotune=" << use_autotune
             << ", deterministic=" << deterministic
             << ", choose algo=" << result.algo
             << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";

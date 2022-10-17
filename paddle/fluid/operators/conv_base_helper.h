@@ -56,7 +56,15 @@ struct SearchResult {
 template <typename T>
 static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
   out << "[";
-  for (auto const& tmp : v) out << tmp << ",";
+  bool is_first = true;
+  for (auto const& tmp : v) {
+    if (is_first) {
+      out << tmp;
+      is_first = false;
+    } else {
+      out << ", " << tmp;
+    }
+  }
   out << "]";
   return out;
 }
@@ -109,7 +117,7 @@ struct ConvArgsBase {
     auto w_shape = phi::vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
              << ", strides=" << s << ", paddings=" << p << ", dilations=" << d
-             << ",data= " << paddle::experimental::CppTypeToDataType<T>::Type()
+             << ", data=" << paddle::experimental::CppTypeToDataType<T>::Type()
              << ", group=" << group
              << ", data layout=" << static_cast<int64_t>(data_layout);
 
