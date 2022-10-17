@@ -96,21 +96,21 @@ __global__ void MatrixRowReverse(const T* matrix_data,
   }
 }
 
-template <typename T, typename Op>
+template <typename T, typename MT, typename Op>
 struct BlockPrefixCallbackOp {
   // Running prefix
-  T running_total_;
+  MT running_total_;
   Op op_;
 
-  __device__ BlockPrefixCallbackOp(T running_total, Op op)
+  __device__ BlockPrefixCallbackOp(MT running_total, Op op)
       : running_total_(running_total), op_(op) {}
 
   // Callback operator to be entered by the first warp of threads in the block.
   // tid 0 is responsible for returning a value for seeding the block-wide scan.
-  __device__ T operator()(T block_aggregate) {
-    T old_prefix = running_total_;
+  __device__ T operator()(MT block_aggregate) {
+    MT old_prefix = running_total_;
     running_total_ = op_(old_prefix, block_aggregate);
-    return old_prefix;
+    return static_cast<T>(old_prefix);
   }
 };
 
@@ -194,10 +194,10 @@ __global__ void BlockScanKernel(T* d_out,
   } temp_storage;
 
   int bx = blockIdx.x;
-  BlockPrefixCallbackOp<T, Op> prefix_op(
-      static_cast<T>(Identity<MT, Op>::value), op);
+  BlockPrefixCallbackOp<T, MT, Op> prefix_op(Identity<MT, Op>::value, op);
 
-  // Obtain this block's segment of consecutive keys (blocked across threads)
+  // Obtain this block's segmBlockPrefixCallbackOpent of consecutive keys
+  // (blocked across threads)
   int item_per_block = BLOCK_THREADS * ITEMS_PER_THREAD;
   for (int block_offset = 0; block_offset < scan_size;
        block_offset += BLOCK_THREADS * ITEMS_PER_THREAD) {
