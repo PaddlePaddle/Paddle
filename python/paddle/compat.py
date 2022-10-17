@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import six
-import math
 
 __all__ = []
 
@@ -197,30 +196,3 @@ def _to_bytes(obj, encoding):
         return obj
     else:
         return six.b(obj)
-
-
-# math related functions
-def round(x, d=0):
-    """
-    Compatible round which act the same behaviour in Python3.
-
-    Args:
-        x(float) : The number to round halfway.
-
-    Returns:
-        round result of x
-    """
-    if six.PY3:
-        # The official walkaround of round in Python3 is incorrect
-        # we implement according this answer: https://www.techforgeek.info/round_python.html
-        if x > 0.0:
-            p = 10**d
-            return float(math.floor((x * p) + math.copysign(0.5, x))) / p
-        elif x < 0.0:
-            p = 10**d
-            return float(math.ceil((x * p) + math.copysign(0.5, x))) / p
-        else:
-            return math.copysign(0.0, x)
-    else:
-        import __builtin__
-        return __builtin__.round(x, d)

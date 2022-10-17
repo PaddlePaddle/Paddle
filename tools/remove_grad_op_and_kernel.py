@@ -17,7 +17,6 @@ when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction li
 """
 
 import os
-import sys
 import re
 import glob
 

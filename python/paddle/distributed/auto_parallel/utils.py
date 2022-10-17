@@ -27,6 +27,10 @@ from paddle.distributed.auto_parallel.process_group import get_all_process_group
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
+__not_shape_var_type__ = [
+    core.VarDesc.VarType.READER, core.VarDesc.VarType.STEP_SCOPES
+]
+
 
 def get_logger(log_level, name="auto_parallel"):
     logger = logging.getLogger(name)
