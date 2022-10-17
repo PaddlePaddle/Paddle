@@ -80,7 +80,7 @@ MergeLayernormFusePass::MergeLayernormFusePass() {
       .IsType<std::vector<int>>()
       .End();
   AddOpCompat(OpCompat("concat"))
-      .AddInput("X")  // X is vector<Tensor>
+      .AddInput("X")
       .End()
       .AddInput("AxisTensor")
       .IsTensor()
