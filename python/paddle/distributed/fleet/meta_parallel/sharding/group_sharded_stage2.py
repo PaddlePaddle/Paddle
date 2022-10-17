@@ -23,11 +23,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-import time
-import functools
-import numpy as np
 from functools import reduce
-from collections import deque
 from types import MethodType
 
 import paddle
@@ -37,7 +33,7 @@ from paddle.distributed.utils.log_utils import get_logger
 
 from .group_sharded_storage import GradStorage
 from .group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
-from .group_sharded_utils import Taskflow, Type, device_guard
+from .group_sharded_utils import Type, device_guard
 
 logger_ = get_logger(logging.WARNING)
 
@@ -69,7 +65,8 @@ class GroupShardedStage2(nn.Layer):
             sync_buffers=False,
             buffer_max_size=2**23,  #8MB
             auto_refresh_trainable=True,
-            device="gpu"):
+            device="gpu",
+            dp_group=None):
         super().__init__()
 
         # training options
@@ -94,6 +91,8 @@ class GroupShardedStage2(nn.Layer):
         self._global_root_rank = self._group.ranks[
             0]  # picking ranks index 0 as the reference
         self._default_device = device
+
+        self._dp_group = dp_group
 
         # Global statistical parameters
         self._all_params = []
@@ -205,24 +204,29 @@ class GroupShardedStage2(nn.Layer):
         """
         Before the gradient accumulation, scale the gradient.
         """
+
+        if self._dp_group is None:
+            scale_factor = self._world_size_scaling
+        else:
+            scale_factor = 1.0 / (self._group.nranks * self._dp_group.nranks)
+
         # Scale grad storages
         for dtype in self._grad_storages.keys():
             if not self._offload and self._rank in self._grad_storages[
                     dtype].keys():
                 self._grad_storages[dtype][self._rank].buffer.scale_(
-                    scale=self._world_size_scaling)
+                    scale=scale_factor)
 
         # Scale grads of params
         with paddle.no_grad():
             for param in self._trainable_params:
                 if param.name in self._param_grads and param.grad is not None:
-                    param.grad.scale_(scale=self._world_size_scaling)
+                    param.grad.scale_(scale=scale_factor)
                 # param._reset_grad_inplace_version(True)
 
             # Scale grads of master params with offload strategy
         if self._offload:
-            self._sharding_optimizers[0]._offload_scale_grad(
-                self._world_size_scaling)
+            self._sharding_optimizers[0]._offload_scale_grad(scale_factor)
 
     def _init_internal_storage(self, needs_fresh):
         """
@@ -292,6 +296,12 @@ class GroupShardedStage2(nn.Layer):
                                  self._group,
                                  sync_op=True)
 
+            if self._dp_group:
+                collective.broadcast(buffer,
+                                     self._dp_group.ranks[0],
+                                     self._dp_group,
+                                     sync_op=True)
+
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
         try:
@@ -359,6 +369,13 @@ class GroupShardedStage2(nn.Layer):
                                           group=self._group,
                                           sync_op=not self._reduce_overlap))
 
+                    if self._dp_group:
+                        assert not self._comm_overlap, 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
+                        #TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
+                        collective.all_reduce(tensor=param.grad,
+                                              group=self._dp_group,
+                                              sync_op=True)
+
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     # self._clear_task_flow()
 
@@ -408,6 +425,13 @@ class GroupShardedStage2(nn.Layer):
                                 dst=self._group.ranks[grad_storage.destination],
                                 group=self._group,
                                 sync_op=not self._reduce_overlap))
+
+                        if self._dp_group:
+                            assert not self._comm_overlap, 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
+                            #TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
+                            collective.all_reduce(tensor=grad_storage.buffer,
+                                                  group=self._dp_group,
+                                                  sync_op=True)
 
                         cleanup()
 

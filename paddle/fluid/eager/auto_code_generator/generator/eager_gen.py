@@ -12,23 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
 import re
 import argparse
 import os
-import logging
 from codegen_utils import core_ops_returns_info, core_ops_args_info, core_ops_args_type_info
-from codegen_utils import yaml_types_mapping
-from codegen_utils import ReadFwdFile, ReadBwdFile
-from codegen_utils import FindGradName, FindForwardName, GetSavedName, GetGradNodeName
+from codegen_utils import ReadBwdFile
+from codegen_utils import FindForwardName, GetGradNodeName, GetSavedName
 from codegen_utils import IsPlainTensorType, IsVectorTensorType
 from codegen_utils import GetConstReference, RemoveConstAndReference
-from codegen_utils import GetDygraphForwardFunctionName, GetIntermediateAPIFunctionName, GetDygraphLogName
+from codegen_utils import GetDygraphForwardFunctionName, GetIntermediateAPIFunctionName
 from codegen_utils import GetAutoGradMetaName, GetAutoGradMetaVectorName
-from codegen_utils import RemoveSpecialSymbolsInName, RecoverBaseNameOfInplaceFunction
 from codegen_utils import GetInplacedFunctionName
-from codegen_utils import ParseYamlArgs, ParseYamlReturns, ParseYamlForwardFromBackward
-from codegen_utils import ParseYamlForward, ParseYamlBackward
+from codegen_utils import ParseYamlForwardFromBackward
+from codegen_utils import ParseYamlBackward
 from codegen_utils import ParseYamlInplaceInfo
 from codegen_utils import FunctionGeneratorBase, GeneratorBase
 from codegen_utils import ops_to_fill_zero_for_empty_grads
@@ -1093,7 +1089,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         tensors_vector_list_str = "{ " + ",".join(
             amp_tensors_vector_list) + " }"
 
-        if len(amp_tensors_vector_list) == 0:  # or forward_api_name == "shape":
+        if len(amp_tensors_vector_list) == 0:
             layout_logic_str = ""
         else:
             after_call_str = f"{returns_type_str} {result_name} = {forward_function_name}({layout_inputs_call_args_str});\n"

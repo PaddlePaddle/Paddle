@@ -16,7 +16,6 @@
 import os
 import unittest
 
-import time  # temp for debug
 import paddle.fluid as fluid
 import numpy as np
 import paddle

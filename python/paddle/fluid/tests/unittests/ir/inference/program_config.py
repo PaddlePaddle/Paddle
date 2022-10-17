@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 import enum
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle import compat as cpt
 from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
@@ -120,7 +119,7 @@ class BlockConfig:
 
     def fill_block_desc(self, block_desc):
         for name in self.vars:
-            var_desc = block_desc.var(cpt.to_bytes(name))
+            var_desc = block_desc.var(name.encode())
             var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
             if self.vars_lod_level is not None and name in self.vars_lod_level.keys(
             ):
@@ -147,9 +146,9 @@ class BlockConfig:
             for name, values in op_config.outputs.items():
                 op_desc.set_output(name, values)
                 for v in values:
-                    if block_desc.has_var_recursive(cpt.to_bytes(v)):
+                    if block_desc.has_var_recursive(v.encode()):
                         continue
-                    var_desc = block_desc.var(cpt.to_bytes(v))
+                    var_desc = block_desc.var(v.encode())
                     var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
                     if op_config.outputs_var_type is not None and v in op_config.outputs_var_type.keys(
                     ):
@@ -216,13 +215,13 @@ def create_fake_model(program_config):
     util_program = fluid.Program()
     main_block_desc = main_program_desc.block(0)
 
-    var_desc = main_block_desc.var(cpt.to_bytes("feed"))
+    var_desc = main_block_desc.var(b"feed")
     var_desc.set_type(core.VarDesc.VarType.FEED_MINIBATCH)
     var_desc.set_persistable(True)
 
     index = 0
     for name, tensor_config in program_config.inputs.items():
-        var_desc = main_block_desc.var(cpt.to_bytes(name))
+        var_desc = main_block_desc.var(name.encode())
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
@@ -239,7 +238,7 @@ def create_fake_model(program_config):
 
     save_var_map = {}
     for name, tensor_config in program_config.weights.items():
-        var_desc = main_block_desc.var(cpt.to_bytes(name))
+        var_desc = main_block_desc.var(name.encode())
         var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
         var_desc.set_dtype(convert_np_dtype_to_dtype_(tensor_config.dtype))
         var_desc.set_shape(tensor_config.shape)
@@ -280,9 +279,9 @@ def create_fake_model(program_config):
         for name, values in op_config.outputs.items():
             op_desc.set_output(name, values)
             for v in values:
-                if main_block_desc.has_var_recursive(cpt.to_bytes(v)):
+                if main_block_desc.has_var_recursive(v.encode()):
                     continue
-                var_desc = main_block_desc.var(cpt.to_bytes(v))
+                var_desc = main_block_desc.var(v.encode())
                 var_desc.set_type(core.VarDesc.VarType.LOD_TENSOR)
                 if op_config.outputs_var_type is not None and v in op_config.outputs_var_type.keys(
                 ):
@@ -303,7 +302,7 @@ def create_fake_model(program_config):
         op_desc.check_attrs()
 
     for index, name in enumerate(program_config.outputs):
-        var_desc = main_block_desc.var(cpt.to_bytes("fetch"))
+        var_desc = main_block_desc.var(b"fetch")
         var_desc.set_type(core.VarDesc.VarType.FETCH_LIST)
         var_desc.set_need_check_feed(True)
         op_desc = main_block_desc.append_op()

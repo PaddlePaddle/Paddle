@@ -109,11 +109,11 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "vit_attention_fuse_pass",              //
       "trt_skip_layernorm_fuse_pass",         //
       "preln_skip_layernorm_fuse_pass",       //
-      "preln_residual_bias_fuse_pass",        //
       "layernorm_shift_partition_fuse_pass",  //
-      "reverse_roll_fuse_pass",               //
-      // "set_transformer_input_convert_pass",           //
+      "preln_residual_bias_fuse_pass",        //
+      // "set_transformer_input_convert_pass",       //
       "conv_bn_fuse_pass",                           //
+      "reverse_roll_fuse_pass",               //
       "unsqueeze2_eltwise_fuse_pass",                //
       "trt_squeeze2_matmul_fuse_pass",               //
       "trt_flatten2_matmul_fuse_pass",               //
@@ -283,6 +283,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "conv_eltwiseadd_bn_fuse_pass",            //
                   "conv_transpose_bn_fuse_pass",             //
                   "conv_transpose_eltwiseadd_bn_fuse_pass",  //
+                  "common_subexpression_elimination_pass",   //
                   "is_test_pass",                            //
                   "constant_folding_pass",
                   // following pass should be located in the last, since

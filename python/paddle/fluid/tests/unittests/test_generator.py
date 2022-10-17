@@ -16,7 +16,6 @@
 import unittest
 import paddle
 import paddle.fluid.generator as generator
-import time  # temp for debug
 
 
 class TestGenerator(unittest.TestCase):
