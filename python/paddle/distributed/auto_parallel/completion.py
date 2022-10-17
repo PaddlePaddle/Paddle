@@ -367,7 +367,14 @@ class Completer:
     def _update_dims_mapping_for_special(self):
         # Set the dims_mapping of a tensor to the dims_mapping inside the op which produces it
         op_nodes = self._dist_context._serial_ordered_op_nodes
+        # NOTE: this list may be changed if Paddle changes the existing rules.
+        related_reader_ops = [
+            "create_py_reader", "create_double_buffer_reader", "read"
+        ]
         for op_node in op_nodes:
+            if op_node.op() is not None \
+                and op_node.op().type() in related_reader_ops:
+                continue
             op_dist_attr = self._dist_context.get_dist_attr_for_graph(op_node)
             for tensor_node in op_node.outputs:
                 if tensor_node.is_var() and tensor_node.var() is not None:
@@ -407,6 +414,7 @@ class Completer:
                 reach_fix_point = False
             else:
                 reach_fix_point = True
+        # NOTE: this will be removed after changing the reshard rule
         self._update_dims_mapping_for_special()
 
     def _update_process_mesh_by_nearest(self, op_node, nearest_op_node):
