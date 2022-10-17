@@ -290,6 +290,10 @@ bool GenericPlugin::supportsFormatCombination(
   if (op_desc_.Type() == "gather_nd" || op_desc_.Type() == "yolo_box") {
     if (pos == 0) return in_out[pos].type == nvinfer1::DataType::kFLOAT;
     if (pos == 1) return in_out[pos].type == nvinfer1::DataType::kINT32;
+  } else if (op_desc_.Type() == "scatter_nd_add") {
+    if (pos == 0) return in_out[pos].type == nvinfer1::DataType::kFLOAT;
+    if (pos == 1) return in_out[pos].type == nvinfer1::DataType::kINT32;
+    if (pos == 2) return in_out[pos].type == nvinfer1::DataType::kFLOAT;
   } else {
     return in_out[pos].type == nvinfer1::DataType::kFLOAT;
   }

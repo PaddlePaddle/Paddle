@@ -78,8 +78,7 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "prior_box",
     "fc",
     "mul",
-    "mul_grad",
-    "transpose2"};
+    "mul_grad"};
 
 inline bool in_mkldnn_white_list(const std::string& op_name) {
   return mkldnn_white_list.find(op_name) != mkldnn_white_list.end();
