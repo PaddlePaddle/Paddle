@@ -101,6 +101,11 @@ class InferShapeArgumentMappingContext : public phi::ArgumentMappingContext {
                        });
   }
 
+  bool IsSparseCooTensorInput(const std::string& name) const override {
+    auto var_type = ctx_.GetInputVarType(name);
+    return var_type == proto::VarType::SPARSE_COO;
+  }
+
   bool IsDenseTensorOutput(const std::string& name) const override {
     auto var_types = ctx_.GetOutputsVarType(name);
     return std::all_of(var_types.begin(),
@@ -145,6 +150,26 @@ int64_t CompatMetaTensor::numel() const {
   }
 }
 
+bool CompatMetaTensor::is_dense() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<phi::DenseTensor>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetType() == proto::VarType::LOD_TENSOR;
+  }
+}
+
+bool CompatMetaTensor::is_tensor_array() const {
+  if (is_runtime_) {
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    return var->IsType<framework::LoDTensorArray>();
+  } else {
+    auto* var = PADDLE_GET_CONST(VarDesc*, var_);
+    return var->GetType() == proto::VarType::LOD_TENSOR_ARRAY;
+  }
+}
+
 DDim CompatMetaTensor::dims() const {
   ValidCheck(*this);
   if (is_runtime_) {
@@ -153,6 +178,8 @@ DDim CompatMetaTensor::dims() const {
       return var->Get<phi::DenseTensor>().dims();
     } else if (var->IsType<phi::SelectedRows>()) {
       return var->Get<phi::SelectedRows>().dims();
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      return var->Get<phi::SparseCooTensor>().dims();
     } else if (var->IsType<framework::LoDTensorArray>()) {
       // use tensor array size as dims
       auto& tensor_array = var->Get<framework::LoDTensorArray>();
@@ -178,6 +205,8 @@ phi::DataType CompatMetaTensor::dtype() const {
       return var->Get<phi::DenseTensor>().dtype();
     } else if (var->IsType<phi::SelectedRows>()) {
       return var->Get<phi::SelectedRows>().dtype();
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      return var->Get<phi::SparseCooTensor>().dtype();
     } else if (var->IsType<framework::LoDTensorArray>()) {
       // NOTE(chenweihang): do nothing
       // Unsupported get dtype from LoDTensorArray now
@@ -200,6 +229,8 @@ DataLayout CompatMetaTensor::layout() const {
       return var->Get<phi::DenseTensor>().layout();
     } else if (var->IsType<phi::SelectedRows>()) {
       return var->Get<phi::SelectedRows>().layout();
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      return var->Get<phi::SparseCooTensor>().layout();
     } else if (var->IsType<framework::LoDTensorArray>()) {
       // NOTE(chenweihang): do nothing
       // Unsupported get layout from LoDTensorArray now
@@ -225,6 +256,9 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
     } else if (var->IsType<phi::SelectedRows>()) {
       auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
+      phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      auto* tensor = var->GetMutable<phi::SparseCooTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
     } else if (var->IsType<framework::LoDTensorArray>()) {
       auto* tensor_array = var->GetMutable<framework::LoDTensorArray>();
@@ -257,6 +291,9 @@ void CompatMetaTensor::set_dtype(phi::DataType dtype) {
     } else if (var->IsType<phi::SelectedRows>()) {
       auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      auto* tensor = var->GetMutable<phi::SparseCooTensor>();
+      phi::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
     } else if (var->IsType<framework::LoDTensorArray>()) {
       // NOTE(chenweihang): do nothing
       // Unsupported set dtype for LoDTensorArray now
@@ -280,6 +317,9 @@ void CompatMetaTensor::set_layout(DataLayout layout) {
     } else if (var->IsType<phi::SelectedRows>()) {
       auto* tensor = var->GetMutable<phi::SelectedRows>()->mutable_value();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      auto* tensor = var->GetMutable<phi::SparseCooTensor>();
+      phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
     } else if (var->IsType<framework::LoDTensorArray>()) {
       // NOTE(chenweihang): do nothing
       // Unsupported set dtype for LoDTensorArray now
@@ -299,7 +339,7 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
   ValidCheck(meta_tensor);
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
-    if (var->IsType<phi::DenseTensor>()) {
+    if (var->IsType<phi::DenseTensor>() && meta_tensor.is_dense()) {
       auto* tensor = var->GetMutable<phi::DenseTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->lod =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetRuntimeLoD();
@@ -309,6 +349,10 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
+    if (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array()) {
+      VLOG(3) << "input metatensor is not LoDTensor or LoDTensorArray.";
+      return;
+    }
     var->SetLoDLevel(
         static_cast<const CompatMetaTensor&>(meta_tensor).GetCompileTimeLoD());
   }
