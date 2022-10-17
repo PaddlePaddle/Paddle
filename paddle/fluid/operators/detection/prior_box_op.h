@@ -50,7 +50,22 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
   }
 }
 
-template <typename T, typename K>
+#define PD_VISIT_FLOAT_AND_DOUBLE_TYPES(TYPE, NAME, ...)                  \
+  [&] {                                                                   \
+    const auto& __dtype__ = TYPE;                                         \
+    switch (__dtype__) {                                                  \
+      PD_PRIVATE_CASE_TYPE(                                               \
+          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)          \
+      PD_PRIVATE_CASE_TYPE(                                               \
+          NAME, ::paddle::DataType::FLOAT64, double, __VA_ARGS__)         \
+      default:                                                            \
+        PD_THROW("function " #NAME " is not implemented for data type `", \
+                 __dtype__,                                               \
+                 "`");                                                    \
+    }                                                                     \
+  }()
+
+template <typename T>
 class PriorBoxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -68,137 +83,141 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto min_max_aspect_ratios_order =
         ctx.Attr<bool>("min_max_aspect_ratios_order");
 
-    std::vector<float> aspect_ratios;
-    ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
+    PD_VISIT_FLOAT_AND_DOUBLE_TYPES(
+        image->dtype(), "PriorBoxOpKernel::Compute", ([&] {
+          std::vector<float> aspect_ratios;
+          ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
 
-    K step_w = static_cast<K>(ctx.Attr<float>("step_w"));
-    K step_h = static_cast<K>(ctx.Attr<float>("step_h"));
-    K offset = static_cast<K>(ctx.Attr<float>("offset"));
+          data_t step_w = static_cast<data_t>(ctx.Attr<float>("step_w"));
+          data_t step_h = static_cast<data_t>(ctx.Attr<float>("step_h"));
+          data_t offset = static_cast<data_t>(ctx.Attr<float>("offset"));
 
-    auto img_width = image->dims()[3];
-    auto img_height = image->dims()[2];
+          auto img_width = image->dims()[3];
+          auto img_height = image->dims()[2];
 
-    auto feature_width = input->dims()[3];
-    auto feature_height = input->dims()[2];
+          auto feature_width = input->dims()[3];
+          auto feature_height = input->dims()[2];
 
-    K step_width, step_height;
-    if (step_w == 0 || step_h == 0) {
-      step_width = static_cast<K>(img_width) / feature_width;
-      step_height = static_cast<K>(img_height) / feature_height;
-    } else {
-      step_width = step_w;
-      step_height = step_h;
-    }
-
-    int num_priors = aspect_ratios.size() * min_sizes.size();
-    if (max_sizes.size() > 0) {
-      num_priors += max_sizes.size();
-    }
-
-    boxes->mutable_data<K>(ctx.GetPlace());
-    vars->mutable_data<K>(ctx.GetPlace());
-
-    K* b_t = boxes->data<K>();
-    for (int h = 0; h < feature_height; ++h) {
-      for (int w = 0; w < feature_width; ++w) {
-        K center_x = (w + offset) * step_width;
-        K center_y = (h + offset) * step_height;
-        K box_width, box_height;
-        for (size_t s = 0; s < min_sizes.size(); ++s) {
-          auto min_size = min_sizes[s];
-          if (min_max_aspect_ratios_order) {
-            box_width = box_height = min_size / 2.;
-            b_t[0] = (center_x - box_width) / img_width;
-            b_t[1] = (center_y - box_height) / img_height;
-            b_t[2] = (center_x + box_width) / img_width;
-            b_t[3] = (center_y + box_height) / img_height;
-            b_t += 4;
-            if (max_sizes.size() > 0) {
-              auto max_size = max_sizes[s];
-              // square prior with size sqrt(minSize * maxSize)
-              box_width = box_height = sqrt(min_size * max_size) / 2.;
-              b_t[0] = (center_x - box_width) / img_width;
-              b_t[1] = (center_y - box_height) / img_height;
-              b_t[2] = (center_x + box_width) / img_width;
-              b_t[3] = (center_y + box_height) / img_height;
-              b_t += 4;
-            }
-            // priors with different aspect ratios
-            for (size_t r = 0; r < aspect_ratios.size(); ++r) {
-              float ar = aspect_ratios[r];
-              if (fabs(ar - 1.) < 1e-6) {
-                continue;
-              }
-              box_width = min_size * sqrt(ar) / 2.;
-              box_height = min_size / sqrt(ar) / 2.;
-              b_t[0] = (center_x - box_width) / img_width;
-              b_t[1] = (center_y - box_height) / img_height;
-              b_t[2] = (center_x + box_width) / img_width;
-              b_t[3] = (center_y + box_height) / img_height;
-              b_t += 4;
-            }
+          data_t step_width, step_height;
+          if (step_w == 0 || step_h == 0) {
+            step_width = static_cast<data_t>(img_width) / feature_width;
+            step_height = static_cast<data_t>(img_height) / feature_height;
           } else {
-            // priors with different aspect ratios
-            for (size_t r = 0; r < aspect_ratios.size(); ++r) {
-              float ar = aspect_ratios[r];
-              box_width = min_size * sqrt(ar) / 2.;
-              box_height = min_size / sqrt(ar) / 2.;
-              b_t[0] = (center_x - box_width) / img_width;
-              b_t[1] = (center_y - box_height) / img_height;
-              b_t[2] = (center_x + box_width) / img_width;
-              b_t[3] = (center_y + box_height) / img_height;
-              b_t += 4;
-            }
-            if (max_sizes.size() > 0) {
-              auto max_size = max_sizes[s];
-              // square prior with size sqrt(minSize * maxSize)
-              box_width = box_height = sqrt(min_size * max_size) / 2.;
-              b_t[0] = (center_x - box_width) / img_width;
-              b_t[1] = (center_y - box_height) / img_height;
-              b_t[2] = (center_x + box_width) / img_width;
-              b_t[3] = (center_y + box_height) / img_height;
-              b_t += 4;
+            step_width = step_w;
+            step_height = step_h;
+          }
+
+          int num_priors = aspect_ratios.size() * min_sizes.size();
+          if (max_sizes.size() > 0) {
+            num_priors += max_sizes.size();
+          }
+
+          boxes->mutable_data<data_t>(ctx.GetPlace());
+          vars->mutable_data<data_t>(ctx.GetPlace());
+
+          data_t* b_t = boxes->data<data_t>();
+          for (int h = 0; h < feature_height; ++h) {
+            for (int w = 0; w < feature_width; ++w) {
+              data_t center_x = (w + offset) * step_width;
+              data_t center_y = (h + offset) * step_height;
+              data_t box_width, box_height;
+              for (size_t s = 0; s < min_sizes.size(); ++s) {
+                auto min_size = min_sizes[s];
+                if (min_max_aspect_ratios_order) {
+                  box_width = box_height = min_size / 2.;
+                  b_t[0] = (center_x - box_width) / img_width;
+                  b_t[1] = (center_y - box_height) / img_height;
+                  b_t[2] = (center_x + box_width) / img_width;
+                  b_t[3] = (center_y + box_height) / img_height;
+                  b_t += 4;
+                  if (max_sizes.size() > 0) {
+                    auto max_size = max_sizes[s];
+                    // square prior with size sqrt(minSize * maxSize)
+                    box_width = box_height = sqrt(min_size * max_size) / 2.;
+                    b_t[0] = (center_x - box_width) / img_width;
+                    b_t[1] = (center_y - box_height) / img_height;
+                    b_t[2] = (center_x + box_width) / img_width;
+                    b_t[3] = (center_y + box_height) / img_height;
+                    b_t += 4;
+                  }
+                  // priors with different aspect ratios
+                  for (size_t r = 0; r < aspect_ratios.size(); ++r) {
+                    float ar = aspect_ratios[r];
+                    if (fabs(ar - 1.) < 1e-6) {
+                      continue;
+                    }
+                    box_width = min_size * sqrt(ar) / 2.;
+                    box_height = min_size / sqrt(ar) / 2.;
+                    b_t[0] = (center_x - box_width) / img_width;
+                    b_t[1] = (center_y - box_height) / img_height;
+                    b_t[2] = (center_x + box_width) / img_width;
+                    b_t[3] = (center_y + box_height) / img_height;
+                    b_t += 4;
+                  }
+                } else {
+                  // priors with different aspect ratios
+                  for (size_t r = 0; r < aspect_ratios.size(); ++r) {
+                    float ar = aspect_ratios[r];
+                    box_width = min_size * sqrt(ar) / 2.;
+                    box_height = min_size / sqrt(ar) / 2.;
+                    b_t[0] = (center_x - box_width) / img_width;
+                    b_t[1] = (center_y - box_height) / img_height;
+                    b_t[2] = (center_x + box_width) / img_width;
+                    b_t[3] = (center_y + box_height) / img_height;
+                    b_t += 4;
+                  }
+                  if (max_sizes.size() > 0) {
+                    auto max_size = max_sizes[s];
+                    // square prior with size sqrt(minSize * maxSize)
+                    box_width = box_height = sqrt(min_size * max_size) / 2.;
+                    b_t[0] = (center_x - box_width) / img_width;
+                    b_t[1] = (center_y - box_height) / img_height;
+                    b_t[2] = (center_x + box_width) / img_width;
+                    b_t[3] = (center_y + box_height) / img_height;
+                    b_t += 4;
+                  }
+                }
+              }
             }
           }
-        }
-      }
-    }
 
-    if (clip) {
-      K* dt = boxes->data<K>();
-      std::transform(dt, dt + boxes->numel(), dt, [](K v) -> K {
-        return std::min<K>(std::max<K>(v, 0.), 1.);
-      });
-    }
+          if (clip) {
+            data_t* dt = boxes->data<data_t>();
+            std::transform(dt, dt + boxes->numel(), dt, [](data_t v) -> data_t {
+              return std::min<data_t>(std::max<data_t>(v, 0.), 1.);
+            });
+          }
 
-    phi::DenseTensor var_t;
-    var_t.mutable_data<K>(
-        phi::make_ddim({1, static_cast<int>(variances.size())}),
-        ctx.GetPlace());
-    auto var_et = framework::EigenTensor<K, 2>::From(var_t);
+          phi::DenseTensor var_t;
+          var_t.mutable_data<data_t>(
+              phi::make_ddim({1, static_cast<int>(variances.size())}),
+              ctx.GetPlace());
+          auto var_et = framework::EigenTensor<data_t, 2>::From(var_t);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-    for (size_t i = 0; i < variances.size(); ++i) {
-      var_et(0, i) = variances[i];
-    }
+          for (size_t i = 0; i < variances.size(); ++i) {
+            var_et(0, i) = variances[i];
+          }
 
-    int box_num = feature_height * feature_width * num_priors;
-    auto var_dim = vars->dims();
-    vars->Resize({box_num, static_cast<int>(variances.size())});
+          int box_num = feature_height * feature_width * num_priors;
+          auto var_dim = vars->dims();
+          vars->Resize({box_num, static_cast<int>(variances.size())});
 
-    auto e_vars = framework::EigenMatrix<K, Eigen::RowMajor>::From(*vars);
+          auto e_vars =
+              framework::EigenMatrix<data_t, Eigen::RowMajor>::From(*vars);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for collapse(2)
 #endif
-    for (int i = 0; i < box_num; ++i) {
-      for (size_t j = 0; j < variances.size(); ++j) {
-        e_vars(i, j) = variances[j];
-      }
-    }
-    vars->Resize(var_dim);
+          for (int i = 0; i < box_num; ++i) {
+            for (size_t j = 0; j < variances.size(); ++j) {
+              e_vars(i, j) = variances[j];
+            }
+          }
+          vars->Resize(var_dim);
+        }));
   }
 };  // namespace operators
 

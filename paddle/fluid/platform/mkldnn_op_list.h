@@ -75,7 +75,6 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "depthwise_conv2d_grad",
     "conv3d",
     "conv3d_grad",
-    "prior_box",
     "fc",
     "mul",
     "mul_grad"};
