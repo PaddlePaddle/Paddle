@@ -18,7 +18,6 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-
 class MergeLayernormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,

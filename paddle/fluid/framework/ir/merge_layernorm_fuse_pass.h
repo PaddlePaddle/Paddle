@@ -25,10 +25,8 @@ namespace framework {
 namespace ir {
 
 // Fusing of path merge and layer_norm
-//
 // op: ss=stride_slice
 // shape: [ss] = [?x28x28x96]
-//
 //       input
 //         | [?x3136x96]
 //       reshape2                                 input
@@ -44,8 +42,6 @@ namespace ir {
 //       layer_norm
 //         | [?x784x384]
 //        output
-//
-
 class MergeLayernormFusePass : public FusePassBase {
  public:
   MergeLayernormFusePass();
@@ -54,7 +50,6 @@ class MergeLayernormFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 };
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

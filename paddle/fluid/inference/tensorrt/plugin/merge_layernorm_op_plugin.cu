@@ -47,13 +47,11 @@ __global__ void merge_layernorm_v2(T *out,
   const int input_H_stride = W * n / 2;
   const int output_H_stride = W * n;
   const int n_4 = n >> 2;
-
   __shared__ float s_mean;
   __shared__ float s_variance;
   float mean = 0.0f;
   float variance = 0.0f;
   float local_out[kIte];
-
   float sum = 0.0f;
 #pragma unroll
   for (int i = 0; i < kIte; i++) {
