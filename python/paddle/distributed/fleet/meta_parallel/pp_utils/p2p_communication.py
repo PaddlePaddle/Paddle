@@ -22,6 +22,7 @@ from .utils import paddle_2_number, paddle_2_number, number_2_dtype
 
 _hcg = None
 _use_cache = False
+_enable_partial_send_recv = True
 
 
 def initialize_p2p_groups(hcg, use_cache=True, enable_partial_send_recv=True):
