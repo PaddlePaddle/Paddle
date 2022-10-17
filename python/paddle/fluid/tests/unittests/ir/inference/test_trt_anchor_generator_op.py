@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import itertools
 import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle.fluid as fluid

@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 import math
 from op_test import OpTest
-import paddle.fluid.core as core
 
 
 def quantize_max_abs(x, max_range):

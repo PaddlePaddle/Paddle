@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from full_pascalvoc_test_preprocess import main_pascalvoc_preprocess
-import numpy as np
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 import unittest
 import os
 

@@ -14,9 +14,7 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle
 import paddle.fluid as fluid

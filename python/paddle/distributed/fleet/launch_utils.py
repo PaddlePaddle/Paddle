@@ -24,12 +24,10 @@ import shutil
 from contextlib import closing
 import multiprocessing
 import socket
-import warnings
 import six
 import struct
 import json
 
-import paddle
 import paddle.fluid as fluid
 from distutils.util import strtobool
 import paddle.utils.cpp_extension.extension_utils as utils
@@ -1481,7 +1479,7 @@ class ParameterServerLauncher(object):
                 format(self.node_ips, self.current_node_ip, self.node_rank))
 
     def start_ps(self):
-        if not self.current_node_ip in self.node_ips:
+        if self.current_node_ip not in self.node_ips:
             return
         cluster = Cluster(hdfs=None)
         server_rank = 0

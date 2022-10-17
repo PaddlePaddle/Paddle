@@ -153,14 +153,6 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType FusionGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN);
-  }
-#endif
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 

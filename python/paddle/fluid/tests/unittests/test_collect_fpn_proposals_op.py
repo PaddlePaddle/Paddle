@@ -14,8 +14,6 @@
 
 import unittest
 import numpy as np
-import math
-import sys
 from op_test import OpTest
 
 

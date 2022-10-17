@@ -115,8 +115,8 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
   }
 }
 
-static void TransData(const framework::LoDTensor &src_item,
-                      framework::LoDTensor *dst_item) {
+static void TransData(const phi::DenseTensor &src_item,
+                      phi::DenseTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
     if (platform::is_gpu_place(src_item.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -150,7 +150,7 @@ void FetchOpHandle::RunImpl() {
             "Cannot find variable %s in execution scope.", var_handle->name()));
 
     if (var->IsType<LoDTensor>()) {
-      auto &t = var->Get<framework::LoDTensor>();
+      auto &t = var->Get<phi::DenseTensor>();
       auto &item = PADDLE_GET(LoDTensor, tensors_[i]);
       TransData(t, &item);
     } else {

@@ -13,9 +13,7 @@
 # limitations under the License.
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import framework
+from paddle import _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
 import unittest
 
