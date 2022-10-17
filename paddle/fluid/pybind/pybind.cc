@@ -184,7 +184,7 @@ limitations under the License. */
 
 #if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
     !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
-    !defined(PADDLE_WITH_HIP)
+    !defined(PADDLE_WITH_HIP) && !defined(PADDLE_WITH_IPU)
 #include "paddle/fluid/pybind/rpc.h"
 #endif
 
