@@ -52,7 +52,7 @@ void GatherTreeKernel(const Context &dev_ctx,
         PADDLE_ENFORCE_LT(
             parent,
             beam_size,
-            paddle::platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The parents must be less than beam size, but recieved"
                 "parents %d is greater than or equal to beam size %d. ",
                 parent,
