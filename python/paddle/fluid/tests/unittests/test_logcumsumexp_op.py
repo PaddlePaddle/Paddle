@@ -93,7 +93,7 @@ def np_logcumsumexp_grad(
 
 class TestLogcumsumexp(unittest.TestCase):
 
-    def run_imperative(self, use_gpu=False):
+    def run_imperative(self):
         data_np = np.arange(12, dtype=np.float32).reshape(3, 4)
         data = paddle.to_tensor(data_np)
 
@@ -111,16 +111,6 @@ class TestLogcumsumexp(unittest.TestCase):
 
         y = paddle.logcumsumexp(data, dtype='float32')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
-
-        if use_gpu:
-            y_fp16 = paddle.logcumsumexp(data.astype('float16'),
-                                         dtype='float16')
-            self.assertTrue(y_fp16.dtype == core.VarDesc.VarType.FP16)
-            y_fp32 = paddle.logcumsumexp(data.astype('float32'),
-                                         dtype='float32')
-            np.testing.assert_allclose(y_fp16.numpy(),
-                                       y_fp32.numpy(),
-                                       rtol=1e-03)
 
         y = paddle.logcumsumexp(data, axis=-2)
         z = np_logcumsumexp(data_np, axis=-2)
@@ -152,16 +142,18 @@ class TestLogcumsumexp(unittest.TestCase):
             y3 = paddle.logcumsumexp(x, axis=-1)
             y4 = paddle.logcumsumexp(x, dtype='float64')
             y5 = paddle.logcumsumexp(x, axis=-2)
-            fetch_list = [y.name, y2.name, y3.name, y4.name, y5.name]
-
-            if use_gpu:
-                y6 = paddle.logcumsumexp(x, dtype='float16')
-                fetch_list.append(y6)
 
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            out = exe.run(feed={'X': data_np}, fetch_list=fetch_list)
+            out = exe.run(feed={'X': data_np},
+                          fetch_list=[
+                              y.name,
+                              y2.name,
+                              y3.name,
+                              y4.name,
+                              y5.name,
+                          ])
 
             z = np_logcumsumexp(data_np)
             np.testing.assert_allclose(z, out[0], rtol=1e-05)
@@ -172,9 +164,6 @@ class TestLogcumsumexp(unittest.TestCase):
             self.assertTrue(out[3].dtype == np.float64)
             z = np_logcumsumexp(data_np, axis=-2)
             np.testing.assert_allclose(z, out[4], rtol=1e-05)
-
-            if use_gpu:
-                self.assertTrue(out[5].dtype == np.float16)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
@@ -187,7 +176,7 @@ class TestLogcumsumexp(unittest.TestCase):
         if not fluid.core.is_compiled_with_cuda():
             return
         paddle.disable_static(paddle.fluid.CUDAPlace(0))
-        self.run_imperative(use_gpu=True)
+        self.run_imperative()
         paddle.enable_static()
 
         self.run_static(use_gpu=True)
@@ -295,17 +284,17 @@ class TestLogcumsumexpFP16(unittest.TestCase):
             return
 
         np.random.seed(20)
-        x_np = np.random.random([4, 5])
+        x_np = np.random.random([10, 12])
 
         y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
         y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
         np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
-        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-03)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=5e-03)
 
         y_np_1, x_g_np_1 = self.check_main(x_np, 'float16', axis=1)
         y_np_2, x_g_np_2 = self.check_main(x_np, 'float32', axis=1)
         np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
-        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=2e-03)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=4e-03)
 
 
 if __name__ == '__main__':

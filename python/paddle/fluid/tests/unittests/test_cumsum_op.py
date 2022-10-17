@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import tempfile
@@ -30,7 +28,7 @@ import paddle.fluid.layers as layers
 
 class TestCumsumOp(unittest.TestCase):
 
-    def run_cases(self, use_gpu=False):
+    def run_cases(self):
         data_np = np.arange(12).reshape(3, 4)
         data = paddle.to_tensor(data_np)
 
@@ -49,20 +47,6 @@ class TestCumsumOp(unittest.TestCase):
         y = paddle.cumsum(data, dtype='float64')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP64)
 
-        if use_gpu:
-            data_fp16 = data_np.astype("float16")
-            x_fp16 = paddle.to_tensor(data_fp16)
-            y_fp16 = paddle.cumsum(x_fp16)
-
-            data_fp32 = data_np.astype("float32")
-            x_fp32 = paddle.to_tensor(data_fp32)
-            y_fp32 = paddle.cumsum(x_fp32)
-
-            self.assertTrue(y_fp16.dtype == core.VarDesc.VarType.FP16)
-            np.testing.assert_allclose(y_fp32.numpy(),
-                                       y_fp16.numpy(),
-                                       rtol=1e-03)
-
         y = paddle.cumsum(data, dtype=np.int32)
         self.assertTrue(y.dtype == core.VarDesc.VarType.INT32)
 
@@ -80,12 +64,15 @@ class TestCumsumOp(unittest.TestCase):
             y4 = paddle.cumsum(x, dtype='float64')
             y5 = paddle.cumsum(x, dtype=np.int32)
             y6 = paddle.cumsum(x, axis=-2)
-            fetch_list = [y.name, y2.name, y3.name, y4.name, y5.name, y6.name]
 
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            out = exe.run(feed={'X': data_np}, fetch_list=fetch_list)
+            out = exe.run(feed={'X': data_np},
+                          fetch_list=[
+                              y.name, y2.name, y3.name, y4.name, y5.name,
+                              y6.name
+                          ])
 
             z = np.cumsum(data_np)
             np.testing.assert_allclose(z, out[0], rtol=1e-05)
@@ -95,13 +82,8 @@ class TestCumsumOp(unittest.TestCase):
             np.testing.assert_allclose(z, out[2], rtol=1e-05)
             self.assertTrue(out[3].dtype == np.float64)
             self.assertTrue(out[4].dtype == np.int32)
-
-            if use_gpu:
-                y7 = paddle.cumsum(x, dtype="float16")
-                exe = fluid.Executor(place)
-                exe.run(fluid.default_startup_program())
-                outs = exe.run(feed={'X': data_np}, fetch_list=[y7.name])
-                self.assertTrue(outs[0].dtype == np.float16)
+            z = np.cumsum(data_np, axis=-2)
+            np.testing.assert_allclose(z, out[5], rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(paddle.fluid.CPUPlace())
@@ -113,9 +95,8 @@ class TestCumsumOp(unittest.TestCase):
     def test_gpu(self):
         if not fluid.core.is_compiled_with_cuda():
             return
-
         paddle.disable_static(paddle.fluid.CUDAPlace(0))
-        self.run_cases(use_gpu=True)
+        self.run_cases()
         paddle.enable_static()
 
         self.run_static(use_gpu=True)
@@ -236,11 +217,11 @@ class TestCumsumFP16(unittest.TestCase):
             return
 
         np.random.seed(20)
-        x_np = np.random.random([4, 5])
+        x_np = np.random.random([10, 12])
         y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
         y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
 
-        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=2e-03)
         np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-03)
 
 
@@ -334,7 +315,7 @@ class TestSumOpExclusive5(OpTest):
         self.check_output()
 
 
-class TestSumOpExclusive6(OpTest):
+class TestSumOpExclusiveFP16(OpTest):
 
     def setUp(self):
         self.op_type = "cumsum"
@@ -416,6 +397,9 @@ class TestTensorAxis(unittest.TestCase):
             relu_out = paddle.nn.functional.relu(linear_out)
             axis = paddle.full([1], 2, dtype='int64')
             out = paddle.cumsum(relu_out, axis=axis)
+            loss = paddle.mean(out)
+            sgd = paddle.optimizer.SGD(learning_rate=0.)
+            sgd.minimize(paddle.mean(out))
 
             exe = paddle.static.Executor(self.place)
             exe.run(starup_prog)

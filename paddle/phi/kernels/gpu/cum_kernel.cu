@@ -177,9 +177,6 @@ __global__ void BlockScanKernel(T* d_out,
                                 bool exclusive,
                                 Op op) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  /*
-  const MT* mt_d_in = reinterpret_cast<const MT*>(d_in);
-  MT* mt_d_out = reinterpret_cast<MT*>(d_out);*/
 
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
   typedef cub::
