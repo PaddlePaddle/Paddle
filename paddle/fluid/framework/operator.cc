@@ -2698,6 +2698,15 @@ void OperatorWithKernel::BuildPhiKernelContext(
   auto attr_defs = phi_kernel_->args_def().attribute_defs();
   auto output_defs = phi_kernel_->args_def().output_defs();
 
+#if defined(PADDLE_WITH_MKLDNN)
+  if (phi::OneDNNContext::classof(dev_ctx)) {
+    // Onednn holds this op's variable's name and init them here.
+    phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+    one_dnn_ctx->SetInputsName(Inputs());
+    one_dnn_ctx->SetOutputsName(Outputs());
+  }
+#endif
+
   PADDLE_ENFORCE_EQ(input_names.size(),
                     input_defs.size(),
                     platform::errors::InvalidArgument(

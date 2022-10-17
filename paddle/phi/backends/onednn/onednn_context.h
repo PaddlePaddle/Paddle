@@ -24,6 +24,8 @@ limitations under the License. */
 
 namespace phi {
 
+using TensorNameMap = std::map<std::string, std::vector<std::string>>;
+
 class OneDNNContextThreadLocals {
   // default mkldnn session id
 
@@ -143,6 +145,15 @@ class OneDNNContext : public CPUContext {
   bool HasDnnInput(const std::string& input_name) const;
   const DenseTensor* GetDnnInput(const std::string& input_name) const;
   void SetDnnInput(const std::string& input_name, const DenseTensor* input);
+
+  void SetInputsName(const TensorNameMap& inputs_name);
+
+  void SetOutputsName(const TensorNameMap& outputs_name);
+
+  const std::vector<std::string>& GetInputsName(const std::string& input) const;
+
+  const std::vector<std::string>& GetOutputsName(
+      const std::string& output) const;
 
   static const char* name() { return "OneDNNContext"; }
 

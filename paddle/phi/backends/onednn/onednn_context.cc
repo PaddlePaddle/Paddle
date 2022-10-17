@@ -319,6 +319,35 @@ struct OneDNNContext::Impl {
     dnn_inputs_[input_name] = input;
   }
 
+  void SetInputsName(const TensorNameMap& inputs_name) {
+    inputs_name_ = inputs_name;
+  }
+
+  void SetOutputsName(const TensorNameMap& outputs_name) {
+    outputs_name_ = outputs_name;
+  }
+
+  const std::vector<std::string>& GetInputsName(
+      const std::string& input) const {
+    auto it = inputs_name_.find(input);
+    PADDLE_ENFORCE_NE(it,
+                      inputs_name_.end(),
+                      phi::errors::NotFound(
+                          "OneDnnContext does not have the input %s.", input));
+    return it->second;
+  }
+
+  const std::vector<std::string>& GetOutputsName(
+      const std::string& output) const {
+    auto it = outputs_name_.find(output);
+    PADDLE_ENFORCE_NE(
+        it,
+        outputs_name_.end(),
+        phi::errors::NotFound("OneDnnContext does not have the output %s.",
+                              output));
+    return it->second;
+  }
+
   std::shared_ptr<BlobMap> p_blobmap_;
   // Map key is pointer of executor and value is a data(iterator in map) needed
   // to erase
@@ -342,11 +371,18 @@ struct OneDNNContext::Impl {
   // to remove this member in the future.
   static thread_local paddle::flat_hash_map<std::string, const DenseTensor*>
       dnn_inputs_;
+
+  // Onednn need get input and output's name in current Kernel for generating
+  // unique_key.
+  static thread_local TensorNameMap inputs_name_;
+  static thread_local TensorNameMap outputs_name_;
 };
 
 thread_local AttributeMap OneDNNContext::Impl::dnn_attrs_ = {};
 thread_local paddle::flat_hash_map<std::string, const DenseTensor*>
     OneDNNContext::Impl::dnn_inputs_ = {};
+thread_local TensorNameMap OneDNNContext::Impl::inputs_name_ = {};
+thread_local TensorNameMap OneDNNContext::Impl::outputs_name_ = {};
 
 OneDNNContext::OneDNNContext(const Place& place)
     : CPUContext(place), impl_(std::make_unique<Impl>()) {}
@@ -401,6 +437,24 @@ const DenseTensor* OneDNNContext::GetDnnInput(
 void OneDNNContext::SetDnnInput(const std::string& input_name,
                                 const DenseTensor* input) {
   return impl_->SetDnnInput(input_name, input);
+}
+
+void OneDNNContext::SetInputsName(const TensorNameMap& inputs_name) {
+  impl_->SetInputsName(inputs_name);
+}
+
+void OneDNNContext::SetOutputsName(const TensorNameMap& outputs_name) {
+  impl_->SetOutputsName(outputs_name);
+}
+
+const std::vector<std::string>& OneDNNContext::GetInputsName(
+    const std::string& input) const {
+  return impl_->GetInputsName(input);
+}
+
+const std::vector<std::string>& OneDNNContext::GetOutputsName(
+    const std::string& output) const {
+  return impl_->GetOutputsName(output);
 }
 
 }  // namespace phi
