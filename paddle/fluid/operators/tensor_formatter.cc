@@ -88,8 +88,7 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
 
   if (print_tensor_layout_) {
     log_stream << "  - layout: "
-               << framework::DataLayoutToString(print_tensor.layout())
-               << std::endl;
+               << phi::DataLayoutToString(print_tensor.layout()) << std::endl;
   }
 
   std::type_index dtype = framework::ToTypeIndex(
