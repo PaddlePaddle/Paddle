@@ -20,6 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/transform.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#include "paddle/phi/core/visit_type.h"
+
 namespace paddle {
 namespace operators {
 
