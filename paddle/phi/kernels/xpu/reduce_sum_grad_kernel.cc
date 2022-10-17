@@ -32,6 +32,9 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<XPUType>(x_grad);
   const auto* out_data = out_grad.data<XPUType>();
   auto* x_grad_data = x_grad->data<XPUType>();
+  if (dims_arr.size() == 0) {
+    reduce_all = true;
+  }
   const auto& input_dim_size = x.dims().size();
   std::vector<int> true_dims;
   for (size_t i = 0; i < dims.size(); ++i) {

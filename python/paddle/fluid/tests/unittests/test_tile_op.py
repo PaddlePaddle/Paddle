@@ -46,6 +46,27 @@ class TestTileOpRank1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestTileOpRank_ZeroDim1(TestTileOpRank1):
+
+    def init_data(self):
+        self.ori_shape = []
+        self.repeat_times = []
+
+
+class TestTileOpRank_ZeroDim2(TestTileOpRank1):
+
+    def init_data(self):
+        self.ori_shape = []
+        self.repeat_times = [2]
+
+
+class TestTileOpRank_ZeroDim3(TestTileOpRank1):
+
+    def init_data(self):
+        self.ori_shape = []
+        self.repeat_times = [2, 3]
+
+
 # with dimension expanding
 class TestTileOpRank2Expanding(TestTileOpRank1):
 
@@ -336,6 +357,36 @@ class TestTileTripleGradCheck(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestTileAPI_ZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.tile(x, [])
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        out = paddle.tile(x, [3])
+        out.backward()
+        self.assertEqual(out.shape, [3])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [3])
+
+        out = paddle.tile(x, [2, 3])
+        out.backward()
+        self.assertEqual(out.shape, [2, 3])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [2, 3])
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

@@ -31,7 +31,6 @@ Multi30K: Multilingual English-German Image Descriptions.
 import os
 import six
 import tarfile
-import gzip
 from collections import defaultdict
 
 import paddle

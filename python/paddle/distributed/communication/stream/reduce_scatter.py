@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-import paddle.distributed as dist
 import paddle.fluid.framework as framework
 from paddle.distributed.communication.group import _get_global_group
 from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
@@ -30,11 +29,11 @@ def _check_tensor_shape(tensor, shape, nranks=1):
 def _check_tensor_list_shape(tensor_list, shape, nranks=1):
     if len(tensor_list) != nranks:
         raise RuntimeError(
-            f"The tensor_list for reduce_scatter is not correctly-sized.")
+            "The tensor_list for reduce_scatter is not correctly-sized.")
     for tensor in tensor_list:
         if tensor.shape != shape:
             raise RuntimeError(
-                f"The tensor_list for reduce_scatter is not correctly-sized.")
+                "The tensor_list for reduce_scatter is not correctly-sized.")
 
 
 def _reduce_scatter_tensor_in_dygraph(out_tensor,

@@ -352,6 +352,48 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
 };
 {% endmacro %}
 
+{% macro backward_op_reused_maker(bw_op, forward_op, invoke_op) %}
+  {% set name = bw_op["op_name"] %}
+  {% set forward_input_names = bw_op["forward"]["inputs"] | map(attribute="name") | list %}
+  {% set forward_output_names = bw_op["forward"]["outputs"] | map(attribute="name") | list %}
+  {% set forward_attr_names = bw_op["forward"]["attrs"] | map(attribute="name") | list %}
+  {% set forward_input_orig_names = forward_op["inputs"] | map(attribute="name") | list %}
+  {% set forward_output_orig_names = forward_op["outputs"] | map(attribute="name") | list %}
+  {% set forward_attr_orig_names = forward_op["attrs"] | map(attribute="name") | list %}
+template <typename T>
+class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("{{invoke_op["func"]}}");
+
+  {% for input in invoke_op["inputs"] %}
+    grad_op->SetInput({{input["name"] | to_opmaker_name}}, this->{{extract_input_from_forward(
+      input["value"],
+      forward_input_names,
+      forward_output_names,
+      forward_input_orig_names,
+      forward_output_orig_names)}});
+  {% endfor %}
+
+  {% for output in invoke_op["outputs"] %}
+    grad_op->SetOutput({{output["name"] | to_opmaker_name}}, this->{{extract_output_from_forward(
+      output["value"],
+      forward_input_names,
+      forward_output_names,
+      forward_input_orig_names,
+      forward_output_orig_names)}});
+  {% endfor %}
+
+  {% for attr in invoke_op["attrs"] %}
+    grad_op->SetAttr("{{attr["name"]}}", {{attr["value"]}});
+  {% endfor %}
+  }
+};
+{% endmacro %}
+
 
 {% macro extract_input_from_forward(name,
   input_names, output_names,

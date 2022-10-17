@@ -140,6 +140,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
 
         import paddle
         paddle.set_device('custom_cpu')
+        paddle.device.get_available_device()
         x_tensor = paddle.to_tensor(x, stop_gradient=False)
         y_tensor = paddle.to_tensor(y)
         z1_tensor = paddle.matmul(x_tensor, y_tensor)

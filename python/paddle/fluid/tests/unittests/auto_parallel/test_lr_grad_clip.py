@@ -14,18 +14,8 @@
 
 import unittest
 
-import os
-import numpy as np
-
 import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
 from paddle.distributed.fleet import auto
-import paddle.distributed.fleet as fleet
-
-from paddle.io import Dataset
-from paddle.static import InputSpec
-from paddle.fluid.framework import _non_static_mode
 
 from test_to_static import MLPLayer, MyDataset
 

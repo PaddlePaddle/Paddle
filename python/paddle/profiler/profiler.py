@@ -22,8 +22,8 @@ import importlib
 import json
 
 import paddle
-from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
-                               TracerEventType, enable_memory_recorder,
+from paddle.fluid.core import (_Profiler, ProfilerOptions, TracerEventType,
+                               enable_memory_recorder,
                                enable_input_shape_recorder,
                                disable_memory_recorder,
                                disable_input_shape_recorder)

@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import unittest
-import sys
 import random
 import numpy as np
 import paddle
 
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from get_gpt_model import generate_model, create_data_holder, FakeDataset
+from get_gpt_model import FakeDataset, generate_model
 
 paddle.enable_static()
 
