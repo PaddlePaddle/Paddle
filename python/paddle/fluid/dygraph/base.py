@@ -27,6 +27,7 @@ from ..data_feeder import convert_dtype
 import warnings
 from ..framework import _get_paddle_place, _in_legacy_dygraph, _in_eager_without_dygraph_check
 import paddle
+import warnings
 
 __all__ = [
     'no_grad', 'no_grad_', 'grad', 'guard', 'enable_dygraph', 'disable_dygraph',
@@ -43,6 +44,20 @@ def in_declarative_mode():
 
     """
     return _in_declarative_mode_
+
+
+def declarative_unsupport_argument_warning(func_name, input_names, inputs,
+                                           support_values):
+    """
+    Warning if inputs do not elementwisely equals to support_values.
+    It's a utility function for dy2static when dygraph interface have
+    more inputs than static interface such as paddle.grad.
+
+    """
+    for name, inp, sup in zip(input_names, inputs, support_values):
+        if inp != sup:
+            warnings.warn(f"{func_name} has unsupported parameter in jit: " +
+                          + "{name}, jit will discard it")
 
 
 def _switch_to_static_graph_(func):
@@ -290,6 +305,10 @@ def no_grad(func=None):
         test_layer()
 
     """
+    if in_declarative_mode():
+        warnings.warn(
+            "paddle.no_grad is only supported for inference model, and not supported for training under @to_static."
+        )
     if func is None:
         return _switch_tracer_mode_guard_(is_train=False)
     else:
@@ -428,7 +447,7 @@ def guard(place=None):
                     yield
 
 
-@framework.dygraph_only
+@framework.dygraph_and_dy2static_only
 def grad(outputs,
          inputs,
          grad_outputs=None,
@@ -563,6 +582,16 @@ def grad(outputs,
             grad_y1 = paddle.to_tensor(3.0)
             print(test_dygraph_grad([grad_y1, grad_value])) # [24.]
 	'''
+    if in_declarative_mode():
+        # In dy2static context, we call static interface `gradients`
+        # to calculate grads.
+        from paddle.static import gradients
+        declarative_unsupport_argument_warning(
+            "paddle.grad",
+            ["retain_graph", "create_grad", "only_inputs", "allow_unused"],
+            [retain_graph, create_graph, only_inputs, allow_unused],
+            [None, False, True, False])
+        return gradients(outputs, inputs, grad_outputs, no_grad_vars)
 
     def check_in_out(in_out_list, name):
         assert in_out_list is not None, "{} should not be None".format(name)
