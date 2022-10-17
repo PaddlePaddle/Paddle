@@ -32,7 +32,6 @@ class AudioInfo:
 
 def info(filepath: str) -> AudioInfo:
     """Get signal information of input audio file.
-    only support WAV with PCM_16 encoding.
 
     Args:
        filepath: audio path or file object.
@@ -66,10 +65,9 @@ def load(filepath: Union[str, Path],
          num_frames: int = -1,
          normalize: bool = True,
          channels_first: bool = True) -> Tuple[paddle.Tensor, int]:
-    """Load audio data from file.
+    """Load audio data from file.load the audio content start form frame_offset, and get num_frames.
 
     Args:
-        load the audio content start form frame_offset, and get num_frames.
         frame_offset: from 0 to total frames,
         num_frames: from -1 (means total frames) or number frames which want to read,
         normalize:
@@ -121,8 +119,8 @@ def save(
         channels_first: src channel infomation
             if True, means input tensor is (channels, time)
             if False, means input tensor is (time, channels)
-        encoding: only support PCM16 now.
-        bits_per_sample: bits per sample, only support 16 bits now.
+        encoding:encoding format, wave_backend only support PCM16 now.
+        bits_per_sample: bits per sample, wave_backend only support 16 bits now.
 
     Examples:
         .. code-block:: python

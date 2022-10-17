@@ -37,14 +37,31 @@ def _error_message():
 
 def info(filepath: str) -> AudioInfo:
     """Get signal information of input audio file.
-    only support WAV with PCM_16 encoding.
 
-    Parameters:
+    Args:
        filepath: audio path or file object.
 
     Returns:
         AudioInfo: info of the given audio.
+
+    Example:
+        .. code-block:: python
+
+            import paddle
+
+            sample_rate = 16000
+            wav_duration = 0.5
+            num_channels = 1
+            num_frames = sample_rate * wav_duration
+            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            waveform = wav_data.tile([num_channels, 1])
+            filepath = "./test.wav"
+
+            paddle.audio.backends.save(filepath, waveform, sample_rate)
+            wav_data_read, sr = paddle.audio.backends.load(wav_path)
+            wav_info = paddle.audio.backends.info(wav_path)
     """
+
     if hasattr(filepath, 'read'):
         file_obj = filepath
     else:
@@ -73,21 +90,37 @@ def load(filepath: Union[str, Path],
          num_frames: int = -1,
          normalize: bool = True,
          channels_first: bool = True) -> Tuple[paddle.Tensor, int]:
-    """Load audio data from file.
+    """Load audio data from file. load the audio content start form frame_offset, and get num_frames.
 
-    Parameters:
-    load the audio content start form frame_offset, and get num_frames.
-    frame_offset: from 0 to total frames,
-    num_frames: from -1 (means total frames) or number frames which want to read,
-    normalize:
-        if True: return audio which norm to (-1, 1), dtype=float32
-        if False: return audio with raw data, dtype=int16
+    Args:
+        frame_offset: from 0 to total frames,
+        num_frames: from -1 (means total frames) or number frames which want to read,
+        normalize:
+            if True: return audio which norm to (-1, 1), dtype=float32
+            if False: return audio with raw data, dtype=int16
 
-    channels_first:
-        if True: return audio with shape (channels, time)
+        channels_first:
+            if True: return audio with shape (channels, time)
 
     Return:
         Tuple[paddle.Tensor, int]: (audio_content, sample rate)
+
+    Exampels:
+        .. code-block:: python
+
+            import paddle
+
+            sample_rate = 16000
+            wav_duration = 0.5
+            num_channels = 1
+            num_frames = sample_rate * wav_duration
+            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            waveform = wav_data.tile([num_channels, 1])
+            filepath = "./test.wav"
+
+            paddle.audio.backends.save(filepath, waveform, sample_rate)
+            wav_data_read, sr = paddle.audio.backends.load(wav_path)
+            wav_info = paddle.audio.backends.info(wav_path)
     """
     if hasattr(filepath, 'read'):
         file_obj = filepath
@@ -139,15 +172,32 @@ def save(
     """
     Save audio tensor to file.
 
-    Parameters:
+    Args:
         filepath: saved path
         src: the audio tensor
         sample_rate: the number of samples of audio per second.
         channels_first: src channel infomation
             if True, means input tensor is (channels, time)
             if False, means input tensor is (time, channels)
-        encoding: only support PCM16 now.
-        bits_per_sample: bits per sample, only support 16 bits now.
+        encoding: audio encoding format, wave_backend only support PCM16 now.
+        bits_per_sample: bits per sample, wave_backend only support 16 bits now.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            sample_rate = 16000
+            wav_duration = 0.5
+            num_channels = 1
+            num_frames = sample_rate * wav_duration
+            wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
+            waveform = wav_data.tile([num_channels, 1])
+            filepath = "./test.wav"
+
+            paddle.audio.backends.save(filepath, waveform, sample_rate)
+            wav_data_read, sr = paddle.audio.backends.load(wav_path)
+            wav_info = paddle.audio.backends.info(wav_path)
     """
     assert src.ndim == 2, "Expected 2D tensor"
 
