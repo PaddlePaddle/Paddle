@@ -52,7 +52,7 @@ def list_available_backends() -> List[str]:
             num_frames = sample_rate * wav_duration
             wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
             waveform = wav_data.tile([num_channels, 1])
-            filepath = "./test.wav"
+            wav_path = "./test.wav"
 
             current_backend = paddle.audio.backends.get_current_audio_backend()
             print(current_backend) # wave_backend, the default backend.
@@ -62,7 +62,7 @@ def list_available_backends() -> List[str]:
             if 'soundfile' in backends:
                 paddle.audio.backends.set_backend('soundfile')
 
-            paddle.audio.backends.save(filepath, waveform, sample_rate)
+            paddle.audio.backends.save(wav_path, waveform, sample_rate)
             wav_data_read, sr = paddle.audio.backends.load(wav_path)
             wav_info = paddle.audio.backends.info(wav_path)
 
@@ -110,7 +110,7 @@ def get_current_audio_backend() -> str:
             num_frames = sample_rate * wav_duration
             wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
             waveform = wav_data.tile([num_channels, 1])
-            filepath = "./test.wav"
+            wav_path = "./test.wav"
 
             current_backend = paddle.audio.backends.get_current_audio_backend()
             print(current_backend) # wave_backend, the default backend.
@@ -121,7 +121,7 @@ def get_current_audio_backend() -> str:
             if 'soundfile' in backends:
                 paddle.audio.backends.set_backend('soundfile')
 
-            paddle.audio.backends.save(filepath, waveform, sample_rate)
+            paddle.audio.backends.save(wav_path, waveform, sample_rate)
             wav_data_read, sr = paddle.audio.backends.load(wav_path)
             wav_info = paddle.audio.backends.info(wav_path)
 
@@ -154,7 +154,7 @@ def set_backend(backend_name: str):
             num_frames = sample_rate * wav_duration
             wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
             waveform = wav_data.tile([num_channels, 1])
-            filepath = "./test.wav"
+            wav_path = "./test.wav"
 
             current_backend = paddle.audio.backends.get_current_audio_backend()
             print(current_backend) # wave_backend, the default backend.
@@ -165,7 +165,7 @@ def set_backend(backend_name: str):
             if 'soundfile' in backends:
                 paddle.audio.backends.set_backend('soundfile')
 
-            paddle.audio.backends.save(filepath, waveform, sample_rate)
+            paddle.audio.backends.save(wav_path, waveform, sample_rate)
             wav_data_read, sr = paddle.audio.backends.load(wav_path)
             wav_info = paddle.audio.backends.info(wav_path)
 
