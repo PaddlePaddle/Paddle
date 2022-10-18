@@ -40,6 +40,7 @@ from .group_sharded_utils import Type, device_guard, GroupShardedClipGrad
 alignment = {"gpu": 256, "cpu": 4096}
 align = {
     Type.fp16.value: 2,
+    Type.bf16.value: 2,
     Type.fp32.value: 4,
 }
 
@@ -69,6 +70,7 @@ class GroupShardedOptimizerStage2(Optimizer):
                  offload=False,
                  device="gpu",
                  pertrain_sync_models=True,
+                 dp_group=None,
                  **kw):
 
         super().__init__(learning_rate=optim._learning_rate, parameters=params)
@@ -121,6 +123,8 @@ class GroupShardedOptimizerStage2(Optimizer):
         self._group = new_group(
             _get_global_group().ranks) if group is None else group
 
+        # only support to combine stage2 and dp hybrid parallel now.
+        self._dp_group = dp_group
         self.world_size = self._group.nranks
         self._rank = self._group.rank
         self._global_root_rank = self._group.ranks[0]
@@ -171,6 +175,12 @@ class GroupShardedOptimizerStage2(Optimizer):
                       src=self._global_root_rank,
                       group=self._group,
                       sync_op=True)
+
+            if self._dp_group:
+                broadcast(p,
+                          src=self._dp_group.ranks[0],
+                          group=self._dp_group,
+                          sync_op=True)
 
     def _update_task(self, task):
         if self._reduce_overlap:

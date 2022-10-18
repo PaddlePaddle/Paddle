@@ -132,7 +132,7 @@ class OpWithKernelTest : public OperatorWithKernel {
     int sub_type = ctx.Attr<int>("kernel_sub_type");
     return OpKernelType(proto::VarType::FP32,
                         ctx.GetPlace(),
-                        framework::DataLayout::kAnyLayout,
+                        phi::DataLayout::kAnyLayout,
                         framework::LibraryType::kPlain,
                         sub_type);
   }
@@ -654,9 +654,8 @@ class OpUnusedVarTest : public OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    return OpKernelType(proto::VarType::FP32,
-                        ctx.GetPlace(),
-                        framework::DataLayout::kAnyLayout);
+    return OpKernelType(
+        proto::VarType::FP32, ctx.GetPlace(), phi::DataLayout::kAnyLayout);
   }
 };
 

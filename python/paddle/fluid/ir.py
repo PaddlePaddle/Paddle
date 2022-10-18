@@ -158,7 +158,7 @@ class RegisterPassHelper(object):
     def _prune_program_desc(self, ops):
         for op_desc in ops:
             default_attrs = core.get_op_attrs_default_value(
-                paddle.compat.to_bytes(op_desc.type))
+                op_desc.type.encode())
             remove_attrs = list()
             for attr in op_desc.attrs:
                 # attr must not in

@@ -349,7 +349,7 @@ void MergeLoDTensor(phi::DenseTensor *target,
 
   framework::DDim new_dim = lod_tensors[0]->dims();
   proto::VarType::Type new_type = proto::VarType::FP32;
-  framework::DataLayout new_layout = lod_tensors[0]->layout();
+  phi::DataLayout new_layout = lod_tensors[0]->layout();
   for (auto *t : lod_tensors) {
     if (t->numel() && t->IsInitialized()) {
       new_dim = t->dims();
@@ -380,8 +380,8 @@ void MergeLoDTensor(phi::DenseTensor *target,
           platform::errors::InvalidArgument(
               "phi::DenseTensor layout does not match, expected layout is %s, "
               "actual layout is %s.",
-              DataLayoutToString(new_layout),
-              DataLayoutToString(t->layout())));
+              phi::DataLayoutToString(new_layout),
+              phi::DataLayoutToString(t->layout())));
       auto tensor_dims = t->dims();
       PADDLE_ENFORCE_EQ(tensor_dims.size(),
                         new_dim.size(),

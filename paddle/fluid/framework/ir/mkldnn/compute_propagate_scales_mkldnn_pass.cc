@@ -67,7 +67,7 @@ std::vector<float> ComputePropagateScalesMkldnnPass::GetScales(
     for (int i = 0; i < columns; i++) {
       float max_value = FLT_MIN;
       for (int j = 0; j < rows; j++) {
-        max_value = std::max(max_value, std::abs(data[i + j * columns]));
+        max_value = std::max(max_value, std::abs(data[j + i * rows]));
       }
       max_value = 1.0 / max_value;
       if (std::isinf(max_value) || std::isnan(max_value)) {

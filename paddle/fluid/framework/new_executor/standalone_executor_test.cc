@@ -140,29 +140,31 @@ ProgramDesc GetLmMainProgram() {
   return main_prog;
 }
 
-// TEST(StandaloneExecutor, run) {
-//   auto place = platform::CUDAPlace(0);
-//   ProgramDesc test_prog = load_from_file("lm_startup_program");
-//   ProgramDesc main_prog = GetLmMainProgram();
+TEST(StandaloneExecutor, run) {
+  auto place = platform::CUDAPlace(0);
+  ProgramDesc startup_prog = load_from_file("lm_startup_program");
+  ProgramDesc main_prog = GetLmMainProgram();
 
-//   Scope scope;
-//   StandaloneExecutor exec(place, test_prog, main_prog, &scope);
-//   exec.Run({}, {}, {});
-//   auto start = std::chrono::steady_clock::now();
+  Scope scope;
+  StandaloneExecutor startup_exec(place, startup_prog);
+  startup_exec.Run(&scope, {}, {});
+  StandaloneExecutor exec(place, main_prog);
+  exec.Run(&scope, {}, {});
+  auto start = std::chrono::steady_clock::now();
 
-//   for (size_t i = 0; i < 10; ++i) {
-//     if (i % 200 == 0) {
-//       std::cout << i << std::endl;
-//     }
+  for (size_t i = 0; i < 10; ++i) {
+    if (i % 200 == 0) {
+      std::cout << i << std::endl;
+    }
 
-//     exec.Run({}, {}, {});
-//   }
+    exec.Run(&scope, {}, {});
+  }
 
-//   auto end = std::chrono::steady_clock::now();
-//   std::chrono::duration<double> diff = end - start;
+  auto end = std::chrono::steady_clock::now();
+  std::chrono::duration<double> diff = end - start;
 
-//   std::cout << "time cost " << diff.count() << std::endl;
-// }
+  std::cout << "time cost " << diff.count() << std::endl;
+}
 
 TEST(InterpreterCore, skip_gc_vars) {
   auto place = platform::CUDAPlace(0);
