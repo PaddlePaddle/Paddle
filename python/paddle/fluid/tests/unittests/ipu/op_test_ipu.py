@@ -245,6 +245,9 @@ class IPUOpTest(IPUTest):
             raise ValueError("output_dict is empty")
         cpu_fp32 = output_dict[ExecutionMode.CPU_FP32]
         ipu_fp32 = output_dict[ExecutionMode.IPU_FP32]
+        # expect cpu_fp32 type is List[np.ndarray]
+        if isinstance(cpu_fp32, np.ndarray):
+            cpu_fp32 = [cpu_fp32]
         if len(cpu_fp32) != len(ipu_fp32):
             raise ValueError("different outputs number between ipu and cpu.")
         for cpu_fp32_res, ipu_fp32_res in zip(cpu_fp32, ipu_fp32):

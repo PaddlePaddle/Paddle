@@ -83,6 +83,7 @@ class TestCase_ZeroDim(TestBase):
     def set_data_feed(self):
         data = np.random.uniform(size=[])
         self.feed_fp32 = {"x": data.astype(np.float32)}
+        self.feed_fp16 = {"x": data.astype(np.float16)}
 
     def set_op_attrs(self):
         self.attrs = {"perm": []}

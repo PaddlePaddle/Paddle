@@ -44,7 +44,8 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
         feed_list.end();
     if (is_feed) {
       auto input_shape = node->Var()->GetShape();
-      if (input_shape[0] <= -1) {
+      // NOTE: some tensors may be 0-dim tensos
+      if (!input_shape.empty() && input_shape[0] <= -1) {
         input_shape[0] = micro_batch_size;
         node->Var()->SetShape(input_shape);
         need_infer_shape = true;
