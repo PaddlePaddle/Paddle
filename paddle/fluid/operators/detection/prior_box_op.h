@@ -52,21 +52,6 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
   }
 }
 
-#define PD_VISIT_FLOAT_AND_DOUBLE_TYPES(TYPE, NAME, ...)                  \
-  [&] {                                                                   \
-    const auto& __dtype__ = TYPE;                                         \
-    switch (__dtype__) {                                                  \
-      PD_PRIVATE_CASE_TYPE(                                               \
-          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)          \
-      PD_PRIVATE_CASE_TYPE(                                               \
-          NAME, ::paddle::DataType::FLOAT64, double, __VA_ARGS__)         \
-      default:                                                            \
-        PD_THROW("function " #NAME " is not implemented for data type `", \
-                 __dtype__,                                               \
-                 "`");                                                    \
-    }                                                                     \
-  }()
-
 template <typename T>
 class PriorBoxOpKernel : public framework::OpKernel<T> {
  public:
@@ -85,7 +70,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto min_max_aspect_ratios_order =
         ctx.Attr<bool>("min_max_aspect_ratios_order");
 
-    PD_VISIT_FLOAT_AND_DOUBLE_TYPES(
+    PD_VISIT_FLOATING_TYPES(
         image->dtype(), "PriorBoxOpKernel::Compute", ([&] {
           std::vector<float> aspect_ratios;
           ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
