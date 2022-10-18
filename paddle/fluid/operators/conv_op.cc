@@ -227,15 +227,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   }
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
 
-#ifdef PADDLE_WITH_MKLDNN
-  if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    return framework::OpKernelType(input_data_type,
-                                   ctx.GetPlace(),
-                                   phi::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN);
-  }
-#endif
-
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
@@ -494,14 +485,6 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
                                    framework::LibraryType::kCUDNN);
   }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-    return framework::OpKernelType(data_type,
-                                   ctx.GetPlace(),
-                                   phi::DataLayout::kMKLDNN,
-                                   framework::LibraryType::kMKLDNN);
-  }
-#endif
 
   return framework::OpKernelType(data_type, ctx.GetPlace());
 }
@@ -673,24 +656,16 @@ void ConvOpDoubleGrad::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  int customized_type_value =
-      framework::OpKernelType::kDefaultCustomizedTypeValue;
-  framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = "AnyLayout";
-  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
-
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::CanCUDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kCUDNN;
+    return framework::OpKernelType(data_type,
+                                   ctx.GetPlace(),
+                                   framework::DataLayout::kAnyLayout,
+                                   framework::LibraryType::kCUDNN);
   }
 #endif
-  auto type = framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-      ctx.GetPlace(),
-      layout_,
-      library_,
-      customized_type_value);
-  return type;
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 }  // namespace operators
