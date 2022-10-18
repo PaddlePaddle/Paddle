@@ -49,7 +49,7 @@ class PriorBoxOp : public framework::OperatorWithKernel {
       }
       return framework::OpKernelType(input_input_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN,
                                      customized_type_value);
     }

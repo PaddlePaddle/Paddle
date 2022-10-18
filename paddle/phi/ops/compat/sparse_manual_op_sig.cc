@@ -16,23 +16,6 @@
 
 namespace phi {
 
-// TODO(zhangkaihuo): add csr op
-
-KernelSignature SparseSparseCooTensorOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "sparse_coo_tensor", {"values", "indices"}, {"dense_shape"}, {"out"});
-}
-
-KernelSignature SparseValuesOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("x")) {
-    return KernelSignature("values_coo", {"x"}, {}, {"out"});
-  } else {
-    return KernelSignature("unregistered", {}, {}, {});
-  }
-}
-
 KernelSignature SparseIndicesOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (ctx.IsSparseCooTensorInput("x")) {
@@ -42,94 +25,6 @@ KernelSignature SparseIndicesOpArgumentMapping(
   }
 }
 
-KernelSignature SparseToDenseOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("x")) {
-    return KernelSignature("coo_to_dense", {"x"}, {}, {"out"});
-  } else {
-    return KernelSignature("unregistered", {}, {}, {});
-  }
-}
-
-KernelSignature SparseReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("x")) {
-    return KernelSignature("relu_coo", {"x"}, {}, {"out"});
-  } else {
-    return KernelSignature("unregistered", {}, {}, {});
-  }
-}
-
-KernelSignature SparseConv3dOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("x")) {
-    return KernelSignature(
-        "conv3d_coo",
-        {"x", "kernel"},
-        {"paddings", "dilations", "strides", "groups", "subm", "key"},
-        {"out", "rulebook", "counter"});
-  } else {
-    return KernelSignature("unregistered", {}, {}, {});
-  }
-}
-
-KernelSignature SparseAddOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("x") && ctx.IsSparseCooTensorInput("y")) {
-    return KernelSignature("add_coo_coo", {"x", "y"}, {}, {"out"});
-  } else if (ctx.IsSparseCooTensorInput("x") && ctx.IsDenseTensorInput("y")) {
-    return KernelSignature("add_coo_dense", {"x", "y"}, {}, {"out"});
-  } else {
-    return KernelSignature("unregistered", {}, {}, {});
-  }
-}
-
-KernelSignature SparseBatchNormOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  if (ctx.IsSparseCooTensorInput("x")) {
-    return KernelSignature("batch_norm_coo",
-                           {"x", "scale", "bias", "mean", "variance"},
-                           {"momentum",
-                            "epsilon",
-                            "data_layout",
-                            "is_test",
-                            "use_global_stats",
-                            "trainable_statistics",
-                            "fuse_with_relu"},
-                           {"y",
-                            "mean_out",
-                            "variance_out",
-                            "saved_mean",
-                            "saved_variance",
-                            "reserve_space"});
-  } else {
-    return KernelSignature("unregistered", {}, {}, {});
-  }
-}
-
 }  // namespace phi
 
-PD_REGISTER_BASE_KERNEL_NAME(sparse_sparse_coo_tensor, sparse_coo_tensor);
-PD_REGISTER_ARG_MAPPING_FN(sparse_sparse_coo_tensor,
-                           phi::SparseSparseCooTensorOpArgumentMapping);
-
-PD_REGISTER_BASE_KERNEL_NAME(sparse_values, values_coo);
-PD_REGISTER_ARG_MAPPING_FN(sparse_values, phi::SparseValuesOpArgumentMapping);
-
-PD_REGISTER_BASE_KERNEL_NAME(sparse_indices, indices_coo);
 PD_REGISTER_ARG_MAPPING_FN(sparse_indices, phi::SparseIndicesOpArgumentMapping);
-
-PD_REGISTER_BASE_KERNEL_NAME(sparse_to_dense, coo_to_dense);
-PD_REGISTER_ARG_MAPPING_FN(sparse_to_dense,
-                           phi::SparseToDenseOpArgumentMapping);
-
-PD_REGISTER_BASE_KERNEL_NAME(sparse_relu, relu_coo);
-PD_REGISTER_ARG_MAPPING_FN(sparse_relu, phi::SparseReluOpArgumentMapping);
-
-PD_REGISTER_BASE_KERNEL_NAME(sparse_conv3d, conv3d_coo);
-PD_REGISTER_ARG_MAPPING_FN(sparse_conv3d, phi::SparseConv3dOpArgumentMapping);
-
-PD_REGISTER_BASE_KERNEL_NAME(sparse_add, add_coo_coo);
-PD_REGISTER_ARG_MAPPING_FN(sparse_add, phi::SparseAddOpArgumentMapping);
-
-PD_REGISTER_BASE_KERNEL_NAME(sparse_batch_norm, batch_norm_coo);
-PD_REGISTER_ARG_MAPPING_FN(sparse_batch_norm,
-                           phi::SparseBatchNormOpArgumentMapping);
