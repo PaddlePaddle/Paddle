@@ -2101,6 +2101,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "reverse_roll") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The reverse roll fused op does not support static shape "
+                   "mode yet.";
+        return false;
+      }
+    }
+
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
@@ -2231,6 +2239,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "squeeze2",
       "unsqueeze2",
       "layernorm_shift_partition",
+      "reverse_roll",
       "lookup_table",
       "lookup_table_v2"};
   std::unordered_set<std::string> teller_set{
