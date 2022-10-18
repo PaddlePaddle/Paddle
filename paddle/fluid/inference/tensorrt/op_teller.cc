@@ -635,9 +635,9 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
-      auto data_layout = framework::StringToDataLayout(
+      auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW) return false;
+      if (data_layout != phi::DataLayout::kNCHW) return false;
 
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -710,10 +710,10 @@ struct SimpleOpTypeSetTeller : public Teller {
         if (!desc.HasAttr(attr)) return false;
       }
       if (desc.HasAttr("data_layout")) {
-        auto data_layout = framework::StringToDataLayout(
+        auto data_layout = phi::StringToDataLayout(
             PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-        if (data_layout != framework::DataLayout::kNCHW &&
-            data_layout != framework::DataLayout::kNHWC)
+        if (data_layout != phi::DataLayout::kNCHW &&
+            data_layout != phi::DataLayout::kNHWC)
           return false;
       }
       auto interp_method =
@@ -755,10 +755,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
-      auto data_layout = framework::StringToDataLayout(
+      auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC)
+      if (data_layout != phi::DataLayout::kNCHW &&
+          data_layout != phi::DataLayout::kNHWC)
         return false;
       auto interp_method =
           PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
@@ -809,10 +809,10 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 
-      auto data_layout = framework::StringToDataLayout(
+      auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC) {
+      if (data_layout != phi::DataLayout::kNCHW &&
+          data_layout != phi::DataLayout::kNHWC) {
         VLOG(3) << "The op_type " << op_type
                 << " is not NCHW or NHWC return false";
         return false;
