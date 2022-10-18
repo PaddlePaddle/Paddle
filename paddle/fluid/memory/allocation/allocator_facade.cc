@@ -493,8 +493,8 @@ class AllocatorFacadePrivate {
   const AllocatorMap& GetAllocatorMap() { return allocators_; }
 
   void InitNaiveBestFitCPUAllocator() {
-    allocators_[platform::CPUPlace()] =
-        std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
+    // It is more efficient to use CPUAllocator directly.
+    allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
