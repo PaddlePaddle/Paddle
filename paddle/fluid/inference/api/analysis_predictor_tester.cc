@@ -614,9 +614,7 @@ TEST(Predictor, Streams) {
 TEST(AnalysisPredictor, OutputHookFunc) {
   auto hookfunc = [](const std::string& type,
                      const std::string& var_name,
-                     std::shared_ptr<Tensor> tensor) {
-    LOG(INFO) << "in hook function";
-  };
+                     const Tensor& tensor) { LOG(INFO) << "in hook function"; };
 
   {
     Config config;
