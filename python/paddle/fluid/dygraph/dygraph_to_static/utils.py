@@ -20,6 +20,7 @@ import collections
 from paddle.utils import gast
 import inspect
 import os
+import shutil
 import six
 import tempfile
 import textwrap
@@ -81,7 +82,7 @@ dygraph_class_to_static_api = {
     "PiecewiseDecay": "piecewise_decay",
     "PolynomialDecay": "polynomial_decay",
 }
-
+TEMP_DIR = "./Temp"
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
 FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
 FOR_ITER_TARGET_PREFIX = '__for_loop_iter_target'
@@ -552,25 +553,23 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     TODO: If only decorate one of inner function instead of decorating the main
     function, the other inner functions are invisible for the decorated function.
     """
-
-    def remove_if_exit(filepath):
-        if os.path.exists(filepath):
-            os.remove(filepath)
-
+    if not os.path.exists(TEMP_DIR):
+        os.mkdir(TEMP_DIR)
     source = ast_to_source_code(ast_root)
     source = _inject_import_statements() + source
 
     f = tempfile.NamedTemporaryFile(mode='w',
                                     suffix='.py',
                                     delete=False,
+                                    dir=TEMP_DIR,
                                     encoding='utf-8')
     with f:
         module_name = os.path.basename(f.name[:-3])
         f.write(source)
 
     if delete_on_exit:
-        atexit.register(lambda: remove_if_exit(f.name))
-        atexit.register(lambda: remove_if_exit(f.name[:-3] + ".pyc"))
+        # Clear temporary files in TEMP_DIR while exitting Python process
+        atexit.register(lambda: shutil.rmtree(TEMP_DIR))
 
     module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
