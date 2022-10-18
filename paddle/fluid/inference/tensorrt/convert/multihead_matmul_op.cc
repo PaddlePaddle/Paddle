@@ -108,8 +108,8 @@ uint32_t FtmhaTransforMaskGetS2(const uint32_t S) {
   } else if (S <= 384) {
     S2 = 384;
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "Unsupported seq_len %d for fused mha\n", S));
+    PADDLE_THROW(
+        platform::errors::Fatal("Unsupported seq_len %d for fused mha\n", S));
   }
   return S2;
 }
@@ -772,11 +772,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
               (op_desc.Inputs().find("BiasQK_mask") == op_desc.Inputs().end())
                   ? false
                   : true;
+#ifdef TRT_FUSED_MHA_AVALIABLE
           nvinfer1::Weights biasqk_mask_const_nvWeight;
           nvinfer1::ILayer* biasqk_mask_constLayer = nullptr;
           nvinfer1::ITensor* input_bias_qk_mask = nullptr;
           if (with_fastertransformer_window_mha) {
-#ifdef TRT_FUSED_MHA_AVALIABLE
             // currently ft_window_mha only support fp16 (half)
             auto biasqk_name = op_desc.Input("BiasQK").front();
             auto* biasqk_v = scope.FindVar(biasqk_name);
@@ -885,8 +885,8 @@ class MultiheadMatMulOpConverter : public OpConverter {
               input_bias_qk_mask =
                   engine_->GetITensor(op_desc.Input("BiasQK_mask").front());
             }
-#endif
           }
+#endif
           // add a constant layer that warp weight biasqk as trt layer output
           nvinfer1::ILayer* biasqk_constLayer = nullptr;
           // add a weight to hold biasqk as input of constant layer
@@ -1213,10 +1213,12 @@ class MultiheadMatMulOpConverter : public OpConverter {
                 "BiasQK_mask need to be folded into BiasQk, but got "
                 "has_biasqk_mask = true."));
           }
-
+#ifdef TRT_FUSED_MHA_AVALIABLE
+          // only FUSED_MHA handle individual biasqk_mask
           if (has_biasqk_mask) {
             plugin_inputs.push_back(input_bias_qk_mask);
           }
+#endif
 
           plugin::DynamicPluginTensorRT* plugin =
               new plugin::QkvToContextPluginDynamic(
