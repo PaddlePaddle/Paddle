@@ -588,7 +588,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     source = _inject_import_statements() + source
     temp_dir = get_temp_dir()
     f = tempfile.NamedTemporaryFile(mode='w',
-                                    prefix=func_prefix(),
+                                    prefix=func_prefix(func),
                                     suffix='.py',
                                     delete=False,
                                     dir=temp_dir,
