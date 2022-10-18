@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
 from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
 from paddle.utils import gast
 import inspect
+from numpy import append
+
+global_a = []
 
 
 class JudgeVisitor(gast.NodeVisitor):
@@ -129,7 +130,7 @@ def test_push_pop_2(x, *args, **kargs):
 def test_push_pop_3(x, *args, **kargs):
     """ push_pop_vars in main_function is : `k`
         NOTE: One may expect `k` and `l` because l
-              is nonlocal. Name bind analysis is 
+              is nonlocal. Name bind analysis is
               not implemented yet.
     """
     l = []
@@ -255,6 +256,71 @@ class TestClosureAnalysis_PushPop(TestClosureAnalysis):
         }, {
             "test_push_pop_4": set({'k', 'l'}),
         }]
+
+
+class TestPushPopTrans(unittest.TestCase):
+
+    def test(self):
+
+        def vlist_of_dict(x):
+            ma = {'a': []}
+            for i in range(3):
+                ma['a'].append(1)
+            return ma
+
+        x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict).code)
+        print(paddle.jit.to_static(vlist_of_dict)(x))
+
+    def test2(self):
+        import numpy as np
+
+        def vlist_of_dict(x):
+            a = np.array([1, 2, 3])
+            for i in range(3):
+                np.append(a, 4)
+            return a
+
+        x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict).code)
+        print(paddle.jit.to_static(vlist_of_dict)(x))
+
+    def test3(self):
+        import numpy as np
+
+        def vlist_of_dict(x):
+            a = np.array([1, 2, 3])
+            if True:
+                pass
+            return a
+
+        x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict).code)
+        print(paddle.jit.to_static(vlist_of_dict)(x))
+
+    def test4(self):
+
+        def vlist_of_dict(x):
+            a = np.array([1, 2, 3])
+            for i in range(3):
+                append(a, 4)
+            return a
+
+        x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict).code)
+        print(paddle.jit.to_static(vlist_of_dict)(x))
+
+    def test5(self):
+
+        def vlist_of_dict(x):
+            a = np.array([1, 2, 3])
+            for i in range(3):
+                global_a.append(4)
+            return a
+
+        x = paddle.to_tensor([3])
+        print(paddle.jit.to_static(vlist_of_dict).code)
+        print(paddle.jit.to_static(vlist_of_dict)(x))
 
 
 if __name__ == '__main__':

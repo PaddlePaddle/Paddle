@@ -55,7 +55,7 @@ class RunProgramOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -133,14 +133,14 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 RunProgram operator.
 
-The RunProgram operator receives a program's feed targets, fetch targets, 
-and parameters, and receives the forward and backward program desc 
+The RunProgram operator receives a program's feed targets, fetch targets,
+and parameters, and receives the forward and backward program desc
 as attributes, and then executes the program by executor.
 
-NOTE: This operator is added so that the inference model stored by 
-`fluid.io.save_inference_model` under the static graph mode can be loaded 
+NOTE: This operator is added so that the inference model stored by
+`fluid.io.save_inference_model` under the static graph mode can be loaded
 under the dynamic graph mode for fine-tuning or inferencing.
-      
+
 )DOC");
   }
 };
@@ -173,7 +173,7 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const framework::Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }

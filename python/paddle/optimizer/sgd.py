@@ -15,7 +15,6 @@
 from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid import framework
-from ..fluid.framework import Variable, name_scope
 from ..fluid.dygraph import no_grad
 from paddle import _C_ops, _legacy_C_ops
 import warnings
@@ -54,8 +53,8 @@ class SGD(Optimizer):
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
-                :ref:`api_guide_Name` . 
-        
+                :ref:`api_guide_Name` .
+
     Examples:
         .. code-block:: python
 

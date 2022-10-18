@@ -13,15 +13,10 @@
 # limitations under the License.
 
 import copy
-import warnings
 import paddle
-import os
-import numpy as np
-from paddle.fluid.framework import dygraph_only, _global_flags
-from .base.distributed_strategy import DistributedStrategy
 from .meta_optimizers import HybridParallelOptimizer, HeterParallelOptimizer
-from paddle.fluid import core
 from paddle.distributed import fleet
+from .utils.log_util import logger
 
 
 def _dygraph_distributed_optimizer(optimizer, strategy=None):
@@ -52,7 +47,7 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
 
     if strategy is not None:
         if fleet_env._is_collective:
-            warnings.warn(
+            logger.warning(
                 "It is recommended to use DistributedStrategy "
                 "in fleet_env.init(). The strategy here is only for compatibility. "
                 "If the strategy in fleet_env.distributed_optimizer() is "

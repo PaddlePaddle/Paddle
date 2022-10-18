@@ -15,14 +15,12 @@
 TestCases for Monitor
 """
 
-from __future__ import print_function
 import paddle
 
 paddle.enable_static()
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
 import os
 import unittest
 import tempfile

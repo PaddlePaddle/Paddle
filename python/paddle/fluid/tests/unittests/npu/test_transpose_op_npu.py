@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -55,6 +53,12 @@ class TestTransposeOp(OpTest):
     def test_check_grad(self):
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
+
+class TestCase_ZeroDim(TestTransposeOp):
+
+    def init_shape_axis(self):
+        self.shape = ()
+        self.axis = ()
 
 class TestCase0(TestTransposeOp):
 

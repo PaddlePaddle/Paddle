@@ -42,8 +42,7 @@ void BatchNormKernel(const Context& dev_ctx,
                      DenseTensor* reserve_space) {
   bool test_mode = is_test && (!trainable_statistics);
   bool global_stats = test_mode || use_global_stats;
-  const auto data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const auto data_layout = phi::StringToDataLayout(data_layout_str);
   PADDLE_ENFORCE_EQ(data_layout_str == "NCHW" || data_layout_str == "NHWC",
                     true,
                     phi::errors::InvalidArgument(
@@ -102,12 +101,7 @@ void BatchNormKernel(const Context& dev_ctx,
                                mean_out_data,
                                variance_out_data,
                                is_nchw);
-    PADDLE_ENFORCE_EQ(r,
-                      xpu::Error_t::SUCCESS,
-                      phi::errors::External(
-                          "The batch_norm XPU API return wrong value[%d %s]",
-                          r,
-                          XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm");
   } else {
     const auto* mean_data = mean.data<float>();
     const auto* variance_data = variance.data<float>();
@@ -124,13 +118,7 @@ void BatchNormKernel(const Context& dev_ctx,
                                   mean_data,
                                   variance_data,
                                   is_nchw);
-    PADDLE_ENFORCE_EQ(
-        r,
-        xpu::Error_t::SUCCESS,
-        phi::errors::External(
-            "The batch_norm_infer XPU API return wrong value[%d %s]",
-            r,
-            XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "batch_norm_infer");
   }
 }
 

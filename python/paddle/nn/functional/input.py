@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import warnings
 from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
-from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
+from ...fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops, _legacy_C_ops
-from paddle import in_dynamic_mode
 from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 
 __all__ = []
@@ -128,7 +125,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         otherwise the program will throw an exception and exit.
 
     .. code-block:: text
-    
+
             x is a Tensor.
                 padding_idx = -1
                 x.data = [[1, 3], [2, 4], [4, 127]]
@@ -171,7 +168,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn as nn
 

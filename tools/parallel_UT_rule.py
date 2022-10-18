@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import os
 import platform
 
@@ -230,7 +229,7 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_launch_coverage',
     'test_mkldnn_conv_activation_fuse_pass',
     'test_inference_model_io',
-    'test_fusion_repeated_fc_relu_op',  #'heter_listen_and_server_test', 
+    'test_fusion_repeated_fc_relu_op',  #'heter_listen_and_server_test',
     'cudnn_desc_test',
     'test_beam_search_op',
     'test_var_conv_2d',
@@ -1711,9 +1710,9 @@ CPU_PARALLEL_JOB = [
     'test_fleet_utils',
     'brpc_service_dense_sgd_test',
     'test_custom_linear',
-    'pten_test_backend',
+    'phi_test_backend',
     'test_allocator',
-    'pten_test_data_type',
+    'phi_test_data_type',
     'test_slice_api',
     'test_scale_api',
     'test_sum_api',
@@ -1723,7 +1722,7 @@ CPU_PARALLEL_JOB = [
     'build_strategy_test',
     'test_fc_rnn_mkldnn_fuse_pass',
     'scope_guard_test',
-    'pten_utils_test',
+    'phi_utils_test',
     'init_test',
     'cpu_helper_test',
     'complex_gpu_test',
@@ -1740,7 +1739,7 @@ CPU_PARALLEL_JOB = [
     'test_framework_place_utils',
     'test_reshape_api',
     'test_cast_api',
-    'test_pten_exception',
+    'test_phi_exception',
     'test_mean_api',
     'test_framework_storage',
     'test_fill_api',
@@ -2111,7 +2110,7 @@ TETRAD_PARALLEL_JOB = [
     'test_fused_layernorm_residual_dropout_bias',
     'test_fused_dropout_act_bias',
     'test_tensorrt',
-    'test_pten_tensor',
+    'test_phi_tensor',
     'test_matmul_api',
     'test_to_api',
     'beam_search_test',

@@ -12,23 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import unittest
-import time
-import argparse
 import os
 import sys
 import subprocess
-import traceback
-import functools
 import pickle
 import tempfile
 from contextlib import closing
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
+from paddle_bfloat import bfloat16
 
 
 def create_bool_test_data(shape=None, seed=None):
@@ -82,6 +77,9 @@ def create_test_data(shape=None, dtype=None, seed=None):
     assert shape, "Shape should be specified"
     if dtype == "float32" or dtype == "float16" or dtype == "float64":
         return create_float_test_data(shape=shape, dtype=dtype, seed=seed)
+    elif dtype == "bfloat16":
+        # since numpy does not support bfloat16 yet, use `paddle_bfloat` to replace
+        return create_float_test_data(shape=shape, dtype=bfloat16, seed=seed)
     elif dtype == "bool":
         return create_bool_test_data(shape=shape, seed=seed)
     elif dtype == "int32" or dtype == "int64" or dtype == "int8" or dtype == "uint8":
@@ -158,7 +156,6 @@ def runtime_main(test_class, col_type):
     model.run_trainer(args)
 
 
-import paddle.compat as cpt
 import socket
 from contextlib import closing
 
@@ -173,6 +170,15 @@ class TestDistBase(unittest.TestCase):
         self._python_interp = sys.executable
 
         self.temp_dir = tempfile.TemporaryDirectory()
+
+        # NOTE: this is a hack to get int format nccl version, like 2134
+        # if current platform is not linux, version number will be 0
+        nccl_version_str = subprocess.check_output(
+            r"ldconfig -v | grep 'libnccl.so' | tail -n1 | sed -r 's/^.*\.so\.//'",
+            stderr=subprocess.DEVNULL,
+            shell=True).decode('utf-8')
+        self._nccl_version = int("".join(
+            nccl_version_str.split("."))) if nccl_version_str else 0
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -312,6 +318,10 @@ class TestDistBase(unittest.TestCase):
             model_file, required_envs)
         input1 = create_test_data(shape=(10, 1000), dtype=dtype, seed=pid0)
         input2 = create_test_data(shape=(10, 1000), dtype=dtype, seed=pid1)
+        # cast bfloat16 to float32 for numeric comparison
+        if dtype == "bfloat16":
+            input1 = input1.astype("float32")
+            input2 = input2.astype("float32")
         if col_type == "allgather":
             need_result = np.vstack((input1, input2))
             tr_out0 = np.vstack((tr0_out[0], tr0_out[1]))
@@ -328,23 +338,45 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(tr1_out[0], need_result, rtol=1e-05)
         elif col_type == "reduce":
             need_result = input1 + input2
-            np.testing.assert_allclose(tr0_out[0], need_result, rtol=1e-05)
+            # bfloat16 precision loss comes from truncating the last 16 bits of float32,
+            # which sums (\sum_{i=-23}^{-8}2^{i}) to about 0.0078
+            if dtype == "bfloat16":
+                rtol = 8e-03
+            else:
+                rtol = 1e-05
+            np.testing.assert_allclose(tr0_out[0], need_result, rtol=rtol)
         elif col_type == "scatter":
             need_result = input2
             need_result1 = need_result[0:need_result.shape[0] // 2]
             need_result2 = need_result[need_result.shape[0] // 2:]
             np.testing.assert_allclose(tr0_out[0], need_result1, rtol=1e-05)
             np.testing.assert_allclose(tr1_out[0], need_result2, rtol=1e-05)
+        elif col_type == "reduce_scatter":
+            need_result = input1 + input2
+            need_result1 = need_result[0:need_result.shape[0] // 2]
+            need_result2 = need_result[need_result.shape[0] // 2:]
+            if dtype == "bfloat16":
+                rtol = 8e-03
+            else:
+                rtol = 1e-05
+            np.testing.assert_allclose(tr0_out[0], need_result1, rtol=rtol)
+            np.testing.assert_allclose(tr1_out[0], need_result2, rtol=rtol)
         elif col_type == "allreduce":
             need_result = input1 + input2
+            if dtype == "bfloat16":
+                rtol = 8e-03
+                atol = 8e-03
+            else:
+                rtol = 1e-05
+                atol = 1e-05
             np.testing.assert_allclose(tr0_out[0],
                                        need_result,
-                                       rtol=1e-05,
-                                       atol=1e-05)
+                                       rtol=rtol,
+                                       atol=atol)
             np.testing.assert_allclose(tr1_out[0],
                                        need_result,
-                                       rtol=1e-05,
-                                       atol=1e-05)
+                                       rtol=rtol,
+                                       atol=atol)
         elif col_type == "parallel_embedding":
             result_data = tr0_out[0]
             np.random.seed(2020)

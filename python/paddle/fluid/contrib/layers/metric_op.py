@@ -15,8 +15,6 @@
 Contrib layers just related to metric.
 """
 
-from __future__ import print_function
-
 import warnings
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.initializer import Normal, Constant
@@ -49,7 +47,7 @@ def ctr_metric_bundle(input, label, ins_tag_weight=None):
         label(Tensor): A 2D int Tensor indicating the label of the training
                          data. The height is batch size and width is always 1.
         ins_tag_weight(Tensor): A 2D int Tensor indicating the ins_tag_weight of the training
-                         data. 1 means real data, 0 means fake data. 
+                         data. 1 means real data, 0 means fake data.
                          A LoDTensor or Tensor with type float32,float64.
 
     Returns:

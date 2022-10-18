@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -31,9 +30,9 @@ class TestClipOneDNNOp(OpTest):
         self.adjust_op_settings()
 
         self.min = self.attrs[
-            'min'] if not 'Min' in self.inputs else self.inputs['Min']
+            'min'] if 'Min' not in self.inputs else self.inputs['Min']
         self.max = self.attrs[
-            'max'] if not 'Max' in self.inputs else self.inputs['Max']
+            'max'] if 'Max' not in self.inputs else self.inputs['Max']
 
         self.outputs = {'Out': np.clip(self.x_fp32, self.min, self.max)}
 

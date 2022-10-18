@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import yaml
 import argparse
-import re
 
 from api_gen import ForwardAPI
 
@@ -351,7 +349,7 @@ def main():
         description='Generate PaddlePaddle C++ Strings API files')
     parser.add_argument('--api_yaml_path',
                         help='path to sparse api yaml file',
-                        default='paddle/phi/api/yaml/strings_api.yaml')
+                        default='paddle/phi/api/yaml/strings_ops.yaml')
 
     parser.add_argument('--api_header_path',
                         help='output of generated api header code file',

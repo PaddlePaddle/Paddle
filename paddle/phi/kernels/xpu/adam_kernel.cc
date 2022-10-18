@@ -65,7 +65,7 @@ void AdamDenseKernel(const Context& dev_ctx,
   const float* beta1_const_pow_ptr = nullptr;
   if (beta1_pow.place() == CPUPlace()) {
     DenseTensor xpu_beta1_pow;
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, &xpu_beta1_pow);
+    phi::Copy(dev_ctx, beta1_pow, dev_ctx.GetPlace(), false, &xpu_beta1_pow);
     if (xpu_beta1_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(
           xpu_beta1_pow, &beta1_pow_ptr, dev_ctx);
@@ -82,7 +82,7 @@ void AdamDenseKernel(const Context& dev_ctx,
   const float* beta2_const_pow_ptr = nullptr;
   if (beta2_pow.place() == CPUPlace()) {
     DenseTensor xpu_beta2_pow;
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, &xpu_beta2_pow);
+    phi::Copy(dev_ctx, beta2_pow, dev_ctx.GetPlace(), false, &xpu_beta2_pow);
     if (xpu_beta2_pow.dtype() == DataType::FLOAT16)
       funcs::GetDataPointer<Context, float>(
           xpu_beta2_pow, &beta2_pow_ptr, dev_ctx);

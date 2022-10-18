@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import sys
 import os
-import subprocess
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -587,8 +583,17 @@ class TestUniformDtype(unittest.TestCase):
             out = paddle.tensor.random.uniform([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
+        def test_dygraph_fp16():
+            if not paddle.is_compiled_with_cuda():
+                paddle.enable_static()
+                return
+            paddle.set_device('gpu')
+            out = paddle.uniform([2, 3], dtype=paddle.float16)
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
+
         test_default_fp64()
         test_default_fp32()
+        test_dygraph_fp16()
 
         paddle.enable_static()
 
@@ -601,7 +606,7 @@ class TestRandomValue(unittest.TestCase):
             return
 
         # Different GPU generate different random value. Only test V100 here.
-        if not "V100" in paddle.device.cuda.get_device_name():
+        if "V100" not in paddle.device.cuda.get_device_name():
             return
 
         print("Test Fixed Random number on V100 GPU------>")

@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from collections import OrderedDict
 from typing import List, Tuple, Dict, Any
 
 import paddle
 from paddle.framework import core
 from paddle.fluid import layers
-from paddle.fluid.framework import program_guard, device_guard
+from paddle.fluid.framework import device_guard
 from .pass_base import PassBase, PassType, register_pass
 from paddle.distributed.auto_parallel.utils import set_var_dist_attr, is_optimize_op, OpRole, OP_ROLE_KEY
 from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping
@@ -53,13 +51,6 @@ def _remove_and_get_optimizer_op(main_program, dist_context):
     main_block._sync_with_cpp()
 
     return optimize_ops_desc
-
-
-def _remove_op_role_var(param, grad):
-    op_maker = core.op_proto_and_checker_maker
-    op = grad.op
-    if op and op.has_attr(op_maker.kOpRoleVarAttrName()):
-        op._remove_attr(op_maker.kOpRoleVarAttrName())
 
 
 def _get_gm_cond_var(main_program, k_steps, dist_context):
@@ -146,8 +137,6 @@ def _append_gradient_merge_backward_op(
         assert (
             param.type != core.VarDesc.VarType.SELECTED_ROWS
         ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
-
-        _remove_op_role_var(param, grad)
 
     # {grad.name: gradient_merge_var.name} to rename opt inputs
     grad_to_gradient_merge = {}

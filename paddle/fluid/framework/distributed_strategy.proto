@@ -123,6 +123,7 @@ message BuildStrategy {
   optional bool allow_cuda_graph_capture = 14 [ default = false ];
   optional int32 reduce_strategy = 15 [ default = 0 ];
   optional bool fuse_gemm_epilogue = 16 [ default = false ];
+  optional string debug_graphviz_path = 17;
 }
 
 message ExecutionStrategy {
@@ -177,6 +178,7 @@ message PipelineConfig {
   optional int32 accumulate_steps = 2 [ default = 1 ];
   optional string schedule_mode = 3 [ default = '1F1B' ];
   optional bool p2p_cache_shape = 4 [ default = true ];
+  optional bool enable_partial_send_recv = 5 [ default = true ];
 }
 
 message TensorParallelConfig {
@@ -343,6 +345,7 @@ message DistributedStrategy {
   optional bool is_fl_ps_mode = 39 [ default = false ];
   optional bool with_coordinator = 40 [ default = false ];
   optional bool qat = 41 [ default = false ];
+  optional bool split_data = 42 [ default = true ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;

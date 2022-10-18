@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
-import numpy as np
 import paddle
 
 from test_collective_api_base import TestDistBase
@@ -34,6 +32,33 @@ class TestCollectiveScatterAPI(TestDistBase):
     def test_scatter_nccl(self):
         self.check_with_place("collective_scatter_api.py", "scatter", "nccl")
 
+    def test_scatter_nccl_dygraph(self):
+        dtypes_to_test = [
+            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
+            "bool"
+        ]
+        if self._nccl_version >= 2100:
+            dtypes_to_test.append("bfloat16")
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_scatter_api_dygraph.py",
+                                  "scatter",
+                                  "nccl",
+                                  static_mode="0",
+                                  dtype=dtype)
 
-if __name__ == '__main__':
+    def test_scatter_gloo_dygraph(self):
+        dtypes_to_test = [
+            "float16", "float32", "float64", "int32", "int64", "int8", "uint8",
+            "bool", "bfloat16"
+        ]
+        for dtype in dtypes_to_test:
+            self.check_with_place("collective_scatter_api_dygraph.py",
+                                  "scatter",
+                                  "gloo",
+                                  "4",
+                                  static_mode="0",
+                                  dtype=dtype)
+
+
+if __name__ == "__main__":
     unittest.main()

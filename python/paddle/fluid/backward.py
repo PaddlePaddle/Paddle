@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from .proto import framework_pb2
 
 from paddle.fluid import framework as framework
@@ -392,10 +391,10 @@ def _infer_var_data_type_shape_(grad_var_name, block):
     """
     Infer the data type and shape of given grad variable
     """
-    grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
+    grad_var = block.desc.find_var(grad_var_name.encode())
     fwd_name = _strip_grad_suffix_(grad_var_name)
-    if block.desc.has_var_recursive(cpt.to_bytes(fwd_name)):
-        fwd_var = block.desc.find_var_recursive(cpt.to_bytes(fwd_name))
+    if block.desc.has_var_recursive(fwd_name.encode()):
+        fwd_var = block.desc.find_var_recursive(fwd_name.encode())
         grad_var.set_dtype(fwd_var.dtype())
         grad_var.set_shape(fwd_var.shape())
     else:
@@ -424,10 +423,8 @@ def _some_in_set_(cands, s):
     """
     if len(cands) == 0:
         return False
-    literal_set = cpt.to_text(s)
-    literal_cands = cpt.to_text(cands)
-    for c in literal_cands:
-        if c in literal_set:
+    for c in cands:
+        if c in s:
             return True
     return False
 
@@ -438,7 +435,6 @@ def _strip_grad_suffix_(name):
     e.g. x@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
     """
-    name = cpt.to_text(name)
     pos = name.find(core.grad_var_suffix())
     new_name = name[:pos] if pos != -1 else name
     new_pos = name.rfind('grad/')
@@ -450,7 +446,7 @@ def _append_grad_suffix_(name):
     Append grad suffix to the given variable name
     e.g. x ==> x@GRAD
     """
-    return cpt.to_text(name) + core.grad_var_suffix()
+    return name + core.grad_var_suffix()
 
 
 def _accumulate_gradients_by_sum_op_(var_name,
@@ -673,7 +669,7 @@ def _remove_no_grad_branch_(op_descs,
         op_desc for op_desc in op_descs
         if not _op_can_be_removed_(op_desc, no_grad_set)
     ]
-    # Insert fill_zeros_like_op
+    # Insert fill_any_like_op with value 0
     to_insert = []
     for idx, op_desc in enumerate(op_descs):
         for arg in op_desc.input_arg_names():
@@ -682,8 +678,11 @@ def _remove_no_grad_branch_(op_descs,
                 x_in = _strip_grad_suffix_(arg)
                 # the reason should be: arg can be input of another grad op
                 # and the op is a not-to-remove op
-                new_op_desc = _create_op_desc_("fill_zeros_like", {"X": [x_in]},
-                                               {"Out": [arg]}, {})
+                new_op_desc = _create_op_desc_("fill_any_like", {"X": [x_in]},
+                                               {"Out": [arg]}, {
+                                                   'value': 0,
+                                                   'dtype': -1
+                                               })
                 # update the mapping between fwd and bwd
                 if grad_op_id_to_fwd_op is not None and grad_op_id_to_fwd_op.get(
                         op_desc.original_id(), None) is not None:
@@ -965,7 +964,7 @@ def _append_backward_ops_with_checkpoints_(block,
                                 "invoke op: %s" %
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+                op.desc, no_grad_dict[block.idx], [])
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -991,7 +990,7 @@ def _append_backward_ops_with_checkpoints_(block,
                                 "invoke op: %s" %
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+                op.desc, no_grad_dict[block.idx], [])
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -1053,7 +1052,7 @@ def _append_backward_ops_with_checkpoints_(block,
         # 3.c. add backward ops for all ops in current segment
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
+                op_desc, no_grad_dict[block.idx], [])
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -1237,7 +1236,7 @@ def _append_backward_ops_(block,
 
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+            op.desc, no_grad_dict[block.idx], grad_sub_block_list)
 
         # record the mapping between fwd and bwd
         if grad_op_id_to_fwd_op is not None:
@@ -1406,11 +1405,11 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
     ops_to_remove = []
     '''
-    NOTE(paddle-dev): while_grad op may hold some inputs which are not found 
-    in the parent/forward block, and they are also the outputs of while_grad 
-    op. These kinds of inputs are the recursive outputs inside while_grad op. 
-    They should be considered as "already created" when scanning the inner 
-    ops of while_grad ops.  
+    NOTE(paddle-dev): while_grad op may hold some inputs which are not found
+    in the parent/forward block, and they are also the outputs of while_grad
+    op. These kinds of inputs are the recursive outputs inside while_grad op.
+    They should be considered as "already created" when scanning the inner
+    ops of while_grad ops.
     '''
     parent_op = _find_parent_op_(block)
     parent_op_vars = []
@@ -1449,23 +1448,23 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             continue
         else:
             '''
-            If the output is not empty and there is any grad input, find 
+            If the output is not empty and there is any grad input, find
             whether there is any existing input. If not, just remove it.
             '''
             if grad_var_ins:
                 existing_grad_var_ins = [
                     var for var in grad_var_ins
-                    if block.desc.has_var_recursive(cpt.to_bytes(var))
+                    if block.desc.has_var_recursive(var.encode())
                     or var in parent_op_vars
                 ]
                 if not existing_grad_var_ins:
                     '''
                     FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
-                    in recurrent op. The input of this op does not even exist in 
-                    the program! Therefore, any dependency analysis would not 
+                    in recurrent op. The input of this op does not even exist in
+                    the program! Therefore, any dependency analysis would not
                     work to this op! If I do not add the following code, this op
-                    would be pruned, and the calculation result would be wrong. 
-                    Maybe we should re-design this op later...  
+                    would be pruned, and the calculation result would be wrong.
+                    Maybe we should re-design this op later...
                     '''
                     if op_desc.type() not in ['rnn_memory_helper_grad']:
                         ops_to_remove.append(op_idx)
@@ -1474,10 +1473,10 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
-            if block.desc.has_var_recursive(cpt.to_bytes(
-                    grad_var_name)) or grad_var_name == core.empty_var_name():
+            if block.desc.has_var_recursive(grad_var_name.encode(
+            )) or grad_var_name == core.empty_var_name():
                 continue
-            block.desc.var(cpt.to_bytes(grad_var_name))
+            block.desc.var(grad_var_name.encode())
             new_vars.add(grad_var_name)
             if grad_var_name not in grad_to_var:
                 continue
@@ -1839,7 +1838,7 @@ def append_backward(loss,
     params_and_grads = []
     op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
     for param in parameters:
-        if cpt.to_text(param) not in grad_info_map:
+        if param not in grad_info_map:
             continue
         grad_info = grad_info_map[param]
         grad_block = grad_info[1]
@@ -1928,8 +1927,8 @@ def _get_output_names(cur_block, targets):
             if _some_in_set_(op.desc.output_arg_names(), current_output_names):
                 for name in op.desc.input_arg_names():
                     current_output_names.add(name)
-                    if not block.desc.find_var(cpt.to_bytes(name)) \
-                            and parent_block.desc.find_var(cpt.to_bytes(name)):
+                    if not block.desc.find_var(name.encode()) \
+                            and parent_block.desc.find_var(name.encode()):
                         parent_block_output_names.add(name)
 
         block = parent_block
@@ -2203,7 +2202,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         will be None.
 
     Examples:
-    
+
         .. code-block:: python
           :name: code-example
             import paddle

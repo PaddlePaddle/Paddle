@@ -17,9 +17,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
 import paddle
-import paddle.dataset.mnist as mnist
 import unittest
-import os
 
 
 def _feed_data_helper():

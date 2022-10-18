@@ -91,6 +91,14 @@ inline std::vector<int> get_new_shape(
         errors::InvalidArgument("The shape of dimension tensor should be [1],"
                                 "but received d%.",
                                 tensor->dims()));
+#ifdef PADDLE_WITH_XPU
+    if (tensor->place().GetType() == phi::AllocationType::XPU) {
+      DenseTensor temp;
+      paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
+      vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
+      continue;
+    }
+#endif
     if (paddle::platform::is_gpu_place(tensor->place())) {
       DenseTensor temp;
       paddle::framework::TensorCopySync(

@@ -12,24 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import contextlib
-import unittest
 import numpy as np
-import six
-import pickle
 import random
 
 import paddle
 import paddle.fluid as fluid
 import paddle.distributed as dist
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.framework import _test_eager_guard
 from test_dist_base import print_to_err, print_to_out, runtime_main, TestParallelDyGraphRunnerBase
 
 seed = 90

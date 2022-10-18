@@ -90,32 +90,6 @@ void AllValueCompareInferMeta(const MetaTensor& x,
   out->set_dtype(DataType::BOOL);
 }
 
-void EmbeddingInferMeta(const MetaTensor& input,
-                        const MetaTensor& weight,
-                        int64_t padding_idx,
-                        MetaTensor* out) {
-  auto table_dims = weight.dims();
-  auto ids_dims = input.dims();
-  int ids_rank = ids_dims.size();
-  VLOG(5) << "ids rank is " << ids_rank << std::endl;
-  PADDLE_ENFORCE_EQ(
-      table_dims.size(),
-      2,
-      phi::errors::InvalidArgument(
-          "ShapeError: The dimensions of the 'lookup table' must be 2. "
-          "But received lookup table's dimensions = %d, "
-          "lookup table's shape = [%s].",
-          table_dims.size(),
-          table_dims));
-
-  auto output_dims = phi::vectorize(ids_dims);
-  output_dims.push_back(table_dims[1]);
-
-  out->set_dims(phi::make_ddim(output_dims));
-  out->set_dtype(weight.dtype());
-  out->share_lod(input);
-}
-
 void KLDivInferMeta(const MetaTensor& x,
                     const MetaTensor& label,
                     const std::string& reduction,
@@ -628,10 +602,9 @@ void ConvTransposeInferMeta(const MetaTensor& x,
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
 
-  const DataLayout data_layout =
-      config.is_run_mkldnn_kernel
-          ? DataLayout::kNCHW
-          : paddle::framework::StringToDataLayout(data_format);
+  const DataLayout data_layout = config.is_run_mkldnn_kernel
+                                     ? DataLayout::kNCHW
+                                     : phi::StringToDataLayout(data_format);
 
   PADDLE_ENFORCE_EQ(
       x_dims.size() == 4 || x_dims.size() == 5,
@@ -798,6 +771,34 @@ void ConvTransposeInferMeta(const MetaTensor& x,
 
   out->set_dims(make_ddim(output_shape));
   out->set_dtype(x.dtype());
+}
+
+void Conv2dTransposeInferMeta(const MetaTensor& x,
+                              const MetaTensor& filter,
+                              const std::vector<int>& strides,
+                              const std::vector<int>& paddings,
+                              const std::vector<int>& output_padding,
+                              const IntArray& output_size,
+                              const std::string& padding_algorithm,
+                              int groups,
+                              const std::vector<int>& dilations,
+                              const std::string& data_format,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  std::vector<int32_t> vec_output_size(output_size.GetData().begin(),
+                                       output_size.GetData().end());
+  ConvTransposeInferMeta(x,
+                         filter,
+                         strides,
+                         paddings,
+                         output_padding,
+                         vec_output_size,
+                         padding_algorithm,
+                         groups,
+                         dilations,
+                         data_format,
+                         out,
+                         config);
 }
 
 void CrossInferMeta(const MetaTensor& x,
@@ -1168,7 +1169,6 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
                         int64_t padding_idx,
-                        bool sparse,
                         MetaTensor* out) {
   const auto& table_dims = weight.dims();
   const auto& ids_dims = x.dims();
@@ -1557,6 +1557,18 @@ void IndexAddInferMeta(const MetaTensor& x,
                             "add_value_dim[i] when i != axis."));
     }
   }
+
+  const auto& index_type = index.dtype();
+  bool index_type_match =
+      index_type == phi::DataType::INT64 || index_type == phi::DataType::INT32;
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Input(Index) holds the wrong type, it holds %s, but "
+                        "desires to be %s or %s",
+                        index_type,
+                        phi::DataType::INT32,
+                        phi::DataType::INT64));
 
   output->set_dims(x.dims());
   output->set_dtype(x.dtype());
@@ -2312,6 +2324,28 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   } else {
     out->set_dtype(DataType::INT64);
   }
+}
+
+void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
+                              const MetaTensor& mask,
+                              MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto mask_dims = mask.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input x must be in 4D dimension but "
+                                   "received the dimension of X is %d",
+                                   x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      mask_dims.size(),
+      4,
+      phi::errors::InvalidArgument("Input mask must be in 4D dimension but "
+                                   "received the dimension of mask is %d",
+                                   mask_dims.size()));
+
+  out->share_meta(x);
 }
 
 void SegmentPoolInferMeta(const MetaTensor& x,

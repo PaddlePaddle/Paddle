@@ -13,19 +13,11 @@
 # limitations under the License.
 """Test cases for Downpour."""
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 import os
-import signal
-import subprocess
-import time
 import unittest
 import sys
-from op_test import OpTest
-from paddle.fluid.trainer_desc import DistMultiTrainer
-from paddle.fluid.device_worker import DownpourSGD, DownpourSGDOPT
 from paddle.fluid.incubate.fleet.parameter_server.pslib.node import DownpourWorker, DownpourServer
 from google.protobuf import text_format
 import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib

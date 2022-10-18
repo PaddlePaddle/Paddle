@@ -96,7 +96,7 @@ if(NOT APPLE AND NOT WIN32)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
   if(WITH_PSLIB OR WITH_DISTRIBUTE)
     set(CMAKE_CXX_LINK_EXECUTABLE
-        "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl")
+        "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl -lcrypto")
   else()
     set(CMAKE_CXX_LINK_EXECUTABLE
         "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
@@ -388,7 +388,8 @@ function(cc_library TARGET_NAME)
           target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
         endif()
       endif()
-      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
+      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS}
+                            ${PYTHON_LIBRARIES})
       common_link(${TARGET_NAME})
     endif()
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
+import os
 from paddle.fluid import unique_name, core
 import paddle.fluid as fluid
 from paddle.static import default_startup_program, device_guard
@@ -28,17 +28,20 @@ from .sharding.gradient_clip_helper import GradientClipHelper
 from .sharding.offload_helper import OffloadHelper
 from .sharding.prune import ProgramDeps
 from .sharding import utils
-# FIXME: import *
-from .sharding.utils import *
-
-import logging
-
-logger = logging.getLogger(__name__)
-formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
-                              datefmt='%Y-%m-%d %H:%M:%S')
-ch = logging.StreamHandler()
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+from .sharding.utils import (
+    insert_sync_calc_op,
+    insert_sync_comm_ops,
+    insert_fill_constant_ops,
+    insert_cast_ops,
+    insert_allreduce_ops,
+    insert_reduce_ops,
+    get_grad_device,
+    get_first_optimize_op_idx,
+    insert_broadcast_ops,
+    get_var_size,
+    insert_scale_loss_grad_ops,
+)
+from ..utils.log_util import logger
 
 __all__ = []
 
@@ -961,7 +964,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         2. prune cast_fp32_to_fp16; update amp_infine_checking
         3. prune gradient_clip related; update global_norm_sum
         4. prune optimizer op + param + gradient
-            
+
         """
         weightdecay_helper = WeightDecayHelper()
         weightdecay_helper.prune_weight_decay(block, shard)
@@ -1066,7 +1069,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         add broadcast allreduce op
         if enable gradient_merge, insert related ops
 
-        if combined with pipeline(grad accumulate), 
+        if combined with pipeline(grad accumulate),
         the grad allreduce should be done in optimize role
         """
         if len(self._segments) < 1:
@@ -1302,7 +1305,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             pp: 4
             pp-pair: >= 20
         if one parallelism is not enable: -1
-        and only support parallelism hierarchy: mp --> sharding --> pp --> dp        
+        and only support parallelism hierarchy: mp --> sharding --> pp --> dp
         """
         # step 1: initialize nccl
         self.global_word_size = self.role_maker._worker_num()
@@ -1688,7 +1691,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         grad@gradientmerge / acc_step
         re-create all optimize ops of origin main block and rename them
             cast(backward)
-            amp 
+            amp
             clip
             opt
         # fill constant grad@gradientmerge

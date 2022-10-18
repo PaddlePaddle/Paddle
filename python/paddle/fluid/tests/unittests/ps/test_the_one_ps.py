@@ -12,22 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
-import os
 import unittest
-import numpy as np
 
-import paddle
-import paddle.fluid as fluid
-
-import paddle
 from paddle.fluid.tests.unittests.distributed_passes.ps_pass_test_base import *
 from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
-from ps_dnn_trainer import DnnTrainer
-import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2
-from google.protobuf import text_format
+import paddle.distributed.fleet.proto.the_one_ps_pb2 as ps_pb2  # noqa: F401
+from google.protobuf import text_format  # noqa: F401
 
 
 class TestTheOnePs(PsPassTestBase):
@@ -39,7 +29,6 @@ class TestTheOnePs(PsPassTestBase):
         pass
 
     def check(self, file1, file2):
-        pass
         '''
         f = open(file1, "rb")
         ps_desc_1 = ps_pb2.PSParameter()
@@ -59,6 +48,7 @@ class TestTheOnePs(PsPassTestBase):
         else:
             return False
         '''
+        pass
 
     def test_ps_cpu_async(self):
         self.init()

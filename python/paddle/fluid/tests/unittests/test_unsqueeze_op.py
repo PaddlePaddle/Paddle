@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
@@ -21,6 +20,9 @@ import paddle
 import paddle.fluid as fluid
 from op_test import OpTest, convert_float_to_uint16
 import paddle.fluid.core as core
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 paddle.enable_static()
 
@@ -111,6 +113,30 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
         self.new_shape = (10, 1, 1, 2, 5, 1)
+
+
+class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
+
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (-1, )
+        self.new_shape = (1)
+
+
+class TestUnsqueezeOp_ZeroDim2(TestUnsqueezeOp):
+
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (-1, 1)
+        self.new_shape = (1, 1)
+
+
+class TestUnsqueezeOp_ZeroDim3(TestUnsqueezeOp):
+
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (0, 1, 2)
+        self.new_shape = (1, 1, 1)
 
 
 class API_TestUnsqueeze(unittest.TestCase):
@@ -307,6 +333,80 @@ class API_TestDygraphUnSqueezeInplace(API_TestDygraphUnSqueeze):
 
     def executed_api(self):
         self.unsqueeze = paddle.unsqueeze_
+
+
+class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
+
+    def unsqueeze_wrapper(self, x):
+        return paddle.unsqueeze(x[0], [0, 2])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [2, 3, 4], False, dtype)
+        data.persistable = True
+        out = paddle.unsqueeze(data, [0, 2])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(self.unsqueeze_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestUnsqueezeTripleGradCheck(unittest.TestCase):
+
+    def unsqueeze_wrapper(self, x):
+        return paddle.unsqueeze(x[0], [0, 2])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [2, 3, 4], False, dtype)
+        data.persistable = True
+        out = paddle.unsqueeze(data, [0, 2])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(self.unsqueeze_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == "__main__":

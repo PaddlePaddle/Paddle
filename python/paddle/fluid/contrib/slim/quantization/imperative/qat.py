@@ -72,7 +72,8 @@ class ImperativeQuantAware(object):
                  weight_preprocess_layer=None,
                  act_preprocess_layer=None,
                  weight_quantize_layer=None,
-                 act_quantize_layer=None):
+                 act_quantize_layer=None,
+                 onnx_format=False):
         """
         The constructor for ImperativeQuantAware.
 
@@ -121,9 +122,11 @@ class ImperativeQuantAware(object):
                 Using this can quickly test if user's quantization method works or not.
                 In this layer, user should both define quantization method and
                 dequantization method, that is, the function's input is non-quantized
-                activation and returns dequantized activation. 
+                activation and returns dequantized activation.
                 If None, will use quantization op defined by 'activation_quantize_type'.
                 Default is None.
+            onnx_format (bool, optional): Whether to export the quantized model
+                with format of ONNX. Default is False.
 
         Note:
             If user sets attribute 'skip_quant' to a Layer that support dynamic
@@ -139,13 +142,13 @@ class ImperativeQuantAware(object):
                 import ImperativeQuantAware
             from paddle.vision.models \
                 import resnet
-            
+
             model = resnet.resnet50(pretrained=True)
 
             imperative_qat = ImperativeQuantAware(
                 weight_quantize_type='abs_max',
                 activation_quantize_type='moving_average_abs_max')
-            
+
             # Add the fake quant logical.
             # The original model will be rewrite.
             # The outscale of outputs in supportted layers would be calculated.
@@ -153,7 +156,7 @@ class ImperativeQuantAware(object):
 
             # Fine-tune the quantized model
             # ...
-            
+
             # Save quant model for the inference.
             imperative_qat.save_quantized_model(
                 layer=model,
@@ -223,7 +226,8 @@ class ImperativeQuantAware(object):
 
         self._quantize_inputs = ImperativeQuantizeInputs(**kwargs)
 
-        self._quantize_outputs = ImperativeQuantizeOutputs(moving_rate)
+        self._quantize_outputs = ImperativeQuantizeOutputs(
+            moving_rate, activation_bits, onnx_format)
 
     def quantize(self, model):
         """
@@ -306,7 +310,7 @@ class ImperativeQuantizeInputs(object):
                  weight_quantize_layer=None,
                  act_quantize_layer=None):
         """
-        The constructor for ImperativeQuantizeInputs. 
+        The constructor for ImperativeQuantizeInputs.
 
         Please refer to the args of ImperativeQuantAware.
         """
@@ -323,16 +327,18 @@ class ImperativeQuantizeInputs(object):
                 "%s is unspported to be quantized." % layer
 
         quantize_type = {
-            'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max'
+            'abs_max', 'moving_average_abs_max', 'channel_wise_abs_max',
+            'lsq_weight', 'channel_wise_lsq_weight'
         }
+        act_quantize_type = {'moving_average_abs_max', 'lsq_act'}
         assert weight_quantize_type != 'moving_average_abs_max' \
             and weight_quantize_type in quantize_type, \
             "Unsupported weight_quantize_type: %s. It can only " \
             "be abs_max or channel_wise_abs_max." % weight_quantize_type
         # TODO (jc): activation_quantize_type supports range_abs_max
-        assert activation_quantize_type == 'moving_average_abs_max', \
+        assert activation_quantize_type in act_quantize_type, \
             "Unsupported activation_quantize_type: %s. It can " \
-            "only be moving_average_abs_max now." \
+            "only be moving_average_abs_max or lsq_act now." \
             % activation_quantize_type
 
         bits_check = lambda bits: isinstance(bits, int) \
@@ -367,7 +373,7 @@ class ImperativeQuantizeInputs(object):
 
     def apply(self, model):
         """
-        Quantize the weights and activations to calculate for specific 
+        Quantize the weights and activations to calculate for specific
         layers.
 
         Args:
@@ -412,16 +418,19 @@ class ImperativeQuantizeOutputs(object):
     Calculate the output scales for target layers.
     """
 
-    def __init__(self, moving_rate=0.9):
+    def __init__(self, moving_rate=0.9, activation_bits=8, onnx_format=False):
         """
         The constructor for ImperativeQuantizeOutputs.
 
         Args:
             moving_rate(float): The decay coefficient of moving average.
                                 The default value is 0.9.
+            activation_bits(int, optional): quantization bit number for activation. Default is 8.
         """
         super(ImperativeQuantizeOutputs, self).__init__()
         self._moving_rate = moving_rate
+        self._activation_bits = activation_bits
+        self._onnx_format = onnx_format
 
     def apply(self, model):
         """
@@ -458,27 +467,20 @@ class ImperativeQuantizeOutputs(object):
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
-    def save_quantized_model(self,
-                             model,
-                             path,
-                             input_spec=None,
-                             onnx_format=False,
-                             **config):
+    def save_quantized_model(self, model, path, input_spec=None, **config):
         """
         Save the quantized model for the inference.
 
         Args:
             model (Layer): The model to be saved.
-            path (str): The path prefix to save model. The format is 
+            path (str): The path prefix to save model. The format is
                 ``dirname/file_prefix`` or ``file_prefix``.
             input_spec (list[InputSpec|Tensor], optional): Describes the input
                 of the saved model's forward method, which can be described by
-                InputSpec or example Tensor. If None, all input variables of 
+                InputSpec or example Tensor. If None, all input variables of
                 the original Layer's forward method would be the inputs of
                 the saved model. Default None.
-            onnx_format (bool, optional): Whether to export the quantized model 
-                with format of ONNX. Default is False.
-            **configs (dict, optional): Other save configuration options for
+            **config (dict, optional): Other save configuration options for
                 compatibility. We do not recommend using these configurations,
                 they may be removed in the future. If not necessary, DO NOT use
                 them. Default None.
@@ -486,9 +488,9 @@ class ImperativeQuantizeOutputs(object):
                 (1) output_spec (list[Tensor]): Selects the output targets of
                 the saved model. By default, all return variables of original
                 Layer's forward method are kept as the output of the saved model.
-                If the provided ``output_spec`` list is not all output variables, 
+                If the provided ``output_spec`` list is not all output variables,
                 the saved model will be pruned according to the given
-                ``output_spec`` list. 
+                ``output_spec`` list.
 
         Returns:
             None
@@ -518,27 +520,34 @@ class ImperativeQuantizeOutputs(object):
                                    model_filename=model_filename,
                                    params_filename=params_filename))
 
-        self._gather_scales(infer_program, scope, fetch_targets)
+        if not self._onnx_format:
+            self._gather_scales(infer_program, scope, fetch_targets)
 
-        # Remove `moving_average_abs_max_scale` node in sub graphs.
-        graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
-        for sub_graph in graph.all_sub_graphs():
-            for _op in sub_graph.all_op_nodes():
-                if _op.name() == "moving_average_abs_max_scale":
-                    sub_graph.safe_remove_nodes(_op)
-            sub_graph.resolve_hazard()
-        infer_program = graph.to_program()
-
-        self._set_skip_quant_attr(infer_program)
-
-        clip_extra = False
-        if onnx_format:
+            # Remove `moving_average_abs_max_scale` node in sub graphs.
             graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
-            transform_pass = ReplaceFakeQuantDequantPass(scope, place)
-            transform_pass.apply(graph)
+            for sub_graph in graph.all_sub_graphs():
+                for _op in sub_graph.all_op_nodes():
+                    if _op.name() == "moving_average_abs_max_scale":
+                        sub_graph.safe_remove_nodes(_op)
+                sub_graph.resolve_hazard()
+            infer_program = graph.to_program()
+
+            self._set_skip_quant_attr(infer_program)
+
+            clip_extra = False
+        else:
+            graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
+            transform_pass = ReplaceFakeQuantDequantPass(
+                scope, place, quant_bits=self._activation_bits)
+            for sub_graph in graph.all_sub_graphs():
+                sub_graph._for_test = True
+                transform_pass.apply(sub_graph)
 
             quant_weight_pass = QuantWeightPass(scope, place)
-            quant_weight_pass.apply(graph)
+            for sub_graph in graph.all_sub_graphs():
+                sub_graph._for_test = True
+                quant_weight_pass.apply(sub_graph)
+
             infer_program = graph.to_program()
 
             clip_extra = True
@@ -559,18 +568,24 @@ class ImperativeQuantizeOutputs(object):
         """
         Whether the layer needs to calculate output scales.
         """
+        # exclude fake_quant ops in quant_layers file
+        if not isinstance(layer, dygraph.Layer):
+            return False
+
+        if self._onnx_format:
+            return True if isinstance(layer, tuple(
+                utils.fake_quant_wrap_layers)) else False
+
         flag = False
-        if isinstance(layer, dygraph.Layer):
-            # exclude fake_quant ops in quant_layers file
-            if utils.is_leaf_layer(layer) and \
-                not isinstance(layer, tuple(utils.fake_quant_leaf_layers)):
-                flag = True
+        if utils.is_leaf_layer(layer) and \
+            not isinstance(layer, tuple(utils.fake_quant_leaf_layers)):
+            flag = True
 
-            if isinstance(layer, tuple(utils.fake_quant_wrap_layers)):
-                flag = True
+        if isinstance(layer, tuple(utils.fake_quant_wrap_layers)):
+            flag = True
 
-            if isinstance(layer, paddle.nn.quant.FloatFunctionalLayer):
-                flag = True
+        if isinstance(layer, paddle.nn.quant.FloatFunctionalLayer):
+            flag = True
 
         return flag
 

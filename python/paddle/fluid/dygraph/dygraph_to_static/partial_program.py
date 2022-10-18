@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import six
 
@@ -31,8 +30,7 @@ from paddle.fluid.framework import _apply_pass
 from paddle.fluid.contrib.mixed_precision.decorator import AutoMixedPrecisionLists
 from paddle.fluid.contrib.mixed_precision.fp16_utils import rewrite_program, cast_model_to_fp16
 from paddle.fluid.dygraph.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-import paddle.compat as cpt
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 
 class NestSequence(object):
@@ -168,6 +166,25 @@ class PartialProgramLayer:
         self._amp_list = AutoMixedPrecisionLists(
             custom_white_list=custom_white_list,
             custom_black_list=custom_black_list)
+
+        # program_id -> list(scope)
+        self._scope_cache = {}
+
+    def _get_scope(self, program_id=None, use_scope_cache=False):
+        if use_scope_cache:
+            if program_id not in self._scope_cache:
+                scope = core.Scope()
+                self._scope_cache[program_id] = [scope]
+                return scope
+            else:
+                for scope in self._scope_cache[program_id]:
+                    if scope._can_reuesd:
+                        return scope
+                scope = core.Scope()
+                self._scope_cache[program_id].append(scope)
+                return scope
+        else:
+            return core.Scope()
 
     @LazyInitialized
     def __fake_vars(self):
@@ -401,7 +418,7 @@ class PartialProgramLayer:
             x = 2 * in  # <---- x is a non-leaf node in program.
             y = x + 3
             return x, y
-        
+
         loss = forward(in)[0].sum()
         loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
         """
@@ -555,11 +572,19 @@ class PartialProgramLayer:
                 ('forward_global_block', self.forward_program.desc.block(0),
                  'backward_global_block', self.backward_program.desc.block(0)))
 
-        _legacy_C_ops.run_program(self._valid_vars(in_vars),
-                                  self._valid_vars(self._params),
-                                  self._valid_vars(out_vars),
-                                  self._create_scope_vec(), self._double_grads,
-                                  self._cuda_graph_vec, *attrs)
+            _legacy_C_ops.run_program(
+                self._valid_vars(in_vars), self._valid_vars(self._params),
+                self._valid_vars(out_vars),
+                self._create_scope_vec(program_id=self.program_id,
+                                       use_scope_cache=True),
+                self._double_grads, self._cuda_graph_vec, *attrs)
+        else:
+            _legacy_C_ops.run_program(self._valid_vars(in_vars),
+                                      self._valid_vars(self._params),
+                                      self._valid_vars(out_vars),
+                                      self._create_scope_vec(),
+                                      self._double_grads, self._cuda_graph_vec,
+                                      *attrs)
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
@@ -569,16 +594,6 @@ class PartialProgramLayer:
                 name = var.name
                 if (self.program.global_block().has_var(name)
                         and self.program.global_block().var(name).dtype
-                        == paddle.float16):
-                    in_vars[i] = var.astype('float16')
-                    in_vars[i].name = name
-                if (self.forward_program.global_block().has_var(name)
-                        and self.forward_program.global_block().var(name).dtype
-                        == paddle.float16):
-                    in_vars[i] = var.astype('float16')
-                    in_vars[i].name = name
-                if (self.backward_program.global_block().has_var(name)
-                        and self.backward_program.global_block().var(name).dtype
                         == paddle.float16):
                     in_vars[i] = var.astype('float16')
                     in_vars[i].name = name
@@ -735,10 +750,11 @@ class PartialProgramLayer:
 
         return input_vars, out_vars
 
-    def _create_scope_vec(self):
+    def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         # Hold forward variables
         tmp_scope_vec = None
-        inner_scope = core.Scope()
+        inner_scope = self._get_scope(program_id=program_id,
+                                      use_scope_cache=use_scope_cache)
         if not framework._in_eager_mode_:
             tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                          "program_out_scope",
@@ -816,8 +832,7 @@ class PartialProgramLayer:
         # be user wanted result.
         for param in params:
             grad_name = param.name + core.grad_var_suffix()
-            grad_var = train_program.desc.block(0).find_var(
-                cpt.to_bytes(grad_name))
+            grad_var = train_program.desc.block(0).find_var(grad_name.encode())
             # NOTE: cannot find var desc maybe no problem, such as in batch_norm
             if grad_var is None:
                 continue

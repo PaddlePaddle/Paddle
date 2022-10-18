@@ -21,6 +21,8 @@ from paddle.distributed.passes import new_pass, PassManager
 import unittest
 from dist_pass_test_base import DistPassTestBase
 
+paddle.enable_static()
+
 
 class BatchNormAddActNet(nn.Layer):
 

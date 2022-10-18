@@ -19,8 +19,6 @@ to training/test sets has been maintained. The total number of images
 with segmentation has been increased from 7,062 to 9,993.
 """
 
-from __future__ import print_function
-
 import tarfile
 import io
 import numpy as np

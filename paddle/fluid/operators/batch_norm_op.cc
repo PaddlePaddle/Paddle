@@ -76,8 +76,8 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
             x_dims));
   }
 
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
     auto mom = ctx->Inputs("MomentumTensor");
@@ -178,35 +178,26 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
   }
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
       platform::errors::InvalidArgument("Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
       platform::errors::InvalidArgument("Bias input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Mean")->dtype()),
+      framework::TransToProtoVarType(
+          ctx.Input<phi::DenseTensor>("Mean")->dtype()),
       platform::errors::InvalidArgument("Mean input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
-      platform::errors::InvalidArgument(
-          "Variance input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Variance")->dtype()),
+                    platform::errors::InvalidArgument(
+                        "Variance input should be of float type"));
 
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-#ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-#endif
-
-  return framework::OpKernelType(
-      input_data_type, ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
@@ -217,15 +208,15 @@ framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "X") &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = framework::StringToDataLayout(data_layout);
+    auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != phi::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -359,8 +350,8 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
 
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNormGrad");
   const auto x_dims = ctx->GetInputDim("X");
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   const int C =
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
@@ -395,20 +386,8 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
         platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
 
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-#endif
-
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
@@ -419,15 +398,15 @@ framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = framework::StringToDataLayout(data_layout);
+    auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != phi::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -513,8 +492,8 @@ void BatchNormDoubleGradOp::InferShape(
   OP_INOUT_CHECK(ctx->HasOutput("DX"), "Output", "DX", "BatchNormDoubleGrad");
 
   const auto x_dims = ctx->GetInputDim("X");
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
   const int C =
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]

@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 from op_test import OpTest
 import numpy as np
-import os
 
 
 def output_hist(out):

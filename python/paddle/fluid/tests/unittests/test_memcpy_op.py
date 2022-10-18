@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import op_test
 import numpy as np
 import unittest
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.backward import append_backward
+from paddle.fluid import Program, program_guard
 
 
 class TestMemcpy_FillConstant(unittest.TestCase):
@@ -182,11 +177,12 @@ class TestMemcpyOPError(unittest.TestCase):
                                                   "value": 1.0,
                                                   "place_type": 1
                                               })
-        main_program.global_block().append_op(type='memcpy',
-                                              inputs={'X': selected_row_var},
-                                              outputs={'Out': pinned_var},
-                                              attrs={'dst_place_type': 2})
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(RuntimeError):
+            main_program.global_block().append_op(
+                type='memcpy',
+                inputs={'X': selected_row_var},
+                outputs={'Out': pinned_var},
+                attrs={'dst_place_type': 2})
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             selected_row_var_, pinned_ = exe.run(

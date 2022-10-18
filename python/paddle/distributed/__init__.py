@@ -65,9 +65,10 @@ from .entry_attr import ShowClickEntry  # noqa: F401
 from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
 
 from . import cloud_utils  # noqa: F401
-from . import utils  # noqa: F401
 
 from .sharding import *  # noqa: F401
+
+from . import rpc
 
 __all__ = [  # noqa
     "spawn", "launch", "scatter", "broadcast", "ParallelEnv", "new_group",
@@ -75,7 +76,7 @@ __all__ = [  # noqa
     "gloo_release", "QueueDataset", "split", "CountFilterEntry",
     "ShowClickEntry", "get_world_size", "get_group", "all_gather",
     "all_gather_object", "InMemoryDataset", "barrier", "all_reduce", "alltoall",
-    "send", "reduce", "recv", "ReduceOp", "wait", "get_rank",
-    "ProbabilityEntry", "ParallelMode", "is_initialized", "isend", "irecv",
-    "reduce_scatter"
+    "alltoall_single", "send", "reduce", "recv", "ReduceOp", "wait", "get_rank",
+    "ProbabilityEntry", "ParallelMode", "is_initialized",
+    "destroy_process_group", "isend", "irecv", "reduce_scatter", "rpc", "stream"
 ]

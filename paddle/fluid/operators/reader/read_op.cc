@@ -106,7 +106,7 @@ class ReadOp : public framework::OperatorBase {
             scope.FindVar(Input("Reader")), "Input", "Reader", "Read")
             .GetMutable<framework::ReaderHolder>();
     std::vector<std::string> out_arg_names = Outputs("Out");
-    std::vector<framework::LoDTensor> ins;
+    paddle::framework::LoDTensorArray ins;
 
     // For profiling
     platform::RecordEvent record_event(
@@ -139,7 +139,7 @@ class ReadOp : public framework::OperatorBase {
 
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
-          scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
+          scope.FindVar(out_arg_names[i])->GetMutable<phi::DenseTensor>();
       if (need_check_feed[i]) {
         auto in_dims = ins[i].dims();
         PADDLE_ENFORCE_EQ(

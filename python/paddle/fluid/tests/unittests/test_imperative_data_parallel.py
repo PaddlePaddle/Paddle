@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import contextlib
 import unittest
 import numpy as np
-import six
 import unittest
 
-import paddle
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid.dygraph.nn import Linear

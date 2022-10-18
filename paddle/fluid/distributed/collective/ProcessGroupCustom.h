@@ -80,8 +80,8 @@ class ProcessGroupCustom : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> AllGather_Partial(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
-      int offset,
-      int length) override;
+      int64_t offset,
+      int64_t length) override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,
@@ -117,8 +117,8 @@ class ProcessGroupCustom : public ProcessGroup {
   std::set<int> used_place_ids_;
 
  private:
-  void BcastCustomId(std::vector<phi::ccl::CCLRootId>& ccl_ids,
-                     int root,  // NOLINT
+  void BcastCustomId(std::vector<phi::ccl::CCLRootId>& ccl_ids,  // NOLINT
+                     int root,
                      int server_fd);
 
   void BroadcastUniqueCustomID(
