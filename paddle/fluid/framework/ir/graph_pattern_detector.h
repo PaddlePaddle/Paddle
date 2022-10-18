@@ -1914,15 +1914,17 @@ struct LayerNorm : public PatternBase {
 
 //
 // \brief   Pattern looking for subgraph representing layernorm_shift_partition
-//          operation.
+//          operation with shift_size = 0.
 //
 struct LayernormShiftPartitionPattern : public PatternBase {
   LayernormShiftPartitionPattern(PDPattern* pattern,
-                                 const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "layernorm_shift_partition") {}
+                                 const std::string& name_scope,
+                                 bool with_roll)
+      : PatternBase(pattern, name_scope, "layernorm_shift_partition"),
+        with_roll_(with_roll) {}
 
   PDNode* operator()();
-
+  bool with_roll_;
   PATTERN_DECL_NODE(layer_norm_in);
   PATTERN_DECL_NODE(layer_norm_op);
   PATTERN_DECL_NODE(layer_norm_bias);
@@ -1930,6 +1932,10 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(layer_norm_out);
   PATTERN_DECL_NODE(reshape1_op);
   PATTERN_DECL_NODE(reshape1_out);
+  // optional op roll
+  PATTERN_DECL_NODE(roll1_op);
+  PATTERN_DECL_NODE(roll1_out);
+
   PATTERN_DECL_NODE(reshape2_op);
   PATTERN_DECL_NODE(reshape2_out);
   PATTERN_DECL_NODE(transpose_op);
@@ -1938,6 +1944,33 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(reshape3_out);
   PATTERN_DECL_NODE(reshape4_op);
   PATTERN_DECL_NODE(reshape4_out);
+};
+
+// pattern for merge_layernorm
+struct MergeLayernormPattern : public PatternBase {
+  MergeLayernormPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "merge_layernorm") {}
+
+  PDNode* operator()(PDNode* reshape2_in);
+
+  PATTERN_DECL_NODE(reshape2_00_op);
+  PATTERN_DECL_NODE(reshape2_00_out);
+  PATTERN_DECL_NODE(strided_slice_10_op);
+  PATTERN_DECL_NODE(strided_slice_10_out);
+  PATTERN_DECL_NODE(strided_slice_11_op);
+  PATTERN_DECL_NODE(strided_slice_11_out);
+  PATTERN_DECL_NODE(strided_slice_12_op);
+  PATTERN_DECL_NODE(strided_slice_12_out);
+  PATTERN_DECL_NODE(strided_slice_13_op);
+  PATTERN_DECL_NODE(strided_slice_13_out);
+  PATTERN_DECL_NODE(concat_20_op);
+  PATTERN_DECL_NODE(concat_20_out);
+  PATTERN_DECL_NODE(reshape2_30_op);
+  PATTERN_DECL_NODE(reshape2_30_out);
+  PATTERN_DECL_NODE(layernorm_40_op);
+  PATTERN_DECL_NODE(layernorm_40_in_bias);
+  PATTERN_DECL_NODE(layernorm_40_in_scale);
+  PATTERN_DECL_NODE(layernorm_40_out);
 };
 
 // Add support int8 flag

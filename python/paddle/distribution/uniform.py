@@ -123,6 +123,8 @@ class Uniform(distribution.Distribution):
                 self.low = tensor.cast(self.low, dtype=self.dtype)
                 self.high = tensor.cast(self.high, dtype=self.dtype)
 
+        super(Uniform, self).__init__(self.low.shape)
+
     def sample(self, shape, seed=0):
         """Generate samples of the specified shape.
 
