@@ -549,7 +549,7 @@ def coalesce(x):
 @dygraph_only
 def rad2deg(x, name=None):
     """
-    Convert each of the elements of input x from angles in radians to degrees,
+    Convert each of the elements of input x from radian to degree,
     requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
@@ -582,7 +582,7 @@ def rad2deg(x, name=None):
 @dygraph_only
 def deg2rad(x, name=None):
     """
-    Convert each of the elements of input x from degrees to angles in radians,
+    Convert each of the elements of input x from degree to radian,
     requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::

@@ -181,41 +181,13 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                 ]
 
 
-def main(ops_yaml_path, backward_yaml_path, op_compat_yaml_path,
-         op_version_yaml_path, output_op_path, output_arg_map_path):
-    with open(ops_yaml_path, "rt") as f:
-        apis = yaml.safe_load(f)
-        apis = [restruct_io(api) for api in apis]
-    forward_api_dict = to_named_dict(apis)
-
-    with open(backward_yaml_path, "rt") as f:
-        backward_apis = yaml.safe_load(f)
-        backward_apis = [restruct_io(api) for api in backward_apis]
-    backward_api_dict = to_named_dict(backward_apis)
-
-    with open(op_version_yaml_path, "rt") as f:
-        api_versions = yaml.safe_load(f)
-    # add api version info into api
-    for api_version in api_versions:
-        forward_api_dict[api_version['op']]['version'] = api_version['version']
-
-    with open(op_compat_yaml_path, "rt") as f:
-        api_op_map = yaml.safe_load(f)
-
-    for api in apis:
-        api['op_name'] = api['name']
-    for bw_api in backward_apis:
-        bw_api['op_name'] = bw_api['name']
-
-    replace_compat_name(api_op_map, forward_api_dict, backward_api_dict)
-
-    # prepare for invoke case
-    for bw_name, bw_api in backward_api_dict.items():
+def process_invoke_op(forward_api_dict, backward_api_dict):
+    for bw_api in backward_api_dict.values():
         if 'invoke' in bw_api:
             invoke_op = bw_api['invoke']['func']
             args_list = bw_api['invoke']['args']
             args_index = 0
-            if invoke_op in forward_api_dict.keys():
+            if invoke_op in forward_api_dict:
                 reuse_op = forward_api_dict[invoke_op]
                 bw_api['invoke']['inputs'] = []
                 bw_api['invoke']['attrs'] = []
@@ -247,6 +219,38 @@ def main(ops_yaml_path, backward_yaml_path, op_compat_yaml_path,
                         'value':
                         bw_api['outputs'][idx]['name']
                     })
+
+
+def main(ops_yaml_path, backward_yaml_path, op_compat_yaml_path,
+         op_version_yaml_path, output_op_path, output_arg_map_path):
+    with open(ops_yaml_path, "rt") as f:
+        apis = yaml.safe_load(f)
+        apis = [restruct_io(api) for api in apis]
+    forward_api_dict = to_named_dict(apis)
+
+    with open(backward_yaml_path, "rt") as f:
+        backward_apis = yaml.safe_load(f)
+        backward_apis = [restruct_io(api) for api in backward_apis]
+    backward_api_dict = to_named_dict(backward_apis)
+
+    with open(op_version_yaml_path, "rt") as f:
+        api_versions = yaml.safe_load(f)
+    # add api version info into api
+    for api_version in api_versions:
+        forward_api_dict[api_version['op']]['version'] = api_version['version']
+
+    with open(op_compat_yaml_path, "rt") as f:
+        api_op_map = yaml.safe_load(f)
+
+    for api in apis:
+        api['op_name'] = api['name']
+    for bw_api in backward_apis:
+        bw_api['op_name'] = bw_api['name']
+
+    replace_compat_name(api_op_map, forward_api_dict, backward_api_dict)
+
+    # prepare for invoke case
+    process_invoke_op(forward_api_dict, backward_api_dict)
 
     # fill backward field for an api if another api claims it as forward
     for name, backward_api in backward_api_dict.items():

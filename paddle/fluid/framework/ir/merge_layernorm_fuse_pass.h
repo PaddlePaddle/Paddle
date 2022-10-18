@@ -14,38 +14,42 @@
 
 #pragma once
 
-#include <iostream>
+#include <string>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class Graph;
-
-class CommonSubexpressionEliminationPass : public FusePassBase {
+// Fusing of path merge and layer_norm
+// op: ss=stride_slice
+// shape: [ss] = [?x28x28x96]
+//       input
+//         | [?x3136x96]
+//       reshape2                                 input
+//         | [?x56x56x96]                           | [?x3136x96]
+//         |------|------|------|              merge_layernorm
+//        ss     ss     ss      ss      ->          | [?x784x384]
+//         | [ss] | [ss] | [ss] | [ss]  fused      output
+//         |------|------|------|
+//       concat
+//         | [?x28x28x384]
+//       reshape2
+//         | [?x784x384]
+//       layer_norm
+//         | [?x784x384]
+//        output
+class MergeLayernormFusePass : public FusePassBase {
  public:
-  CommonSubexpressionEliminationPass() {}
+  MergeLayernormFusePass();
+  virtual ~MergeLayernormFusePass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  void CommonSubexpressionEliminate(
-      ir::Graph* main_graph,
-      ir::Graph* graph,
-      std::function<Node*(Node*)> parent_exist_nodes) const;
 };
-
-struct HashOpNode {
-  size_t operator()(const Node* node) const;
-};
-
-struct EqualOpNode {
-  bool operator()(const Node* lhs, const Node* rhs) const;
-};
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

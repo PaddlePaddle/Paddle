@@ -3702,6 +3702,91 @@ PDNode *patterns::ReverseRollPattern::operator()(PDNode *in) {
   reshape2_50_out->LinksFrom({reshape2_50_op});
   return reshape2_50_out;
 }
+PDNode *patterns::MergeLayernormPattern::operator()(PDNode *in) {
+  in->AsInput();
+  auto reshape2_00_op =
+      pattern->NewNode(reshape2_00_op_repr())->assert_is_op("reshape2");
+  auto reshape2_00_out = pattern->NewNode(reshape2_00_out_repr())
+                             ->assert_is_op_output("reshape2", "Out")
+                             ->assert_is_op_input("strided_slice", "Input")
+                             ->AsIntermediate();
+  auto strided_slice_10_op = pattern->NewNode(strided_slice_10_op_repr())
+                                 ->assert_is_op("strided_slice");
+  auto strided_slice_10_out = pattern->NewNode(strided_slice_10_out_repr())
+                                  ->assert_is_op_output("strided_slice", "Out")
+                                  ->assert_is_op_nth_input("concat", "X", 0)
+                                  ->AsIntermediate();
+  auto strided_slice_11_op = pattern->NewNode(strided_slice_11_op_repr())
+                                 ->assert_is_op("strided_slice");
+  auto strided_slice_11_out = pattern->NewNode(strided_slice_11_out_repr())
+                                  ->assert_is_op_output("strided_slice", "Out")
+                                  ->assert_is_op_nth_input("concat", "X", 1)
+                                  ->AsIntermediate();
+  auto strided_slice_12_op = pattern->NewNode(strided_slice_12_op_repr())
+                                 ->assert_is_op("strided_slice");
+  auto strided_slice_12_out = pattern->NewNode(strided_slice_12_out_repr())
+                                  ->assert_is_op_output("strided_slice", "Out")
+                                  ->assert_is_op_nth_input("concat", "X", 2)
+                                  ->AsIntermediate();
+  auto strided_slice_13_op = pattern->NewNode(strided_slice_13_op_repr())
+                                 ->assert_is_op("strided_slice");
+  auto strided_slice_13_out = pattern->NewNode(strided_slice_13_out_repr())
+                                  ->assert_is_op_output("strided_slice", "Out")
+                                  ->assert_is_op_nth_input("concat", "X", 3)
+                                  ->AsIntermediate();
+  auto concat_20_op = pattern->NewNode(concat_20_op_repr())
+                          ->assert_is_op("concat")
+                          ->assert_has_n_inputs(4);
+  auto concat_20_out = pattern->NewNode(concat_20_out_repr())
+                           ->assert_is_op_output("concat", "Out")
+                           ->assert_is_op_input("reshape2", "X")
+                           ->AsIntermediate();
+  auto reshape2_30_op =
+      pattern->NewNode(reshape2_30_op_repr())->assert_is_op("reshape2");
+  auto reshape2_30_out = pattern->NewNode(reshape2_30_out_repr())
+                             ->assert_is_op_output("reshape2", "Out")
+                             ->assert_is_op_input("layer_norm", "X")
+                             ->AsIntermediate();
+  auto layernorm_40_op =
+      pattern->NewNode(layernorm_40_op_repr())
+          ->assert_is_op("layer_norm")
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("begin_norm_axis") &&
+                   (PADDLE_GET_CONST(
+                        int, node->Op()->GetAttr("begin_norm_axis")) == 2);
+          });
+  auto layernorm_40_in_bias = pattern->NewNode(layernorm_40_in_bias_repr())
+                                  ->assert_is_op_input("layer_norm", "Bias")
+                                  ->AsInput();
+  auto layernorm_40_in_scale = pattern->NewNode(layernorm_40_in_scale_repr())
+                                   ->assert_is_op_input("layer_norm", "Scale")
+                                   ->AsInput();
+  auto layernorm_40_out = pattern->NewNode(layernorm_40_out_repr())
+                              ->assert_is_op_output("layer_norm", "Y")
+                              ->AsOutput();
+
+  reshape2_00_op->LinksFrom({in});
+  reshape2_00_out->LinksFrom({reshape2_00_op});
+  strided_slice_10_op->LinksFrom({reshape2_00_out});
+  strided_slice_10_out->LinksFrom({strided_slice_10_op});
+  strided_slice_11_op->LinksFrom({reshape2_00_out});
+  strided_slice_11_out->LinksFrom({strided_slice_11_op});
+  strided_slice_12_op->LinksFrom({reshape2_00_out});
+  strided_slice_12_out->LinksFrom({strided_slice_12_op});
+  strided_slice_13_op->LinksFrom({reshape2_00_out});
+  strided_slice_13_out->LinksFrom({strided_slice_13_op});
+  concat_20_op->LinksFrom({strided_slice_10_out,
+                           strided_slice_11_out,
+                           strided_slice_12_out,
+                           strided_slice_13_out});
+  concat_20_out->LinksFrom({concat_20_op});
+  reshape2_30_op->LinksFrom({concat_20_out});
+  reshape2_30_out->LinksFrom({reshape2_30_op});
+  layernorm_40_op->LinksFrom(
+      {reshape2_30_out, layernorm_40_in_bias, layernorm_40_in_scale});
+  layernorm_40_out->LinksFrom({layernorm_40_op});
+  return layernorm_40_out;
+}
 
 }  // namespace ir
 }  // namespace framework
