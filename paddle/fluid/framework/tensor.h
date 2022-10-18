@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace paddle {
 namespace framework {

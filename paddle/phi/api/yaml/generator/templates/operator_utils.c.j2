@@ -81,7 +81,11 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_ty
   {% set default_value = attr["default_value"] %}
   {% set typename = attr["typename"] %}
   {% if typename == "DataType" %}{# convert back to VarType #}
+    {% if default_value == "DataType::UNDEFINED" %}
+-1
+    {%- else %}
 static_cast<int>(framework::TransToProtoVarType(experimental::{{default_value}}))
+    {%- endif %}
   {%- elif typename == "DataLayout" %} {# does DataLayout need any processing?#}
 static_cast<int>(experimental::{{default_value}})
   {%- elif typename == "Place" %}{# construct a Place to get the type #}
@@ -94,7 +98,7 @@ static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}
 
 {# --------------------------------------- name mapping ---------------------------------------------- #}
 {% macro name_map(api) %}
-KernelSignature {{api["name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature {{api["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = api["kernel"]["param"] %}
   {{get_input_list(api["inputs"], kernel_args)}};
   paddle::small_vector<const char*> attrs;
@@ -124,12 +128,64 @@ All possible KernelSignatures returned by {{api["name"] | to_pascal_case }}OpArg
 */
 {% endmacro %}
 
+{% macro get_kernel_dispatch(inputs, kernel_config) %}{# inline #}
+{%- for kernel_func in kernel_config["func"] %}
+  {% set input_idx = namespace(idx=0) %}
+  {% set kernel_in_type_list = kernel_config["dispatch"][kernel_func][0] %}
+
+  if ( {%- for input in inputs %}
+    {%- if input["name"] in kernel_config["param"] %}
+      {%- if kernel_in_type_list[input_idx.idx] == "dense" %}
+ctx.IsDenseTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "selected_rows" %}
+ctx.IsSelectedRowsInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "sparse_coo" %}
+ctx.IsSparseCooTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- elif kernel_in_type_list[input_idx.idx] == "sparse_csr" %}
+ctx.IsSparseCsrTensorInput("{{input["name"]}}"){{" && " if not loop.last}}
+      {%- endif %}
+      {% set input_idx.idx = input_idx.idx + 1 %}
+    {%- endif %}
+  {%- endfor %}) {
+    kernel_name = "{{kernel_func}}";
+  }
+{%- endfor %}
+{%- endmacro %}
+
+{% macro sparse_op_name_map(api) %}
+KernelSignature {{api["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
+  {% set kernel_args = api["kernel"]["param"] %}
+  {{get_input_list(api["inputs"], kernel_args)}};
+  paddle::small_vector<const char*> attrs;
+  {% for attr in api["attrs"]%}
+  {% filter indent(2)%}
+  {{get_an_attr(attr)}};
+  {% endfilter %}
+  {% endfor %}
+  {{get_output_list(api["outputs"], kernel_args)}};
+
+  const char* kernel_name = "unregistered";
+{{get_kernel_dispatch(api["inputs"], api["kernel"])}}
+  KernelSignature sig (kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
+  return sig;
+}
+
+/*
+******************************************************************
+NOTE: The following codes are for 'get_compat_kernel_signature.py'
+All possible KernelSignatures returned by {{api["name"] | to_pascal_case }}OpArgumentMapping:
+
+{{api | cartesian_prod_mapping}}
+******************************************************************
+*/
+{% endmacro %}
+
 {% macro register_base_kernel_name(api) %}
 PD_REGISTER_BASE_KERNEL_NAME({{api["op_name"]}}, {{api["name"]}});
 {%- endmacro %}
 
 {% macro register_name_map(api) %}
-PD_REGISTER_ARG_MAPPING_FN({{api["op_name"]}}, phi::{{api["name"] | to_pascal_case}}OpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN({{api["op_name"]}}, phi::{{api["op_name"] | to_pascal_case}}OpArgumentMapping);
 {%- endmacro %}
 
 {% macro get_input_list(inputs, kernel_args) %}{# inline #}

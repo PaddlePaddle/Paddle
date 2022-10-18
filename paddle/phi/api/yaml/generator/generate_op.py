@@ -212,6 +212,47 @@ def replace_compat_name(api_op_map, forward_api_dict, backward_api_dict):
                 ]
 
 
+def process_invoke_op(forward_api_dict, backward_api_dict):
+    for bw_api in backward_api_dict.values():
+        if 'invoke' in bw_api:
+            invoke_op = bw_api['invoke']['func']
+            args_list = bw_api['invoke']['args']
+            args_index = 0
+            if invoke_op in forward_api_dict:
+                reuse_op = forward_api_dict[invoke_op]
+                bw_api['invoke']['inputs'] = []
+                bw_api['invoke']['attrs'] = []
+                bw_api['invoke']['outputs'] = []
+                for input_item in reuse_op['inputs']:
+                    bw_api['invoke']['inputs'].append(
+                        {
+                            'name': input_item['name'],
+                            'value': args_list[args_index],
+                        }
+                    )
+                    args_index = args_index + 1
+                for attr in reuse_op['attrs']:
+                    if args_index < len(args_list):
+                        attr_value = (
+                            f"this->GetAttr(\"{args_list[args_index]}\")"
+                            if args_list[args_index] in bw_api['attr_dict']
+                            else args_list[args_index]
+                        )
+                        bw_api['invoke']['attrs'].append(
+                            {'name': attr['name'], 'value': attr_value}
+                        )
+                        args_index = args_index + 1
+                    else:
+                        break
+                for idx, output_item in enumerate(reuse_op['outputs']):
+                    bw_api['invoke']['outputs'].append(
+                        {
+                            'name': output_item['name'],
+                            'value': bw_api['outputs'][idx]['name'],
+                        }
+                    )
+
+
 def main(
     ops_yaml_path,
     backward_yaml_path,
@@ -247,44 +288,7 @@ def main(
     replace_compat_name(api_op_map, forward_api_dict, backward_api_dict)
 
     # prepare for invoke case
-    for bw_name, bw_api in backward_api_dict.items():
-        if 'invoke' in bw_api:
-            invoke_op = bw_api['invoke']['func']
-            args_list = bw_api['invoke']['args']
-            args_index = 0
-            if invoke_op in forward_api_dict.keys():
-                reuse_op = forward_api_dict[invoke_op]
-                bw_api['invoke']['inputs'] = []
-                bw_api['invoke']['attrs'] = []
-                bw_api['invoke']['outputs'] = []
-                for input_item in reuse_op['inputs']:
-                    bw_api['invoke']['inputs'].append(
-                        {
-                            'name': input_item['name'],
-                            'value': args_list[args_index],
-                        }
-                    )
-                    args_index = args_index + 1
-                for attr in reuse_op['attrs']:
-                    if args_index < len(args_list):
-                        attr_value = (
-                            f"this->GetAttr(\"{args_list[args_index]}\")"
-                            if args_list[args_index] in bw_api['attr_dict']
-                            else args_list[args_index]
-                        )
-                        bw_api['invoke']['attrs'].append(
-                            {'name': attr['name'], 'value': attr_value}
-                        )
-                        args_index = args_index + 1
-                    else:
-                        break
-                for idx, output_item in enumerate(reuse_op['outputs']):
-                    bw_api['invoke']['outputs'].append(
-                        {
-                            'name': output_item['name'],
-                            'value': bw_api['outputs'][idx]['name'],
-                        }
-                    )
+    process_invoke_op(forward_api_dict, backward_api_dict)
 
     # fill backward field for an api if another api claims it as forward
     for name, backward_api in backward_api_dict.items():
