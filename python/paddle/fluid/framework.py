@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -284,13 +284,13 @@ def ipu_shard_guard(index=-1, stage=-1):
             The sharded model will be computed from small to large. The default value is -1,
             which means no pipelining computation order and run Ops in terms of graph.
 
-    **Note**:
-    Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer
-    to :code:`paddle.static.IpuStrategy` .
-    Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer
-    to :code:`paddle.static.IpuStrategy` .
-    A index is allowed to match none stage or a stage. A stage is only allowed to match a new or
-    duplicated index.
+    Note:
+        Only if the enable_manual_shard=True, the 'index' is able to be set not -1. Please refer
+        to :ref:`api_paddle_static_IpuStrategy`.
+        Only if the enable_pipelining=True, the 'stage' is able to be set not -1. Please refer
+        to :ref:`api_paddle_static_IpuStrategy`.
+        A index is allowed to match none stage or a stage. A stage is only allowed to match a new or
+        duplicated index.
 
     Examples:
         .. code-block:: python
@@ -329,6 +329,11 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
     """
     Shard the ipu with the given call function. Set every ops in call function to the given ipu sharding.
 
+    Note:
+        Only when enable_manual_shard=True to set the index to a value other than -1. please refer to :ref:`api_paddle_static_IpuStrategy` .
+        Only when enable_pipelining=True to set stage to a value other than -1. please refer to :ref:`api_paddle_static_IpuStrategy` .
+        An index supports a corresponding None stage or a stage, and a stage only supports a new index or a duplicate index.
+
     Args:
         call_func(Layer|function): Specify the call function to be wrapped.
         index(int, optional): Specify which ipu the Tensor is computed on, (such as ‘0, 1, 2, 3’).
@@ -339,7 +344,6 @@ def set_ipu_shard(call_func, index=-1, stage=-1):
 
     Returns:
         The wrapped call function.
-
 
     Examples:
         .. code-block:: python
@@ -1002,19 +1006,20 @@ def cuda_pinned_places(device_count=None):
 
 def mlu_places(device_ids=None):
     """
-    **Note**:
+    This function creates a list of :code:`paddle.device.MLUPlace` objects.
+    If :code:`device_ids` is None, environment variable of
+    :code:`FLAGS_selected_mlus` would be checked first. For example, if
+    :code:`FLAGS_selected_mlus=0,1,2`, the returned list would
+    be [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+    If :code:`FLAGS_selected_mlus` is not set, all visible
+    mlu places would be returned.
+    If :code:`device_ids` is not None, it should be the device
+    ids of MLUs. For example, if :code:`device_ids=[0,1,2]`,
+    the returned list would be
+    [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
+
+    Note:
         For multi-card tasks, please use `FLAGS_selected_mlus` environment variable to set the visible MLU device.
-        This function creates a list of :code:`paddle.device.MLUPlace` objects.
-        If :code:`device_ids` is None, environment variable of
-        :code:`FLAGS_selected_mlus` would be checked first. For example, if
-        :code:`FLAGS_selected_mlus=0,1,2`, the returned list would
-        be [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
-        If :code:`FLAGS_selected_mlus` is not set, all visible
-        mlu places would be returned.
-        If :code:`device_ids` is not None, it should be the device
-        ids of MLUs. For example, if :code:`device_ids=[0,1,2]`,
-        the returned list would be
-        [paddle.device.MLUPlace(0), paddle.device.MLUPlace(1), paddle.device.MLUPlace(2)].
 
     Parameters:
         device_ids (list or tuple of int, optional): list of MLU device ids.
@@ -1385,11 +1390,10 @@ class Variable(object):
         self.error_clip = error_clip
 
         is_new_var = False
-        name = cpt.to_text(name)
-        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
+        self.desc = self.block.desc.find_var(name.encode())
 
         if self.desc is None:
-            self.desc = self.block.desc.var(cpt.to_bytes(name))
+            self.desc = self.block.desc.var(name.encode())
             is_new_var = True
 
         if is_new_var:
@@ -1752,8 +1756,7 @@ class Variable(object):
         if with_details:
             additional_attr = ("error_clip", )
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name,
-                                         cpt.to_text(getattr(self, attr_name)))
+                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
 
         return res_str
 
@@ -1895,7 +1898,7 @@ class Variable(object):
                                                 dtype='float32')
             print("name of current Var is: {}".format(new_variable.name))
         """
-        return cpt.to_text(self.desc.name())
+        return self.desc.name()
 
     @property
     def grad_name(self):
@@ -2802,7 +2805,7 @@ class Operator(object):
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
                             elif isinstance(arg, (Variable, core.VarBase)):
-                                in_arg_names.append(cpt.to_text(arg.name))
+                                in_arg_names.append(arg.name)
                             else:
                                 raise TypeError(
                                     "The type of '%s' in operator %s should be "
@@ -2838,7 +2841,7 @@ class Operator(object):
                         if isinstance(arg, six.string_types):
                             out_arg_names.append(arg)
                         else:
-                            out_arg_names.append(cpt.to_text(arg.name))
+                            out_arg_names.append(arg.name)
                         # TODO(minqiyang): could we remove variable's op in static mode?
                         if not _non_static_mode():
                             if isinstance(arg, six.string_types):
@@ -3655,8 +3658,8 @@ class Block(object):
         Rename variable in vars and ops' inputs and outputs
 
         Args:
-            name(str): the name that need to be renamed.
-            new_name(str): the name that need to rename to.
+            name(bytes): the name that need to be renamed.
+            new_name(bytes): the name that need to rename to.
 
         Raises:
             ValueError: If this block doesn't have this the giving name,
@@ -3666,8 +3669,8 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
-        name = cpt.to_text(name)
-        new_name = cpt.to_text(new_name)
+        name = name.decode()
+        new_name = new_name.decode()
 
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)
@@ -3686,9 +3689,9 @@ class Block(object):
         else:
             raise ValueError("unsupported var type: %s", type(v))
         orig_var_type = v.type
-        self.desc._rename_var(cpt.to_bytes(name), cpt.to_bytes(new_name))
+        self.desc._rename_var(name.encode(), new_name.encode())
         # NOTE: v is destroyed by C++ after calling _rename_var.
-        d = self.desc.find_var(cpt.to_bytes(new_name))
+        d = self.desc.find_var(new_name.encode())
         if var_type == "Parameter":
             if in_dygraph_mode():
                 var = EagerParamBase(d.shape(),
@@ -3739,7 +3742,7 @@ class Block(object):
     def _remove_var(self, name, sync=True):
         if sync == True:
             self._sync_with_cpp()
-        self.desc._remove_var(cpt.to_bytes(name))
+        self.desc._remove_var(name.encode())
         del self.vars[name]
 
     def create_parameter(self, *args, **kwargs):
@@ -3948,7 +3951,7 @@ class Block(object):
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
-            if not self.desc.find_var(cpt.to_bytes(var)):
+            if not self.desc.find_var(var.encode()):
                 self.vars.pop(var)
 
         # sync operators from cpp
@@ -5834,7 +5837,7 @@ class Program(object):
                 root_block._remove_op(0, read_op_idx + 1)
             for var in root_block.all_vars():
                 if var.type() == core.VarDesc.VarType.READER:
-                    root_block._remove_var(cpt.to_bytes(var.name()))
+                    root_block._remove_var(var.name().encode())
 
         # change all `is_test` attributes to True
         for i in six.moves.range(res.desc.num_blocks()):
@@ -5932,6 +5935,8 @@ class Program(object):
                     "activation_bits", "bit_length", "quantize_weight_bits",
                     "weight_quant_scale"
                 ]
+                for extra_attr_name in extra_attrs_map.keys():
+                    op.remove_attr(extra_attr_name)
                 remove_attr_list = []
                 for name in op.attr_names():
                     if quant:
@@ -5940,7 +5945,7 @@ class Program(object):
                         if name.endswith("_threshold"):
                             continue
                     if len(extra_attrs_map) > 0:
-                        if name in extra_attrs_map or name in common_clipped_attrs_list:
+                        if name in common_clipped_attrs_list:
                             op.remove_attr(name)
                         continue
                     find = False
@@ -6636,8 +6641,7 @@ class Parameter(Variable):
             additional_attr = ("trainable", "optimize_attr", "regularizer",
                                "do_model_average", "need_clip")
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name,
-                                         cpt.to_text(getattr(self, attr_name)))
+                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str

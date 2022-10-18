@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import MkldnnAutoScanTest, SkipReasons
+from auto_scan_test import MkldnnAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
+from hypothesis import given
 import hypothesis.strategies as st
 
 

@@ -55,6 +55,7 @@ namespace phi {
 class DenseTensor;
 class SelectedRows;
 class SparseCooTensor;
+class SparseCsrTensor;
 }  // namespace phi
 
 // Users should add forward declarations here
@@ -79,7 +80,7 @@ class BKCLCommunicator;
 
 namespace framework {
 class LoDRankTable;
-class ScopeBase;
+class Scope;
 class ReaderHolder;
 class Scope;
 }  // namespace framework
@@ -179,9 +180,10 @@ struct VarTypeRegistryImpl {
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
-    Tensor,
+    phi::DenseTensor,
     phi::SelectedRows,
     phi::SparseCooTensor,
+    phi::SparseCsrTensor,
     std::vector<Scope *>,
     LoDRankTable,
     Strings,

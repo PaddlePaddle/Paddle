@@ -17,12 +17,8 @@ import unittest
 import os
 import paddle
 import numpy as np
-import random
 import paddle.fluid.layers as layers
-import paddle.distributed as dist
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-from paddle import framework
 from paddle.distributed.fleet.utils.hybrid_parallel_inference import HybridParallelInferenceHelper
 
 paddle.enable_static()
@@ -86,6 +82,7 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                                                 value=0,
                                                 force_cpu=False,
                                                 name="cond_int")
+                print(cond_int.shape)
                 cond = layers.less_than(x=step_idx, y=max_len)
                 while_op = layers.While(cond, is_test=True)
 

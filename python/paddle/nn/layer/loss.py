@@ -14,11 +14,10 @@
 # limitations under the License.
 
 # TODO: define loss functions of neural network
-import numpy as np
 import paddle.fluid as fluid
 import paddle
 from .. import functional as F
-from paddle.fluid.framework import _varbase_creator, in_dygraph_mode, _in_legacy_dygraph
+from paddle.fluid.framework import in_dygraph_mode
 from .. import Layer
 from paddle import in_dynamic_mode
 
@@ -1138,16 +1137,16 @@ class SmoothL1Loss(Layer):
 
     .. math::
 
-         loss(x,y) = \frac{1}{n}\sum_{i}z_i
+        loss(x, y) = \frac{1}{n}\sum_{i}z_i
 
-    where z_i is given by:
+    where :math:`z_i` is given by:
 
     .. math::
 
         \mathop{z_i} = \left\{\begin{array}{rcl}
-        0.5(x_i - y_i)^2 & & {if |x_i - y_i| < delta} \\
-        delta * |x_i - y_i| - 0.5 * delta^2 & & {otherwise}
-        \end{array} \right.
+                0.5(x_i - y_i)^2 & & {if |x_i - y_i| < \delta} \\
+                \delta * |x_i - y_i| - 0.5 * \delta^2 & & {otherwise}
+            \end{array} \right.
 
     Parameters:
         reduction (str, optional): Indicate how to average the loss by batch_size,
@@ -1156,12 +1155,11 @@ class SmoothL1Loss(Layer):
             If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
-        delta (float, optional): Specifies the hyperparameter delta to be used.
+        delta (float, optional): Specifies the hyperparameter :math:`\delta` to be used.
             The value determines how large the errors need to be to use L1. Errors
             smaller than delta are minimized with L2. Parameter is ignored for
-            negative/zero values. Default = 1.0
-        name (str, optional): Name for the operation (optional, default is
-            None). For more information, please refer to :ref:`api_guide_Name`.
+            negative/zero values. Default value is :math:`1.0`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Call Parameters:
 
@@ -1179,14 +1177,12 @@ class SmoothL1Loss(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
-            input_data = np.random.rand(3,3).astype("float32")
-            label_data = np.random.rand(3,3).astype("float32")
-            input = paddle.to_tensor(input_data)
-            label = paddle.to_tensor(label_data)
+            input = paddle.rand([3, 3]).astype("float32")
+            label = paddle.rand([3, 3]).astype("float32")
             loss = paddle.nn.SmoothL1Loss()
             output = loss(input, label)
             print(output)
+            # [0.049606]
     """
 
     def __init__(self, reduction='mean', delta=1.0, name=None):
@@ -1676,6 +1672,103 @@ class TripletMarginLoss(Layer):
                                      swap=self.swap,
                                      reduction=self.reduction,
                                      name=self.name)
+
+
+class MultiMarginLoss(Layer):
+    r"""Creates a criterion that optimizes a multi-class classification hinge loss (margin-based loss) between
+        input :math:`input` and label :math:`label`:
+
+        For i-th mini-batch sample, the loss in terms of the 1D input :math:`input_i` and scalar
+        output :math:`label_i` is:
+
+        .. math::
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, \text{margin} - input_i[label_i] + input_i[j])^p}{\text{C}}
+
+        where :math:`0 \leq j \leq \text{C}-1`, :math:`0 \leq i \leq \text{N}-1` and :math:`j \neq label_i`.
+
+        Optionally, you can give non-equal weighting on the classes by passing
+        a 1D :attr:`weight` tensor into the constructor.
+
+        The loss function for i-th sample then becomes:
+
+        .. math::
+            \text{loss}(input_i, label_i) = \frac{\sum_{j} \max(0, weight[label_i] * (\text{margin} - input_i[label_i] + input_i[j]))^p}{\text{C}}
+
+
+        Parameters:
+
+            p (int, Optional):The norm degree for pairwise distance. Default: :math:`1`.
+
+            margin (float, Optional):Default: :math:`1`.
+
+            weight (Tensor,optional): a manual rescaling weight given to each class.
+                    If given, has to be a Tensor of shape (C,) and the data type is float32, float64.
+                    Default is ``'None'`` .
+
+            reduction (str, optional): Indicate how to calculate the loss by batch_size,
+                    the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                    If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
+                    If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
+                    If :attr:`reduction` is ``'sum'``, the summed loss is returned.
+                    Default: ``'mean'``
+
+            name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
+
+        Call parameters:
+            input (Tensor): Input tensor, the data type is float32 or float64.
+
+            label (Tensor): Label tensor, 0<= label < input.shape[1], the data type is int32 or int64.
+
+        Shape:
+            input: 2-D Tensor, the shape is [N, C], N is batch size and `C` means number of classes.
+
+            label: 1-D Tensor, the shape is [N,].
+
+            output: scalar. If :attr:`reduction` is ``'none'``, then same shape as the label.
+
+        Returns:
+            A callable object of MultiMarginLoss.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+                import paddle.nn as nn
+
+                input = paddle.to_tensor([[1, -2, 3], [0, -1, 2], [1, 0, 1]], dtype=paddle.float32)
+                label = paddle.to_tensor([0, 1, 2], dtype=paddle.int32)
+
+                multi_margin_loss = nn.MultiMarginLoss(reduction='mean')
+                loss = multi_margin_loss(input, label)
+                print(loss)
+        """
+
+    def __init__(self,
+                 p: int = 1,
+                 margin: float = 1.0,
+                 weight=None,
+                 reduction="mean",
+                 name=None):
+        super(MultiMarginLoss, self).__init__()
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' in 'MultiMarginLoss' should be 'sum', 'mean' or 'none', "
+                "but received {}.".format(reduction))
+        self.p = p
+        self.margin = margin
+        self.weight = weight
+        self.reduction = reduction
+        self.name = name
+
+    def forward(self, input, label):
+        return F.multi_margin_loss(input,
+                                   label,
+                                   p=self.p,
+                                   margin=self.margin,
+                                   weight=self.weight,
+                                   reduction=self.reduction,
+                                   name=self.name)
 
 
 class SoftMarginLoss(Layer):

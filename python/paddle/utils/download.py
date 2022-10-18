@@ -22,7 +22,6 @@ import hashlib
 import tarfile
 import zipfile
 import time
-from collections import OrderedDict
 
 try:
     from tqdm import tqdm

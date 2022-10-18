@@ -15,7 +15,6 @@
 """Test cases for role makers."""
 
 import paddle
-import os
 import unittest
 import numpy as np
 import paddle.fluid.core as core

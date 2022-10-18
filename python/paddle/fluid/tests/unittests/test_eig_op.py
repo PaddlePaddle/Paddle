@@ -18,8 +18,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
 import unittest
-from paddle.fluid.op import Operator
-from paddle.fluid import compiler, Program, program_guard
 
 
 # cast output to complex for numpy.linalg.eig

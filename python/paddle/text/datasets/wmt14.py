@@ -14,11 +14,9 @@
 
 import tarfile
 import numpy as np
-import gzip
 import six
 
 from paddle.io import Dataset
-import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = []
@@ -112,7 +110,7 @@ class WMT14(Dataset):
             out_dict = dict()
             for line_count, line in enumerate(fd):
                 if line_count < size:
-                    out_dict[cpt.to_text(line.strip())] = line_count
+                    out_dict[line.strip().decode()] = line_count
                 else:
                     break
             return out_dict
@@ -141,7 +139,7 @@ class WMT14(Dataset):
             ]
             for name in names:
                 for line in f.extractfile(name):
-                    line = cpt.to_text(line)
+                    line = line.decode()
                     line_split = line.strip().split('\t')
                     if len(line_split) != 2:
                         continue

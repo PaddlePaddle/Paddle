@@ -18,7 +18,7 @@ limitations under the License. */
 
 using CPUPlace = paddle::platform::CPUPlace;
 using LoD = paddle::framework::LoD;
-using LoDTensor = paddle::framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 
 template <typename T>

@@ -39,8 +39,7 @@ void ConvTransposeGradRawKernel(const Context& ctx,
                                 const std::string& data_format,
                                 DenseTensor* dx,
                                 DenseTensor* dfilter) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format);
   // For filter, we do not use const pointer because we will do reshape,
   // but we should avoid modifying its value.
   DenseTensor filter_ = filter;

@@ -359,10 +359,8 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
                                   fetch_list=[result])
             except RuntimeError as ex:
                 print("The mat is singular")
-                pass
             except ValueError as ex:
                 print("The mat is singular")
-                pass
 
     def test_static(self):
         paddle.enable_static()
@@ -379,10 +377,8 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
                     result = paddle.linalg.matrix_power(input, -2)
                 except RuntimeError as ex:
                     print("The mat is singular")
-                    pass
                 except ValueError as ex:
                     print("The mat is singular")
-                    pass
 
 
 if __name__ == "__main__":

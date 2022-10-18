@@ -19,7 +19,6 @@ import unittest
 from functools import reduce
 
 sys.path.append("..")
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
 from operator import mul
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper

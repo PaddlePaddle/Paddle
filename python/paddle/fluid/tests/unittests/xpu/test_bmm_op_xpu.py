@@ -15,14 +15,9 @@ import sys
 sys.path.append("..")
 
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.tensor as tensor
 import unittest
 import numpy as np
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from paddle.fluid.framework import Program, program_guard
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()

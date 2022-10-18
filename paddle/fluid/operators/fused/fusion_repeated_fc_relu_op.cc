@@ -140,11 +140,11 @@ template <typename T>
 class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto in = ctx.Input<Tensor>("X");
-    auto weights = ctx.MultiInput<Tensor>("W");
-    auto biases = ctx.MultiInput<Tensor>("Bias");
-    auto relus = ctx.MultiOutput<Tensor>("ReluOut");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto weights = ctx.MultiInput<phi::DenseTensor>("W");
+    auto biases = ctx.MultiInput<phi::DenseTensor>("Bias");
+    auto relus = ctx.MultiOutput<phi::DenseTensor>("ReluOut");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto place = ctx.GetPlace();
     int weight_sz = static_cast<int>(weights.size());
 

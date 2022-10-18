@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.framework import dygraph_only
 
 __all__ = []
@@ -29,7 +29,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
     ..  math::
 
-        Out = alpha * x * y + beta * input
+        out = alpha * x * y + beta * input
 
     The supported input/output Tensor layout are as follows:
 
@@ -44,15 +44,15 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
     Dimensions `input` , `x` , `y` must be same and >= 2D. Automatic broadcasting of Tensor is not supported.
 
     Args:
-        input (Tensor): The input tensor. Shape is [*, M, N]. The data type can be float32 or float64.
-        x (Tensor): The input tensor. Shape is [*, M, K]. The data type can be float32 or float64.
-        y (Tensor): The input tensor. Shape is [*, K, N]. The data type can be float32 or float64.
+        input (SparseTensor|DenseTensor): The input tensor. Shape is [*, M, N]. The data type can be float32 or float64.
+        x (SparseTensor): The input SparseTensor. Shape is [*, M, K]. The data type can be float32 or float64.
+        y (SparseTensor|DenseTensor): The input tensor. Shape is [*, K, N]. The data type can be float32 or float64.
         beta (float, optional): Coefficient of `input` . Default: 1.0
         alpha (float, optional): Coefficient of `x * y` . Default: 1.0
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Its layout is determined by that of `x` and `y` . dtype and shape is the same with `input`
+        SparseTensor|DenseTensor: Tensor type, date type and shape is the same with `input` .
 
     Examples:
 
