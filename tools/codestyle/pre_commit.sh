@@ -55,7 +55,7 @@ if [ ${check_error} != 0 ];then
     if [[ $num_diff_files -le 100 ]];then
         echo "Then, run pre-commit to check codestyle issues in your PR:"
         echo ""
-        echo "    pre-commit run --files" $(echo ${diff_files[*]} | tr "\n" " ")
+        echo "    pre-commit run --files" $(echo ${diff_files} | tr "\n" " ")
         echo ""
     fi
     echo "For more information, please refer to our codestyle check guide:"
