@@ -44,7 +44,7 @@ format them before git push."
     git diff 2>&1
 fi
 
-echo -e '\n***********************************'
+echo -e '\n************************************************************************************'
 if [ ${check_error} != 0 ];then
     echo "Your PR code style check failed."
     echo "Please install pre-commit locally and set up git hook scripts:"
@@ -63,6 +63,6 @@ if [ ${check_error} != 0 ];then
 else
     echo "Your PR code style check passed."
 fi
-echo -e '***********************************\n'
+echo -e '************************************************************************************\n'
 
 exit ${check_error}
