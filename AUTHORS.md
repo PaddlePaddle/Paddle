@@ -83,6 +83,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | xushaoyong | Shao-Yong Xu |
 | Yancey1989 | Xu Yan |
 | zhaopu7 | Pu Zhao |
+| zhiqiu | Qiu-Liang Chen |
 | zhouxiao-coder | Xiao Zhou |
 | Zrachel | Rui-Qing Zhang |
 | jeng1220 | Bai-Cheng(Ryan) Jeng (NVIDIA) |

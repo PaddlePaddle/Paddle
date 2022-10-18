@@ -26,7 +26,6 @@ import tarfile
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
-import paddle.compat as cpt
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -856,7 +855,7 @@ class DataReader(object):
 
             f = tarfile.open(fpaths[0], "r")
             for line in f.extractfile(tar_fname):
-                line = cpt.to_text(line)
+                line = line.decode()
                 fields = line.strip("\n").split(self._field_delimiter)
                 if (not self._only_src
                         and len(fields) == 2) or (self._only_src
@@ -869,7 +868,7 @@ class DataReader(object):
 
                 with open(fpath, "rb") as f:
                     for line in f:
-                        line = cpt.to_text(line)
+                        line = line.decode()
                         fields = line.strip("\n").split(self._field_delimiter)
                         if (not self._only_src
                                 and len(fields) == 2) or (self._only_src
@@ -881,7 +880,7 @@ class DataReader(object):
         word_dict = {}
         with open(dict_path, "rb") as fdict:
             for idx, line in enumerate(fdict):
-                line = cpt.to_text(line)
+                line = line.decode()
                 if reverse:
                     word_dict[idx] = line.strip("\n")
                 else:

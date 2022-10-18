@@ -23,10 +23,14 @@ import hypothesis.strategies as st
 class TestFCActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_program_config(self, draw):
-        fc_in = draw(st.sampled_from([32, 64, 128]))
+        fc_in = draw(st.sampled_from([32, 64]))
         fc_wei = draw(st.sampled_from([64]))
         activation_type = draw(
-            st.sampled_from(['gelu', 'mish', 'hard_swish', 'sigmoid', 'tanh']))
+            st.sampled_from([
+                'relu', 'gelu', 'swish', 'mish', 'sqrt', 'hard_swish',
+                'sigmoid', 'abs', 'relu6', 'clip', 'tanh', 'hard_sigmoid',
+                'leaky_relu'
+            ]))
 
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
@@ -67,9 +71,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
                                      outputs={"Out": ["activation_output"]},
-                                     threshold=draw(
-                                         st.floats(min_value=1.0,
-                                                   max_value=10.0)))
+                                     threshold=6)
         elif activation_type == "swish":
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
