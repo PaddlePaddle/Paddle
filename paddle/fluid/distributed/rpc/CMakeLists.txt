@@ -16,6 +16,7 @@ set(PADDLE_RPC_DEPS
     brpc
     ssl
     crypto
+    zlib
     leveldb
     snappy
     protobuf
