@@ -76,6 +76,7 @@ list(
   fill_constant_op.cc
   fused_token_prune_op.cc
   layernorm_shift_partition_op.cc
+  preln_layernorm_shift_partition_op.cc
   generic_and_custom_plugin_creater.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
