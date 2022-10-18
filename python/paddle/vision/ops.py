@@ -19,7 +19,7 @@ from ..fluid import core, layers
 from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
-from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from ..fluid.framework import Variable, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from paddle.common_ops_import import *
 from paddle import _C_ops, _legacy_C_ops
 
@@ -451,7 +451,9 @@ def prior_box(input,
               min_max_aspect_ratios_order=False,
               name=None):
     r"""
-        This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+
+    This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+
     Each position of the input produce N prior boxes, N is determined by
     the count of min_sizes, max_sizes and aspect_ratios, The size of the
     box is in range(min_size, max_size) interval, which is generated in
@@ -462,20 +464,20 @@ def prior_box(input,
        image (Tensor): 4-D tensor(NCHW), the input image data of PriorBoxOp,
             the data type should be float32 or float64.
        min_sizes (list|tuple|float): the min sizes of generated prior boxes.
-       max_sizes (list|tuple|None): the max sizes of generated prior boxes.
+       max_sizes (list|tuple|None, optional): the max sizes of generated prior boxes.
             Default: None.
-       aspect_ratios (list|tuple|float): the aspect ratios of generated
+       aspect_ratios (list|tuple|float, optional): the aspect ratios of generated
             prior boxes. Default: [1.].
-       variance (list|tuple): the variances to be encoded in prior boxes.
+       variance (list|tuple, optional): the variances to be encoded in prior boxes.
             Default:[0.1, 0.1, 0.2, 0.2].
        flip (bool): Whether to flip aspect ratios. Default:False.
        clip (bool): Whether to clip out-of-boundary boxes. Default: False.
-       step (list|tuple): Prior boxes step across width and height, If
-            step[0] equals to 0.0 or step[1] equals to 0.0, the prior boxes step across
+       steps (list|tuple, optional): Prior boxes steps across width and height, If
+            steps[0] equals to 0.0 or steps[1] equals to 0.0, the prior boxes steps across
             height or weight of the input will be automatically calculated.
             Default: [0., 0.]
-       offset (float): Prior boxes center offset. Default: 0.5
-       min_max_aspect_ratios_order (bool): If set True, the output prior box is
+       offset (float, optional)): Prior boxes center offset. Default: 0.5
+       min_max_aspect_ratios_order (bool, optional): If set True, the output prior box is
             in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
             convolution layer followed by and does not affect the final
@@ -484,14 +486,10 @@ def prior_box(input,
             user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        boxes (Tensor): the output prior boxes of PriorBox.
-            4-D tensor, the layout is [H, W, num_priors, 4].
-            H is the height of input, W is the width of input,
+        Tensor: the output prior boxes and the expanded variances of PriorBox.
+            The prior boxes is a 4-D tensor, the layout is [H, W, num_priors, 4],
             num_priors is the total box count of each position of input.
-        variances (Tensor): the expanded variances of PriorBox.
-            4-D tensor, the layput is [H, W, num_priors, 4].
-            H is the height of input, W is the width of input
-            num_priors is the total box count of each position of input
+            The expanded variances is a 4-D tensor, same shape as the prior boxes.
 
     Examples:
         .. code-block:: python
@@ -588,22 +586,32 @@ def box_coder(prior_box,
               box_normalized=True,
               axis=0,
               name=None):
-    """
+    r"""
     Encode/Decode the target bounding box with the priorbox information.
 
     The Encoding schema described below:
+
     .. math::
-        ox = (tx - px) / pw / pxv
-        oy = (ty - py) / ph / pyv
-        ow = \log(\abs(tw / pw)) / pwv
-        oh = \log(\abs(th / ph)) / phv
+
+        ox &= (tx - px) / pw / pxv
+
+        oy &= (ty - py) / ph / pyv
+
+        ow &= log(abs(tw / pw)) / pwv
+
+        oh &= log(abs(th / ph)) / phv
+
     The Decoding schema described below:
 
     .. math::
-        ox = (pw * pxv * tx * + px) - tw / 2
-        oy = (ph * pyv * ty * + py) - th / 2
-        ow = \exp(pwv * tw) * pw + tw / 2
-        oh = \exp(phv * th) * ph + th / 2
+
+        ox &= (pw * pxv * tx * + px) - tw / 2
+
+        oy &= (ph * pyv * ty * + py) - th / 2
+
+        ow &= exp(pwv * tw) * pw + tw / 2
+
+        oh &= exp(phv * th) * ph + th / 2
 
     where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates,
     width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote
@@ -632,12 +640,12 @@ def box_coder(prior_box,
             be a 3-D Tensor with shape [N, M, 4] when code_type is
             'decode_center_size'. Each box is represented as
             [xmin, ymin, xmax, ymax]. The data type is float32 or float64.
-        code_type (str): The code type used with the target box. It can be
+        code_type (str, optional): The code type used with the target box. It can be
             `encode_center_size` or `decode_center_size`. `encode_center_size`
             by default.
-        box_normalized (bool): Whether treat the priorbox as a normalized box.
+        box_normalized (bool, optional): Whether treat the priorbox as a normalized box.
             Set true by default.
-        axis (int): Which axis in PriorBox to broadcast for box decode,
+        axis (int, optional): Which axis in PriorBox to broadcast for box decode,
             for example, if axis is 0 and TargetBox has shape [N, M, 4] and
             PriorBox has shape [M, 4], then PriorBox will broadcast to [N, M, 4]
             for decoding. It is only valid when code type is
@@ -647,7 +655,7 @@ def box_coder(prior_box,
             None by default.
 
     Returns:
-        output_box (Tensor): When code_type is 'encode_center_size', the
+        Tensor: output boxes, when code_type is 'encode_center_size', the
             output tensor of box_coder_op with shape [N, M, 4] representing the
             result of N target boxes encoded with M Prior boxes and variances.
             When code_type is 'decode_center_size', N represents the batch size
