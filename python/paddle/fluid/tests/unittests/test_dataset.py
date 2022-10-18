@@ -18,7 +18,6 @@ including create, config, run, etc.
 
 import paddle
 import paddle.fluid as fluid
-import paddle.compat as cpt
 import paddle.fluid.core as core
 import os
 import tempfile

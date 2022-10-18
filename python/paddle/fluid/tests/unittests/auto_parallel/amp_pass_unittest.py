@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import unittest
-import sys
 import random
 import numpy as np
 import paddle
 
 from paddle.distributed.fleet import auto
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from get_gpt_model import generate_model, create_data_holder, FakeDataset
+from get_gpt_model import FakeDataset, generate_model
 
 
 def apply_pass(use_amp=False, level=None):
@@ -88,27 +87,27 @@ class TestAMPPass(unittest.TestCase):
     def test_amp_pass(self):
         # mp2 training
         mp_engine = self.get_engine()
-        outs = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        mp_losses = np.array(outs["loss"])
+        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        mp_losses = np.array(history.history["loss"])
 
         # mp2 amp-o1 training
         amp_o1_engine = self.get_engine(True, "o1")
-        outs = amp_o1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        amp_o1_losses = np.array(outs["loss"])
+        history = amp_o1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o1_losses = np.array(history.history["loss"])
         amp_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o1_losses)
 
         # mp2 amp-o2 training
         amp_o2_engine = self.get_engine(True, "o2")
-        outs = amp_o2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        amp_o2_losses = np.array(outs["loss"])
+        history = amp_o2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o2_losses = np.array(history.history["loss"])
         amp_o2_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o2_losses)
 
         # mp2 amp-o3 training
         amp_o3_engine = self.get_engine(True, "o3")
-        outs = amp_o3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        amp_o3_losses = np.array(outs["loss"])
+        history = amp_o3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o3_losses = np.array(history.history["loss"])
         amp_o3_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o3_losses)
 

@@ -24,7 +24,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 /*
  * \brief Converts the feature data of four dimensions(CDHW) into a colData of

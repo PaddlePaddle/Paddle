@@ -236,18 +236,6 @@ class TestCompatible(unittest.TestCase):
         for i in l2:
             self.assertTrue(isinstance(i, bytes))
 
-    def test_round(self):
-        self.assertEqual(3.0, cpt.round(3.4))
-        self.assertEqual(4.0, cpt.round(3.5))
-        self.assertEqual(0.0, cpt.round(0.1))
-        self.assertEqual(0.0, cpt.round(0.0))
-        self.assertEqual(-0.0, cpt.round(-0.0))
-        self.assertEqual(-0.0, cpt.round(-0.1))
-        self.assertEqual(-3.0, cpt.round(-3.4))
-        self.assertEqual(-4.0, cpt.round(-3.5))
-        self.assertEqual(5.0, cpt.round(5))
-        self.assertRaises(TypeError, cpt.round, None)
-
 
 if __name__ == "__main__":
     unittest.main()

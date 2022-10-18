@@ -26,7 +26,6 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::prop_kind;
 using dnnl::stream;
-using framework::DataLayout;
 using framework::DDim;
 using framework::ExecutionContext;
 using LoDTensor = phi::DenseTensor;
@@ -88,8 +87,7 @@ class FCMKLDNNHandler
                                    dnnl::memory::format_tag::a);
     }
 
-    dnnl::primitive_attr attrs;
-    HandlePostOps(ctx, &attrs);
+    const auto attrs = CreateFCAttrs(ctx);
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
                                             prop_kind::forward_inference,
@@ -100,17 +98,9 @@ class FCMKLDNNHandler
   }
 
  private:
-  void HandlePostOps(const paddle::framework::ExecutionContext& ctx,
-                     dnnl::primitive_attr* attrs) {
-    static std::unordered_map<std::string, dnnl::algorithm> algo_map = {
-        {"relu", dnnl::algorithm::eltwise_relu},
-        {"gelu", dnnl::algorithm::eltwise_gelu},
-        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
-        {"tanh", dnnl::algorithm::eltwise_tanh},
-        {"sigmoid", dnnl::algorithm::eltwise_logistic},
-        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-        {"mish", dnnl::algorithm::eltwise_mish}};
+  dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx) {
+    dnnl::primitive_attr attributes;
+    dnnl::post_ops post_operations;
 
     float sum_scale = 1.0f;
     float activation_scale = 1.0f;
@@ -119,26 +109,23 @@ class FCMKLDNNHandler
       std::tie(output_shift_scale, sum_scale, activation_scale) =
           GetOutputScales(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
-      attrs->set_output_scales(mask, output_shift_scale);
+      attributes.set_output_scales(mask, output_shift_scale);
     }
-
-    dnnl::post_ops post_ops;
 
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
-      post_ops.append_sum(sum_scale);
+      post_operations.append_sum(sum_scale);
     }
 
-    std::string activation_type = ctx.Attr<std::string>("activation_type");
-
-    if (activation_type.empty() == false) {
-      constexpr float alpha = 0.0f;
-      constexpr float beta = 0.0f;
-      post_ops.append_eltwise(
-          activation_scale, algo_map[activation_type], alpha, beta);
+    // ReLU from "fc_fuse_pass"
+    if (ctx.Attr<std::string>("activation_type") == "relu") {
+      post_operations.append_eltwise(
+          activation_scale, dnnl::algorithm::eltwise_relu, 0.0f, 0.0f);
     }
+    platform::AppendActivation(ctx, post_operations, activation_scale);
 
-    attrs->set_post_ops(post_ops);
+    attributes.set_post_ops(post_operations);
+    return attributes;
   }
 
   // Compute the bias scales so that its values correspond to the

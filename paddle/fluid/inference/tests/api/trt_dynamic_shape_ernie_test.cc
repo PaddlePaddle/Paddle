@@ -23,6 +23,9 @@ namespace paddle {
 namespace inference {
 
 void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
 
@@ -222,6 +225,9 @@ std::shared_ptr<paddle_infer::Predictor> InitPredictor() {
 }
 
 void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
   const int run_batch = 2;
   const int run_seq_len = 71;
   const int max_seq_len = 128;
@@ -379,7 +385,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
   // max_seq_len represents the max sentence length of all the sentences, only
   // length of
   // input i4 is useful, data means nothing.
-  int32_t i4[max_seq_len] = {0};
+  float i4[max_seq_len] = {0};
 
   auto input_names = predictor->GetInputNames();
   // first input

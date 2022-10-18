@@ -28,7 +28,7 @@ from paddle.device import get_device
 
 # deprecated module import
 from paddle.fluid import core
-from paddle.fluid.framework import _cpu_num, set_flags
+from paddle.fluid.framework import set_flags
 
 __all__ = []
 
@@ -473,8 +473,6 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
 
     Examples:
         .. code-block:: python
-
-            from __future__ import print_function
 
             import paddle
             import paddle.nn as nn
