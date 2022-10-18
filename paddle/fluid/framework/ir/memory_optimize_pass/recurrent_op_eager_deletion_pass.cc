@@ -36,6 +36,28 @@ void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
   std::unordered_map<size_t, OpAndGradOpPair> target_ops =
       DeviceIdToRecurrentAndRecurrentGradOp(*graph);
 
+  if (graph->IsConstructedByPartialProgram()) {
+    PADDLE_ENFORCE_LE(target_ops.size(),
+                      1,
+                      platform::errors::InvalidArgument(
+                          "Unsupported multi devices if graph is constructed "
+                          "with partial program."));
+    size_t scope_idx = 0;
+    auto &ifelse_ops = target_ops[scope_idx].first;
+    auto &ifelse_grad_ops = target_ops[scope_idx].second;
+
+    auto all_ops = graph->OriginProgram().Block(0).AllOps();
+    if (ifelse_ops.empty()) {
+      operators::AppendOpVariantByOpName(
+          all_ops, std::string("recurrent"), &ifelse_ops);
+    } else if (ifelse_grad_ops.empty()) {
+      operators::AppendOpVariantByOpName(
+          all_ops, std::string("recurrent_grad"), &ifelse_grad_ops);
+    } else {
+      PADDLE_THROW("One of ifelse_ops or ifelse_grad_ops should be empty.");
+    }
+  }
+
   for (auto &entry : target_ops) {
     // Prepare safe eager deletion on different devices because the garbage
     // collection may be different across devices

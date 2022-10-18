@@ -691,5 +691,45 @@ class EagerDeletionFarwardOnlyRnnAndBackwardRnnTest(
         np.testing.assert_allclose(pd_output, py_output, rtol=0.01)
 
 
+class RecurrentNet(paddle.nn.Layer):
+
+    def __init__(self):
+        super(RecurrentNet, self).__init__()
+        self.cell = paddle.nn.SimpleRNNCell(16, 32)
+        self.rnn = paddle.nn.RNN(self.cell)
+
+    def forward(self, inputs, prev_h):
+        outputs, final_states = self.rnn(inputs, prev_h)
+        return outputs, final_states
+
+
+class TestDy2StRecurrentOpBackward(unittest.TestCase):
+
+    def setUp(self):
+        paddle.disable_static()
+        paddle.seed(100)
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_recurrent_backward(self):
+        net = RecurrentNet()
+        inputs = paddle.rand((4, 23, 16))
+        inputs.stop_gradient = False
+        prev_h = paddle.randn((4, 32))
+        prev_h.stop_gradient = False
+
+        outputs, final_states = net(inputs, prev_h)
+        outputs.backward()
+        dy_grad = inputs.gradient()
+        inputs.clear_gradient()
+
+        net = paddle.jit.to_static(net)
+        outputs, final_states = net(inputs, prev_h)
+        outputs.backward()
+        st_grad = inputs.gradient()
+        np.testing.assert_allclose(dy_grad, st_grad)
+
+
 if __name__ == '__main__':
     unittest.main()
