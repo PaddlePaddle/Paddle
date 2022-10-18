@@ -64,7 +64,7 @@ version_update_map = {
 def diff_vars(origin_vars, new_vars):
     global error
     var_error = False
-    var_changed_error_massage = {}
+    var_changed_error_massage =     {}
     var_add_massage = []
     var_add_dispensable_massage = []
     var_deleted_error_massage = []
