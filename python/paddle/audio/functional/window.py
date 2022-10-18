@@ -329,7 +329,7 @@ def get_window(window: Union[str, Tuple[str, float]],
             cosine_window = paddle.audio.functional.get_window('cosine', n_fft)
 
             std = 7
-            gussian_window = paddle.audio.functional.get_window(('gussain',std), n_fft)
+            gussian_window = paddle.audio.functional.get_window(('gaussian',std), n_fft)
     """
     sym = not fftbins
 
