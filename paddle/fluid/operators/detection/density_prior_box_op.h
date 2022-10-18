@@ -13,7 +13,9 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/operators/detection/prior_box_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {

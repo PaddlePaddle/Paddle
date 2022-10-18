@@ -25,9 +25,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-constexpr int kPriorBoxFLOAT = 1;
-constexpr int kPriorBoxDOUBLE = 2;
-
 inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
                                bool flip,
                                std::vector<float>* output_aspect_ratior) {
