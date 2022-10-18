@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_utils.h"
 #endif
 
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+
 namespace phi {
 /* --------------------------- */
 /*   From framework::Tensor    */
@@ -180,6 +182,83 @@ inline T* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
                    requested_size));
 }
 
+xpu_l3_alloc::xpu_l3_alloc(size_t size, const phi::Place& place) {
+  place_ = place;
+
+  void *p = nullptr;
+  paddle::platform::XPUDeviceGuard gurad(place.device);
+  int ret = xpu_malloc(reinterpret_cast<void **>(&p), size, XPU_MEM_L3);
+  if (ret != XPU_SUCCESS) {
+    // std::cout<<"[hsq] Alloc GM"<<std::endl;
+    xpu_malloc(reinterpret_cast<void **>(&p), size);
+  } else {
+    // std::cout<<"[hsq] Alloc L3"<<std::endl;
+  }
+  p_ = p;
+};
+xpu_l3_alloc::~xpu_l3_alloc() {
+  // std::cout<<"[hsq] Free L3"<<std::endl;
+  paddle::platform::XPUDeviceGuard gurad(place_.device);
+  xpu_free(p_);
+};
+void* xpu_l3_alloc::get() {
+  return p_;
+};
+
+template <typename T>
+inline T* DenseTensor::mutable_data_l3(const DDim& dims,
+                                    const Place& place,
+                                    size_t requested_size) {
+  static_assert(std::is_pod<T>::value, "T must be POD");
+  meta_.dims = dims;
+  return mutable_data_l3<T>(place, requested_size);
+}
+
+template <typename T>
+inline T* DenseTensor::mutable_data_l3(const Place& place, size_t requested_size) {
+  static_assert(std::is_pod<T>::value, "T must be POD");
+  return reinterpret_cast<T*>(
+      mutable_data_l3(place,
+                   paddle::experimental::CppTypeToDataType<T>::Type(),
+                   requested_size));
+}
+
+void* DenseTensor::mutable_data_l3(const phi::Place& place,
+                      paddle::experimental::DataType type,
+                      size_t requested_size) {
+  set_type(type);
+  PADDLE_ENFORCE_GE(
+      numel(),
+      0,
+      phi::errors::PreconditionNotMet(
+          "The Tensor's element number must be equal or greater than zero. "
+          "The Tensor's shape is [",
+          dims(),
+          "] now"));
+  size_t size = numel() * SizeOf(dtype());
+  if (requested_size && (requested_size > size)) {
+    size = requested_size;
+  }
+
+  /* some versions of boost::variant don't have operator!= */
+  if (holder_ == nullptr || !(holder_->place() == place) ||
+      holder_->size() < size + meta_.offset) {
+    holder_.reset();
+    holder_ = paddle::memory::AllocShared(place, size);
+    std::shared_ptr<phi::xpu_l3_alloc> tmp = std::make_shared<phi::xpu_l3_alloc>(size, place);
+    holder2_ = std::move(tmp);
+    meta_.offset = 0;
+  }
+
+  return holder2_.get()->get();
+  // return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder2_->ptr()) + meta_.offset);
+}
+
+void* DenseTensor::mutable_data_l3(const phi::Place& place,
+                      size_t requested_size) {
+  return mutable_data_l3(place, type(), requested_size);
+}
+
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
   holder_ = tensor.holder_;
   meta_.offset = tensor.meta().offset;
@@ -207,6 +286,26 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 
 #undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 
+#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                \
+  template dtype* DenseTensor::mutable_data_l3(                        \
+      const DDim& dims, const Place& place, size_t requested_size); \
+  template dtype* DenseTensor::mutable_data_l3(const Place& place,     \
+                                            size_t requested_size);
+
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint8_t)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int16_t)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int32_t)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int64_t)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::bfloat16)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float16)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<float>)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
+
+#undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 /* ------------------------------ */
 /*   From framework::LoDTensor    */
 /* ------------------------------ */

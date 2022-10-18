@@ -10,13 +10,20 @@ rm -rf *
 export PADDLE_VERSION=2.2.1
 cp  ../compile-tools/set_http_proxy.sh .
 
+#--user=moonlight --password=mn-12345
+
 sed -i 's|https://pslib.bj.bcebos.com/pslib.tar.gz|ftp://tesla-kt.bcc-szth.baidu.com:8010/paddle-depends/xpups_co_dev/pslib.tar.gz|g' ../cmake/external/pslib.cmake
+sed -i 's|wget --no-check-certificate |wget --no-check-certificate --user=moonlight --password=mn-12345 |g' ../cmake/external/pslib.cmake
 sed -i 's|BUILD_COMMAND       make -j$(nproc) ${COMMON_ARGS} ${OPTIONAL_ARGS}|BUILD_COMMAND       make -j$(nproc) TARGET=GENERIC ${COMMON_ARGS} ${OPTIONAL_ARGS}|g' ../cmake/external/openblas.cmake
 
 sed -i 's|https://pslib.bj.bcebos.com/pslib_brpc.tar.gz|ftp://tesla-kt.bcc-szth.baidu.com:8010/paddle-depends/xpups_co_dev/pslib_brpc.tar.gz|g' ../cmake/external/pslib_brpc.cmake
+sed -i 's|wget --no-check-certificate |wget --no-check-certificate --user=moonlight --password=mn-12345 |g' ../cmake/external/pslib_brpc.cmake
 sed -i 's|http://paddlepaddledeps.bj.bcebos.com/|ftp://tesla-kt.bcc-szth.baidu.com:8010/paddle-depends/xpups_co_dev/|g' ../cmake/external/boost.cmake
+sed -r -i 's|(   URL  .*)|\1\n    HTTP_USERNAME         moonlight\n    HTTP_PASSWORD         mn-12345|g' ../cmake/external/boost.cmake
 sed -i 's|https://paddlepaddledeps.bj.bcebos.com/|ftp://tesla-kt.bcc-szth.baidu.com:8010/paddle-depends/xpups_co_dev/|g' ../cmake/external/lapack.cmake
+sed -r -i 's|(   URL  .*)|\1\n    HTTP_USERNAME         moonlight\n    HTTP_PASSWORD         mn-12345|g' ../cmake/external/lapack.cmake
 sed -i 's|http://paddlepaddledeps.bj.bcebos.com/|ftp://tesla-kt.bcc-szth.baidu.com:8010/paddle-depends/xpups_co_dev/|g' ../cmake/external/mklml.cmake
+sed -r -i 's|(   URL  .*)|\1\n    HTTP_USERNAME         moonlight\n    HTTP_PASSWORD         mn-12345|g' ../cmake/external/mklml.cmake
 
 cmake .. \
     -DCMAKE_INSTALL_PREFIX=./output/ \

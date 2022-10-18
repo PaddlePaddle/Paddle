@@ -182,7 +182,7 @@ if(WITH_ROCM)
   hip_test(transform_test SRCS transform_test.cu DEPS memory place device_context)
 endif()
 
-cc_library(timer SRCS timer.cc)
+cc_library(timer SRCS timer.cc timer_manager.cc)
 cc_test(timer_test SRCS timer_test.cc DEPS timer)
 
 cc_library(lodtensor_printer SRCS lodtensor_printer.cc DEPS ddim place tensor scope lod_tensor variable_helper framework_proto)

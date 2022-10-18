@@ -247,6 +247,7 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
                                const int batch_size) {
   XPUStream stream = nullptr;
   auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
   stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
                ->x_context()
                ->xpu_stream;
@@ -269,9 +270,34 @@ void PSGPUWrapper::CopyForPush(const paddle::platform::Place& place,
              slot_lengths_lod.size() * sizeof(int), XPU_HOST_TO_DEVICE);
 
   long long* c_len = (long long*)gpu_len;
-  PushCopy<<<2, 64, stream>>>(total_grad_values_gpu, gpu_values, c_len,
-                              hidden_size, slot_lengths.size(), total_length,
-                              batch_size, d_slot_vector);
+  int size = total_length; //slot_lengths_lod[slot_lengths_lod.size()-1];
+  int slot_num = slot_lengths.size();
+
+  auto gm_src = memory::Alloc(place, size * hidden_size * sizeof(float));
+  float* gm_src_ptr = reinterpret_cast<float*>(gm_src->ptr());
+
+  for (size_t i = 0; i < slot_lengths.size(); i++) {
+    int offset = i ? slot_lengths_lod[i - 1] : 0;
+    PADDLE_ENFORCE_XDNN_SUCCESS(xpu::copy<float>(ctx_xpu, grad_values[i], gm_src_ptr + offset * hidden_size, slot_lengths[i] * hidden_size), "copy");
+  }
+
+  int r = xpu::push_copy<xpu::FeaturePushValue>(
+      ctx_xpu,
+      reinterpret_cast<xpu::FeaturePushValue*>(total_grad_values_gpu),
+      gm_src_ptr,
+      c_len,
+      d_slot_vector,
+      size,
+      hidden_size,
+      slot_num,
+      batch_size);
+  PADDLE_ENFORCE_EQ(
+      r, XPU_SUCCESS,
+      platform::errors::External("XPU push_copy kernel return wrong value[%d %s]",
+                                  r, XPUAPIErrorMsg[r]));
+  // PushCopy<<<2, 64, stream>>>(total_grad_values_gpu, gpu_values, c_len,
+  //                             hidden_size, slot_lengths.size(), total_length,
+  //                             batch_size, d_slot_vector);
   xpu_wait(stream);
 }
 

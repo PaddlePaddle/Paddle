@@ -443,6 +443,15 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"log_loss_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"fusion_seqpool_cvm_concat",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"fusion_seqpool_cvm_concat_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+     {"data_norm",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+     {"data_norm_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+ 
   };
 
   return s_xpu2_kernels;

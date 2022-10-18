@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#include "paddle/fluid/platform/timer_manager.h"
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL || \
      defined PADDLE_WITH_XPU_BKCL) &&                        \
@@ -122,6 +124,7 @@ void PSGPUWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
 }
 
 void PSGPUWorker::TrainFiles() {
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_ALL, thread_id_);
   VLOG(0) << "Begin to train files";
   platform::SetNumThreads(1);
   platform::Timer timeline;
@@ -140,8 +143,44 @@ void PSGPUWorker::TrainFiles() {
 #elif defined(PADDLE_WITH_XPU_BKCL)
   platform::SetXPUDeviceId(thread_id_);
 #endif
-  while ((cur_batch = device_reader_->Next()) > 0) {
+  int pull_box_sparse_idx = -1;
+  int push_box_sparse_idx = -1;
+  int ops_cnt = 0;
+  for (auto& op : ops_) {
+    bool need_skip = false;
+    for (auto t = 0u; t < skip_ops_.size(); ++t) {
+      if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+        need_skip = true;
+        break;
+      }
+    }
+    if (!need_skip) {
+      if (op->Type() == "pull_box_sparse") {
+        pull_box_sparse_idx = ops_cnt;
+      }
+      if (op->Type() == "push_box_sparse") {
+        push_box_sparse_idx = ops_cnt;
+      }
+      ++ops_cnt;
+    }
+  }
+
+  while (true) {
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_FEED_NEXT, thread_id_);
+    if ((cur_batch = device_reader_->Next()) <= 0) {
+        TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_FEED_NEXT, thread_id_);
+        break;
+    }
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_FEED_NEXT, thread_id_);
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_EACH_BATCH, thread_id_);
     total_ins_num += cur_batch;
+
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+    auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+    ps_gpu_wrapper->prepare_next_batch(thread_id_);
+#endif
+    int run_op_idx = 0;
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_ALL_OPS, thread_id_);
     for (auto& op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -151,9 +190,24 @@ void PSGPUWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
+        if (pull_box_sparse_idx == run_op_idx) {
+            TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_PULL_BOX_SPARSE, thread_id_);
+        }
+        if (push_box_sparse_idx == run_op_idx) {
+            TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_PUSH_BOX_SPARSE, thread_id_);
+        }
+        
         op->Run(*thread_scope_, place_);
+        if (pull_box_sparse_idx == run_op_idx) {
+            TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_PULL_BOX_SPARSE, thread_id_);
+        }
+        if (push_box_sparse_idx == run_op_idx) {
+            TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_PUSH_BOX_SPARSE, thread_id_);
+        }
+        ++run_op_idx;
       }
     }
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_ALL_OPS, thread_id_);
     if (need_dump_field_) {
       DumpField(*thread_scope_, dump_mode_, dump_interval_);
     }
@@ -196,6 +250,8 @@ void PSGPUWorker::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;
+
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_EACH_BATCH, thread_id_);
   }
   if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
@@ -203,10 +259,13 @@ void PSGPUWorker::TrainFiles() {
   timeline.Pause();
   VLOG(0) << "GpuPs worker " << thread_id_ << " train cost "
           << timeline.ElapsedSec() << " seconds, ins_num: " << total_ins_num;
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_ALL, thread_id_);
   return;
 }
 
 void PSGPUWorker::TrainFilesWithProfiler() {
+  FLAGS_debug_timermanager = true;
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_ALL, thread_id_);
   platform::SetNumThreads(1);
   VLOG(0) << "Begin to train files with profiler";
 #if !defined(PADDLE_WITH_XPU_CACHE_BFID)
@@ -214,6 +273,9 @@ void PSGPUWorker::TrainFilesWithProfiler() {
 #endif
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
+  int pull_box_sparse_idx = -1;
+  int push_box_sparse_idx = -1;
+  int ops_cnt = 0;
   for (auto& op : ops_) {
     bool need_skip = false;
     for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -224,6 +286,13 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     }
     if (!need_skip) {
       op_name.push_back(op->Type());
+      if (op->Type() == "pull_box_sparse") {
+        pull_box_sparse_idx = ops_cnt;
+      }
+      if (op->Type() == "push_box_sparse") {
+        push_box_sparse_idx = ops_cnt;
+      }
+      ++ops_cnt;
     }
   }
 
@@ -243,33 +312,65 @@ void PSGPUWorker::TrainFilesWithProfiler() {
 #elif defined(PADDLE_WITH_XPU_BKCL)
   platform::SetXPUDeviceId(thread_id_);
 #endif
-  while ((cur_batch = device_reader_->Next()) > 0) {
+  while (true) {
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_FEED_NEXT, thread_id_);
+    if ((cur_batch = device_reader_->Next()) <= 0) {
+        TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_FEED_NEXT, thread_id_);
+        break;
+    }
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_FEED_NEXT, thread_id_);
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_EACH_BATCH, thread_id_);
     total_ins_num += cur_batch;
     timeline.Pause();
     read_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
 
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+    auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+    ps_gpu_wrapper->prepare_next_batch(thread_id_);
+#endif
+
     int run_op_idx = 0;
     dev_ctx_->Wait();
+    //for debug pull and push box sparse
+
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_ALL_OPS, thread_id_);
     for (auto& op : ops_) {
       bool need_skip = false;
+      //the following code should be opt
+
+      TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_SKIP_OPS, thread_id_);
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
         if (op->Type().find(skip_ops_[t]) != std::string::npos) {
           need_skip = true;
           break;
         }
       }
+      TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_SKIP_OPS, thread_id_);
       if (!need_skip) {
         timeline.Start();
         VLOG(3) << "Going to run op " << op_name[run_op_idx];
+        if (pull_box_sparse_idx == run_op_idx) {
+            TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_PULL_BOX_SPARSE, thread_id_);
+        }
+        if (push_box_sparse_idx == run_op_idx) {
+            TIMER_MULTITHREAD_ENTER(platform::TIMER_WORKER_PUSH_BOX_SPARSE, thread_id_);
+        }
         op->Run(*thread_scope_, place_);
         dev_ctx_->Wait();
+        if (pull_box_sparse_idx == run_op_idx) {
+            TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_PULL_BOX_SPARSE, thread_id_);
+        }
+        if (push_box_sparse_idx == run_op_idx) {
+            TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_PUSH_BOX_SPARSE, thread_id_);
+        }
         VLOG(3) << "Op " << op_name[run_op_idx] << " Finished";
         timeline.Pause();
         op_total_time[run_op_idx++] += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
       }
     }
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_ALL_OPS, thread_id_);
     timeline.Start();
     PrintFetchVars();
     thread_scope_->DropKids();
@@ -277,6 +378,8 @@ void PSGPUWorker::TrainFilesWithProfiler() {
     timeline.Pause();
     total_time += timeline.ElapsedSec();
     timeline.Start();
+
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_EACH_BATCH, thread_id_);
   }
   VLOG(0) << "GpuPs worker " << thread_id_ << " train cost " << total_time
           << " seconds, ins_num: " << total_ins_num;
@@ -287,6 +390,8 @@ void PSGPUWorker::TrainFilesWithProfiler() {
   }
   VLOG(0) << "card: " << thread_id_ << " read time: " << read_time
           << ", percent: " << read_time / total_time * 100;
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_WORKER_ALL, thread_id_);
   return;
 }
 

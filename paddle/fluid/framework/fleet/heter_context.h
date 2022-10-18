@@ -36,7 +36,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
+class Dataset;
 class HeterContext {
  public:
   virtual ~HeterContext() {
@@ -54,6 +54,7 @@ class HeterContext {
       }
     }
   }
+  Dataset* dataset_;
   Scope* scope_{nullptr};
   std::vector<std::vector<FeatureKey>> feature_keys_;
   std::vector<std::vector<std::vector<FeatureKey>>> feature_dim_keys_;

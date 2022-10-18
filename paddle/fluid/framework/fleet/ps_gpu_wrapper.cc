@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/timer.h"
 
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps.h"
+#include "paddle/fluid/platform/timer_manager.h"
 
 #if defined(PADDLE_WITH_XPU_KP)
 DECLARE_bool(dump_cache_array);
@@ -112,6 +113,9 @@ void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
 #endif
 void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
   VLOG(3) << "PSGPUWrapper::BuildGPUPSTask begin";
+  //platform::TimerManager* time_manager = platform::TimerManager::instance();
+  //time_manager->init(platform::TIMER_MAX_ID);
+
   platform::Timer timeline;
   timeline.Start();
   int device_num = heter_devices_.size();
@@ -159,15 +163,27 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
     len_per_thread = total_len / thread_keys_thread_num_;
     remain = total_len % thread_keys_thread_num_;
     VLOG(0) << "total len: " << total_len;
-    auto gen_func = [this](const std::deque<SlotRecord>& total_data,
+    auto data_readers = gpu_task->dataset_->GetReaders();
+    auto & uint64_slot_is_dense = data_readers[0]->GetUint64UseSlotIsDense();
+    auto gen_func = [this, &uint64_slot_is_dense](const std::deque<SlotRecord>& total_data,
                            int begin_index, int end_index, int i) {
       for (auto iter = total_data.begin() + begin_index;
            iter != total_data.begin() + end_index; iter++) {
         const auto& ins = *iter;
         const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
-        for (const auto feasign : feasign_v) {
-          int shard_id = feasign % thread_keys_shard_num_;
-          this->thread_keys_[i][shard_id].insert(feasign);
+        const auto& slot_offsets = ins->slot_uint64_feasigns_.slot_offsets;
+        for (unsigned int slot_idx = 0; slot_idx < slot_offsets.size() - 1; ++slot_idx) {
+#ifdef PADDLE_WITH_XPU_KP
+            if (uint64_slot_is_dense[slot_idx]) {
+                continue;
+            }
+#endif
+            unsigned int start_idx = slot_offsets[slot_idx];
+            unsigned int end_idx = slot_offsets[slot_idx + 1];
+            for (unsigned int feasign_idx = start_idx; feasign_idx < end_idx; ++feasign_idx) {
+                int shard_id = feasign_v[feasign_idx] % thread_keys_shard_num_;
+                this->thread_keys_[i][shard_id].insert(feasign_v[feasign_idx]);
+            }
         }
       }
     };
@@ -200,6 +216,10 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
       }
       */
     };
+#ifdef PADDLE_WITH_XPU_KP
+    this->thread_keys_[0][0].insert(0); // add 0 for padding feasign
+#endif
+
     for (int i = 0; i < thread_keys_thread_num_; i++) {
       if (!multi_mf_dim_) {
         VLOG(0) << "yxf::psgpu wrapper genfunc";
@@ -786,57 +806,30 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
 #ifdef PADDLE_WITH_XPU_KP
   // build cachemanager
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
-  auto data_readers = dataset_->GetReaders();
+  auto data_readers = gpu_task->dataset_->GetReaders();
   CHECK(data_readers.size() > 0);
   int batch_size = data_readers[0]->GetDefaultBatchSize();
   VLOG(0) << "BuildGPUTask: batchsize:" << batch_size
           << " device_num:" << device_num;
-  cache_manager->init(12, batch_size, device_num);
+  cache_manager->init(24, batch_size, device_num);
 
   VLOG(0) << "BuildGPUTask: build_sign2fids";
-  for (int i = 0; i < device_num; i++) {
-    cache_manager->build_sign2fids(gpu_task->device_keys_[i].data(), gpu_task->device_keys_[i].size());
-  }
-  VLOG(0) << "BuildGPUTask: get inputchannel from dataset";
-  // convert feasign to fid in dataset
-  MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
-  CHECK(dataset != nullptr) << "only support MultiSlotDataset";
-  auto input_channel = dataset->GetInputChannel();
-
-  VLOG(0) << "BuildGPUTask: query sign2fid for dataset";
-  auto & slot_is_dense = data_readers[0]->GetUseSlotIsDense();
-  auto & used_slots = data_readers[0]->GetUseSlotAlias();
-  CHECK(slot_is_dense.size() == used_slots.size())
-    << "slot_is_dense size:" << slot_is_dense.size()
-    << ", used_slots size:" << used_slots.size();
-  std::deque<Record>& vec_data = const_cast<std::deque<Record>&>(input_channel->GetData());
-  VLOG(0) << "BuildGPUTask: input_channel size:" << vec_data.size();
-  for (auto it = vec_data.begin(); it != vec_data.end(); it++) {
-    auto & feasigns = it->uint64_feasigns_;
-    for (unsigned int j = 0; j < feasigns.size(); j++) {
-      auto slot_idx = feasigns[j].slot();
-      CHECK(slot_idx < slot_is_dense.size())
-          << "error slot_idx:" << slot_idx
-          << ", used_slots size:" << used_slots.size();
-      if (!slot_is_dense[slot_idx]) { // slot with lod info
-        feasigns[j].sign().uint64_feasign_ = cache_manager->query_sign2fid(feasigns[j].sign().uint64_feasign_);
-      }
-    }
-  }
-  VLOG(0) << "BuildGPUTask: query sign2fid for device keys";
-  // convert feasign to fid in device_keys_
-  for (int i = 0; i < device_num; i++) {
+  //for (int i = 0; i < device_num; i++) {
+  //  cache_manager->build_sign2fids(gpu_task->device_keys_[i].data(), gpu_task->device_keys_[i].size());
+  //}
+  cache_manager->build_sign2fids(gpu_task->device_keys_);
+  cache_manager->set_need_parse_ins_sign2fid();
+#endif //PADDLE_WITH_XPU_KP
+  auto build_func = [this, &cache_manager, &gpu_task, &feature_keys_count](int i) {
+    VLOG(3) << "building table: " << i;
+#ifdef PADDLE_WITH_XPU_KP
     auto& feasigns = gpu_task->device_keys_[i];
     auto& fids = gpu_task->device_fid_keys_[i];
     fids.resize(feasigns.size(), 0);
     for (unsigned int j = 0; j < feasigns.size(); j++) {
       fids[j] = cache_manager->query_sign2fid(feasigns[j]);
     }
-  }
-#endif //PADDLE_WITH_XPU_KP
-  auto build_func = [this, &gpu_task, &feature_keys_count](int i) {
-    VLOG(3) << "building table: " << i;
-#ifdef PADDLE_WITH_XPU_KP
+
     this->HeterPs_->build_ps(i, gpu_task->device_fid_keys_[i].data(),
                              gpu_task->device_values_[i].data(),
                              feature_keys_count[i], feature_keys_count[i], 1);
@@ -875,20 +868,27 @@ void PSGPUWrapper::LoadIntoMemory(bool is_shuffle) {
 
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();
+  gpu_task->dataset_ = dataset_;
   data_ready_channel_->Put(gpu_task);
   VLOG(3) << "End LoadIntoMemory(), dataset[" << dataset_ << "]";
 }
 
 void PSGPUWrapper::HandlePreloadDoneData(bool is_shuffle) {
   // local shuffle
+  platform::Timer timer;
+  timer.Start();
   if (is_shuffle) {
     dataset_->LocalShuffle();
   }
 
   std::shared_ptr<HeterContext> gpu_task = gpu_task_pool_.Get();
   gpu_task->Reset();
+  gpu_task->dataset_ = dataset_;
   data_ready_channel_->Put(gpu_task);
   VLOG(3) << "End HandlePreloadDoneData(), dataset[" << dataset_ << "]";
+  timer.Pause();
+  VLOG(0) << "HandlePreloadDoneData, cost time: " << timer.ElapsedSec()
+          << "s";
 }
 
 void PSGPUWrapper::start_build_thread() {
@@ -928,16 +928,15 @@ void PSGPUWrapper::build_task() {
   if (!buildcpu_ready_channel_->Get(gpu_task)) {
     return;
   }
-
   VLOG(0) << "BuildPull start.";
   platform::Timer timer;
   timer.Start();
   BuildPull(gpu_task);
   BuildGPUTask(gpu_task);
   timer.Pause();
+
   VLOG(0) << "BuildPull + BuildGPUTask end, cost time: " << timer.ElapsedSec()
           << "s";
-
   current_task_ = gpu_task;
 }
 
@@ -988,18 +987,35 @@ void PSGPUWrapper::EndPass() {
   gpu_free_channel_->Put(current_task_);
   timer.Pause();
   VLOG(0) << "EndPass end, cost time: " << timer.ElapsedSec() << "s";
+#if defined(PADDLE_WITH_XPU_KP)
+  if (FLAGS_dump_cache_manager) {
+    auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
+    auto name = cache_manager->dump_to_file();
+    VLOG(0) << "dump cache manager data to " << name;
+  }
+#endif
 }
 
 #if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
-void PSGPUWrapper::build_batch_fid_seq(
+void PSGPUWrapper::build_batch_fidseq(
   std::vector<std::deque<Record> *> & all_chan_recs, const std::vector<bool> & slot_is_dense) {
-  VLOG(0) << "PSGPUWrapper::build_batch_fid_seq called";
+  VLOG(0) << "PSGPUWrapper::build_batch_fidseq called";
   auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
-  cache_manager->build_batch_fid_seq(all_chan_recs, slot_is_dense);
-  if (FLAGS_dump_cache_manager) {
-    cache_manager->dump_to_file();
-  }
+  cache_manager->build_batch_fidseq(all_chan_recs, slot_is_dense);
 }
+
+void PSGPUWrapper::build_batch_fidseq(
+        std::vector<paddle::framework::DataFeed*> all_readers) {
+  VLOG(0) << "PSGPUWrapper::build_batch_fidseq called SlotRecord";
+  auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
+  cache_manager->build_batch_fidseq(all_readers);
+}
+
+void PSGPUWrapper::prepare_next_batch(int thread_id) {
+  auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
+  cache_manager->prepare_next_batch(thread_id);
+}
+
 #endif
 
 void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
@@ -1008,6 +1024,10 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                               const std::vector<float*>& values,
                               const std::vector<int64_t>& slot_lengths,
                               const int hidden_size) {
+  int d_id = place.GetDeviceId();
+  int thread_id = HeterPs_->get_index_by_devid(d_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_ALL, thread_id);
+ 
   platform::Timer all_timer;
   platform::Timer pull_gpups_timer;
   all_timer.Start();
@@ -1048,6 +1068,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                    static_cast<int>(total_length));
     VLOG(3) << "Begin call PullSparseGPU in GPUPS, dev: " << devid_2_index
             << " len: " << total_length;
+
     pull_gpups_timer.Start();
     HeterPs_->pull_sparse(devid_2_index, total_keys, total_values_gpu,
                           static_cast<int>(total_length));
@@ -1063,6 +1084,8 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
 #endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_DO, thread_id);
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_DO_FIRST, thread_id);
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
@@ -1088,22 +1111,62 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
                                           slot_lengths.size() * sizeof(int64_t),
                                           XPU_HOST_TO_DEVICE));
 
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_DO_FIRST, thread_id);
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_COPY, thread_id);
     this->CopyKeys(place, xpu_keys, total_keys, xpu_len,
                    static_cast<int>(slot_lengths.size()),
                    static_cast<int>(total_length));
     VLOG(3) << "Begin call PullSparseGPU in GPUPS, dev: " << devid_2_index
             << " len: " << total_length;
+
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_COPY, thread_id);
+#if defined(PADDLE_WITH_XPU_CACHE_BFID)
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_FID2BFID, thread_id);
+    auto cache_manager = dynamic_cast<HeterPs*>(HeterPs_)->get_cache_manager();
+    cache_manager->convert_fid2bfid(device_id, total_keys, static_cast<int>(total_length));
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_FID2BFID, thread_id);
+#endif
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_PULL, thread_id);
     pull_gpups_timer.Start();
     HeterPs_->pull_sparse(devid_2_index, total_keys, total_values_gpu,
                           static_cast<int>(total_length));
     pull_gpups_timer.Pause();
 
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_PULL, thread_id);
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_COPY_FOR_PULL, thread_id);
     VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
             << "]";
-    this->CopyForPull(place, xpu_keys, values, total_values_gpu, xpu_len,
-                      static_cast<int>(slot_lengths.size()), hidden_size,
-                      total_length);
 
+    // this->CopyForPull(place, xpu_keys, values, total_values_gpu, xpu_len,
+    //                   static_cast<int>(slot_lengths.size()), hidden_size,
+    //                   total_length);
+    auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+
+    float* dst_vals = nullptr;
+    auto dst_vals_tmp = memory::Alloc(place, total_length * sizeof(float) * hidden_size);
+    dst_vals = reinterpret_cast<float*>(dst_vals_tmp->ptr());
+
+    int r = xpu::pull_copy<xpu::FeatureValue>(
+      ctx_xpu,
+      dst_vals,
+      total_keys,
+      reinterpret_cast<xpu::FeatureValue*>(total_values_gpu),
+      total_length,
+      hidden_size);
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU pull_copy kernel return wrong value[%d %s]",
+                                    r, XPUAPIErrorMsg[r]));
+
+    for (int i = 0; i < static_cast<int>(slot_lengths.size()); i++) {
+      int slot_len = i ? slot_lengths_lod[i] - slot_lengths_lod[i - 1] : slot_lengths_lod[0];
+      int offset = i ? slot_lengths_lod[i-1] : 0;
+      PADDLE_ENFORCE_XDNN_SUCCESS(xpu::copy<float>(ctx_xpu, dst_vals + offset * hidden_size, values[i], slot_len * hidden_size), "copy");
+    }
+
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_COPY_FOR_PULL, thread_id);
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_DO, thread_id);
 #endif
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -1114,6 +1177,7 @@ void PSGPUWrapper::PullSparse(const paddle::platform::Place& place,
           << " s, of which GPUPS costs: " << pull_gpups_timer.ElapsedSec()
           << " s";
   VLOG(3) << "End PullSparse";
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_ALL, thread_id);
 }
 
 void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
@@ -1122,6 +1186,9 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
                                   const std::vector<const float*>& grad_values,
                                   const std::vector<int64_t>& slot_lengths,
                                   const int hidden_size, const int batch_size) {
+  int d_id = place.GetDeviceId();
+  int thread_id = HeterPs_->get_index_by_devid(d_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_GRAD_ALL, thread_id);
   platform::Timer all_timer;
   platform::Timer push_gpups_timer;
   all_timer.Start();
@@ -1155,21 +1222,28 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
 #endif
   } else if (platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU_KP
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_GRAD_DO, thread_id);
     int device_id = place.GetDeviceId();
     int devid_2_index = HeterPs_->get_index_by_devid(device_id);
     LoDTensor& cached_total_keys_tensor = keys_tensor[devid_2_index];
     uint32_t* total_keys =
         reinterpret_cast<uint32_t*>(cached_total_keys_tensor.data<int32_t>());
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_GRAD_COPY, thread_id);
     VLOG(3) << "Begin copy grad tensor to xpups struct";
     this->CopyForPush(place, grad_values, total_grad_values_gpu, slot_lengths,
                       hidden_size, total_length, batch_size);
 
     VLOG(3) << "Begin call PushSparseXPU in XPUPS, dev: " << devid_2_index
             << " len: " << total_length;
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_GRAD_COPY, thread_id);
+    TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_GRAD_PUSH, thread_id);
     push_gpups_timer.Start();
+
     HeterPs_->push_sparse(devid_2_index, total_keys, total_grad_values_gpu,
                           static_cast<int>(total_length));
     push_gpups_timer.Pause();
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_GRAD_PUSH, thread_id);
+    TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_GRAD_DO, thread_id);
 #endif
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -1180,6 +1254,7 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
           << " s, of which GPUPS cost: " << push_gpups_timer.ElapsedSec()
           << " s";
   VLOG(3) << "End PushSparseGrad";
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_GRAD_ALL, thread_id);
 }
 
 }  // end namespace framework

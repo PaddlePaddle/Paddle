@@ -36,10 +36,6 @@ void FusionSeqPoolCVMConcatOp::InferShape(
                                  "concat axis=1 yet, but received %d.",
                                  axis));
   bool use_cvm = ctx->Attrs().Get<bool>("use_cvm");
-  PADDLE_ENFORCE_EQ(use_cvm, true, paddle::platform::errors::InvalidArgument(
-                                       "FusionSeqPoolCVMConcatOp only supports "
-                                       "use_cvm is true yet, but received %d.",
-                                       use_cvm));
 
   auto ins_dims = ctx->GetInputsDim("X");
   const size_t n = ins_dims.size();
@@ -54,7 +50,11 @@ void FusionSeqPoolCVMConcatOp::InferShape(
   PADDLE_ENFORCE_EQ(ins_dims[0].size(), 2,
                     paddle::platform::errors::InvalidArgument(
                         "The dims size of first input should be 2."));
-  ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
+  if (use_cvm) {
+    ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
+  } else {
+    ctx->SetOutputDim("Out", {-1, (ins_dims[0][axis] - 2) * static_cast<int>(n)});
+  }
 }
 
 framework::OpKernelType FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
@@ -91,6 +91,7 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
     std::string pooltype = ctx.Attr<std::string>("pooltype");
+    bool use_cvm = ctx.Attr<bool>("use_cvm");
     auto x0_lod = ins[0]->lod();
     auto x0_dims = ins[0]->dims();
     auto y_dims = out->dims();
@@ -106,9 +107,16 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
     T* y_data = out->mutable_data<T>(place);
 
     int w = ins[0]->numel() / x0_dims[0];
-    PADDLE_ENFORCE_EQ(y_dims[1] % w, 0,
-                      paddle::platform::errors::InvalidArgument(
-                          "The output of dims[1] should be dividable of w"));
+    if(use_cvm) {
+      PADDLE_ENFORCE_EQ(y_dims[1] % w, 0,
+                        paddle::platform::errors::InvalidArgument(
+                            "The output of dims[1] should be dividable of w"));
+    }
+    else{
+      PADDLE_ENFORCE_EQ(y_dims[1] % (w-2), 0,
+                  paddle::platform::errors::InvalidArgument(
+                      "The output of dims[1] should be dividable of (w-2)"));
+    }
     jit::seq_pool_attr_t attr(w, jit::SeqPoolType::kSum);
     if (pooltype == "AVERAGE") {
       attr.type = jit::SeqPoolType::kAvg;
@@ -119,12 +127,14 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
         jit::KernelFuncs<jit::SeqPoolTuple<T>, platform::CPUPlace>::Cache().At(
             attr);
     size_t n = ins.size();
-    size_t dst_step_size = n * w;
+    size_t dst_step_size = n * (use_cvm ? w : w - 2);
+    T* tmp_data = new T[w];
+    auto names = ctx.InputNames("X");
     for (size_t i = 0; i < n; ++i) {
       auto x_dims = ins[i]->dims();
       auto x_lod = ins[i]->lod()[0];
       const T* src = ins[i]->data<T>();
-      T* dst = y_data + i * w;
+      T* dst = y_data + i * (use_cvm ? w : w - 2);
       PADDLE_ENFORCE_EQ(static_cast<int>(ins[i]->numel() / x_dims[0]), w,
                         paddle::platform::errors::InvalidArgument(
                             "Width of all inputs should be equal."));
@@ -133,18 +143,62 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
                             "Batchsize of all inputs should be equal."));
       for (size_t j = 0; j < bs; ++j) {
         attr.h = static_cast<int>(x_lod[j + 1] - x_lod[j]);
-        seqpool(src, dst, &attr);
+        seqpool(src, tmp_data, &attr);
 
-        // Currently only use_cvm is true.
-        dst[0] = log(dst[0] + 1);
-        dst[1] = log(dst[1] + 1) - dst[0];
+        if(use_cvm) {
+          tmp_data[0] = log(tmp_data[0] + 1);
+          tmp_data[1] = log(tmp_data[1] + 1) - tmp_data[0];
+        }
+        memcpy(dst, tmp_data + (use_cvm ? 0 : 2), sizeof(T) * (use_cvm ? w : w - 2));
 
         dst += dst_step_size;
         src += attr.h * attr.w;
       }
     }
+    delete[] tmp_data;
   }
 };
+
+void FusionSeqPoolCVMConcatGradOp::InferShape(
+    framework::InferShapeContext* ctx) const {
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("CVM"), true,
+      platform::errors::InvalidArgument(
+          "Input(CVM) of FusionSeqPoolCVMConcatGradOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInputs(framework::GradVarName("Out")), true,
+      platform::errors::InvalidArgument("Input(Out@GRAD) should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutputs(framework::GradVarName("X")), true,
+      platform::errors::InvalidArgument("Output(X@GRAD) should not be null."));
+
+  ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
+  ctx->ShareAllLoD("X", /*->*/ framework::GradVarName("X"));
+}
+
+framework::OpKernelType FusionSeqPoolCVMConcatGradOp::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, framework::GradVarName("Out")), ctx.GetPlace());
+}
+
+template <typename T>
+class FusionSeqPoolCVMConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("fusion_seqpool_cvm_concat_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("CVM", this->Input("CVM"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
+    op->SetAttrMap(this->Attrs());
+  }
+
+};
+
 
 }  // namespace operators
 }  // namespace paddle
@@ -153,9 +207,17 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     fusion_seqpool_cvm_concat, ops::FusionSeqPoolCVMConcatOp,
     ops::FusionSeqPoolCVMConcatOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    ops::FusionSeqPoolCVMConcatGradOpMaker<paddle::framework::OpDesc>,
+    ops::FusionSeqPoolCVMConcatGradOpMaker<paddle::imperative::OpBase>)
+
+REGISTER_OPERATOR(fusion_seqpool_cvm_concat_grad,
+                  ops::FusionSeqPoolCVMConcatGradOp)
 
 REGISTER_OP_CPU_KERNEL(fusion_seqpool_cvm_concat,
                        ops::FusionSeqPoolCVMConcatKernel<float>,
                        ops::FusionSeqPoolCVMConcatKernel<double>);
+
+REGISTER_OP_CPU_KERNEL(
+    fusion_seqpool_cvm_concat_grad,
+    ops::FusionSeqPoolCVMConcatGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::FusionSeqPoolCVMConcatGradKernel<paddle::platform::CPUDeviceContext, double>);

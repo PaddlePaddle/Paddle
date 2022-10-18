@@ -55,13 +55,15 @@ struct FeatureValue {
   }
 };
 
+// If FeaturePushValue struct change, the size of it can't over 64 bytes.
+// Otherwise the merge_grad_kernel, sum_fidseq_add_grad_kernel in XPUPS will cause fault.
 struct FeaturePushValue {
   float show;
   float clk;
   int slot;
   float lr_g;
   float mf_g[MF_DIM];
-  
+
   friend std::ostream& operator<<(std::ostream& out, FeaturePushValue& val) {
     out << "show:" << val.show << " clk:" << val.clk << " slot:" << val.slot
         << " lr_g:" << val.lr_g;
@@ -70,6 +72,7 @@ struct FeaturePushValue {
     }
     return out;
   }
+
   // __device__ __forceinline__ FeaturePushValue
   // operator+(const FeaturePushValue& a) const {
   //  FeaturePushValue out;
@@ -83,6 +86,7 @@ struct FeaturePushValue {
   //  return out;
   // }
 };
+
 
 }  // end namespace framework
 }  // end namespace paddle

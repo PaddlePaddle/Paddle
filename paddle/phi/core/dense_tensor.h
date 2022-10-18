@@ -28,6 +28,16 @@ limitations under the License. */
 
 namespace phi {
 
+class xpu_l3_alloc {
+private:
+  void* p_;
+  phi::Place place_;
+public:
+  xpu_l3_alloc(size_t size, const phi::Place& place);
+  ~xpu_l3_alloc();
+  void* get();
+};
+
 class DenseTensorUtils;
 
 /// \brief The Dense tensor store values in a contiguous sequential block
@@ -170,6 +180,7 @@ class DenseTensor : public TensorBase,
  protected:
   DenseTensorMeta meta_;
   std::shared_ptr<phi::Allocation> holder_;
+  std::shared_ptr<xpu_l3_alloc> holder2_;
 
  public:
   /* Temporarily put InplaceVersion inside DenseTensor.

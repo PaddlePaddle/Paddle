@@ -55,7 +55,7 @@ limitations under the License. */
 #include "afs_api.h"
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
-
+#include "paddle/fluid/framework/fleet/heter_ps/parallel_thread_pool.h"
 namespace paddle {
 namespace framework {
 
@@ -64,6 +64,8 @@ namespace framework {
 
 class Dataset;
 class Record;
+class SlotRecordObject;
+using SlotRecord = SlotRecordObject*;
 
 #ifdef PADDLE_WITH_PSLIB
 class AfsWrapper {
@@ -101,11 +103,16 @@ class PSGPUWrapper {
     for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
       hbm_thread_pool_[i].reset(new ::ThreadPool(1));
     }
+#ifdef PADDLE_WITH_XPU_KP
+    sign2fid_thread_pool_.init(24);
+#endif
   }
 
 #if defined(PADDLE_WITH_XPU_KP) && defined(PADDLE_WITH_XPU_CACHE_BFID)
-  void build_batch_fid_seq(std::vector<std::deque<Record> *> & all_chan_recs,
+  void build_batch_fidseq(std::vector<std::deque<Record> *> & all_chan_recs,
                           const std::vector<bool> & slot_is_dense);
+  void prepare_next_batch(int thread_id);
+  void build_batch_fidseq(std::vector<paddle::framework::DataFeed*> all_readers);
 #endif
 
   void PullSparse(const paddle::platform::Place& place, const int table_id,
@@ -377,6 +384,11 @@ class PSGPUWrapper {
  private:
   static std::shared_ptr<PSGPUWrapper> s_instance_;
   Dataset* dataset_;
+
+#ifdef PADDLE_WITH_XPU_KP
+  ParallelThreadPool sign2fid_thread_pool_;
+#endif
+
 #ifdef PADDLE_WITH_PSLIB
   paddle::ps::AfsApiWrapper afs_handler_;
 #endif

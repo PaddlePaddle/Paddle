@@ -29,15 +29,23 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/fluid/platform/timer_manager.h"
 
 namespace paddle {
 namespace framework {
 
 void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
                               Dataset* dataset) {
-  SetDataset(dataset);
+  VLOG(0) << "do PSGPUTrainer::Initialize";
   thread_num_ = trainer_desc.thread_num();
-  param_ = trainer_desc.downpour_param();
+  platform::TimerManager* timer_manager = platform::TimerManager::instance();
+  timer_manager->init(platform::TIMER_MAX_ID * thread_num_);
+  VLOG(0) << "do TimerManager Initialize " << platform::TIMER_MAX_ID * thread_num_;
+  TIMER_SINGLETHREAD_ENTER(platform::TIMER_TRAINER_ALL);
+  TIMER_SINGLETHREAD_ENTER(platform::TIMER_TRAINER_INIT);
+
+  SetDataset(dataset);
+    param_ = trainer_desc.downpour_param();
   ParseDumpConfig(trainer_desc);
   mpi_rank_ = trainer_desc.mpi_rank();
   mpi_size_ = trainer_desc.mpi_size();
@@ -326,34 +334,51 @@ void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
 
 void PSGPUTrainer::Run() {
 #ifdef PADDLE_WITH_XPU_KP
-  auto dataset = dynamic_cast<DatasetImpl<Record> *>(dataset_ptr_);
-  CHECK(dataset != nullptr) << "dataset_ptr must be derived from DatasetImpl<Record>";
-  auto readers = dataset->GetReaders();
-  auto & ds_chans = dataset->GetCurOutputChannel();
-
-  VLOG(0) << "PSGPUTrainer Run: readers|dataset_channels|workers:" << readers.size()
-          << "|" << ds_chans.size() 
-          << "|" << places_.size();
-  CHECK(readers.size() == ds_chans.size())
-          << "readers_num should equal channel_num:"
-          << readers.size() << "!=" << ds_chans.size();
-#ifdef PADDLE_WITH_XPU_CACHE_BFID
-  auto & slot_is_dense = readers[0]->GetUseSlotIsDense();
-  // move reader->Start from worker to Trainer
-  for (auto & reader : readers) {
-      reader->Start(); 
-  }
-  auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
-  std::vector<std::deque<Record> *> all_chan_data(ds_chans.size(), nullptr);
-  for (size_t i = 0; i < ds_chans.size(); i++) {
-    std::deque<Record>& vec_data = const_cast<std::deque<Record>&>(ds_chans[i]->GetData());
-    all_chan_data[i] = &vec_data;
-    VLOG(0) << "PSGPUTrainer Run: dataset multi_chan:" << i << ", size:" << vec_data.size();
-  }
-  ps_gpu_wrapper->build_batch_fid_seq(all_chan_data, slot_is_dense);
+    std::string data_set_name = std::string(typeid(*dataset_ptr_).name());
+    if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
+        auto dataset = dynamic_cast<DatasetImpl<SlotRecord> *>(dataset_ptr_);
+        CHECK(dataset != nullptr) << "dataset_ptr must be derived from DatasetImpl<SlotRecord>";
+        auto readers = dataset->GetReaders();
+        VLOG(0) << "PSGPUTrainer Run: readers|workers:" << readers.size()
+            << "|" << places_.size();
+        #ifdef PADDLE_WITH_XPU_CACHE_BFID
+        for (auto & reader : readers) {
+           reader->Start();
+        }
+        auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+        ps_gpu_wrapper->build_batch_fidseq(readers);
+        #endif
+    } else {
+        auto dataset = dynamic_cast<DatasetImpl<Record> *>(dataset_ptr_);
+        CHECK(dataset != nullptr) << "dataset_ptr must be derived from DatasetImpl<Record>";
+        auto readers = dataset->GetReaders();
+        auto & ds_chans = dataset->GetCurOutputChannel();
+      
+        VLOG(0) << "PSGPUTrainer Run: readers|dataset_channels|workers:" << readers.size()
+                << "|" << ds_chans.size() 
+                << "|" << places_.size();
+        CHECK(readers.size() == ds_chans.size())
+                << "readers_num should equal channel_num:"
+                << readers.size() << "!=" << ds_chans.size();
+        #ifdef PADDLE_WITH_XPU_CACHE_BFID
+        auto & slot_is_dense = readers[0]->GetUseSlotIsDense();
+        // move reader->Start from worker to Trainer
+        for (auto & reader : readers) {
+            reader->Start(); 
+        }
+        auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
+        std::vector<std::deque<Record> *> all_chan_data(ds_chans.size(), nullptr);
+        for (size_t i = 0; i < ds_chans.size(); i++) {
+          std::deque<Record>& vec_data = const_cast<std::deque<Record>&>(ds_chans[i]->GetData());
+          all_chan_data[i] = &vec_data;
+          VLOG(0) << "PSGPUTrainer Run: dataset multi_chan:" << i << ", size:" << vec_data.size();
+        }
+        ps_gpu_wrapper->build_batch_fidseq(all_chan_data, slot_is_dense);
+        #endif
+    }
 #endif
-#endif
-
+  TIMER_SINGLETHREAD_LEAVE(platform::TIMER_TRAINER_INIT);
+  TIMER_SINGLETHREAD_ENTER(platform::TIMER_TRAINER_CREATE_WORKER);
   for (size_t thidx = 0; thidx < places_.size(); ++thidx) {
     if (!debug_) {
       threads_.push_back(
@@ -363,6 +388,8 @@ void PSGPUTrainer::Run() {
                                      workers_[thidx].get()));
     }
   }
+  TIMER_SINGLETHREAD_LEAVE(platform::TIMER_TRAINER_CREATE_WORKER);
+  TIMER_SINGLETHREAD_ENTER(platform::TIMER_TRAINER_WORKERS);
 }
 
 Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
@@ -397,6 +424,8 @@ void PSGPUTrainer::Finalize() {
   for (auto& th : threads_) {
     th.join();
   }
+  TIMER_SINGLETHREAD_LEAVE(platform::TIMER_TRAINER_WORKERS);
+  TIMER_SINGLETHREAD_ENTER(platform::TIMER_TRAINER_FINALIZE);
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
@@ -439,6 +468,48 @@ void PSGPUTrainer::Finalize() {
     FinalizeDumpEnv();
   }
   root_scope_->DropKids();
+  TIMER_SINGLETHREAD_LEAVE(platform::TIMER_TRAINER_FINALIZE);
+  TIMER_SINGLETHREAD_LEAVE(platform::TIMER_TRAINER_ALL);
+  TIMER_SINGLETHREAD_STATISTICS(platform::TIMER_TRAINER_ALL);
+  TIMER_SINGLETHREAD_STATISTICS(platform::TIMER_TRAINER_INIT);
+  TIMER_SINGLETHREAD_STATISTICS(platform::TIMER_TRAINER_CREATE_WORKER);
+  TIMER_SINGLETHREAD_STATISTICS(platform::TIMER_TRAINER_WORKERS);
+  TIMER_SINGLETHREAD_STATISTICS(platform::TIMER_TRAINER_FINALIZE);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_WORKER_ALL, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_WORKER_FEED_NEXT, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_WORKER_EACH_BATCH, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_WORKER_PULL_BOX_SPARSE, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_WORKER_PUSH_BOX_SPARSE, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_WORKER_ALL_OPS, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_WORKER_SKIP_OPS, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PUSH_SPARSE_GRAD_ALL, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PUSH_SPARSE_GRAD_DO, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PUSH_SPARSE_GRAD_COPY, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PUSH_SPARSE_GRAD_PUSH, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PUSH_SPARSE_HETER_ALL, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE1, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE2, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE3, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE4, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE5, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_ALL, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_DO, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_DO_FIRST, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_FID2BFID, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_PULL, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_COPY, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_COPY_FOR_PULL, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_ALL, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE1, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE2, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE3, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE4, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE5, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE6, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE7, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE8, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE9, thread_num_);
+  TIMER_MULTITHREAD_STATISTICS_ALL(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE10, thread_num_);
 }
 }  // namespace framework
 }  // namespace paddle

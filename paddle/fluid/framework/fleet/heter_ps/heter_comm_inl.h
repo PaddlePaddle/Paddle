@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 #endif
-
+#include "paddle/fluid/platform/timer_manager.h"
 namespace paddle {
 namespace framework {
 
@@ -63,7 +63,7 @@ HeterComm<KeyType, ValType, GradType>::HeterComm(
   init_path();
 
 #if defined(PADDLE_WITH_XPU_KP)
-  cache_mgr_ = std::make_shared<CacheManager>();
+  cache_mgr_ = std::make_shared<CacheManager>(resource_);
 #endif
 }
 
@@ -587,16 +587,35 @@ void HeterComm<KeyType, ValType, GradType>::split_input_to_shard(
   sync_stream(stream);
 }
 
-static void reset_xpu_memory(DevPlace & place, void* in_ptr, int len, int8_t value) {
+#if defined(PADDLE_WITH_XPU_KP)
+static void reset_xpu_memory(DevPlace & place, void* in_ptr, int len, int8_t value, const XPUStream & stream) {
   int8_t * in_int8_ptr = reinterpret_cast<int8_t*>(in_ptr);
   auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   auto xpu_context = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+  xpu_context->xpu_stream = stream;
   int r = xpu::constant<int8_t>(xpu_context, in_int8_ptr, len, value);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                     platform::errors::External(
                         "reset_xpu_memory: XPU constant kernel return wrong value[%d %s]", r,
                         XPUAPIErrorMsg[r]));
 }
+
+template<class T>
+static std::shared_ptr<std::vector<T>> copy_to_cpu(int dev_id, T * data, int data_len) {
+  std::shared_ptr<std::vector<T>> buffer = std::make_shared<std::vector<T>>();
+  buffer->resize(data_len);
+  DevPlace place = DevPlace(dev_id);
+  AnyDeviceGuard guard(dev_id);
+  auto cpu_place = platform::CPUPlace();
+  memory::Copy(cpu_place,
+                &((*buffer)[0]),
+                place,
+                data,
+                data_len * sizeof(T));
+  xpu_wait(0);
+  return buffer;
+}
+#endif
 
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
@@ -606,8 +625,15 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   if (len == 0) {
     return;
   }
-
   int dev_id = resource_->dev_id(num);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_ALL, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE1, dev_id);
+  //platform::Timer timeline;
+  //std::stringstream time_ss;
+  //time_ss << "dev:" << num << ",key_len:" << len;
+  //double total_time = 0.0;
+  //timeline.Start();
+
 
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
@@ -618,88 +644,124 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
 
   typedef int BfidType;
   typedef uint32_t FidType;
-  auto cpu_place = platform::CPUPlace();
 
-  cache_mgr_->prepare_current_batch_fid_seq();
-  VLOG(3) << "heter comm inl pull sparse prepare_current_batch_fid_seq success";
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE1, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE2, dev_id);
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",init:" << timeline.ElapsedSec();
 
-  // d_keys memcpy to cpu h_keys
-  std::unique_ptr<KeyType[]> h_keys(new KeyType[len]);
-  VLOG(3) << "heter comm inl pull sparse malloc h_keys on cpu";
+  // get fidseq
+  //timeline.Start();
+  FidType* d_fidseq_bucket_ptr = nullptr;
+  int fidseq_bucket_len = 0;
+  cache_mgr_->get_device_fidseq_bucket(dev_id, &d_fidseq_bucket_ptr, &fidseq_bucket_len);
+  int bucket_mean_len = cache_mgr_->get_device_bucket_mean_len();
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",get_fidseq:" << timeline.ElapsedSec();
 
-  memory_copy(cpu_place, &h_keys[0], place, d_keys, len * sizeof(KeyType), stream);
-  VLOG(3) << "heter comm inl pull sparse memory copy " << len << " d_keys to h_keys";
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE2, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE3, dev_id);
+  //timeline.Start();
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+  xpu::ctx_guard RAII_GUARD(ctx_xpu);
 
-  // cachemanager convert h_keys to h_bfids
-  std::unique_ptr<int[]> h_bfids(new BfidType[len]);
-  VLOG(3) << "heter comm inl pull sparse malloc h_bfids on cpu";
+  ValType* d_fidseq_bucket_vals_ptr = RAII_GUARD.alloc_l3_or_gm<ValType>(bucket_mean_len);
+  reset_xpu_memory(place, d_fidseq_bucket_vals_ptr, bucket_mean_len * sizeof(ValType), 0, stream);
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",reset_xpu_memory:" << timeline.ElapsedSec();
 
-  cache_mgr_->convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
-  VLOG(3) << "heter comm inl pull sparse convert fid2bfid";
-
-  // h_bfids memcpy to d_bfids
-  auto d_bfids = memory::Alloc(place, len * sizeof(BfidType));
-  VLOG(3) << "heter comm inl pull sparse alloc xpu memory for d_bfids " << len * sizeof(BfidType);
-  BfidType* d_bfids_ptr = reinterpret_cast<BfidType*>(d_bfids->ptr());
-
-  memory_copy(place, d_bfids_ptr, cpu_place, &h_bfids[0], len * sizeof(BfidType), stream);
-  VLOG(3) << "heter comm inl pull sparse memory copy d_bfids from cpu to xpu";
-
-  // cachemanager get fid_seq
-  std::shared_ptr<std::vector<uint32_t>> h_fid_seq = cache_mgr_->get_current_batch_fid_seq();
-  VLOG(3) << "heter comm inl pull sparse batch fid seq " << h_fid_seq->size();
-
-  // h_fid_seq memcpy to d_fid_seq
-  auto d_fid_seq = memory::Alloc(place, h_fid_seq->size() * sizeof(FidType));
-  VLOG(3) << "heter comm inl pull sparse alloc xpu memory for d_fids " << h_fid_seq->size() * sizeof(FidType);
-
-  FidType* d_fid_seq_ptr = reinterpret_cast<FidType*>(d_fid_seq->ptr());
-  memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), h_fid_seq->size() * sizeof(FidType), stream);
-  VLOG(3) << "heter comm inl pull sparse memory copy d_fid_seq from cpu to xpu";
-  // alloc d_shard_vals
-  auto d_shard_vals = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
-  VLOG(3) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
-  ValType* d_shard_vals_ptr = reinterpret_cast<ValType*>(d_shard_vals->ptr());
-  xpu_wait(stream);
-  reset_xpu_memory(place, d_shard_vals_ptr, h_fid_seq->size() * sizeof(ValType), 0);
-  xpu_wait();
-
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE3, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE4, dev_id);
   // local search
-  tables_[num]->get(place, reinterpret_cast<KeyType*>(d_fid_seq_ptr),
-                       reinterpret_cast<ValType*>(d_shard_vals_ptr),
-                       h_fid_seq->size(),
-                       stream);
-  VLOG(3) << "heter comm inl pull sparse fill d_shard_val by table->get";
-  xpu_wait(stream);
-  // allreduce
-  auto d_all_vals = memory::Alloc(place, h_fid_seq->size() * sizeof(ValType));
-  VLOG(3) << "heter comm inl pull sparse alloc xpu memory for d_shard_vals " << h_fid_seq->size() * sizeof(ValType);
-  ValType* d_all_vals_ptr = reinterpret_cast<ValType*>(d_all_vals->ptr());
-  reset_xpu_memory(place, d_all_vals_ptr, h_fid_seq->size() * sizeof(ValType), 0);
-  xpu_wait();
+  //timeline.Start();
+  tables_[num]->get(place, reinterpret_cast<KeyType*>(d_fidseq_bucket_ptr),
+                      reinterpret_cast<ValType*>(d_fidseq_bucket_vals_ptr),
+                                                         fidseq_bucket_len,
+                                                         stream);
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",search_fid_in_table:" << timeline.ElapsedSec();
 
-  VLOG(3) << "heter comm inl pull sparse use " << resource_->total_device() << " device";
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE4, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE5, dev_id);
+  // allreduce
+  //timeline.Start();
+  FidType* d_all_fidseq_bucket_ptr = nullptr;
+  int all_fidseq_bucket_len = 0;
+  cache_mgr_->get_device_all_fidseq_bucket(dev_id, &d_all_fidseq_bucket_ptr, &all_fidseq_bucket_len);
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",get_all_fidseq_bucket:" << timeline.ElapsedSec();
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE5, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE6, dev_id);
+  //timeline.Start();
+  ValType* d_all_fidseq_bucket_vals_ptr = RAII_GUARD.alloc_l3_or_gm<ValType>(all_fidseq_bucket_len);
+  reset_xpu_memory(place, d_all_fidseq_bucket_vals_ptr, all_fidseq_bucket_len * sizeof(ValType), 0, stream);
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",reset_xpu_memory:" << timeline.ElapsedSec();
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE6, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE7, dev_id);
   if (resource_->total_device() > 1) {
+    //timeline.Start();
+
+    //sync_stream(stream);
+    int bucket_mean_len = cache_mgr_->get_device_bucket_mean_len();
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
-    VLOG(3) << "heter comm inl pull sparse all reduce start";
-    heter_comm_kernel_->convert_feature_value_as_float(d_shard_vals_ptr, h_fid_seq->size(), true);
-    xpu_wait();
-    bkcl_all_reduce(comm->comm(), d_shard_vals_ptr, d_all_vals_ptr,
-        h_fid_seq->size() * sizeof(ValType) / sizeof(float),
-        BKCL_FLOAT, BKCL_ADD, stream);
-    heter_comm_kernel_->convert_feature_value_as_float(d_all_vals_ptr, h_fid_seq->size(), false);
-    xpu_wait();
+
+    //timeline.Pause();
+    //total_time += timeline.ElapsedSec();
+    //time_ss << ",wait-before-allgather:" << timeline.ElapsedSec();
+    //timeline.Start();
+
+    bkcl_all_gather(comm->comm(), d_fidseq_bucket_vals_ptr, bucket_mean_len * sizeof(ValType) / sizeof(float), d_all_fidseq_bucket_vals_ptr, BKCL_FLOAT, stream);
+
+    //timeline.Pause();
+    //total_time += timeline.ElapsedSec();
+    //time_ss << ",allgather:" << timeline.ElapsedSec();
     VLOG(3) << "heter comm inl pull sparse all reduce finish";
   } else {
     VLOG(3) << "heter comm inl pull unnecessary all reduce";
-    d_all_vals_ptr = d_shard_vals_ptr;
+    d_all_fidseq_bucket_vals_ptr = d_fidseq_bucket_vals_ptr;
   }
-  xpu_wait(stream);
-  // fill to d_val
-  heter_comm_kernel_->fill_dvals_with_bfid(d_all_vals_ptr, d_vals, d_bfids_ptr, len, stream);
-  VLOG(3) << "heter comm inl pull sparse fill d_all_vals to d_vals";
-  xpu_wait(stream);
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE7, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE8, dev_id);
+  // fill to d_val
+  //timeline.Start();
+
+  BfidType* d_bfids_ptr = nullptr;
+  int bfid_len = 0;
+  cache_mgr_->get_bfidseq(dev_id, &d_bfids_ptr, &bfid_len);
+  PADDLE_ENFORCE_EQ(bfid_len, len);
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE8, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE9, dev_id);
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",get_bfidseq:" << timeline.ElapsedSec();
+  //timeline.Start();
+
+  heter_comm_kernel_->fill_dvals_with_bfid(d_all_fidseq_bucket_vals_ptr, d_vals, d_bfids_ptr, len, stream);
+  sync_stream(stream);
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE9, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE10, dev_id);
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",fill_dvals_with_bfid:" << timeline.ElapsedSec();
+
+  cache_mgr_->prepare_merge_grad(dev_id);
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_STAGE10, dev_id);
+  //VLOG(0) << "pull_sparse time cost:" << total_time
+  //       << " sec, detail:" << time_ss.str();
 #else
   int total_device = resource_->total_device();
   int h_left[total_device];   // NOLINT
@@ -719,6 +781,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
   auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   auto xpu_context =
           static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+  xpu_context->xpu_stream = stream;
 
   int r = xpu::constant<int>(xpu_context, d_left_ptr, total_device, -1);
   PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
@@ -816,6 +879,7 @@ void HeterComm<KeyType, ValType, GradType>::pull_sparse(int num,
     destroy_storage(num, i);
   }
 #endif
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PULL_SPARSE_HETER_ALL, dev_id);
 }
 
 #if defined(PADDLE_WITH_CUDA)
@@ -921,7 +985,19 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
 }
 
 #elif defined(PADDLE_WITH_XPU_KP)
+void cpu_merge_grad(const int* keys, const FeaturePushValue* vals, FeaturePushValue* dstvalue, int size) {
+    for (int j = 0; j < size; j++) {
+        int offset = keys[j];
 
+        dstvalue[offset].slot = vals[j].slot;
+        dstvalue[offset].show += vals[j].show;
+        dstvalue[offset].clk += vals[j].clk;
+        dstvalue[offset].lr_g += vals[j].lr_g;
+        for (int k = 0; k < MF_DIM; k++) {
+            dstvalue[offset].mf_g[k] += vals[j].mf_g[k];
+        }
+    }
+}
 template <typename KeyType, typename ValType, typename GradType>
 void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
                                                         KeyType* d_keys,
@@ -932,91 +1008,122 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
   }
 
   int dev_id = resource_->dev_id(dev_num);
-
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_ALL, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE1, dev_id);
   DevPlace place = DevPlace(dev_id);
   AnyDeviceGuard guard(dev_id);
   auto stream = resource_->local_stream(dev_num, 0);
+
+  // platform::Timer timeline;
+  // std::stringstream time_ss;
+  // time_ss << "dev:" << dev_num << ",key_len:" << len;
+  // double total_time = 0.0;
 
 #if defined(PADDLE_WITH_XPU_CACHE_BFID)
 
   typedef int BfidType;
   typedef uint32_t FidType;
-  auto cpu_place = platform::CPUPlace();
 
-  // d_keys memcpy to cpu h_keys
-  std::unique_ptr<KeyType[]> h_keys(new KeyType[len]);
-  VLOG(3) << "heter comm inl push sparse malloc h_keys on cpu";
-  memory_copy(cpu_place, &h_keys[0], place, d_keys, len * sizeof(KeyType), stream);
-  VLOG(3) << "heter comm inl push sparse memory copy d_keys to h_keys " << len;
-
-  // cachemanager convert h_keys to h_bfids
-  std::unique_ptr<int[]> h_bfids(new BfidType[len]);
-  VLOG(3) << "heter comm inl push sparse malloc h_bfids on cpu";
-
-  cache_mgr_->convert_fid2bfid(&h_keys[0], &h_bfids[0], len);
-  VLOG(3) << "heter comm inl push sparse convert fid2bfid";
-
-  // h_bfids memcpy to d_bfids
-  auto d_bfids = memory::Alloc(place, len * sizeof(BfidType));
-  VLOG(3) << "heter comm inl push sparse alloc xpu memory for d_bfids " << len * sizeof(BfidType);
-  BfidType* d_bfids_ptr = reinterpret_cast<BfidType*>(d_bfids->ptr());
-
-  memory_copy(place, d_bfids_ptr, cpu_place, &h_bfids[0], len * sizeof(BfidType), stream);
-  VLOG(3) << "heter comm inl push sparse memory copy d_bfids from cpu to xpu";
-
-  // cachemanager get fid_seq
-  std::shared_ptr<std::vector<uint32_t>> h_fid_seq = cache_mgr_ -> get_current_batch_fid_seq();
-  VLOG(3) << "heter comm inl push sparse batch fid seq " << h_fid_seq->size();
-
-  // h_fid_seq memcpy to d_fid_seq
-  auto d_fid_seq = memory::Alloc(place, h_fid_seq -> size() * sizeof(FidType));
-  VLOG(3) << "heter comm inl push sparse alloc xpu memory for d_fids " << h_fid_seq -> size() * sizeof(FidType);
-
-  FidType* d_fid_seq_ptr = reinterpret_cast<FidType*>(d_fid_seq->ptr());
-  memory_copy(place, d_fid_seq_ptr, cpu_place, h_fid_seq -> data(), h_fid_seq -> size() * sizeof(FidType), stream);
-  VLOG(3) << "heter comm inl push sparse memory copy d_fid_seq from cpu to xpu";
-  xpu_wait(stream);
   // merge grad
-  int d_fgrad_len = h_fid_seq->size() * sizeof(GradType);
-  auto d_shard_grads = memory::Alloc(place, d_fgrad_len);
-  VLOG(3) << "heter comm inl push sparse alloc xpu memory for d_bfids " << h_fid_seq->size() * sizeof(GradType);
-  GradType* d_shard_grads_ptr = reinterpret_cast<GradType*>(d_shard_grads->ptr());
+  //timeline.Start();
+  FidType* d_all_fidseq_bucket_ptr = nullptr;
+  int all_fidseq_bucket_len = 0;
+  cache_mgr_->get_device_all_fidseq_bucket(dev_id, &d_all_fidseq_bucket_ptr, &all_fidseq_bucket_len);
 
-  VLOG(3) << "heter comm inl push sparse start merge grad";
-  reset_xpu_memory(place, d_shard_grads_ptr, d_fgrad_len, 0);
-  xpu_wait(stream);
-  heter_comm_kernel_->merge_grad(d_bfids_ptr, d_grads, len, d_shard_grads_ptr);
-  VLOG(3) << "heter comm inl push sparse finish merge grad";
-  xpu_wait();
-  // allreduce
-  auto d_all_grads = memory::Alloc(place, h_fid_seq -> size() * sizeof(GradType));
-  VLOG(3) << "heter comm inl push sparse alloc xpu memory for d_all_grads " << h_fid_seq->size() * sizeof(GradType);
-  GradType* d_all_grads_ptr = reinterpret_cast<GradType*>(d_all_grads->ptr());
-  reset_xpu_memory(place, d_all_grads_ptr, h_fid_seq->size() * sizeof(GradType), 0);
+  auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
+  xpu::ctx_guard RAII_GUARD(ctx_xpu);
 
-  VLOG(3) << "heter comm inl push sparse use " << resource_->total_device() << " device";
+  GradType* d_all_fidseq_bucket_grads_ptr = RAII_GUARD.alloc_l3_or_gm<GradType>(all_fidseq_bucket_len);
+  reset_xpu_memory(place, d_all_fidseq_bucket_grads_ptr, all_fidseq_bucket_len * sizeof(GradType), 0, stream);
+
+  BfidType* d_bfids_ptr = nullptr;
+  int bfid_len = 0;
+  cache_mgr_->get_bfidseq(dev_id, &d_bfids_ptr, &bfid_len);
+  PADDLE_ENFORCE_EQ(bfid_len, len);
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE1, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE2, dev_id);
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",alloc_merge_grad:" << timeline.ElapsedSec();
+  //timeline.Start();
+
+  // for new merge-grad impl
+  int * fidseq_grad_idxs = nullptr;
+  int fidseq_grad_idx_len = 0;
+  int * fidseq_lods = nullptr;
+  int fidseq_lod_len = 0;
+  uint32_t first_fidseq_elem = 0;
+  cache_mgr_->get_merge_grad_params(
+      dev_id, &fidseq_grad_idxs, &fidseq_grad_idx_len, &fidseq_lods, &fidseq_lod_len, &first_fidseq_elem);
+  PADDLE_ENFORCE_EQ(fidseq_grad_idx_len, len);
+  PADDLE_ENFORCE_EQ(fidseq_lod_len, all_fidseq_bucket_len + 1);
+  // for new merge-grad impl end
+
+  //timeline.Pause();
+  //total_time += timeline.ElapsedSec();
+  //time_ss << ",get_merge_grad_params:" << timeline.ElapsedSec();
+
+  heter_comm_kernel_->merge_grad(first_fidseq_elem, fidseq_grad_idxs, fidseq_lods, fidseq_lod_len,
+      d_grads, len, d_all_fidseq_bucket_grads_ptr, stream);
+
+  // timeline.Pause();
+  // total_time += timeline.ElapsedSec();
+  // time_ss << ",merge_grad:" << timeline.ElapsedSec();
+  // timeline.Start();
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE3, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE4, dev_id);
+  // all_gather
+  GradType* d_all_grads_ptr =
+      RAII_GUARD.alloc_l3_or_gm<GradType>(all_fidseq_bucket_len);
+  GradType* d_all_grads_after_gather_ptr =
+      RAII_GUARD.alloc_l3_or_gm<GradType>(all_fidseq_bucket_len * resource_->total_device());
+
   if (resource_->total_device() > 1) {
+    // sync_stream(stream);
     auto comm = platform::BKCLCommContext::Instance().Get(0, place);
-    VLOG(3) << "heter comm inl push sparse all reduce start";
-    heter_comm_kernel_->convert_feature_push_value_as_float(d_shard_grads_ptr, h_fid_seq->size(), true);
-    xpu_wait();
-    bkcl_all_reduce(comm->comm(), d_shard_grads_ptr, d_all_grads_ptr,
-        h_fid_seq -> size() * sizeof(GradType) / sizeof(float),
-        BKCL_FLOAT, BKCL_ADD, stream);
-    heter_comm_kernel_->convert_feature_push_value_as_float(d_all_grads_ptr, h_fid_seq->size(), false);
-    xpu_wait();
-    VLOG(3) << "heter comm inl push sparse all reduce finish";
+    VLOG(3) << "heter comm inl push sparse all gather start";
+    bkcl_all_gather(comm->comm(), d_all_fidseq_bucket_grads_ptr,
+        all_fidseq_bucket_len * sizeof(GradType) / sizeof(float),
+        d_all_grads_after_gather_ptr, BKCL_FLOAT, stream);
+    VLOG(3) << "heter comm inl push sparse all gather finish";
+
+    // sync_stream(stream);
+    // timeline.Pause();
+    // time_ss << "bkcl_all_gather, len: " << all_fidseq_bucket_len * sizeof(GradType)
+    // << ", time: " << timeline.ElapsedSec()
+    // << "s, speed: " << (all_fidseq_bucket_len * sizeof(GradType)) / timeline.ElapsedSec() << "B/s";
+
+    heter_comm_kernel_->sum_fidseq_add_grad(d_all_grads_after_gather_ptr,
+        all_fidseq_bucket_len, stream,
+        resource_->total_device(), d_all_grads_ptr);
   } else {
-    VLOG(3) << "heter comm inl push sparse unnecessary all reduce";
-    d_all_grads_ptr = d_shard_grads_ptr;
+    VLOG(3) << "heter comm inl push sparse unnecessary all gather";
+    d_all_grads_ptr = d_all_fidseq_bucket_grads_ptr;
   }
-  xpu_wait(stream);
 
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE4, dev_id);
+  TIMER_MULTITHREAD_ENTER(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE5, dev_id);
   // update
-  tables_[dev_num]->update(place, d_fid_seq_ptr, d_all_grads_ptr, h_fid_seq -> size(), stream);
-  VLOG(3) << "heter comm inl push sparse update finish";
-  xpu_wait(stream);
+  //timeline.Start();
 
+  int bucket_mean_len = cache_mgr_->get_device_bucket_mean_len();
+  int bucket_size = cache_mgr_->get_host_all_fidseq_bucket_sizes()[dev_num];
+  tables_[dev_num]->update(place, d_all_fidseq_bucket_ptr + dev_num * bucket_mean_len,
+      d_all_grads_ptr + dev_num * bucket_mean_len, bucket_size, stream);
+
+  VLOG(3) << "heter comm inl push sparse update finish";
+  sync_stream(stream);
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_STAGE5, dev_id);
+  // timeline.Pause();
+  // total_time += timeline.ElapsedSec();
+  // time_ss << ",update:" << timeline.ElapsedSec();
+
+  // VLOG(0) << "push_sparse time cost:" << total_time
+  //        << " sec, detail:" << time_ss.str();
 #else
   int total_device = resource_->total_device();
 
@@ -1122,6 +1229,8 @@ void HeterComm<KeyType, ValType, GradType>::push_sparse(int dev_num,
     destroy_storage(dev_num, i);
   }
 #endif
+
+  TIMER_MULTITHREAD_LEAVE(platform::TIMER_OPS_PUSH_SPARSE_HETER_ALL, dev_id);
 }
 
 #endif

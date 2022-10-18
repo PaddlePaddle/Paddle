@@ -20,10 +20,11 @@ limitations under the License. */
 #if defined(PADDLE_WITH_XPU_KP)
 #include <xpu/runtime.h>
 #include "xpu/kernel/cluster_header.h"
-//#include "xpu/kernel/debug.h"  // NOLINT
+// #include "xpu/kernel/debug.h"  // NOLINT
 #include "xpu/runtime.h"
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
+#include "xpu/kernel/simd_header.h"
 #endif
 
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
@@ -354,18 +355,6 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
 
-    // TODO: remove cast.
-    //xpu::ctx_guard RAII_GUARD(ctx_xpu);
-    //uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
-    //PADDLE_ENFORCE_NOT_NULL(
-    //    d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
-    //uint32_t* d_keys_out_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
-    //PADDLE_ENFORCE_NOT_NULL(
-    //    d_keys_out_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
-
-    //xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_in),
-    //    reinterpret_cast<int32_t*>(d_keys_in_cast), num_items);
-
     int r = xpu::sort_pairs<uint32_t, xpu::FeaturePushValue>(
         ctx_xpu,
         d_keys_in,
@@ -378,9 +367,6 @@ void HeterCommKernel::sort_pairs(const paddle::platform::Place& place,
         r, XPU_SUCCESS,
         platform::errors::External("XPU sum kernel return wrong value[%d %s]",
                                    r, XPUAPIErrorMsg[r]));
-
-    //xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_cast),
-    //    reinterpret_cast<int64_t*>(d_keys_out), num_items);
 }
 
 template <typename KeyT, typename ValueT, typename StreamType>
@@ -447,18 +433,6 @@ void HeterCommKernel::reduce_by_key(const paddle::platform::Place& place,
     auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     auto ctx_xpu = static_cast<platform::XPUDeviceContext*>(dev_ctx)->x_context();
 
-    // TODO: remove cast.
-    //xpu::ctx_guard RAII_GUARD(ctx_xpu);
-    //uint32_t* d_keys_in_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
-    //PADDLE_ENFORCE_NOT_NULL(
-    //    d_keys_in_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
-    //uint32_t* d_keys_out_cast = RAII_GUARD.alloc_l3_or_gm<uint32_t>(num_items);
-    //PADDLE_ENFORCE_NOT_NULL(
-    //    d_keys_out_cast, paddle::platform::errors::Fatal("XPU memory is not enough"));
-
-    //xpu::cast_v2<int64_t, int32_t>(ctx_xpu, reinterpret_cast<const int64_t*>(d_keys_in),
-    //    reinterpret_cast<int32_t*>(d_keys_in_cast), num_items);
-
     std::cout << "reduce_by_key, before reduce_by_key" << std::endl;
     int r = xpu::reduce_by_key<uint32_t, xpu::FeaturePushValue>(
         ctx_xpu,
@@ -472,14 +446,6 @@ void HeterCommKernel::reduce_by_key(const paddle::platform::Place& place,
         r, XPU_SUCCESS,
         platform::errors::External("XPU sum kernel return wrong value[%d %s]",
                                    r, XPUAPIErrorMsg[r]));
-
-    //int* d_num_runs_out_cpu = (int*)malloc(sizeof(int));
-    //xpu_memcpy(d_num_runs_out_cpu, d_num_runs_out, sizeof(int), XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-
-    //xpu::cast_v2<int32_t, int64_t>(ctx_xpu, reinterpret_cast<int32_t*>(d_keys_out_cast),
-    //    reinterpret_cast<int64_t*>(d_unique_out), *d_num_runs_out_cpu);
-
-    //free(d_num_runs_out_cpu);
 }
 
 template void HeterCommKernel::fill_idx<int, XPUStream>(
@@ -545,11 +511,13 @@ template void HeterCommKernel::reduce_by_key<
     paddle::framework::FeaturePushValue* d_aggregates_out, int* d_num_runs_out,
     int num_items, XPUStream stream, bool debug_synchronous);
 
-// Todo
-
-__global__ void merge_grad_kernel(
-        int * in_keys, paddle::framework::FeaturePushValue * in_vals,
-        int len, paddle::framework::FeaturePushValue * out_vals) {
+__global__ void merge_grad_kernel(uint32_t first_fidseq_elem,
+                           int* fidseq_grad_idxs,
+                           int* fidseq_lods,
+                           int fidseq_lods_len,
+                           FeaturePushValue* fidseq_grad_ptr,
+                           int fidseq_grad_len,
+                           FeaturePushValue* out_fidseq_grad_ptr) {
     int cid = core_id();
     int ncores = core_num();
     if (cid >= ncores) {
@@ -558,50 +526,93 @@ __global__ void merge_grad_kernel(
     int thread_id = ncores * cluster_id() + cid;
     int nthreads = ncores * cluster_num();
 
-    const int local_key_size = 1000;
-    __local__ int local_keys[local_key_size];
-    __local__ FeaturePushValue local_push_value;
-    __local__ FeaturePushValue local_merge_value;
-    int hash_key = 0;
-    for (int i = 0; i < len; ) {
-        int read_len = min(local_key_size, len - i);
-        mfence();
-        GM2LM(in_keys + i, local_keys, read_len * sizeof(int));
-        for (int j = 0; j < read_len; j++) {
-            int local_bfid = local_keys[j];
-            hash_key = local_bfid % nthreads;
-            if (hash_key == thread_id) {
-                GM2LM(&(in_vals[i + j]), &local_push_value, sizeof(FeaturePushValue));
-                GM2LM(&(out_vals[local_bfid]), &local_merge_value, sizeof(FeaturePushValue));
-                local_merge_value.slot = local_push_value.slot;
-                local_merge_value.show += local_push_value.show;
-                local_merge_value.clk += local_push_value.clk;
-                local_merge_value.lr_g += local_push_value.lr_g;
-                for (int k = 0; k < MF_DIM; k++) {
-                    local_merge_value.mf_g[k] += local_push_value.mf_g[k];
-                }
-                mfence();
-                LM2GM(&local_merge_value, &(out_vals[local_bfid]), sizeof(FeaturePushValue));
+    const int lm_lod_size = 1536;
+    __simd__ __local__ uint32_t lm_lod[lm_lod_size + 8];
+
+    for (int seq_start = 0; seq_start < fidseq_lods_len; seq_start += lm_lod_size - 1) {
+        int seq_end = min(seq_start + lm_lod_size, fidseq_lods_len);
+        int seq_len = seq_end - seq_start;
+
+        GM2LM(fidseq_lods + seq_start, lm_lod, seq_len * sizeof(uint32_t));
+
+        for (int i = thread_id; i < seq_len - 1; i += nthreads) {
+            int start_idx = lm_lod[i];
+            int end_idx = lm_lod[i + 1];
+            int merge_len = lm_lod[i + 1] - lm_lod[i];
+
+            if (merge_len < 0) {
+                return;
             }
+
+            __simd__ FeaturePushValue merged_grad[1];
+
+            if (merge_len == 0 || (start_idx == 0 && first_fidseq_elem == 0)) {
+                merged_grad[0].slot = -1;
+                merged_grad[0].show = 0;
+                merged_grad[0].clk = 0;
+                merged_grad[0].lr_g = 0;
+                for (int j = 0; j < MF_DIM; ++j) {
+                    merged_grad[0].mf_g[j] = 0;
+                }
+
+                mfence_lm();
+                LM2GM(&merged_grad, out_fidseq_grad_ptr + seq_start + i, sizeof(FeaturePushValue));
+                continue;
+            }
+
+            int fidseq_grad_idx;
+            GM2LM(fidseq_grad_idxs + start_idx, &fidseq_grad_idx, sizeof(int));
+            GM2LM(fidseq_grad_ptr + fidseq_grad_idx, merged_grad, sizeof(FeaturePushValue));
+            int slot_backup = merged_grad[0].slot;
+
+            mfence_lm();
+            float32x16_t v_merged = vload_lm_float32x16_mz(merged_grad);
+
+            __simd__ FeaturePushValue temp_grad[1];
+            for (int j = start_idx + 1; j < end_idx; j++) {
+                GM2LM(fidseq_grad_idxs + j, &fidseq_grad_idx, sizeof(int));
+                GM2LM(fidseq_grad_ptr + fidseq_grad_idx, temp_grad, sizeof(FeaturePushValue));
+
+                float32x16_t v_temp = vload_lm_float32x16_mz(temp_grad);
+                v_merged = vvadd_float32x16(v_merged, v_temp);
+                mfence_lm();
+            }
+
+            vstore_lm_float32x16_mz(merged_grad, v_merged);
+            mfence_lm();
+            merged_grad[0].slot = slot_backup;
+
+            mfence_lm();
+            LM2GM(&merged_grad, out_fidseq_grad_ptr + seq_start + i, sizeof(FeaturePushValue));
         }
-        i += read_len;
     }
 }
 
-template <typename KeyT, typename ValueT>
+template <typename TID, typename ValueT, typename StreamType>
 void HeterCommKernel::merge_grad(
-    KeyT* d_keys,
-    ValueT* d_vals_in,
-    int len,
-    ValueT* d_vals_out) {
-    merge_grad_kernel<<<8, 64>>>(d_keys, d_vals_in, len, d_vals_out);
+    uint32_t first_fidseq_elem,
+    TID* fidseq_grad_idxs,
+    TID* fidseq_lods,
+    int fidseq_lods_len,
+    ValueT* fidseq_grad_ptr,
+    int fidseq_grad_len,
+    ValueT* out_fidseq_grad_ptr,
+    const StreamType& stream) {
+
+    merge_grad_kernel<<<8, 64, stream>>>(first_fidseq_elem, fidseq_grad_idxs,
+        fidseq_lods, fidseq_lods_len, fidseq_grad_ptr, fidseq_grad_len,
+        out_fidseq_grad_ptr);
 }
 
-template void HeterCommKernel::merge_grad<int, paddle::framework::FeaturePushValue>(
-    int* d_keys,
-    paddle::framework::FeaturePushValue* d_vals_in,
-    int len,
-    paddle::framework::FeaturePushValue* d_vals_out);
+template void HeterCommKernel::merge_grad<int, paddle::framework::FeaturePushValue, XPUStream>(
+    uint32_t first_fidseq_elem,
+    int* fidseq_grad_idxs,
+    int* fidseq_lods,
+    int fidseq_lods_len,
+    paddle::framework::FeaturePushValue* fidseq_grad_ptr,
+    int fidseq_grad_len,
+    paddle::framework::FeaturePushValue* out_fidseq_grad_ptr,
+    const XPUStream& stream);
 
 __global__ void convert_feature_value_kernel(
     paddle::framework::FeatureValue * in_vals, int len, bool to_float = true) {
@@ -652,20 +663,22 @@ __global__ void convert_feature_value_kernel(
     }
 }
 
-template <typename ValueT>
+template <typename ValueT, typename StreamType>
 void HeterCommKernel::convert_feature_value_as_float(
     ValueT* d_vals_in,
     int len,
-    bool to_float) {
+    bool to_float,
+    const StreamType& stream) {
     //xpu_kernel_debug_reset();
-    convert_feature_value_kernel<<<8, 64>>>(d_vals_in, len, to_float);
+    convert_feature_value_kernel<<<8, 64, stream>>>(d_vals_in, len, to_float);
     //xpu_kernel_debug();
 }
 
-template void HeterCommKernel::convert_feature_value_as_float<paddle::framework::FeatureValue>(
+template void HeterCommKernel::convert_feature_value_as_float<paddle::framework::FeatureValue, XPUStream>(
     paddle::framework::FeatureValue* d_vals_in,
     int len,
-    bool to_float);
+    bool to_float,
+    const XPUStream& stream);
 
 __global__ void convert_feature_push_value_kernel(
     paddle::framework::FeaturePushValue * in_vals, int len, bool to_float = true) {
@@ -712,20 +725,100 @@ __global__ void convert_feature_push_value_kernel(
     }
 }
 
-template <typename ValueT>
+template <typename ValueT, typename StreamType>
 void HeterCommKernel::convert_feature_push_value_as_float(
     ValueT* d_vals_in,
     int len,
-    bool to_float) {
+    bool to_float,
+    const StreamType& stream) {
     //xpu_kernel_debug_reset();
-    convert_feature_push_value_kernel<<<8, 64>>>(d_vals_in, len, to_float);
+    convert_feature_push_value_kernel<<<8, 64, stream>>>(d_vals_in, len, to_float);
     //xpu_kernel_debug();
 }
 
-template void HeterCommKernel::convert_feature_push_value_as_float<paddle::framework::FeaturePushValue>(
+template void HeterCommKernel::convert_feature_push_value_as_float<paddle::framework::FeaturePushValue, XPUStream>(
     paddle::framework::FeaturePushValue* d_vals_in,
     int len,
-    bool to_float);
+    bool to_float,
+    const XPUStream& stream);
+
+template <typename GradType>
+__global__ void sum_fidseq_add_grad_kernel(
+        GradType* all_device_fidseq_grad_ptr,
+        uint32_t all_device_fidseq_grad_len,
+        uint32_t bucket_num,
+        GradType* out_fidseq_grad_compress_ptr) {
+    int cid = core_id();
+    int ncores = core_num();
+    if (cid >= ncores) {
+        return;
+    }
+    int thread_id = ncores * cluster_id() + cid;
+    int nthreads = ncores * cluster_num();
+
+    __simd__ GradType local_fidseq_grad[1];
+    __simd__ GradType local_fidseq_grad_out[1];
+
+    for (uint32_t i = thread_id; i < all_device_fidseq_grad_len; i += nthreads) {
+        GM2LM(out_fidseq_grad_compress_ptr + i, local_fidseq_grad_out,
+            sizeof(GradType));
+
+        local_fidseq_grad_out[0].slot = -1;
+        local_fidseq_grad_out[0].show = 0;
+        local_fidseq_grad_out[0].clk = 0;
+        local_fidseq_grad_out[0].lr_g = 0;
+        for (int j = 0; j < MF_DIM; ++j) {
+            local_fidseq_grad_out[0].mf_g[j] = 0;
+        }
+
+        mfence_lm();
+        float32x16_t v_grad_out = vload_lm_float32x16_mz(local_fidseq_grad_out);
+        int slot_backup = local_fidseq_grad_out[0].slot;
+
+        for (int bucket_idx = 0; bucket_idx < bucket_num; bucket_idx++) {
+            GM2LM(all_device_fidseq_grad_ptr + i + bucket_idx * all_device_fidseq_grad_len, local_fidseq_grad,
+                sizeof(GradType));
+            if (local_fidseq_grad[0].slot != -1) {
+                slot_backup = local_fidseq_grad[0].slot;
+                float32x16_t v_temp = vload_lm_float32x16_mz(local_fidseq_grad);
+                v_grad_out = vvadd_float32x16(v_grad_out, v_temp);
+                mfence_lm();
+            }
+        }
+
+        vstore_lm_float32x16_mz(local_fidseq_grad_out, v_grad_out);
+        mfence_lm();
+        local_fidseq_grad_out[0].slot = slot_backup;
+
+        mfence_lm();
+        LM2GM(local_fidseq_grad_out, out_fidseq_grad_compress_ptr + i, sizeof(GradType));
+    }
+}
+
+template <typename GradType, typename StreamType>
+void HeterCommKernel::sum_fidseq_add_grad(
+    GradType* all_device_fidseq_grad_ptr,
+    uint32_t all_device_fidseq_grad_len,
+    const StreamType& stream,
+    uint32_t bucket_num,
+    GradType* out_fidseq_grad_compress_ptr) {
+    PADDLE_ENFORCE_LE(bucket_num, 8,
+        platform::errors::PreconditionNotMet(
+            "invalid device number[%d]: should <= 8", bucket_num));
+
+    sum_fidseq_add_grad_kernel<GradType><<<8, 64, stream>>>(
+            all_device_fidseq_grad_ptr,
+            all_device_fidseq_grad_len,
+            bucket_num,
+            out_fidseq_grad_compress_ptr);
+}
+
+template void HeterCommKernel::sum_fidseq_add_grad<paddle::framework::FeaturePushValue, XPUStream>(
+    paddle::framework::FeaturePushValue* all_device_fidseq_grad_ptr,
+    uint32_t all_device_fidseq_grad_len,
+    const XPUStream& stream,
+    uint32_t bucket_num,
+    paddle::framework::FeaturePushValue* out_fidseq_grad_compress_ptr);
 
 #endif
 
