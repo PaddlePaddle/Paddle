@@ -54,7 +54,8 @@ void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
       operators::AppendOpVariantByOpName(
           all_ops, std::string("recurrent_grad"), &recur_grad_ops);
     } else {
-      PADDLE_THROW("One of recur_ops or recur_grad_ops should be empty.");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "One of recur_ops or recur_grad_ops should be empty."));
     }
   }
 
