@@ -1201,8 +1201,7 @@ std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
 
   os << "  - place: " << t.place() << "\n";
   os << "  - shape: [" << t.dims() << "]\n";
-  os << "  - layout: " << paddle::framework::DataLayoutToString(t.layout())
-     << "\n";
+  os << "  - layout: " << phi::DataLayoutToString(t.layout()) << "\n";
 
 #ifdef PADDLE_WITH_MKLDNN
   os << "  - format: "
