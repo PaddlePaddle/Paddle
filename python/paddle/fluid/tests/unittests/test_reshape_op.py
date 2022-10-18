@@ -57,17 +57,17 @@ class TestReshapeOp_ZeroDim1(OpTest):
 class TestReshapeOp_ZeroDim2(OpTest):
 
     def init_data(self):
-        self.ori_shape = (1)
-        self.new_shape = ()
-        self.infered_shape = ()
+        self.ori_shape = ()
+        self.new_shape = (-1)
+        self.infered_shape = (1)
 
 
 class TestReshapeOp_ZeroDim3(OpTest):
 
     def init_data(self):
-        self.ori_shape = ()
-        self.new_shape = (-1)
-        self.infered_shape = (1)
+        self.ori_shape = (1)
+        self.new_shape = ()
+        self.infered_shape = ()
 
 
 class TestReshapeBF16Op(OpTest):
@@ -560,15 +560,23 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
 
         out = paddle.reshape(x, [1])
         out.backward()
-        self.assertEqual(out.shape, [1])
         self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1])
         self.assertEqual(out.grad.shape, [1])
 
         out = paddle.reshape(x, [-1, 1])
         out.backward()
-        self.assertEqual(out.shape, [1, 1])
         self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [1, 1])
         self.assertEqual(out.grad.shape, [1, 1])
+
+        x = paddle.rand([1])
+        x.stop_gradient = False
+        out = paddle.reshape(x, [])
+        out.backward()
+        self.assertEqual(x.grad.shape, [1])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
 
         paddle.enable_static()
 

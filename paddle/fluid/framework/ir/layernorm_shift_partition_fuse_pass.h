@@ -37,6 +37,26 @@ namespace ir {
 //  reshape2
 //     |
 //  other_op
+//
+// or
+//
+//     |
+// layer_norm
+//     |
+//  reshape2
+//     |
+//    roll
+//     |
+//  reshape2                            |
+//     |           fuse       layernorm_shift_patition
+// transpose2       ->                  |
+//     |                             other_op
+//  reshape2
+//     |
+//  reshape2
+//     |
+//  other_op
+
 class LayerNormShiftPartitionFusePass : public FusePassBase {
  public:
   LayerNormShiftPartitionFusePass();
@@ -44,6 +64,7 @@ class LayerNormShiftPartitionFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
+  int ApplyPattern(ir::Graph *graph, bool with_roll) const;
 
  private:
   const std::string scope_name_{"layernorm_shift_partition_fuse"};

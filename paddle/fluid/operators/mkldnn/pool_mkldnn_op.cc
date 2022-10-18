@@ -26,7 +26,7 @@ using dnnl::pooling_forward;
 using dnnl::primitive;
 using dnnl::reorder;
 using dnnl::stream;
-using framework::DataLayout;
+using phi::DataLayout;
 using platform::to_void_cast;
 
 template <typename T>

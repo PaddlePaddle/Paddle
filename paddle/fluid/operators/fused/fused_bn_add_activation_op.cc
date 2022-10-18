@@ -155,7 +155,7 @@ framework::OpKernelType FusedBatchNormAddActOp::GetExpectedKernelType(
       platform::errors::InvalidArgument("Bias input should be of float type"));
 
   framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
   return framework::OpKernelType(
       input_data_type, ctx.GetPlace(), layout, library);
@@ -276,7 +276,7 @@ framework::OpKernelType FusedBatchNormAddActGradOp::GetExpectedKernelType(
   }
 
   framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"),

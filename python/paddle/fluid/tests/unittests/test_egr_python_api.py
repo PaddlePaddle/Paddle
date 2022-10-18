@@ -249,6 +249,9 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
         np.testing.assert_array_equal(egr_tensor12.numpy(), x)
 
+        zero_dim_param = EagerParamBase(shape=[], dtype="float32")
+        self.assertEqual(zero_dim_param.shape, [])
+
         with self.assertRaisesRegexp(
                 ValueError, "The shape of Parameter should not be None"):
             eager_param = EagerParamBase(shape=None, dtype="float32")
@@ -256,11 +259,6 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         with self.assertRaisesRegexp(
                 ValueError, "The dtype of Parameter should not be None"):
             eager_param = EagerParamBase(shape=[1, 1], dtype=None)
-
-        with self.assertRaisesRegexp(
-                ValueError,
-                "The dimensions of shape for Parameter must be greater than 0"):
-            eager_param = EagerParamBase(shape=[], dtype="float32")
 
         with self.assertRaisesRegexp(
                 ValueError,
