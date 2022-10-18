@@ -447,7 +447,7 @@ def guard(place=None):
                     yield
 
 
-@framework.dygraph_and_dy2static_only
+@framework.non_static_only
 def grad(outputs,
          inputs,
          grad_outputs=None,

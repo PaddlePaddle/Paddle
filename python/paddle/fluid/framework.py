@@ -513,7 +513,7 @@ def _dygraph_only_(func):
     return __impl__
 
 
-def _dygraph_and_dy2static_only_(func):
+def _non_static_only_(func):
 
     def __impl__(*args, **kwargs):
         from .dygraph.base import in_declarative_mode
@@ -583,7 +583,7 @@ dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
 static_only = wrap_decorator(_static_only_)
 fake_interface_only = wrap_decorator(_fake_interface_only_)
-dygraph_and_dy2static_only = wrap_decorator(_dygraph_and_dy2static_only_)
+non_static_only = wrap_decorator(_non_static_only_)
 
 
 def _dygraph_tracer():
