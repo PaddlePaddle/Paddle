@@ -424,7 +424,9 @@ if(WITH_PSCORE)
   list(APPEND third_party_deps extern_rocksdb)
 endif()
 
-if(WITH_RPC)
+if(WITH_RPC
+   AND NOT WITH_PSCORE
+   AND NOT WITH_PSLIB)
   include(external/snappy)
   list(APPEND third_party_deps extern_snappy)
 
