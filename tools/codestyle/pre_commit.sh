@@ -53,7 +53,7 @@ if [ ${check_error} != 0 ];then
     echo ""
     echo "Then, run pre-commit to check codestyle issues in your PR:"
     echo ""
-    echo "    pre-commit run --files $diff_files"
+    echo "    pre-commit run --files ${diff_files}"
     echo ""
     echo "For more information, please refer to our codestyle check guide:"
     echo "https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/git_guides/codestyle_check_guide_cn.html"
