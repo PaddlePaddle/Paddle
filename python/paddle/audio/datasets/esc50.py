@@ -56,9 +56,8 @@ class ESC50(AudioClassificationDataset):
             mode = 'dev'
             esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
                                                     feat_type='raw')
-            for elem in esc50_dataset:
-                audio = elem[0]
-                label = elem[1]
+            for idx in range(5):
+                audio, label = esc50_dataset[idx]
                 # do something with audio, label
                 print(audio.shape, label)
                 # [audio_data_length] , label_id
@@ -66,9 +65,8 @@ class ESC50(AudioClassificationDataset):
             esc50_dataset = paddle.audio.datasets.ESC50(mode=mode,
                                                     feat_type='mfcc',
                                                     n_mfcc=40)
-            for elem in esc50_dataset:
-                audio = elem[0]
-                label = elem[1]
+            for idx in range(5):
+                audio, label = esc50_dataset[idx]
                 # do something with mfcc feature, label
                 print(audio.shape, label)
                 # [feature_dim, length] , label_id
