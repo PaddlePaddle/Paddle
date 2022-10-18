@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 class MLUConvOpKernel : public framework::OpKernel<T> {

@@ -635,9 +635,9 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
-      auto data_layout = framework::StringToDataLayout(
+      auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW) return false;
+      if (data_layout != phi::DataLayout::kNCHW) return false;
 
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -710,10 +710,10 @@ struct SimpleOpTypeSetTeller : public Teller {
         if (!desc.HasAttr(attr)) return false;
       }
       if (desc.HasAttr("data_layout")) {
-        auto data_layout = framework::StringToDataLayout(
+        auto data_layout = phi::StringToDataLayout(
             PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-        if (data_layout != framework::DataLayout::kNCHW &&
-            data_layout != framework::DataLayout::kNHWC)
+        if (data_layout != phi::DataLayout::kNCHW &&
+            data_layout != phi::DataLayout::kNHWC)
           return false;
       }
       auto interp_method =
@@ -755,10 +755,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
-      auto data_layout = framework::StringToDataLayout(
+      auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC)
+      if (data_layout != phi::DataLayout::kNCHW &&
+          data_layout != phi::DataLayout::kNHWC)
         return false;
       auto interp_method =
           PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
@@ -809,10 +809,10 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 
-      auto data_layout = framework::StringToDataLayout(
+      auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC) {
+      if (data_layout != phi::DataLayout::kNCHW &&
+          data_layout != phi::DataLayout::kNHWC) {
         VLOG(3) << "The op_type " << op_type
                 << " is not NCHW or NHWC return false";
         return false;
@@ -2109,6 +2109,27 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "expand_v2") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (!desc.HasAttr("shape")) {
+        return false;
+      }
+      auto expand_v2_inputs = desc.Inputs();
+      if (expand_v2_inputs.find("Shape") != expand_v2_inputs.end()) {
+        if (desc.Input("Shape").size() >= 1) {
+          return false;
+        }
+      }
+      if (expand_v2_inputs.find("expand_shapes_tensor") !=
+          expand_v2_inputs.end()) {
+        if (desc.Input("expand_shapes_tensor").size() >= 1) {
+          return false;
+        }
+      }
+    }
+
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
     } else {
@@ -2232,7 +2253,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "layernorm_shift_partition",
       "lookup_table",
-      "lookup_table_v2"};
+      "lookup_table_v2",
+      "expand_v2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2348,7 +2370,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_token_prune",
       "layernorm_shift_partition",
       "lookup_table",
-      "lookup_table_v2"};
+      "lookup_table_v2",
+      "expand_v2"};
 };
 
 struct GenericPluginTeller : public Teller {

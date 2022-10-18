@@ -115,7 +115,6 @@ pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
 pass_library(dense_fc_to_sparse_pass inference)
 pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
-pass_library(common_subexpression_elimination_pass inference)
 target_link_libraries(generate_pass pass_desc_proto)
 
 if(WITH_TENSORRT)
@@ -327,10 +326,6 @@ cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
-cc_test(
-  test_common_subexpression_elimination_pass_cc
-  SRCS common_subexpression_elimination_pass_tester.cc
-  DEPS common_subexpression_elimination_pass)
 cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc

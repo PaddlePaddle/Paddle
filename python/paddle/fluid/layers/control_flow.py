@@ -2431,11 +2431,10 @@ class ConditionalBlock(object):
         for inner_input_name in params:
             inner_var = parent_block._find_var_recursive(inner_input_name)
             if inner_var:
-                param_list.append(cpt.to_text(inner_var.name))
+                param_list.append(inner_var.name)
 
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            conditional_block_op.desc, cpt.to_text(set()),
-            [grad_sub_block.desc])
+            conditional_block_op.desc, set(), [grad_sub_block.desc])
 
         # append op_desc in grad_op_descs to target_block
         op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()

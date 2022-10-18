@@ -170,9 +170,9 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 dtype=dtype, stop_gradient=True)
             reserve_space = helper.create_variable_for_type_inference(
                 dtype=dtype, stop_gradient=True)
-            y = helper.create_sparse_variable_for_type_inference(dtype)
+            out = helper.create_sparse_variable_for_type_inference(dtype)
             outputs = {
-                "y": y,
+                "out": out,
                 "mean_out": mean_out,
                 "variance_out": variance_out,
                 "saved_mean": saved_mean,
@@ -183,7 +183,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                              inputs=inputs,
                              outputs=outputs,
                              attrs=attrs)
-            return y
+            return out
 
 
 class SyncBatchNorm(paddle.nn.SyncBatchNorm):

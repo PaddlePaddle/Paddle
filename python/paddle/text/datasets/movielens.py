@@ -17,7 +17,6 @@ import zipfile
 import re
 
 from paddle.io import Dataset
-import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = []
@@ -161,7 +160,7 @@ class Movielens(Dataset):
                 categories_set = set()
                 with package.open('ml-1m/movies.dat') as movie_file:
                     for i, line in enumerate(movie_file):
-                        line = cpt.to_text(line, encoding='latin')
+                        line = line.decode(encoding='latin')
                         movie_id, title, categories = line.strip().split('::')
                         categories = categories.split('|')
                         for c in categories:
@@ -180,7 +179,7 @@ class Movielens(Dataset):
 
                 with package.open('ml-1m/users.dat') as user_file:
                     for line in user_file:
-                        line = cpt.to_text(line, encoding='latin')
+                        line = line.decode(encoding='latin')
                         uid, gender, age, job, _ = line.strip().split("::")
                         self.user_info[int(uid)] = UserInfo(index=uid,
                                                             gender=gender,
@@ -193,7 +192,7 @@ class Movielens(Dataset):
         with zipfile.ZipFile(self.data_file) as package:
             with package.open('ml-1m/ratings.dat') as rating:
                 for line in rating:
-                    line = cpt.to_text(line, encoding='latin')
+                    line = line.decode(encoding='latin')
                     if (np.random.random() < self.test_ratio) == is_test:
                         uid, mov_id, rating, _ = line.strip().split("::")
                         uid = int(uid)

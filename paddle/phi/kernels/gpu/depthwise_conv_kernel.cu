@@ -72,9 +72,8 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
 
   DDim in_data_dims;
-  const paddle::framework::DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
-  if (data_layout != paddle::framework::DataLayout::kNHWC) {
+  const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
+  if (data_layout != phi::DataLayout::kNHWC) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
