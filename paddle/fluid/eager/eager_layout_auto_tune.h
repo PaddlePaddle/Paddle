@@ -229,7 +229,7 @@ EagerLayoutAutotune<paddle::experimental::Scalar>(
     VLOG(4) << op_name << "'s has different layout";
     return std::make_shared<EagerLightlyLayoutSensitiveOpTransformer>(op_name);
   }
-  if (op_name == "Concat") {
+  if (op_name == "concat") {
     if (desired_layout == tensors_vector[0][0].layout() &&
         tensors_vector[0][0].shape().size() == 4) {
       auto trans = std::make_shared<EagerConcatOpTransformer>(op_name);
