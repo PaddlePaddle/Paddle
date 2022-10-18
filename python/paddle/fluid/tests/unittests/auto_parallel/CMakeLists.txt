@@ -60,6 +60,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_amp MODULES test_pass_amp ENVS ${dist_ENVS})
   set_tests_properties(test_pass_amp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                 TIMEOUT 50)
+  py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
+  set_tests_properties(test_engine_callbacks
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
@@ -100,5 +103,4 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_dist_assign MODULES test_dist_assign)
   py_test_modules(test_conditional_block_reshard MODULES
                   test_conditional_block_reshard)
-
 endif()

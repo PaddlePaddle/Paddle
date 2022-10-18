@@ -214,8 +214,12 @@ def add_to_collection(collection_name, value, name=None):
     if collection_name not in _g_collections:
         _g_collections[collection_name] = []
     if name is not None:
+        for _, v in _g_collections[collection_name]:
+            if v == value: return
         _g_collections[collection_name].append((name, value))
     else:
+        for _, v in _g_collections[collection_name]:
+            if v == value: return
         _g_collections[collection_name].append((None, value))
 
 
