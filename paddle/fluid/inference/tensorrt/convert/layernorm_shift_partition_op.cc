@@ -43,9 +43,6 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
     const int shift_size = PADDLE_GET_CONST(int, op_desc.GetAttr("shift_size"));
     const int input_resolution =
         PADDLE_GET_CONST(int, op_desc.GetAttr("input_resolution"));
-    // int shift_size = window_size / 2;
-    // shift_size = (input_resolution <= window_size) ? 0 : shift_size;
-    int shift_size = 0;
 
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
