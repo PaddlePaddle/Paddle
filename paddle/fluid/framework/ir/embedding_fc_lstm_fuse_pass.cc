@@ -78,8 +78,7 @@ static int BuildFusion(Graph* graph,
         embeddings_var,
         platform::errors::InvalidArgument(
             "Embeddings variable's pointer cannot be nullptr."));
-    auto* embeddings_tensor =
-        embeddings_var->GetMutable<framework::LoDTensor>();
+    auto* embeddings_tensor = embeddings_var->GetMutable<phi::DenseTensor>();
     // Get WeightX size: [single_embedding, fc_size]
     // and embedding size: [dict_size, single_embedding]
     // and create new size of embeddings eg. [dict_size , hidden_size]
@@ -88,10 +87,10 @@ static int BuildFusion(Graph* graph,
         embedding_var,
         platform::errors::InvalidArgument(
             "Embedding variable's pointer cannot be nullptr."));
-    const auto& embedding_tensor = embedding_var->Get<framework::LoDTensor>();
+    const auto& embedding_tensor = embedding_var->Get<phi::DenseTensor>();
 
     const auto& weightx_tensor =
-        scope->FindVar(weight_x->Name())->Get<framework::LoDTensor>();
+        scope->FindVar(weight_x->Name())->Get<phi::DenseTensor>();
     embeddings_tensor->Resize(
         {embedding_tensor.dims()[0], weightx_tensor.dims()[1]});
 
@@ -106,7 +105,7 @@ static int BuildFusion(Graph* graph,
     PADDLE_ENFORCE_NOT_NULL(lstm_bias_var,
                             platform::errors::InvalidArgument(
                                 "Lstm bias var ptr cannot be nullptr."));
-    const auto& lstm_bias_tensor = lstm_bias_var->Get<framework::LoDTensor>();
+    const auto& lstm_bias_tensor = lstm_bias_var->Get<phi::DenseTensor>();
 
     auto alpha = 1.0f;
     auto beta = 1.0f;
@@ -124,7 +123,7 @@ static int BuildFusion(Graph* graph,
     if (with_fc_bias) {
       // Add FC-bias with LSTM-bias (into GEMM result to be)
       auto* fc_bias_var = scope->FindVar(fc_bias->Name());
-      const auto& fc_bias_tensor = fc_bias_var->Get<framework::LoDTensor>();
+      const auto& fc_bias_tensor = fc_bias_var->Get<phi::DenseTensor>();
       for (int i = 0; i < fc_bias_tensor.numel(); i++) {
         combined_biases[i] += fc_bias_tensor.data<float>()[i];
       }

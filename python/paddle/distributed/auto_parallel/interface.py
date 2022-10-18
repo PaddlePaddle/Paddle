@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
-
 import paddle
 from paddle.fluid import core
 from .process_mesh import ProcessMesh
 from .process_mesh import get_current_process_mesh
-from .process_mesh import set_current_process_mesh
-from .process_mesh import reset_current_process_mesh
 from .dist_context import get_default_distributed_context
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperatorHelper
@@ -214,12 +210,16 @@ def get_collection(name):
     return _g_collections[name]
 
 
-def add_to_collection(collection_name, value, value_name=None):
+def add_to_collection(collection_name, value, name=None):
     if collection_name not in _g_collections:
         _g_collections[collection_name] = []
-    if value_name is not None:
-        _g_collections[collection_name].append((value_name, value))
+    if name is not None:
+        for _, v in _g_collections[collection_name]:
+            if v == value: return
+        _g_collections[collection_name].append((name, value))
     else:
+        for _, v in _g_collections[collection_name]:
+            if v == value: return
         _g_collections[collection_name].append((None, value))
 
 

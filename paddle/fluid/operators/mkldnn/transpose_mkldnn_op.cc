@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using framework::DataLayout;
+using phi::DataLayout;
 
 template <typename T>
 class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
@@ -172,35 +172,6 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FP32,
-                                    ops::kTransposeMKLDNNFP32,
-                                    ops::TransposeMKLDNNOpKernel<float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    U8,
-                                    ops::kTransposeMKLDNNINT8,
-                                    ops::TransposeMKLDNNOpKernel<uint8_t>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    S8,
-                                    ops::kTransposeMKLDNNINT8,
-                                    ops::TransposeMKLDNNOpKernel<int8_t>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    transpose2,
-    MKLDNN,
-    ::paddle::platform::CPUPlace,
-    BF16,
-    ops::kTransposeMKLDNNFP32,
-    ops::TransposeMKLDNNOpKernel<paddle::platform::bfloat16>);
-
 REGISTER_OP_KERNEL(transpose,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
@@ -210,3 +181,11 @@ REGISTER_OP_KERNEL(transpose_grad,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
+
+REGISTER_OP_KERNEL(transpose2,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::TransposeMKLDNNOpKernel<float>,
+                   ops::TransposeMKLDNNOpKernel<uint8_t>,
+                   ops::TransposeMKLDNNOpKernel<int8_t>,
+                   ops::TransposeMKLDNNOpKernel<paddle::platform::bfloat16>);

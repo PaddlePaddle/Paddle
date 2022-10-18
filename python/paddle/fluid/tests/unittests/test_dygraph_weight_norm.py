@@ -18,7 +18,6 @@ import collections
 from functools import reduce
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.nn.utils import weight_norm, remove_weight_norm
 
 

@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import numpy as np
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 
 # Situation 1: Attr(shape) is a list(without tensor)
@@ -436,12 +436,6 @@ class TestFillConstantOpError(unittest.TestCase):
                 fluid.layers.fill_constant(shape=1, dtype="float32", value=1)
 
             self.assertRaises(TypeError, test_shape_type)
-
-            # The argument shape's size of fill_constant_op must not be 0.
-            def test_shape_size():
-                fluid.layers.fill_constant(shape=[], dtype="float32", value=1)
-
-            self.assertRaises(AssertionError, test_shape_size)
 
             # The shape dtype of fill_constant_op must be int32 or int64.
             def test_shape_tensor_dtype():

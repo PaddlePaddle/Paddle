@@ -27,10 +27,8 @@ import zipfile
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 import re
-import random
 import functools
 import six
-import paddle.compat as cpt
 
 __all__ = []
 
@@ -113,7 +111,7 @@ def __initialize_meta_info__():
                 categories_set = set()
                 with package.open('ml-1m/movies.dat') as movie_file:
                     for i, line in enumerate(movie_file):
-                        line = cpt.to_text(line, encoding='latin')
+                        line = line.decode(encoding='latin')
                         movie_id, title, categories = line.strip().split('::')
                         categories = categories.split('|')
                         for c in categories:
@@ -138,7 +136,7 @@ def __initialize_meta_info__():
                 USER_INFO = dict()
                 with package.open('ml-1m/users.dat') as user_file:
                     for line in user_file:
-                        line = cpt.to_text(line, encoding='latin')
+                        line = line.decode(encoding='latin')
                         uid, gender, age, job, _ = line.strip().split("::")
                         USER_INFO[int(uid)] = UserInfo(index=uid,
                                                        gender=gender,
@@ -153,7 +151,7 @@ def __reader__(rand_seed=0, test_ratio=0.1, is_test=False):
     with zipfile.ZipFile(file=fn) as package:
         with package.open('ml-1m/ratings.dat') as rating:
             for line in rating:
-                line = cpt.to_text(line, encoding='latin')
+                line = line.decode(encoding='latin')
                 if (np.random.random() < test_ratio) == is_test:
                     uid, mov_id, rating, _ = line.strip().split("::")
                     uid = int(uid)

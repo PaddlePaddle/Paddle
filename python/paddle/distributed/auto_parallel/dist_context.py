@@ -14,17 +14,14 @@
 
 import copy
 from collections import defaultdict
-import paddle.fluid
 from paddle.fluid import framework
-from paddle.fluid.framework import get_flags, set_flags
+from paddle.fluid.framework import set_flags
 from paddle.fluid import core
 from paddle.distributed.passes import PassContext
-from .dist_attribute import TensorDistributedAttribute
-from .dist_attribute import OperatorDistributedAttribute
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperator
 from .process_mesh import ProcessMesh
-from .utils import is_loss_grad_op, is_loss_op
+from .utils import is_loss_grad_op
 
 # There always exists a default context for user. And user can set it to another one.
 _g_default_distributed_context = None
@@ -77,7 +74,6 @@ class DistributedContext:
         self._serial_optimizer = None
         self._serial_feed_vars = {}
         self._serial_fetch_vars = {}
-        self._lr_optimizer = None  # record the optimzier holding lr_scheduler
 
         # Data members related to the program
         self._dist_tensors_for_program = {}
@@ -873,7 +869,7 @@ class DistributedContext:
                 "_serial_ordered_nodes", "_serial_ordered_tensor_nodes", \
                 "_serial_ordered_op_nodes", "_original_serial_loss", \
                 "_original_serial_feed_vars", "_original_serial_fetch_vars", \
-                "_serial_loss", "_serial_feed_vars", "_serial_fetch_vars", "_lr_optimizer", \
+                "_serial_loss", "_serial_feed_vars", "_serial_fetch_vars", "_serial_optimizer", \
                 "_backup_serial_main_program_stack", "_backup_serial_startup_program_stack", \
                 "_pass_context"]:
                 setattr(result, k, v)

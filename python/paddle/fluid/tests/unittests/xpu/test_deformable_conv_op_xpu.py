@@ -22,7 +22,6 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test_xpu import OpTest, XPUOpTest
 import paddle
-from paddle.fluid import Program, program_guard
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 

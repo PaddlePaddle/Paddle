@@ -35,6 +35,7 @@ from .unary import deg2rad
 from .unary import rad2deg
 from .unary import expm1
 from .unary import transpose
+from .unary import reshape
 
 from .binary import mv
 from .binary import matmul
@@ -50,35 +51,9 @@ from .multiary import addmm
 from . import nn
 
 __all__ = [
-    'sparse_coo_tensor',
-    'sparse_csr_tensor',
-    'sin',
-    'tan',
-    'asin',
-    'atan',
-    'sinh',
-    'tanh',
-    'asinh',
-    'atanh',
-    'sqrt',
-    'square',
-    'log1p',
-    'abs',
-    'pow',
-    'cast',
-    'neg',
-    'deg2rad',
-    'rad2deg',
-    'expm1',
-    'mv',
-    'matmul',
-    'masked_matmul',
-    'addmm',
-    'add',
-    'subtract',
-    'transpose',
-    'multiply',
-    'divide',
-    'coalesce',
-    'is_same_shape',
+    'sparse_coo_tensor', 'sparse_csr_tensor', 'sin', 'tan', 'asin', 'atan',
+    'sinh', 'tanh', 'asinh', 'atanh', 'sqrt', 'square', 'log1p', 'abs', 'pow',
+    'cast', 'neg', 'deg2rad', 'rad2deg', 'expm1', 'mv', 'matmul',
+    'masked_matmul', 'addmm', 'add', 'subtract', 'transpose', 'multiply',
+    'divide', 'coalesce', 'is_same_shape', 'reshape'
 ]

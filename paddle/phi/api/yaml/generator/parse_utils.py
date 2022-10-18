@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import re
-import yaml
 from copy import copy
 from typing import Dict, Any, List, Tuple
 from tests import is_attr, is_input, is_output, is_vec
@@ -157,14 +156,15 @@ def parse_kernel(api_name: str, kernel_config: Dict[str,
     #    backend : str, the names of param to choose the kernel backend, default is None
     #    layout : str, the names of param to choose the kernel layout, default is None
     #    data_type : str, the names of param to choose the kernel data_type, default is None
+    #    dispatch : {}, the key is kernel_func, the value is type of inputs and outputs for kernel (example: {kernel_name : (['dense','sparse_coo']#input,['sparse_coo']#output)})
     kernel = {
-        'func': None,  # up to 2 function names
+        'func': [],  # up to 2 function names
         'param': None,
         'backend': None,
         'layout': None,
-        'data_type': None
+        'data_type': None,
+        'dispatch': {}
     }
-    kernel['func'] = parse_plain_list(kernel_config['func'])
     if 'param' in kernel_config:
         kernel['param'] = kernel_config['param']
 
@@ -176,6 +176,34 @@ def parse_kernel(api_name: str, kernel_config: Dict[str,
 
     if 'data_type' in kernel_config:
         kernel['data_type'] = parse_candidates(kernel_config["data_type"])
+
+    kernel_funcs = re.compile(r'([a-zA-Z0-9_]+)\s*({[^}]+})?').findall(
+        kernel_config['func'])
+
+    def parse_kernel_in_out_type(in_out_str):
+        if len(in_out_str) == 0:
+            return None
+        tmp_in_out_list = in_out_str[1:-1].split('->')
+        inputs = [item.strip() for item in tmp_in_out_list[0].split(',')]
+        outputs = [item.strip() for item in tmp_in_out_list[1].split(',')]
+
+        # check the tensor type
+        for item in inputs:
+            assert item in [
+                'dense', 'selected_rows', 'sparse_coo', 'sparse_csr'
+            ], f"{api_name} : Invalid input tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+        for item in outputs:
+            assert item in [
+                'dense', 'selected_rows', 'sparse_coo', 'sparse_csr'
+            ], f"{api_name} : Invalid output tensor type ('{item}'), here we only support 'dense', 'selected_rows', 'sparse_coo' and 'sparse_csr'."
+
+        return (inputs, outputs)
+
+    for func_item in kernel_funcs:
+        kernel['func'].append(func_item[0])
+        kernel['dispatch'][func_item[0]] = parse_kernel_in_out_type(
+            func_item[1])
+
     return kernel
 
 

@@ -14,6 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
+DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -57,7 +62,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
       // depends on the input variables (Input).
       auto xs = InputTensors(scope, "Input");
       need_run =
-          std::all_of(xs.begin(), xs.end(), [](const framework::LoDTensor *t) {
+          std::all_of(xs.begin(), xs.end(), [](const phi::DenseTensor *t) {
             return t->numel() != 0;
           });
     }
@@ -73,14 +78,29 @@ class ConditionalBlockInferOp : public ConditionalOp {
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
 
-      framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
-      exec.Run(*block->Program(), &cur_scope, block->ID(), false);
+
+      if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
+        auto &pdesc = *block->Program();
+        exec.reset(new framework::Executor(dev_place));
+        if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
+        ctx = exec->Prepare(
+            pdesc, block->ID(), std::vector<std::string>(), false);
+#ifdef PADDLE_WITH_MKLDNN
+        platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
+        platform::RegisterModelLayout(ctx->ops_, dev_place);
+#endif
+      }
+      exec->RunPreparedContext(ctx.get(), &cur_scope, false, true, false);
       scope.DeleteScope(scopes->front());
     }
   }
+
+ private:
+  mutable std::shared_ptr<framework::Executor> exec{nullptr};
+  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
 };
 
 }  // namespace operators

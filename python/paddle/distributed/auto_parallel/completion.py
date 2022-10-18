@@ -13,17 +13,13 @@
 # limitations under the License.
 
 import copy
-from copy import deepcopy
 import time
 
 from paddle.fluid import core
-from paddle.fluid import framework
 
-from .utils import print_program_with_dist_attr, is_gradient_clip_op
+from .utils import is_gradient_clip_op, __not_shape_var_type__
 from .operators import find_compatible_distributed_operator_impls
-from .dist_context import get_default_distributed_context, _node_id
-from .dist_tensor import DistributedTensor
-from .dist_op import DistributedOperator
+from .dist_context import _node_id
 from .dist_attribute import TensorDistributedAttribute
 from .dist_attribute import OperatorDistributedAttribute
 from .process_mesh import ProcessMesh
@@ -367,7 +363,14 @@ class Completer:
     def _update_dims_mapping_for_special(self):
         # Set the dims_mapping of a tensor to the dims_mapping inside the op which produces it
         op_nodes = self._dist_context._serial_ordered_op_nodes
+        # NOTE: this list may be changed if Paddle changes the existing rules.
+        related_reader_ops = [
+            "create_py_reader", "create_double_buffer_reader", "read"
+        ]
         for op_node in op_nodes:
+            if op_node.op() is not None \
+                and op_node.op().type() in related_reader_ops:
+                continue
             op_dist_attr = self._dist_context.get_dist_attr_for_graph(op_node)
             for tensor_node in op_node.outputs:
                 if tensor_node.is_var() and tensor_node.var() is not None:
@@ -407,6 +410,7 @@ class Completer:
                 reach_fix_point = False
             else:
                 reach_fix_point = True
+        # NOTE: this will be removed after changing the reshard rule
         self._update_dims_mapping_for_special()
 
     def _update_process_mesh_by_nearest(self, op_node, nearest_op_node):
@@ -495,14 +499,14 @@ class Completer:
                         for tensor_node in node.inputs:
                             if tensor_node.is_var() and tensor_node.var(
                             ) is not None:
-                                if tensor_node.var().type() == core.VarDesc.VarType.READER \
+                                if tensor_node.var().type() in __not_shape_var_type__ \
                                     or len(tensor_node.var().shape()) != 1:
                                     flag = False
                                     break
                         for tensor_node in node.outputs:
                             if tensor_node.is_var() and tensor_node.var(
                             ) is not None:
-                                if tensor_node.var().type() == core.VarDesc.VarType.READER \
+                                if tensor_node.var().type() in __not_shape_var_type__ \
                                     or len(tensor_node.var().shape()) != 1:
                                     flag = False
                                     break

@@ -17,7 +17,6 @@ from paddle.vision.models import resnet18 as resnet
 import paddle
 import paddle.nn as nn
 import unittest
-import json
 import numpy as np
 
 

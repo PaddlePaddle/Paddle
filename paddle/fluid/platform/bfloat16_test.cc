@@ -103,7 +103,7 @@ TEST(bfloat16, comparison_cpu) {
 }
 
 TEST(bfloat16, lod_tensor_cpu) {
-  framework::LoDTensor lod_tensor;
+  phi::DenseTensor lod_tensor;
 
   std::vector<bfloat16> input_data = {
       bfloat16(1.0f), bfloat16(0.5f), bfloat16(0.33333f), bfloat16(0.0f)};

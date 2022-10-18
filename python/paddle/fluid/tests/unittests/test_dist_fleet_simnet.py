@@ -14,7 +14,6 @@
 
 import os
 import unittest
-import tempfile
 from test_dist_fleet_base import TestFleetBase
 import paddle
 

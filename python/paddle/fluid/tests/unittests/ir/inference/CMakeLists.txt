@@ -226,7 +226,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_conv_eltwiseadd_bn_fuse_pass PROPERTIES TIMEOUT
                                                                       300)
     set_tests_properties(test_mkldnn_conv_mish_fuse_pass PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_mkldnn_fc_mish_fuse_pass PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_onednn_fc_activation_fuse_pass PROPERTIES TIMEOUT
+                                                                        300)
     set_tests_properties(test_mkldnn_fc_elementwise_add_fuse_pass
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass
