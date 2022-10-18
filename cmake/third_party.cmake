@@ -497,8 +497,8 @@ if(WITH_GPU
    AND NOT WITH_ARM
    AND NOT APPLE)
   if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.0)
-    include(external/fastertransformer)
-    list(APPEND third_party_deps extern_fastertransformer)
+    include(external/fmha)
+    list(APPEND third_party_deps extern_fmha)
   endif()
 endif()
 

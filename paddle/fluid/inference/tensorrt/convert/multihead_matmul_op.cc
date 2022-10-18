@@ -1,5 +1,5 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-
+   Copyright (c) 2020-2021, NVIDIA CORPORATION. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -42,17 +42,17 @@ void BiasqkMaskFolding(const U* biasqk_src,
     }
   }
 }
-
-void transform_mask_kernel_cpu(half *tranformed_mask,
-                                      const float *mask,
-                                      const uint32_t warps_m,
-                                      const uint32_t warps_n,
-                                      const int B,
-                                      const int S,
-                                      const int S2,
-                                      const int bid,
-                                      const int rid,
-                                      const int cid) {
+#ifdef TRT_FUSED_MHA_AVALIABLE
+void transform_mask_kernel_cpu(half* tranformed_mask,
+                               const float* mask,
+                               const uint32_t warps_m,
+                               const uint32_t warps_n,
+                               const int B,
+                               const int S,
+                               const int S2,
+                               const int bid,
+                               const int rid,
+                               const int cid) {
   const int bi = bid;
   const int r = rid;
 
@@ -60,8 +60,8 @@ void transform_mask_kernel_cpu(half *tranformed_mask,
   const int M_per_XMMAS = warps_m << 4;
   const int N_XMMAS = (S2 + N_per_XMMAS - 1) / (N_per_XMMAS);
   const int warps_in_XMMAS = warps_m * warps_n;
-  half2 *tranformed_mask_b =
-      reinterpret_cast<half2 *>(tranformed_mask + (bi * (S2 * S2 / 64) << 6));
+  half2* tranformed_mask_b =
+      reinterpret_cast<half2*>(tranformed_mask + (bi * (S2 * S2 / 64) << 6));
 
   half2 tmp = {half(-30000.0f), half(-30000.0f)};
 
@@ -97,7 +97,7 @@ void transform_mask_kernel_cpu(half *tranformed_mask,
   tranformed_mask_b[(r << 5) + cid] = tmp;
 }
 
-uint32_t FtmhaTransforMaskGetS2(const uint32_t S){
+uint32_t FtmhaTransforMaskGetS2(const uint32_t S) {
   int S2;
   if (S <= 64) {
     S2 = 64;
@@ -109,15 +109,14 @@ uint32_t FtmhaTransforMaskGetS2(const uint32_t S){
     S2 = 384;
   } else {
     PADDLE_THROW(platform::errors::Fatal(
-        "unsupported seq_len %d for faster transformer mha\n",
-        S));
+        "unsupported seq_len %d for faster transformer mha\n", S));
   }
   return S2;
 }
 void ftmha_transfor_mask(const float* src,
                          half* dst,
                          const int B,
-                         const int S){
+                         const int S) {
   int S2;
   int warps_m = 2, warps_n = 2;
   if (S <= 64) {
@@ -134,20 +133,19 @@ void ftmha_transfor_mask(const float* src,
     warps_n = 8;
   } else {
     PADDLE_THROW(platform::errors::Fatal(
-        "unsupported seq_len %d for faster transformer mha\n",
-        S));
+        "unsupported seq_len %d for faster transformer mha\n", S));
   }
-  assert(S2*S2%64==0);
-  for(auto i=0;i<B;i++){
-    for(auto j=0;j<S2*S2/64;j++){
-      for(auto k=0;k<32;k++){
-        transform_mask_kernel_cpu(dst,src,warps_m,warps_n,
-                                  B,S,S2,
-                                  i,j,k);
+  assert(S2 * S2 % 64 == 0);
+  for (auto i = 0; i < B; i++) {
+    for (auto j = 0; j < S2 * S2 / 64; j++) {
+      for (auto k = 0; k < 32; k++) {
+        transform_mask_kernel_cpu(
+            dst, src, warps_m, warps_n, B, S, S2, i, j, k);
       }
     }
   }
 }
+#endif
 
 template <typename T>
 void PrefcTranspose(const T* src,
@@ -677,57 +675,61 @@ class MultiheadMatMulOpConverter : public OpConverter {
           // return
           layer = reshape_after_mha_layer;
         } else {
- // else for if (input_dims.d[1] <= 384 && !bias_qk_attr
- //              && engine_->precision() !=
- //              AnalysisConfig::Precision::kFloat32)
- // go qkv_to_context plugin
- /*
- * [without FASTERTRANSFORMER_TRT_FUSED_MHA for swin]
- * input_dims.d[0]: batch(-1):batch_num(1)*window_num(64)
- * input_dims.d[1]: length:49
- * input_dims.d[2]: hidden_size(head_num*head_size=3x32):96
-   input
-     |[b,49,96]
-     |
-   shuffle                weight   bias
-     |[b,49,96,1,1]        |         |
-     |_____________________|_________|
-     |
-     fc              qk_bias / folded_qk_bias
-     |               |
-     |               constant_layer(if qk_bias is directly linked to MHA)
-     |[b,49,288,1,1] |[3(head_num),49,49]/[64(window_num),3(head_num),49,49]
-     |_______________|
-     |
-     MHA (QkvToContextPluginDynamic)
-     |[b, 49, 96]
-     |
-     out
- * [with FASTERTRANSFORMER_TRT_FUSED_MHA for swin]
- * input_dims.d[0]: batch(-1):batch_num(1)*window_num(64)
- * input_dims.d[1]: length:49
- * input_dims.d[2]: hidden_size(head_num*head_size=3x32):96
-   input
-     |[b,49,96]
-     |
-   shuffle                      weight    
-     |[b,49,hidden_size,1,1]     |[head_number, 3, head_size, hidden_size] 
-     |___________________________|
-     |                               bias
-     |                                |[head_number, 3, head_size]
-     |________________________________|
-     |
-     fc               qk_bias                 qk_bias_mask
-     |                 |                       |
-     |                 const_layer             const_layer
-     |[b,49,288,1,1]   |[3(head_num), 49, 49]  |[64(window_number), 49, 49]
-     |_________________|_______________________|
-     |
-     MHA (QkvToContextPluginDynamic)
-     |[b, 49, 96]
-     |
-     out
- */
+          // else for if (input_dims.d[1] <= 384 && !bias_qk_attr
+          //              && engine_->precision() !=
+          //              AnalysisConfig::Precision::kFloat32)
+          // go qkv_to_context plugin
+          /*
+          * [without FASTERTRANSFORMER_TRT_FUSED_MHA for swin]
+          * input_dims.d[0]: batch(-1):batch_num(1)*window_num(64)
+          * input_dims.d[1]: length:49
+          * input_dims.d[2]: hidden_size(head_num*head_size=3x32):96
+            input
+              |[b,49,96]
+              |
+            shuffle                weight   bias
+              |[b,49,96,1,1]        |         |
+              |_____________________|_________|
+              |
+              fc              qk_bias / folded_qk_bias
+              |               |
+              |               constant_layer(if qk_bias is directly linked to
+          MHA)
+              |[b,49,288,1,1]
+          |[3(head_num),49,49]/[64(window_num),3(head_num),49,49]
+              |_______________|
+              |
+              MHA (QkvToContextPluginDynamic)
+              |[b, 49, 96]
+              |
+              out
+          * [with FASTERTRANSFORMER_TRT_FUSED_MHA for swin]
+          * input_dims.d[0]: batch(-1):batch_num(1)*window_num(64)
+          * input_dims.d[1]: length:49
+          * input_dims.d[2]: hidden_size(head_num*head_size=3x32):96
+            input
+              |[b,49,96]
+              |
+            shuffle                      weight
+              |[b,49,hidden_size,1,1]     |[head_number, 3, head_size,
+          hidden_size]
+              |___________________________|
+              |                               bias
+              |                                |[head_number, 3, head_size]
+              |________________________________|
+              |
+              fc               qk_bias                 qk_bias_mask
+              |                 |                       |
+              |                 const_layer             const_layer
+              |[b,49,288,1,1]   |[3(head_num), 49, 49]  |[64(window_number), 49,
+          49]
+              |_________________|_______________________|
+              |
+              MHA (QkvToContextPluginDynamic)
+              |[b, 49, 96]
+              |
+              out
+          */
           PADDLE_ENFORCE_EQ(
               input->getDimensions().nbDims,
               3,
@@ -748,7 +750,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           }
 
           bool with_fastertransformer_window_mha = false;
-#ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+#ifdef TRT_FUSED_MHA_AVALIABLE
           // check the require of FASTERTRANSFORMER_TRT_FUSED_MHA
           int device_id;
           cudaGetDevice(&device_id);
@@ -778,21 +780,22 @@ class MultiheadMatMulOpConverter : public OpConverter {
             auto biasqk_name = op_desc.Input("BiasQK").front();
             auto* biasqk_v = scope.FindVar(biasqk_name);
             auto* biasqk_t = biasqk_v->GetMutable<framework::LoDTensor>();
-            
+
             auto biasqk_dims = biasqk_t->dims();
             int seq_len = biasqk_dims[2];
             uint32_t S2 = FtmhaTransforMaskGetS2(seq_len);
             assert(S2 % 64 == 0);
-            std::vector<half> temp_transformed_biasqk(head_number*S2*S2);
-            ftmha_transfor_mask(biasqk_t->mutable_data<float>(platform::CPUPlace()),
-                                temp_transformed_biasqk.data(),
-                                head_number,
-                                seq_len);
-            biasqk_t->Resize({head_number*S2*S2});//TODO(wangbojun)
+            std::vector<half> temp_transformed_biasqk(head_number * S2 * S2);
+            ftmha_transfor_mask(
+                biasqk_t->mutable_data<float>(platform::CPUPlace()),
+                temp_transformed_biasqk.data(),
+                head_number,
+                seq_len);
+            biasqk_t->Resize({head_number * S2 * S2});  // TODO(wangbojun)
             auto* biasqk_d = (biasqk_t->mutable_data<paddle::platform::float16>(
-              platform::CPUPlace()));
+                platform::CPUPlace()));
             std::copy(temp_transformed_biasqk.data(),
-                      temp_transformed_biasqk.data()+head_number*S2*S2,
+                      temp_transformed_biasqk.data() + head_number * S2 * S2,
                       (biasqk_d));
             if (has_biasqk_mask) {
               // with fastertransformer window mha,
@@ -802,27 +805,29 @@ class MultiheadMatMulOpConverter : public OpConverter {
               // transform biasqk mask
               auto biasqk_mask_name = op_desc.Input("BiasQK_mask").front();
               auto* biasqk_mask_v = scope.FindVar(biasqk_mask_name);
-              auto* biasqk_mask_t = biasqk_mask_v->GetMutable<framework::LoDTensor>();
+              auto* biasqk_mask_t =
+                  biasqk_mask_v->GetMutable<framework::LoDTensor>();
               auto biasqk_mask_t_dims = biasqk_mask_t->dims();
 
               int window_number = biasqk_mask_t_dims[0];
-              std::vector<half> temp_transformed_biasqk_mask(window_number*S2*S2);
-              ftmha_transfor_mask(biasqk_mask_t->mutable_data<float>(platform::CPUPlace()),
-                                temp_transformed_biasqk_mask.data(),
-                                window_number,
-                                seq_len);
-              biasqk_mask_t->Resize({window_number*S2*S2});//TODO(wangbojun)
-              auto* biasqk_mask_d = (biasqk_mask_t->mutable_data<paddle::platform::float16>(
-                platform::CPUPlace()));
-              std::copy(temp_transformed_biasqk_mask.data(),
-                        temp_transformed_biasqk_mask.data()+window_number*S2*S2,
-                        (biasqk_mask_d));
+              std::vector<half> temp_transformed_biasqk_mask(window_number *
+                                                             S2 * S2);
+              ftmha_transfor_mask(
+                  biasqk_mask_t->mutable_data<float>(platform::CPUPlace()),
+                  temp_transformed_biasqk_mask.data(),
+                  window_number,
+                  seq_len);
+              biasqk_mask_t->Resize(
+                  {window_number * S2 * S2});  // TODO(wangbojun)
+              auto* biasqk_mask_d =
+                  (biasqk_mask_t->mutable_data<paddle::platform::float16>(
+                      platform::CPUPlace()));
+              std::copy(
+                  temp_transformed_biasqk_mask.data(),
+                  temp_transformed_biasqk_mask.data() + window_number * S2 * S2,
+                  (biasqk_mask_d));
               // get tensors of biasqk and biasqk_mask from mha op
-              // auto biasqk_mask_name = op_desc.Input("BiasQK_mask").front();
               auto biasqk_mask_constlayer_outputname = biasqk_mask_name + "_cl";
-              // auto* biasqk_mask_v = scope.FindVar(biasqk_mask_name);
-              // auto* biasqk_mask_t =
-              //     biasqk_mask_v->GetMutable<framework::LoDTensor>();
               // configure trt weight of biasqk_mask
               nvinfer1::Dims biasqk_mask_dims;
               biasqk_mask_dims.nbDims = 0;
@@ -850,23 +855,22 @@ class MultiheadMatMulOpConverter : public OpConverter {
                           static_cast<const float*>(
                               biasqk_mask_const_weight.get().values)[i]);
                 }
-                engine_->SetWeights(
-                    biasqk_mask_constlayer_outputname + "_fp16",
-                    std::move(half_biasqk_mask_tensor));
+                engine_->SetWeights(biasqk_mask_constlayer_outputname + "_fp16",
+                                    std::move(half_biasqk_mask_tensor));
                 biasqk_mask_const_nvWeight.values = half_biasqk_mask_data;
               } else if (biasqk_mask_const_weight.get().type ==
-                          nvinfer1::DataType::kHALF) {
+                         nvinfer1::DataType::kHALF) {
                 biasqk_mask_const_nvWeight = biasqk_mask_const_weight.get();
               }
               biasqk_mask_constLayer =
                   TRT_ENGINE_ADD_LAYER(engine_,
-                                        Constant,
-                                        biasqk_mask_dims,
-                                        biasqk_mask_const_nvWeight);
-              biasqk_mask_constLayer->setOutputType(
-                  0, nvinfer1::DataType::kHALF);
+                                       Constant,
+                                       biasqk_mask_dims,
+                                       biasqk_mask_const_nvWeight);
+              biasqk_mask_constLayer->setOutputType(0,
+                                                    nvinfer1::DataType::kHALF);
               biasqk_mask_constLayer->setPrecision(nvinfer1::DataType::kHALF);
-              
+
               // set the output configuration of constant layer
               // that warp the biasqk_mask
               biasqk_mask_constLayer->getOutput(0)->setName(

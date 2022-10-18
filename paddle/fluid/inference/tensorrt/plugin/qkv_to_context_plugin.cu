@@ -1,5 +1,5 @@
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
-// Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2020-2021, NVIDIA CORPORATION. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -246,7 +246,7 @@ inline void TransposeQKV(const int batch,
   }
 }
 
-#ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+#ifdef TRT_FUSED_MHA_AVALIABLE
 /*******************  invokeTransformMask  ***********************/
 
 // transform mask [B, S, S](half) into [B, S2*S2/64, 64](half), S2 is the
@@ -383,10 +383,10 @@ void invokeTransformMask(half *tranformed_mask,
     warps_m = 1;
     warps_n = 8;
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
-        "Unsupported seq_len for fmha: "
-        "%d\n",
-        S));
+    PADDLE_THROW(
+        platform::errors::Fatal("Unsupported seq_len for fmha: "
+                                "%d\n",
+                                S));
   }
   assert(S2 * S2 % 64 == 0);
   dim3 grid(B, S2 * S2 / 64);
@@ -829,7 +829,7 @@ int QkvToContextPluginDynamic::enqueue(
       }
     } else {
       // use fastertransformer_window_mha
-#ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+#ifdef TRT_FUSED_MHA_AVALIABLE
       VLOG(3) << "use faster transformer trt fused multihead matmul kernel";
       auto *device_ctx = static_cast<phi::GPUContext *>(
           platform::DeviceContextPool::Instance().Get(
@@ -849,32 +849,15 @@ int QkvToContextPluginDynamic::enqueue(
       }
       int S;
       S = ft_dispatcher_fp16_->getSFromMaxSeqLen(seq_len);
-      phi::DenseTensor temp_qk_bias_tensor;
-      temp_qk_bias_tensor.Resize({head_number_, S * S / 64, 64});
-      auto *temp_qk_bias_data =
-          reinterpret_cast<half *>(temp_qk_bias_tensor.mutable_data<int16_t>(
-              platform::CUDAPlace(device_id)));
-      phi::DenseTensor temp_qk_bias_mask_tensor;
 
       // input 1 is relative pos (biasqk)
       const half *input1_data = static_cast<const half *>(inputs[1]);
-      // invokeTransformMask(
-      //     temp_qk_bias_data, input1_data, head_number_, seq_len, stream);
 
       // input 2 is mask (biasqk_mask)
       const half *input2_data = nullptr;
       // half *temp_qk_bias_mask_data = nullptr;
       if (has_biasqk_mask_) {
         input2_data = static_cast<const half *>(inputs[2]);  // mask
-        // temp_qk_bias_mask_tensor.Resize({window_number_, S * S / 64, 64});
-        // temp_qk_bias_mask_data = reinterpret_cast<half *>(
-        //     temp_qk_bias_mask_tensor.mutable_data<int16_t>(
-        //         platform::CUDAPlace(device_id)));
-        // invokeTransformMask(temp_qk_bias_mask_data,
-        //                     input2_data,
-        //                     window_number_,
-        //                     seq_len,
-        //                     stream);
       }
 
       ft_dispatcher_fp16_->setup(S, batch, window_number_);
@@ -888,11 +871,11 @@ int QkvToContextPluginDynamic::enqueue(
                                output,
                                stream);
 
-#else   // FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+#else   // TRT_FUSED_MHA_AVALIABLE
       PADDLE_THROW(platform::errors::Fatal(
           "Call fastertransformer trt fused mha, but corresponding lib is not "
           "involved properly"));
-#endif  // FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+#endif  // TRT_FUSED_MHA_AVALIABLE
     }
 #else
     PADDLE_THROW(platform::errors::Fatal(

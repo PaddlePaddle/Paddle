@@ -34,7 +34,7 @@
 
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
-#ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+#ifdef TRT_FUSED_MHA_AVALIABLE
 #include "3rdparty/trt_fused_multihead_attention/qkvToContext.h"
 #endif
 
@@ -84,7 +84,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
                                       has_biasqk_mask_,
                                       window_number_,
                                       with_fastertransformer_window_mha_);
-#ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+#ifdef TRT_FUSED_MHA_AVALIABLE
     ptr->ft_dispatcher_fp16_num_head_ = ft_dispatcher_fp16_num_head_;
 #endif
     ptr->mask_half_ = mask_half_;
@@ -162,7 +162,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   half* mask_half_;
   float* fake_qk_bias_;
   bool has_biasqk_mask_ = false;
-#ifdef FASTERTRANSFORMER_TRT_FUSED_MHA_AVALIABLE
+#ifdef TRT_FUSED_MHA_AVALIABLE
   std::unique_ptr<fastertransformer::MHARunner> ft_dispatcher_fp16_;
 #endif
   int ft_dispatcher_fp16_num_head_ = -1;

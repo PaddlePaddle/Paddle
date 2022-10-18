@@ -52,8 +52,8 @@ list(
   tensorrt_dynamic_shape_infermeta_factory
   tensorrt_plugin_arg_mapping_context)
 
-if(WITH_FASTERTRANSFORMER_MHA)
-  list(APPEND TRT_DEPS fastertransformer_trt_fused_mha)
+if(WITH_FUSED_MHA)
+  list(APPEND TRT_DEPS trt_fused_mha)
 endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
