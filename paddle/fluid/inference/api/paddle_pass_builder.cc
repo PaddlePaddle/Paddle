@@ -330,6 +330,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              // "mkldnn_inplace_pass",  // This pass should be activated after
              // fuses. Disabled by default due to
              // little gain and lots of problems
+             "operator_scale_onednn_fuse_pass",  //
          })) {
       passes_.push_back(pass);
     }
