@@ -35,8 +35,7 @@ def _check_version(version: str) -> bool:
 
 
 def list_available_backends() -> List[str]:
-    """ List available backends, the backends in paddleaudio and
-        the default backend.
+    """ List available backends, the backends in paddleaudio and the default backend.
 
     Returns:
         List[str]: The list of available backends.

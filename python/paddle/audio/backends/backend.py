@@ -65,7 +65,7 @@ def load(filepath: Union[str, Path],
          num_frames: int = -1,
          normalize: bool = True,
          channels_first: bool = True) -> Tuple[paddle.Tensor, int]:
-    """Load audio data from file.load the audio content start form frame_offset, and get num_frames.
+    """Load audio data from file.Load the audio content start form frame_offset, and get num_frames.
 
     Args:
         frame_offset: from 0 to total frames,
@@ -112,7 +112,7 @@ def save(
     """
     Save audio tensor to file.
 
-    Parameters:
+    Args:
         filepath: saved path
         src: the audio tensor
         sample_rate: the number of samples of audio per second.
