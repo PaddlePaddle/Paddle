@@ -78,7 +78,7 @@ function(kernel_declare TARGET_LIST)
     string(
       REGEX
         MATCH
-        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[ \t\r\n\/]*[a-z0-9_]*"
+        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z]*,[ \\\t\r\n]*[A-Z_]*"
         first_registry
         "${kernel_impl}")
     if(NOT first_registry STREQUAL "")
@@ -89,38 +89,23 @@ function(kernel_declare TARGET_LIST)
           continue()
         endif()
       endif()
-      # parse the first kernel name
-      string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_name "${first_registry}")
-      string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_name
-                     "${kernel_name}")
-      string(REPLACE "," "" kernel_name "${kernel_name}")
-      string(REGEX REPLACE "[ \t\r\n]+" "" kernel_name "${kernel_name}")
-      string(REGEX REPLACE "//cuda_only" "" kernel_name "${kernel_name}")
+      # parse the registerd kernel message
+      string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${first_registry}")
+      string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_msg
+                     "${kernel_msg}")
+      string(REPLACE "," ";" kernel_msg "${kernel_msg}")
+      string(REGEX REPLACE "[ \\\t\r\n]+" "" kernel_msg "${kernel_msg}")
+      string(REGEX REPLACE "//cuda_only" "" kernel_msg "${kernel_msg}")
+
+      list(GET kernel_msg 0 kernel_name)
+      list(GET kernel_msg 1 kernel_backend)
+      list(GET kernel_msg 2 kernel_layout)
+
       # append kernel declare into declarations.h
-      # TODO(chenweihang): default declare ALL_LAYOUT for each kernel
-      if(${kernel_path} MATCHES "./cpu\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, CPU, ALL_LAYOUT);\n")
-      elseif(${kernel_path} MATCHES "./gpu\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, GPU, ALL_LAYOUT);\n")
-      elseif(${kernel_path} MATCHES "./xpu\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, XPU, ALL_LAYOUT);\n")
-      elseif(${kernel_path} MATCHES "./gpudnn\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, GPUDNN, ALL_LAYOUT);\n")
-      elseif(${kernel_path} MATCHES "./kps\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, KPS, ALL_LAYOUT);\n")
-      elseif(${kernel_path} MATCHES "./onednn\/")
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, OneDNN, ALL_LAYOUT);\n")
-      else()
-        # deal with device independent kernel, now we use CPU temporaary
-        file(APPEND ${kernel_declare_file}
-             "PD_DECLARE_KERNEL(${kernel_name}, CPU, ALL_LAYOUT);\n")
-      endif()
+      file(
+        APPEND ${kernel_declare_file}
+        "PD_DECLARE_KERNEL(${kernel_name}, ${kernel_backend}, ${kernel_layout});\n"
+      )
     endif()
   endforeach()
 endfunction()

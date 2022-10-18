@@ -20,7 +20,7 @@ from paddle.vision.models import resnet50
 from paddle.jit import to_static
 from paddle.static import InputSpec
 
-from paddle.inference import PrecisionType, BackendType
+from paddle.inference import PrecisionType, PlaceType
 from paddle.inference import convert_to_mixed_precision
 
 
@@ -38,7 +38,7 @@ class TestConvertToMixedPrecision(unittest.TestCase):
                                    'resnet50/inference.pdiparams',
                                    'mixed/inference.pdmodel',
                                    'mixed/inference.pdiparams',
-                                   PrecisionType.Half, BackendType.GPU, True)
+                                   PrecisionType.Half, PlaceType.GPU, True)
 
     def test_convert_to_fp16_with_fp16_input(self):
         model = resnet50(True)
@@ -49,7 +49,7 @@ class TestConvertToMixedPrecision(unittest.TestCase):
                                    'resnet50/inference.pdiparams',
                                    'mixed1/inference.pdmodel',
                                    'mixed1/inference.pdiparams',
-                                   PrecisionType.Half, BackendType.GPU, False)
+                                   PrecisionType.Half, PlaceType.GPU, False)
 
     def test_convert_to_fp16_with_blacklist(self):
         model = resnet50(True)
@@ -60,7 +60,7 @@ class TestConvertToMixedPrecision(unittest.TestCase):
                                    'resnet50/inference.pdiparams',
                                    'mixed2/inference.pdmodel',
                                    'mixed2/inference.pdiparams',
-                                   PrecisionType.Half, BackendType.GPU, False,
+                                   PrecisionType.Half, PlaceType.GPU, False,
                                    set('conv2d'))
 
     def test_convert_to_bf16(self):
@@ -72,8 +72,7 @@ class TestConvertToMixedPrecision(unittest.TestCase):
                                    'resnet50/inference.pdiparams',
                                    'mixed3/inference.pdmodel',
                                    'mixed3/inference.pdiparams',
-                                   PrecisionType.Bfloat16, BackendType.GPU,
-                                   True)
+                                   PrecisionType.Bfloat16, PlaceType.GPU, True)
 
 
 if __name__ == '__main__':

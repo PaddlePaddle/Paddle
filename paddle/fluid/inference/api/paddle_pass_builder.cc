@@ -84,8 +84,7 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "identity_scale_op_clean_pass",              //
-      "adaptive_pool2d_convert_global_pass",   //
+  "adaptive_pool2d_convert_global_pass",       //
       "shuffle_channel_detect_pass",           //
       "quant_conv2d_dequant_fuse_pass",        //
       "delete_fill_constant_op_pass",          //
@@ -93,6 +92,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_quant_dequant_filter_op_pass",   //
       "delete_weight_dequant_linear_op_pass",  //
       "delete_quant_dequant_linear_op_pass",   //
+      "identity_scale_op_clean_pass",          //
       "add_support_int8_pass",                 //
       // "fc_fuse_pass",                        //
       "simplify_with_basic_ops_pass",                 //

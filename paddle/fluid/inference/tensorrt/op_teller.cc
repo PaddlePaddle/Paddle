@@ -46,6 +46,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
+    int8_teller_set.insert("flatten_contiguous_range");
     teller_set.insert("rnn");
     int8_teller_set.insert("rnn");
     teller_set.insert("fill_constant_batch_size_like");
@@ -326,6 +327,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "bmm") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
     if (op_type == "matmul_v2") {
       if (!with_dynamic_shape) {
         return false;
@@ -532,6 +539,16 @@ struct SimpleOpTypeSetTeller : public Teller {
           VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
                      "Developers need to check whether block_desc is passed in "
                      "the pass.";
+          return false;
+        }
+
+        auto index_var_name = desc.Input("Index")[0];
+        auto* index_var_desc = block->FindVar(index_var_name);
+
+        // The index input must be int32 datatype.
+        if (index_var_desc->GetDataType() !=
+            paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+          VLOG(3) << "gather op Index input data type must be int32";
           return false;
         }
 #if !IS_TRT_VERSION_GE(7000)
@@ -1207,7 +1224,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
-        op_type == "elementwise_pow") {
+        op_type == "elementwise_pow" || op_type == "elementwise_min" ||
+        op_type == "elementwise_max") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1744,13 +1762,13 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "reshape" || op_type == "reshape2") {
-      if (with_dynamic_shape) {
-        return true;
-      }
       if (!desc.HasAttr("shape")) {
         return false;
       }
-      // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
+      if (with_dynamic_shape) {
+        return true;
+      }
+      // Static shape does not support the input tensors: Shape and ShapeTensor
       auto reshape_inputs = desc.Inputs();
       if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
         if (desc.Input("Shape").size() >= 1) {
@@ -2096,6 +2114,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mul",
       "matmul",
       "matmul_v2",
+      "bmm",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2136,6 +2155,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "elementwise_min",
+      "elementwise_max",
       "equal",
       "dropout",
       "prelu",
@@ -2206,6 +2227,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mul",
       "matmul",
       "matmul_v2",
+      "bmm",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2246,6 +2268,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "elementwise_min",
+      "elementwise_max",
       "equal",
       "dropout",
       "prelu",
@@ -2329,6 +2353,14 @@ struct GenericPluginTeller : public Teller {
     if (op_type == "yolo_box") {
       if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
         return false;
+    }
+    if (op_type == "pad3d") {
+      auto pad3d_inputs = desc.Inputs();
+      if (pad3d_inputs.find("Paddings") != pad3d_inputs.end()) {
+        if (desc.Input("Paddings").size() >= 1) {
+          return false;
+        }
+      }
     }
     if (use_no_calib_int8) {
       return false;

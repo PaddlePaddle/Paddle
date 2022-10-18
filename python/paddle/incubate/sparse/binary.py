@@ -14,6 +14,9 @@
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import dygraph_only, core
+from paddle import in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
+from .unary import cast
 
 __all__ = []
 
@@ -253,8 +256,20 @@ def add(x, y, name=None):
 
     """
     if y.dtype != x.dtype:
-        y = _C_ops.sparse_cast(y, None, x.dtype)
-    return _C_ops.sparse_add(x, y)
+        y = cast(y, None, x.dtype)
+
+    if in_dynamic_mode():
+        return _C_ops.sparse_add(x, y)
+    else:
+        op_type = 'sparse_add'
+        inputs = {'x': x, 'y': y}
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs={'out': out},
+                         attrs={})
+        return out
 
 
 @dygraph_only
@@ -399,3 +414,36 @@ def divide(x, y, name=None):
         if y.dtype != x.dtype:
             y = _C_ops.sparse_cast(y, None, x.dtype)
         return _C_ops.sparse_divide(x, y)
+
+
+@dygraph_only
+def is_same_shape(x, y):
+    """
+    Return the results of shape comparison between two Tensors, check whether x.shape equal to y.shape.
+    Any two type Tensor among DenseTensor/SparseCooTensor/SparseCsrTensor are supported.
+
+    Args:
+        x (Tensor): The input tensor. It can be DenseTensor/SparseCooTensor/SparseCsrTensor.
+        y (Tensor): The input tensor. It can be DenseTensor/SparseCooTensor/SparseCsrTensor.
+
+    Returns:
+        bool: True for same shape and False for different shape.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.rand([2, 3, 8])
+            y = paddle.rand([2, 3, 8])
+            y = y.to_sparse_csr()
+            z = paddle.rand([2, 5])
+
+            paddle.incubate.sparse.is_same_shape(x, y)
+            # True
+            paddle.incubate.sparse.is_same_shape(x, z)
+            # False
+
+    """
+    return x.is_same_shape(y)
