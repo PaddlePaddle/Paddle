@@ -68,8 +68,7 @@ class TESS(AudioClassificationDataset):
 
             tess_dataset = paddle.audio.datasets.TESS(mode=mode,
                                                     feat_type='mfcc',
-                                                    n_mfcc=40,
-                                                    archive=archive)
+                                                    n_mfcc=40)
             for elem in tess_dataset:
                 audio = elem[0]
                 label = elem[1]

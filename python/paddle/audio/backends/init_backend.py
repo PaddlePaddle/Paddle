@@ -56,7 +56,7 @@ def list_available_backends() -> List[str]:
 
             current_backend = paddle.audio.backends.get_current_audio_backend()
             print(current_backend) # wave_backend, the default backend.
-            bakends = paddle.audio.backends.list_available_backends()
+            backends = paddle.audio.backends.list_available_backends()
             # default backends is ['wave_backend']
             # backends is ['wave_backend', 'soundfile'], if have installed paddleaudio >= 1.0.2
             if 'soundfile' in backends:
@@ -114,7 +114,7 @@ def get_current_audio_backend() -> str:
 
             current_backend = paddle.audio.backends.get_current_audio_backend()
             print(current_backend) # wave_backend, the default backend.
-            bakends = paddle.audio.backends.list_available_backends()
+            backends = paddle.audio.backends.list_available_backends()
             # default backends is ['wave_backend']
             # backends is ['wave_backend', 'soundfile'], if have installed paddleaudio >= 1.0.2
 
@@ -158,7 +158,7 @@ def set_backend(backend_name: str):
 
             current_backend = paddle.audio.backends.get_current_audio_backend()
             print(current_backend) # wave_backend, the default backend.
-            bakends = paddle.audio.backends.list_available_backends()
+            backends = paddle.audio.backends.list_available_backends()
             # default backends is ['wave_backend']
             # backends is ['wave_backend', 'soundfile'], if have installed paddleaudio >= 1.0.2
 
