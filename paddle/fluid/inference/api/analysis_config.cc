@@ -443,6 +443,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_adaptive_seqlen_);
   CP_MEMBER(xpu_enable_multi_stream_);
 
+  // Lite OpenCL Related
+  CP_MEMBER(use_opencl_);
+
   // NPU related.
   CP_MEMBER(use_npu_);
   CP_MEMBER(npu_device_id_);
@@ -1135,6 +1138,11 @@ void AnalysisConfig::EnableLiteEngine(
   lite_passes_filter_ = passes_filter;
   lite_ops_filter_ = ops_filter;
   lite_zero_copy_ = zero_copy;
+  Update();
+}
+
+void AnalysisConfig::EnableOpenCL() {
+  use_opencl_ = true;
   Update();
 }
 
