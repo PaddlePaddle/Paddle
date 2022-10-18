@@ -99,8 +99,20 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_interface MODULES test_interface)
   py_test_modules(test_strategy MODULES test_strategy)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization)
+
   py_test_modules(test_dist_shape MODULES test_dist_shape)
   py_test_modules(test_dist_assign MODULES test_dist_assign)
   py_test_modules(test_conditional_block_reshard MODULES
                   test_conditional_block_reshard)
+
+  py_test_modules(test_parallel_tuner MODULES test_parallel_tuner ENVS
+                  ${dist_ENVS})
+  set_tests_properties(test_parallel_tuner PROPERTIES TIMEOUT 120)
+  py_test_modules(test_parallel_tuner_full MODULES test_parallel_tuner_full
+                  ENVS ${dist_ENVS})
+  set_tests_properties(test_parallel_tuner_full PROPERTIES TIMEOUT 120)
+  py_test_modules(test_parallel_tuner_predict MODULES
+                  test_parallel_tuner_predict ENVS ${dist_ENVS})
+  set_tests_properties(test_parallel_tuner_predict PROPERTIES TIMEOUT 120)
+
 endif()
