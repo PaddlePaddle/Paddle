@@ -161,11 +161,6 @@ cc_test(
   DEPS allocator)
 
 if(WITH_TESTING)
-  if(TEST buddy_allocator_test)
-    set_tests_properties(buddy_allocator_test PROPERTIES LABELS
-                                                         "RUN_TYPE=EXCLUSIVE")
-  endif()
-
   # TODO(zhiqiu): why not win32? because wget is not found on windows
   if(NOT WIN32)
     add_custom_target(

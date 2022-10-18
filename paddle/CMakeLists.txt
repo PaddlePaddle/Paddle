@@ -13,6 +13,29 @@ add_subdirectory(phi)
 add_subdirectory(infrt)
 add_subdirectory(fluid)
 
+# NOTE(zhiqiu): The changes of cc tests
+# Before, (1) the source file of cc tests are distributed in different sub-directories,
+# (2) the tests are added and configured by calling `cc_test()` in each `CMakeLists.txt`,
+# (3) the tests links static libraries of paddle modules,
+# (4) the tests binaries are generated in different directories, as the same as the
+# folder of source file.
+
+# Now, we want to make all cc tests dynamically linked to the main paddle labrary,
+# i.e., `libpaddle.so`, so we changes the logic of (2), (3), (4):
+# (2) calling `cc_test()` in each `CMakeLists.txt` will not `exactly` add test, but
+# record all tests and its source files, the action of add tests is defered to HERE.
+# Why doing so? since the target of `libpaddle.so` is mostly the last target, and
+# the tests should be added after that accroding to dependency.
+# (3) the tests links dynamic libraries, `libpaddle.so`
+# (4) the tests are generated to the same directory, i.e., `CC_TESTS_DIR` defined above.
+
+# Next, (to be discusssed)
+# (1) move all source files to same folder,
+# (2) naturally, and and configure tests in only one `CMakeLists.txt`,
+# (3) cc tests support linking pre-built dynamic libraries. For example, use the dynamic
+# library in the installed paddle by `pip`.
+
+# add all tests here
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
 get_property(test_names GLOBAL PROPERTY TEST_NAMES)
 # message("test_srcs ${test_srcs}")
@@ -58,15 +81,24 @@ if(${len} GREATER_EQUAL 1)
   endforeach()
 endif()
 
-set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
-add_dependencies(standalone_executor_test download_program)
+# set properties for some tests, it should be set after the tests defined.
+if(TARGET standalone_executor_test)
+  set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
+  add_dependencies(standalone_executor_test download_program)
+endif()
 
-add_dependencies(layer_test jit_download_program)
-add_dependencies(layer_test_new jit_download_program)
-set_tests_properties(layer_test_new PROPERTIES ENVIRONMENT
-                                               "FLAGS_jit_engine_type=New")
+if(TARGET layer_test)
+  add_dependencies(layer_test jit_download_program)
+  add_dependencies(layer_test_new jit_download_program)
+  set_tests_properties(layer_test_new PROPERTIES ENVIRONMENT
+                                                 "FLAGS_jit_engine_type=New")
+endif()
 
-add_dependencies(buddy_allocator_test download_data)
+if(TEST buddy_allocator_test)
+  add_dependencies(buddy_allocator_test download_data)
+  set_tests_properties(buddy_allocator_test PROPERTIES LABELS
+                                                       "RUN_TYPE=EXCLUSIVE")
+endif()
 
 # add target to build all cpp tests
 add_custom_target(build_tests)
