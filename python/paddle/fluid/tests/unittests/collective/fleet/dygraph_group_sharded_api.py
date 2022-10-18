@@ -79,6 +79,7 @@ def train_mlp(model,
               output_dir,
               amp_level='O1'):
     group = paddle.distributed.new_group([0, 1])
+    dp_group = paddle.distributed.new_group([paddle.distributed.get_rank()])
 
     optimizer = optimizer_setting(model=model,
                                   use_multi_precision=use_multi_precision)
@@ -90,7 +91,8 @@ def train_mlp(model,
     model, optimizer, scaler = group_sharded_parallel(model=model,
                                                       optimizer=optimizer,
                                                       level=shard_level,
-                                                      scaler=scaler)
+                                                      scaler=scaler,
+                                                      dp_group=dp_group)
 
     train_reader = paddle.batch(reader_decorator(),
                                 batch_size=batch_size,

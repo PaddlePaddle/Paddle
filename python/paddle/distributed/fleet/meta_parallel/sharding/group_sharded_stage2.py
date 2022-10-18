@@ -370,7 +370,7 @@ class GroupShardedStage2(nn.Layer):
                                           sync_op=not self._reduce_overlap))
 
                     if self._dp_group:
-                        assert not self._comm_overlap, 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
+                        assert not self._reduce_overlap, 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
                         #TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
                         collective.all_reduce(tensor=param.grad,
                                               group=self._dp_group,
@@ -427,7 +427,7 @@ class GroupShardedStage2(nn.Layer):
                                 sync_op=not self._reduce_overlap))
 
                         if self._dp_group:
-                            assert not self._comm_overlap, 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
+                            assert not self._reduce_overlap, 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
                             #TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
                             collective.all_reduce(tensor=grad_storage.buffer,
                                                   group=self._dp_group,
