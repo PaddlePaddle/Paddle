@@ -1460,11 +1460,6 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
                            MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(!shape.empty(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The parameter 'shape' in ReshapeOp must be set. "
-                        "But received 'shape' is empty."));
   auto x_dims = x.dims();
   auto out_dims = ValidateShape(shape, x_dims);
   out->set_dims(out_dims);
@@ -2833,6 +2828,7 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
   out->share_lod(x);
   out->set_dtype(x.dtype());
 }
+
 void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,
                       MetaTensor* out,
@@ -2846,10 +2842,6 @@ void ReshapeInferMeta(const MetaTensor& x,
     out->share_lod(x);
     return;
   }
-  PADDLE_ENFORCE_GT(shape_data.size(),
-                    0,
-                    phi::errors::InvalidArgument(
-                        "The shape's size in ReshapeOp can't be zero."));
   InferMetaFromVecValue(x, shape_data, out);
 }
 
