@@ -203,11 +203,11 @@ class DimsSimplifier {
     if ((rank_ == 2 && perm_[1] == 0 && perm_[0] == 1) ||
         (rank_ == 3 && perm_[2] == 1 && perm_[1] == 2)) {
       type_ = PermuteType::kTranspose;
-      int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
       // With bytes limitation of shared_memory, the VecSize shall be
       // restricted for the type whose byte-size is less than 8 (double).
+      int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
       vec_size =
-          sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, src_dims[rank_ - 1]);
+          sizeof(T) > 4 ? 1 : GetDimVesSize(tmp_vec, src_dims[rank_ - 1]);
     }
     return vec_size;
   }
