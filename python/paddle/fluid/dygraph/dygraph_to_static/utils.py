@@ -82,7 +82,9 @@ dygraph_class_to_static_api = {
     "PiecewiseDecay": "piecewise_decay",
     "PolynomialDecay": "polynomial_decay",
 }
-TEMP_DIR = "./Temp"
+
+TEMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Temp")
+DEL_TEMP_DIR = True  # A flag to avoid atexit.register more than once
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
 FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
 FOR_ITER_TARGET_PREFIX = '__for_loop_iter_target'
@@ -553,6 +555,11 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     TODO: If only decorate one of inner function instead of decorating the main
     function, the other inner functions are invisible for the decorated function.
     """
+
+    def remove_if_exit(dir_path):
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
+
     if not os.path.exists(TEMP_DIR):
         os.mkdir(TEMP_DIR)
     source = ast_to_source_code(ast_root)
@@ -567,9 +574,11 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         module_name = os.path.basename(f.name[:-3])
         f.write(source)
 
-    if delete_on_exit:
+    global DEL_TEMP_DIR
+    if delete_on_exit and DEL_TEMP_DIR:
         # Clear temporary files in TEMP_DIR while exitting Python process
-        atexit.register(lambda: shutil.rmtree(TEMP_DIR))
+        atexit.register(remove_if_exit, dir_path=TEMP_DIR)
+        DEL_TEMP_DIR = False
 
     module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
