@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
-import copy
-import json
 import unittest
 
 import paddle
@@ -24,13 +19,9 @@ import paddle.nn as nn
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.utils as utils
-from paddle.distributed import fleet
-import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.utils import SerialProgramInfo
-from paddle.distributed.auto_parallel.planner import PlanSpace, PlanFilter
+from paddle.distributed.fleet import auto
+from paddle.distributed.auto_parallel.planner import PlanSpace
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.utils import get_all_distributed_main_program
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute
 from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.utils import update_op_dims_mapping_by_default_dist_impl

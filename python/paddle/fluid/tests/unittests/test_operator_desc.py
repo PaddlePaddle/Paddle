@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle.fluid.core as core
-import paddle.compat as cpt
 
 from paddle.fluid.framework import Program, default_startup_program
 
@@ -33,15 +30,14 @@ class TestOperator(unittest.TestCase):
             self.assertFail()
         except ValueError as v_err:
             self.assertEqual(
-                cpt.get_exception_message(v_err),
+                str(v_err),
                 "`type` to initialized an Operator can not be None.")
         try:
             block.append_op(type="no_such_op")
             self.assertFail()
         except ValueError as a_err:
             self.assertEqual(
-                cpt.get_exception_message(a_err),
-                "Operator \"no_such_op\" has not been registered.")
+                str(a_err), "Operator \"no_such_op\" has not been registered.")
 
     def test_op_desc_creation(self):
         program = Program()
@@ -77,9 +73,7 @@ class TestOperator(unittest.TestCase):
             set(mul_op.attr_names),
             set([
                 "x_num_col_dims", "y_num_col_dims", "op_role", "op_role_var",
-                "use_mkldnn", "scale_x", "scale_y", "scale_out",
-                "force_fp32_output", "op_namescope", "op_callstack",
-                "op_device", "with_quant_attr"
+                "op_namescope", "op_callstack", "op_device", "with_quant_attr"
             ]))
         self.assertEqual(mul_op.has_attr("x_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("x_num_col_dims"), core.AttrType.INT)

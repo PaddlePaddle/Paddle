@@ -101,7 +101,7 @@ else()
     cc_library(gather_scatter_kernel SRCS gather_scatter_kernel.cc gather_scatter_kernel.cu DEPS tensor)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils gather_scatter_kernel backward_infermeta)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils gather_scatter_kernel backward_infermeta sparse_backward_infermeta)
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op quantize_linear_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
@@ -254,3 +254,7 @@ cc_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc DEPS op_registry cop
 endif()
 
 copy_if_different(${pybind_file} ${pybind_file_final})
+
+if (WITH_CUSTOM_DEVICE)
+cc_library(custom_device_common_op_registry SRCS custom_device_common_op_registry.cc DEPS operator)
+endif()

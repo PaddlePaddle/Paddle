@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -32,8 +30,8 @@ class TestMseLoss(unittest.TestCase):
         sub = input_val - label_val
         np_result = np.mean(sub * sub)
 
-        input_var = layers.create_tensor(dtype="float32", name="input")
-        label_var = layers.create_tensor(dtype="float32", name="label")
+        input_var = fluid.data(name="input", shape=[-1, 3], dtype="float32")
+        label_var = fluid.data(name="label", shape=[-1, 3], dtype="float32")
 
         output = layers.mse_loss(input=input_var, label=label_var)
         for use_cuda in ([False, True]
@@ -56,7 +54,7 @@ class TestMseInvalidInput(unittest.TestCase):
 
         def test_invalid_input():
             input = [256, 3]
-            label = fluid.data(name='label', shape=[None, 3], dtype='float32')
+            label = fluid.data(name='label1', shape=[None, 3], dtype='float32')
             loss = fluid.layers.mse_loss(input, label)
 
         self.assertRaises(TypeError, test_invalid_input)

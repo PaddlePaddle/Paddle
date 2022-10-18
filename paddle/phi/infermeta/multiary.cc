@@ -301,7 +301,16 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   phi::DDim in_dim({0});
   for (size_t i = 0; i < x.size(); ++i) {
     auto x_dim = x[i]->dims();
+    // x_dim.size() == 1 means the real dim of selected rows is [0]
+    if (x[i]->is_selected_rows() && x_dim.size() == 1) {
+      continue;
+    }
+    // for zero-sized tensor
     if (phi::product(x_dim) == 0) {
+      continue;
+    }
+    // for 0D tensor
+    if (x_dim.size() == 0) {
       continue;
     }
     if (phi::product(in_dim) == 0) {
@@ -353,6 +362,31 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
   }
   out->set_dims(in_dim);
   out->share_lod(*x[0]);
+}
+
+// TODO(YuanRisheng) This InferMeta is used in Fluid
+//                   and will be deleted in the future.
+void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
+                              MetaTensor* out,
+                              MetaConfig config) {
+  int64_t max_length = 0;
+  bool has_tensor_array = false;
+  for (auto input : x) {
+    if (input->is_tensor_array()) {
+      has_tensor_array = true;
+      // if input is lod_tensor_array, dims() will return its size (one element)
+      max_length =
+          input->dims()[0] > max_length ? input->dims()[0] : max_length;
+    }
+  }
+
+  if (has_tensor_array) {
+    if (out->is_tensor_array()) {
+      out->set_dims(make_ddim({max_length}));
+    }
+  } else {
+    AddNInferMeta(x, out, config);
+  }
 }
 
 void AucInferMeta(const MetaTensor& input,
@@ -530,8 +564,7 @@ void BatchNormInferMeta(const MetaTensor& x,
             x_dims));
   }
 
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
   PADDLE_ENFORCE_GE(
       x_dims.size(),
@@ -609,6 +642,7 @@ void BatchNormInferMeta(const MetaTensor& x,
     saved_variance->set_dims({C});
   }
   y->share_lod(x);
+  y->set_dtype(x.dtype());
 }
 
 void BatchNormInferInferMeta(const MetaTensor& x,
@@ -833,6 +867,24 @@ void CoalesceTensorInferMeta(const std::vector<const MetaTensor*>& input,
       VLOG(4) << "fused_output size:" << phi::make_ddim({numel});
     }
   }
+}
+
+void CheckMemoryContinueInferMeta(const std::vector<const MetaTensor*>& input,
+                                  MetaTensor* output,
+                                  std::vector<MetaTensor*> xout,
+                                  MetaConfig config) {
+  if (config.is_runtime) {
+    return;
+  }
+  int64_t numel = 0;
+  for (size_t i = 0; i < input.size(); ++i) {
+    const auto& dim = input[i]->dims();
+    auto size = phi::product(dim);
+    auto len = size * paddle::experimental::SizeOf(input[i]->dtype());
+    numel += len;
+  }
+  output->set_dims(phi::make_ddim({numel}));
+  output->set_dtype(phi::DataType::INT8);
 }
 
 void ConcatInferMeta(const std::vector<const MetaTensor*>& x,
@@ -1333,8 +1385,7 @@ static void Interpolate1DInferShapeCheck(
                         "Interpolation method can only be \"linear\" when"
                         "Input(X) dimension is 3, but got method = %s .",
                         interp_method));
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   for (int i = 0; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(
         dim_x[i],
@@ -1461,8 +1512,7 @@ static void Interpolate2DInferShapeCheck(
           "Interpolation method can only be \"bilinear\" or \"nearest\" when "
           "Input(X) dimension is 4, but got method = %s.",
           interp_method));
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
   for (int i = 0; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(
@@ -1605,8 +1655,7 @@ static void Interpolate3DInferShapeCheck(
                      "\"nearest\" when Input(X) "
                      "dimension is 5, but got method = %s .",
                      interp_method));
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
   for (int i = 0; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(
@@ -2408,7 +2457,8 @@ void SgdInferMeta(const MetaTensor& param,
 
 void StackInferMeta(const std::vector<const MetaTensor*>& x,
                     int axis,
-                    MetaTensor* out) {
+                    MetaTensor* out,
+                    MetaConfig config) {
   PADDLE_ENFORCE_GT(x.size(),
                     0UL,
                     phi::errors::InvalidArgument(
@@ -2416,17 +2466,10 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
                         " received value is:%d.",
                         x.size()));
   const auto& input_dims = GetMetaTensorsDim(x);
-  for (size_t i = 1; i < input_dims.size(); ++i) {
-    PADDLE_ENFORCE_EQ(input_dims[i],
-                      input_dims[0],
-                      phi::errors::InvalidArgument(
-                          "Dims of all Inputs(X) must be the same, but"
-                          " received input %d dim is:%d not equal to input 0"
-                          " dim:%d.",
-                          i,
-                          input_dims[i],
-                          input_dims[0]));
-  }
+  // we reuse concat logic to compute out_dim. we set concat_axis==-1 to check
+  // every axis in input_tensors.
+  auto out_dim =
+      phi::funcs::ComputeAndCheckShape(config.is_runtime, input_dims, -1);
   int rank = input_dims[0].size();
   PADDLE_ENFORCE_GE(
       axis,
@@ -2445,7 +2488,7 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
           rank,
           axis));
   if (axis < 0) axis += (rank + 1);
-  auto vec = phi::vectorize<int>(input_dims[0]);
+  auto vec = phi::vectorize<int>(out_dim);
   vec.insert(vec.begin() + axis, input_dims.size());
   out->set_dims(phi::make_ddim(vec));
   out->set_dtype(x.at(0)->dtype());
@@ -2454,6 +2497,14 @@ void StackInferMeta(const std::vector<const MetaTensor*>& x,
 
 void UnchangedMultiInferMeta(const std::vector<const MetaTensor*>& x,
                              std::vector<MetaTensor*> out) {
+  PADDLE_ENFORCE_EQ(
+      x.size(),
+      out.size(),
+      phi::errors::InvalidArgument(
+          "Input's size should be equal to the output's size"
+          "but received input size: (%d) does not equals output_size: (%d)",
+          x.size(),
+          out.size()));
   for (size_t i = 0; i < x.size(); ++i) {
     if (out[i]) {
       out[i]->share_meta(*x[i]);
@@ -2479,8 +2530,10 @@ void UpdateLossScalingInferMeta(const std::vector<const MetaTensor*>& xs,
                         xs.size(),
                         outs.size()));
   for (size_t i = 0; i < xs.size(); ++i) {
-    outs[i]->set_dims(xs[i]->dims());
-    outs[i]->set_dtype(xs[i]->dtype());
+    if (xs[i] != nullptr && outs[i] != nullptr) {
+      outs[i]->set_dims(xs[i]->dims());
+      outs[i]->set_dtype(xs[i]->dtype());
+    }
   }
   loss_scaling->set_dims({1});
   out_good_steps->set_dims({1});
@@ -2495,8 +2548,8 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* warpctcgrad,
-                      MetaTensor* loss) {
+                      MetaTensor* loss,
+                      MetaTensor* warpctcgrad) {
   auto logits_dims = logits.dims();
   int sequence_width = 0;
 
@@ -2858,5 +2911,4 @@ void GraphSendUVInferMeta(const MetaTensor& x,
 
 }  // namespace phi
 
-PD_REGISTER_INFER_META_FN(batch_norm, phi::BatchNormInferMeta);
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

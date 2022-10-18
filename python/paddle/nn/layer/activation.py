@@ -14,7 +14,6 @@
 
 # TODO: define activation functions of neural network
 
-from ...framework import ParamAttr
 from ..initializer import Constant
 from paddle.framework import get_default_dtype
 from .. import functional as F
@@ -28,7 +27,7 @@ class CELU(Layer):
     CELU Activation.
 
     .. math::
-    
+
         CELU(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
 
     Parameters:
@@ -44,7 +43,7 @@ class CELU(Layer):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.to_tensor([[-1. ,6.], [1., 15.6]])
             m = paddle.nn.CELU(0.2)
             out = m(x)
@@ -140,7 +139,7 @@ class GELU(Layer):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
 
             x = paddle.to_tensor([[-1, 0.5],[1, 1.5]])
@@ -215,9 +214,8 @@ class Hardshrink(Layer):
 
 class Hardswish(Layer):
     r"""
-    Hardswish activation
-
-    Hardswish is proposed in MobileNetV3, and performs better in computational stability
+    Hardswish activation. Create a callable object of `Hardswish`. Hardswish
+    is proposed in MobileNetV3, and performs better in computational stability
     and efficiency compared to swish function. For more details please refer
     to: https://arxiv.org/pdf/1905.02244.pdf
 
@@ -231,7 +229,7 @@ class Hardswish(Layer):
                 \frac{x(x+3)}{6} &, & \text{otherwise}
                 \end{array}
             \right.
-            
+
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -307,7 +305,7 @@ class Tanh(Layer):
 
 class Hardtanh(Layer):
     r"""
-    Hardtanh Activation
+    Hardtanh Activation. Create a callable object of `Hardtanh`.
 
     .. math::
 
@@ -659,7 +657,8 @@ class SELU(Layer):
 
 class LeakyReLU(Layer):
     r"""
-    Leaky ReLU Activation.
+    Leaky ReLU Activation. Create a callable object of `LeakyReLU` to calculate
+    the `LeakyReLU` of input `x`.
 
     .. math::
 
@@ -686,10 +685,9 @@ class LeakyReLU(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             m = paddle.nn.LeakyReLU()
-            x = paddle.to_tensor(np.array([-2, 0, 1], 'float32'))
+            x = paddle.to_tensor([-2.0, 0, 1])
             out = m(x)  # [-0.02, 0., 1.]
     """
 
@@ -707,15 +705,15 @@ class LeakyReLU(Layer):
 
 
 class Sigmoid(Layer):
-    """
+    r"""
     this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.
 
     .. math::
 
-        Sigmoid(x) = \\frac{1}{1 + e^{-x}}
+        sigmoid(x) = \frac{1}{1 + e^{-x}}
 
     Parameters:
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
         x: N-D tensor, available dtype is float16, float32, float64.
@@ -727,11 +725,11 @@ class Sigmoid(Layer):
 
         .. code-block:: python
 
-          import paddle
+            import paddle
 
-          m = paddle.nn.Sigmoid()
-          x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-          out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+            m = paddle.nn.Sigmoid()
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
     def __init__(self, name=None):
@@ -748,8 +746,8 @@ class Sigmoid(Layer):
 
 class Hardsigmoid(Layer):
     r"""
-    This interface is used to construct a callable object of the ``Hardsigmoid`` class.
-    This layer calcluate the `hardsigmoid` of input x.
+    ``Hardsigmoid`` Activiation Layers, Construct a callable object of
+    the ``Hardsigmoid`` class. This layer calcluate the `hardsigmoid` of input x.
 
     A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
     which is much faster than sigmoid.
@@ -764,7 +762,6 @@ class Hardsigmoid(Layer):
             x/6 + 1/2, & & \text{otherwise}
                 \end{array}
             \right.
-
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -803,15 +800,15 @@ class Softplus(Layer):
     Softplus Activation
 
     .. math::
-
-        Softplus(x) = \frac{1}{beta} * \log(1 + e^{beta * x}) \\
-        \text{For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.}
+        softplus(x)=\begin{cases}
+                \frac{1}{\beta} * \log(1 + e^{\beta * x}),&x\leqslant\frac{\varepsilon}{\beta};\\
+                x,&x>\frac{\varepsilon}{\beta}.
+            \end{cases}
 
     Parameters:
-        beta (float, optional): The value of beta for Softplus. Default is 1
-        threshold (float, optional): The value of threshold for Softplus. Default is 20
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        beta (float, optional): The value of :math:`\beta` for Softplus. Default is 1
+        threshold (float, optional): The value of :math:`\varepsilon` for Softplus. Default is 20
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
         - input: Tensor with any shape.
@@ -821,9 +818,8 @@ class Softplus(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = paddle.to_tensor(np.array([-0.4, -0.2, 0.1, 0.3]))
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
             m = paddle.nn.Softplus()
             out = m(x) # [0.513015, 0.598139, 0.744397, 0.854355]
     """
@@ -982,7 +978,7 @@ class Mish(Layer):
             \end{cases}
 
         Mish(x) = x * \tanh(softplus(x))
-    
+
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
@@ -990,7 +986,7 @@ class Mish(Layer):
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
-    
+
     Examples:
 
         .. code-block:: python
@@ -1103,16 +1099,17 @@ class ThresholdedReLU(Layer):
 
 
 class Silu(Layer):
-    """
-    Silu Activation.
+    r"""
+    Silu Activation
+
     .. math::
 
-        Silu(x) = \frac{x}{1 + e^{-x}}
+        silu(x) = \frac{x}{1 + \mathrm{e}^{-x}}
+
+    Where :math:`x` is the input Tensor.
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, or float64.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
         - input: Tensor with any shape.
@@ -1273,15 +1270,13 @@ class Softmax(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.array([[[2.0, 3.0, 4.0, 5.0],
+            x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
                         [3.0, 4.0, 5.0, 6.0],
                         [7.0, 8.0, 8.0, 9.0]],
                         [[1.0, 2.0, 3.0, 4.0],
                         [5.0, 6.0, 7.0, 8.0],
-                        [6.0, 7.0, 8.0, 9.0]]], 'float32')
-            x = paddle.to_tensor(x)
+                        [6.0, 7.0, 8.0, 9.0]]], dtype='float32')
             m = paddle.nn.Softmax()
             out = m(x)
             # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
@@ -1366,7 +1361,7 @@ class LogSoftmax(Layer):
 
 class Maxout(Layer):
     r"""
-    Maxout Activation.
+    Maxout Activation. Create a callable object of `Maxout`.
 
     Assumed the input shape is (N, Ci, H, W).
     The output shape is (N, Co, H, W).

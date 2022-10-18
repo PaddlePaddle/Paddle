@@ -106,6 +106,7 @@ from .manipulation import scatter_nd  # noqa: F401
 from .manipulation import shard_index  # noqa: F401
 from .manipulation import slice  # noqa: F401
 from .manipulation import split  # noqa: F401
+from .manipulation import vsplit  # noqa: F401
 from .manipulation import squeeze  # noqa: F401
 from .manipulation import squeeze_  # noqa: F401
 from .manipulation import stack  # noqa: F401
@@ -238,6 +239,7 @@ from .math import heaviside  # noqa: F401
 from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
+from .math import frexp  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -428,6 +430,7 @@ tensor_method_func = [  # noqa
     'shard_index',
     'slice',
     'split',
+    'vsplit',
     'chunk',
     'tensordot',
     'squeeze',
@@ -515,6 +518,7 @@ tensor_method_func = [  # noqa
     'take',
     'bucketize',
     'sgn',
+    'frexp',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

@@ -15,9 +15,7 @@
 import os
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.distributed as dist
-import test_communication_api_base as test_base
 import test_collective_api_base as test_collective_base
 
 

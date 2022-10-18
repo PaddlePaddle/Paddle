@@ -18,6 +18,13 @@ from op_test import OpTest
 import paddle
 
 
+def Heaviside_grad(x, y, dout):
+    tmp = np.zeros(x.shape).astype("float16")
+    dx = np.multiply(tmp, dout)
+    dy = np.multiply(np.equal(x, 0), dout).astype("float16")
+    return dx, dy
+
+
 class TestElementwiseOp(OpTest):
 
     def setUp(self):
@@ -150,6 +157,30 @@ class TestHeavisideAPI_int32(TestHeavisideAPI_float64):
         self.y_np = np.random.random((13, 17)).astype("int32")
         self.out_np = np.heaviside(self.x_np, self.y_np)
         self.dtype = "int32"
+
+
+class TestHeavisideAPI_float16(OpTest):
+
+    def setUp(self):
+        self.dtype = np.float16
+        self.op_type = "elementwise_heaviside"
+        self.python_api = paddle.heaviside
+        self.inputs = {
+            'X': np.random.uniform(1, 2, [20, 5]).astype("float16"),
+            'Y': np.random.uniform(1, 2, [20, 5]).astype("float16")
+        }
+        self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=Heaviside_grad(
+                            self.inputs['X'], self.inputs['Y'],
+                            1 / self.inputs['X'].size),
+                        check_eager=True)
 
 
 class TestHeavisideError(unittest.TestCase):

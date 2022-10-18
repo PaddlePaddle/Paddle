@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <thread>
 #include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
 
@@ -94,6 +95,106 @@ inline dnnl::memory::format_tag GetPlainOneDNNFormat(int tensor_rank) {
   }
 }
 
+template <typename Type>
+dnnl::memory::data_type OneDNNGetDataType() {
+  return dnnl::memory::data_type::undef;
+}
+
+template <>
+inline dnnl::memory::data_type OneDNNGetDataType<float>() {
+  return dnnl::memory::data_type::f32;
+}
+template <>
+inline dnnl::memory::data_type OneDNNGetDataType<int32_t>() {
+  return dnnl::memory::data_type::s32;
+}
+template <>
+inline dnnl::memory::data_type OneDNNGetDataType<int8_t>() {
+  return dnnl::memory::data_type::s8;
+}
+template <>
+inline dnnl::memory::data_type OneDNNGetDataType<uint8_t>() {
+  return dnnl::memory::data_type::u8;
+}
+
+template <>
+inline dnnl::memory::data_type OneDNNGetDataType<dtype::bfloat16>() {
+  return dnnl::memory::data_type::bf16;
+}
+
+inline std::vector<std::vector<int64_t>> ToOneDNNPadding(
+    const std::vector<int64_t>& paddings) {
+  if (paddings.size() == 6) {
+    int padding_front = paddings[0];
+    int padding_back = paddings[1];
+    int padding_top = paddings[2];
+    int padding_bottom = paddings[3];
+    int padding_left = paddings[4];
+    int padding_right = paddings[5];
+
+    return {{padding_front, padding_top, padding_left},
+            {padding_back, padding_bottom, padding_right}};
+  } else {
+    int padding_top = paddings[0];
+    int padding_bottom = paddings[1];
+    int padding_left = paddings[2];
+    int padding_right = paddings[3];
+
+    return {{padding_top, padding_left}, {padding_bottom, padding_right}};
+  }
+}
+
+template <typename T>
+inline void AppendKey(std::string* key, const T& num) {
+  key->append(std::to_string(num));
+}
+
+template <>
+inline void AppendKey(std::string* key,
+                      const dnnl::memory::format_tag& format) {
+  key->append(std::to_string(static_cast<int>(format)));
+}
+
+template <>
+inline void AppendKey(std::string* key,
+                      const dnnl::memory::data_type& data_type) {
+  key->append(std::to_string(static_cast<int>(data_type)));
+}
+
+template <>
+inline void AppendKey(std::string* key, const dnnl::algorithm& algorithm) {
+  key->append(std::to_string(static_cast<int>(algorithm)));
+}
+
+template <>
+inline void AppendKey(std::string* key,
+                      const dnnl::normalization_flags& flags) {
+  key->append(std::to_string(static_cast<int>(flags)));
+}
+
+inline void AppendKey(std::string* key, const std::string& str) {
+  key->append(str);
+}
+
+inline void AppendKey(std::string* key, const char* str) { key->append(str); }
+
+template <typename T>
+inline void AppendKey(std::string* key, const std::vector<T>& dims) {
+  for (size_t i = 0; i < dims.size(); i++) {
+    AppendKey(key, std::to_string(dims[i]));
+  }
+}
+
+template <typename... ArgTypes>
+inline std::string CreateKey(const OneDNNContext& dev_ctx, ArgTypes&&... args) {
+  std::string key;
+  key.reserve(64);
+  using expand_type = int[];
+  expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
+  key += OneDNNContext::tls().get_key_suffix();
+  return key;
+}
+
 inline void MatchShapeToLayout(DenseTensor* tensor_in,
                                DataLayout from,
                                DataLayout to) {
@@ -117,28 +218,28 @@ inline void MatchShapeToLayout(DenseTensor* tensor_in,
   // at last nhwC, so for dim==2 these layouts are the same and nothing should
   // be done. Similarly for dim==1 when you have just one possible combination.
   if (tensor_in->dims().size() < 3) {
-    VLOG(3) << "Keeping MKLDNN/NHWC/NDHWC output_shape"
+    VLOG(3) << "Keeping ONEDNN/NHWC/NDHWC output_shape"
             << print_dims(phi::vectorize<int>(tensor_in->dims()));
     return;
   }
 
   switch (from) {
-    case DataLayout::MKLDNN:
+    case DataLayout::ONEDNN:
       if ((to == DataLayout::NHWC) || (to == DataLayout::NDHWC)) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: MKLDNN to: NHWC/NDHWC output_shape"
+        VLOG(3) << "Rotating Shape from: ONEDNN to: NHWC/NDHWC output_shape"
                 << print_dims(dims);
       }
       break;
     case DataLayout::NHWC:
     case DataLayout::NDHWC:
-      if (to == DataLayout::MKLDNN) {
+      if (to == DataLayout::ONEDNN) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
-        VLOG(3) << "Rotating Shape from: NHWC/NDHWC to: MKLDNN output_shape"
+        VLOG(3) << "Rotating Shape from: NHWC/NDHWC to: ONEDNN output_shape"
                 << print_dims(dims);
       }
       break;
@@ -156,6 +257,23 @@ inline dnnl::memory::desc OneDNNMemDesc(const std::vector<int64_t>& dims,
                                         dnnl::memory::data_type data_type,
                                         OneDNNMemoryFormat format) {
   return dnnl::memory::desc({dims}, data_type, format);
+}
+
+inline std::string ThreadIDasStr(void) {
+  return std::to_string(
+      std::hash<std::thread::id>()(std::this_thread::get_id()));
+}
+
+inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
+                                                   const std::string& key) {
+  return (OneDNNContext::tls().is_tid_used_in_key() == true)
+             ? key + "-t:" + ThreadIDasStr()
+             : key;
+}
+
+template <typename T>
+bool constexpr is_int8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
 }
 
 }  // namespace funcs

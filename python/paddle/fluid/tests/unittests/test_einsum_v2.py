@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import numpy as np
-import contextlib
 import unittest
 import paddle
 from paddle.fluid import core
-from paddle.fluid.dygraph.amp.auto_cast import _is_gpu_bfloat16_supported
 
 import os
 
@@ -25,8 +23,8 @@ os.environ['FLAGS_new_einsum'] = "1"
 
 
 def error_trans(func, *args, **kargs):
-    """ 
-    transport C++ exception into Python exception. 
+    """
+    transport C++ exception into Python exception.
     because einsum_v2 raise different exception with einsum_v1.
     """
     try:

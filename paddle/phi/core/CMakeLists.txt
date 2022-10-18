@@ -11,10 +11,17 @@ cc_library(
   SRCS enforce.cc
   DEPS ${phi_enforce_deps})
 
-cc_library(
-  kernel_factory
-  SRCS kernel_factory.cc
-  DEPS phi_enforce fluid_convert_utils)
+if(WITH_XPU)
+  cc_library(
+    kernel_factory
+    SRCS kernel_factory.cc
+    DEPS phi_enforce fluid_convert_utils convert_utils xpu_op_list)
+else()
+  cc_library(
+    kernel_factory
+    SRCS kernel_factory.cc
+    DEPS phi_enforce fluid_convert_utils)
+endif()
 cc_library(
   kernel_context
   SRCS kernel_context.cc
@@ -56,6 +63,11 @@ cc_library(
   string_tensor
   SRCS string_tensor.cc
   DEPS convert_utils tensor_meta tensor_base)
+
+cc_library(
+  tensor_array
+  SRCS tensor_array.cc
+  DEPS dense_tensor tensor_base)
 
 cc_library(
   meta_tensor

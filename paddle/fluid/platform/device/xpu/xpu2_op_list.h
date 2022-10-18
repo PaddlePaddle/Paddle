@@ -301,6 +301,10 @@ XPUOpMap& get_kl2_ops() {
       {"huber_loss", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"iou_similarity",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"index_select",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::INT32, XPUPlace()),
+                     pOpKernelType(vartype::INT64, XPUPlace())})},
       {"instance_norm",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"instance_norm_grad",
@@ -422,6 +426,7 @@ XPUOpMap& get_kl2_ops() {
       {"reduce_mean_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_mean", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"reduce_min", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_prod", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"reduce_sum_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
@@ -466,6 +471,7 @@ XPUOpMap& get_kl2_ops() {
                      pOpKernelType(vartype::INT64, XPUPlace())})},
       {"scatter",
        XPUKernelSet({pOpKernelType(vartype::INT64, XPUPlace()),
+                     pOpKernelType(vartype::INT32, XPUPlace()),
                      pOpKernelType(vartype::FP32, XPUPlace())})},
       {"sampling_id",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
@@ -510,6 +516,8 @@ XPUOpMap& get_kl2_ops() {
       {"split",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::INT32, XPUPlace())})},
+      {"sqrt", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"sqrt_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"square_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"square", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"squeeze2_grad",
@@ -654,7 +662,14 @@ XPUOpMap& get_kl2_ops() {
       {"resnet_basic_block_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"resnet_basic_block",
-       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})}};
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"fused_gemm_epilogue",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"fused_gemm_epilogue_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+  };
 
   return s_xpu2_kernels;
 }

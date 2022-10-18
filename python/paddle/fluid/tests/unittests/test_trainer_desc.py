@@ -16,11 +16,7 @@ TestCases for TrainerDesc,
 including config, etc.
 """
 
-from __future__ import print_function
 import paddle.fluid as fluid
-import numpy as np
-import os
-import shutil
 import unittest
 
 

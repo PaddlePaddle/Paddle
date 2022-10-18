@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import collections
 import copy
 import six
@@ -364,9 +363,6 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
             shape = cast(shape, 'int32')
         inputs["ShapeTensor"] = shape
     elif isinstance(shape, (list, tuple)):
-        assert len(shape) > 0, ("The size of 'shape' in" + op_type +
-                                " can't be zero, "
-                                "but received %s." % len(shape))
         attrs["shape"] = _get_attr_shape(shape)
         if _contain_var(shape):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)
@@ -426,17 +422,17 @@ def check_shape(shape):
 
 def try_set_static_shape_tensor(tensor, shape):
     """Try to set static shape of tensor from a shape tensor.
-    
+
     For example,
 
     import paddle
     paddle.enable_static()
     data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
     shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
-    x = paddle.uniform(shape) 
-    print(x.shape) 
+    x = paddle.uniform(shape)
+    print(x.shape)
     # (-1, 2)
-    
+
     """
     if not _non_static_mode():
         # static mode, and shape is not all inferred (contains -1)
@@ -451,15 +447,15 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     """Try to get shape from a tensor with constant value.
 
     For example,
-    
+
     import paddle
     paddle.enable_static()
     data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
     shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
-    x = paddle.uniform(shape) 
-    print(x.shape) 
+    x = paddle.uniform(shape)
+    print(x.shape)
     # (-1, 2)
-    
+
     """
     if not _non_static_mode():
         try:

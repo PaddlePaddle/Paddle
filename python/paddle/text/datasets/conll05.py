@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import gzip
 import tarfile
 import numpy as np
-import six
-from six.moves import cPickle as pickle
 
 from paddle.io import Dataset
-import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = []
@@ -186,8 +181,8 @@ class Conll05st(Dataset):
             labels = []
             one_seg = []
             for word, label in zip(words_file, props_file):
-                word = cpt.to_text(word.strip())
-                label = cpt.to_text(label.strip().split())
+                word = word.strip().decode()
+                label = label.strip().decode().split()
 
                 if len(label) == 0:  # end of sentence
                     for i in range(len(one_seg[0])):
@@ -299,13 +294,13 @@ class Conll05st(Dataset):
         Get the word, verb and label dictionary of Wikipedia corpus.
 
         Examples:
-    
-            .. code-block:: python
-    
-            	from paddle.text.datasets import Conll05st
 
-            	conll05st = Conll05st()
-            	word_dict, predicate_dict, label_dict = conll05st.get_dict()
+            .. code-block:: python
+
+                from paddle.text.datasets import Conll05st
+
+                conll05st = Conll05st()
+                word_dict, predicate_dict, label_dict = conll05st.get_dict()
         """
         return self.word_dict, self.predicate_dict, self.label_dict
 
@@ -314,12 +309,12 @@ class Conll05st(Dataset):
         Get the embedding dictionary file.
 
         Examples:
-    
-            .. code-block:: python
-    
-            	from paddle.text.datasets import Conll05st
 
-            	conll05st = Conll05st()
-            	emb_file = conll05st.get_embedding()
+            .. code-block:: python
+
+                from paddle.text.datasets import Conll05st
+
+                conll05st = Conll05st()
+                emb_file = conll05st.get_embedding()
         """
         return self.emb_file

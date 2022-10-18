@@ -12,22 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest
-from scipy.special import expit, erf
 import paddle
 import paddle.fluid as fluid
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.fluid import compiler, Program, program_guard
-from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()

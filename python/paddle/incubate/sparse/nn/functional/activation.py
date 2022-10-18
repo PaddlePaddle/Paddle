@@ -14,11 +14,12 @@
 
 __all__ = []
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.framework import dygraph_only
+from paddle import in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
 
 
-@dygraph_only
 def relu(x, name=None):
     """
     sparse relu activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -45,7 +46,17 @@ def relu(x, name=None):
             out = paddle.incubate.sparse.nn.functional.relu(sparse_x)
             # [0., 0., 1.]
     """
-    return _C_ops.sparse_relu(x)
+    if in_dynamic_mode():
+        return _C_ops.sparse_relu(x)
+    else:
+        op_type = 'sparse_relu'
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(type=op_type,
+                         inputs={'x': x},
+                         outputs={'out': out},
+                         attrs={})
+        return out
 
 
 @dygraph_only
@@ -54,16 +65,16 @@ def softmax(x, axis=-1, name=None):
     sparse softmax activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Note:
-        Only support axis=-1 for SparseCsrTensor, which is faster when read data 
+        Only support axis=-1 for SparseCsrTensor, which is faster when read data
         by row (axis=-1).
 
-    From the point of view of dense matrix, for each row :math:`i` and each column :math:`j` 
+    From the point of view of dense matrix, for each row :math:`i` and each column :math:`j`
     in the matrix, we have:
 
     .. math::
 
         softmax_ij = \frac{\exp(x_ij - max_j(x_ij))}{\sum_j(exp(x_ij - max_j(x_ij))}
-    
+
     Parameters:
         x (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
         axis (int, optional): The axis along which to perform softmax calculations. Only support -1 for SparseCsrTensor.
@@ -72,7 +83,7 @@ def softmax(x, axis=-1, name=None):
 
     Returns:
         Tensor: SparseCoo or SparseCsr, whose layout is the same with `x` .
-    
+
     Examples:
         .. code-block:: python
 
@@ -87,19 +98,19 @@ def softmax(x, axis=-1, name=None):
             #  [0.         0.         0.         0.98275049]]
 
             csr = paddle.to_tensor(np_x).to_sparse_csr()
-            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
-            #        crows=[0, 2, 5, 6], 
-            #        cols=[2, 3, 0, 2, 3, 3], 
+            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 2, 5, 6],
+            #        cols=[2, 3, 0, 2, 3, 3],
             #        values=[0.96823406, 0.19722934, 0.94373937, 0.02060066, 0.71456372,
             #                0.98275049])
 
             out = paddle.incubate.sparse.nn.functional.softmax(csr)
-            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
-            #        crows=[0, 2, 5, 6], 
-            #        cols=[2, 3, 0, 2, 3, 3], 
+            # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 2, 5, 6],
+            #        cols=[2, 3, 0, 2, 3, 3],
             #        values=[0.68373820, 0.31626180, 0.45610887, 0.18119845, 0.36269269,
             #                1.        ])
-    
+
     """
     return _C_ops.sparse_softmax(x, axis)
 

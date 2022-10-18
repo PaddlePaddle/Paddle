@@ -16,7 +16,7 @@ from functools import reduce
 
 import paddle
 from paddle.fluid.framework import dygraph_only, _dygraph_tracer, _varbase_creator, in_dygraph_mode
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 
 #input==output, inplace strategy of reshape has no cost almostly
@@ -44,7 +44,7 @@ def _stride_column(param):
 
     Args:
         param(Tensor]): The param that will be strided according to 'columns'.
-    
+
     Examples:
        .. code-block:: python
 
@@ -82,7 +82,7 @@ def parameters_to_vector(parameters, name=None):
 
     Returns:
         A 1-D Tensor, which represents the parameters of a Layer.
-    
+
 
     Examples:
        .. code-block:: python

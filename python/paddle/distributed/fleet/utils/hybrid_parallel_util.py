@@ -11,17 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import six
-import numpy as np
-import warnings
 
 from paddle import framework
 import paddle
 from paddle.fluid import core
 from paddle.fluid.dygraph.parallel import _split_tensors, sync_params_buffers, build_groups
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
-from collections import OrderedDict
 from .log_util import logger
 
 __all__ = []
@@ -95,7 +90,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     paddle.distributed.broadcast(shape_gpu,
                                  src=src_rank,
                                  group=model_parallel_group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
 
     if mp_rank != 0:
         input_data = paddle.zeros(shape_gpu, dtype=dtype)
@@ -105,7 +100,16 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     paddle.distributed.broadcast(input_data,
                                  src=src_rank,
                                  group=model_parallel_group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
+
+    if mp_rank != 0:
+        if in_dygraph_mode():
+            data._clear_data()
+            input_data._share_buffer_to(data)
+        else:
+            data.value().get_tensor()._clear()
+            data.value().get_tensor()._share_data_with(
+                input_data.value().get_tensor())
 
 
 def broadcast_input_data(hcg, *inputs, **kwargs):
@@ -113,7 +117,11 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     for v in inputs:
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
-                v = v.cuda() if "gpu" in cur_device else v
+                if "gpu" in cur_device and in_dygraph_mode() \
+                    and not v.place.is_gpu_place():
+                    v_gpu = v.cuda(int(cur_device.split(":")[1]))
+                    v._clear_data()
+                    v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
         else:
             logger.error("it doesn't support data type {}".format(type(v)))
@@ -121,7 +129,11 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     for k, v in kwargs.items():
         if isinstance(v, (core.VarBase, core.eager.Tensor)):
             with framework.no_grad():
-                v = v.cuda() if "gpu" in cur_device else v
+                if "gpu" in cur_device and in_dygraph_mode() \
+                    and not v.place.is_gpu_place():
+                    v_gpu = v.cuda(int(cur_device.split(":")[1]))
+                    v._clear_data()
+                    v_gpu._share_buffer_to(v)
                 _broadcast_data_help(v, v.shape, v.dtype, hcg)
             kwargs[k] = v
         else:
@@ -170,7 +182,7 @@ def sharding_reduce_gradients(parameter_list, hcg):
                     paddle.distributed.all_reduce(
                         param.grad,
                         group=hcg.get_sharding_parallel_group(),
-                        use_calc_stream=True)
+                        sync_op=True)
 
                 elif _in_legacy_dygraph():
                     g_var = param._grad_ivar()

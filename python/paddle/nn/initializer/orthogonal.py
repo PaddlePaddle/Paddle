@@ -15,10 +15,9 @@
 from ...fluid.initializer import Initializer
 from ...fluid.data_feeder import check_variable_and_dtype
 from ...fluid import framework
-from ...tensor import diag, transpose, sign, qr, reshape
 from paddle.utils import unique_name
 from ...fluid.dygraph import no_grad
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 __all__ = []
 
@@ -26,9 +25,9 @@ __all__ = []
 class Orthogonal(Initializer):
     """The orthogonal initializer. The initialized tensor is (semi) orthogonal.
 
-    It's only applied to Tensor whose dimension is greater than or equal to 2. 
-    
-    For the Tensor whose dimension is greater than 2, the 0 dimension is seen as ``rows`` , 
+    It's only applied to Tensor whose dimension is greater than or equal to 2.
+
+    For the Tensor whose dimension is greater than 2, the 0 dimension is seen as ``rows`` ,
     and the >=1 dimension are flattened as ``cols`` .
 
     Which can be describe as:
@@ -37,7 +36,7 @@ class Orthogonal(Initializer):
 
         rows = shape[0]
         cols = shape[1]·shape[2]···shape[N]
-        
+
         if rows < cols:
             The rows are orthogonal vectors
         elif rows > cols:

@@ -23,6 +23,8 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
+DECLARE_bool(cudnn_deterministic);
+
 namespace phi {
 
 template <typename InT, typename OutT>
@@ -101,6 +103,11 @@ struct EmbeddingGradCUDAFunctor {
       const int gridx = 2 * dev_ctx_.GetSMCount();
       dim3 threads(128, 8);
       dim3 grids(gridx, 1);
+
+      if (FLAGS_cudnn_deterministic) {
+        VLOG(2) << "Run grad kernel of embedding with single thread.";
+        grids.x = 1;
+      }
       EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
           d_table, d_output, ids, N, K, D);
     }
@@ -249,7 +256,8 @@ PD_REGISTER_KERNEL(embedding_grad,
                    phi::EmbeddingGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(embedding_sparse_grad,
                    GPU,
@@ -257,4 +265,5 @@ PD_REGISTER_KERNEL(embedding_sparse_grad,
                    phi::EmbeddingSparseGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

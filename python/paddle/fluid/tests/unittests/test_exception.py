@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy
 import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.compat as cpt
 import paddle.fluid.core as core
 
 
@@ -30,8 +27,7 @@ class TestException(unittest.TestCase):
         try:
             core.__unittest_throw_exception__()
         except RuntimeError as ex:
-            self.assertIn("This is a test of exception",
-                          cpt.get_exception_message(ex))
+            self.assertIn("This is a test of exception", str(ex))
             exception = ex
 
         self.assertIsNotNone(exception)

@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import os
 import sys
 import paddle
 import paddle.fluid as fluid
-import unittest
-import paddle.fluid.layers as layers
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 import pickle
 from paddle.fluid.framework import _enable_legacy_dygraph
+import paddle.distributed.utils.moe_utils as moe_utils
 
 paddle.enable_static()
 
@@ -51,8 +48,9 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
                                                      shape=[tot_expert],
                                                      dtype="int64")
 
-            output = paddle.distributed.utils.global_gather(
-                local_input_buf, local_expert_count, global_expert_count)
+            output = moe_utils.global_gather(local_input_buf,
+                                             local_expert_count,
+                                             global_expert_count)
 
             return [output]
 

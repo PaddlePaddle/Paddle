@@ -13,8 +13,7 @@
 # limitations under the License
 
 import abc
-import paddle
-from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from ..dist_attribute import OperatorDistributedAttribute
 from ..utils import _get_comm_group, _get_corresponding_rank, is_optimize_op
 from ..process_group import new_process_group
@@ -176,7 +175,7 @@ def register_distributed_operator_impl(op_type, dist_impl):
 
 def find_compatible_distributed_operator_impls(dist_op, fwd=True, partial=True):
     """
-    Here just return the first compatible implemention. 
+    Here just return the first compatible implemention.
     This will be improved by cost model in the future.
     """
     op_type = dist_op.serial_op.type
@@ -327,9 +326,9 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
     Args:
         dist_ctx (DistributedContext): dist context.
-        op (Operator): the current (backward) operator which might need. 
-        act_grad_names (list): list of input activation grads variable name to the current operator. 
-        out_grad_names (list): list of the output parameter's grads variable name of the current operator. 
+        op (Operator): the current (backward) operator which might need.
+        act_grad_names (list): list of input activation grads variable name to the current operator.
+        out_grad_names (list): list of the output parameter's grads variable name of the current operator.
         rank (int): global ranks index for current process.
     """
     dp_group = None
@@ -360,13 +359,13 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
 def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
     """
-    insert the allreudce and scale ops for gradients of model 
+    insert the allreudce and scale ops for gradients of model
     parameters for operator in data parallelism.
 
     Args:
         dist_ctx (DistributedContext): dist context.
-        op (Operator): the current (backward) operator which might need. 
-        allreduce_var_names (list): list of the parameter's grads variable name in the current operator output. 
+        op (Operator): the current (backward) operator which might need.
+        allreduce_var_names (list): list of the parameter's grads variable name in the current operator output.
     """
 
     op_dist_attr = dist_ctx.get_op_dist_attr_for_program(op)
@@ -417,14 +416,14 @@ def sync_and_scale_gradients(dist_ctx, op, dp_group, allreduce_var_names):
 def gradient_synchronization(dist_ctx, op, act_grad_names, out_grad_names,
                              rank):
     """
-    conduct the allreudce and scaling（dp size）for gradients of model 
+    conduct the allreudce and scaling（dp size）for gradients of model
     parameters for operator in data parallelism.
 
     Args:
         dist_ctx (DistributedContext): dist context.
-        op (Operator): the current (backward) operator which might need. 
-        act_grad_names (list): list of input activation grads variable name to the current operator. 
-        out_grad_names (list): list of the output parameter's grads variable name of the current operator. 
+        op (Operator): the current (backward) operator which might need.
+        act_grad_names (list): list of input activation grads variable name to the current operator.
+        out_grad_names (list): list of the output parameter's grads variable name of the current operator.
         rank (int): global ranks index for current process.
     """
 

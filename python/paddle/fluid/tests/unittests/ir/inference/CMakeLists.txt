@@ -22,6 +22,10 @@ if(NOT WITH_DISTRIBUTE)
        "test_trt_convert_preln_residual_bias")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_preln_residual_bias")
   list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_preln_residual_bias")
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+       "test_trt_convert_preln_residual_no_bias")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_preln_residual_no_bias")
+  list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_preln_residual_no_bias")
 
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_c_allreduce")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_c_allreduce")
@@ -118,6 +122,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
   if(WITH_NV_JETSON)
     set_tests_properties(
       test_trt_pool_op
@@ -171,8 +176,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
                                                                        240)
     set_tests_properties(test_trt_squeeze2_matmul_fuse_pass PROPERTIES TIMEOUT
                                                                        240)
-    set_tests_properties(test_trt_reshape2_matmul_fuse_pass PROPERTIES TIMEOUT
-                                                                       240)
     set_tests_properties(test_shuffle_channel_detect_pass PROPERTIES TIMEOUT
                                                                      120)
     if(WIN32)
@@ -224,7 +227,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_conv_eltwiseadd_bn_fuse_pass PROPERTIES TIMEOUT
                                                                       300)
     set_tests_properties(test_mkldnn_conv_mish_fuse_pass PROPERTIES TIMEOUT 300)
-    set_tests_properties(test_mkldnn_fc_mish_fuse_pass PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_onednn_fc_activation_fuse_pass PROPERTIES TIMEOUT
+                                                                        300)
     set_tests_properties(test_mkldnn_fc_elementwise_add_fuse_pass
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_mkldnn_conv_affine_channel_fuse_pass

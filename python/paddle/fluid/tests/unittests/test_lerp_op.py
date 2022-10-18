@@ -80,6 +80,34 @@ class TestLerpWithDim6(TestLerp):
         self.shape = [2, 1, 2, 5, 1, 5]
 
 
+class TestLerpBroadXY(TestLerp):
+
+    def setUp(self):
+        self.op_type = "lerp"
+        self.python_api = paddle.lerp
+        self.init_dtype()
+        self.init_shape()
+        x = np.arange(1., 201.).astype(self.dtype).reshape([2, 1, 2, 50])
+        y = np.full(200, 10.).astype(self.dtype).reshape([2, 2, 1, 50])
+        w = np.asarray([0.5]).astype(self.dtype)
+        self.inputs = {'X': x, 'Y': y, 'Weight': w}
+        self.outputs = {'Out': x + w * (y - x)}
+
+
+class TestLerpBroadWToXY(TestLerp):
+
+    def setUp(self):
+        self.op_type = "lerp"
+        self.python_api = paddle.lerp
+        self.init_dtype()
+        self.init_shape()
+        x = np.full(600, 2.5).astype(self.dtype).reshape([50, 2, 2, 3])
+        y = np.full(600, 1.).astype(self.dtype).reshape([50, 2, 2, 3])
+        w = np.random.random([3]).astype(self.dtype)
+        self.inputs = {'X': x, 'Y': y, 'Weight': w}
+        self.outputs = {'Out': x + w * (y - x)}
+
+
 class TestLerpAPI(unittest.TestCase):
 
     def init_dtype(self):

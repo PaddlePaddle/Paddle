@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 
-from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
@@ -184,7 +182,7 @@ class TestGroupNormOpBigEps3(TestGroupNormOp):
 
 @skip_check_grad_ci(
     reason=
-    '''This test case is used to ensure whether the gradient checking results between CPU and GPU  
+    '''This test case is used to ensure whether the gradient checking results between CPU and GPU
             are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
 )
 class TestGroupNormOpLargeData(TestGroupNormOp):
@@ -234,7 +232,7 @@ class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
 
 @skip_check_grad_ci(
     reason=
-    '''This test case is used to ensure whether the gradient checking results between CPU and GPU  
+    '''This test case is used to ensure whether the gradient checking results between CPU and GPU
             are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
 )
 class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):

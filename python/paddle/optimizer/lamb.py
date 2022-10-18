@@ -21,7 +21,6 @@ from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.executor import global_scope
-import paddle
 
 __all__ = []
 
@@ -79,7 +78,7 @@ class Lamb(Optimizer):
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             inp = paddle.uniform(shape=[10, 10], dtype='float32', min=-0.1, max=0.1)

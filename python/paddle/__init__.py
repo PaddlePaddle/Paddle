@@ -38,6 +38,7 @@ from .framework import in_dynamic_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 
+from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import dtype as dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
@@ -79,6 +80,7 @@ import paddle.onnx  # noqa: F401
 import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
+import paddle.audio  # noqa: F401
 import paddle.geometric  # noqa: F401
 
 from .tensor.attribute import is_complex  # noqa: F401
@@ -164,6 +166,7 @@ from .tensor.manipulation import shard_index  # noqa: F401
 from .tensor.manipulation import slice  # noqa: F401
 from .tensor.manipulation import crop  # noqa: F401
 from .tensor.manipulation import split  # noqa: F401
+from .tensor.manipulation import vsplit  # noqa: F401
 from .tensor.manipulation import squeeze  # noqa: F401
 from .tensor.manipulation import squeeze_  # noqa: F401
 from .tensor.manipulation import stack  # noqa: F401
@@ -284,6 +287,7 @@ from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
+from .tensor.math import frexp  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -384,8 +388,8 @@ if is_compiled_with_cinn():
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
-
 __all__ = [  # noqa
+    'iinfo',
     'dtype',
     'uint8',
     'int8',
@@ -455,6 +459,7 @@ __all__ = [  # noqa
     'searchsorted',
     'bucketize',
     'split',
+    'vsplit',
     'logical_and',
     'full_like',
     'less_than',
@@ -663,4 +668,5 @@ __all__ = [  # noqa
     'sgn',
     'triu_indices',
     'take',
+    'frexp',
 ]

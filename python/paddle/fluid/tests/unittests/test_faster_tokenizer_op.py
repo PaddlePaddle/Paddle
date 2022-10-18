@@ -12,19 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import io
 import os
 import unittest
 
 import numpy as np
 import paddle
 import paddle.nn as nn
-from paddle.dataset.common import DATA_HOME
 from paddle.fluid.framework import core, _non_static_mode, _test_eager_guard
 from paddle.fluid.layer_helper import LayerHelper
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 import sys
 import tempfile
@@ -36,8 +32,8 @@ from tokenizer.bert_tokenizer import BertTokenizer
 def to_string_tensor(string_values, name):
     """
     Create the tensor that the value holds the list of string.
-    NOTICE: The value will be holded in the cpu place. 
- 
+    NOTICE: The value will be holded in the cpu place.
+
     Args:
         string_values(list[string]): The value will be setted to the tensor.
         name(string): The name of the tensor.
@@ -51,9 +47,9 @@ def to_string_tensor(string_values, name):
 def to_map_tensor(string_dict, name):
     """
     Create the tensor that the value holds the map, the type of key is the string
-    and the value is the int. 
-    NOTICE: The value will be holded in the cpu place. 
- 
+    and the value is the int.
+    NOTICE: The value will be holded in the cpu place.
+
     Args:
         string_dict(dict): The value will be setted to the tensor.
         name(string): The name of the tensor.

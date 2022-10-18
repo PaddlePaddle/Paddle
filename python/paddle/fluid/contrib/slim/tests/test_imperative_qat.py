@@ -12,8 +12,6 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-from __future__ import print_function
-
 import os
 import numpy as np
 import random
@@ -56,7 +54,10 @@ class TestImperativeQat(unittest.TestCase):
         self.activation_quantize_type = 'moving_average_abs_max'
         self.onnx_format = False
         self.check_export_model_accuracy = True
-        self.diff_threshold = 0.01
+        # The original model and quantized model may have different prediction.
+        # There are 32 test data and we allow at most one is different.
+        # Hence, the diff_threshold is 1 / 32 = 0.03125
+        self.diff_threshold = 0.03125
         self.fuse_conv_bn = False
 
     def func_qat(self):
@@ -65,7 +66,8 @@ class TestImperativeQat(unittest.TestCase):
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type=self.weight_quantize_type,
             activation_quantize_type=self.activation_quantize_type,
-            fuse_conv_bn=self.fuse_conv_bn)
+            fuse_conv_bn=self.fuse_conv_bn,
+            onnx_format=self.onnx_format)
 
         with fluid.dygraph.guard():
             # For CI coverage
@@ -184,8 +186,7 @@ class TestImperativeQat(unittest.TestCase):
                 input_spec=[
                     paddle.static.InputSpec(shape=[None, 1, 28, 28],
                                             dtype='float32')
-                ],
-                onnx_format=self.onnx_format)
+                ])
             print('Quantized model saved in %s' % tmpdir)
 
             if core.is_compiled_with_cuda():
@@ -207,7 +208,7 @@ class TestImperativeQat(unittest.TestCase):
             quant_acc = fluid.layers.accuracy(quant_out, label).numpy()
             paddle.enable_static()
             delta_value = fp32_acc - quant_acc
-            self.assertLess(delta_value, self.diff_threshold)
+            self.assertLessEqual(delta_value, self.diff_threshold)
 
     def test_qat(self):
         with _test_eager_guard():
@@ -221,7 +222,7 @@ class TestImperativeQatONNXFormat(unittest.TestCase):
         self.weight_quantize_type = 'abs_max'
         self.activation_quantize_type = 'moving_average_abs_max'
         self.onnx_format = True
-        self.diff_threshold = 0.025
+        self.diff_threshold = 0.03125
         self.fuse_conv_bn = False
 
 

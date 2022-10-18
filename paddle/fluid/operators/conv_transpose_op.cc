@@ -32,57 +32,45 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_{framework::LibraryType::kPlain};
-  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-  bool use_cudnn =
-      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
-    if (use_cudnn) {
-      library_ = framework::LibraryType::kCUDNN;
+    if (ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn") &&
+        dev_ctx.cudnn_handle() != nullptr) {
+      return framework::OpKernelType(data_type,
+                                     ctx.GetPlace(),
+                                     phi::DataLayout::kAnyLayout,
+                                     framework::LibraryType::kCUDNN);
     }
   }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
-  }
-#endif
-
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     const std::string& var_name,
-    const framework::Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
-    auto dl = framework::StringToDataLayout(data_format);
+    auto dl = phi::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != phi::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
-          expected_kernel_type.data_type_,
-          tensor.place(),
-          framework::StringToDataLayout(data_format));
+          expected_kernel_type.data_type_, tensor.place(), dl);
     }
   }
 #endif
@@ -121,7 +109,8 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<std::vector<int>>("output_size",
                             "(vector<int> default: []), the "
                             "size of the output tensor")
-      .SetDefault({});
+      .SetDefault({})
+      .SupportTensor();
   AddAttr<int>("groups",
                "(int default:1), the groups number of the convolution "
                "transpose operator. ")
@@ -295,7 +284,7 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
     library_ = framework::LibraryType::kPlain;
   }
 
-  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
       ctx.GetPlace(),
@@ -382,7 +371,7 @@ framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
     library_ = framework::LibraryType::kPlain;
   }
 
-  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
       ctx.GetPlace(),
@@ -398,10 +387,10 @@ namespace ops = paddle::operators;
 // conv2d_transpose
 DECLARE_INFER_SHAPE_FUNCTOR(conv2d_transpose,
                             Conv2dTranposeInferShapeFunctor,
-                            PD_INFER_META(phi::ConvTransposeInferMeta));
+                            PD_INFER_META(phi::Conv2dTransposeInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(conv2d_transpose_grad,
                             Conv2dTranposeGradInferShapeFunctor,
-                            PD_INFER_META(phi::ConvTransposeGradInferMeta));
+                            PD_INFER_META(phi::Conv2dTransposeGradInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(
     conv2d_transpose_grad_grad,
     Conv2dTranposeDoubleGradInferShapeFunctor,
@@ -443,10 +432,10 @@ REGISTER_OPERATOR(conv3d_transpose_grad,
 // depthwise conv2d_transpose
 DECLARE_INFER_SHAPE_FUNCTOR(depthwise_conv2d_transpose,
                             DepthWiseConv2dTranposeInferShapeFunctor,
-                            PD_INFER_META(phi::ConvTransposeInferMeta));
+                            PD_INFER_META(phi::Conv2dTransposeInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(depthwise_conv2d_transpose_grad,
                             DepthWiseConv2dTranposeGradInferShapeFunctor,
-                            PD_INFER_META(phi::ConvTransposeGradInferMeta));
+                            PD_INFER_META(phi::Conv2dTransposeGradInferMeta));
 
 REGISTER_OPERATOR(depthwise_conv2d_transpose,
                   ops::ConvTransposeOp,

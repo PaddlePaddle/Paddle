@@ -12,17 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import sys
-import math
 import paddle
-import paddle.fluid as fluid
 from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
-import copy
 from test_generate_proposals_op import clip_tiled_boxes, box_coder, nms
 
 

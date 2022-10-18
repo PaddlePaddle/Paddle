@@ -46,7 +46,7 @@ using framework::ir::Graph;
 
 #ifdef PADDLE_WITH_MKLDNN
 using VarQuantScale =
-    std::unordered_map<std::string, std::pair<bool, framework::LoDTensor>>;
+    std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
 #endif
 
 /*
@@ -311,6 +311,7 @@ struct Argument {
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
+  DECL_ARGUMENT_FIELD(trt_engine_memory_sharing, TrtEngineMemorySharing, bool);
 
   // Indicate which kind of sort algorithm is used for operators, the memory
   // optimization relays on the sort algorithm.
@@ -340,6 +341,12 @@ struct Argument {
                       IpuAvailableMemoryProportion,
                       float);
   DECL_ARGUMENT_FIELD(ipu_enable_half_partial, IpuEnableHalfPartial, bool);
+  DECL_ARGUMENT_FIELD(ipu_custom_ops_info,
+                      IpuCustomOpsInfo,
+                      std::vector<std::vector<std::string>>);
+  DECL_ARGUMENT_FIELD(ipu_custom_patterns,
+                      IpuCustomPatterns,
+                      std::vector<std::vector<std::string>>);
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);

@@ -49,11 +49,11 @@ void GetLinearOp(const std::vector<T> &x,
                  std::vector<T> *out) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
   auto var_y = scope.Var("Y");
-  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto tensor_y = var_y->GetMutable<phi::DenseTensor>();
   auto var_out = scope.Var("Out");
-  auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+  auto tensor_out = var_out->GetMutable<phi::DenseTensor>();
 
   tensor_x->Resize(x_dim);
   tensor_y->Resize(y_dim);
@@ -91,11 +91,11 @@ void GetElementwiseAddOp(const std::vector<T> &x,
                          std::vector<T> *out) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
   auto var_y = scope.Var("Y");
-  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto tensor_y = var_y->GetMutable<phi::DenseTensor>();
   auto var_out = scope.Var("Out");
-  auto tensor_out = var_out->GetMutable<framework::LoDTensor>();
+  auto tensor_out = var_out->GetMutable<phi::DenseTensor>();
 
   tensor_x->Resize({bsz_seq, output_size});
   tensor_y->Resize({output_size});
@@ -136,19 +136,19 @@ void GetLinearOpGrad(const std::vector<T> &x_vec,
                      std::vector<T> *dweight_vec) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
   auto var_y = scope.Var("Y");
-  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto tensor_y = var_y->GetMutable<phi::DenseTensor>();
   auto var_dout = scope.Var("DOut");
-  auto tensor_dout = var_dout->GetMutable<framework::LoDTensor>();
+  auto tensor_dout = var_dout->GetMutable<phi::DenseTensor>();
   tensor_x->Resize(x_dim);
   tensor_y->Resize(y_dim);
   tensor_dout->Resize(out_dim);
 
   auto var_dx = scope.Var("DX");
-  auto tensor_dx = var_dx->GetMutable<framework::LoDTensor>();
+  auto tensor_dx = var_dx->GetMutable<phi::DenseTensor>();
   auto var_dy = scope.Var("DY");
-  auto tensor_dy = var_dy->GetMutable<framework::LoDTensor>();
+  auto tensor_dy = var_dy->GetMutable<phi::DenseTensor>();
   tensor_dx->Resize(x_dim);
   tensor_dy->Resize(y_dim);
 
@@ -222,19 +222,19 @@ void GetElementwiseAddOpGrad(const std::vector<T> &dout_vec,
                              std::vector<T> *dy_vec) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
+  auto tensor_x = var_x->GetMutable<phi::DenseTensor>();
   auto var_y = scope.Var("Y");
-  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
+  auto tensor_y = var_y->GetMutable<phi::DenseTensor>();
   auto var_dout = scope.Var("DOut");
-  auto tensor_dout = var_dout->GetMutable<framework::LoDTensor>();
+  auto tensor_dout = var_dout->GetMutable<phi::DenseTensor>();
   tensor_x->Resize({bsz_seq, output_size});
   tensor_y->Resize({output_size});
   tensor_dout->Resize({bsz_seq, output_size});
 
   auto var_dx = scope.Var("DX");
-  auto tensor_dx = var_dx->GetMutable<framework::LoDTensor>();
+  auto tensor_dx = var_dx->GetMutable<phi::DenseTensor>();
   auto var_dy = scope.Var("DY");
-  auto tensor_dy = var_dy->GetMutable<framework::LoDTensor>();
+  auto tensor_dy = var_dy->GetMutable<phi::DenseTensor>();
   tensor_dx->Resize({bsz_seq, output_size});
   tensor_dy->Resize({output_size});
 
@@ -549,8 +549,8 @@ class TestFeedForward {
   bool has_bias_;
   int size_src_, size_weight_, size_bias_, size_output_;
 
-  framework::Tensor src_, weight_, bias_, out_, bias_out_;
-  framework::Tensor dinput_, dweight_, dbias_, doutput_;
+  phi::DenseTensor src_, weight_, bias_, out_, bias_out_;
+  phi::DenseTensor dinput_, dweight_, dbias_, doutput_;
   std::vector<T> src_vec_, weight_vec_, bias_vec_, out_vec_, bias_out_vec_;
   std::vector<T> dinput_vec_, dweight_vec_, dbias_vec_, doutput_vec_;
 

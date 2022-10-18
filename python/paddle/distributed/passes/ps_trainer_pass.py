@@ -14,13 +14,12 @@
 
 import os
 import paddle
-import paddle.compat as cpt
 from ..ps.utils.public import *
 from paddle.framework import core
 from paddle.distributed.passes.pass_base import PassBase, register_pass
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.transpiler.collective import SingleProcessMultiThread
-from _collections import deque, defaultdict
+from _collections import defaultdict
 from paddle.fluid.framework import Program, Parameter
 
 
@@ -617,6 +616,8 @@ class DeleteExtraOptimizerPass(PassBase):
         for var in remote_optimize_vars:
             if var in local_optimize_vars:
                 continue
+            if 'learning_rate_0' == var:
+                continue
             if var not in remote_optimize_op_role_vars:
                 optimize_need_delete_vars.append(var)
         need_delete_optimize_vars = list(set(optimize_need_delete_vars))
@@ -705,7 +706,7 @@ class PsGpuPass(PassBase):
             if op.type != "pull_box_sparse" and op.type != "pull_gpups_sparse":
                 continue
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, cpt.to_text(set()), [])
+                op.desc, set(), [])
             for op_desc in grad_op_desc:
                 new_op_desc = program.global_block().desc._insert_op(
                     insert_index + 1)
@@ -1140,7 +1141,7 @@ class SplitTrainerOpsPass(PassBase):
         split cpu-trainer program from origin-program
         1. find heter op (located on different device)
         2. find input&output of every heter-block
-        3. create cpu-trainer program, add send&recv op 
+        3. create cpu-trainer program, add send&recv op
         """
         attrs = pass_ctx._attrs
         default_device_ = 'cpu'
