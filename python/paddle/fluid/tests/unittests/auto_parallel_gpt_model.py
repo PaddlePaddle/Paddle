@@ -298,14 +298,14 @@ class TransformerDecoder(nn.Layer):
             auto.shard_tensor(output, PP_MESH_LIST[0],
                               [None for i in range(len(output.shape))])
         if _global_parallel_strategy == "dp_pp":
-            auto.shard_tensor(output, DPPP_MESH_LIST[0], ["x"].extends(
-                [None for i in range(len(output.shape) - 1)]))
+            auto.shard_tensor(output, DPPP_MESH_LIST[0], ["x"] +
+                              [None for i in range(len(output.shape) - 1)])
         if _global_parallel_strategy == "mp_pp":
             auto.shard_tensor(output, MPPP_MESH_LIST[0],
                               [None for i in range(len(output.shape))])
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(output, DPMPPP_MESH_LIST[0], ["x"].extends(
-                [None for i in range(len(output.shape) - 1)]))
+            auto.shard_tensor(output, DPMPPP_MESH_LIST[0], ["x"] +
+                              [None for i in range(len(output.shape) - 1)])
         for i, mod in enumerate(self.layers):
             if cache is None:
                 if use_cache:
@@ -323,8 +323,8 @@ class TransformerDecoder(nn.Layer):
                                                                tgt_mask,
                                                                use_cache, cache)
                         auto.shard_tensor(
-                            output, DPPP_MESH_LIST[mod.mesh_idx], ["x"].extends(
-                                [None for i in range(len(output.shape) - 1)]))
+                            output, DPPP_MESH_LIST[mod.mesh_idx], ["x"] +
+                            [None for i in range(len(output.shape) - 1)])
                     elif _global_parallel_strategy == "mp_pp":
                         output, new_cache = auto.shard_op(
                             mod, MPPP_MESH_LIST[mod.mesh_idx])(output, memory,
@@ -362,8 +362,8 @@ class TransformerDecoder(nn.Layer):
                                                                tgt_mask,
                                                                use_cache, cache)
                         auto.shard_tensor(
-                            output, DPPP_MESH_LIST[mod.mesh_idx], ["x"].extends(
-                                [None for i in range(len(output.shape) - 1)]))
+                            output, DPPP_MESH_LIST[mod.mesh_idx], ["x"] +
+                            [None for i in range(len(output.shape) - 1)])
                     elif _global_parallel_strategy == "mp_pp":
                         output = auto.shard_op(
                             mod, MPPP_MESH_LIST[mod.mesh_idx])(output, memory,
@@ -378,9 +378,8 @@ class TransformerDecoder(nn.Layer):
                                                    output, memory, tgt_mask,
                                                    use_cache, cache)
                         auto.shard_tensor(
-                            output, DPMPPP_MESH_LIST[mod.mesh_idx],
-                            ["x"].extends(
-                                [None for i in range(len(output.shape) - 1)]))
+                            output, DPMPPP_MESH_LIST[mod.mesh_idx], ["x"] +
+                            [None for i in range(len(output.shape) - 1)])
                     else:
                         output = mod(output,
                                      memory,
@@ -400,9 +399,9 @@ class TransformerDecoder(nn.Layer):
                         mod,
                         DPPP_MESH_LIST[mod.mesh_idx])(output, memory, tgt_mask,
                                                       use_cache, cache)
-                    auto.shard_tensor(output, DPPP_MESH_LIST[mod.mesh_idx], [
-                        "x"
-                    ].extends([None for i in range(len(output.shape) - 1)]))
+                    auto.shard_tensor(
+                        output, DPPP_MESH_LIST[mod.mesh_idx],
+                        ["x"] + [None for i in range(len(output.shape) - 1)])
                 elif _global_parallel_strategy == "mp_pp":
                     output, new_cache = auto.shard_op(
                         mod,
@@ -415,9 +414,9 @@ class TransformerDecoder(nn.Layer):
                         mod, DPMPPP_MESH_LIST[mod.mesh_idx])(output, memory,
                                                              tgt_mask,
                                                              use_cache, cache)
-                    auto.shard_tensor(output, DPMPPP_MESH_LIST[mod.mesh_idx], [
-                        "x"
-                    ].extends([None for i in range(len(output.shape) - 1)]))
+                    auto.shard_tensor(
+                        output, DPMPPP_MESH_LIST[mod.mesh_idx],
+                        ["x"] + [None for i in range(len(output.shape) - 1)])
                 else:
                     output, new_cache = mod(output,
                                             memory,
@@ -682,11 +681,11 @@ class GPTModel(nn.Layer):
             auto.shard_tensor(input_ids, PP_MESH_LIST[0],
                               [None for i in range(len(input_ids.shape))])
         if _global_parallel_strategy == "dp_pp":
-            auto.shard_tensor(input_ids, DPPP_MESH_LIST[0], ["x"].extends(
-                [None for i in range(len(input_ids.shape) - 1)]))
+            auto.shard_tensor(input_ids, DPPP_MESH_LIST[0], ["x"] +
+                              [None for i in range(len(input_ids.shape) - 1)])
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(input_ids, DPMPPP_MESH_LIST[0], ["x"].extends(
-                [None for i in range(len(input_ids.shape) - 1)]))
+            auto.shard_tensor(input_ids, DPMPPP_MESH_LIST[0], ["x"] +
+                              [None for i in range(len(input_ids.shape) - 1)])
         encoder_outputs = self.decoder(embedding_output,
                                        memory=None,
                                        tgt_mask=attention_mask,
