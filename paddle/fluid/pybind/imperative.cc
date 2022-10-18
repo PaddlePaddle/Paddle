@@ -2063,8 +2063,8 @@ void BindImperative(py::module *m_ptr) {
                       << " tensor layout: " << tensor.layout()
                       << " tensor's shape size is : " << value.size();
 
-              if (change_dim && paddle::framework::DataLayoutToString(
-                                    desired_layout) == "NCHW") {
+              if (change_dim &&
+                  phi::DataLayoutToString(desired_layout) == "NCHW") {
                 VLOG(6) << "layout autotune get Shape from NHWC -> NCHW "
                         << value[0] << " " << value[1] << " " << value[2] << " "
                         << value[3] << " to " << tmp_value[3] << " "
@@ -2074,8 +2074,8 @@ void BindImperative(py::module *m_ptr) {
                 value[1] = tmp_value[2];
                 value[2] = tmp_value[3];
                 value[3] = tmp_value[1];
-              } else if (change_dim && paddle::framework::DataLayoutToString(
-                                           desired_layout) == "NHWC") {
+              } else if (change_dim &&
+                         phi::DataLayoutToString(desired_layout) == "NHWC") {
                 VLOG(6) << "layout autotune get Shape from NHWC -> NCHW "
                         << value[0] << " " << value[1] << " " << value[2] << " "
                         << value[3] << " to " << tmp_value[0] << " "
@@ -2108,7 +2108,7 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::VarBase &self) {
             if (self.Var().IsType<phi::DenseTensor>()) {
               auto layout = self.Var().Get<phi::DenseTensor>().layout();
-              return paddle::framework::DataLayoutToString(layout);
+              return phi::DataLayoutToString(layout);
             }
             return std::string("");
           })

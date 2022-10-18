@@ -59,8 +59,7 @@ void BatchNormGradRawKernel(const Context& ctx,
                             DenseTensor* bias_grad) {
   const auto* d_y = &y_grad;
 
-  DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
   auto* d_x = x_grad;
   auto* d_scale = scale_grad;
@@ -373,8 +372,7 @@ void BatchNormDoubleGradKernel(const Context& ctx,
                         "you want to use global status in pre_train model, "
                         "please set `use_global_stats = True`"));
 
-  const auto data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const auto data_layout = phi::StringToDataLayout(data_layout_str);
 
   const auto* ddX = &x_grad_grad;
   const auto* ddScale = &scale_grad_grad;

@@ -30,8 +30,7 @@ from paddle.fluid.framework import _apply_pass
 from paddle.fluid.contrib.mixed_precision.decorator import AutoMixedPrecisionLists
 from paddle.fluid.contrib.mixed_precision.fp16_utils import rewrite_program, cast_model_to_fp16
 from paddle.fluid.dygraph.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-import paddle.compat as cpt
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 
 class NestSequence(object):
@@ -833,8 +832,7 @@ class PartialProgramLayer:
         # be user wanted result.
         for param in params:
             grad_name = param.name + core.grad_var_suffix()
-            grad_var = train_program.desc.block(0).find_var(
-                cpt.to_bytes(grad_name))
+            grad_var = train_program.desc.block(0).find_var(grad_name.encode())
             # NOTE: cannot find var desc maybe no problem, such as in batch_norm
             if grad_var is None:
                 continue
