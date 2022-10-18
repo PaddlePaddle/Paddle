@@ -602,10 +602,9 @@ bool AnalysisPredictor::PrepareExecutor() {
         if (!var || !var->IsType<phi::DenseTensor>()) continue;
         auto dense_tensor = var->Get<phi::DenseTensor>();
         if (!dense_tensor.initialized()) continue;
-        std::shared_ptr<ZeroCopyTensor> tensor =
-            this->GetOutputTensor(var_name);
+        auto tensor = this->GetOutputTensor(var_name);
         for (auto &hookfunc : this->hookfuncs_) {
-          hookfunc(op->Type(), var_name, tensor);
+          hookfunc(op->Type(), var_name, *tensor);
         }
       }
     }

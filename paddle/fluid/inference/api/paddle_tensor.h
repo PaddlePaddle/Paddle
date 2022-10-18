@@ -33,8 +33,8 @@ namespace paddle_infer {
 using Strings = std::vector<std::string>;
 
 class Tensor;
-using Exp_OutputHookFunc = std::function<void(
-    const std::string&, const std::string&, std::shared_ptr<Tensor>)>;
+using Exp_OutputHookFunc =
+    std::function<void(const std::string&, const std::string&, const Tensor&)>;
 
 typedef void (*CallbackFunc)(void*);
 
