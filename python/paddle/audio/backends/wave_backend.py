@@ -56,8 +56,8 @@ def info(filepath: str) -> AudioInfo:
             filepath = "./test.wav"
 
             paddle.audio.backends.save(filepath, waveform, sample_rate)
-            wav_data_read, sr = paddle.audio.backends.load(wav_path)
-            wav_info = paddle.audio.backends.info(wav_path)
+            wav_data_read, sr = paddle.audio.backends.load(filepath)
+            wav_info = paddle.audio.backends.info(filepath)
     """
 
     if hasattr(filepath, 'read'):
@@ -117,8 +117,8 @@ def load(filepath: Union[str, Path],
             filepath = "./test.wav"
 
             paddle.audio.backends.save(filepath, waveform, sample_rate)
-            wav_data_read, sr = paddle.audio.backends.load(wav_path)
-            wav_info = paddle.audio.backends.info(wav_path)
+            wav_data_read, sr = paddle.audio.backends.load(filepath)
+            wav_info = paddle.audio.backends.info(filepath)
     """
     if hasattr(filepath, 'read'):
         file_obj = filepath
@@ -194,8 +194,8 @@ def save(
             filepath = "./test.wav"
 
             paddle.audio.backends.save(filepath, waveform, sample_rate)
-            wav_data_read, sr = paddle.audio.backends.load(wav_path)
-            wav_info = paddle.audio.backends.info(wav_path)
+            wav_data_read, sr = paddle.audio.backends.load(filepath)
+            wav_info = paddle.audio.backends.info(filepath)
     """
     assert src.ndim == 2, "Expected 2D tensor"
 

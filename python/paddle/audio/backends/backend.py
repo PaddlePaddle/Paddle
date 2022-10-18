@@ -53,8 +53,8 @@ def info(filepath: str) -> AudioInfo:
             filepath = "./test.wav"
 
             paddle.audio.backends.save(filepath, waveform, sample_rate)
-            wav_data_read, sr = paddle.audio.backends.load(wav_path)
-            wav_info = paddle.audio.backends.info(wav_path)
+            wav_data_read, sr = paddle.audio.backends.load(filepath)
+            wav_info = paddle.audio.backends.info(filepath)
     """
     # for API doc
     raise NotImplementedError("please set audio backend")
@@ -94,8 +94,8 @@ def load(filepath: Union[str, Path],
             filepath = "./test.wav"
 
             paddle.audio.backends.save(filepath, waveform, sample_rate)
-            wav_data_read, sr = paddle.audio.backends.load(wav_path)
-            wav_info = paddle.audio.backends.info(wav_path)
+            wav_data_read, sr = paddle.audio.backends.load(filepath)
+            wav_info = paddle.audio.backends.info(filepath)
     """
     # for API doc
     raise NotImplementedError("please set audio backend")
@@ -136,8 +136,8 @@ def save(
             filepath = "./test.wav"
 
             paddle.audio.backends.save(filepath, waveform, sample_rate)
-            wav_data_read, sr = paddle.audio.backends.load(wav_path)
-            wav_info = paddle.audio.backends.info(wav_path)
+            wav_data_read, sr = paddle.audio.backends.load(filepath)
+            wav_info = paddle.audio.backends.info(filepath)
     """
     # for API doc
     raise NotImplementedError("please set audio backend")
