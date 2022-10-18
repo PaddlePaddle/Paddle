@@ -302,6 +302,7 @@ option(WITH_RECORD_BUILDTIME
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_ARM_BRPC "Supprot Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
+option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -507,6 +508,45 @@ if(WITH_DISTRIBUTE)
           BOOL
           "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496"
           FORCE)
+  endif()
+endif()
+
+if(WITH_RPC)
+  if(NOT LINUX)
+    message(
+      WARNING "Disable WITH_RPC when not compiled on Linux. Force WITH_RPC=OFF."
+    )
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when not compiled on Linux" FORCE)
+  endif()
+  if(WITH_ASCEND_CL AND WITH_RPC)
+    message(
+      WARNING "Disable WITH_RPC when compiling with NPU. Force WITH_RPC=OFF.")
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when compiling with NPU" FORCE)
+  endif()
+  if(WITH_ROCM AND WITH_RPC)
+    message(
+      WARNING "Disable WITH_RPC when compiling with ROCM. Force WITH_RPC=OFF.")
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when compiling with ROCM" FORCE)
+  endif()
+  if(WITH_XPU AND WITH_RPC)
+    message(
+      WARNING "Disable WITH_RPC when compiling with XPU. Force WITH_RPC=OFF.")
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when compiling with XPU" FORCE)
+  endif()
+  if(WITH_CINN AND WITH_RPC)
+    message(
+      WARNING "Disable WITH_RPC when compiling with CINN. Force WITH_RPC=OFF.")
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when compiling with CINN" FORCE)
   endif()
 endif()
 

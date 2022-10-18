@@ -49,13 +49,7 @@ if(WITH_PSCORE)
     set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
   endif()
 endif()
-if(WITH_DISTRIBUTE
-   AND WITH_PSCORE
-   AND LINUX
-   AND NOT WITH_ASCEND_CL
-   AND NOT WITH_XPU
-   AND NOT WITH_CINN
-   AND NOT WITH_ROCM)
+if(WITH_RPC)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc)
 endif()
 if(WITH_GPU OR WITH_ROCM)
@@ -227,13 +221,7 @@ if(WITH_PSCORE)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
 endif()
 
-if(WITH_DISTRIBUTE
-   AND WITH_PSCORE
-   AND LINUX
-   AND NOT WITH_ASCEND_CL
-   AND NOT WITH_XPU
-   AND NOT WITH_CINN
-   AND NOT WITH_ROCM)
+if(WITH_RPC)
   if(WITH_ARM_BRPC)
     set(DISTRIBUTE_COMPILE_FLAGS
         "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
