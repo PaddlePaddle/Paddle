@@ -30,6 +30,7 @@ if ! [[ $(python -V 2>&1 | awk '{print $2}' | awk -F '.' '{print $1$2}') -ge 36 
 fi
 
 diff_files=$(git diff --numstat ${BRANCH} | awk '{print $NF}')
+num_diff_files=$(echo "$diff_files" | wc -l)
 echo -e "diff files between pr and ${BRANCH}:\n${diff_files}"
 
 echo "Checking code style by pre-commit ..."
@@ -51,10 +52,12 @@ if [ ${check_error} != 0 ];then
     echo "    pip install pre-commit==2.17.0"
     echo "    pre-commit install"
     echo ""
-    echo "Then, run pre-commit to check codestyle issues in your PR:"
-    echo ""
-    echo "    pre-commit run --files" $(echo ${diff_files[*]} | tr "\n" " ")
-    echo ""
+    if [[ $num_diff_files -le 100 ]];then
+        echo "Then, run pre-commit to check codestyle issues in your PR:"
+        echo ""
+        echo "    pre-commit run --files" $(echo ${diff_files[*]} | tr "\n" " ")
+        echo ""
+    fi
     echo "For more information, please refer to our codestyle check guide:"
     echo "https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/git_guides/codestyle_check_guide_cn.html"
 else
