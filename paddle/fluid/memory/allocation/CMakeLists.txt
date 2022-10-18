@@ -173,6 +173,5 @@ if(WITH_TESTING)
       COMMAND wget -nc --no-check-certificate
               https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar
       COMMAND tar -xf buddy_allocator_test_data.tar)
-    add_dependencies(buddy_allocator_test download_data)
   endif()
 endif()

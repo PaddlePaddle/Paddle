@@ -44,5 +44,5 @@ set(PRIM_OP_SRCS
 
 cc_test(
   prim_op_test
-  SRCS prim_op_test.cc ${PRIM_OP_SRCS}
+  SRCS prim_op_test.cc
   DEPS op_registry)

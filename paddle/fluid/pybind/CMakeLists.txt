@@ -617,6 +617,7 @@ if(WITH_PYTHON)
   if(WIN32)
     set(SHARD_LIB_NAME libpaddle)
   endif()
+  set_property(GLOBAL PROPERTY PADDLE_LIB_NAME ${SHARD_LIB_NAME})
   cc_library(
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}

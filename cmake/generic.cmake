@@ -457,43 +457,33 @@ function(cc_test_build TARGET_NAME)
       endif()
     endif()
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      ${os_dependency_modules}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
-    add_dependencies(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main)
+    add_dependencies(${TARGET_NAME} paddle_gtest_main)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
     endif()
+
+    target_link_libraries(${TARGET_NAME}
+                          ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/libpaddle.so)
     check_coverage_opt(${TARGET_NAME} ${cc_test_SRCS})
   endif()
 endfunction()
 
 function(cc_test_run TARGET_NAME)
   if(WITH_TESTING)
-    set(oneValueArgs "")
+    set(oneValueArgs DIR)
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
+    if(cc_test_DIR STREQUAL "")
+      set(cc_test_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
     add_test(
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+      WORKING_DIRECTORY ${cc_test_DIR})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
@@ -513,29 +503,57 @@ function(cc_test_run TARGET_NAME)
   endif()
 endfunction()
 
+set_property(GLOBAL PROPERTY TEST_SRCS "")
+set_property(GLOBAL PROPERTY TEST_NAMES "")
 function(cc_test TARGET_NAME)
   if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    cc_test_build(${TARGET_NAME} SRCS ${cc_test_SRCS} DEPS ${cc_test_DEPS})
-    # we dont test hcom op, because it need complex configuration
-    # with more than one machine
-    if(NOT
-       ("${TARGET_NAME}" STREQUAL "c_broadcast_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allreduce_sum_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allreduce_max_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_reducescatter_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_allgather_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "send_v2_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "c_reduce_sum_op_npu_test"
-        OR "${TARGET_NAME}" STREQUAL "recv_v2_op_npu_test"))
-      cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
+
+    list(LENGTH cc_test_SRCS len)
+    # message("cc_test_SRCS ${cc_test_SRCS}")
+    # message("cc_test_ARGS ${cc_test_ARGS}")
+
+    if(${len} GREATER 1)
+      message(
+        SEND_ERROR
+          "The number source file of cc_test should be 1, but got ${len}, the source files are: ${cc_test_SRCS}"
+      )
     endif()
-  elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
-    add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip
-                                         ${TARGET_NAME}.)
+
+    list(LENGTH cc_test_ARGS len_arg)
+    if(len_arg GREATER_EQUAL 1)
+      set_property(GLOBAL PROPERTY "${TARGET_NAME}_ARGS" "${cc_test_ARGS}")
+      #message("${TARGET_NAME}_ARGS arg ${arg}")
+    endif()
+
+    get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
+    set(test_srcs ${test_srcs} "${CMAKE_CURRENT_SOURCE_DIR}/${cc_test_SRCS}")
+    set_property(GLOBAL PROPERTY TEST_SRCS "${test_srcs}")
+
+    get_property(test_names GLOBAL PROPERTY TEST_NAMES)
+    set(test_names ${test_names} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY TEST_NAMES "${test_names}")
+
+    #   cc_test_build(${TARGET_NAME} SRCS ${cc_test_SRCS} DEPS ${cc_test_DEPS})
+    #   # we dont test hcom op, because it need complex configuration
+    #   # with more than one machine
+    #   if(NOT
+    #      ("${TARGET_NAME}" STREQUAL "c_broadcast_op_npu_test"
+    #       OR "${TARGET_NAME}" STREQUAL "c_allreduce_sum_op_npu_test"
+    #       OR "${TARGET_NAME}" STREQUAL "c_allreduce_max_op_npu_test"
+    #       OR "${TARGET_NAME}" STREQUAL "c_reducescatter_op_npu_test"
+    #       OR "${TARGET_NAME}" STREQUAL "c_allgather_op_npu_test"
+    #       OR "${TARGET_NAME}" STREQUAL "send_v2_op_npu_test"
+    #       OR "${TARGET_NAME}" STREQUAL "c_reduce_sum_op_npu_test"
+    #       OR "${TARGET_NAME}" STREQUAL "recv_v2_op_npu_test"))
+    #     cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${cc_test_ARGS})
+    #   endif()
+    # elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
+    #   add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip
+    #                                        ${TARGET_NAME}.)
   endif()
 endfunction()
 
@@ -626,25 +644,9 @@ function(nv_test TARGET_NAME)
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(
-      ${TARGET_NAME}
-      ${nv_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog
-      ${os_dependency_modules})
-    add_dependencies(
-      ${TARGET_NAME}
-      ${nv_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main)
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
@@ -659,6 +661,8 @@ function(nv_test TARGET_NAME)
       set_target_properties(${TARGET_NAME} PROPERTIES VS_USER_PROPS
                                                       ${WIN_PROPS})
     endif()
+    target_link_libraries(${TARGET_NAME}
+                          ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/libpaddle.so)
   endif()
 endfunction()
 
