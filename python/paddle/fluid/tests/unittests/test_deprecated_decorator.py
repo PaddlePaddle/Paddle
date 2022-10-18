@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.static import Program, program_guard
 import unittest
-import paddle.fluid.core as core
 import sys
 import warnings
 import paddle.utils.deprecated as deprecated
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize

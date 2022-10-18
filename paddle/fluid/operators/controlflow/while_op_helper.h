@@ -53,7 +53,7 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const std::vector<OpVariant> &while_ops,
     const std::vector<OpVariant> &while_grad_ops);
 
-bool GetCondData(const framework::LoDTensor &cond);
+bool GetCondData(const phi::DenseTensor &cond);
 
 bool StrInVaraiableNameMap(const std::string &,
                            const framework::VariableNameMap &);

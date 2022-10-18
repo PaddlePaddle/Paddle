@@ -22,8 +22,6 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-import os
-import time
 import numpy as np
 
 import paddle
@@ -53,6 +51,8 @@ class InternalStorage:
                 dtype=np.float16) if Type.fp16.value == dtype else np.zeros(
                     size, dtype=np.float32)
             self.buffer = core.eager.Tensor(value=value, place=core.CPUPlace())
+            if dtype == Type.bf16.value:
+                self.buffer = paddle.cast(self.buffer, dtype=paddle.bfloat16)
         else:
             self.buffer = paddle.zeros(size, dtype=dtype)
 

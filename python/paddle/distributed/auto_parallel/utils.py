@@ -27,6 +27,10 @@ from paddle.distributed.auto_parallel.process_group import get_all_process_group
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
+__not_shape_var_type__ = [
+    core.VarDesc.VarType.READER, core.VarDesc.VarType.STEP_SCOPES
+]
+
 
 def get_logger(log_level, name="auto_parallel"):
     logger = logging.getLogger(name)
@@ -1386,7 +1390,7 @@ def update_op_dims_mapping_by_elementwise_like_dist_impl(dist_op):
 def get_all_distributed_main_program(serial_program_info, dist_context,
                                      parallelizer):
     "Get all distributed main programs by dist_context."
-    from .dist_context import DistributedOperatorContext, DistributedContext
+    from .dist_context import DistributedOperatorContext
     cluster = serial_program_info.cluster
     copied_parallelizer = copy.deepcopy(parallelizer)
     all_dist_main_program = []
@@ -1583,3 +1587,18 @@ def find_higher_order_backward_op(program):
                     return True
 
     return False
+
+
+def get_lr(optimizer):
+    if isinstance(optimizer, paddle.optimizer.Optimizer):
+        return optimizer.get_lr()
+    elif isinstance(optimizer, paddle.fluid.optimizer.Optimizer):
+        if isinstance(optimizer._learning_rate, float):
+            return optimizer._learning_rate
+        else:
+            return optimizer._learning_rate()
+    else:
+        raise TypeError(
+                "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
+                    " or `paddle.fluid.optimizer.Optimizer`, but got {}.".format(type(optimizer))
+            )

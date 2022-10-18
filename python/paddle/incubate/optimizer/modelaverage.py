@@ -13,11 +13,10 @@
 # limitations under the License.
 
 from paddle.optimizer import Optimizer
-from paddle.fluid import core, framework, layers
-from paddle.fluid.framework import Program, Variable
+from paddle.fluid import framework, layers
+from paddle.fluid.framework import Program
 from paddle.fluid.layer_helper import LayerHelper
 import paddle
-import numpy as np
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle import _C_ops, _legacy_C_ops

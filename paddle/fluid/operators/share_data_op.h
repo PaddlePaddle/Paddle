@@ -24,9 +24,9 @@ class ShareDataKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *in_var = ctx.InputVar("X");
     auto *out_var = ctx.OutputVar("Out");
-    if (in_var->IsType<framework::LoDTensor>()) {
-      const auto &origin_tensor = in_var->Get<framework::LoDTensor>();
-      auto *detach_tensor = out_var->GetMutable<framework::LoDTensor>();
+    if (in_var->IsType<phi::DenseTensor>()) {
+      const auto &origin_tensor = in_var->Get<phi::DenseTensor>();
+      auto *detach_tensor = out_var->GetMutable<phi::DenseTensor>();
       detach_tensor->ShareDataWith(origin_tensor);
     } else {
       const auto &origin_selected_rows = in_var->Get<phi::SelectedRows>();

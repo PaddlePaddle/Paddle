@@ -20,7 +20,6 @@ import sys
 import subprocess
 from contextlib import closing
 import socket
-from paddle.fluid import core
 from distutils.util import strtobool
 import six
 

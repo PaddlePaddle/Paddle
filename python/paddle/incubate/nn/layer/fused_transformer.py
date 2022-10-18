@@ -11,10 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from paddle.nn import functional as F
 from paddle.incubate.nn import functional as incubate_f
 from paddle.nn import Layer
-from paddle.framework import ParamAttr
 import paddle
 from paddle.nn.layer.transformer import _convert_attention_mask, _convert_param_attr_to_list
 from paddle.nn.initializer import Constant
@@ -1242,7 +1240,12 @@ class FusedMultiTransformer(Layer):
         self.activation = activation
         self.name = name
 
-    def forward(self, src, attn_mask=None, caches=None, time_step=None):
+    def forward(self,
+                src,
+                attn_mask=None,
+                caches=None,
+                pre_caches=None,
+                time_step=None):
         """
         Applies multi transformer layers on the input.
 
@@ -1260,6 +1263,8 @@ class FusedMultiTransformer(Layer):
                 tensors for the inference generation model. It is only used for
                 inference and should be None for training. The shape is
                 `[2, batch_size, num_head, max_seq_len, head_dim]`. Default None.
+            pre_caches (list(Tensor)|tuple(Tensor), optional): The prefix caches
+                for the generation model. The shape is `[2, bsz, num\_head, cache\_len, head\_dim]`. Default None.
             time_step (Tensor, optional): The time step tensor for the generation
                 model. Which used in decode stage, to represent the time step,
                 that is, the real seq_len of CacheKV. The shape is `[1]`, must be
@@ -1292,6 +1297,7 @@ class FusedMultiTransformer(Layer):
             pre_layer_norm=self.normalize_before,
             epsilon=self._epsilon,
             cache_kvs=caches,
+            pre_caches=pre_caches,
             time_step=time_step,
             attn_mask=attn_mask,
             dropout_rate=self.dropout_rate,

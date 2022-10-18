@@ -23,13 +23,12 @@ from paddle.distributed.launch.job.container import Container
 from .master import Master
 from .watcher import Watcher
 
-import time
-
 
 class ControleMode:
     COLLECTIVE = "collective"
     PS = "ps"
     IPU = "ipu"
+    RPC = "rpc"
 
 
 class ControllerBase(object):

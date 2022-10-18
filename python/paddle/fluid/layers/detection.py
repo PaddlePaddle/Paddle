@@ -15,8 +15,6 @@
 All layers just related to the detection neural network.
 """
 
-from __future__ import print_function
-
 import paddle
 
 from .layer_function_generator import generate_layer_fn

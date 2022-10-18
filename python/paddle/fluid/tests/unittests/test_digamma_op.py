@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import math
 import numpy as np
 from scipy.special import psi
 import paddle

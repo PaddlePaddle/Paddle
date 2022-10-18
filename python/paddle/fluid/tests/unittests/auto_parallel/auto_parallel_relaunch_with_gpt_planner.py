@@ -19,10 +19,6 @@ import sys
 
 import numpy as np
 
-from paddle.distributed.fleet import auto
-from auto_parallel_relaunch_model import mlp_pretrain_forward
-from auto_parallel_relaunch_model import batch_generator_creator
-
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import GPTModel, GPTForPretraining, GPTPretrainingCriterion

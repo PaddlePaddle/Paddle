@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import contextlib
 from enum import Enum
 import numpy as np
 from types import MethodType
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid import layers
 from paddle.fluid.dygraph import to_variable
@@ -41,6 +40,7 @@ class Type(Enum):
     Type of trainable parameters
     """
     fp16 = paddle.float16
+    bf16 = paddle.bfloat16
     fp32 = paddle.float32
 
 

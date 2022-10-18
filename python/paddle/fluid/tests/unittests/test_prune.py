@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.compat as cpt
 import numpy as np
 import os
 import contextlib
@@ -102,7 +99,7 @@ class TestPrune(unittest.TestCase):
         except ValueError as e:
             self.assertIn(
                 "All targets of Program._prune_with_input() can only be Variable or Operator",
-                cpt.get_exception_message(e))
+                str(e))
 
 
 def mock(self, program, feed, fetch, optimize_ops):

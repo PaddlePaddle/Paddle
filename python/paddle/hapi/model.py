@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import inspect
 import os
 import pickle
@@ -29,7 +25,7 @@ import contextlib
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.framework import Variable
 from paddle.fluid.framework import _get_paddle_place
 from paddle.fluid.framework import _current_expected_place as _get_device
@@ -50,6 +46,7 @@ from paddle.static import InputSpec as Input
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet.base import role_maker
+from paddle.autograd import no_grad
 
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
@@ -719,11 +716,9 @@ class DynamicGraphAdapter(object):
                                   **self._amp_custom_lists,
                                   level=self._amp_level):
             if self._nranks > 1:
-                outputs = self.ddp_model.forward(
-                    *[to_variable(x) for x in inputs])
+                outputs = self.ddp_model(*[to_variable(x) for x in inputs])
             else:
-                outputs = self.model.network.forward(
-                    *[to_variable(x) for x in inputs])
+                outputs = self.model.network(*[to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -758,7 +753,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.network(*[to_variable(x) for x in inputs])
 
         # Transfrom data to expected device
         expected_device = paddle.device.get_device()
@@ -813,7 +808,7 @@ class DynamicGraphAdapter(object):
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
         self._input_info = _update_input_info(inputs)
-        outputs = self.model.network.forward(*inputs)
+        outputs = self.model.network(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
             outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
 
@@ -1105,7 +1100,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
-    @paddle.no_grad()
+    @no_grad()
     def eval_batch(self, inputs, labels=None):
         """
         Run one evaluating step on a batch of data.
@@ -1157,7 +1152,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
-    @paddle.no_grad()
+    @no_grad()
     def predict_batch(self, inputs):
         """
         Run one predicting step on a batch of data.
