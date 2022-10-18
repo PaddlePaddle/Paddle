@@ -43,18 +43,18 @@ void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
                           "Unsupported multi devices if graph is constructed "
                           "with partial program."));
     size_t scope_idx = 0;
-    auto &ifelse_ops = target_ops[scope_idx].first;
-    auto &ifelse_grad_ops = target_ops[scope_idx].second;
+    auto &recur_ops = target_ops[scope_idx].first;
+    auto &recur_grad_ops = target_ops[scope_idx].second;
 
     auto all_ops = graph->OriginProgram().Block(0).AllOps();
-    if (ifelse_ops.empty()) {
+    if (recur_ops.empty()) {
       operators::AppendOpVariantByOpName(
-          all_ops, std::string("recurrent"), &ifelse_ops);
-    } else if (ifelse_grad_ops.empty()) {
+          all_ops, std::string("recurrent"), &recur_ops);
+    } else if (recur_grad_ops.empty()) {
       operators::AppendOpVariantByOpName(
-          all_ops, std::string("recurrent_grad"), &ifelse_grad_ops);
+          all_ops, std::string("recurrent_grad"), &recur_grad_ops);
     } else {
-      PADDLE_THROW("One of ifelse_ops or ifelse_grad_ops should be empty.");
+      PADDLE_THROW("One of recur_ops or recur_grad_ops should be empty.");
     }
   }
 
