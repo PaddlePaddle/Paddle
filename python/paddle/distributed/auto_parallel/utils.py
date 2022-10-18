@@ -1587,3 +1587,18 @@ def find_higher_order_backward_op(program):
                     return True
 
     return False
+
+
+def get_lr(optimizer):
+    if isinstance(optimizer, paddle.optimizer.Optimizer):
+        return optimizer.get_lr()
+    elif isinstance(optimizer, paddle.fluid.optimizer.Optimizer):
+        if isinstance(optimizer._learning_rate, float):
+            return optimizer._learning_rate
+        else:
+            return optimizer._learning_rate()
+    else:
+        raise TypeError(
+                "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
+                    " or `paddle.fluid.optimizer.Optimizer`, but got {}.".format(type(optimizer))
+            )
