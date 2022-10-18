@@ -25,6 +25,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+constexpr int kPriorBoxFLOAT = 1;
+constexpr int kPriorBoxDOUBLE = 2;
+
 inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
                                bool flip,
                                std::vector<float>* output_aspect_ratior) {
@@ -68,7 +71,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
         ctx.Attr<bool>("min_max_aspect_ratios_order");
 
     PD_VISIT_FLOATING_TYPES(
-        image->dtype(), "PriorBoxOpKernel::Compute", ([&] {
+        image->dtype(), "PriorBoxOpKernel::Compute Part1", ([&] {
           std::vector<float> aspect_ratios;
           ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
 
@@ -177,31 +180,34 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
               phi::make_ddim({1, static_cast<int>(variances.size())}),
               ctx.GetPlace());
           auto var_et = framework::EigenTensor<data_t, 2>::From(var_t);
+        }));
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-          for (size_t i = 0; i < variances.size(); ++i) {
-            var_et(0, i) = variances[i];
-          }
+    for (size_t i = 0; i < variances.size(); ++i) {
+      var_et(0, i) = variances[i];
+    }
 
+    PD_VISIT_FLOATING_TYPES(
+        image->dtype(), "PriorBoxOpKernel::Compute Part2", ([&] {
           int box_num = feature_height * feature_width * num_priors;
           auto var_dim = vars->dims();
           vars->Resize({box_num, static_cast<int>(variances.size())});
 
           auto e_vars =
               framework::EigenMatrix<data_t, Eigen::RowMajor>::From(*vars);
+        }));
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for collapse(2)
 #endif
-          for (int i = 0; i < box_num; ++i) {
-            for (size_t j = 0; j < variances.size(); ++j) {
-              e_vars(i, j) = variances[j];
-            }
-          }
-          vars->Resize(var_dim);
-        }));
+    for (int i = 0; i < box_num; ++i) {
+      for (size_t j = 0; j < variances.size(); ++j) {
+        e_vars(i, j) = variances[j];
+      }
+    }
+    vars->Resize(var_dim);
   }
 };  // namespace operators
 
