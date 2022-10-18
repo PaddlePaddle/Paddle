@@ -36,6 +36,7 @@ from paddle.optimizer.lr import CosineAnnealingDecay
 from paddle.fluid.dataloader.collate import default_collate_fn
 
 paddle.enable_static()
+
 global_process_mesh = auto.ProcessMesh(mesh=[0, 1])
 PP_MESH_0 = auto.ProcessMesh([0])
 PP_MESH_1 = auto.ProcessMesh([1])
@@ -124,7 +125,7 @@ class MLPLayer(nn.Layer):
         if is_feed:
             my_feed_vars.append((out, out.shape))
         if is_fetch:
-            auto.fetch(out, "my_out", logging=True)
+            auto.fetch(out, "my_fetch", logging=True)
         return out
 
 
@@ -151,10 +152,11 @@ def train_high_level(fetch):
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     eval_dataset1 = MyDataset(5 * batch_size)
-    engine.fit(train_data=train_dataset,
-               epochs=2,
-               batch_size=batch_size,
-               valid_data=eval_dataset1)
+    history = engine.fit(train_data=train_dataset,
+                         epochs=2,
+                         batch_size=batch_size,
+                         valid_data=eval_dataset1,
+                         log_freq=1)
 
     # eval
     eval_dataset2 = MyDataset(batch_size)
@@ -162,7 +164,7 @@ def train_high_level(fetch):
 
     # predict
     test_dataset = MyDataset(batch_size)
-    engine.predict(test_dataset, batch_size=batch_size)
+    outputs = engine.predict(test_dataset, batch_size=batch_size)
 
     # save
     temp_dir = tempfile.TemporaryDirectory()
