@@ -20,9 +20,6 @@ import numpy as np
 import random
 import six
 import struct
-import time
-import itertools
-import collections
 from collections import defaultdict
 from copy import copy
 
@@ -35,7 +32,7 @@ from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
+from paddle.fluid.framework import OpProtoHolder, Program, _current_expected_place
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 
@@ -508,6 +505,7 @@ class OpTest(unittest.TestCase):
                 else:
                     tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
+
         return feed_map
 
     def _append_ops(self, block):
@@ -1139,6 +1137,7 @@ class OpTest(unittest.TestCase):
                             continue
                         else:
                             grad_feed_map[arg] = fwd_outs[i]._copy(p)
+
         return grad_feed_map
 
     def _get_need_run_ops(self, op_desc, fwd_op_desc=None):
@@ -1257,6 +1256,7 @@ class OpTest(unittest.TestCase):
                                                  build_strategy=build_strategy,
                                                  places=place)
             program = compiled_program
+
         outs = exe.run(program,
                        feed=grad_feed_map,
                        fetch_list=grad_fetch_list,
@@ -1293,6 +1293,7 @@ class OpTest(unittest.TestCase):
                                             fwd_res,
                                             grad_op_desc,
                                             enable_inplace=True)
+
         self._compare_expect_and_actual_outputs(place,
                                                 expect_res[1],
                                                 expect_res[0],
@@ -1423,7 +1424,6 @@ class OpTest(unittest.TestCase):
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                pass
 
             def _is_skip_name(self, name):
                 if name not in self.expects:
@@ -1461,7 +1461,7 @@ class OpTest(unittest.TestCase):
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
-                    self.op_test.assertTrue(actual_np.size == 0)  # }}}
+                    self.op_test.assertTrue(actual_np.size == 0)
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)
@@ -1667,7 +1667,6 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             # always enable legacy dygraph
             g_enable_legacy_dygraph()
-
             dygraph_checker = DygraphChecker(self, self.outputs)
             dygraph_checker.check()
             dygraph_outs = dygraph_checker.outputs
@@ -1834,15 +1833,29 @@ class OpTest(unittest.TestCase):
             # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
             # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
             abs_a = np.abs(a)
-            if self.dtype == np.float64 and \
-                self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
-                abs_a[abs_a < 1e-10] = 1e-3
-                abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
-                abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
-            elif self.is_bfloat16_op():
-                abs_a[abs_a < 1e-2] = 1
-            else:
-                abs_a[abs_a < 1e-3] = 1
+            if abs_a.ndim > 0:
+                if self.dtype == np.float64 and \
+                    self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
+                    abs_a[abs_a < 1e-10] = 1e-3
+                    abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
+                    abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
+                elif self.is_bfloat16_op():
+                    abs_a[abs_a < 1e-2] = 1
+                else:
+                    abs_a[abs_a < 1e-3] = 1
+            elif abs_a.ndim == 0:
+                if self.dtype == np.float64 and \
+                    self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
+                    if abs_a < 1e-10:
+                        abs_a = 1e-3
+                    elif abs_a > 1e-10 and abs_a <= 1e-8:
+                        abs_a = abs_a * 1e4
+                    elif abs_a > 1e-8 and abs_a <= 1e-6:
+                        abs_a = abs_a * 1e2
+                elif self.is_bfloat16_op():
+                    abs_a = 1 if abs_a < 1e-2 else abs_a
+                else:
+                    abs_a = 1 if abs_a < 1e-3 else abs_a
 
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
@@ -1962,7 +1975,9 @@ class OpTest(unittest.TestCase):
             tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
             tensor_size = six.moves.reduce(lambda a, b: a * b,
                                            tensor_to_check.shape(), 1)
-            if tensor_size < 100:
+            tensor_ndim = len(tensor_to_check.shape())
+            # for 0D Tensor, it's additional case for OP, so not raise error
+            if tensor_ndim > 0 and tensor_size < 100:
                 self.__class__.input_shape_is_large = False
 
         if not type(output_names) is list:

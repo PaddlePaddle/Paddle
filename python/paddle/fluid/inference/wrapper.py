@@ -24,7 +24,6 @@ from typing import Set
 DataType = PaddleDType
 PlaceType = PaddlePlace
 PrecisionType = AnalysisConfig.Precision
-BackendType = AnalysisConfig.Backend
 Config = AnalysisConfig
 Tensor = PaddleInferTensor
 Predictor = PaddleInferPredictor
@@ -59,7 +58,7 @@ def convert_to_mixed_precision(model_file: str,
                                mixed_model_file: str,
                                mixed_params_file: str,
                                mixed_precision: PrecisionType,
-                               backend: BackendType,
+                               backend: PlaceType,
                                keep_io_types: bool = True,
                                black_list: Set = set()):
     '''
@@ -71,7 +70,7 @@ def convert_to_mixed_precision(model_file: str,
         mixed_model_file: The storage path of the converted mixed-precision model.
         mixed_params_file: The storage path of the converted mixed-precision params.
         mixed_precision: The precision, e.g. PrecisionType.Half.
-        backend: The backend, e.g. BackendType.GPU.
+        backend: The backend, e.g. PlaceType.GPU.
         keep_io_types: Whether the model input and output dtype remains unchanged.
         black_list: Operators that do not convert precision.
     '''

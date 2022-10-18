@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.framework import dygraph_only, core, convert_np_dtype_to_dtype_
 
 __all__ = []
@@ -549,7 +549,7 @@ def coalesce(x):
 @dygraph_only
 def rad2deg(x, name=None):
     """
-    Convert each of the elements of input x from angles in radians to degrees,
+    Convert each of the elements of input x from radian to degree,
     requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
@@ -582,7 +582,7 @@ def rad2deg(x, name=None):
 @dygraph_only
 def deg2rad(x, name=None):
     """
-    Convert each of the elements of input x from degrees to angles in radians,
+    Convert each of the elements of input x from degree to radian,
     requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
@@ -639,3 +639,60 @@ def expm1(x, name=None):
             out = paddle.incubate.sparse.expm1(sparse_x)
     """
     return _C_ops.sparse_expm1(x)
+
+
+@dygraph_only
+def reshape(x, shape, name=None):
+    """
+    Changes the shape of ``x`` without changing its value, requiring x to be a SparseCooTensor or SparseCsrTensor.
+    Currently this function can only reshape the sparse dims of ``x`` , but ``shape`` argument must be specified
+    as the shape of the reshaped tensor.
+
+    Note that if x is a SparseCsrTensor, then len(shape) must be 2 or 3.
+
+    There are some tricks when specifying the target shape.
+
+        - 1. -1 means the value of this dimension is inferred from the total element number of x and remaining dimensions. Thus one and only one dimension can be set -1.
+
+        - 2. 0 means the actual dimension value is going to be copied from the corresponding dimension of x. The indices of 0 in the target shape can not exceed the rank of x.
+
+    Here are some examples to explain it.
+
+        - 1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [6, 8], the reshape operator will transform x into a 2-D tensor with shape [6, 8] and leaving x's data unchanged.
+
+        - 2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [2, 3, -1, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this case, one dimension of the target shape is set to -1, the value of this dimension is inferred from the total element number of x and remaining dimensions.
+
+        - 3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case, besides -1, 0 means the actual dimension value is going to be copied from the corresponding dimension of x.
+
+    Args:
+        x (Tensor): The input sparse tensor with data type ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``.
+        shape (list|tuple): Define the target shape. At most one dimension of the target shape can be -1.
+                        The data type is ``int32``.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A reshaped Tensor with the same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x_shape = [6, 2, 3]
+            new_shape = [1, 0, 2, -1, 3]
+            format = "coo"
+
+            dense_x = paddle.randint(-100, 100, x_shape) * paddle.randint(0, 2, x_shape)
+
+            if format == "coo":
+                sp_x = dense_x.to_sparse_coo(len(x_shape))
+            else:
+                sp_x = dense_x.to_sparse_csr()
+            sp_out = paddle.incubate.sparse.reshape(sp_x, new_shape)
+
+            print(sp_out)
+            # the shape of sp_out is [1, 2, 2, 3, 3]
+
+    """
+    return _C_ops.sparse_reshape(x, shape)

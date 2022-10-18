@@ -17,10 +17,8 @@ import sys
 import numpy as np
 
 sys.path.append("..")
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 import paddle
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 

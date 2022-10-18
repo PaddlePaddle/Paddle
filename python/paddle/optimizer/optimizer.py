@@ -13,32 +13,23 @@
 # limitations under the License.
 
 import numpy as np
-import six
 import logging
 from collections import defaultdict
 
 import paddle
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+from paddle.fluid.framework import Variable, default_main_program, device_guard, name_scope
 
 from ..fluid import framework
 from ..fluid import layers
 from ..fluid import unique_name
-from ..fluid.backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
-from ..fluid.clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops
+from ..fluid.backward import _get_no_grad_set_name, append_backward
+from ..fluid.clip import GradientClipBase, append_gradient_clip_ops, error_clip_callback
 from ..fluid.framework import program_guard, Parameter
 from ..fluid.initializer import Constant
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.layers import ops
 from ..fluid.dygraph import base as imperative_base
-from ..fluid.dygraph import no_grad
 from paddle.fluid import core
-from paddle.fluid.layers import tensor
-from functools import reduce
-from ..fluid.wrapped_decorator import signature_safe_contextmanager
-from .. import compat as cpt
 from .lr import LRScheduler
-import copy
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.framework import _in_legacy_dygraph, _in_eager_without_dygraph_check, _current_expected_place, in_dygraph_mode
 
@@ -57,7 +48,7 @@ def append_backward_new(loss_list,
     assert program.num_blocks == 1, "The append_backward_new interface is designed to process only one block."
     block = program.current_block()
     for el in loss_list:
-        assert el.block == block, f'variable in loss_list should be in current block of main program'
+        assert el.block == block, 'variable in loss_list should be in current block of main program'
 
     orig2prim(block)
     ad = Transform(block)

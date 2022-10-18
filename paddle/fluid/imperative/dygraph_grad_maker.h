@@ -185,10 +185,9 @@ class GradOpBaseMakerBase {
           auto grad_var_base_tmp = var_base_temp->GradVarBase();
 
           if (!is_input) {
-            auto* tensor = grad_var_base_tmp->MutableVar()
-                               ->GetMutable<framework::LoDTensor>();
-            tensor->Resize(
-                var_base_temp->Var().Get<framework::LoDTensor>().dims());
+            auto* tensor =
+                grad_var_base_tmp->MutableVar()->GetMutable<phi::DenseTensor>();
+            tensor->Resize(var_base_temp->Var().Get<phi::DenseTensor>().dims());
           }
           vec_temp.emplace_back(grad_var_base_tmp);
         } else {
@@ -366,11 +365,11 @@ class TracedGradOp {
     } else if (var_wrapper->InplaceVersionSnapshot() ==
                var_wrapper->MutableVar()->CurrentInplaceVersion()) {
       return var_wrapper;
-    } else if (var_wrapper->MutableVar()->IsType<framework::LoDTensor>() ||
+    } else if (var_wrapper->MutableVar()->IsType<phi::DenseTensor>() ||
                var_wrapper->MutableVar()->IsType<phi::SelectedRows>()) {
       auto* tensor =
-          var_wrapper->MutableVar()->IsType<framework::LoDTensor>()
-              ? var_wrapper->MutableVar()->GetMutable<framework::LoDTensor>()
+          var_wrapper->MutableVar()->IsType<phi::DenseTensor>()
+              ? var_wrapper->MutableVar()->GetMutable<phi::DenseTensor>()
               : var_wrapper->MutableVar()
                     ->GetMutable<phi::SelectedRows>()
                     ->mutable_value();

@@ -41,7 +41,7 @@ namespace operators {
 
 struct InputVars {
   std::string name;
-  framework::LoDTensor *tensor;
+  phi::DenseTensor *tensor;
 };
 
 template <typename T>
@@ -52,20 +52,20 @@ bool TestMain(const platform::Place &place,
   framework::Scope scope;
 
   std::vector<InputVars> input_names = {
-      {"x", scope.Var("x")->GetMutable<framework::LoDTensor>()},
+      {"x", scope.Var("x")->GetMutable<phi::DenseTensor>()},
       {"x1",
-       num_inputs > 1 ? scope.Var("x1")->GetMutable<framework::LoDTensor>()
+       num_inputs > 1 ? scope.Var("x1")->GetMutable<phi::DenseTensor>()
                       : nullptr},
       {"x2",
-       num_inputs > 2 ? scope.Var("x2")->GetMutable<framework::LoDTensor>()
+       num_inputs > 2 ? scope.Var("x2")->GetMutable<phi::DenseTensor>()
                       : nullptr},
       {"x3",
-       num_inputs > 3 ? scope.Var("x3")->GetMutable<framework::LoDTensor>()
+       num_inputs > 3 ? scope.Var("x3")->GetMutable<phi::DenseTensor>()
                       : nullptr},
       {"x4",
-       num_inputs > 4 ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
+       num_inputs > 4 ? scope.Var("x4")->GetMutable<phi::DenseTensor>()
                       : nullptr}};
-  auto *y = scope.Var("y")->GetMutable<framework::LoDTensor>();
+  auto *y = scope.Var("y")->GetMutable<phi::DenseTensor>();
 
   // Initialize input data
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),
@@ -105,7 +105,7 @@ bool TestMain(const platform::Place &place,
   pool.Get(place)->Wait();
 
   // Get reference (out of place) result
-  auto &ref_tensor = scope.FindVar("y")->Get<framework::LoDTensor>();
+  auto &ref_tensor = scope.FindVar("y")->Get<phi::DenseTensor>();
 
   // In-place (to be tested) computation
   auto op = num_inputs > 1
@@ -122,7 +122,7 @@ bool TestMain(const platform::Place &place,
   platform::DeviceContextPool::Instance().Get(place)->Wait();
 
   // Get in-place result
-  auto &out_tensor = scope.FindVar("x")->Get<framework::LoDTensor>();
+  auto &out_tensor = scope.FindVar("x")->Get<phi::DenseTensor>();
   PADDLE_ENFORCE_EQ(
       &out_tensor,
       input_names[0].tensor,
