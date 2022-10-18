@@ -109,7 +109,7 @@ uint32_t FtmhaTransforMaskGetS2(const uint32_t S) {
     S2 = 384;
   } else {
     PADDLE_THROW(platform::errors::Fatal(
-        "unsupported seq_len %d for faster transformer mha\n", S));
+        "Unsupported seq_len %d for fused mha\n", S));
   }
   return S2;
 }
@@ -776,6 +776,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           nvinfer1::ILayer* biasqk_mask_constLayer = nullptr;
           nvinfer1::ITensor* input_bias_qk_mask = nullptr;
           if (with_fastertransformer_window_mha) {
+#ifdef TRT_FUSED_MHA_AVALIABLE
             // currently ft_window_mha only support fp16 (half)
             auto biasqk_name = op_desc.Input("BiasQK").front();
             auto* biasqk_v = scope.FindVar(biasqk_name);
@@ -884,6 +885,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
               input_bias_qk_mask =
                   engine_->GetITensor(op_desc.Input("BiasQK_mask").front());
             }
+#endif
           }
           // add a constant layer that warp weight biasqk as trt layer output
           nvinfer1::ILayer* biasqk_constLayer = nullptr;
