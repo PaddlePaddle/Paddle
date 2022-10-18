@@ -55,3 +55,7 @@ __all__ = [
     'segment_min',
     'identity_loss',
 ]
+
+from .multiprocessing.reductions import init_reductions
+
+init_reductions()

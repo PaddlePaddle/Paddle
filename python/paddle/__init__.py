@@ -669,7 +669,3 @@ __all__ = [  # noqa
     'take',
     'frexp',
 ]
-
-from .incubate.multiprocessing.reductions import init_reductions
-
-init_reductions()
