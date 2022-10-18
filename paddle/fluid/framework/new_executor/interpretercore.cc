@@ -101,7 +101,7 @@ inline void SetDeviceId(const platform::Place& place) {
   }
 }
 
-// TODO(Ruibia): Pass skip_gc_vars, used_for_jit, and other config messages by
+// TODO(Ruibiao): Pass skip_gc_vars, used_for_jit, and other config messages by
 // constructing an interpreter::ExecutionConfig
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,

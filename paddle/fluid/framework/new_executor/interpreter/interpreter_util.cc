@@ -50,6 +50,38 @@ namespace interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
+// NOTE(Ruibiao): SingleStreamGuard make some multi-strem op (i.e.,
+// c_allreduce_sum) run in single stream. It is dedicated to BuildOpFuncList
+// which run kernel without stream synchronization.
+class SingleStreamGuard {
+ public:
+  explicit SingleStreamGuard(std::shared_ptr<OperatorBase>& op) : op_(op) {
+    if (op_->Type() == "c_allreduce_sum" &&
+        op_->Attr<bool>("use_calc_stream") == false) {
+      VLOG(6) << "Set c_allredce_sum's attr use_calc_stream to true";
+      op_->SetAttr("use_calc_stream", true);
+      is_changed = true;
+    }
+  }
+
+  ~SingleStreamGuard() {
+    if (!is_changed) {
+      return;
+    }
+
+    if (op_->Type() == "c_allreduce_sum") {
+      op_->SetAttr("use_calc_stream", false);
+      VLOG(6) << "Set c_allredce_sum's attr use_calc_stream to false";
+    }
+  }
+
+  DISABLE_COPY_AND_ASSIGN(SingleStreamGuard);
+
+ private:
+  bool is_changed{false};
+  std::shared_ptr<OperatorBase> op_;
+};
+
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
     size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
   std::vector<WorkQueueOptions> group_options;
@@ -471,6 +503,9 @@ void BuildOpFuncList(const platform::Place& place,
     op_func_node.operator_base_ = ops[i];
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
+
+    SingleStreamGuard single_stream_guard(ops[i]);
+
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -514,16 +549,13 @@ void BuildOpFuncList(const platform::Place& place,
 
         auto& pool = platform::DeviceContextPool::Instance();
         auto* dev_ctx = pool.Get(place);
-        VLOG(4) << "get dev_ctx";
         auto exec_ctx = ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
-        VLOG(4) << "get exec_ctx";
         auto expected_kernel_key =
             op_with_kernel->GetExpectedKernelType(exec_ctx);
-        VLOG(4) << "get expected_kernel_key";
+        VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
         // change device by the device_guard()
         ApplyDeviceGuard(op, place, &expected_kernel_key);
-        VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
 
         // step 2. select op kernel
         auto run_phi_kernel = false;
