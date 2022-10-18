@@ -152,6 +152,7 @@ def train_high_level(fetch):
     # train
     train_dataset = MyDataset(batch_num * batch_size)
     eval_dataset1 = MyDataset(5 * batch_size)
+
     history = engine.fit(train_data=train_dataset,
                          epochs=2,
                          batch_size=batch_size,
@@ -365,9 +366,74 @@ def train_non_builtin_data_vars():
             )  # call DataLoader.reset() after catching EOFException
 
 
+def get_cost():
+    main_program = static.default_main_program()
+    startup_program = static.default_startup_program()
+    with static.program_guard(main_program,
+                              startup_program), utils.unique_name.guard():
+        input = static.data(name="input",
+                            shape=[batch_size, image_size],
+                            dtype='float32')
+        label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
+
+        loader = paddle.io.DataLoader.from_generator(feed_list=[input, label],
+                                                     capacity=4 * batch_size,
+                                                     iterable=False)
+        places = static.cuda_places()
+        loader.set_batch_generator(batch_generator_creator(), places=places)
+
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       dropout_ratio=0.1,
+                       initializer_range=0.02)
+        loss = paddle.nn.CrossEntropyLoss()
+        optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                          beta1=0.9,
+                                          beta2=0.999,
+                                          epsilon=1e-08,
+                                          grad_clip=None)
+        metric = paddle.metric.Accuracy()
+        predict = mlp(input)
+        loss_var = loss(predict, label)
+
+    strategy = auto.Strategy()
+    strategy.auto_mode = "semi"
+
+    engine = auto.Engine(loss=loss_var,
+                         optimizer=optimizer,
+                         metrics=metric,
+                         strategy=strategy)
+    engine.cost()
+
+
+def get_cost_by_spec():
+    mlp = MLPLayer(hidden_size=hidden_size,
+                   intermediate_size=4 * hidden_size,
+                   dropout_ratio=0.1,
+                   initializer_range=0.02)
+    loss = paddle.nn.CrossEntropyLoss()
+    optimizer = paddle.optimizer.Adam(learning_rate=0.00001,
+                                      beta1=0.9,
+                                      beta2=0.999,
+                                      epsilon=1e-08,
+                                      grad_clip=None)
+    metric = paddle.metric.Accuracy()
+
+    strategy = auto.Strategy()
+    strategy.auto_mode = "semi"
+
+    engine = auto.Engine(mlp, loss, optimizer, metric, strategy=strategy)
+
+    input_spec = static.InputSpec([batch_size, image_size], 'float32', 'input')
+    label_spec = static.InputSpec([batch_size, 1], 'int64', 'label')
+    engine.cost(mode="eval", inputs_spec=[input_spec], labels_spec=[label_spec])
+
+
 if __name__ == "__main__":
     train_high_level(fetch=True)
     train_high_level(fetch=False)
     train_low_level()
     train_builtin_data_vars()
     train_non_builtin_data_vars()
+    get_cost()
+    get_cost_by_spec()
