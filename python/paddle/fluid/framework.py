@@ -3669,6 +3669,7 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
+        # Ensure the type of name and new_name is str
         name = name.decode() if isinstance(name, bytes) else name
         new_name = new_name.decode() if isinstance(new_name,
                                                    bytes) else new_name
