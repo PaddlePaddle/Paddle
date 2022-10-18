@@ -6578,10 +6578,6 @@ class Parameter(Variable):
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
 
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
-
         for each in shape:
             if each < 0:
                 raise ValueError(
@@ -6680,10 +6676,6 @@ class ParamBase(core.VarBase):
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
-
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:
@@ -6826,10 +6818,6 @@ class EagerParamBase(_core_eager_eagertensor):
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
-
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:
