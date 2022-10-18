@@ -320,9 +320,11 @@ void InterpreterCore::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   auto& var_list = var_scope_.MutableVarList();
   for (size_t i = 0; i < var_list.size(); i++) {
-    var_list[i] = new_scope->FindVar(var_scope_.GetNameById(i));
+    const auto& var_name = var_scope_.GetNameById(i);
+    var_list[i] = new_scope->FindVar(var_name);
+    refs_[i]->ResetVariable(var_list[i]);
   }
-  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+  for (size_t i = 0; i < vec_instruction_.size(); i++) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
   }
 }
@@ -555,7 +557,6 @@ void InterpreterCore::Convert(
           continue;
         }
         gc_check_vars.insert(id);
-        VLOG(10) << "[gc_check_inputs] add gc: " << var_scope_.GetNameById(id);
       }
     }
 
@@ -747,6 +748,7 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       }
     }
   }
+
   VLOG(4) << "End run " << place << " " << op->DebugStringEx(local_scope);
 
   if (!instr_node.InplaceBackMap().empty()) {
@@ -1154,5 +1156,6 @@ std::shared_ptr<InterpreterCore> CreateInterpreterCore(
   core->SetCopyProgram(new_prog);
   return core;
 }
+
 }  // namespace framework
 }  // namespace paddle

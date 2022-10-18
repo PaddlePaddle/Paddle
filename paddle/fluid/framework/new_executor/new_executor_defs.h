@@ -418,6 +418,7 @@ class VarRefInfo {
       dynamic_ref_ = static_ref_;
     }
   }
+  void ResetVariable(Variable* new_var) { var_ = new_var; }
   bool CheckAndDecrease() {
     return static_ref_ == 1 || (dynamic_ref_.fetch_sub(1) == 1);
   }
