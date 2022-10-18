@@ -155,7 +155,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             broadcast(p,
                       src=self._global_root_rank,
                       group=self._group,
-                      use_calc_stream=True)
+                      sync_op=True)
 
     def _generate_master_params(self, trainable_params):
         if self.offload:
@@ -413,4 +413,4 @@ class GroupShardedOptimizerStage2(Optimizer):
                 broadcast(tensor=internal_storage.buffer,
                           src=self._group.ranks[dst_rank],
                           group=self._group,
-                          use_calc_stream=True)
+                          sync_op=True)

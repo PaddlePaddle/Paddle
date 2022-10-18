@@ -100,7 +100,8 @@ def linspace(start, stop, num, dtype=None, name=None):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
     if in_dygraph_mode():
-        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, dtype)
+        return _C_ops.linspace(tensor_start, tensor_stop, tensor_num, dtype,
+                               _current_expected_place())
     if _in_legacy_dygraph():
         return _legacy_C_ops.linspace(tensor_start, tensor_stop, tensor_num,
                                       'dtype', dtype)
@@ -925,7 +926,8 @@ def _tril_triu_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        op_type)
     if len(x.shape) < 2:
         raise ValueError("x shape in {} must be at least 2-D".format(op_type))
     diagonal = helper.kwargs.get('diagonal', 0)

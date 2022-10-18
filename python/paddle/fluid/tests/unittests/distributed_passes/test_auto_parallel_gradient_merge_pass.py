@@ -26,7 +26,7 @@ import paddle.utils as utils
 import paddle.static as static
 import paddle.nn.functional as F
 import paddle.distributed.fleet as fleet
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 from paddle.fluid.initializer import NumpyArrayInitializer
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
@@ -97,11 +97,8 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_forward(input, label, hidden_size):
-    auto.shard_tensor(input,
-                      dist_attr={
-                          "process_mesh": [0],
-                          "dims_mapping": [-1, -1]
-                      })
+    auto.shard_tensor(input, auto.ProcessMesh([0], dim_names=["x"]),
+                      [None, None])
     mlp = MLPLayer(hidden_size=hidden_size,
                    intermediate_size=4 * hidden_size,
                    initializer_range=0.02)
@@ -160,6 +157,12 @@ class TestGradientMergePass(AutoPallelPassTestBase):
 
     def get_model(self, place, batch_size, hidden_size, max_step):
 
+        def gen_data():
+            for i in range(max_step):
+                x_data = input_data[i * batch_size:(i + 1) * batch_size, :]
+                y_data = label_data[i * batch_size:(i + 1) * batch_size, :]
+                yield x_data, y_data
+
         train_program = static.Program()
         startup_program = static.Program()
         with static.program_guard(train_program, startup_program), \
@@ -171,6 +174,12 @@ class TestGradientMergePass(AutoPallelPassTestBase):
                                 shape=[batch_size, 1],
                                 dtype='float32')
             input.stop_gradient = False
+            data_holder = [input, label]
+            data_loader = paddle.fluid.io.DataLoader.from_generator(
+                feed_list=data_holder, capacity=70, iterable=False)
+            data_loader.set_batch_generator(gen_data,
+                                            paddle.static.cuda_places())
+
             loss = mlp_forward(input, label, hidden_size)
 
         optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.01)
@@ -181,13 +190,8 @@ class TestGradientMergePass(AutoPallelPassTestBase):
         input_data = np.random.random(size=(128, hidden_size)).astype('float32')
         label_data = np.random.random(size=(128, 1)).astype('float32')
 
-        def reader():
-            for i in range(max_step):
-                x_data = input_data[i * batch_size:(i + 1) * batch_size, :]
-                y_data = label_data[i * batch_size:(i + 1) * batch_size, :]
-                yield x_data, y_data
-
-        return dist_main_prog, dist_startup_prog, [input, label], [loss], reader
+        return dist_main_prog, dist_startup_prog, [input,
+                                                   label], [loss], data_loader
 
 
 if __name__ == "__main__":

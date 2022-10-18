@@ -369,11 +369,47 @@ void TensorRTEngine::SetITensor(const std::string &name,
 }
 
 nvinfer1::ITensor *TensorRTEngine::GetITensor(const std::string &name) {
-  PADDLE_ENFORCE_EQ(itensor_map_.count(name),
-                    true,
-                    platform::errors::NotFound(
-                        "Tensor named %s is not found in TRT engine", name));
-  return itensor_map_[name];
+  if (itensor_map_.count(name)) {
+    return itensor_map_[name];
+  } else {
+    ConvertWeight2ITensor(name);
+    return itensor_map_[name];
+  }
+}
+
+// For cases when input is not middle-tensor , but persistable tensor
+// you should call this.
+nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
+    const std::string &name) {
+  auto *var_v = scope_->FindVar(name);
+  PADDLE_ENFORCE_NOT_NULL(
+      var_v,
+      platform::errors::NotFound("You are converting a persistable weight to a "
+                                 "tensor, but there is no "
+                                 "persistable variable called %s in scope.",
+                                 name));
+  auto *var_t = var_v->GetMutable<framework::LoDTensor>();
+  auto weight = this->GetTrtWeight(name, *var_t);
+
+  // Now we have create weights, then we need create a itensor
+  auto var_dims = var_t->dims();
+  nvinfer1::Dims trt_in_shape;
+  trt_in_shape.nbDims = var_t->dims().size();
+  for (int64_t i = 0; i < trt_in_shape.nbDims; i++) {
+    trt_in_shape.d[i] = var_dims[i];
+  }
+  // In fact , this is not always right, because we can't determine if the 0th
+  // dimension is batch. Just for run chenqu's model
+  if (!this->with_dynamic_shape()) {
+    trt_in_shape.nbDims--;
+    for (int i = 0; i < trt_in_shape.nbDims; i++) {
+      trt_in_shape.d[i] = trt_in_shape.d[i + 1];
+    }
+  }
+  nvinfer1::ILayer *layer =
+      TRT_ENGINE_ADD_LAYER(this, Constant, trt_in_shape, weight.get());
+  this->SetITensor(name, layer->getOutput(0));
+  return layer->getOutput(0);
 }
 
 std::unordered_map<std::string, nvinfer1::ITensor *>
@@ -610,9 +646,8 @@ void TensorRTEngine::GetEngineInfo() {
   LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
       infer_engine_->createEngineInspector());
-  auto infer_context = infer_ptr<nvinfer1::IExecutionContext>(
-      infer_engine_->createExecutionContextWithoutDeviceMemory());
-  infer_inspector->setExecutionContext(infer_context.get());
+  auto infer_context = context();
+  infer_inspector->setExecutionContext(infer_context);
   LOG(INFO) << infer_inspector->getEngineInformation(
       nvinfer1::LayerInformationFormat::kONELINE);
   LOG(INFO) << "====== engine info end ======";

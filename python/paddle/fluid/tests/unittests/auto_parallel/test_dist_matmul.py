@@ -14,7 +14,7 @@
 
 import unittest
 import paddle
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
@@ -22,82 +22,58 @@ from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 
-mesh = [[0, 1], [2, 3]]
+mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
 
 
 def init_x_row(trans_x):
     if trans_x:
         x = paddle.static.data(name='x', shape=[10, 6, 8], dtype='float32')
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [0, 1, -1]
-                          })
+        auto.shard_tensor(x, mesh, ["x", "y", None])
+
         return x
     else:
         x = paddle.static.data(name='x', shape=[10, 8, 6], dtype='float32')
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [0, -1, 1]
-                          })
+        auto.shard_tensor(x, mesh, ["x", None, "y"])
+
         return x
 
 
 def init_x_col(trans_x):
     if trans_x:
         x = paddle.static.data(name='x', shape=[6, 8], dtype='float32')
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [-1, 0]
-                          })
+        auto.shard_tensor(x, mesh, [None, "x"])
+
         return x
     else:
         x = paddle.static.data(name='x', shape=[8, 6], dtype='float32')
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(x, mesh, ["x", None])
+
         return x
 
 
 def init_y_row(trans_y):
     if trans_y:
         y = paddle.static.data(name='y', shape=[4, 6], dtype='float32')
-        auto.shard_tensor(y,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [-1, 1]
-                          })
+        auto.shard_tensor(y, mesh, [None, "y"])
+
         return y
     else:
         y = paddle.static.data(name='y', shape=[6, 4], dtype='float32')
-        auto.shard_tensor(y,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [1, -1]
-                          })
+        auto.shard_tensor(y, mesh, ["y", None])
+
         return y
 
 
 def init_y_col(trans_y):
     if trans_y:
         y = paddle.static.data(name='y', shape=[4, 6], dtype='float32')
-        auto.shard_tensor(y,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [1, -1]
-                          })
+        auto.shard_tensor(y, mesh, ["y", None])
+
         return y
     else:
         y = paddle.static.data(name='y', shape=[6, 4], dtype='float32')
-        auto.shard_tensor(y,
-                          dist_attr={
-                              "process_mesh": mesh,
-                              "dims_mapping": [-1, 1]
-                          })
+        auto.shard_tensor(y, mesh, [None, "y"])
+
         return y
 
 
