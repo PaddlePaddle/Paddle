@@ -21,7 +21,6 @@ from collections import defaultdict
 
 import paddle
 from paddle.io import Dataset
-import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = []
@@ -151,16 +150,16 @@ class WMT16(Dataset):
         with open(dict_path, "rb") as fdict:
             for idx, line in enumerate(fdict):
                 if reverse:
-                    word_dict[idx] = cpt.to_text(line.strip())
+                    word_dict[idx] = line.strip().decode()
                 else:
-                    word_dict[cpt.to_text(line.strip())] = idx
+                    word_dict[line.strip().decode()] = idx
         return word_dict
 
     def _build_dict(self, dict_path, dict_size, lang):
         word_dict = defaultdict(int)
         with tarfile.open(self.data_file, mode="r") as f:
             for line in f.extractfile("wmt16/train"):
-                line = cpt.to_text(line)
+                line = line.decode()
                 line_split = line.strip().split("\t")
                 if len(line_split) != 2: continue
                 sen = line_split[0] if self.lang == "en" else line_split[1]
@@ -193,7 +192,7 @@ class WMT16(Dataset):
         self.trg_ids_next = []
         with tarfile.open(self.data_file, mode="r") as f:
             for line in f.extractfile("wmt16/{}".format(self.mode)):
-                line = cpt.to_text(line)
+                line = line.decode()
                 line_split = line.strip().split("\t")
                 if len(line_split) != 2:
                     continue

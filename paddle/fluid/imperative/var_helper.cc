@@ -192,11 +192,11 @@ template framework::proto::VarType::Type GetDataType<VariableWrapper>(
 
 /* GetDataLayout */
 template <typename VarType>
-paddle::experimental::DataLayout GetDataLayout(std::shared_ptr<VarType> var) {
+phi::DataLayout GetDataLayout(std::shared_ptr<VarType> var) {
   return var->DataLayout();
 }
 template <>
-paddle::experimental::DataLayout GetDataLayout<egr::EagerVariable>(
+phi::DataLayout GetDataLayout<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> var) {
   if (var->Var().IsType<phi::DenseTensor>()) {
     return var->Var().Get<phi::DenseTensor>().layout();
@@ -209,21 +209,18 @@ paddle::experimental::DataLayout GetDataLayout<egr::EagerVariable>(
         var->name()));
   }
 }
-template paddle::experimental::DataLayout GetDataLayout<VarBase>(
-    std::shared_ptr<VarBase> var);
-template paddle::experimental::DataLayout GetDataLayout<VariableWrapper>(
+template phi::DataLayout GetDataLayout<VarBase>(std::shared_ptr<VarBase> var);
+template phi::DataLayout GetDataLayout<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var);
 
 /* SetDataLayout */
 template <typename VarType>
-void SetDataLayout(std::shared_ptr<VarType> var,
-                   const paddle::experimental::DataLayout layout) {
+void SetDataLayout(std::shared_ptr<VarType> var, const phi::DataLayout layout) {
   var->SetDataLayout(layout);
 }
 template <>
-void SetDataLayout<egr::EagerVariable>(
-    std::shared_ptr<egr::EagerVariable> var,
-    const paddle::experimental::DataLayout layout) {
+void SetDataLayout<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
+                                       const phi::DataLayout layout) {
   if (var->Var().IsType<phi::DenseTensor>()) {
     var->MutableVar()->GetMutable<phi::DenseTensor>()->set_layout(layout);
   } else {
@@ -235,12 +232,10 @@ void SetDataLayout<egr::EagerVariable>(
         var->name()));
   }
 }
-template void SetDataLayout<VarBase>(
-    std::shared_ptr<VarBase> var,
-    const paddle::experimental::DataLayout layout);
+template void SetDataLayout<VarBase>(std::shared_ptr<VarBase> var,
+                                     const phi::DataLayout layout);
 template void SetDataLayout<VariableWrapper>(
-    std::shared_ptr<VariableWrapper> var,
-    const paddle::experimental::DataLayout layout);
+    std::shared_ptr<VariableWrapper> var, const phi::DataLayout layout);
 
 /* CheckCachedKey */
 template <typename VarType>

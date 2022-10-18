@@ -1476,7 +1476,8 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_rpc_disable_reuse_port": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
-            "NCCL_SHM_DISABLE": "1"
+            "NCCL_SHM_DISABLE": "1",
+            "FLAGS_CONVERT_GRAPH_TO_PROGRAM": "1"
         }
 
         if check_error_log:
