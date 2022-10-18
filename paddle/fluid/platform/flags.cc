@@ -70,6 +70,20 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 /**
  * Operator related FLAG
+ * Name: FLAGS_check_tensor_max_min
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Enable to calculate and print the max and min value of
+ * each oeprator's output tensor.
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    check_tensor_max_min,
+    false,
+    "Whether to check all the output tensors's min and max value.");
+
+/**
+ * Operator related FLAG
  * Name: FLAGS_check_nan_inf
  * Since Version: 0.13.0
  * Value Range: bool, default=false
