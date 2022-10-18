@@ -42,6 +42,7 @@ def info(filepath: str) -> AudioInfo:
     Example:
         .. code-block:: python
 
+            import os
             import paddle
 
             sample_rate = 16000
@@ -50,10 +51,10 @@ def info(filepath: str) -> AudioInfo:
             num_frames = sample_rate * wav_duration
             wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
             waveform = wav_data.tile([num_channels, 1])
-            filepath = "./test.wav"
+            base_dir = os.getcwd()
+            filepath = os.path.join(base_dir, "test.wav")
 
             paddle.audio.backends.save(filepath, waveform, sample_rate)
-            wav_data_read, sr = paddle.audio.backends.load(filepath)
             wav_info = paddle.audio.backends.info(filepath)
     """
     # for API doc
@@ -83,6 +84,7 @@ def load(filepath: Union[str, Path],
     Exampels:
         .. code-block:: python
 
+            import os
             import paddle
 
             sample_rate = 16000
@@ -91,11 +93,11 @@ def load(filepath: Union[str, Path],
             num_frames = sample_rate * wav_duration
             wav_data = paddle.linspace(-1.0, 1.0, num_frames) * 0.1
             waveform = wav_data.tile([num_channels, 1])
-            filepath = "./test.wav"
+            base_dir = os.getcwd()
+            filepath = os.path.join(base_dir, "test.wav")
 
             paddle.audio.backends.save(filepath, waveform, sample_rate)
             wav_data_read, sr = paddle.audio.backends.load(filepath)
-            wav_info = paddle.audio.backends.info(filepath)
     """
     # for API doc
     raise NotImplementedError("please set audio backend")
@@ -136,8 +138,6 @@ def save(
             filepath = "./test.wav"
 
             paddle.audio.backends.save(filepath, waveform, sample_rate)
-            wav_data_read, sr = paddle.audio.backends.load(filepath)
-            wav_info = paddle.audio.backends.info(filepath)
     """
     # for API doc
     raise NotImplementedError("please set audio backend")
