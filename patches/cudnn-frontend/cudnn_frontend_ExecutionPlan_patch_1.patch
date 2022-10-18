@@ -1,0 +1,15 @@
+diff --git a/include/cudnn_frontend_ExecutionPlan.h b/include/cudnn_frontend_ExecutionPlan.h
+index 7bed4b4..da1813b 100644
+--- a/include/cudnn_frontend_ExecutionPlan.h
++++ b/include/cudnn_frontend_ExecutionPlan.h
+@@ -167,6 +167,10 @@ class ExecutionPlan_v8 : public BackendDescriptor {
+         return json_string;
+ #endif
+     }
++    
++    ManagedOpaqueDescriptor GetEngineConfig() const {
++        return engine_config;
++    }
+ 
+     ExecutionPlan_v8(ExecutionPlan_v8 const &) = default;
+     ExecutionPlan_v8 &

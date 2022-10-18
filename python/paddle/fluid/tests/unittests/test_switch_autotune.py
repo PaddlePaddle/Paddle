@@ -50,6 +50,8 @@ def static_program(net, data):
     return loss
 
 
+@unittest.skipIf(int(os.getenv('FLAGS_cudnn_frontend_enable', 0)),
+                 "CUDNNv8 does not use phi::autotune")
 class TestAutoTune(unittest.TestCase):
 
     def set_flags(self, enable_autotune):

@@ -248,3 +248,7 @@ endif()
 if(WITH_GPU_GRAPH)
   add_definitions(-DPADDLE_WITH_GPU_GRAPH)
 endif()
+
+if(WITH_CUDNN_FRONTEND)
+  add_definitions(-DPADDLE_WITH_CUDNN_FRONTEND)
+endif()

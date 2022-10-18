@@ -505,4 +505,9 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
+if(WITH_CUDNN_FRONTEND)
+  include(external/cudnn-frontend) # download cudnn-frontend
+  list(APPEND third_party_deps extern_cudnn_frontend)
+endif()
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

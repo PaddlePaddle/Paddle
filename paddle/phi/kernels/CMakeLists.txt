@@ -83,6 +83,9 @@ set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
 if(WITH_NCCL OR WITH_RCCL)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_nccl)
 endif()
+if(WITH_CUDNN_FRONTEND)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cudnn_frontend)
+endif()
 
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 

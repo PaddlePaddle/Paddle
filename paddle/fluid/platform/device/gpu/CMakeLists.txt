@@ -10,6 +10,12 @@ if(WITH_GPU)
     cudnn_desc_test
     SRCS cudnn_desc_test.cc
     DEPS dynload_cuda)
+  if(WITH_CUDNN_FRONTEND)
+    nv_test(
+      cudnn_frontend_test
+      SRCS cudnn_frontend_test.cc
+      DEPS dynload_cuda cudnn-frontend)
+  endif()
 elseif(WITH_ROCM)
   add_subdirectory(rocm)
   hip_library(

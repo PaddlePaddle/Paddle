@@ -847,6 +847,14 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
 #endif
   }
 };
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+class WorkspaceHelper {
+ public:
+  static size_t GetWorkspaceSizeLimitBytes() {
+    return CalcWorkspaceLimitInBytes(UseFixedWorkspace());
+  }
+};  // class WorkspaceHelper
+#endif
 
 }  // namespace operators
 }  // namespace paddle

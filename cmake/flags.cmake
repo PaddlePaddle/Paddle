@@ -163,6 +163,11 @@ if(NOT WIN32)
     )
   endif()
 
+  if(WITH_CUDNN_FRONTEND)
+    # flags from https://github.com/NVIDIA/cudnn-frontend/blob/v0.7.1/CMakeLists.txt
+    set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare -Wno-non-virtual-dtor)
+  endif()
+
   if(WITH_ASCEND_CL AND WITH_ARM_BRPC)
     set(COMMON_FLAGS ${COMMON_FLAGS} -faligned-new)
   endif()

@@ -123,6 +123,7 @@ class TestImperativeOutSclae(unittest.TestCase):
     def func_out_scale_acc(self):
         seed = 1000
         lr = 0.001
+        loss_decrease_threshold = 2.0
 
         weight_quantize_type = 'abs_max'
         activation_quantize_type = 'moving_average_abs_max'
@@ -150,9 +151,7 @@ class TestImperativeOutSclae(unittest.TestCase):
         save_dict = lenet.state_dict()
         paddle.save(save_dict, self.param_save_path)
 
-        for i in range(len(loss_list) - 1):
-            self.assertTrue(loss_list[i] > loss_list[i + 1],
-                            msg='Failed to do the imperative qat.')
+        loss_first = loss_list[0]
 
         with fluid.dygraph.guard():
             lenet = ImperativeLenet()
@@ -168,6 +167,8 @@ class TestImperativeOutSclae(unittest.TestCase):
             loss_list = train_lenet(lenet, reader, adam)
             lenet.eval()
 
+        loss_last = loss_list[-1]
+
         imperative_out_scale.save_quantized_model(
             layer=lenet,
             path=self.save_path,
@@ -176,9 +177,8 @@ class TestImperativeOutSclae(unittest.TestCase):
                                         dtype='float32')
             ])
 
-        for i in range(len(loss_list) - 1):
-            self.assertTrue(loss_list[i] > loss_list[i + 1],
-                            msg='Failed to do the imperative qat.')
+        self.assertTrue(loss_first - loss_last > loss_decrease_threshold,
+                        msg='Failed to do the imperative qat.')
 
     def test_out_scale_acc(self):
         with _test_eager_guard():

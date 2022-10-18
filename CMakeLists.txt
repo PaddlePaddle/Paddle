@@ -304,6 +304,8 @@ option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
 option(WITH_ARM_BRPC "Supprot Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
 option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
+option(WITH_CUDNN_FRONTEND
+       "Compile with CUDNN Frontend API support (experimental)" OFF)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
