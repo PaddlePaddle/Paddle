@@ -56,9 +56,8 @@ ExternalProject_Add(
 
 add_definitions(-DTRT_FUSED_MHA_AVALIABLE)
 add_library(trt_fused_mha STATIC IMPORTED GLOBAL)
-set_property(
-  TARGET trt_fused_mha PROPERTY IMPORTED_LOCATION
-                                ${FASTER_TRANSFORMER_TRT_FUSED_MHA_LIBRARIES})
+set_property(TARGET trt_fused_mha PROPERTY IMPORTED_LOCATION
+                                           ${FMHA_FUSED_MHA_LIBRARIES})
 add_dependencies(trt_fused_mha extern_fmha)
 set(WITH_FUSED_MHA
     ON
