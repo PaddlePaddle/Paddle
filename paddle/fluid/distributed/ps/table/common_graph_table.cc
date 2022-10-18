@@ -2151,7 +2151,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
     cache_size_limit = graph.cache_size_limit();
     cache_ttl = graph.cache_ttl();
     make_neighbor_sample_cache((size_t)cache_size_limit,  // NOLINT
-                               (size_t)cache_ttl);  // NOLINT
+                               (size_t)cache_ttl);        // NOLINT
   }
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
