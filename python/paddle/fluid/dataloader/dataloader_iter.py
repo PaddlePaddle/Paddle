@@ -205,6 +205,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
         # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda
         # APIs in this thread.
+        core.set_current_thread_name("Dataloader_" + str(id(self)))
         _set_expected_place(legacy_expected_place)
 
         while not self._thread_done_event.is_set():
@@ -530,6 +531,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
         # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda
         # APIs in this thread.
+        core.set_current_thread_name("Dataloader_" + str(id(self)))
         _set_expected_place(legacy_expected_place)
 
         while not self._thread_done_event.is_set():

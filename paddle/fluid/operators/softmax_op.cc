@@ -40,7 +40,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(
@@ -53,7 +53,6 @@ class SoftmaxOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
     }
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type,
@@ -62,15 +61,6 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                                      framework::LibraryType::kCUDNN);
     }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };
@@ -138,7 +128,7 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     // choose cudnn kernel if the runtime supported.
     std::string data_format = ctx.Attr<std::string>("data_format");
-    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
     if (input_data_type == framework::proto::VarType::FP16) {
@@ -158,15 +148,6 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
                                      framework::LibraryType::kCUDNN);
     }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
   }
 };

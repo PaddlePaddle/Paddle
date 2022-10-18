@@ -95,7 +95,7 @@ using ValueVariantType =
             std::vector<::phi::MetaTensor*>,
             ::phi::MetaConfig,
             paddle::experimental::Backend,
-            paddle::experimental::DataLayout,
+            phi::DataLayout,
             paddle::experimental::DataType,
             ::infrt::phi::DenseTensorMap,
 #endif  // INFRT_WITH_PHI
