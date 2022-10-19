@@ -34,7 +34,6 @@ import tarfile
 from collections import defaultdict
 
 import paddle
-import paddle.compat as cpt
 import paddle.utils.deprecated as deprecated
 
 __all__ = []
@@ -54,7 +53,7 @@ def __build_dict(tar_file, dict_size, save_path, lang):
     word_dict = defaultdict(int)
     with tarfile.open(tar_file, mode="r") as f:
         for line in f.extractfile("wmt16/train"):
-            line = cpt.to_text(line)
+            line = line.decode()
             line_split = line.strip().split("\t")
             if len(line_split) != 2: continue
             sen = line_split[0] if lang == "en" else line_split[1]
@@ -62,15 +61,14 @@ def __build_dict(tar_file, dict_size, save_path, lang):
                 word_dict[w] += 1
 
     with open(save_path, "wb") as fout:
-        fout.write(
-            cpt.to_bytes("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)))
+        fout.write(("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)).encode())
         for idx, word in enumerate(
                 sorted(six.iteritems(word_dict),
                        key=lambda x: x[1],
                        reverse=True)):
             if idx + 3 == dict_size: break
-            fout.write(cpt.to_bytes(word[0]))
-            fout.write(cpt.to_bytes('\n'))
+            fout.write(word[0].encode())
+            fout.write(b'\n')
 
 
 def __load_dict(tar_file, dict_size, lang, reverse=False):
@@ -84,9 +82,9 @@ def __load_dict(tar_file, dict_size, lang, reverse=False):
     with open(dict_path, "rb") as fdict:
         for idx, line in enumerate(fdict):
             if reverse:
-                word_dict[idx] = cpt.to_text(line.strip())
+                word_dict[idx] = line.strip().decode()
             else:
-                word_dict[cpt.to_text(line.strip())] = idx
+                word_dict[line.strip().decode()] = idx
     return word_dict
 
 
@@ -117,7 +115,7 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
 
         with tarfile.open(tar_file, mode="r") as f:
             for line in f.extractfile(file_name):
-                line = cpt.to_text(line)
+                line = line.decode()
                 line_split = line.strip().split("\t")
                 if len(line_split) != 2:
                     continue

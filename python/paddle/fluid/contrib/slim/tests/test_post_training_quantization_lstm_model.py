@@ -273,7 +273,7 @@ class TestPostTrainingAvgForLSTM(TestPostTrainingQuantization):
 
 class TestPostTrainingAvgForLSTMONNXFormat(TestPostTrainingQuantization):
 
-    def test_post_training_avg_onnx_format(self):
+    def not_test_post_training_avg_onnx_format(self):
         model_name = "nlp_lstm_fp32_model"
         model_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/nlp_lstm_fp32_model.tar.gz"
         model_md5 = "519b8eeac756e7b4b7bcb2868e880452"

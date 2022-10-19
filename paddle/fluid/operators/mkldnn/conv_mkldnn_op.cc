@@ -96,18 +96,18 @@ class ConvMKLDNNHandlerT
     if (unlikely(!this->isCached())) {
       PADDLE_ENFORCE_EQ(
           input->layout(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The input tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN,
+              phi::DataLayout::kMKLDNN,
               input->layout()));
 
       PADDLE_ENFORCE_EQ(
           filter->layout(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The Filter tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN,
+              phi::DataLayout::kMKLDNN,
               filter->layout()));
 
       PADDLE_ENFORCE_GE(
@@ -143,10 +143,10 @@ class ConvMKLDNNHandlerT
       if (bias) {
         PADDLE_ENFORCE_EQ(
             bias->layout(),
-            framework::DataLayout::kMKLDNN,
+            phi::DataLayout::kMKLDNN,
             platform::errors::InvalidArgument(
                 "The Bias tensor's layout should be %d, but got %d.",
-                framework::DataLayout::kMKLDNN,
+                phi::DataLayout::kMKLDNN,
                 bias->layout()));
 
         PADDLE_ENFORCE_EQ(bias->dims().size(),
@@ -293,26 +293,26 @@ class ConvMKLDNNHandlerT
     if (unlikely(!this->isBwdCached())) {
       PADDLE_ENFORCE_EQ(
           in->layout(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The input tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN,
+              phi::DataLayout::kMKLDNN,
               in->layout()));
 
       PADDLE_ENFORCE_EQ(
           filter->layout(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The filter tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN,
+              phi::DataLayout::kMKLDNN,
               filter->layout()));
 
       PADDLE_ENFORCE_EQ(
           out_grad->layout(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The output_grad tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN,
+              phi::DataLayout::kMKLDNN,
               out_grad->layout()));
 
       PADDLE_ENFORCE_EQ(

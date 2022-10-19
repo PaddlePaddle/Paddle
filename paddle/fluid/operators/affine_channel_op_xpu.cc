@@ -36,13 +36,12 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
     auto* y = ctx.Output<phi::DenseTensor>("Out");
     y->mutable_data<T>(ctx.GetPlace());
 
-    const framework::DataLayout layout =
-        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+    const phi::DataLayout layout =
+        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
     int N = dims[0];
-    int C = layout == framework::DataLayout::kNCHW ? dims[1]
-                                                   : dims[dims.size() - 1];
+    int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
     int HxW = x->numel() / N / C;
 
     auto* scale_d = scale->data<T>();
@@ -53,7 +52,7 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     std::vector<int> x_shape;
     std::vector<int> b_shape;
-    if (layout == framework::DataLayout::kNCHW) {
+    if (layout == phi::DataLayout::kNCHW) {
       x_shape.push_back(N);
       x_shape.push_back(C);
       x_shape.push_back(HxW);
@@ -99,13 +98,12 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
     auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
-    const framework::DataLayout layout =
-        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+    const phi::DataLayout layout =
+        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
     int N = dims[0];
-    int C = layout == framework::DataLayout::kNCHW ? dims[1]
-                                                   : dims[dims.size() - 1];
+    int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
     int HxW = x->numel() / N / C;
 
     auto* dy_d = dy->data<T>();
@@ -119,7 +117,7 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
     std::vector<int> x_shape;
     std::vector<int> b_shape;
     std::vector<int> rdims;
-    if (layout == framework::DataLayout::kNCHW) {
+    if (layout == phi::DataLayout::kNCHW) {
       x_shape.push_back(N);
       x_shape.push_back(C);
       x_shape.push_back(HxW);
