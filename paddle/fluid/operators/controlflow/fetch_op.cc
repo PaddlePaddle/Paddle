@@ -29,7 +29,7 @@ static void DataCopy(const phi::DenseTensor &src_item,
   if (src_item.IsInitialized() && src_item.numel() > 0) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
-    if (src_item.layout() == framework::DataLayout::kMKLDNN) {
+    if (src_item.layout() == phi::DataLayout::kMKLDNN) {
       phi::DenseTensor out;
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
@@ -37,7 +37,7 @@ static void DataCopy(const phi::DenseTensor &src_item,
       framework::innerTransDataLayoutFromMKLDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
-              ? framework::DataLayout::kNCHW
+              ? phi::DataLayout::kNCHW
               : paddle::platform::MKLDNNDeviceContext::tls()
                     .get_cur_paddle_data_layout(),
           src_item,

@@ -62,15 +62,19 @@ class TransformedDistribution(distribution.Distribution):
 
         chain = transform.ChainTransform(transforms)
         base_shape = base.batch_shape + base.event_shape
-        if len(base_shape) < chain._domain.event_rank:
+        self._base = base
+        self._transforms = transforms
+        if not transforms:
+            super(TransformedDistribution,
+                  self).__init__(base.batch_shape, base.event_shape)
+            return
+        if len(base.batch_shape + base.event_shape) < chain._domain.event_rank:
             raise ValueError(
-                f"'base' needs to have shape with size at least {chain._domain.event_rank}, but got {len(base_shape)}."
+                f"'base' needs to have shape with size at least {chain._domain.event_rank}, bug got {len(base_shape)}."
             )
         if chain._domain.event_rank > len(base.event_shape):
             base = independent.Independent(
                 (base, chain._domain.event_rank - len(base.event_shape)))
-        self._base = base
-        self._transforms = transforms
 
         transformed_shape = chain.forward_shape(base.batch_shape +
                                                 base.event_shape)

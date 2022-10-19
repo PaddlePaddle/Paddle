@@ -18,7 +18,7 @@ import os
 import paddle.fluid as fluid
 from paddle.distributed import fleet
 from paddle.fluid import core
-from paddle.distributed.ps.utils.public import *
+from paddle.distributed.ps.utils.public import *  # noqa: F403
 from paddle.fluid.framework import Program
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import paddle
 import textwrap
 from paddle.utils import gast
@@ -59,7 +58,7 @@ def to_static_variable(x):
         return paddle.full(shape=[1], dtype='bool', fill_value=x)
     if isinstance(x, float):
         return paddle.full(shape=[1], dtype='float64', fill_value=x)
-    if isinstance(x, six.integer_types):
+    if isinstance(x, int):
         return paddle.full(shape=[1], dtype='int64', fill_value=x)
     if isinstance(x, UndefinedVar) or x is None:
         """

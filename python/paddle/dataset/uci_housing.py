@@ -20,7 +20,6 @@ parse training set and test set into paddle reader creators.
 """
 
 import numpy as np
-import six
 import tempfile
 import tarfile
 import os
@@ -75,7 +74,7 @@ def load_data(filename, feature_num=14, ratio=0.8):
         axis=0), data.sum(axis=0) / data.shape[0]
     # if you want to print the distribution of input data, you could use function of feature_range
     #feature_range(maximums[:-1], minimums[:-1])
-    for i in six.moves.range(feature_num - 1):
+    for i in range(feature_num - 1):
         data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
     offset = int(data.shape[0] * ratio)
     UCI_TRAIN_DATA = data[:offset]

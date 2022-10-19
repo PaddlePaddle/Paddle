@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import six
 import paddle.fluid as fluid
 import paddle
 import os
@@ -92,7 +91,7 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
                 places=places)
 
         BATCH_SIZE = 8 * dev_cnt
-        for _ in six.moves.range(10):
+        for _ in range(10):
             x_np = np.random.random(size=[BATCH_SIZE, 10]).astype('float32')
             y_np = np.random.random(size=[BATCH_SIZE, 10]).astype('float32')
 

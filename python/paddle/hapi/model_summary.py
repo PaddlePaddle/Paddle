@@ -19,7 +19,7 @@ import numbers
 import paddle
 import paddle.nn as nn
 from paddle.static import InputSpec
-
+from paddle.autograd import no_grad
 from collections import OrderedDict
 
 __all__ = []
@@ -229,7 +229,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
     return params_info
 
 
-@paddle.no_grad()
+@no_grad()
 def summary_string(model, input_size=None, dtypes=None, input=None):
 
     def _all_is_numper(items):
