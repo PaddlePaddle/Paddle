@@ -96,21 +96,21 @@ __global__ void MatrixRowReverse(const T* matrix_data,
   }
 }
 
-template <typename T, typename MT, typename Op>
+template <typename T, typename Op>
 struct BlockPrefixCallbackOp {
   // Running prefix
-  MT running_total_;
+  T running_total_;
   Op op_;
 
-  __device__ BlockPrefixCallbackOp(MT running_total, Op op)
+  __device__ BlockPrefixCallbackOp(T running_total, Op op)
       : running_total_(running_total), op_(op) {}
 
   // Callback operator to be entered by the first warp of threads in the block.
   // tid 0 is responsible for returning a value for seeding the block-wide scan.
-  __device__ T operator()(MT block_aggregate) {
-    MT old_prefix = running_total_;
+  __device__ T operator()(T block_aggregate) {
+    T old_prefix = running_total_;
     running_total_ = op_(old_prefix, block_aggregate);
-    return static_cast<T>(old_prefix);
+    return old_prefix;
   }
 };
 
@@ -148,10 +148,8 @@ struct LogAddExp {
   template <typename T>
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    MT min_val = static_cast<MT>(std::min(a, b));
-    MT max_val = static_cast<MT>(std::max(a, b));
-    return static_cast<T>(std::log(1 + std::exp(min_val - max_val)) + max_val);
+    return std::log(1 + std::exp(std::min(a, b) - std::max(a, b))) +
+           std::max(a, b);
   }
 };
 
@@ -180,12 +178,14 @@ __global__ void BlockScanKernel(T* d_out,
 
   // Specialize BlockLoad, BlockStore, and BlockRadixSort collective types
   typedef cub::
-      BlockLoad<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
+      BlockLoad<MT, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_LOAD_TRANSPOSE>
           BlockLoadT;
-  typedef cub::
-      BlockStore<T, BLOCK_THREADS, ITEMS_PER_THREAD, cub::BLOCK_STORE_TRANSPOSE>
-          BlockStoreT;
-  typedef cub::BlockScan<T, BLOCK_THREADS> BlockScanT;
+  typedef cub::BlockStore<MT,
+                          BLOCK_THREADS,
+                          ITEMS_PER_THREAD,
+                          cub::BLOCK_STORE_TRANSPOSE>
+      BlockStoreT;
+  typedef cub::BlockScan<MT, BLOCK_THREADS> BlockScanT;
   // Allocate type-safe, repurposable shared memory for collectives
   __shared__ union {
     typename BlockLoadT::TempStorage load;
@@ -194,10 +194,9 @@ __global__ void BlockScanKernel(T* d_out,
   } temp_storage;
 
   int bx = blockIdx.x;
-  BlockPrefixCallbackOp<T, MT, Op> prefix_op(Identity<MT, Op>::value, op);
+  BlockPrefixCallbackOp<MT, Op> prefix_op(Identity<MT, Op>::value, op);
 
-  // Obtain this block's segmBlockPrefixCallbackOpent of consecutive keys
-  // (blocked across threads)
+  // Obtain this block's segment of consecutive keys (blocked across threads)
   int item_per_block = BLOCK_THREADS * ITEMS_PER_THREAD;
   for (int block_offset = 0; block_offset < scan_size;
        block_offset += BLOCK_THREADS * ITEMS_PER_THREAD) {
@@ -210,7 +209,7 @@ __global__ void BlockScanKernel(T* d_out,
 
     int offset = block_offset + bx * scan_size;
 
-    T thread_keys[ITEMS_PER_THREAD];
+    MT thread_keys[ITEMS_PER_THREAD];
     BlockLoadT(temp_storage.load)
         .Load(d_in + offset, thread_keys, valid_item, 0);
 
@@ -259,7 +258,8 @@ void ScanKernel(const Context& dev_ctx,
 
   // Use thrust for parallel acceleration when the input size is equal to the
   // length of the ‘axis’ dimension.
-  if (std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
+  if (!std::is_same<T, phi::dtype::float16>::value &&
+      std::is_same<Op, cub::Sum>::value && size == out_dims[axis]) {
 #ifdef __HIPCC__
     const auto& policy = thrust::hip::par.on(dev_ctx.stream());
 #else
