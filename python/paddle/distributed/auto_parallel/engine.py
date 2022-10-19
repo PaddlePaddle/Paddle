@@ -243,8 +243,8 @@ class Engine:
                 else:
                     specs.append(spec.batch(batch_size))
             elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
-                _adjust_item_spec(num_shards, spec)
                 spec = InputSpec.from_tensor(item, name)
+                _adjust_item_spec(num_shards, spec)
                 if batch_size is None:
                     specs.append(spec)
                 else:
