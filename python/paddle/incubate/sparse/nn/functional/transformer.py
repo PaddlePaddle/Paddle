@@ -26,7 +26,7 @@ def attention(query,
               key_padding_mask=None,
               attn_mask=None,
               name=None):
-    r"""
+    """
     Note:
         This API is only used from ``CUDA 11.7`` .
 
