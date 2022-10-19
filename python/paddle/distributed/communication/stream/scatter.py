@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-import paddle.distributed as dist
 import paddle.fluid.framework as framework
 from paddle.distributed import collective
 
@@ -44,7 +43,7 @@ def _scatter_tensor_in_dygraph(out_tensor, in_tensor, src, group, sync_op,
         raise RuntimeError("Src rank out of group.")
 
     nranks = group.nranks
-    rank = dist.get_rank()
+    rank = paddle.distributed.get_rank()
     if rank == src_rank:
         _check_tensor_shape(out_tensor, in_tensor.shape, nranks)
 
