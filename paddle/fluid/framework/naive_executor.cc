@@ -52,7 +52,7 @@ void NaiveExecutor::Run() {
 #endif
   platform::ScopedFlushDenormal flush;
 #ifdef PADDLE_WITH_INFERENCE_NVTX
-  platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Blue);
+  platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
