@@ -336,7 +336,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
 
-    IF_CHANGE_FC_TW_TYPENAME(std::is_same<T_in, uint8_t>::value, ([&] {
+    IF_CHANGE_FC_TW_TYPENAME((std::is_same<T_in, uint8_t>::value), ([&] {
                                if (force_fp32_output) {
                                  this->RunKernel<float, T_w>(ctx);
                                } else if (IsInt8<T_in>()) {
