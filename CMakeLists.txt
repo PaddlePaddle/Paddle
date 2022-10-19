@@ -520,6 +520,15 @@ if(WITH_RPC)
         OFF
         CACHE BOOL "Disable WITH_RPC when not compiled on Linux" FORCE)
   endif()
+  if(NOT WITH_DISTRIBUTE AND WITH_RPC)
+    message(
+      WARNING
+        "Disable WITH_RPC when not compiled with distribute. Force WITH_RPC=OFF."
+    )
+    set(WITH_RPC
+        OFF
+        CACHE BOOL "Disable WITH_RPC when not compiled with distribute" FORCE)
+  endif()
   if(WITH_ASCEND_CL AND WITH_RPC)
     message(
       WARNING "Disable WITH_RPC when compiling with NPU. Force WITH_RPC=OFF.")
