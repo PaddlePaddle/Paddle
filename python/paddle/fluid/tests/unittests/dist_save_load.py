@@ -17,7 +17,6 @@ import sys
 
 import numpy as np
 import pickle
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -149,7 +148,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         if save_mode == "LOCAL":
             if need_save:
-                for _ in six.moves.xrange(RUN_STEP):
+                for _ in range(RUN_STEP):
                     loss, = exe.run(fetch_list=[avg_cost.name],
                                     feed=feeder.feed(get_data()))
                 if need_save and model_dir:
@@ -163,14 +162,14 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
             skip_steps = int(os.getenv("SKIP_STEPS"))
             loss = None
             if need_save:
-                for idx in six.moves.xrange(8):
+                for idx in range(8):
                     loss, = exe.run(fetch_list=[avg_cost.name],
                                     feed=feeder.feed(get_data()))
                     if need_save and model_dir and idx == skip_steps and args.trainer_id == 0:
                         io.save_persistables(startup_exe, model_dir,
                                              trainer_prog)
             else:
-                for idx in six.moves.xrange(8):
+                for idx in range(8):
                     data = get_data()
                     if idx <= skip_steps:
                         continue

@@ -16,9 +16,23 @@
 
 #include <string>
 
+#include "paddle/phi/backends/c_comm_lib.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
+namespace detail {
+
+// FIXME(paddle-dev): Since the singleton of ProcessGroup in fluid is used in
+// SyncBN, the fluid symbol will be dependent on external hardware access.
+// Here, the part that depends on the fluid symbol is individually encapsulated
+// as a temporary function to isolate external symbol dependencies.
+// In the future, the dependence on the singleton in fluid in SyncBN needs
+// to be removed.
+// In principle, the PHI Kernel cannot use the global singleton internally,
+// and the required members need to be passed in from the eucalyptus tree.
+ccl::CCLComm GetCCLComm(const Place& place, int global_gid = 0);
+
+}  // namespace detail
 
 template <typename T, typename Context>
 void SyncBatchNormKernel(const Context& dev_ctx,

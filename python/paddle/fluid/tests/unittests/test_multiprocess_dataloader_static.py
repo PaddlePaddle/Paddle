@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import sys
-import six
 import time
 import unittest
 import numpy as np
@@ -130,7 +129,7 @@ class TestStaticDataLoader(unittest.TestCase):
             step_list = []
             loss_list = []
             start_t = time.time()
-            for _ in six.moves.range(EPOCH_NUM):
+            for _ in range(EPOCH_NUM):
                 step = 0
                 for d in dataloader:
                     assert len(d) == len(places), "{} != {}".format(
@@ -280,7 +279,7 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
             step_list = []
             loss_list = []
             start_t = time.time()
-            for _ in six.moves.range(EPOCH_NUM):
+            for _ in range(EPOCH_NUM):
                 step = 0
                 for d in dataloader:
                     assert len(d) == len(places), "{} != {}".format(

@@ -15,7 +15,6 @@
 import os
 import errno
 import warnings
-import six
 import logging
 import pickle
 import contextlib
@@ -1310,14 +1309,14 @@ def save_inference_model(dirname,
             # "./infer_model".
 
     """
-    if isinstance(feeded_var_names, six.string_types):
+    if isinstance(feeded_var_names, str):
         feeded_var_names = [feeded_var_names]
     elif export_for_deployment:
         if len(feeded_var_names) > 0:
             # TODO(paddle-dev): polish these code blocks
-            if not (bool(feeded_var_names) and all(
-                    isinstance(name, six.string_types)
-                    for name in feeded_var_names)):
+            if not (bool(feeded_var_names)
+                    and all(isinstance(name, str)
+                            for name in feeded_var_names)):
                 raise ValueError("'feed_var_names' should be a list of str.")
 
     if isinstance(target_vars, Variable):

@@ -82,25 +82,29 @@ class ConditionalBlockInferOp : public ConditionalOp {
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
 
-      if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
+      if (!exec_ || !platform::is_same_place(exec_->GetPlace(), dev_place)) {
         auto &pdesc = *block->Program();
-        exec.reset(new framework::Executor(dev_place));
-        if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
-        ctx = exec->Prepare(
+        exec_.reset(new framework::Executor(dev_place));
+#ifdef PADDLE_WITH_MKLDNN
+        if (FLAGS_use_mkldnn) exec_->EnableMKLDNN(pdesc);
+#endif
+        ctx_ = exec_->Prepare(
             pdesc, block->ID(), std::vector<std::string>(), false);
 #ifdef PADDLE_WITH_MKLDNN
-        platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
-        platform::RegisterModelLayout(ctx->ops_, dev_place);
+        if (FLAGS_use_mkldnn) {
+          platform::AttachPointerHashToMKLDNNKey(exec_.get(), dev_place);
+          platform::RegisterModelLayout(ctx_->ops_, dev_place);
+        }
 #endif
       }
-      exec->RunPreparedContext(ctx.get(), &cur_scope, false, true, false);
+      exec_->RunPreparedContext(ctx_.get(), &cur_scope, false, true, false);
       scope.DeleteScope(scopes->front());
     }
   }
 
  private:
-  mutable std::shared_ptr<framework::Executor> exec{nullptr};
-  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx{nullptr};
+  mutable std::shared_ptr<framework::Executor> exec_{nullptr};
+  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx_{nullptr};
 };
 
 }  // namespace operators

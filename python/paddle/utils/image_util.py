@@ -14,7 +14,7 @@
 
 import numpy as np
 from PIL import Image
-from six.moves import cStringIO as StringIO
+from io import StringIO
 
 __all__ = []
 
