@@ -264,6 +264,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   // "embedding_fc_lstm_fuse_pass", //
                   // TODO(wilber): fix correctness problem.
                   // "fc_lstm_fuse_pass",                    //
+                  "constant_folding_pass",
                   "mul_lstm_fuse_pass",                      //
                   "fc_gru_fuse_pass",                        //
                   "mul_gru_fuse_pass",                       //
@@ -284,7 +285,6 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "conv_transpose_bn_fuse_pass",             //
                   "conv_transpose_eltwiseadd_bn_fuse_pass",  //
                   "is_test_pass",                            //
-                  "constant_folding_pass",
                   // following pass should be located in the last, since
                   // it will work on all fused ops.
                   "runtime_context_cache_pass"});
@@ -321,6 +321,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              // Disabled due to topology-dependent speed-up
              //  "fc_mkldnn_pass",
              //  "fc_act_mkldnn_fuse_pass",
+             "fc_scale_mkldnn_fuse_pass",             //
              "fc_elementwise_add_mkldnn_fuse_pass",   //
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_mkldnn_fuse_pass",  //
@@ -376,6 +377,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("quant_dequant_mkldnn_pass");
     passes_.push_back("mkldnn_placement_pass");
     passes_.push_back("simplify_with_basic_ops_pass");
+    passes_.push_back("constant_folding_pass");
     passes_.push_back("layer_norm_fuse_pass");
     passes_.push_back("attention_lstm_fuse_pass");
     passes_.push_back("seqconv_eltadd_relu_fuse_pass");
@@ -418,6 +420,8 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("scale_matmul_fuse_pass");
     passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");
     passes_.push_back("matmul_elementwise_add_mkldnn_fuse_pass");
+    passes_.push_back("matmul_activation_mkldnn_fuse_pass");
+    passes_.push_back("fc_elementwise_add_mkldnn_fuse_pass");
     passes_.push_back("cpu_quantize_placement_pass");
     passes_.push_back("cpu_quantize_pass");
     passes_.push_back("cpu_quantize_squash_pass");

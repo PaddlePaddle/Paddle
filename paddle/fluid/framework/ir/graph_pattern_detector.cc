@@ -1868,6 +1868,34 @@ PDNode *patterns::MatmulV2Scale::operator()() {
   return scale_out;
 }
 
+PDNode *patterns::FcScale::operator()() {
+  auto fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
+  auto input_var = pattern->NewNode(input_repr())
+                       ->AsInput()
+                       ->assert_is_op_input("fc", "Input");
+  auto fc_weight_var = pattern->NewNode(weights_repr())
+                           ->AsInput()
+                           ->assert_is_op_input("fc", "W");
+  auto fc_bias_var = pattern->NewNode(bias_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("fc", "Bias");
+  // auto fc_out_var = pattern->NewNode(output_repr())
+  //                        ->AsOutput()
+  //                        ->assert_is_op_output("fc", "Out")
+  //                        ->assert_is_only_output_of_op("fc");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+  auto scale_in = pattern->NewNode(scale_in_repr())
+                      ->assert_is_op_input("scale", "X")
+                      ->assert_is_op_output("fc", "Out")
+                      ->assert_is_only_output_of_op("fc");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+  fc_op->LinksFrom({input_var, fc_weight_var, fc_bias_var}).LinksTo({scale_in});
+  scale_op->LinksFrom({scale_in}).LinksTo({scale_out});
+  return scale_out;
+}
+
 PDNode *patterns::Squeeze2Matmul::operator()() {
   auto squeeze2_in_x = pattern->NewNode(squeeze2_in_x_repr())
                            ->assert_is_op_input("squeeze2", "X")

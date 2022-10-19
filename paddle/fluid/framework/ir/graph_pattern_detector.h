@@ -1156,6 +1156,21 @@ struct MatmulV2Scale : public PatternBase {
   PATTERN_DECL_NODE(scale_out);
 };
 
+// Fc + Scale
+struct FcScale : public PatternBase {
+  FcScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc_scale") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(fc);
+  PATTERN_DECL_NODE(input);
+  PATTERN_DECL_NODE(weights);
+  PATTERN_DECL_NODE(bias);
+  PATTERN_DECL_NODE(scale_in);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+};
+
 // Squeeze2 + Matmul
 // Forward pass.
 struct Squeeze2Matmul : public PatternBase {
