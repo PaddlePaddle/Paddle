@@ -14,12 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/conv_base_helper.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace paddle {
@@ -53,11 +52,9 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
   }
 
   auto in_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *input);
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *out, new_out_dims);
+      phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
+  auto out_t = phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+      *out, new_out_dims);
 
   phi::funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_t, in_t, offsets, extents);
@@ -160,6 +157,8 @@ struct SearchAlgorithmBase<cudnnConvolutionFwdAlgoPerf_t> {
   using AlgoT = cudnnConvolutionFwdAlgo_t;
   constexpr static phi::autotune::AlgorithmType kAlgoType =
       phi::autotune::AlgorithmType::kConvForward;
+
+  static const std::string GetPerfName() { return "ConvForward"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionFwdAlgo_t algo) {
@@ -333,6 +332,8 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdDataAlgoPerf_t> {
   using AlgoT = cudnnConvolutionBwdDataAlgo_t;
   constexpr static phi::autotune::AlgorithmType kAlgoType =
       phi::autotune::AlgorithmType::kConvBackwardData;
+
+  static const std::string GetPerfName() { return "ConvBackwardData"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionBwdDataAlgo_t algo) {
@@ -513,6 +514,8 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
   using AlgoT = cudnnConvolutionBwdFilterAlgo_t;
   constexpr static phi::autotune::AlgorithmType kAlgoType =
       phi::autotune::AlgorithmType::kConvBackwardFilter;
+
+  static const std::string GetPerfName() { return "ConvBackwardFilter"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionBwdFilterAlgo_t algo) {
@@ -752,11 +755,13 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
   using AlgoT = typename SearchAlgorithmBase<PerfT>::AlgoT;
 
   template <typename T>
-  static SearchResult<AlgoT> Find(const ConvArgs& args,
+  static SearchResult<AlgoT> Find(const phi::GPUContext& ctx,
+                                  const ConvArgs& args,
                                   bool exhaustive_search,
                                   bool deterministic,
-                                  const phi::GPUContext& ctx) {
+                                  bool enable_autotune = true) {
     SearchResult<AlgoT> result;
+    bool use_autotune = false;
     auto dtype = platform::CudnnDataType<T>::type;
     SetConvMathType(ctx, dtype, args.cdesc);
 
@@ -764,33 +769,50 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
       result = SearchAlgorithmBase<PerfT>::FindAlgoDeterministic(args);
     } else {
       // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
-      // 2. Once turning on auto-tune, runn heuristic search(default) before
+      // 2. Once turning on auto-tune, run heuristic (default) before
       //    auto-tune process, run exhaustive_search during mentioned process.
+      //    Auto tune is only enabled between specified range.
       // 3. After auto-tune process, run cached algorithm if cached, run
       //    default mode for the rest.
       auto key = args.Convert2ConvCacheKey<T>();
       auto& cache = phi::autotune::AutoTuneCache::Instance().GetConv(
           SearchAlgorithmBase<PerfT>::kAlgoType);
-      if (cache.Find(key)) {
+      bool find_in_cache = cache.Find(key);
+      if (find_in_cache) {
         auto t = cache.Get(key);
         result.algo = static_cast<AlgoT>(t.algo);
         result.workspace_size = t.workspace_size;
-      } else {
-        bool use_autotune =
-            phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+        result.exhaustive_search = t.exhaustive_search;
+      }
+      if (!result.exhaustive_search) {
+        bool need_update_cache = false;
+        // In conv2d_tranpose, enable_autotune is set to false because some
+        // algorithm picked by exhaustive search method produce wrong result.
+        use_autotune = enable_autotune &&
+                       phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
         if (exhaustive_search || use_autotune) {
+          // Once autotune is enabled, the autotuned result can rewrite the
+          // previous result in cache found by heuristic method.
           result =
               SearchAlgorithmBase<PerfT>::template FindAlgoExhaustiveSearch<T>(
                   args, ctx);
-        } else {
+          need_update_cache = true;
+        } else if (!find_in_cache) {
           result = SearchAlgorithmBase<PerfT>::FindAlgoHeuristic(args, ctx);
+          need_update_cache = true;
         }
-        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                    result.workspace_size);
-        cache.Set(key, node);
+        if (need_update_cache) {
+          phi::autotune::ConvAutoTuneResult node(
+              static_cast<int64_t>(result.algo),
+              result.workspace_size,
+              exhaustive_search || use_autotune);
+          cache.Set(key, node);
+        }
       }
     }
-    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
+    VLOG(3) << "[cuDNN " << SearchAlgorithmBase<PerfT>::GetPerfName()
+            << "] exhaustive_search=" << exhaustive_search
+            << ", use_autotune=" << use_autotune
             << ", deterministic=" << deterministic
             << ", choose algo=" << result.algo
             << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
