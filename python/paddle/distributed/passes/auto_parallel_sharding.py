@@ -21,6 +21,7 @@ from paddle.distributed.fleet.meta_optimizers.common import is_backward_op, is_o
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.operators.common import is_parameter_related, is_data_parallel_reduce_op
 from paddle.distributed.auto_parallel.utils import _get_comm_group, naive_set_dist_op_attr_for_program_by_mesh_and_mapping, set_var_dist_attr
+from paddle.distributed.fleet.meta_optimizers.sharding.utils import get_var_size
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -99,6 +100,14 @@ class ShardingPass(PassBase):
         main_block, startup_block = main_program.global_block(
         ), startup_program.global_block()
 
+        # NOTE Multi / Sub-Block Support
+        # we assume that only parameter are present and partitioned in main_block,
+        # there is NO new param in sub_block, and all params in sub_block follows the same
+        # partition as main_block. the above contraint fullfill the 3 most common use-cases in Paddle sub_block:
+        # 1. subblock for lr scheduler
+        # 2. sub-block uses the same or partial network of main-block, e.g. GPT3 generation model
+        # 3. sub-block used for double backward
+
         self._build_sharding_groups(main_block, params_grads)
         self._shard_optimizer(main_block, startup_block, params_grads, context)
         self._shard_gradient_synchronization(main_block)
@@ -108,7 +117,7 @@ class ShardingPass(PassBase):
 
     def _build_sharding_groups(self, main_block, params_grads):
         self._collective_data_parallel_groups(main_block)
-        self._build_sharding_infos(params_grads)
+        self._build_sharding_infos(main_block, params_grads)
 
     def _collective_data_parallel_groups(self, main_block):
         for op in main_block.ops:
@@ -130,8 +139,12 @@ class ShardingPass(PassBase):
                 "So far Only and Exactly one data parallel group in network are supported, but got [{}] different data parallel groups"
                 .format(len(self.dp_groups)))
 
-    def _build_sharding_infos(self, params_grads):
+    def _build_sharding_infos(self, main_block, params_grads):
 
+        # order params
+        params_grads = _order_param_grads(main_block, params_grads)
+
+        # partition
         for dp_group in self.dp_groups:
 
             assert dp_group.nranks >= self.sharding_world_size, "sharding world size [{}] should not larger than dp world size [{}]".format(
@@ -705,7 +718,40 @@ def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
     return dp_group
 
 
-def shard_parameters(params, group_size):
+def partition_by_use_order(params, group_size):
+    """
+    shard the continouse param into same rank and divide the forward&backward computation into segement,
+    which will favor the fuse pass in later.
+
+    we assume that the params is already sorted by utilization order.
+    """
+    mapping = {}
+    total_param_mem = 0.0
+    param2mem = []
+    for param in params:
+        mem = get_var_size(param)
+        total_param_mem += mem
+        param2mem.append((param, mem))
+    mapping = {x: [] for x in range(group_size)}
+    cur_rank = 0
+    mem_accu = 0.0
+    for param, mem in param2mem:
+        if mem_accu > total_param_mem * 1.0 * (cur_rank + 1) / group_size:
+            cur_rank += 1
+        mapping[cur_rank].append(param)
+        mem_accu += mem
+    print()
+    print("######" * 6)
+    for k, v in mapping:
+        print("rank:{}, size:{}.".format(k,
+                                         sum([get_var_size(var) for var in v])))
+        print([var.name for var in v])
+    print("######" * 6)
+    print()
+    return mapping
+
+
+def partition_by_greedy_even(params, group_size):
     # TODO(JZ-LIANG) support multiple partition methods
     # method1: greedy even but unorder
     # method2: roughly even with oreder
@@ -721,7 +767,23 @@ def shard_parameters(params, group_size):
             param.name, numel)
         sizes[rank] += numel
 
+    print()
+    print("######" * 6)
+    for k, v in mapping:
+        print("rank:{}, size:{}.".format(k,
+                                         sum([get_var_size(var) for var in v])))
+        print([var.name for var in v])
+    print("######" * 6)
+    print()
+
     return mapping
+
+
+def partition_parameters(params, group_size, algor="greedy_even"):
+    if algor == "greedy_even":
+        return partition_by_greedy_even(params, group_size)
+    else:
+        return partition_by_use_order(params, group_size)
 
 
 class ShardingInfo(object):
@@ -738,7 +800,9 @@ class ShardingInfo(object):
         self.global_rank = rank
         self.local_rank = group.ranks.index(self.global_rank)
         # rank in below mapping are local rank in this sharding group
-        self.rank_to_params = shard_parameters(self.params, self.group_size)
+        self.rank_to_params = partition_parameters(self.params,
+                                                   self.group_size,
+                                                   algor="use_order")
         # include fp32 and fp16 param
         self.param_to_rank = dict()
         self._map_param_to_rank()
@@ -800,3 +864,26 @@ class ShardingInfo(object):
         if param_name not in self.params_grads:
             raise ValueError('param[{}] not in params_grads'.format(param_name))
         return self.params_grads.get(param_name, None)
+
+
+def _order_param_grads(block, param_grads):
+    print()
+    print("######" * 6)
+    print("the parameter order before sort: ")
+    print([p.name for p, g in param_grads])
+    pname_to_pg_pairs = {}
+    for p, g in param_grads:
+        pname_to_pg_pairs[p.name] = (p, g)
+
+    use_order = []
+    for op in block.ops:
+        for input_name in op.input_arg_names():
+            if (input_name in pname_to_pg_pairs) and (input_name not in order):
+                use_order.append(input_name)
+        if len(order) == len(pname_to_pg_pairs):
+            break
+    print("the parameter order after sort: ")
+    print(use_order)
+    print("######" * 6)
+    print()
+    return [pname_to_pg_pairs[p] for p in use_order]
