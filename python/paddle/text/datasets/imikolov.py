@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import tarfile
 import numpy as np
 import collections
@@ -125,12 +124,12 @@ class Imikolov(Dataset):
                 del word_freq['<unk>']
 
             word_freq = [
-                x for x in six.iteritems(word_freq) if x[1] > self.min_word_freq
+                x for x in word_freq.items() if x[1] > self.min_word_freq
             ]
 
             word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
             words, _ = list(zip(*word_freq_sorted))
-            word_idx = dict(list(zip(words, six.moves.range(len(words)))))
+            word_idx = dict(list(zip(words, range(len(words)))))
             word_idx['<unk>'] = len(words)
 
         return word_idx
@@ -148,7 +147,7 @@ class Imikolov(Dataset):
                     l = ['<s>'] + l.strip().split() + ['<e>']
                     if len(l) >= self.window_size:
                         l = [self.word_idx.get(w, UNK) for w in l]
-                        for i in six.moves.range(self.window_size, len(l) + 1):
+                        for i in range(self.window_size, len(l) + 1):
                             self.data.append(tuple(l[i - self.window_size:i]))
                 elif self.data_type == 'SEQ':
                     l = l.strip().split()

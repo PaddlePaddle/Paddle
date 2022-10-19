@@ -14,7 +14,6 @@
 
 import tarfile
 import numpy as np
-import six
 
 from paddle.io import Dataset
 from paddle.dataset.common import _check_exists_and_download
@@ -192,6 +191,6 @@ class WMT14(Dataset):
         """
         src_dict, trg_dict = self.src_dict, self.trg_dict
         if reverse:
-            src_dict = {v: k for k, v in six.iteritems(src_dict)}
-            trg_dict = {v: k for k, v in six.iteritems(trg_dict)}
+            src_dict = {v: k for k, v in src_dict.items()}
+            trg_dict = {v: k for k, v in trg_dict.items()}
         return src_dict, trg_dict

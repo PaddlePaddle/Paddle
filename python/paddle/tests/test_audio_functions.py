@@ -136,7 +136,7 @@ class TestAudioFuncitons(unittest.TestCase):
                                              decimal=5)
 
     @parameterize([1, 512])
-    def test_gussian_window_and_exception(self, n_fft: int):
+    def test_gaussian_window_and_exception(self, n_fft: int):
         window_scipy_gaussain = signal.windows.gaussian(n_fft, std=7)
         window_paddle_gaussian = paddle.audio.functional.get_window(
             ('gaussian', 7), n_fft, False)

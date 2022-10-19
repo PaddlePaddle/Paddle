@@ -16,7 +16,6 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import numpy as np
-import six
 import paddle.fluid.core as core
 
 from paddle.fluid.framework import Program, grad_var_name
@@ -170,7 +169,7 @@ class TestArgsortOpCPU(unittest.TestCase):
 
     def assert_is_close(self, numeric_grads, analytic_grads, names,
                         max_relative_error, msg_prefix):
-        for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
+        for a, b, name in zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
             abs_a[abs_a < 1e-3] = 1
 

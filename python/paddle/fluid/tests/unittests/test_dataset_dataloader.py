@@ -15,7 +15,6 @@
 import paddle
 import paddle.fluid as fluid
 import numpy as np
-import six
 import os
 import unittest
 import tempfile
@@ -60,7 +59,7 @@ def fake_reader(batch_size=BATCH_SIZE, batch_num=BATCH_NUM):
     def __reader__():
         iteration = BATCH_SIZE * BATCH_NUM
         iteration = int(iteration + BATCH_SIZE / 2)
-        for _ in six.moves.range(iteration):
+        for _ in range(iteration):
             image = np.random.random(size=IMAGE_SHAPE).astype('float32')
             label = np.random.random_integers(size=LABEL_SHAPE, low=0,
                                               high=9).astype('int64')
@@ -121,7 +120,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
         else:
             random_delta_batch_size = np.zeros(shape=[file_num])
 
-        for i in six.moves.range(file_num):
+        for i in range(file_num):
             filename = os.path.join(self.temp_dir.name,
                                     'dataset_test_{}.txt'.format(i))
             filelist.append(filename)
@@ -143,7 +142,7 @@ class DatasetLoaderTestBase(unittest.TestCase):
 
         exe.run(startup_prog)
 
-        for _ in six.moves.range(EPOCH_NUM):
+        for _ in range(EPOCH_NUM):
             has_complete_batch = False
             for batch_id, data in enumerate(dataloader):
                 self.assertEquals(len(places), len(data))

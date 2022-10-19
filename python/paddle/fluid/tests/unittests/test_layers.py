@@ -18,7 +18,6 @@ import contextlib
 import numpy as np
 from decorator_helper import prog_scope
 import inspect
-from six.moves import filter
 
 import paddle
 import paddle.fluid as fluid

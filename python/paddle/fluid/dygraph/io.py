@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import pickle
 import numpy as np
 
@@ -69,17 +68,17 @@ def _is_persistable(var_desc):
 def _is_parameter(persistable_var_desc, program_desc):
     # 1. firstly, param should be input of op
     input_ops = []  # op can be repeated
-    for block_idx in six.moves.range(program_desc.num_blocks()):
+    for block_idx in range(program_desc.num_blocks()):
         block = program_desc.block(block_idx)
-        for op_idx in six.moves.range(block.op_size()):
+        for op_idx in range(block.op_size()):
             op = block.op(op_idx)
             # NOTE: parameter is the input of a certain op
             if persistable_var_desc.name() in op.input_arg_names():
                 input_ops.append(op)
     # 2. secondly, param should not be output of op or be same op's output
-    for block_idx in six.moves.range(program_desc.num_blocks()):
+    for block_idx in range(program_desc.num_blocks()):
         block = program_desc.block(block_idx)
-        for op_idx in six.moves.range(block.op_size()):
+        for op_idx in range(block.op_size()):
             op = block.op(op_idx)
             if persistable_var_desc.name() in op.output_arg_names():
                 # such as batch_norm_op
@@ -92,7 +91,7 @@ def _is_parameter(persistable_var_desc, program_desc):
 
 def _get_persistable_vars(program_desc):
     persistable_vars = []
-    for i in six.moves.range(program_desc.num_blocks()):
+    for i in range(program_desc.num_blocks()):
         block = program_desc.block(i)
         persistable_vars.extend(list(filter(_is_persistable, block.all_vars())))
     return persistable_vars
@@ -111,7 +110,7 @@ def _get_persistable_var_names(program_desc):
 
 def _get_all_var_names(program_desc):
     all_var_names = set()
-    for i in six.moves.range(program_desc.num_blocks()):
+    for i in range(program_desc.num_blocks()):
         block = program_desc.block(i)
         for var in block.all_vars():
             all_var_names.add(var.name())
@@ -142,10 +141,10 @@ def _append_loaded_suffix_to_var(program_desc):
         new_name = _append_loaded_suffix(var_desc.name())
         suffix_varname_dict[new_name] = old_name
         var_desc.set_name(new_name)
-        for block_idx in six.moves.range(program_desc.num_blocks()):
+        for block_idx in range(program_desc.num_blocks()):
             block = program_desc.block(block_idx)
             block._rename_var(old_name.encode(), new_name.encode())
-            for op_idx in six.moves.range(block.op_size()):
+            for op_idx in range(block.op_size()):
                 op = block.op(op_idx)
                 op._rename_input(old_name, new_name)
                 op._rename_output(old_name, new_name)
@@ -191,7 +190,7 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
     dict_rename_var_new_old = dict()
     old_names = []
     # Store all old names
-    for b_idx in six.moves.range(program_desc.num_blocks()):
+    for b_idx in range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
         for var in cur_block.all_vars():
             old_names.append(var.name())
@@ -199,7 +198,7 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
     # Create dict_rename_var_new_old and dict_rename_var_old_new for non double
     # grad variables
     has_double_grad = False
-    for b_idx in six.moves.range(program_desc.num_blocks()):
+    for b_idx in range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
         for var_idx, var in enumerate(cur_block.all_vars()):
             name_old = var.name()
@@ -232,7 +231,7 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
     if has_double_grad:
         double_grad_rename_dict = {}
         for name_old in dict_rename_var_old_new:
-            for b_idx in six.moves.range(program_desc.num_blocks()):
+            for b_idx in range(program_desc.num_blocks()):
                 cur_block = program_desc.block(b_idx)
                 for var_idx, var in enumerate(cur_block.all_vars()):
                     var_name = var.name()
@@ -247,9 +246,9 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
                 double_grad_rename_dict[var_name]] = var_name
 
     # Rename on program desc
-    for b_idx in six.moves.range(program_desc.num_blocks()):
+    for b_idx in range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
-        for op_idx in six.moves.range(cur_block.op_size()):
+        for op_idx in range(cur_block.op_size()):
             op = cur_block.op(op_idx)
             for input_arg_name in op.input_arg_names():
                 if input_arg_name in dict_rename_var_old_new:
@@ -283,8 +282,7 @@ def _build_program_by_desc(program_desc):
     prog = framework.Program()
     prog.desc = program_desc
     prog.blocks = [
-        framework.Block(prog, i)
-        for i in six.moves.range(prog.desc.num_blocks())
+        framework.Block(prog, i) for i in range(prog.desc.num_blocks())
     ]
     prog._sync_with_cpp()
     return prog
@@ -292,9 +290,9 @@ def _build_program_by_desc(program_desc):
 
 def _change_is_test_status(program_desc, is_test):
     # change all `is_test` attributes
-    for i in six.moves.range(program_desc.num_blocks()):
+    for i in range(program_desc.num_blocks()):
         block = program_desc.block(i)
-        for j in six.moves.range(block.op_size()):
+        for j in range(block.op_size()):
             op = block.op(j)
             if op.has_attr('is_test'):
                 op._set_attr('is_test', is_test)
@@ -407,7 +405,7 @@ class _ProgramHolder(object):
         # remove feed, fetch and scale-1 op, remove op_callstack attr
         ops_to_remove = []
         root_block = program_desc.block(0)
-        for i in six.moves.range(root_block.op_size()):
+        for i in range(root_block.op_size()):
             op = root_block.op(i)
             if op.type() == 'feed':
                 ops_to_remove.append(i)
@@ -511,7 +509,7 @@ class _ProgramHolder(object):
         program = _build_program_by_desc(program_desc_copy)
         # 3. Add the outputs which is only used for training and not saved in
         # inference program.
-        for block_idx in six.moves.range(program.num_blocks):
+        for block_idx in range(program.num_blocks):
             block = program.block(block_idx)
             for op in block.ops:
                 if op.type == "batch_norm":

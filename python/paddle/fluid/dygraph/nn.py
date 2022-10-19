@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from six.moves import reduce
 from .. import core
 from ..layers import utils
 from ..layers import nn as F
