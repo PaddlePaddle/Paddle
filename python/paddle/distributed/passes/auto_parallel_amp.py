@@ -517,9 +517,11 @@ class AMPPass(PassBase):
         self.set_attr("use_dynamic_loss_scaling", False)
         self.set_attr("input_data", [])
         self.set_attr("params_grads", [])
+        self._loss = None
         self._loss_scaling = None
         self._num_good_steps = None
         self._num_bad_steps = None
+        self._loss = None
 
     def _check_self(self):
         if self.get_attr("init_loss_scaling") < 0:

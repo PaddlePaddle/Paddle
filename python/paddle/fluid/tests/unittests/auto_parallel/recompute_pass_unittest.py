@@ -79,13 +79,13 @@ class TestRecomputePass(unittest.TestCase):
     def test_recompute_pass(self):
         # mp2 training
         mp_engine = self.get_engine()
-        mp_losses = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        mp_losses = np.array(mp_losses["loss"])
+        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        mp_losses = np.array(history.history["loss"])
 
         # mp2 recompute training
         rc_engine = self.get_engine(True)
-        rc_losses = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        rc_losses = np.array(rc_losses["loss"])
+        history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        rc_losses = np.array(history.history["loss"])
         self.check_results(mp_losses, rc_losses)
 
 
