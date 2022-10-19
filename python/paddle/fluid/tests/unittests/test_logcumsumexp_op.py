@@ -289,12 +289,12 @@ class TestLogcumsumexpFP16(unittest.TestCase):
         y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
         y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
         np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
-        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=5e-03)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-03)
 
         y_np_1, x_g_np_1 = self.check_main(x_np, 'float16', axis=1)
         y_np_2, x_g_np_2 = self.check_main(x_np, 'float32', axis=1)
         np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
-        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=4e-03)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=2e-03)
 
 
 if __name__ == '__main__':
