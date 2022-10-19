@@ -348,8 +348,10 @@ void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
   }
 }
 
-void CPUQuantizePass::QuantizeConv(Graph* graph,
-                                   bool with_residual_data) const {
+void CPUQuantizePass::QuantizeConv(
+    Graph* graph,
+    bool with_residual_data,
+    std::vector<std::string>* changed_weight) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::ConvResidual conv_pattern{pattern, name_scope_};
@@ -425,11 +427,11 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
 
     // If the scale value of a weight is already multiplied by S8_MAX, it does
     // not need to be multiplied again
-    if (std::find(change_weight_->begin(),
-                  change_weight_->end(),
-                  conv_filter->Name()) == change_weight_->end()) {
+    if (std::find(changed_weight->begin(),
+                  changed_weight->end(),
+                  conv_filter->Name()) == changed_weight->end()) {
       eigen_tensor *= static_cast<double>(S8_MAX);
-      change_weight_->push_back(conv_filter->Name());
+      changed_weight->push_back(conv_filter->Name());
     }
 
     std::vector<float> filter_scale{
@@ -1174,9 +1176,12 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
       param_scope(),
       platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
+  // Save the scale values of which weights have been processed to avoid
+  // secondary processing
+  std::vector<std::string> changed_weight = {};
   GetQuantInfo(graph);
-  QuantizeConv(graph, false /* with_residual_data */);
-  QuantizeConv(graph, true /* with_residual_data */);
+  QuantizeConv(graph, false /* with_residual_data */, &changed_weight);
+  QuantizeConv(graph, true /* with_residual_data */, &changed_weight);
   QuantizePool(graph);
   QuantizeConcat(graph);
   QuantizePriorBox(graph);
