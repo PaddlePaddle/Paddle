@@ -81,6 +81,7 @@ TEST(PredictorPool, use_gpu) {
   config.SetModel(model_dir);
   config.EnableTensorRtEngine();
   config.Exp_DisableTensorRtOPs({"fc"});
+  config.Exp_DisableTrtEngineMemorySharing();
   config.EnableTensorRtDLA(0);
   services::PredictorPool pred_pool(config, 1);
 

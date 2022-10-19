@@ -657,12 +657,10 @@ void AnalysisConfig::EnableTensorRtEngine(
   use_tensorrt_ = true;
 #ifdef PADDLE_WITH_TENSORRT
   // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
-  // when trt version less than 7.2,
-  // createExecutionContextWithoutDeviceMemory() has bug.
-  // so, we cannot enable engine context memory sharing.
-#if IS_TRT_VERSION_GE(7200)
-  trt_engine_memory_sharing_ = true;
-#else
+  // when trt version less than 7.2, the interface
+  // createExecutionContextWithoutDeviceMemory() has bug. so we cannot enable
+  // engine context memory sharing.
+#if IS_TRT_VERSION_LT(7200)
   LOG(WARNING)
       << "TensorRT engine context memory sharing needs version 7.2 and after.";
   trt_engine_memory_sharing_ = false;
@@ -724,6 +722,11 @@ void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
+}
+
+void AnalysisConfig::Exp_DisableTrtEngineMemorySharing() {
+  trt_engine_memory_sharing_ = false;
+  Update();
 }
 
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }

@@ -667,6 +667,12 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableTensorRtOPs(const std::vector<std::string>& ops);
 
   ///
+  /// \brief Disable TensorRT engine context memory sharing
+  /// NOTE: just experimental, not an official stable API, easy to be broken.
+  ///
+  void Exp_DisableTrtEngineMemorySharing();
+
+  ///
   /// \brief Replace some TensorRT plugins to TensorRT OSS(
   /// https://github.com/NVIDIA/TensorRT), with which some models's inference
   /// may be more high-performance. Libnvinfer_plugin.so greater than
@@ -1059,7 +1065,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool trt_engine_memory_sharing_{false};
+  bool trt_engine_memory_sharing_{true};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
