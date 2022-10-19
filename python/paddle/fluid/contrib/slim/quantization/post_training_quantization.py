@@ -449,21 +449,7 @@ class PostTrainingQuantization(object):
             self._collect_dynamic_quantize_op_threshold(
                 self._dynamic_quantize_op_type)
 
-        # Move sub blocks persistable var to global block
-        global_block = self._program.global_block()
-        for _op in global_block.ops:
-            if _op.type == "while":
-                _block_id = _op.attr("sub_block").id
-                _block = self._program.block(_block_id)
-                persistables = []
-                for _name, _var in _block.vars.items():
-                    if _var.persistable:
-                        global_block._clone_variable(_var)
-                        persistables.append(_name)
-                for _name in persistables:
-                    _block._remove_var(_name)
-                persistables.extend(_op.input('X'))
-                _op.desc.set_input("X", persistables)
+        utils.move_persistable_var_to_global_block(self._program)
 
         if not self._return_graph:
             return self._program
