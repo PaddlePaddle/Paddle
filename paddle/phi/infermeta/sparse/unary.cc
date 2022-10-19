@@ -20,7 +20,9 @@ namespace phi {
 namespace sparse {
 
 void IndicesInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims({-1});
+  // TODO(zhangkaihuo) Currently, we cannot get sparse_dim from tensor. shape[0]
+  // = x.sparse_dim()
+  out->set_dims({4, -1});
   out->set_dtype(DataType::INT32);
   out->set_layout(DataLayout::NCHW);
 }
