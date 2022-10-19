@@ -50,6 +50,7 @@ from paddle.static import InputSpec as Input
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet.base import role_maker
+from paddle.autograd import no_grad
 
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
@@ -1105,7 +1106,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
-    @paddle.no_grad()
+    @no_grad()
     def eval_batch(self, inputs, labels=None):
         """
         Run one evaluating step on a batch of data.
@@ -1157,7 +1158,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
-    @paddle.no_grad()
+    @no_grad()
     def predict_batch(self, inputs):
         """
         Run one predicting step on a batch of data.

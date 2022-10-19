@@ -1308,6 +1308,8 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         process_mesh = dist_attr.process_mesh
         processes = process_mesh.processes
         # col parallel: matmul + allreduce
+        if backward_op.attr("trans_y"):
+            Y_var_dim_mapping.reverse()
         assert Y_var_dim_mapping[0] < 0
         parallel_axis = Y_var_dim_mapping[1]
 
