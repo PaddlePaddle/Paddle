@@ -816,5 +816,46 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
   }
 };
 
+template <typename T>
+struct ConvRunner {
+  static void RunForward(
+      const ConvArgs& args,
+      const SearchResult<cudnnConvolutionFwdAlgo_t>& search_result,
+      const T* input_ptr,
+      const T* filter_ptr,
+      T* output_ptr,
+      int groups,
+      int group_offset_in,
+      int group_offset_filter,
+      int group_offset_out,
+      ScalingParamType<T> alpha,
+      ScalingParamType<T> beta,
+      size_t workspace_size,
+      phi::DnnWorkspaceHandle* workspace_handle) {
+    auto dnn_handle = args.handle;
+    for (int i = 0; i < groups; i++) {
+      workspace_handle->RunFunc(
+          [&](void* workspace_ptr) {
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                paddle::platform::dynload::cudnnConvolutionForward(
+                    dnn_handle,
+                    &alpha,
+                    args.idesc.desc(),
+                    input_ptr + i * group_offset_in,
+                    args.wdesc.desc(),
+                    filter_ptr + i * group_offset_filter,
+                    args.cdesc.desc(),
+                    search_result.algo,
+                    workspace_ptr,
+                    workspace_size,
+                    &beta,
+                    args.odesc.desc(),
+                    output_ptr + i * group_offset_out));
+          },
+          workspace_size);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

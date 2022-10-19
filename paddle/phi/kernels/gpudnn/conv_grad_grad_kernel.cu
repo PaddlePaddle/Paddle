@@ -454,13 +454,13 @@ void ConvCudnnGradGradKernel(
   // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f :
   // 0.0f;
   // VLOG(4) << "Conv_grad_grad: use_addto = " << ctx.Attr<bool>("use_addto");
-  auto wkspace_handle = ctx.cudnn_workspace_handle();
+  auto workspace_handle = ctx.cudnn_workspace_handle();
 
   if (ddO) {
     if (ddX) {
       ddx = transformed_ddX.data<T>();
 #ifdef PADDLE_WITH_HIP
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 paddle::platform::dynload::miopenConvolutionForward(
@@ -480,27 +480,19 @@ void ConvCudnnGradGradKernel(
           },
           workspace_size);
 #else
-      for (int i = 0; i < groups; i++) {
-        wkspace_handle.RunFunc(
-            [&](void* workspace_ptr) {
-              PADDLE_ENFORCE_GPU_SUCCESS(
-                  paddle::platform::dynload::cudnnConvolutionForward(
-                      handle,
-                      &alpha,
-                      args1.idesc.desc(),
-                      ddx + i * group_offset_in,
-                      args1.wdesc.desc(),
-                      w + i * group_offset_filter,
-                      args1.cdesc.desc(),
-                      fwd_result1.algo,
-                      workspace_ptr,
-                      workspace_size,
-                      &beta,
-                      args1.odesc.desc(),
-                      transformed_ddy_channel + i * group_offset_out));
-            },
-            workspace_size);
-      }
+      paddle::operators::ConvRunner<T>::RunForward(args1,
+                                                   fwd_result1,
+                                                   ddx,
+                                                   w,
+                                                   transformed_ddy_channel,
+                                                   groups,
+                                                   group_offset_in,
+                                                   group_offset_filter,
+                                                   group_offset_out,
+                                                   alpha,
+                                                   beta,
+                                                   workspace_size,
+                                                   &workspace_handle);
 #endif
     }
     if (ddW) {
@@ -526,27 +518,19 @@ void ConvCudnnGradGradKernel(
           },
           workspace_size);
 #else
-      for (int i = 0; i < groups; i++) {
-        wkspace_handle.RunFunc(
-            [&](void* workspace_ptr) {
-              PADDLE_ENFORCE_GPU_SUCCESS(
-                  paddle::platform::dynload::cudnnConvolutionForward(
-                      handle,
-                      &alpha,
-                      args2.idesc.desc(),
-                      x + i * group_offset_in,
-                      args2.wdesc.desc(),
-                      ddw + i * group_offset_filter,
-                      args2.cdesc.desc(),
-                      fwd_result2.algo,
-                      workspace_ptr,
-                      workspace_size,
-                      &alpha,
-                      args2.odesc.desc(),
-                      transformed_ddy_channel + i * group_offset_out));
-            },
-            workspace_size);
-      }
+      paddle::operators::ConvRunner<T>::RunForward(args2,
+                                                   fwd_result2,
+                                                   x,
+                                                   ddw,
+                                                   transformed_ddy_channel,
+                                                   groups,
+                                                   group_offset_in,
+                                                   group_offset_filter,
+                                                   group_offset_out,
+                                                   alpha,
+                                                   beta,
+                                                   workspace_size,
+                                                   &workspace_handle);
 #endif
     }
     if (channel_last) {
@@ -557,7 +541,7 @@ void ConvCudnnGradGradKernel(
   if (dW && ddX) {
     ddx = transformed_ddX.data<T>();
 #ifdef PADDLE_WITH_HIP
-    wkspace_handle.RunFunc(
+    workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               paddle::platform::dynload::miopenConvolutionBackwardWeights(
@@ -578,7 +562,7 @@ void ConvCudnnGradGradKernel(
         workspace_size);
 #else
     for (int i = 0; i < groups; i++) {
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 paddle::platform::dynload::cudnnConvolutionBackwardFilter(
@@ -604,7 +588,7 @@ void ConvCudnnGradGradKernel(
   if (dX && ddW) {
     ddw = ddW->data<T>();
 #ifdef PADDLE_WITH_HIP
-    wkspace_handle.RunFunc(
+    workspace_handle.RunFunc(
         [&](void* workspace_ptr) {
           PADDLE_ENFORCE_GPU_SUCCESS(
               paddle::platform::dynload::miopenConvolutionBackwardData(
@@ -625,7 +609,7 @@ void ConvCudnnGradGradKernel(
         workspace_size);
 #else
     for (int i = 0; i < groups; i++) {
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 paddle::platform::dynload::cudnnConvolutionBackwardData(
