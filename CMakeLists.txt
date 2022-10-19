@@ -265,7 +265,7 @@ option(WITH_BOX_PS "Compile with box_ps support" OFF)
 option(WITH_XBYAK "Compile with xbyak support" ON)
 option(WITH_CONTRIB "Compile the third-party contributation" OFF)
 option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
-option(WITH_HETERPS "Compile with heterps" OFF})
+option(WITH_HETERPS "Compile with heterps" ${WITH_PSCORE}})
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
 option(PY_VERSION "Compile PaddlePaddle with python3 support" ${PY_VERSION})
@@ -362,6 +362,32 @@ if(WIN32)
     set(WITH_NCCL
         OFF
         CACHE STRING "Disable NCCL when compiling for Windows" FORCE)
+  endif()
+endif()
+
+if(WIN32 OR APPLE)
+  if(WITH_HETERPS)
+    message(
+      WARNING
+        "Disable HETERPS when compiling for Windows or MacOS. Force WITH_HETERPS=OFF."
+    )
+    set(WITH_HETERPS
+        OFF
+        CACHE STRING "Disable HETERPS when compiling for Windows OR MacOS"
+              FORCE)
+  endif()
+endif()
+
+if(NOT WITH_GPU OR NOT WITH_PSCORE)
+  if(WITH_HETERPS)
+    message(
+      WARNING
+        "Disable HETERPS when compiling without GPU or PSCORE. Force WITH_HETERPS=OFF."
+    )
+    set(WITH_HETERPS
+        OFF
+        CACHE STRING "Disable HETERPS when compiling without GPU or PSCORE"
+              FORCE)
   endif()
 endif()
 
