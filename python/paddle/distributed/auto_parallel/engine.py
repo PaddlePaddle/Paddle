@@ -1530,10 +1530,10 @@ class Engine:
             strict (bool, optional): Whether to skip the loading of mismatch
                 parameter or raise an error when mismatch happens (not found
                 the parameter in file storing model states of or receives a
-                mismatch shape). Default: False.
+                mismatch shape). Default: True.
             load_optimizer (bool, optional): If True, the stored optimizer
                 states is restored. Otherwise, the optimizer states is initialized
-                from scratch. Default: False.
+                from scratch. Default: True.
 
         Returns:
             None
