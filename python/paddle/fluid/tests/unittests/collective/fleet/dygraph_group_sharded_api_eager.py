@@ -83,10 +83,14 @@ def train_mlp(model,
                                 save_dtype='float32')
     scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
 
+    #test sharding + dp
+    dp_group = paddle.distributed.new_group([paddle.distributed.get_rank()])
+
     model, optimizer, scaler = group_sharded_parallel(model=model,
                                                       optimizer=optimizer,
                                                       level=shard_level,
-                                                      scaler=scaler)
+                                                      scaler=scaler,
+                                                      dp_group=dp_group)
 
     train_reader = paddle.batch(reader_decorator(),
                                 batch_size=batch_size,
