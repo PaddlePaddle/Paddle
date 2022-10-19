@@ -98,7 +98,11 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake
       UPDATE_COMMAND ""
       BUILD_COMMAND ${LITE_BUILD_COMMAND}
-      INSTALL_COMMAND ""
+      INSTALL_COMMAND
+        cp ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.cc
+        ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/core/ && cp
+        ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
+        ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/core/
       CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                  -DCMAKE_CXX_FLAGS=${LITE_CMAKE_CXX_FLAGS}
@@ -145,7 +149,11 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?"
         ${LITE_PREFIX_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
       BUILD_COMMAND ${LITE_BUILD_COMMAND}
-      INSTALL_COMMAND ""
+      INSTALL_COMMAND
+        cp ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.cc
+        ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/core/ && cp
+        ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
+        ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/core/
       CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                  -DCMAKE_CXX_FLAGS=${LITE_CMAKE_CXX_FLAGS}
