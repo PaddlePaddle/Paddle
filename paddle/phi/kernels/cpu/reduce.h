@@ -41,7 +41,9 @@ void Reduce(const DeviceContext& dev_ctx,
       break;
     }
   }
-  reduce_all = (reduce_all || full_dim);
+  // 'reduce_dim is []' means reduce_all=True
+  bool empty_dim = (dims.size() == 0);
+  reduce_all = (reduce_all || full_dim || empty_dim);
 
   // no need to cast dtype
   if (out_dtype == phi::DataType::UNDEFINED || out_dtype == x.dtype()) {

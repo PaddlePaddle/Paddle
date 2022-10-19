@@ -44,7 +44,7 @@ struct DimensionsTransform {
       int64_t in_idx = 0;
       if (in_dim.size() < dim_size) {
         DimVector tmp_dim(dim_size, 1);
-        do {
+        for (; in_idx < in_dim.size();) {
           if (in_dim[in_idx] == out_dims[axis] || in_dim[in_idx] == 1) {
             tmp_dim[axis] = in_dim[in_idx];
             in_idx++;
@@ -59,11 +59,11 @@ struct DimensionsTransform {
                 out_dims[axis],
                 in_dim[in_idx]));
           }
-        } while (in_idx < in_dim.size());
+        }
         in_dim.resize(dim_size);
         std::copy(tmp_dim.begin(), tmp_dim.end(), in_dim.begin());
       } else {
-        do {
+        for (; in_idx < in_dim.size();) {
           if (in_dim[in_idx] == out_dims[in_idx] || in_dim[in_idx] == 1) {
             in_idx++;
           } else {
@@ -76,7 +76,7 @@ struct DimensionsTransform {
                 out_dims[in_idx],
                 in_dim[in_idx]));
           }
-        } while (in_idx < dim_size);
+        }
       }
       std::reverse(in_dim.begin(), in_dim.end());
     }

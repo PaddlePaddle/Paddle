@@ -99,6 +99,12 @@ class TestSoftmaxOp(OpTest):
                             check_dygraph=(self.use_mkldnn == False))
 
 
+class TestSoftmaxOp_ZeroDim(TestSoftmaxOp):
+
+    def get_x_shape(self):
+        return []
+
+
 class TestSoftmaxOp2(TestSoftmaxOp):
 
     def get_x_shape(self):
@@ -435,6 +441,52 @@ class TestSoftmaxAPI(unittest.TestCase):
                                        shape=[2, 3],
                                        dtype='float16')
             self.softmax(x_fp16)
+
+
+class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.nn.functional.softmax(x)
+        out.backward()
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        main_prog = fluid.Program()
+        with fluid.program_guard(main_prog, fluid.Program()):
+            x = paddle.rand([])
+            x.stop_gradient = False
+            out = paddle.nn.functional.softmax(x)
+            fluid.backward.append_backward(out)
+
+            prog = paddle.static.default_main_program()
+            block = prog.global_block()
+
+            x_grad = block.var(fluid.framework.grad_var_name(x.name))
+            out_grad = block.var(fluid.framework.grad_var_name(out.name))
+
+            # Test compile shape
+            self.assertEqual(x.shape, ())
+            self.assertEqual(out.shape, (1, ))
+            self.assertEqual(x_grad.shape, ())
+            self.assertEqual(out_grad.shape, (1, ))
+
+            exe = fluid.Executor()
+            result = exe.run(main_prog, fetch_list=[x, out, x_grad, out_grad])
+
+            # Test runtime shape
+            self.assertEqual(result[0].shape, ())
+            self.assertEqual(result[1].shape, (1, ))
+            self.assertEqual(result[2].shape, ())
+            self.assertEqual(result[3].shape, (1, ))
 
 
 class TestSoftmaxInplaceAPI(TestSoftmaxAPI):

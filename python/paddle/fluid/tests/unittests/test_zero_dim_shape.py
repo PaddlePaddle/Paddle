@@ -67,7 +67,7 @@ unary_api_list = [
 
 
 # Use to test zero-dim in the whole API
-class TestUnaryAPI(unittest.TestCase):
+class TestUnaryAPI(object):
 
     def test_dygraph_unary(self):
         paddle.disable_static()
@@ -149,6 +149,89 @@ class TestUnaryAPI(unittest.TestCase):
                 self.assertEqual(np.array(result[0]).shape, (device_num, ))
                 self.assertEqual(np.array(result[1]).shape, (device_num, ))
                 self.assertEqual(np.array(result[3]).shape, (device_num, 1))
+
+        paddle.disable_static()
+
+
+reduce_api_list = [
+    paddle.sum,
+    paddle.mean,
+    paddle.nansum,
+    paddle.nanmean,
+    paddle.min,
+    paddle.max,
+    paddle.amin,
+    paddle.amax,
+    paddle.prod,
+    paddle.logsumexp,
+    paddle.fluid.layers.reduce_sum,
+    paddle.fluid.layers.reduce_mean,
+    paddle.fluid.layers.reduce_max,
+    paddle.fluid.layers.reduce_min,
+    paddle.fluid.layers.reduce_prod,
+    paddle.all,
+    paddle.any,
+    paddle.fluid.layers.reduce_all,
+    paddle.fluid.layers.reduce_any,
+]
+
+
+class TestReduceAPI(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.set_device('gpu')
+        paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        for api in reduce_api_list:
+            if api in [
+                    paddle.all, paddle.any, paddle.fluid.layers.reduce_all,
+                    paddle.fluid.layers.reduce_any
+            ]:
+                x = paddle.randint(0, 2, []).astype('bool')
+                out = api(x, None)
+                self.assertEqual(x.shape, [])
+                self.assertEqual(out.shape, [])
+            else:
+                x = paddle.rand([])
+                x.stop_gradient = False
+                out = api(x, None)
+                out.backward()
+
+                self.assertEqual(x.shape, [])
+                self.assertEqual(out.shape, [])
+                self.assertEqual(x.grad.shape, [])
+                self.assertEqual(out.grad.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+        for api in reduce_api_list:
+            print(api)
+            main_prog = fluid.Program()
+            with fluid.program_guard(main_prog, fluid.Program()):
+                if api in [
+                        paddle.all, paddle.any, paddle.fluid.layers.reduce_all,
+                        paddle.fluid.layers.reduce_any
+                ]:
+                    x = paddle.randint(0, 2, []).astype('bool')
+                else:
+                    x = paddle.rand([])
+
+                x.stop_gradient = False
+                out = api(x, None)
+                fluid.backward.append_backward(out)
+
+                # Test compile shape, grad is always [1]
+                self.assertEqual(x.shape, ())
+                self.assertEqual(out.shape, ())
+
+                exe = fluid.Executor()
+                result = exe.run(main_prog, fetch_list=[x, out])
+
+                # Test runtime shape
+                self.assertEqual(result[0].shape, ())
+                self.assertEqual(result[1].shape, ())
 
         paddle.disable_static()
 

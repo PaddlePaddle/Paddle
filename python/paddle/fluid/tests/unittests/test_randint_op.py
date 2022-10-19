@@ -19,6 +19,7 @@ from op_test import OpTest
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.static import program_guard, Program
+import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -172,6 +173,30 @@ class TestRandintAPI(unittest.TestCase):
     def test_api_eager(self):
         with _test_eager_guard():
             self.test_api()
+
+
+# Test python API shape
+class TestRandintAPI_ZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        x = paddle.randint(0, 2, [])
+        self.assertEqual(x.shape, [])
+        paddle.enable_static()
+
+    def test_static(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = paddle.randint(-10, 10, [])
+
+            # Test compile shape
+            self.assertEqual(x.shape, ())
+
+            # Test runtime shape
+            exe = fluid.Executor()
+            result = exe.run(fetch_list=[x])
+            self.assertEqual(result[0].shape, ())
+
+        paddle.enable_static()
 
 
 class TestRandintImperative(unittest.TestCase):

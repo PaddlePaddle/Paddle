@@ -20,9 +20,9 @@ from ..framework import core
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .search import where
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.layers import utils
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from .math import _get_reduce_axis_with_tensor
 
 __all__ = []
 
@@ -79,21 +79,9 @@ def mean(x, axis=None, keepdim=False, name=None):
             out4 = paddle.mean(x, axis=[0, 2])
             # [ 8.5 12.5 16.5]
     """
-
-    if isinstance(axis, Variable):
-        reduce_all = True if axis.shape[0] == len(x.shape) else False
-    else:
-        if isinstance(axis, int):
-            axis = [axis]
-        reduce_all = True if axis is None \
-            or len(axis)==0 \
-            or len(axis) == len(x.shape) else False
-        if axis is None or len(axis) == 0:
-            axis = [0]
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
 
     if in_dygraph_mode():
-        if reduce_all:
-            axis = list(range(len(x.shape)))
         return _C_ops.mean(x, axis, keepdim)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_mean(x, 'dim', axis, 'keep_dim', keepdim,
@@ -111,8 +99,6 @@ def mean(x, axis=None, keepdim=False, name=None):
 
     helper = LayerHelper('mean', **locals())
 
-    if not isinstance(axis, Variable) and utils._contain_var(axis):
-        axis = utils._convert_to_tensor_list(axis)
     attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(type='reduce_mean',

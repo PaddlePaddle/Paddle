@@ -359,9 +359,11 @@ struct ReduceConfig {
   // eg: x_dim = [2, 4, 6] origin_reduce_dims = [0, 1]
   //     --SetReduceDim--> x_dim = [8,6], reduce_dim = [0], left_dim = [1]
   void SetReduceDim() {
+    int x_rank = static_cast<int>(x_dim.size());
+
     std::set<int> reduce_set;
     for (auto e : reduce_dims_origin) {
-      auto pos = e >= 0 ? e : e + x_dim.size();
+      auto pos = e >= 0 ? e : e + x_rank;
       reduce_set.insert(pos);
     }
 
@@ -370,9 +372,10 @@ struct ReduceConfig {
 
     // update reduce_dim and x_dim
     std::vector<int> x_new_dim;
-
-    reduce_dim.push_back(reduce_dim_temp[0]);
-    x_new_dim.push_back(x_dim[0]);
+    if (x_rank > 0) {
+      reduce_dim.push_back(reduce_dim_temp[0]);
+      x_new_dim.push_back(x_dim[0]);
+    }
 
     int idx_reduce = 1;
     int num = 0;
@@ -412,7 +415,7 @@ struct ReduceConfig {
 
     std::vector<int>().swap(reduce_dim);
 
-    for (int i = 0; i < x_dim.size(); i++) {
+    for (int i = 0; i < x_rank; i++) {
       if ((i == 0) || (((is_reduced >> i) ^ (is_reduced >> (i - 1))) & 1)) {
         x_new_dim.push_back(x_dim[i]);
         if ((is_reduced >> i) & 1)
@@ -425,7 +428,6 @@ struct ReduceConfig {
     x_dim = x_new_dim;
     reduce_dim = reduce_dim_new;
 
-    int x_rank = static_cast<int>(x_dim.size());
     std::set<int> left_set;
 
     for (int i = 0; i < x_rank; ++i) {
@@ -439,7 +441,10 @@ struct ReduceConfig {
     left_dim.assign(left_set.begin(), left_set.end());
 
     // if the last dim gets involved in reduction
-    reduce_last_dim = (reduce_dim.back() == x_dim.size() - 1);
+    reduce_last_dim = true;
+    if (x_rank > 0) {
+      reduce_last_dim = (reduce_dim.back() == x_rank - 1);
+    }
   }
 
   // set x_strides, reduce_strides, left_strides for reduceLastDim and reduceAny
@@ -451,12 +456,15 @@ struct ReduceConfig {
     for (int i = 0; i < x_dim.size(); i++) {
       idx_dim.push_back(i);
     }
-
     x_strides = details::GetDimStrides(x_dim, idx_dim);
-    reduce_strides = details::GetDimStrides(x_dim, reduce_dim);
-    left_strides = details::GetDimStrides(x_dim, left_dim);
-    reduce_num = reduce_strides[0] * x_dim[reduce_dim[0]];
 
+    reduce_strides = details::GetDimStrides(x_dim, reduce_dim);
+    reduce_num = 1;
+    if (reduce_dim.size()) {
+      reduce_num = reduce_strides[0] * x_dim[reduce_dim[0]];
+    }
+
+    left_strides = details::GetDimStrides(x_dim, left_dim);
     left_num = 1;
     if (left_dim.size()) {
       left_num = left_strides[0] * x_dim[left_dim[0]];
@@ -471,13 +479,7 @@ struct ReduceConfig {
   void SetReduceType() {
     int rank = x_dim.size();
     int reduce_rank = reduce_dim.size();
-#ifdef PADDLE_WITH_XPU_KP
-    bool not_higher = x_dim[0] > 1;
-#else
-    int device_id = paddle::platform::GetCurrentDeviceId();
-    int max_grid_z = phi::backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
-    bool not_higher = x_dim[0] >= max_grid_z;
-#endif
+
     if (reduce_last_dim && (reduce_rank == 1)) {
 #ifdef PADDLE_WITH_XPU_KP
       reduce_type = static_cast<int>(ReduceType::kReduceAny);
@@ -486,8 +488,17 @@ struct ReduceConfig {
 #endif
     } else if (reduce_rank == 1) {
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
-      if (rank == 3 && not_higher) {
-        reduce_type = static_cast<int>(ReduceType::kReduceAny);
+      if (rank == 3) {
+#ifdef PADDLE_WITH_XPU_KP
+        bool not_higher = x_dim[0] > 1;
+#else
+        int device_id = paddle::platform::GetCurrentDeviceId();
+        int max_grid_z = phi::backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
+        bool not_higher = x_dim[0] >= max_grid_z;
+#endif
+        if (not_higher) {
+          reduce_type = static_cast<int>(ReduceType::kReduceAny);
+        }
       }
     } else {
       reduce_type = static_cast<int>(ReduceType::kReduceAny);
@@ -1063,9 +1074,10 @@ void ReduceKernel(const KPDevice& dev_ctx,
   dev_ctx.Alloc<Ty>(y);
 
   auto x_dim = phi::vectorize<int>(x.dims());
+  int numel = x.numel();
+
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run(dev_ctx);
-  int numel = x.numel();
   // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,
   // temp_output should be stored temp_data in output_data space or stored in

@@ -4710,9 +4710,6 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
     reduce_all, dim = _get_reduce_dim(dim, input)
 
     if in_dygraph_mode():
@@ -4838,26 +4835,21 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_max(y, dim=[1, 2]) # [4.0, 8.0]
             fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
     """
+    reduce_all, dim = _get_reduce_dim(dim, input)
+
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
 
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
     if in_dygraph_mode():
-        return _C_ops.max(input, dim if dim != None else [], keep_dim)
+        return _C_ops.max(input, dim, keep_dim)
 
     helper.append_op(type='reduce_max',
                      inputs={'X': input},
                      outputs={'Out': out},
                      attrs={
-                         'dim':
-                         dim if dim != None and dim != [] else [0],
-                         'keep_dim':
-                         keep_dim,
-                         'reduce_all':
-                         True if dim == None or dim == []
-                         or len(dim) == len(input.shape) else False
+                         'dim': dim,
+                         'keep_dim': keep_dim,
+                         'reduce_all': reduce_all
                      })
     return out
 
@@ -4911,25 +4903,21 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_min(y, dim=[1, 2]) # [1.0, 5.0]
             fluid.layers.reduce_min(y, dim=[0, 1]) # [1.0, 2.0]
     """
+    reduce_all, dim = _get_reduce_dim(dim, input)
+
     helper = LayerHelper('reduce_min', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
 
     if in_dygraph_mode():
-        return _C_ops.min(input, dim if dim != None else [], keep_dim)
+        return _C_ops.min(input, dim, keep_dim)
 
     helper.append_op(type='reduce_min',
                      inputs={'X': input},
                      outputs={'Out': out},
                      attrs={
-                         'dim':
-                         dim if dim != None and dim != [] else [0],
-                         'keep_dim':
-                         keep_dim,
-                         'reduce_all':
-                         True if dim == None or dim == []
-                         or len(dim) == len(input.shape) else False
+                         'dim': dim,
+                         'keep_dim': keep_dim,
+                         'reduce_all': reduce_all
                      })
     return out
 
@@ -4983,20 +4971,10 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
             fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
+    reduce_all, dim = _get_reduce_dim(dim, input)
 
-    if dim is not None and not isinstance(dim, list):
-        if isinstance(dim, tuple):
-            dim = list(dim)
-        elif isinstance(dim, int):
-            dim = [dim]
-        else:
-            raise TypeError(
-                "The type of axis must be int, list or tuple, but received {}".
-                format(type(dim)))
     if in_dygraph_mode():
-        return _C_ops.reduce_prod(
-            input, dim if dim != None and dim != [] else [0], keep_dim, True if
-            dim == None or dim == [] or len(dim) == len(input.shape) else False)
+        return _C_ops.reduce_prod(input, dim, keep_dim, reduce_all)
 
     helper = LayerHelper('reduce_prod', **locals())
     check_variable_and_dtype(input, 'input',
@@ -5007,13 +4985,9 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
                      inputs={'X': input},
                      outputs={'Out': out},
                      attrs={
-                         'dim':
-                         dim if dim != None and dim != [] else [0],
-                         'keep_dim':
-                         keep_dim,
-                         'reduce_all':
-                         True if dim == None or dim == []
-                         or len(dim) == len(input.shape) else False
+                         'dim': dim,
+                         'keep_dim': keep_dim,
+                         'reduce_all': reduce_all
                      })
     return out
 
@@ -5062,11 +5036,10 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
+    reduce_all, dim = _get_reduce_dim(dim, input)
 
     if in_dygraph_mode():
-        return _C_ops.all(input, dim if dim != None else [], keep_dim)
+        return _C_ops.all(input, dim, keep_dim)
 
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
@@ -5075,13 +5048,9 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
                      inputs={'X': input},
                      outputs={'Out': out},
                      attrs={
-                         'dim':
-                         dim if dim != None and dim != [] else [0],
-                         'keep_dim':
-                         keep_dim,
-                         'reduce_all':
-                         True if dim == None or dim == []
-                         or len(dim) == len(input.shape) else False
+                         'dim': dim,
+                         'keep_dim': keep_dim,
+                         'reduce_all': reduce_all
                      })
     return out
 
@@ -5129,22 +5098,21 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
+    reduce_all, dim = _get_reduce_dim(dim, input)
+
+    if in_dygraph_mode():
+        return _C_ops.any(input, dim, keep_dim)
+
     check_variable_and_dtype(input, 'input', ('bool'), 'reduce_any')
     helper = LayerHelper('reduce_any', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
     helper.append_op(type='reduce_any',
                      inputs={'X': input},
                      outputs={'Out': out},
                      attrs={
-                         'dim':
-                         dim if dim != None and dim != [] else [0],
-                         'keep_dim':
-                         keep_dim,
-                         'reduce_all':
-                         True if dim == None or dim == []
-                         or len(dim) == len(input.shape) else False
+                         'dim': dim,
+                         'keep_dim': keep_dim,
+                         'reduce_all': reduce_all
                      })
     return out
 
