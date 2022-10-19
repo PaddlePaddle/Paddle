@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .layer_function_generator import generate_layer_fn, generate_activation_fn, generate_inplace_fn, add_sample_code
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 from .. import _C_ops
 
 __deprecated_func_name__ = {
