@@ -14,7 +14,6 @@
 
 import multiprocessing
 import os
-import six
 import sys
 import warnings
 from . import framework
@@ -430,11 +429,11 @@ class CompiledProgram(object):
         self._persistable_vars = list(set(self._persistable_vars))
         self._persistable_vars.sort()
 
-        return core.ParallelExecutor(
-            places, self._persistable_vars,
-            self._loss_name if self._loss_name else six.u(''), self._scope,
-            self._local_scopes, self._exec_strategy, self._build_strategy,
-            self._graph)
+        return core.ParallelExecutor(places, self._persistable_vars,
+                                     self._loss_name if self._loss_name else '',
+                                     self._scope, self._local_scopes,
+                                     self._exec_strategy, self._build_strategy,
+                                     self._graph)
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)

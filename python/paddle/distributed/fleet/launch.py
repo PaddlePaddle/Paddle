@@ -59,7 +59,6 @@ import sys
 import tempfile
 import os
 import time
-import six
 import copy
 import pathlib
 from argparse import ArgumentParser, REMAINDER
@@ -80,7 +79,7 @@ __all__ = []
 
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
-    for arg, value in sorted(six.iteritems(vars(args))):
+    for arg, value in sorted(vars(args).items()):
         print("%s: %s" % (arg, value))
     print("------------------------------------------------")
 

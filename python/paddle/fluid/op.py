@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-import six
 
 import paddle.fluid.core as core
 import paddle.fluid.proto.framework_pb2 as framework_pb2
@@ -27,13 +26,13 @@ def get_all_op_protos():
     protostrs = core.get_all_op_protos()
     ret_values = []
     for pbstr in protostrs:
-        op_proto = framework_pb2.OpProto.FromString(six.binary_type(pbstr))
+        op_proto = framework_pb2.OpProto.FromString(bytes(pbstr))
         ret_values.append(op_proto)
     return ret_values
 
 
 def is_str(s):
-    return isinstance(s, six.string_types)
+    return isinstance(s, str)
 
 
 class OpDescCreationMethod(object):

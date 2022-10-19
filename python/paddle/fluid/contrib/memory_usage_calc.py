@@ -20,8 +20,6 @@ batch size to fully utilize a GPU.
 This API is still under active development and may change drastically.
 """
 
-import six
-
 from .. import core
 from ..framework import Program, Variable
 

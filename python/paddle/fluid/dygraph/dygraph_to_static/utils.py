@@ -19,9 +19,9 @@ import copy
 import collections
 from paddle.utils import gast
 import inspect
-import os, sys
+import os
+import sys
 import shutil
-import six
 import tempfile
 import textwrap
 import numpy as np
@@ -135,7 +135,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
-    for i in six.moves.range(len(shape)):
+    for i in range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
 
@@ -488,7 +488,7 @@ def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
 
     This function is used at several gast.Return statements.
     """
-    if isinstance(name_ids, six.string_types):
+    if isinstance(name_ids, str):
         name_ids = [name_ids]
     if not isinstance(name_ids, (list, tuple, set)):
         raise TypeError(
@@ -640,7 +640,7 @@ def recover_globals_attribute(src_obj, dst_obj):
     src_globals = getattr(src_obj, attr_name, {})
     dst_globals = getattr(dst_obj, attr_name, {})
 
-    for k, v in six.iteritems(src_globals):
+    for k, v in src_globals.items():
         # ignore builtin attribute.
         if not (k.startswith('__') and k.endswith('__')):
             dst_globals[k] = v
@@ -889,7 +889,7 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
         # Look up the node_var_type_map by name_id.
         if self.node_var_type_map:
-            if name_id and isinstance(name_id, six.string_types):
+            if name_id and isinstance(name_id, str):
                 var_type = self.node_var_type_map.get(name_id, None)
                 if var_type and var_type & NodeVarType.TENSOR_TYPES:
                     return True

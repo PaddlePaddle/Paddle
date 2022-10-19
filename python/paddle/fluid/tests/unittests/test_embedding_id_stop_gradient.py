@@ -15,7 +15,6 @@
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import six
 import unittest
 
 
@@ -53,7 +52,7 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
                 x_2 = fluid.data(name='x2', shape=[4, 1], dtype='int64')
                 x = fluid.layers.concat([x_1, x_2], axis=-1)
 
-                for _ in six.moves.range(self.reshape_times):
+                for _ in range(self.reshape_times):
                     x = fluid.layers.reshape(x, [-1, 1])
 
                 x.stop_gradient = stop_gradient
@@ -70,7 +69,7 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
                 x2_data = np.random.randint(0, 9, x_2.shape).astype('int64')
 
                 fetch_val = None
-                for _ in six.moves.range(self.iteration):
+                for _ in range(self.iteration):
                     fetch_val = exe.run(feed={
                         x_1.name: x1_data,
                         x_2.name: x2_data

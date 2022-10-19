@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import six
 import warnings
 
 import functools
@@ -829,7 +828,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
     if param_list is None:
         param_list = program.block(0).all_parameters()
-    if all(isinstance(elem, six.string_types) for elem in param_list):
+    if all(isinstance(elem, str) for elem in param_list):
         param_list = [program.block(0).var(elem) for elem in param_list]
     if not all(isinstance(elem, framework.Parameter) for elem in param_list):
         raise TypeError(

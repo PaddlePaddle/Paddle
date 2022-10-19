@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import abc
 import unittest
 import numpy as np
@@ -24,8 +23,7 @@ from paddle.fluid.tests.unittests.test_gelu_op import gelu
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
-@six.add_metaclass(abc.ABCMeta)
-class MKLDNNBF16ActivationOp(object):
+class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def config(self):

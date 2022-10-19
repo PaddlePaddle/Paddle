@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 from . import layers
 from .data_feeder import check_variable_and_dtype, convert_dtype
 from ..utils import deprecated
@@ -227,7 +226,7 @@ def img_conv_group(input,
     conv_with_batchnorm = __extend_list__(conv_with_batchnorm)
     conv_batchnorm_drop_rate = __extend_list__(conv_batchnorm_drop_rate)
 
-    for i in six.moves.range(len(conv_num_filter)):
+    for i in range(len(conv_num_filter)):
         local_conv_act = conv_act
         if conv_with_batchnorm[i]:
             local_conv_act = None
