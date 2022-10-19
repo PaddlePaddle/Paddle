@@ -108,6 +108,10 @@ if(WITH_PSCORE)
                             tensor_table)
 endif()
 
+if(WITH_INFERENCE_NVTX AND NOT WIN32)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} cuda_profiler)
+endif()
+
 if(WITH_ONNXRUNTIME)
   set(SHARED_INFERENCE_SRCS
       ${SHARED_INFERENCE_SRCS}
