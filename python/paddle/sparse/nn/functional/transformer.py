@@ -63,7 +63,8 @@ def attention(query,
 
     Examples:
         .. code-block:: python
-            
+
+            # required: gpu
             import paddle
 
             batch_size = 16
@@ -85,7 +86,7 @@ def attention(query,
             kp_mask = paddle.randint(0, 2, [batch_size, seq_len])
             attn_mask = paddle.randint(0, 2, [seq_len, seq_len])
 
-            output = paddle.incubate.sparse.nn.functional.attention(query, key, value, sp_mask, kp_mask, attn_mask)
+            output = paddle.sparse.nn.functional.attention(query, key, value, sp_mask, kp_mask, attn_mask)
             output.backward()
     """
     return _C_ops.sparse_fused_attention(query, key, value, sparse_mask,

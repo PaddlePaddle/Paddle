@@ -102,7 +102,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
               x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
               dense_x = paddle.to_tensor(x_data) 
               sparse_x = dense_x.to_sparse_coo(4)
-              batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
+              batch_norm = paddle.sparse.nn.BatchNorm(channels)
               batch_norm_out = batch_norm(sparse_x)
               print(batch_norm_out.shape)
               # [1, 6, 6, 6, 3]
@@ -154,7 +154,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             data_format='NC',
             use_global_stats=self._use_global_stats)
 
-        return paddle.incubate.sparse.sparse_coo_tensor(
+        return paddle.sparse.sparse_coo_tensor(
             input.indices(),
             batch_norm_out,
             shape=input.shape,
@@ -237,7 +237,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
           # required: gpu
           import paddle
-          import paddle.incubate.sparse.nn as nn
+          import paddle.sparse.nn as nn
           import numpy as np
 
           x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
@@ -274,13 +274,15 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         assert x.is_sparse_coo(
         ), "SyncBatchNorm only support SparseTensor in COO format."
         out = super(SyncBatchNorm, self).forward(x.values())
-        return paddle.incubate.sparse.sparse_coo_tensor(
-            x.indices(), out, shape=x.shape, stop_gradient=x.stop_gradient)
+        return paddle.sparse.sparse_coo_tensor(x.indices(),
+                                               out,
+                                               shape=x.shape,
+                                               stop_gradient=x.stop_gradient)
 
     @classmethod
     def convert_sync_batchnorm(cls, layer):
         r"""
-        Helper function to convert :class: `paddle.incubate.sparse.nn.BatchNorm` layers in the model to :class: `paddle.incubate.sparse.nn.SyncBatchNorm` layers.
+        Helper function to convert :class: `paddle.sparse.nn.BatchNorm` layers in the model to :class: `paddle.sparse.nn.SyncBatchNorm` layers.
 
         Parameters:
             layer(paddle.nn.Layer): model containing one or more `BatchNorm` layers.
@@ -293,7 +295,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
             .. code-block:: python
 
                 import paddle
-                import paddle.incubate.sparse.nn as nn
+                import paddle.sparse.nn as nn
 
                 model = paddle.nn.Sequential(nn.Conv3D(3, 5, 3), nn.BatchNorm(5))
                 sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
