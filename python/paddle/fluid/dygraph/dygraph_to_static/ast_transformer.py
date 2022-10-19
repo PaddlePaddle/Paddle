@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
@@ -30,6 +28,7 @@ from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import Br
 from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
 from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import CastTransformer
 from paddle.fluid.dygraph.dygraph_to_static.grad_transformer import GradTransformer
+from paddle.fluid.dygraph.dygraph_to_static.typehint_transformer import TypeHintTransformer
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import LogicalTransformer
@@ -104,8 +103,9 @@ class DygraphToStaticAst(BaseTransformer):
             PrintTransformer,  # print statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
-            GradTransformer,  # transform paddle.grad to paddle.gradients
+            #GradTransformer,  # transform paddle.grad to paddle.gradients
             DecoratorTransformer,  # transform decorators to function call
+            TypeHintTransformer,  # remove all typehint in gast.Name
         ]
 
         apply_optimization(transformers)

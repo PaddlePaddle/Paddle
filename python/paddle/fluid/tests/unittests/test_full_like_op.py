@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid.core as core
 from paddle.static import program_guard, Program
-import paddle.compat as cpt
 import unittest
 import numpy as np
 from op_test import OpTest

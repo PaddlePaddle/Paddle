@@ -16,12 +16,9 @@ test for sync bachnorm op.
 for both FP64 and FP16 input.
 """
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import os
-import six
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -163,7 +160,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                                   feed={'input': data},
                                   fetch_list=fetch_names)
 
-        for i in six.moves.xrange(1, len(sync_bn_fetches)):
+        for i in range(1, len(sync_bn_fetches)):
             bn_val = bn_fetches[i]
             sync_bn_val = sync_bn_fetches[i]
             if sync_bn_val.shape != bn_val.shape:

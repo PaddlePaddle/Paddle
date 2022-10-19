@@ -14,8 +14,7 @@
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 import unittest
 
 paddle.disable_static()

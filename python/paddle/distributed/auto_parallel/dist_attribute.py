@@ -13,7 +13,6 @@
 # limitations under the License
 
 import copy
-from collections import defaultdict
 from paddle.fluid.framework import Variable
 from .process_mesh import ProcessMesh
 

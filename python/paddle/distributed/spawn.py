@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import multiprocessing
 import os
 import signal
-import six
 import sys
 import warnings
 
@@ -30,7 +27,7 @@ from paddle.device import get_device
 
 # deprecated module import
 from paddle.fluid import core
-from paddle.fluid.framework import _cpu_num, set_flags
+from paddle.fluid.framework import set_flags
 
 __all__ = []
 
@@ -173,7 +170,7 @@ def _get_subprocess_env_list(nprocs, options):
         env_devices = os.getenv("CUDA_VISIBLE_DEVICES", None)
         if env_devices is None or env_devices == "":
             env_devices_list = [
-                str(x) for x in six.moves.range(core.get_cuda_device_count())
+                str(x) for x in range(core.get_cuda_device_count())
             ]
         else:
             env_devices_list = env_devices.split(',')
@@ -208,7 +205,7 @@ def _get_subprocess_env_list(nprocs, options):
         env_devices = os.getenv("XPU_VISIBLE_DEVICES", None)
         if env_devices is None or env_devices == "":
             env_devices_list = [
-                str(x) for x in six.moves.range(core.get_xpu_device_count())
+                str(x) for x in range(core.get_xpu_device_count())
             ]
         else:
             env_devices_list = env_devices.split(',')
@@ -242,7 +239,7 @@ def _get_subprocess_env_list(nprocs, options):
         env_devices = os.getenv("MLU_VISIBLE_DEVICES", None)
         if env_devices is None or env_devices == "":
             env_devices_list = [
-                str(x) for x in six.moves.range(core.get_mlu_device_count())
+                str(x) for x in range(core.get_mlu_device_count())
             ]
         else:
             env_devices_list = env_devices.split(',')
@@ -475,8 +472,6 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
 
     Examples:
         .. code-block:: python
-
-            from __future__ import print_function
 
             import paddle
             import paddle.nn as nn

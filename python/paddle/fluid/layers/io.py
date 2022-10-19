@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import multiprocessing
 import os
 import six
@@ -111,11 +110,11 @@ def data(name,
     """
     helper = LayerHelper('data', **locals())
 
-    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(name, 'name', (bytes, str), 'data')
     check_type(shape, 'shape', (list, tuple), 'data')
 
     shape = list(shape)
-    for i in six.moves.range(len(shape)):
+    for i in range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
             append_batch_size = False
@@ -478,6 +477,7 @@ def _py_reader(capacity,
         def __provider_thread__(legacy_expected_place):
             try:
                 # See _DataLoaderIterSingleProcess._thread_loop() for why set expected place here.
+
                 _set_expected_place(legacy_expected_place)
 
                 for tensors in func():

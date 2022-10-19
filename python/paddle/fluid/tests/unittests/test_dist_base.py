@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import tempfile
 
 import ast
 import unittest
 import os
 import sys
-import signal
 import subprocess
-import six
 import argparse
 import pickle
 import random
@@ -31,10 +28,7 @@ import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import paddle.fluid.core as core
 import paddle.fluid.dygraph as dygraph
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import DataParallel, ParallelEnv
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
@@ -151,7 +145,7 @@ class TestDistRunnerBase(object):
 
         main_program = fluid.default_main_program()
         lr_sheduler = self.get_lr_scheduler(main_program)
-        for i in six.moves.xrange(RUN_STEP):
+        for i in range(RUN_STEP):
             loss = exe.run(main_program, fetch_list=[avg_cost])
             loss = loss[0] if loss else None
             out_losses.append(loss)
@@ -224,7 +218,7 @@ class TestDistRunnerBase(object):
 
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
-        for i in six.moves.xrange(RUN_STEP):
+        for i in range(RUN_STEP):
             loss, = exe.run(fluid.default_main_program(),
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
@@ -309,7 +303,7 @@ class TestDistRunnerBase(object):
 
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
-        for i in six.moves.xrange(RUN_STEP):
+        for i in range(RUN_STEP):
             loss, = exe.run(dist_prog,
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
@@ -484,7 +478,7 @@ class TestDistRunnerBase(object):
         lr_scheduler = self.get_lr_scheduler(trainer_prog)
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
-        for i in six.moves.xrange(RUN_STEP):
+        for i in range(RUN_STEP):
             loss, = exe.run(binary,
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
@@ -656,7 +650,6 @@ class TestParallelDyGraphRunnerBase(object):
 
     def run_use_fleet_api_trainer(self, args):
         import paddle.distributed.fleet as fleet
-        import paddle.distributed.fleet.base.role_maker as role_maker
         # 1. enable dygraph
         paddle.disable_static()
 
@@ -784,7 +777,6 @@ def runtime_main(test_class):
         model.run_trainer(args)
 
 
-import paddle.compat as cpt
 import socket
 from contextlib import closing
 
@@ -1484,7 +1476,8 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_rpc_disable_reuse_port": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
-            "NCCL_SHM_DISABLE": "1"
+            "NCCL_SHM_DISABLE": "1",
+            "FLAGS_CONVERT_GRAPH_TO_PROGRAM": "1"
         }
 
         if check_error_log:

@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 
 import os
@@ -25,7 +22,7 @@ import tempfile
 import paddle
 from paddle import fluid
 from paddle import to_tensor
-from paddle.nn import Conv2D, Linear, ReLU, Sequential, Softmax
+from paddle.nn import Conv2D, Linear, ReLU, Sequential
 
 from paddle import Model
 from paddle.static import InputSpec
@@ -37,7 +34,6 @@ import paddle.vision.models as models
 import paddle.fluid.dygraph.jit as jit
 from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
-from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 

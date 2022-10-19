@@ -95,11 +95,11 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto& place = *dev_ctx.eigen_device();
     // get input and output tensor
-    auto* predictions = ctx.Input<Tensor>("Predictions");
-    auto* labels = ctx.Input<Tensor>("Labels");
-    auto* out_mean_iou = ctx.Output<Tensor>("OutMeanIou");
-    auto* out_wrong = ctx.Output<Tensor>("OutWrong");
-    auto* out_correct = ctx.Output<Tensor>("OutCorrect");
+    auto* predictions = ctx.Input<phi::DenseTensor>("Predictions");
+    auto* labels = ctx.Input<phi::DenseTensor>("Labels");
+    auto* out_mean_iou = ctx.Output<phi::DenseTensor>("OutMeanIou");
+    auto* out_wrong = ctx.Output<phi::DenseTensor>("OutWrong");
+    auto* out_correct = ctx.Output<phi::DenseTensor>("OutCorrect");
     int num_classes = static_cast<int>(ctx.Attr<int>("num_classes"));
 
     // Get data ptr
@@ -128,16 +128,16 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     out_mean_iou_t.device(place) = out_mean_iou_t.constant(0.0f);
 
     // collect pre wrong, correct and mean_iou
-    auto in_mean_ious = ctx.MultiInput<Tensor>("InMeanIou");
+    auto in_mean_ious = ctx.MultiInput<phi::DenseTensor>("InMeanIou");
     for (int i = 0; i < in_mean_ious.size(); ++i) {
       out_mean_iou_t.device(place) +=
           EigenTensor<float, 1>::From(*in_mean_ious[i]);
     }
-    auto in_wrongs = ctx.MultiInput<Tensor>("InWrongs");
+    auto in_wrongs = ctx.MultiInput<phi::DenseTensor>("InWrongs");
     for (int i = 0; i < in_wrongs.size(); ++i) {
       out_wrong_t.device(place) += EigenTensor<int, 1>::From(*in_wrongs[i]);
     }
-    auto in_corrects = ctx.MultiInput<Tensor>("InCorrects");
+    auto in_corrects = ctx.MultiInput<phi::DenseTensor>("InCorrects");
     for (int i = 0; i < in_corrects.size(); ++i) {
       out_correct_t.device(place) += EigenTensor<int, 1>::From(*in_corrects[i]);
     }

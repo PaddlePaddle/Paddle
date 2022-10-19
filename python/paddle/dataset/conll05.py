@@ -20,15 +20,10 @@ dataset. And a pre-trained word vector model based on Wikipedia corpus is used
 to initialize SRL model.
 """
 
-from __future__ import print_function
-
 import tarfile
 import gzip
-import itertools
 import paddle.dataset.common
-import paddle.compat as cpt
 import paddle.utils.deprecated as deprecated
-from six.moves import zip, range
 
 __all__ = []
 
@@ -93,8 +88,8 @@ def corpus_reader(data_path, words_name, props_name):
             labels = []
             one_seg = []
             for word, label in zip(words_file, props_file):
-                word = cpt.to_text(word.strip())
-                label = cpt.to_text(label.strip().split())
+                word = word.strip().decode()
+                label = label.strip().decode().split()
 
                 if len(label) == 0:  # end of sentence
                     for i in range(len(one_seg[0])):

@@ -28,8 +28,13 @@ void GaussianRandomKernel(const Context& ctx,
                           DataType dtype,
                           DenseTensor* out) {
   std::normal_distribution<T> dist(mean, std);
-  auto engine = std::make_shared<std::mt19937_64>();
-  engine->seed(seed);
+  std::shared_ptr<std::mt19937_64> engine;
+  if (seed) {
+    engine = std::make_shared<std::mt19937_64>();
+    engine->seed(seed);
+  } else {
+    engine = ctx.GetGenerator()->GetCPUEngine();
+  }
 
   T* data = ctx.template Alloc<T>(out);
   for (int64_t i = 0; i < out->numel(); ++i) {
@@ -47,4 +52,4 @@ void GaussianRandomKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    gaussian_random, OneDNN, ALL_LAYOUT, phi::GaussianRandomKernel, float) {}
+    gaussian_random, OneDNN, ONEDNN, phi::GaussianRandomKernel, float) {}

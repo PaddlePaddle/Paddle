@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import autodoc, templatedoc
@@ -24,7 +23,6 @@ from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, padding_to_same_structure, is_sequence, pack_sequence_as, flatten, to_sequence
 import numpy
 import warnings
-import six
 from functools import reduce, partial
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ... import compat as cpt
@@ -144,7 +142,7 @@ def select_input_with_buildin_type(inputs, mask, name):
             raise RuntimeError(
                 f"Exceptions throwed while doing select_input on {name}:\n{e}")
 
-    elif (isinstance(false_var, (support_ret_buildin_type))
+    elif (isinstance(false_var, support_ret_buildin_type)
           and isinstance(false_var, type(true_var))):
         if false_var == true_var:
             return false_var
@@ -963,7 +961,7 @@ class StaticRNN(object):
         boot_memories = []
         pre_memories = []
         memories = []
-        for _, mem in six.iteritems(self.memories):
+        for _, mem in self.memories.items():
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             assert mem.mem is not None, "%s should be updated in every step." % (
@@ -1206,7 +1204,7 @@ class While(object):
             })
 
 
-support_ret_buildin_type = (bool, float, six.integer_types)
+support_ret_buildin_type = (bool, float, int)
 
 
 def assign_skip_lod_tensor_array(input, output):
@@ -2432,11 +2430,10 @@ class ConditionalBlock(object):
         for inner_input_name in params:
             inner_var = parent_block._find_var_recursive(inner_input_name)
             if inner_var:
-                param_list.append(cpt.to_text(inner_var.name))
+                param_list.append(inner_var.name)
 
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            conditional_block_op.desc, cpt.to_text(set()),
-            [grad_sub_block.desc])
+            conditional_block_op.desc, set(), [grad_sub_block.desc])
 
         # append op_desc in grad_op_descs to target_block
         op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -2451,10 +2448,10 @@ class ConditionalBlock(object):
 
         new_vars = set()
         for grad_var_name in new_op_desc.output_arg_names():
-            if grad_sub_block.desc.has_var_recursive(cpt.to_bytes(
-                    grad_var_name)) or grad_var_name == core.empty_var_name():
+            if grad_sub_block.desc.has_var_recursive(grad_var_name.encode(
+            )) or grad_var_name == core.empty_var_name():
                 continue
-            grad_sub_block.desc.var(cpt.to_bytes(grad_var_name))
+            grad_sub_block.desc.var(grad_var_name.encode())
             new_vars.add(grad_var_name)
             if grad_var_name not in op_grad_to_var:
                 continue

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # from paddle.fluid.tests.unittests.test_layer_norm_op import *
-from __future__ import print_function
 import unittest
 import numpy as np
 

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import math
 import re
@@ -20,12 +19,11 @@ from paddle.common_ops_import import fill_constant
 from ..fluid.layers import utils
 from ..static import Variable, device_guard
 from ..framework import _current_expected_place, _get_paddle_place
-from ..framework import dygraph_only
 from ..framework import core
 from ..framework import in_dygraph_mode, _non_static_mode
 from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from ..framework import convert_np_dtype_to_dtype_, _varbase_creator, OpProtoHolder
+from ..framework import convert_np_dtype_to_dtype_
 # TODO: define functions to get create a tensor
 import paddle
 from paddle import _C_ops, _legacy_C_ops
@@ -926,7 +924,8 @@ def _tril_triu_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        op_type)
     if len(x.shape) < 2:
         raise ValueError("x shape in {} must be at least 2-D".format(op_type))
     diagonal = helper.kwargs.get('diagonal', 0)
@@ -1044,33 +1043,34 @@ def triu(x, diagonal=0, name=None):
     Examples:
         .. code-block:: python
 
-            import numpy as np
             import paddle
 
-            data = np.arange(1, 13, dtype="int64").reshape(3,-1)
-            # array([[ 1,  2,  3,  4],
-            #        [ 5,  6,  7,  8],
-            #        [ 9, 10, 11, 12]])
-
+            x = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
+            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1 , 2 , 3 , 4 ],
+            #         [5 , 6 , 7 , 8 ],
+            #         [9 , 10, 11, 12]])
 
             # example 1, default diagonal
-            x = paddle.to_tensor(data)
             triu1 = paddle.tensor.triu(x)
-            # array([[ 1,  2,  3,  4],
-            #        [ 0,  6,  7,  8],
-            #        [ 0,  0, 11, 12]])
+            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1 , 2 , 3 , 4 ],
+            #         [0 , 6 , 7 , 8 ],
+            #         [0 , 0 , 11, 12]])
 
             # example 2, positive diagonal value
             triu2 = paddle.tensor.triu(x, diagonal=2)
-            # array([[0, 0, 3, 4],
-            #        [0, 0, 0, 8],
-            #        [0, 0, 0, 0]])
+            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[0, 0, 3, 4],
+            #         [0, 0, 0, 8],
+            #         [0, 0, 0, 0]])
 
             # example 3, negative diagonal value
             triu3 = paddle.tensor.triu(x, diagonal=-1)
-            # array([[ 1,  2,  3,  4],
-            #        [ 5,  6,  7,  8],
-            #        [ 0, 10, 11, 12]])
+            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1 , 2 , 3 , 4 ],
+            #         [5 , 6 , 7 , 8 ],
+            #         [0 , 10, 11, 12]])
 
     """
     if in_dygraph_mode():
@@ -1178,24 +1178,27 @@ def diagflat(x, offset=0, name=None):
 
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.diagflat(x)
-            print(y.numpy())
-            # [[1 0 0]
-            #  [0 2 0]
-            #  [0 0 3]]
+            print(y)
+            # Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1, 0, 0],
+            #         [0, 2, 0],
+            #         [0, 0, 3]])
 
             y = paddle.diagflat(x, offset=1)
-            print(y.numpy())
-            # [[0 1 0 0]
-            #  [0 0 2 0]
-            #  [0 0 0 3]
-            #  [0 0 0 0]]
+            print(y)
+            # Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[0, 1, 0, 0],
+            #         [0, 0, 2, 0],
+            #         [0, 0, 0, 3],
+            #         [0, 0, 0, 0]])
 
             y = paddle.diagflat(x, offset=-1)
-            print(y.numpy())
-            # [[0 0 0 0]
-            #  [1 0 0 0]
-            #  [0 2 0 0]
-            #  [0 0 3 0]]
+            print(y)
+            # Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[0, 0, 0, 0],
+            #         [1, 0, 0, 0],
+            #         [0, 2, 0, 0],
+            #         [0, 0, 3, 0]])
 
         .. code-block:: python
             :name: code-example-2
@@ -1204,27 +1207,30 @@ def diagflat(x, offset=0, name=None):
 
             x = paddle.to_tensor([[1, 2], [3, 4]])
             y = paddle.diagflat(x)
-            print(y.numpy())
-            # [[1 0 0 0]
-            #  [0 2 0 0]
-            #  [0 0 3 0]
-            #  [0 0 0 4]]
+            print(y)
+            # Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1, 0, 0, 0],
+            #         [0, 2, 0, 0],
+            #         [0, 0, 3, 0],
+            #         [0, 0, 0, 4]])
 
             y = paddle.diagflat(x, offset=1)
-            print(y.numpy())
-            # [[0 1 0 0 0]
-            #  [0 0 2 0 0]
-            #  [0 0 0 3 0]
-            #  [0 0 0 0 4]
-            #  [0 0 0 0 0]]
+            print(y)
+            # Tensor(shape=[5, 5], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[0, 1, 0, 0, 0],
+            #         [0, 0, 2, 0, 0],
+            #         [0, 0, 0, 3, 0],
+            #         [0, 0, 0, 0, 4],
+            #         [0, 0, 0, 0, 0]])
 
             y = paddle.diagflat(x, offset=-1)
-            print(y.numpy())
-            # [[0 0 0 0 0]
-            #  [1 0 0 0 0]
-            #  [0 2 0 0 0]
-            #  [0 0 3 0 0]
-            #  [0 0 0 4 0]]
+            print(y)
+            # Tensor(shape=[5, 5], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[0, 0, 0, 0, 0],
+            #         [1, 0, 0, 0, 0],
+            #         [0, 2, 0, 0, 0],
+            #         [0, 0, 3, 0, 0],
+            #         [0, 0, 0, 4, 0]])
     """
     padding_value = 0
     if in_dygraph_mode():
@@ -1318,23 +1324,26 @@ def diag(x, offset=0, padding_value=0, name=None):
             paddle.disable_static()
             x = paddle.to_tensor([1, 2, 3])
             y = paddle.diag(x)
-            print(y.numpy())
-            # [[1 0 0]
-            #  [0 2 0]
-            #  [0 0 3]]
+            print(y)
+            # Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1, 0, 0],
+            #         [0, 2, 0],
+            #         [0, 0, 3]])
 
             y = paddle.diag(x, offset=1)
-            print(y.numpy())
-            # [[0 1 0 0]
-            #  [0 0 2 0]
-            #  [0 0 0 3]
-            #  [0 0 0 0]]
+            print(y)
+            # Tensor(shape=[4, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[0, 1, 0, 0],
+            #         [0, 0, 2, 0],
+            #         [0, 0, 0, 3],
+            #         [0, 0, 0, 0]])
 
             y = paddle.diag(x, padding_value=6)
-            print(y.numpy())
-            # [[1 6 6]
-            #  [6 2 6]
-            #  [6 6 3]]
+            print(y)
+            # Tensor(shape=[3, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [[1, 6, 6],
+            #         [6, 2, 6],
+            #         [6, 6, 3]])
 
         .. code-block:: python
             :name: code-example-2
@@ -1344,16 +1353,19 @@ def diag(x, offset=0, padding_value=0, name=None):
             paddle.disable_static()
             x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
             y = paddle.diag(x)
-            print(y.numpy())
-            # [1 5]
+            print(y)
+            # Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [1, 5])
 
             y = paddle.diag(x, offset=1)
-            print(y.numpy())
-            # [2 6]
+            print(y)
+            # Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [2, 6])
 
             y = paddle.diag(x, offset=-1)
-            print(y.numpy())
-            # [4]
+            print(y)
+            # Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            #        [4])
     """
     if in_dygraph_mode():
         return _C_ops.diag(x, offset, padding_value)
@@ -1755,7 +1767,7 @@ def _memcpy(input, place=None, output=None):
         .. code-block:: python
 
           import paddle
-          import numpy as np
+
           data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           result = paddle._memcpy(data, place=paddle.CPUPlace())  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
@@ -1816,10 +1828,10 @@ def complex(real, imag, name=None):
             x = paddle.arange(2, dtype=paddle.float32).unsqueeze(-1)
             y = paddle.arange(3, dtype=paddle.float32)
             z = paddle.complex(x, y)
-            print(z.numpy())
-
-            # [[0.+0.j 0.+1.j 0.+2.j]
-            #  [1.+0.j 1.+1.j 1.+2.j]]
+            print(z)
+            # Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            #        [[0j    , 1j    , 2j    ],
+            #         [(1+0j), (1+1j), (1+2j)]])
     """
     if in_dygraph_mode():
         return _C_ops.complex(real, imag)

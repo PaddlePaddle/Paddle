@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -24,6 +22,8 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layers.control_flow import select_input, select_output
+
+paddle.enable_static()
 
 
 class TestSplitMergeSelectedVarOps(unittest.TestCase):
@@ -39,7 +39,9 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
                 outputs = []
                 for i in range(branch_num):
                     out = program.current_block().create_var(
-                        dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR)
+                        dtype='float32',
+                        shape=[2],
+                        type=core.VarDesc.VarType.LOD_TENSOR)
                     outputs.append(out)
 
                 select_output(x, outputs, mask)

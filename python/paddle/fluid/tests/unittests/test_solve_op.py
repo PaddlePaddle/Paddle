@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.w
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -618,10 +616,8 @@ class TestSolveOpSingularAPI(unittest.TestCase):
                                   fetch_list=[result])
             except RuntimeError as ex:
                 print("The mat is singular")
-                pass
             except ValueError as ex:
                 print("The mat is singular")
-                pass
 
     def test_static(self):
         for place in self.places:
@@ -639,10 +635,8 @@ class TestSolveOpSingularAPI(unittest.TestCase):
                     result = paddle.linalg.solve(input_x, input_y)
                 except RuntimeError as ex:
                     print("The mat is singular")
-                    pass
                 except ValueError as ex:
                     print("The mat is singular")
-                    pass
 
     def test_dygraph(self):
         with _test_eager_guard():

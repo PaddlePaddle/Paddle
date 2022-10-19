@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from functools import reduce
 
 import collections
@@ -780,7 +779,7 @@ class CompileTimeStrategy(object):
                 block_map[varname] = []
             block_map[varname].append((int(offset), int(size)))
 
-        for varname, split in six.iteritems(block_map):
+        for varname, split in block_map.items():
             orig_var = self.merged_variable_map[varname]
 
             if len(split) == 1:
@@ -830,7 +829,7 @@ class CompileTimeStrategy(object):
     def _dispatcher(self):
         ps_dispatcher = RoundRobin(self.get_ps_endpoints())
         ps_dispatcher.reset()
-        grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
+        grad_var_mapping_items = list(self.grad_var_mapping.items())
 
         sparse_gradnames = [grad.name for _, grad in self.origin_sparse_pairs]
 

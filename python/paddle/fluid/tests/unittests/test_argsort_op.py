@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import numpy as np
-import six
 import paddle.fluid.core as core
 
-from paddle.fluid import ParamAttr
 from paddle.fluid.framework import Program, grad_var_name
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
@@ -174,7 +169,7 @@ class TestArgsortOpCPU(unittest.TestCase):
 
     def assert_is_close(self, numeric_grads, analytic_grads, names,
                         max_relative_error, msg_prefix):
-        for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
+        for a, b, name in zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
             abs_a[abs_a < 1e-3] = 1
 

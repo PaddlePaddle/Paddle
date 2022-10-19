@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import unittest
 import time
@@ -27,7 +26,6 @@ from contextlib import closing
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
-from six import string_types
 
 
 class TestCollectiveRunnerBase(object):
@@ -37,7 +35,7 @@ class TestCollectiveRunnerBase(object):
             "get model should be implemented by child class.")
 
     def wait_server_ready(self, endpoints):
-        assert not isinstance(endpoints, string_types)
+        assert not isinstance(endpoints, str)
         while True:
             all_ok = True
             not_ready_endpoints = []

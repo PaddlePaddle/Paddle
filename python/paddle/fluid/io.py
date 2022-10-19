@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import errno
 import warnings
-import six
 import logging
 import pickle
 import contextlib
@@ -44,7 +41,6 @@ from .reader import *
 from . import dataloader
 from .dataloader import *
 from . import core
-from .. import compat as cpt
 from paddle.utils import deprecated
 from paddle.fluid.framework import static_only
 
@@ -1313,14 +1309,14 @@ def save_inference_model(dirname,
             # "./infer_model".
 
     """
-    if isinstance(feeded_var_names, six.string_types):
+    if isinstance(feeded_var_names, str):
         feeded_var_names = [feeded_var_names]
     elif export_for_deployment:
         if len(feeded_var_names) > 0:
             # TODO(paddle-dev): polish these code blocks
-            if not (bool(feeded_var_names) and all(
-                    isinstance(name, six.string_types)
-                    for name in feeded_var_names)):
+            if not (bool(feeded_var_names)
+                    and all(isinstance(name, str)
+                            for name in feeded_var_names)):
                 raise ValueError("'feed_var_names' should be a list of str.")
 
     if isinstance(target_vars, Variable):
@@ -1662,7 +1658,7 @@ def _save_persistable_nodes(executor, dirname, graph):
     persistable_nodes = []
     all_persistable_nodes = graph.all_persistable_nodes()
     for node in all_persistable_nodes:
-        name = cpt.to_text(node.name())
+        name = node.name()
         if name not in persistable_node_names:
             persistable_node_names.add(name)
             persistable_nodes.append(node)
@@ -1697,7 +1693,7 @@ def _load_persistable_nodes(executor, dirname, graph):
     persistable_nodes = []
     all_persistable_nodes = graph.all_persistable_nodes()
     for node in all_persistable_nodes:
-        name = cpt.to_text(node.name())
+        name = node.name()
         if name not in persistable_node_names:
             persistable_node_names.add(name)
             persistable_nodes.append(node)

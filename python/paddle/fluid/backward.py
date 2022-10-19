@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from .proto import framework_pb2
 
 from paddle.fluid import framework as framework
@@ -20,7 +19,6 @@ from paddle.fluid import program_guard
 from . import core
 import collections
 import copy
-import six
 import logging
 from .. import compat as cpt
 from . import unique_name
@@ -338,20 +336,18 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     """
     op_desc = core.OpDesc()
     op_desc.set_type(op_type)
-    for para, args in six.iteritems(inputs):
+    for para, args in inputs.items():
         op_desc.set_input(
             para,
             list(
-                map(
-                    lambda arg: arg.decode()
-                    if isinstance(arg, six.binary_type) else arg, args)))
-    for para, args in six.iteritems(outputs):
+                map(lambda arg: arg.decode()
+                    if isinstance(arg, bytes) else arg, args)))
+    for para, args in outputs.items():
         op_desc.set_output(
             para,
             list(
-                map(
-                    lambda arg: arg.decode()
-                    if isinstance(arg, six.binary_type) else arg, args)))
+                map(lambda arg: arg.decode()
+                    if isinstance(arg, bytes) else arg, args)))
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -361,7 +357,7 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
             op_role_attr_name] = core.op_proto_and_checker_maker.OpRole.Backward
     if op_device_attr_name not in attrs:
         attrs[op_device_attr_name] = ""
-    for name, val in six.iteritems(attrs):
+    for name, val in attrs.items():
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
         else:
@@ -392,10 +388,10 @@ def _infer_var_data_type_shape_(grad_var_name, block):
     """
     Infer the data type and shape of given grad variable
     """
-    grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
+    grad_var = block.desc.find_var(grad_var_name.encode())
     fwd_name = _strip_grad_suffix_(grad_var_name)
-    if block.desc.has_var_recursive(cpt.to_bytes(fwd_name)):
-        fwd_var = block.desc.find_var_recursive(cpt.to_bytes(fwd_name))
+    if block.desc.has_var_recursive(fwd_name.encode()):
+        fwd_var = block.desc.find_var_recursive(fwd_name.encode())
         grad_var.set_dtype(fwd_var.dtype())
         grad_var.set_shape(fwd_var.shape())
     else:
@@ -424,10 +420,8 @@ def _some_in_set_(cands, s):
     """
     if len(cands) == 0:
         return False
-    literal_set = cpt.to_text(s)
-    literal_cands = cpt.to_text(cands)
-    for c in literal_cands:
-        if c in literal_set:
+    for c in cands:
+        if c in s:
             return True
     return False
 
@@ -438,7 +432,6 @@ def _strip_grad_suffix_(name):
     e.g. x@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
     """
-    name = cpt.to_text(name)
     pos = name.find(core.grad_var_suffix())
     new_name = name[:pos] if pos != -1 else name
     new_pos = name.rfind('grad/')
@@ -450,7 +443,7 @@ def _append_grad_suffix_(name):
     Append grad suffix to the given variable name
     e.g. x ==> x@GRAD
     """
-    return cpt.to_text(name) + core.grad_var_suffix()
+    return name + core.grad_var_suffix()
 
 
 def _accumulate_gradients_by_sum_op_(var_name,
@@ -608,7 +601,7 @@ def _addup_repetitive_outputs_(op_descs,
                     # record the latest device
                     var_device[var_name] = op_device
 
-    for var_name, inputs in six.iteritems(renamed_vars):
+    for var_name, inputs in renamed_vars.items():
         if len(renamed_vars[var_name]) > 1:
             if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
                 _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
@@ -827,7 +820,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
 
 def serialize_op_decs(op_desc):
     protostr = op_desc.serialize_to_string()
-    proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
+    proto = framework_pb2.OpDesc.FromString(bytes(protostr))
     return proto.__str__()
 
 
@@ -968,7 +961,7 @@ def _append_backward_ops_with_checkpoints_(block,
                                 "invoke op: %s" %
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+                op.desc, no_grad_dict[block.idx], [])
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -994,7 +987,7 @@ def _append_backward_ops_with_checkpoints_(block,
                                 "invoke op: %s" %
                                 _pretty_op_desc_(op.desc, "with_sub_block"))
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+                op.desc, no_grad_dict[block.idx], [])
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -1056,7 +1049,7 @@ def _append_backward_ops_with_checkpoints_(block,
         # 3.c. add backward ops for all ops in current segment
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
+                op_desc, no_grad_dict[block.idx], [])
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -1240,7 +1233,7 @@ def _append_backward_ops_(block,
 
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+            op.desc, no_grad_dict[block.idx], grad_sub_block_list)
 
         # record the mapping between fwd and bwd
         if grad_op_id_to_fwd_op is not None:
@@ -1379,9 +1372,9 @@ def _find_parent_op_(sub_block):
         return None
 
     program = sub_block.program
-    for block_id in six.moves.range(program.num_blocks):
+    for block_id in range(program.num_blocks):
         block_desc = program.block(block_id).desc
-        for op_idx in six.moves.range(block_desc.op_size()):
+        for op_idx in range(block_desc.op_size()):
             op = block_desc.op(op_idx)
             if op.has_attr("sub_block") and op._block_attr_id(
                     "sub_block") == sub_block_id:
@@ -1458,7 +1451,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             if grad_var_ins:
                 existing_grad_var_ins = [
                     var for var in grad_var_ins
-                    if block.desc.has_var_recursive(cpt.to_bytes(var))
+                    if block.desc.has_var_recursive(var.encode())
                     or var in parent_op_vars
                 ]
                 if not existing_grad_var_ins:
@@ -1477,10 +1470,10 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
-            if block.desc.has_var_recursive(cpt.to_bytes(
-                    grad_var_name)) or grad_var_name == core.empty_var_name():
+            if block.desc.has_var_recursive(grad_var_name.encode(
+            )) or grad_var_name == core.empty_var_name():
                 continue
-            block.desc.var(cpt.to_bytes(grad_var_name))
+            block.desc.var(grad_var_name.encode())
             new_vars.add(grad_var_name)
             if grad_var_name not in grad_to_var:
                 continue
@@ -1514,7 +1507,7 @@ def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
                 op_desc._rename_output(name, new_name)
                 var_map[name] = new_name
 
-    for g, ng in six.iteritems(var_map):
+    for g, ng in var_map.items():
         if g in grad_to_var:
             grad_to_var[ng] = grad_to_var[g]
             grad_to_var.pop(g)
@@ -1552,7 +1545,7 @@ def _get_no_grad_set_name(no_grad_set):
             for i, no_grad_var in enumerate(no_grad_set):
                 if isinstance(no_grad_var, framework.Variable):
                     no_grad_set_name.add(no_grad_var.name)
-                elif isinstance(no_grad_var, six.string_types):
+                elif isinstance(no_grad_var, str):
                     no_grad_set_name.add(no_grad_var)
                 else:
                     raise TypeError(
@@ -1829,11 +1822,11 @@ def append_backward(loss,
         parameters = []
         for i, param in enumerate(parameter_list):
             check_type(param, 'parameter_list[%s]' % i,
-                       (framework.Variable, six.string_types),
+                       (framework.Variable, str),
                        'fluid.backward.append_backward')
             if isinstance(param, framework.Variable):
                 parameters.append(param.name)
-            elif isinstance(param, six.string_types):
+            elif isinstance(param, str):
                 parameters.append(param)
     else:
         params = program.global_block().all_parameters()
@@ -1842,7 +1835,7 @@ def append_backward(loss,
     params_and_grads = []
     op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
     for param in parameters:
-        if cpt.to_text(param) not in grad_info_map:
+        if param not in grad_info_map:
             continue
         grad_info = grad_info_map[param]
         grad_block = grad_info[1]
@@ -1931,8 +1924,8 @@ def _get_output_names(cur_block, targets):
             if _some_in_set_(op.desc.output_arg_names(), current_output_names):
                 for name in op.desc.input_arg_names():
                     current_output_names.add(name)
-                    if not block.desc.find_var(cpt.to_bytes(name)) \
-                            and parent_block.desc.find_var(cpt.to_bytes(name)):
+                    if not block.desc.find_var(name.encode()) \
+                            and parent_block.desc.find_var(name.encode()):
                         parent_block_output_names.add(name)
 
         block = parent_block

@@ -15,11 +15,9 @@
 import paddle.fluid.core as core
 import paddle
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard, EagerParamBase, _in_legacy_dygraph, in_dygraph_mode, _current_expected_place, _disable_legacy_dygraph
-from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.framework import EagerParamBase, _current_expected_place, _disable_legacy_dygraph, _test_eager_guard, in_dygraph_mode
 import unittest
 import copy
-import paddle.compat as cpt
 
 
 class EagerScaleTestCase(unittest.TestCase):
@@ -251,6 +249,9 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(egr_tensor12.place._equals(paddle.fluid.CPUPlace()))
         np.testing.assert_array_equal(egr_tensor12.numpy(), x)
 
+        zero_dim_param = EagerParamBase(shape=[], dtype="float32")
+        self.assertEqual(zero_dim_param.shape, [])
+
         with self.assertRaisesRegexp(
                 ValueError, "The shape of Parameter should not be None"):
             eager_param = EagerParamBase(shape=None, dtype="float32")
@@ -258,11 +259,6 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         with self.assertRaisesRegexp(
                 ValueError, "The dtype of Parameter should not be None"):
             eager_param = EagerParamBase(shape=[1, 1], dtype=None)
-
-        with self.assertRaisesRegexp(
-                ValueError,
-                "The dimensions of shape for Parameter must be greater than 0"):
-            eager_param = EagerParamBase(shape=[], dtype="float32")
 
         with self.assertRaisesRegexp(
                 ValueError,

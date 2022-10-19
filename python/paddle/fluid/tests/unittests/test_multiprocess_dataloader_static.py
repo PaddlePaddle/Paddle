@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
-import os
 import sys
-import six
 import time
 import unittest
-import multiprocessing
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.io import Dataset, BatchSampler, DataLoader
+from paddle.io import DataLoader, Dataset
 
 EPOCH_NUM = 3
 BATCH_SIZE = 8
@@ -134,7 +129,7 @@ class TestStaticDataLoader(unittest.TestCase):
             step_list = []
             loss_list = []
             start_t = time.time()
-            for _ in six.moves.range(EPOCH_NUM):
+            for _ in range(EPOCH_NUM):
                 step = 0
                 for d in dataloader:
                     assert len(d) == len(places), "{} != {}".format(
@@ -284,7 +279,7 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
             step_list = []
             loss_list = []
             start_t = time.time()
-            for _ in six.moves.range(EPOCH_NUM):
+            for _ in range(EPOCH_NUM):
                 step = 0
                 for d in dataloader:
                     assert len(d) == len(places), "{} != {}".format(

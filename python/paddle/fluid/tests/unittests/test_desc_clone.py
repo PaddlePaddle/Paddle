@@ -12,23 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import argparse
-import time
-import math
-import sys
-
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
 from paddle.fluid import core
 import unittest
-from multiprocessing import Process
-import os
-import signal
-import six
+import functools
 import collections
 
 SEED = 1
@@ -55,7 +43,7 @@ def cnn_model(data):
     # TODO(dzhwinter) : refine the initializer and random seed settting
     SIZE = 10
     input_shape = conv_pool_2.shape
-    param_shape = [six.moves.reduce(lambda a, b: a * b, input_shape[1:], 1)
+    param_shape = [functools.reduce(lambda a, b: a * b, input_shape[1:], 1)
                    ] + [SIZE]
     scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
 
@@ -104,7 +92,7 @@ def operator_equal(a, b):
     if a.__str__() != b.__str__():
         raise ValueError("In operator_equal not equal\n")
 
-    for k, v in six.iteritems(a.__dict__):
+    for k, v in a.__dict__.items():
         if isinstance(v, fluid.framework.Program) or \
                 isinstance(v, fluid.framework.Block):
             continue
@@ -113,8 +101,8 @@ def operator_equal(a, b):
             continue
 
         elif isinstance(v, collections.OrderedDict):
-            v0 = sorted(list(six.iteritems(v)), key=lambda x: x[0])
-            v1 = sorted(list(six.iteritems(b.__dict__[k])), key=lambda x: x[0])
+            v0 = sorted(list(v.items()), key=lambda x: x[0])
+            v1 = sorted(list(b.__dict__[k].items()), key=lambda x: x[0])
 
             if v0 != v1:
                 raise ValueError("In operator_equal not equal:{0}\n".format(k))
@@ -126,7 +114,7 @@ def operator_equal(a, b):
 
 
 def block_equal(a, b):
-    for k, v in six.iteritems(a.__dict__):
+    for k, v in a.__dict__.items():
         if isinstance(v, core.ProgramDesc) or isinstance(
                 v, fluid.framework.Program) or isinstance(v, core.BlockDesc):
             continue
@@ -138,7 +126,7 @@ def block_equal(a, b):
                     raise ValueError("In block_equal not equal:{0}\n".format(k))
 
         elif isinstance(v, collections.OrderedDict):
-            for key, value in six.iteritems(v):
+            for key, value in v.items():
                 if str(value) != str(b.__dict__[k][key]):
                     raise ValueError("In block_equal not equal:{0}\n".format(k))
 
@@ -149,7 +137,7 @@ def block_equal(a, b):
 
 
 def program_equal(a, b):
-    for k, v in six.iteritems(a.__dict__):
+    for k, v in a.__dict__.items():
         if isinstance(v, core.ProgramDesc):
             continue
 

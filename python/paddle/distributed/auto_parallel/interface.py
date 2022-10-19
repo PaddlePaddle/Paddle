@@ -16,8 +16,6 @@ import paddle
 from paddle.fluid import core
 from .process_mesh import ProcessMesh
 from .process_mesh import get_current_process_mesh
-from .process_mesh import set_current_process_mesh
-from .process_mesh import reset_current_process_mesh
 from .dist_context import get_default_distributed_context
 from .dist_tensor import DistributedTensor
 from .dist_op import DistributedOperatorHelper
@@ -196,15 +194,36 @@ def recompute(op):
     return RecomputeOperator(op)
 
 
-_g_fetched_tensors = {}
+_g_collections = {}
 
 
-def fetch(tensor, name=None):
-    if name is None:
-        _g_fetched_tensors[tensor.name] = tensor
+class CollectionNames(object):
+    FETCHES = "fetches"
+    LOGGING = "logging"
+
+
+def get_collection(name):
+    collection = _g_collections.get(name, None)
+    if collection is None:
+        collection = []
+        _g_collections[name] = collection
+    return _g_collections[name]
+
+
+def add_to_collection(collection_name, value, name=None):
+    if collection_name not in _g_collections:
+        _g_collections[collection_name] = []
+    if name is not None:
+        for _, v in _g_collections[collection_name]:
+            if v == value: return
+        _g_collections[collection_name].append((name, value))
     else:
-        _g_fetched_tensors[name] = tensor
+        for _, v in _g_collections[collection_name]:
+            if v == value: return
+        _g_collections[collection_name].append((None, value))
 
 
-def _get_fetches():
-    return _g_fetched_tensors
+def fetch(tensor, name=None, logging=False):
+    add_to_collection(CollectionNames.FETCHES, tensor, name)
+    if logging:
+        add_to_collection(CollectionNames.LOGGING, tensor, name)

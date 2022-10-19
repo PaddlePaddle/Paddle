@@ -30,8 +30,6 @@ DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
-
 template <typename GradFunctor>
 static constexpr bool CanInplaceAct() {
   return GradFunctor::FwdDeps() == ActBwdOpFwdDeps::kDepOut ||
@@ -84,27 +82,18 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
 framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const framework::OperatorWithKernel& oper,
                                       const std::string& name) {
-  framework::LibraryType library{framework::LibraryType::kPlain};
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = oper.IndicateVarDataType(ctx, name);
-// FIXME(liuwei1031) temporarily disable the code to unblock users
-// TODO(liuwei1031) figure out the reason behind
-// https://github.com/PaddlePaddle/Paddle/issues/16096
-// and re-enable this in the future
-// #ifdef PADDLE_WITH_CUDA
-//   auto it1 = oper.Attrs().find("use_cudnn");
-//   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
-//     library = framework::LibraryType::kCUDNN;
-//   }
-// #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      oper.CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-#endif
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  // FIXME(liuwei1031) temporarily disable the code to unblock users
+  // TODO(liuwei1031) figure out the reason behind
+  // https://github.com/PaddlePaddle/Paddle/issues/16096
+  // and re-enable this in the future
+  // #ifdef PADDLE_WITH_CUDA
+  //   auto it1 = oper.Attrs().find("use_cudnn");
+  //   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+  //     library = framework::LibraryType::kCUDNN;
+  //   }
+  // #endif
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
@@ -120,27 +109,6 @@ class ActivationOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name,
-      const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
-    // When activation is first oneDNN op (there was some non oneDNN op
-    // previously)
-    // then we also need to rotate shape NHWC -> NCWH
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
-        paddle::platform::MKLDNNDeviceContext::tls()
-                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(),
-                                     framework::DataLayout::kNHWC);
-    }
-#endif
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -172,9 +140,9 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
 };
 
 UNUSED constexpr char SigmoidDoc[] = R"DOC(
-Sigmoid Activation Operator
+Sigmoid Activation
 
-$$out = \\frac{1}{1 + e^{-x}}$$
+$$out = \frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -248,7 +216,8 @@ $$out = \\frac{1}{\\sqrt{x}}$$
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$$out = \\lceil x \\rceil$$
+..  math::
+    out = \left \lceil x \right \rceil
 
 )DOC";
 
@@ -264,7 +233,8 @@ Cosine Operator. Computes cosine of x element-wise.
 
 Input range is `(-inf, inf)` and output range is `[-1,1]`.
 
-$$out = cos(x)$$
+..  math::
+    out = cos(x)
 
 )DOC";
 
@@ -294,7 +264,10 @@ $$out = sinh(x)$$
 UNUSED constexpr char CoshDoc[] = R"DOC(
 Cosh Activation Operator.
 
-$$out = cosh(x)$$
+Input range `(-inf, inf)`, output range `(1, inf)`.
+
+..  math::
+    out = \frac{exp(x)+exp(-x)}{2}
 
 )DOC";
 
@@ -395,11 +368,12 @@ class AcosOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "Input of acos operator");
-    AddOutput("Out", "Output of acos operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input");
     AddComment(R"DOC(
 Arccosine Operator.
 
-$$out = \cos^{-1}(x)$$
+..  math::
+    out = \cos^{-1}(x)
 
 )DOC");
   }
@@ -411,11 +385,12 @@ class AsinOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Input of asin operator, an N-D Tensor, with data type float32, "
              "float64 or float16.");
-    AddOutput("Out", "Output of asin operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input.");
     AddComment(R"DOC(
 Arcsine Operator.
 
-$$out = \sin^{-1}(x)$$
+..  math::
+    out = \sin^{-1}(x)
 
 )DOC");
   }
@@ -427,11 +402,12 @@ class AtanOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Input of atan operator, an N-D Tensor, with data type float32, "
              "float64 or float16.");
-    AddOutput("Out", "Output of atan operator");
+    AddOutput("Out", "Tensor, same shape and dtype as input x");
     AddComment(R"DOC(
 Arctangent Operator.
 
-$$out = \tan^{-1}(x)$$
+..  math::
+    out = \tan^{-1}(x)
 
 )DOC");
   }
@@ -1272,7 +1248,7 @@ class LogitOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
@@ -1307,7 +1283,7 @@ class LogitGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
@@ -1345,7 +1321,7 @@ class PowOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "FactorTensor") {
       return expected_kernel_type;
@@ -1373,7 +1349,7 @@ class PowOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "FactorTensor") {
       return expected_kernel_type;

@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
-import six
 import random
 import unittest
 import warnings
@@ -23,8 +19,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.framework import Program, Block
-from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Block
 
 
 class PassTest(unittest.TestCase):
@@ -108,8 +103,7 @@ class PassTest(unittest.TestCase):
         for p in pass_builder.all_passes():
             p.apply(graph)
         opt_program.blocks = [
-            Block(opt_program, i)
-            for i in six.moves.range(opt_program.desc.num_blocks())
+            Block(opt_program, i) for i in range(opt_program.desc.num_blocks())
         ]
         opt_program._sync_with_cpp()
         return opt_program
@@ -151,7 +145,7 @@ class PassTest(unittest.TestCase):
             len(self.fetch_list) == len(outs_opt),
             "Checking the number of fetchs failed. Expected: {}, Received: {}".
             format(len(self.fetch_list), len(outs_opt)))
-        for i in six.moves.xrange(len(self.fetch_list)):
+        for i in range(len(self.fetch_list)):
             is_allclose = np.allclose(outs_opt[i], outs[i], atol=atol)
             if not is_allclose:
                 a = outs_opt[i]
@@ -211,7 +205,7 @@ class PassTest(unittest.TestCase):
                 self.main_program.num_blocks, program.num_blocks))
 
         is_different = False
-        for i in six.moves.xrange(program.num_blocks):
+        for i in range(program.num_blocks):
             if len(self.main_program.block(i).ops) != len(program.block(i).ops):
                 # The number of ops in the block i of the origin program and
                 # the optimized program is different.

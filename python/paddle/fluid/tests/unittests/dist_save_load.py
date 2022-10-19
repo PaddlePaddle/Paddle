@@ -12,30 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import sys
-import signal
-import subprocess
-import argparse
-import time
-import math
-import random
-from multiprocessing import Process
-from functools import reduce
 
 import numpy as np
 import pickle
-import unittest
-import six
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import io
 
-from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
+from test_dist_base import RUN_STEP, runtime_main
 from dist_simnet_bow import TestDistSimnetBow2x2, DATA_URL, DATA_MD5
 
 
@@ -160,7 +148,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
         if save_mode == "LOCAL":
             if need_save:
-                for _ in six.moves.xrange(RUN_STEP):
+                for _ in range(RUN_STEP):
                     loss, = exe.run(fetch_list=[avg_cost.name],
                                     feed=feeder.feed(get_data()))
                 if need_save and model_dir:
@@ -174,14 +162,14 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
             skip_steps = int(os.getenv("SKIP_STEPS"))
             loss = None
             if need_save:
-                for idx in six.moves.xrange(8):
+                for idx in range(8):
                     loss, = exe.run(fetch_list=[avg_cost.name],
                                     feed=feeder.feed(get_data()))
                     if need_save and model_dir and idx == skip_steps and args.trainer_id == 0:
                         io.save_persistables(startup_exe, model_dir,
                                              trainer_prog)
             else:
-                for idx in six.moves.xrange(8):
+                for idx in range(8):
                     data = get_data()
                     if idx <= skip_steps:
                         continue

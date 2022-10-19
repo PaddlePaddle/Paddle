@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.framework import dygraph_only, core
+from paddle import in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
+from .unary import cast
 
 __all__ = []
 
@@ -35,7 +38,7 @@ def matmul(x, y, name=None):
 
     Applies matrix multiplication of two Tensors.
 
-    The supported input/output Tensor layout are as follows:
+    The supported input/output Tensor type are as follows:
 
     Note:
         x[SparseCsrTensor] @ y[SparseCsrTensor] -> out[SparseCsrTensor]
@@ -50,12 +53,12 @@ def matmul(x, y, name=None):
     is zero or more batch dimensions.
 
     Args:
-        x (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
-        y (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor/DenseTensor. The data type can be float32 or float64.
+        x (SparseTensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
+        y (SparseTensor|DenseTensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor/DenseTensor. The data type can be float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Its layout is determined by that of `x` and `y` .
+        SparseTensor|DenseTensor: Determined by `x` and `y` .
 
     Examples:
 
@@ -118,13 +121,13 @@ def masked_matmul(x, y, mask, name=None):
     where `*` is zero or more batch dimensions.
 
     Args:
-        x (Tensor): The input tensor. It is DenseTensor. The data type can be float32 or float64.
-        y (Tensor): The input tensor. It is DenseTensor. The data type can be float32 or float64.
-        mask (Tensor): The mask tensor, which can be SparseCooTensor/SparseCsrTensor. It specify sparse coordinates. The data type can be float32 or float64.
+        x (DenseTensor): The input tensor. It is DenseTensor. The data type can be float32 or float64.
+        y (DenseTensor): The input tensor. It is DenseTensor. The data type can be float32 or float64.
+        mask (SparseTensor): The mask tensor, which can be SparseCooTensor/SparseCsrTensor. It specify sparse coordinates. The data type can be float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: SparseCoo or SparseCsr, which is determined by that of `mask` .
+        SparseTensor: SparseCooTensor or SparseCsrTensor, which is same with `mask` .
 
     Examples:
 
@@ -168,46 +171,44 @@ def mv(x, vec, name=None):
     The supported input/output Tensor layout are as follows:
 
     Note:
-        x[SparseCsrTensor] @ y[DenseTensor] -> out[SparseCsrTensor]
-        x[SparseCooTensor] @ y[DenseTensor] -> out[SparseCooTensor]
+        x[SparseCsrTensor] @ vec[DenseTensor] -> out[DenseTensor]
+        x[SparseCooTensor] @ vec[DenseTensor] -> out[DenseTensor]
 
     It supports backward propagation.
 
-    The shape of `x` should be `[M, N]` , and the shape of `y` should be `[N]` ,
+    The shape of `x` should be `[M, N]` , and the shape of `vec` should be `[N]` ,
     and the shape of `out` will be `[M]` .
 
     Args:
-        x (Tensor): The input 2D tensor. It must be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
-        y (Tensor): The input 1D tensor. It must be DenseTensor vector. The data type can be float32 or float64.
+        x (SparseTensor): The input 2D tensor. It must be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
+        vec (DenseTensor): The input 1D tensor. It must be DenseTensor vector. The data type can be float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: 1D Tensor.
+        DenseTensor: 1D DenseTensor whose dtype is same with input.
 
     Examples:
 
         .. code-block:: python
 
             import paddle
-            from paddle.fluid.framework import _test_eager_guard
             paddle.seed(100)
 
             # csr @ dense -> dense
-            with _test_eager_guard():
-                crows = [0, 2, 3, 5]
-                cols = [1, 3, 2, 0, 1]
-                values = [1., 2., 3., 4., 5.]
-                dense_shape = [3, 4]
-                csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-                # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-                #        crows=[0, 2, 3, 5],
-                #        cols=[1, 3, 2, 0, 1],
-                #        values=[1., 2., 3., 4., 5.])
-                vec = paddle.randn([4])
+            crows = [0, 2, 3, 5]
+            cols = [1, 3, 2, 0, 1]
+            values = [1., 2., 3., 4., 5.]
+            dense_shape = [3, 4]
+            csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            #        crows=[0, 2, 3, 5],
+            #        cols=[1, 3, 2, 0, 1],
+            #        values=[1., 2., 3., 4., 5.])
+            vec = paddle.randn([4])
 
-                out = paddle.incubate.sparse.mv(csr, vec)
-                # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                #        [-3.85499096, -2.42975140, -1.75087738])
+            out = paddle.incubate.sparse.mv(csr, vec)
+            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [-3.85499096, -2.42975140, -1.75087738])
 
     """
     return _C_ops.sparse_mv(x, vec)
@@ -254,7 +255,19 @@ def add(x, y, name=None):
     """
     if y.dtype != x.dtype:
         y = cast(y, None, x.dtype)
-    return _C_ops.sparse_add(x, y)
+
+    if in_dynamic_mode():
+        return _C_ops.sparse_add(x, y)
+    else:
+        op_type = 'sparse_add'
+        inputs = {'x': x, 'y': y}
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs={'out': out},
+                         attrs={})
+        return out
 
 
 @dygraph_only

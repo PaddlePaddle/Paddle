@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import copy
-import six
 
 from .framework import Parameter, dtype_is_floating, _non_static_mode, OpProtoHolder, _global_flags
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
 from . import core
-from six.moves import zip
+
 from .layer_helper_base import LayerHelperBase
 from .dygraph_utils import _append_activation_in_dygraph
 
@@ -78,7 +75,7 @@ class LayerHelper(LayerHelperBase):
             raise ValueError("parameter number mismatch")
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
-            for i in six.moves.range(length):
+            for i in range(length):
                 tmp[i] = copy.deepcopy(param_attr[0])
             param_attr = tmp
         return param_attr
@@ -145,7 +142,7 @@ class LayerHelper(LayerHelperBase):
         act = self.kwargs.get('act', None)
         if act is None:
             return input_var
-        if isinstance(act, six.string_types):
+        if isinstance(act, str):
             act = {'type': act}
         else:
             raise TypeError(str(act) + " should be unicode or str")

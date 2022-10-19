@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
-from paddle.fluid import core
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 
 def softmax_mask_fuse_upper_triangle(x):

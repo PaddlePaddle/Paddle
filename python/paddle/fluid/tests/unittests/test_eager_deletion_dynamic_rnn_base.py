@@ -16,14 +16,12 @@ import os
 
 os.environ['CPU_NUM'] = '2'
 
-import six
 import unittest
 
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import numpy as np
 from fake_reader import fake_imdb_reader
 
 
@@ -73,7 +71,7 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     else:
         fetch_list = [cost]
 
-    for pass_id in six.moves.xrange(pass_num):
+    for pass_id in range(pass_num):
         batch_id = 0
         for data in reader():
             exe.run(train_cp,

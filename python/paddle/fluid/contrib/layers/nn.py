@@ -15,10 +15,7 @@
 Contrib layers just related to the neural network.
 """
 
-from __future__ import print_function
-
 import os
-import six
 import warnings
 import inspect
 

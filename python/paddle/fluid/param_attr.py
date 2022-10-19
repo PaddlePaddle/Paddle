@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
-import warnings
-import sys
-
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
 from paddle.fluid.data_feeder import check_type
@@ -86,10 +80,7 @@ class ParamAttr(object):
                  do_model_average=True,
                  need_clip=True):
 
-        if sys.version_info.major == 2:
-            check_type(name, "name", (str, type(None), unicode), "ParamAttr")
-        else:
-            check_type(name, "name", (str, type(None)), "ParamAttr")
+        check_type(name, "name", (str, type(None)), "ParamAttr")
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
@@ -177,7 +168,7 @@ class ParamAttr(object):
             return [ParamAttr._to_attr(a) for a in arg]
         elif isinstance(arg, ParamAttr):
             return arg
-        elif isinstance(arg, six.string_types):
+        elif isinstance(arg, str):
             return ParamAttr(name=arg)
         elif isinstance(arg, Initializer):
             return ParamAttr(initializer=arg)

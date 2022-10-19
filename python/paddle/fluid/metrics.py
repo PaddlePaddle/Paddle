@@ -15,12 +15,8 @@
 Fluid Metrics
 """
 
-from __future__ import print_function
-
 import numpy as np
 import copy
-import warnings
-import six
 
 from .layer_helper import LayerHelper
 from .initializer import Constant
@@ -120,10 +116,9 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in six.iteritems(self.__dict__)
-            if not attr.startswith("_")
+            for attr, value in self.__dict__.items() if not attr.startswith("_")
         }
-        for attr, value in six.iteritems(states):
+        for attr, value in states.items():
             if isinstance(value, int):
                 setattr(self, attr, 0)
             elif isinstance(value, float):
@@ -149,8 +144,7 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in six.iteritems(self.__dict__)
-            if not attr.startswith("_")
+            for attr, value in self.__dict__.items() if not attr.startswith("_")
         }
         config = {}
         config.update({"name": self._name, "states": copy.deepcopy(states)})

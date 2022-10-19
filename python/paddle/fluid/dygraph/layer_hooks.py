@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import warnings
 
 from paddle.fluid.framework import default_main_program, _non_static_mode
@@ -64,7 +63,7 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
         layer._op_recorder.ops = ops
 
         for op in ops:
-            for attr_name, val in six.iteritems(layer._customized_attrs):
+            for attr_name, val in layer._customized_attrs.items():
                 op._set_attr(attr_name, val)
 
         # remove pre-hook and post-hook

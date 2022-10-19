@@ -15,8 +15,6 @@
 All layers just related to the detection neural network.
 """
 
-from __future__ import print_function
-
 import paddle
 
 from .layer_function_generator import generate_layer_fn
@@ -31,7 +29,6 @@ from . import ops
 from ... import compat as cpt
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
-import six
 import numpy as np
 from functools import reduce
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -2201,7 +2198,7 @@ def multi_box_head(inputs,
                   min_sizes = []
                   max_sizes = []
                   step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
-                  for ratio in six.moves.range(min_ratio, max_ratio + 1, step):
+                  for ratio in range(min_ratio, max_ratio + 1, step):
                       min_sizes.append(base_size * ratio / 100.)
                       max_sizes.append(base_size * (ratio + step) / 100.)
                       min_sizes = [base_size * .10] + min_sizes
@@ -2340,7 +2337,7 @@ def multi_box_head(inputs,
         min_sizes = []
         max_sizes = []
         step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
-        for ratio in six.moves.range(min_ratio, max_ratio + 1, step):
+        for ratio in range(min_ratio, max_ratio + 1, step):
             min_sizes.append(base_size * ratio / 100.)
             max_sizes.append(base_size * (ratio + step) / 100.)
         min_sizes = [base_size * .10] + min_sizes

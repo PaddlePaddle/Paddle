@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import os
-import six
+import importlib
 import tempfile
 import numpy as np
 import paddle.fluid.core as core
@@ -31,7 +29,6 @@ import paddle.fluid.optimizer as optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
-from paddle.fluid.transpiler import memory_optimize
 
 paddle.enable_static()
 
@@ -71,7 +68,7 @@ class TestBook(unittest.TestCase):
 
         exe.run(init_program, feed={}, fetch_list=[])
 
-        for i in six.moves.xrange(100):
+        for i in range(100):
             tensor_x = np.array([[1, 1], [1, 2], [3, 4], [5,
                                                           2]]).astype("float32")
             tensor_y = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
@@ -98,7 +95,7 @@ class TestBook(unittest.TestCase):
                            },
                            fetch_list=[avg_cost])[0]
 
-        six.moves.reload_module(executor)  # reload to build a new scope
+        importlib.reload(executor)  # reload to build a new scope
 
         model_0 = InferModel(load_inference_model(MODEL_DIR, exe))
         with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
@@ -241,7 +238,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
-        for i in six.moves.xrange(3):
+        for i in range(3):
             exe.run(program,
                     feed={
                         'x': tensor_x,
@@ -287,7 +284,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                            },
                            fetch_list=[avg_cost])[0]
 
-        six.moves.reload_module(executor)  # reload to build a new scope
+        importlib.reload(executor)  # reload to build a new scope
 
         self.assertRaises(ValueError, paddle.static.load_inference_model, None,
                           exe)
@@ -361,7 +358,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
-        for i in six.moves.xrange(3):
+        for i in range(3):
             exe.run(program,
                     feed={
                         'x': tensor_x,
@@ -404,7 +401,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
-        for i in six.moves.xrange(3):
+        for i in range(3):
             exe.run(program,
                     feed={
                         'x': tensor_x,

@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import errno
 import inspect
 import logging
 import os
 import warnings
-import six
 import numpy as np
 
 import paddle
@@ -35,7 +32,7 @@ from paddle.fluid import (
 )
 from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
 from paddle.fluid.framework import static_only, Parameter
-from paddle.fluid.executor import Executor, global_scope
+from paddle.fluid.executor import global_scope
 from paddle.fluid.log_helper import get_logger
 
 __all__ = []
@@ -71,7 +68,7 @@ def _normalize_path_prefix(path_prefix):
     """
     convert path_prefix to absolute path.
     """
-    if not isinstance(path_prefix, six.string_types):
+    if not isinstance(path_prefix, str):
         raise ValueError("'path_prefix' should be a string.")
     if path_prefix.endswith("/"):
         raise ValueError("'path_prefix' should not be a directory")
@@ -441,8 +438,6 @@ def save_to_file(path, content):
 def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
                          **kwargs):
     """
-    :api_attr: Static Graph
-
     Save current model and its parameters to given path. i.e.
     Given path_prefix = "/path/to/modelname", after invoking
     save_inference_model(path_prefix, feed_vars, fetch_vars, executor),
@@ -459,7 +454,7 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
 
             - program(Program): specify a program if you don't want to use default main program.
 
-            - clip_extra(bool): set to True if you want to clip extra information for every operator.
+            - clip_extra(bool): the flag indicating whether to clip extra information for every operator. Default: True.
 
     Returns:
         None

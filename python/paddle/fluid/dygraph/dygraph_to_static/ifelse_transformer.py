@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
 import copy
 import textwrap
 from collections import defaultdict
@@ -272,7 +269,7 @@ class NameVisitor(gast.NodeVisitor):
         return False
 
     def _update_name_ids(self, new_name_ids):
-        for name_id, ctxs in six.iteritems(new_name_ids):
+        for name_id, ctxs in new_name_ids.items():
             self.name_ids[name_id] = ctxs + self.name_ids[name_id]
 
 

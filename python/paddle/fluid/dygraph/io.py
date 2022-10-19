@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import six
 import pickle
 import numpy as np
 
@@ -71,17 +68,17 @@ def _is_persistable(var_desc):
 def _is_parameter(persistable_var_desc, program_desc):
     # 1. firstly, param should be input of op
     input_ops = []  # op can be repeated
-    for block_idx in six.moves.range(program_desc.num_blocks()):
+    for block_idx in range(program_desc.num_blocks()):
         block = program_desc.block(block_idx)
-        for op_idx in six.moves.range(block.op_size()):
+        for op_idx in range(block.op_size()):
             op = block.op(op_idx)
             # NOTE: parameter is the input of a certain op
             if persistable_var_desc.name() in op.input_arg_names():
                 input_ops.append(op)
     # 2. secondly, param should not be output of op or be same op's output
-    for block_idx in six.moves.range(program_desc.num_blocks()):
+    for block_idx in range(program_desc.num_blocks()):
         block = program_desc.block(block_idx)
-        for op_idx in six.moves.range(block.op_size()):
+        for op_idx in range(block.op_size()):
             op = block.op(op_idx)
             if persistable_var_desc.name() in op.output_arg_names():
                 # such as batch_norm_op
@@ -94,7 +91,7 @@ def _is_parameter(persistable_var_desc, program_desc):
 
 def _get_persistable_vars(program_desc):
     persistable_vars = []
-    for i in six.moves.range(program_desc.num_blocks()):
+    for i in range(program_desc.num_blocks()):
         block = program_desc.block(i)
         persistable_vars.extend(list(filter(_is_persistable, block.all_vars())))
     return persistable_vars
@@ -113,7 +110,7 @@ def _get_persistable_var_names(program_desc):
 
 def _get_all_var_names(program_desc):
     all_var_names = set()
-    for i in six.moves.range(program_desc.num_blocks()):
+    for i in range(program_desc.num_blocks()):
         block = program_desc.block(i)
         for var in block.all_vars():
             all_var_names.add(var.name())
@@ -127,7 +124,6 @@ def _append_loaded_suffix(name):
     e.g. x ==> x.load_0, x.load_0 ==> x.load_0.load_0
     """
     suffix = LOADED_VAR_SUFFIX
-    name = cpt.to_text(name)
     new_name = unique_name.generate_with_ignorable_key('.'.join((name, suffix)))
     return new_name
 
@@ -145,10 +141,10 @@ def _append_loaded_suffix_to_var(program_desc):
         new_name = _append_loaded_suffix(var_desc.name())
         suffix_varname_dict[new_name] = old_name
         var_desc.set_name(new_name)
-        for block_idx in six.moves.range(program_desc.num_blocks()):
+        for block_idx in range(program_desc.num_blocks()):
             block = program_desc.block(block_idx)
-            block._rename_var(cpt.to_bytes(old_name), cpt.to_bytes(new_name))
-            for op_idx in six.moves.range(block.op_size()):
+            block._rename_var(old_name.encode(), new_name.encode())
+            for op_idx in range(block.op_size()):
                 op = block.op(op_idx)
                 op._rename_input(old_name, new_name)
                 op._rename_output(old_name, new_name)
@@ -194,7 +190,7 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
     dict_rename_var_new_old = dict()
     old_names = []
     # Store all old names
-    for b_idx in six.moves.range(program_desc.num_blocks()):
+    for b_idx in range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
         for var in cur_block.all_vars():
             old_names.append(var.name())
@@ -202,7 +198,7 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
     # Create dict_rename_var_new_old and dict_rename_var_old_new for non double
     # grad variables
     has_double_grad = False
-    for b_idx in six.moves.range(program_desc.num_blocks()):
+    for b_idx in range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
         for var_idx, var in enumerate(cur_block.all_vars()):
             name_old = var.name()
@@ -226,8 +222,7 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
             else:
                 name_new = name_old
             if name_old != name_new:
-                cur_block._rename_var(cpt.to_bytes(name_old),
-                                      cpt.to_bytes(name_new))
+                cur_block._rename_var(name_old.encode(), name_new.encode())
             if not is_double_grad_var:
                 dict_rename_var_old_new[name_old] = name_new
                 dict_rename_var_new_old[name_new] = name_old
@@ -236,7 +231,7 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
     if has_double_grad:
         double_grad_rename_dict = {}
         for name_old in dict_rename_var_old_new:
-            for b_idx in six.moves.range(program_desc.num_blocks()):
+            for b_idx in range(program_desc.num_blocks()):
                 cur_block = program_desc.block(b_idx)
                 for var_idx, var in enumerate(cur_block.all_vars()):
                     var_name = var.name()
@@ -251,9 +246,9 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
                 double_grad_rename_dict[var_name]] = var_name
 
     # Rename on program desc
-    for b_idx in six.moves.range(program_desc.num_blocks()):
+    for b_idx in range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
-        for op_idx in six.moves.range(cur_block.op_size()):
+        for op_idx in range(cur_block.op_size()):
             op = cur_block.op(op_idx)
             for input_arg_name in op.input_arg_names():
                 if input_arg_name in dict_rename_var_old_new:
@@ -261,11 +256,11 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
                         op._rename_input(
                             input_arg_name,
                             dict_rename_var_old_new[input_arg_name])
-                        if cur_block.has_var(cpt.to_bytes(input_arg_name)):
+                        if cur_block.has_var(input_arg_name.encode()):
                             cur_block._rename_var(
-                                cpt.to_bytes(input_arg_name),
-                                cpt.to_bytes(
-                                    dict_rename_var_old_new[input_arg_name]))
+                                input_arg_name.encode(),
+                                dict_rename_var_old_new[input_arg_name].encode(
+                                ))
             for output_arg_name in op.output_arg_names():
                 if output_arg_name in dict_rename_var_old_new:
                     if output_arg_name != dict_rename_var_old_new[
@@ -273,11 +268,11 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
                         op._rename_output(
                             output_arg_name,
                             dict_rename_var_old_new[output_arg_name])
-                        if cur_block.has_var(cpt.to_bytes(output_arg_name)):
+                        if cur_block.has_var(output_arg_name.encode()):
                             cur_block._rename_var(
-                                cpt.to_bytes(output_arg_name),
-                                cpt.to_bytes(
-                                    dict_rename_var_old_new[output_arg_name]))
+                                output_arg_name.encode(),
+                                dict_rename_var_old_new[output_arg_name].encode(
+                                ))
     program_desc.flush()
     return dict_rename_var_new_old, dict_rename_var_old_new
 
@@ -287,8 +282,7 @@ def _build_program_by_desc(program_desc):
     prog = framework.Program()
     prog.desc = program_desc
     prog.blocks = [
-        framework.Block(prog, i)
-        for i in six.moves.range(prog.desc.num_blocks())
+        framework.Block(prog, i) for i in range(prog.desc.num_blocks())
     ]
     prog._sync_with_cpp()
     return prog
@@ -296,9 +290,9 @@ def _build_program_by_desc(program_desc):
 
 def _change_is_test_status(program_desc, is_test):
     # change all `is_test` attributes
-    for i in six.moves.range(program_desc.num_blocks()):
+    for i in range(program_desc.num_blocks()):
         block = program_desc.block(i)
-        for j in six.moves.range(block.op_size()):
+        for j in range(block.op_size()):
             op = block.op(j)
             if op.has_attr('is_test'):
                 op._set_attr('is_test', is_test)
@@ -411,29 +405,29 @@ class _ProgramHolder(object):
         # remove feed, fetch and scale-1 op, remove op_callstack attr
         ops_to_remove = []
         root_block = program_desc.block(0)
-        for i in six.moves.range(root_block.op_size()):
+        for i in range(root_block.op_size()):
             op = root_block.op(i)
             if op.type() == 'feed':
                 ops_to_remove.append(i)
-                feed_var_name = cpt.to_bytes(op.input('X')[0])
+                feed_var_name = op.input('X')[0].encode()
                 root_block._remove_var(feed_var_name)
                 self._input_descs.append(
-                    root_block.find_var(cpt.to_bytes(op.output('Out')[0])))
+                    root_block.find_var(op.output('Out')[0].encode()))
             elif op.type() == 'scale' and op.output('Out')[0].startswith(
                     'save_infer_model/scale_'):
                 ops_to_remove.append(i)
-                out_var_name = cpt.to_bytes(op.output('Out')[0])
+                out_var_name = op.output('Out')[0].encode()
                 root_block._remove_var(out_var_name)
                 self._output_descs.append(
-                    root_block.find_var(cpt.to_bytes(op.input('X')[0])))
+                    root_block.find_var(op.input('X')[0].encode()))
             elif op.type() == 'fetch':
                 ops_to_remove.append(i)
-                fetch_var_name = cpt.to_bytes(op.output('Out')[0])
+                fetch_var_name = op.output('Out')[0].encode()
                 root_block._remove_var(fetch_var_name)
                 # NOTE: some old pre-train models have no extra scale_op
                 if not op.input('X')[0].startswith('save_infer_model/scale_'):
                     self._output_descs.append(
-                        root_block.find_var(cpt.to_bytes(op.input('X')[0])))
+                        root_block.find_var(op.input('X')[0].encode()))
             else:
                 if op.has_attr("op_callstack"):
                     op.remove_attr("op_callstack")
@@ -515,7 +509,7 @@ class _ProgramHolder(object):
         program = _build_program_by_desc(program_desc_copy)
         # 3. Add the outputs which is only used for training and not saved in
         # inference program.
-        for block_idx in six.moves.range(program.num_blocks):
+        for block_idx in range(program.num_blocks):
             block = program.block(block_idx)
             for op in block.ops:
                 if op.type == "batch_norm":
@@ -939,7 +933,7 @@ def _run_dygraph(instance, input, program_holder):
     # be user wanted result.
     for persistable_var in persistable_vars:
         grad_var_name = persistable_var.name + core.grad_var_suffix()
-        grad_var = trace_program.block(0).find_var(cpt.to_bytes(grad_var_name))
+        grad_var = trace_program.block(0).find_var(grad_var_name.encode())
         # NOTE: cannot find var desc maybe not problem,
         # such as in batch_norm
         if grad_var is None:

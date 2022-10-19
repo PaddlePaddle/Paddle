@@ -20,10 +20,8 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import numpy as np
-import six
-import cv2
 import tempfile
-from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer, train_parameters, optimizer_setting
+from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
 import paddle.nn as nn
 from paddle.static import InputSpec
 from paddle.autograd import PyLayer

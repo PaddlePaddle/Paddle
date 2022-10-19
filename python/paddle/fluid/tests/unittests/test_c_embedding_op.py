@@ -12,14 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
-from op_test import OpTest
-import paddle
-import paddle.fluid as fluid
-from paddle.framework import core
 from paddle.fluid.tests.unittests.c_embedding_op_base import TestCEmbeddingCPU, TestCEmbeddingOpBase, TestCEmbeddingOpFP32
 
 TestCEmbeddingCPU()

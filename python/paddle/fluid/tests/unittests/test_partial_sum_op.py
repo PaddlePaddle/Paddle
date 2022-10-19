@@ -12,17 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid.layers as layers
-import paddle.fluid as fluid
 import random
-import six
 
 
 class TestPartialSumOp(OpTest):
@@ -35,15 +28,13 @@ class TestPartialSumOp(OpTest):
             end_index = self.column
         else:
             end_index = self.start_index + self.length
-        self.var_names = [
-            'x' + str(num) for num in six.moves.range(self.var_num)
-        ]
+        self.var_names = ['x' + str(num) for num in range(self.var_num)]
         self.vars = [np.random.random((self.batch_size, self.column)).astype(self.dtype)\
-                     for num in six.moves.range(self.var_num) ]
+                     for num in range(self.var_num) ]
         self.inputs = {'X': list(zip(self.var_names, self.vars))}
         self.attrs = {'start_index': self.start_index, 'length': self.length}
         y = self.vars[0][:, self.start_index:end_index]
-        for i in six.moves.range(1, self.var_num):
+        for i in range(1, self.var_num):
             y = y + self.vars[i][:, self.start_index:end_index]
 
         self.outputs = {'Out': y}

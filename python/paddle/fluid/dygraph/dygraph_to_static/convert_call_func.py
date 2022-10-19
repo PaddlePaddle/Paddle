@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 import copy
 import functools
@@ -25,6 +23,7 @@ import types
 
 import numpy
 import six
+import builtins
 
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len, convert_zip
@@ -75,7 +74,7 @@ def is_builtin(func, name=None):
 
     if isinstance(func, types.BuiltinFunctionType) and name_judge():
         return True
-    elif func in six.moves.builtins.__dict__.values() and name_judge():
+    elif func in builtins.__dict__.values() and name_judge():
         return True
     else:
         return False

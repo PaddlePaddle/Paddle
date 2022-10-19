@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 from .wrapped_decorator import signature_safe_contextmanager
-import six
-import sys
 
 __all__ = ['generate', 'switch', 'guard']
 
@@ -216,9 +212,9 @@ def guard(new_generator=None):
                 name_2 = paddle.utils.unique_name.generate('fc')
             print(name_1, name_2) # Afc_0, Bfc_0
     """
-    if isinstance(new_generator, six.string_types):
+    if isinstance(new_generator, str):
         new_generator = UniqueNameGenerator(new_generator)
-    elif isinstance(new_generator, six.binary_type):
+    elif isinstance(new_generator, bytes):
         new_generator = UniqueNameGenerator(new_generator.decode())
 
     old_generator, old_para_name_checker = switch(new_generator)

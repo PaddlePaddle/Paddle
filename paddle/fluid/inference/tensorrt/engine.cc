@@ -275,6 +275,35 @@ void TensorRTEngine::FreezeNetwork() {
             nvinfer1::OptProfileSelector::kOPT,
             Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
       }
+
+      for (int input_id = 0; input_id < network()->getNbInputs(); input_id++) {
+        auto input_name = network()->getInput(input_id)->getName();
+        if (!itensor_map_.count(input_name)) continue;
+        if (!GetITensor(input_name)->isShapeTensor()) continue;
+        PADDLE_ENFORCE_EQ(min_shape_tensor_.count(input_name) &&
+                              max_shape_tensor_.count(input_name) &&
+                              optim_shape_tensor_.count(input_name),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Fail to find min/max/optim shape value for TRT "
+                              "network's shape tensor input named %s.",
+                              input_name));
+        auto min_vec = min_shape_tensor_.at(input_name);
+        optim_profiles_[i]->setShapeValues(input_name,
+                                           nvinfer1::OptProfileSelector::kMIN,
+                                           min_vec.data(),
+                                           min_vec.size());
+        optim_profiles_[i]->setShapeValues(input_name,
+                                           nvinfer1::OptProfileSelector::kMAX,
+                                           max_shape_tensor_[input_name].data(),
+                                           min_vec.size());
+        optim_profiles_[i]->setShapeValues(
+            input_name,
+            nvinfer1::OptProfileSelector::kOPT,
+            optim_shape_tensor_[input_name].data(),
+            min_vec.size());
+      }
+
       infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
     }
     if (WithFp16() && disable_trt_plugin_fp16()) {
@@ -438,7 +467,7 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
                                  "tensor, but there is no "
                                  "persistable variable called %s in scope.",
                                  name));
-  auto *var_t = var_v->GetMutable<framework::LoDTensor>();
+  auto *var_t = var_v->GetMutable<phi::DenseTensor>();
   auto weight = this->GetTrtWeight(name, *var_t);
 
   // Now we have create weights, then we need create a itensor
@@ -522,7 +551,7 @@ void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
 
 // Note: Only for support plugin.
 TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
-    const std::string &name, const framework::Tensor &weight_tensor) {
+    const std::string &name, const phi::DenseTensor &weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -534,7 +563,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
-  weight_map[name_with_suffix].reset(new framework::Tensor());
+  weight_map[name_with_suffix].reset(new phi::DenseTensor());
   weight_map[name_with_suffix]->Resize(weight_tensor.dims());
 
   TensorRTEngine::Weight weight;
@@ -544,7 +573,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
 
   // if trt not support dtype, we need to cast to  fp16.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
-    framework::Tensor bf16_tensor;
+    phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
@@ -558,7 +587,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
       fp16_data[i] = static_cast<float16>(bf16_data[i]);
     }
   } else if (weight_tensor.dtype() == phi::DataType::FLOAT32) {
-    framework::Tensor fp32_tensor;
+    phi::DenseTensor fp32_tensor;
     fp32_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &fp32_tensor);
@@ -582,7 +611,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp16TrtWeight(
 
 // Note: Only for support plugin.
 TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
-    const std::string &name, const framework::Tensor &weight_tensor) {
+    const std::string &name, const phi::DenseTensor &weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -594,7 +623,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
                         "The weight named %s is set into the weight map "
                         "twice in TRT OP converter.",
                         name_with_suffix));
-  weight_map[name_with_suffix].reset(new framework::Tensor());
+  weight_map[name_with_suffix].reset(new phi::DenseTensor());
   weight_map[name_with_suffix]->Resize(weight_tensor.dims());
 
   TensorRTEngine::Weight weight;
@@ -604,7 +633,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
 
   // if trt not support dtype, we need to cast to  fp32.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
-    framework::Tensor bf16_tensor;
+    phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
@@ -618,7 +647,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
       fp32_data[i] = static_cast<float>(bf16_data[i]);
     }
   } else if (weight_tensor.dtype() == phi::DataType::FLOAT16) {
-    framework::Tensor fp16_tensor;
+    phi::DenseTensor fp16_tensor;
     fp16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &fp16_tensor);
@@ -641,7 +670,7 @@ TensorRTEngine::Weight TensorRTEngine::GetFp32TrtWeight(
 }
 
 TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
-    const std::string &name, const framework::Tensor &weight_tensor) {
+    const std::string &name, const phi::DenseTensor &weight_tensor) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
@@ -654,7 +683,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
                         "twice in TRT OP converter.",
                         name_with_suffix));
 
-  weight_map[name_with_suffix].reset(new framework::Tensor());
+  weight_map[name_with_suffix].reset(new phi::DenseTensor());
   weight_map[name_with_suffix]->Resize(weight_tensor.dims());
 
   TensorRTEngine::Weight weight;
@@ -662,7 +691,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
 
   // if trt not support dtype, we need to cast to fp32.
   if (weight_tensor.dtype() == phi::DataType::BFLOAT16) {
-    framework::Tensor bf16_tensor;
+    phi::DenseTensor bf16_tensor;
     bf16_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &bf16_tensor);
@@ -677,7 +706,7 @@ TensorRTEngine::Weight TensorRTEngine::GetTrtWeight(
     weight.SetDataType(phi::DataType::FLOAT32);
     weight.SetValues(fp32_data);
   } else if (weight_tensor.dtype() == phi::DataType::INT64) {
-    framework::Tensor int64_tensor;
+    phi::DenseTensor int64_tensor;
     int64_tensor.clear();
     paddle::framework::TensorCopySync(
         weight_tensor, platform::CPUPlace(), &int64_tensor);
@@ -745,9 +774,8 @@ void TensorRTEngine::GetEngineInfo() {
   LOG(INFO) << "====== engine info ======";
   std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
       infer_engine_->createEngineInspector());
-  auto infer_context = infer_ptr<nvinfer1::IExecutionContext>(
-      infer_engine_->createExecutionContextWithoutDeviceMemory());
-  infer_inspector->setExecutionContext(infer_context.get());
+  auto *infer_context = context();
+  infer_inspector->setExecutionContext(infer_context);
   LOG(INFO) << infer_inspector->getEngineInformation(
       nvinfer1::LayerInformationFormat::kONELINE);
   LOG(INFO) << "====== engine info end ======";

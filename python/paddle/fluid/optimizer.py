@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
-import six
 import os
 import logging
 from collections import defaultdict
@@ -6229,8 +6226,7 @@ class RecomputeOptimizer(Optimizer):
         ), "_checkpoints should be a list of Variable or a list of String"
         for ckpt in checkpoints:
             assert (
-                isinstance(ckpt, six.string_types)
-                or isinstance(ckpt, Variable)
+                isinstance(ckpt, str) or isinstance(ckpt, Variable)
             ), "_checkpoints should be a list of Variable or a list of String"
         self._checkpoints = checkpoints
 

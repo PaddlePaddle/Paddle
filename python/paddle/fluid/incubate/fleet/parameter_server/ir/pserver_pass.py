@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
-import six
 
 from paddle.fluid import core
 from paddle.fluid.framework import Block
@@ -97,7 +94,7 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
         """
 
         grad_block = None
-        for _, g in six.iteritems(var_dict):
+        for _, g in var_dict.items():
             if _orig_varname(g.name) == _orig_varname(var.name):
                 # skip per trainer vars
                 if g.name.find(".trainer_") == -1:
@@ -115,7 +112,7 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
     program = optimize_block.program
     # Append the ops for parameters that do not need to be optimized / updated
     inputs = _get_input_map_from_op(origin_program.global_block().vars, opt_op)
-    for key, varlist in six.iteritems(inputs):
+    for key, varlist in inputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for i in range(len(varlist)):
@@ -136,7 +133,7 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
 
     outputs = _get_output_map_from_op(origin_program.global_block().vars,
                                       opt_op)
-    for key, varlist in six.iteritems(outputs):
+    for key, varlist in outputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for i in range(len(varlist)):
@@ -915,7 +912,7 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
     pserver_vars = p_main_program.global_block().vars
 
     created_var_map = collections.OrderedDict()
-    for _, var in six.iteritems(pserver_vars):
+    for _, var in pserver_vars.items():
         tmpvar = program.global_block()._clone_variable(var)
         created_var_map[var.name] = tmpvar
 
