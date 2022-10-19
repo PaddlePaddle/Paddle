@@ -173,14 +173,14 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
             False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            False), 1e-5
+            False), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-3
 
     def test(self):
         self.run_test()
@@ -279,14 +279,14 @@ class TrtConvertSumTest1(TrtLayerAutoScanTest):
             False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            False), 1e-5
+            False), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
+        yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-3
 
     def test(self):
         self.run_test()
