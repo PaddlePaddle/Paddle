@@ -1,5 +1,5 @@
 - backward_op : abs_grad
-  forward : tanh(Tensor x) -> Tensor(out)
+  forward : abs(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
@@ -432,7 +432,7 @@
            transpose_csr_grad {sparse_csr -> sparse_csr}
 
 - backward_op : values_grad
-  forward : values_coo(Tensor x) -> Tensor(out)
+  forward : values(Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
@@ -442,7 +442,7 @@
     func : values_coo_grad{sparse_coo, dense-> sparse_coo}
 
 - backward_op: fused_attention_grad
-  forward : fused_attention_csr(Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask) -> Tensor(out), Tensor(softmax)
+  forward : fused_attention(Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask) -> Tensor(out), Tensor(softmax)
   args: (Tensor query, Tensor key, Tensor value, Tensor softmax, Tensor out_grad)
   output : Tensor(query_grad), Tensor(key_grad), Tensor(value_grad)
   infer_meta :

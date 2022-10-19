@@ -143,6 +143,8 @@ paddle::experimental::Tensor CallScalarFuction(
     ret = scale_ad_func(self_tensor, phi::Scalar(other), 0.0, true);
   } else if (op_type == "div") {
     ret = scale_ad_func(self_tensor, phi::Scalar(1.0 / other), 0.0, true);
+  } else if (op_type == "pow") {
+    ret = pow_ad_func(self_tensor, other);
   }
 
   return ret;
@@ -1385,6 +1387,176 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__pow__method(TensorObject* self,
+                                     PyObject* args,
+                                     PyObject* kwargs) {
+  paddle::platform::RecordEvent pythonc_record_event(
+      "pow pybind_patch_func",
+      paddle::platform::TracerEventType::UserDefined,
+      1);
+
+  EAGER_TRY
+  VLOG(6) << "Running Eager tensor__pow__method";
+
+  // Set Device ID
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+  SetDevice(place);
+
+  paddle::experimental::Tensor ret;
+  paddle::experimental::Tensor self_tensor = self->tensor;
+
+  PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+
+  // 1. scalar exists cases
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      IsNumpyType(other_obj)) {
+    double other = 0.0;
+    if (PyFloat_Check(other_obj)) {
+      other = CastPyArg2Double(other_obj, "__pow__", 0);
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      }
+    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      other = CastPyArg2Double(other_obj, "__pow__", 0);
+    }
+    {
+      eager_gil_scoped_release guard;
+      ret = CallScalarFuction(self_tensor, other, "pow");
+    }
+    return ToPyObject(ret);
+  }
+
+  // 2. create or get tensor for other_obj
+  paddle::experimental::Tensor other_tensor;
+  if (!PyCheckTensor(other_obj)) {
+    paddle::experimental::Scalar value =
+        CastPyArg2Scalar(other_obj, "__pow__", 0);
+    if (PyComplex_Check(other_obj)) {
+      eager_gil_scoped_release guard;
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+    } else {
+      eager_gil_scoped_release guard;
+      other_tensor =
+          full_ad_func({1}, value, self_tensor.dtype(), self_tensor.place());
+    }
+  } else {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  }
+
+  // 3. promote types or unify right var type to left var
+  phi::DataType lhs_dtype = self_tensor.dtype();
+  phi::DataType rhs_dtype = other_tensor.dtype();
+  if (lhs_dtype != rhs_dtype) {
+    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+               "dtype is "
+            << lhs_dtype << ", but right dtype is " << rhs_dtype
+            << ", the right dtype will convert to " << lhs_dtype;
+    eager_gil_scoped_release guard;
+    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+  }
+
+  // 4. calculation
+  VLOG(6) << "Calling elementwise_pow_ad_func in tensor__pow__method";
+  {
+    eager_gil_scoped_release guard;
+    ret = elementwise_pow_ad_func(self_tensor, other_tensor);
+  }
+
+  return ToPyObject(ret);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* tensor__rpow__method(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
+  paddle::platform::RecordEvent pythonc_record_event(
+      "__rpow__ pybind_patch_func",
+      paddle::platform::TracerEventType::UserDefined,
+      1);
+
+  EAGER_TRY
+  VLOG(6) << "Running Eager tensor__rpow__method";
+
+  // Set Device ID
+  auto place = egr::Controller::Instance().GetExpectedPlace();
+  SetDevice(place);
+
+  paddle::experimental::Tensor ret;
+  paddle::experimental::Tensor self_tensor = self->tensor;
+
+  PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+
+  // 1. scalar exists cases or not
+  // there is no scalar case for rpow, but alse need to cast self_tensor in
+  // need.
+  double other_double = 0.0;
+  bool has_other_double = false;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      IsNumpyType(other_obj)) {
+    if (PyFloat_Check(other_obj)) {
+      other_double = CastPyArg2Double(other_obj, "__rpow__", 0);
+      has_other_double = true;
+      if (_supported_int_dtype_.find(self_tensor.dtype()) !=
+          _supported_int_dtype_.end()) {
+        eager_gil_scoped_release guard;
+        self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      }
+    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+      other_double = CastPyArg2Double(other_obj, "__rpow__", 0);
+      has_other_double = true;
+    }
+  }
+
+  // 2. create or get tensor for other_obj
+  paddle::experimental::Tensor other_tensor;
+  if (has_other_double) {
+    eager_gil_scoped_release guard;
+    other_tensor = full_ad_func(self_tensor.shape(),
+                                phi::Scalar(other_double),
+                                self_tensor.dtype(),
+                                self_tensor.place());
+  } else if (!PyCheckTensor(other_obj)) {
+    paddle::experimental::Scalar value =
+        CastPyArg2Scalar(other_obj, "__rpow__", 0);
+    if (PyComplex_Check(other_obj)) {
+      eager_gil_scoped_release guard;
+      other_tensor =
+          full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+    } else {
+      eager_gil_scoped_release guard;
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
+    }
+  } else {
+    other_tensor = CastPyArg2Tensor(other_obj, 0);
+  }
+
+  // 3. promote types or unify right var type to left var
+  phi::DataType lhs_dtype = self_tensor.dtype();
+  phi::DataType rhs_dtype = other_tensor.dtype();
+  if (lhs_dtype != rhs_dtype) {
+    VLOG(6) << "The dtype of left and right Tensor are not the same, left "
+               "dtype is "
+            << lhs_dtype << ", but right dtype is " << rhs_dtype
+            << ", the right dtype will convert to " << lhs_dtype;
+    eager_gil_scoped_release guard;
+    other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+  }
+
+  // 4. calculation
+  VLOG(6) << "Calling elementwise_pow_ad_func in tensor__rpow__method";
+  {
+    eager_gil_scoped_release guard;
+    ret = elementwise_pow_ad_func(other_tensor, self_tensor);
+  }
+
+  return ToPyObject(ret);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 PyMethodDef math_op_patch_methods[] = {
     {"__add__",
      (PyCFunction)(void (*)(void))tensor__add__method,
@@ -1428,6 +1600,14 @@ PyMethodDef math_op_patch_methods[] = {
      NULL},
     {"__floordiv__",
      (PyCFunction)(void (*)(void))tensor__floordiv__method,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"__pow__",
+     (PyCFunction)(void (*)(void))tensor__pow__method,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"__rpow__",
+     (PyCFunction)(void (*)(void))tensor__rpow__method,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"__mod__",
