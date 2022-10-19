@@ -16,12 +16,12 @@ set(PADDLE_RPC_DEPS
     brpc
     ssl
     crypto
+    protobuf
     zlib
     leveldb
     snappy
-    protobuf
-    glog
     gflags
+    glog
     pybind)
 proto_library(paddle_rpc_proto SRCS rpc.proto)
 cc_library(
