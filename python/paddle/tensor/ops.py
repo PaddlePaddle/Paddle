@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from .layer_function_generator import generate_layer_fn, generate_activation_fn, generate_inplace_fn, add_sample_code
+from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.framework import in_dygraph_mode, _in_legacy_dygraph
-from .. import _C_ops
+from ..framework import LayerHelper
+from .. import _C_ops, _legacy_C_ops
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',
@@ -521,7 +523,7 @@ def exp(x, name=None):
     ], 'exp')
     helper = LayerHelper('exp', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type='exp', inputs={"X": x}, outputs={"Out": put})
+    helper.append_op(type='exp', inputs={"X": x}, outputs={"Out": out})
     return out
 
 
