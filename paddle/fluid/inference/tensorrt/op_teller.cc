@@ -327,6 +327,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "bmm") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
     if (op_type == "matmul_v2") {
       if (!with_dynamic_shape) {
         return false;
@@ -629,9 +635,9 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
-      auto data_layout = framework::StringToDataLayout(
+      auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW) return false;
+      if (data_layout != phi::DataLayout::kNCHW) return false;
 
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -704,10 +710,10 @@ struct SimpleOpTypeSetTeller : public Teller {
         if (!desc.HasAttr(attr)) return false;
       }
       if (desc.HasAttr("data_layout")) {
-        auto data_layout = framework::StringToDataLayout(
+        auto data_layout = phi::StringToDataLayout(
             PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-        if (data_layout != framework::DataLayout::kNCHW &&
-            data_layout != framework::DataLayout::kNHWC)
+        if (data_layout != phi::DataLayout::kNCHW &&
+            data_layout != phi::DataLayout::kNHWC)
           return false;
       }
       auto interp_method =
@@ -749,10 +755,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       for (auto const attr : attrs) {
         if (!desc.HasAttr(attr)) return false;
       }
-      auto data_layout = framework::StringToDataLayout(
+      auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC)
+      if (data_layout != phi::DataLayout::kNCHW &&
+          data_layout != phi::DataLayout::kNHWC)
         return false;
       auto interp_method =
           PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
@@ -803,10 +809,10 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 
-      auto data_layout = framework::StringToDataLayout(
+      auto data_layout = phi::StringToDataLayout(
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
-      if (data_layout != framework::DataLayout::kNCHW &&
-          data_layout != framework::DataLayout::kNHWC) {
+      if (data_layout != phi::DataLayout::kNCHW &&
+          data_layout != phi::DataLayout::kNHWC) {
         VLOG(3) << "The op_type " << op_type
                 << " is not NCHW or NHWC return false";
         return false;
@@ -1218,7 +1224,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
-        op_type == "elementwise_pow") {
+        op_type == "elementwise_pow" || op_type == "elementwise_min" ||
+        op_type == "elementwise_max") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1755,13 +1762,13 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "reshape" || op_type == "reshape2") {
-      if (with_dynamic_shape) {
-        return true;
-      }
       if (!desc.HasAttr("shape")) {
         return false;
       }
-      // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
+      if (with_dynamic_shape) {
+        return true;
+      }
+      // Static shape does not support the input tensors: Shape and ShapeTensor
       auto reshape_inputs = desc.Inputs();
       if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
         if (desc.Input("Shape").size() >= 1) {
@@ -2093,12 +2100,40 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+    if (op_type == "merge_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The merge_layernorm op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
 
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
                    "static shape yet";
         return false;
+      }
+    }
+
+    if (op_type == "expand_v2") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (!desc.HasAttr("shape")) {
+        return false;
+      }
+      auto expand_v2_inputs = desc.Inputs();
+      if (expand_v2_inputs.find("Shape") != expand_v2_inputs.end()) {
+        if (desc.Input("Shape").size() >= 1) {
+          return false;
+        }
+      }
+      if (expand_v2_inputs.find("expand_shapes_tensor") !=
+          expand_v2_inputs.end()) {
+        if (desc.Input("expand_shapes_tensor").size() >= 1) {
+          return false;
+        }
       }
     }
 
@@ -2115,6 +2150,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "mul",
       "matmul",
       "matmul_v2",
+      "bmm",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2155,6 +2191,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "elementwise_min",
+      "elementwise_max",
       "equal",
       "dropout",
       "prelu",
@@ -2222,11 +2260,13 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "layernorm_shift_partition",
       "lookup_table",
-      "lookup_table_v2"};
+      "lookup_table_v2",
+      "expand_v2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
       "matmul_v2",
+      "bmm",
       "conv2d",
       "conv2d_fusion",
       "pool2d",
@@ -2267,6 +2307,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "elementwise_min",
+      "elementwise_max",
       "equal",
       "dropout",
       "prelu",
@@ -2334,8 +2376,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
+      "merge_layernorm",
       "lookup_table",
-      "lookup_table_v2"};
+      "lookup_table_v2",
+      "expand_v2"};
 };
 
 struct GenericPluginTeller : public Teller {
@@ -2352,6 +2396,14 @@ struct GenericPluginTeller : public Teller {
     if (op_type == "yolo_box") {
       if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
         return false;
+    }
+    if (op_type == "pad3d") {
+      auto pad3d_inputs = desc.Inputs();
+      if (pad3d_inputs.find("Paddings") != pad3d_inputs.end()) {
+        if (desc.Input("Paddings").size() >= 1) {
+          return false;
+        }
+      }
     }
     if (use_no_calib_int8) {
       return false;

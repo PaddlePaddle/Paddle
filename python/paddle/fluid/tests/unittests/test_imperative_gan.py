@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -228,12 +227,12 @@ class TestDygraphGAN(unittest.TestCase):
 
         self.assertEqual(dy_g_loss, static_g_loss)
         self.assertEqual(dy_d_loss, static_d_loss)
-        for k, v in six.iteritems(dy_params):
+        for k, v in dy_params.items():
             np.testing.assert_allclose(v, static_params[k], rtol=1e-05)
 
         self.assertEqual(dy_g_loss2, static_g_loss)
         self.assertEqual(dy_d_loss2, static_d_loss)
-        for k, v in six.iteritems(dy_params2):
+        for k, v in dy_params2.items():
             np.testing.assert_allclose(v, static_params[k], rtol=1e-05)
 
     def test_gan_float32(self):

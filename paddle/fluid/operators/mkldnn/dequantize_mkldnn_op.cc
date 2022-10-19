@@ -29,7 +29,7 @@ using dnnl::reorder;
 using platform::to_void_cast;
 using Tensor = phi::DenseTensor;
 using dnnl::stream;
-using framework::DataLayout;
+using phi::DataLayout;
 using platform::GetMKLDNNFormat;
 
 template <typename T>

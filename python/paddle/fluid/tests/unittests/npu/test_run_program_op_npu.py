@@ -15,7 +15,6 @@
 import contextlib
 import unittest
 import numpy as np
-import six
 import sys
 
 sys.path.append("..")
@@ -24,7 +23,6 @@ from op_test import OpTest
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 import paddle.fluid as fluid
-from paddle import compat as cpt
 from paddle.fluid import core, framework, executor
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.framework import _in_eager_mode_
@@ -112,7 +110,7 @@ class RunProgramNPUOpTest(unittest.TestCase):
         actual_outs = self.calc_dygraph_output(place)
 
         # Step 2. compare output
-        for expect_v, actual_v in six.moves.zip(self.expect_outs, actual_outs):
+        for expect_v, actual_v in zip(self.expect_outs, actual_outs):
             np.testing.assert_allclose(expect_v,
                                        actual_v.numpy(),
                                        rtol=1e-05,
@@ -123,8 +121,7 @@ class RunProgramNPUOpTest(unittest.TestCase):
         actual_grads = self.calc_dygraph_grad(place)
 
         # Step 2. compare grads
-        for expect_v, actual_v in six.moves.zip(self.expect_grads,
-                                                actual_grads):
+        for expect_v, actual_v in zip(self.expect_grads, actual_grads):
             np.testing.assert_array_almost_equal(expect_v, actual_v)
             np.testing.assert_allclose(expect_v,
                                        actual_v,
@@ -239,9 +236,9 @@ class RunProgramNPUOpTest(unittest.TestCase):
     def _get_grad_vartype(self, name):
         assert self.program_desc is not None
         grad_name = name + core.grad_var_suffix()
-        for i in six.moves.range(self.program_desc.num_blocks()):
+        for i in range(self.program_desc.num_blocks()):
             block = self.program_desc.block(i)
-            var_desc = block.find_var_recursive(cpt.to_bytes(grad_name))
+            var_desc = block.find_var_recursive(grad_name.encode())
             return var_desc.type() if var_desc is not None else None
 
 

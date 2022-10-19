@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -223,14 +223,14 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
 #ifdef PADDLE_WITH_MKLDNN
 
   // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
-  if (in_layout == framework::DataLayout::kMKLDNN &&
+  if (in_layout == phi::DataLayout::kMKLDNN &&
       var_name == framework::GradVarName("Filter") && is_fetch_v2) {
     VLOG(4) << "Match special case(Filter && fetch_v2) " << var_name;
-    out_layout = framework::DataLayout::kNCHW;
+    out_layout = phi::DataLayout::kNCHW;
   }
 
-  if (in_layout == framework::DataLayout::ONEDNN &&
-      out_layout != framework::DataLayout::ONEDNN) {
+  if (in_layout == phi::DataLayout::ONEDNN &&
+      out_layout != phi::DataLayout::ONEDNN) {
     auto target_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
     VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
             << target_layout;

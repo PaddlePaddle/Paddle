@@ -97,7 +97,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     out->Resize(out_dims);
-    out->set_layout(framework::DataLayout::kMKLDNN);
+    out->set_layout(phi::DataLayout::kMKLDNN);
     out->set_format(GetMKLDNNFormat(
         reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims))));
   }
@@ -369,7 +369,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     astream.wait();
 
     dx->Resize(dx_dims);
-    dx->set_layout(framework::DataLayout::kMKLDNN);
+    dx->set_layout(phi::DataLayout::kMKLDNN);
     dx->set_format(GetMKLDNNFormat(
         reorder_dst_memory_p->get_desc().reshape(phi::vectorize(dx_dims))));
   }

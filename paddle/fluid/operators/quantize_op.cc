@@ -24,7 +24,7 @@ framework::OpKernelType QuantOp::GetExpectedKernelType(
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
       ctx.GetPlace(),
-      framework::DataLayout::kMKLDNN,
+      phi::DataLayout::kMKLDNN,
       framework::LibraryType::kMKLDNN);
 }
 
