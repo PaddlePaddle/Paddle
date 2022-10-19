@@ -19,8 +19,6 @@
     param : [x]
   kernel :
     func : abs_grad
-  data_transform:
-    skip_transform : out_grad
   backward : abs_double_grad
 
 - backward_op : acos_grad
