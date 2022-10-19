@@ -37,7 +37,7 @@ def attention(query,
 
     .. math::
 
-        result = softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
+        result = softmax(\frac{ Q * K^T }{\\sqrt{d}}) * V
 
     where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
     The shape of the three parameters are: `[batch_size, num_heads, seq_len, head_dim]`, and
