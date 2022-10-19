@@ -68,7 +68,7 @@ def _scatter_in_dygraph(tensor, tensor_list, src, group, sync_op,
         raise RuntimeError("Src rank out of group.")
 
     nranks = group.nranks
-    rank = dist.get_rank()
+    rank = paddle.distributed.get_rank()
     if rank == src_rank:
         if len(tensor_list) == 0:
             raise RuntimeError(
