@@ -159,8 +159,10 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     u = mean(x, axis, True, name)
     out = paddle.sum((x - u)**2, axis, keepdim=keepdim, name=name)
 
-    n = paddle.cast(paddle.numel(x), x.dtype) \
-        / paddle.cast(paddle.numel(out), x.dtype)
+    dtype = x.dtype
+    n = paddle.cast(paddle.numel(x), paddle.int64) \
+        / paddle.cast(paddle.numel(out), paddle.int64)
+    n = n.astype(dtype)
     if unbiased:
         one_const = paddle.ones([1], x.dtype)
         n = where(n > one_const, n - 1., one_const)
