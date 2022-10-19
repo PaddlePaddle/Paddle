@@ -75,7 +75,9 @@ def train_mlp(model,
               shard_level,
               use_multi_precision,
               output_dir,
-              amp_level='O1'):
+              amp_level='O1',
+              sync_buffers=False,
+              dp_group=None):
     optimizer = optimizer_setting(model=model,
                                   use_multi_precision=use_multi_precision)
     model = paddle.amp.decorate(models=model,
@@ -83,15 +85,11 @@ def train_mlp(model,
                                 save_dtype='float32')
     scaler = paddle.amp.GradScaler(init_loss_scaling=32768)
 
-    #test sharding + dp, just for test
-    dp_group = paddle.distributed.new_group(
-        list(range(paddle.distributed.get_world_size())))
-
     model, optimizer, scaler = group_sharded_parallel(model=model,
                                                       optimizer=optimizer,
                                                       level=shard_level,
                                                       scaler=scaler,
-                                                      sync_buffers=True,
+                                                      sync_buffers=sync_buffers,
                                                       dp_group=dp_group)
 
     train_reader = paddle.batch(reader_decorator(),
@@ -139,6 +137,18 @@ def test_sharding_api():
     mlp2.set_state_dict(state_dict)
 
     output_dir = tempfile.mkdtemp()
+
+    #test sharding + dp, just for test
+    dp_group = paddle.distributed.new_group(
+        list(range(paddle.distributed.get_world_size())))
+
+    stage2_dp_params = train_mlp(mlp1,
+                                 shard_level="os_g",
+                                 use_multi_precision=True,
+                                 output_dir=output_dir,
+                                 amp_level='O2',
+                                 sync_buffers=True,
+                                 dp_group=dp_group)
 
     # fp16
     stage2_params = train_mlp(mlp1,
