@@ -242,7 +242,7 @@ bool OpCompat::Judge(const OpDesc& op_desc, const std::string& pass_name) {
     if (input_compats_.find(input_desc.first) == input_compats_.end()) {
       if (!input_desc.second.empty()) {
         LOG(WARNING) << "The Input (" << input_desc.first << ") of Operator ("
-                     << op_name_ << ") not reigistered in OpCompat!";
+                     << op_name_ << ") not registered in OpCompat!";
         return false;
       }
     }
@@ -269,7 +269,7 @@ bool OpCompat::Judge(const OpDesc& op_desc, const std::string& pass_name) {
     if (output_compats_.find(output_desc.first) == output_compats_.end()) {
       if (!output_desc.second.empty()) {
         LOG(WARNING) << "The Output (" << output_desc.first << ") of Operator ("
-                     << op_name_ << ") not reigistered in OpCompat!";
+                     << op_name_ << ") not registered in OpCompat!";
         return false;
       }
     }

@@ -2100,6 +2100,13 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+    if (op_type == "merge_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The merge_layernorm op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
 
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
@@ -2369,6 +2376,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
+      "merge_layernorm",
       "lookup_table",
       "lookup_table_v2",
       "expand_v2"};
