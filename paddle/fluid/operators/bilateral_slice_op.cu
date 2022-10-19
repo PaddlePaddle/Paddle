@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 __device__ T DiffAbs(T x) {

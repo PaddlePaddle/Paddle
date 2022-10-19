@@ -212,7 +212,7 @@ class ClipGradByGloblNormPass(PassBase):
         if self.get_attr("dist_context") is None:
             return False
         dist_context = self.get_attr("dist_context")
-        if dist_context._lr_optimizer._grad_clip is None:
+        if dist_context._serial_optimizer._grad_clip is None:
             return False
         if self.get_attr("params_grads") is None:
             return False

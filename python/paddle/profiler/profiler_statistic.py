@@ -17,7 +17,7 @@ import re
 
 from paddle.fluid.core import TracerEventType, TracerMemEventType
 
-from .statistic_helper import *
+from .statistic_helper import intersection_ranges, merge_ranges, merge_self_ranges, sum_ranges
 
 _AllTracerEventType = [
     TracerEventType.Operator, TracerEventType.Dataloader,

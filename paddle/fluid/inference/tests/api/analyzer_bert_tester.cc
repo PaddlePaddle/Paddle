@@ -40,7 +40,12 @@ T GetValueFromStream(std::stringstream &ss);
 template <>
 std::string GetValueFromStream<std::string>(std::stringstream &ss);
 
-TEST(Analyzer_bert, profile) { profile(); }
+TEST(Analyzer_bert, profile) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
+  profile();
+}
 
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_bert, profile_mkldnn) {
@@ -57,6 +62,9 @@ TEST(Analyzer_bert, profile_mkldnn_bf16) {
 
 // Check the fuse status
 TEST(Analyzer_bert, fuse_statis) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
   auto cfg(SetConfig());
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
@@ -65,7 +73,12 @@ TEST(Analyzer_bert, fuse_statis) {
   LOG(INFO) << "num_ops: " << num_ops;
 }
 
-TEST(Analyzer_bert, compare) { CompareNativeAndAnalysisWrapper(); }
+TEST(Analyzer_bert, compare) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
+  CompareNativeAndAnalysisWrapper();
+}
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_bert, compare_mkldnn) {
   auto use_mkldnn = true;
@@ -75,6 +88,9 @@ TEST(Analyzer_bert, compare_mkldnn) {
 
 // Compare Deterministic result
 TEST(Analyzer_bert, compare_determine) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
   auto cfg(SetConfig());
 
   auto inputs = LoadInputData();
@@ -83,6 +99,9 @@ TEST(Analyzer_bert, compare_determine) {
 }
 
 TEST(Analyzer_bert, transfer_scope_cache) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
   auto config(SetConfig());
 
   std::vector<PaddleTensor> input, output;

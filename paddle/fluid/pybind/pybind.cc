@@ -182,9 +182,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
-#if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
-    !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
-    !defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_RPC)
 #include "paddle/fluid/pybind/rpc.h"
 #endif
 
@@ -853,6 +851,8 @@ PYBIND11_MODULE(libpaddle, m) {
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
+
+  m.def("set_current_thread_name", &paddle::platform::SetCurrentThreadName);
 
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
@@ -2608,9 +2608,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindGraphGpuWrapper(&m);
 #endif
 #endif
-#if defined(__linux__) && !defined(PADDLE_WITH_XPU) &&               \
-    !defined(PADDLE_WITH_ASCEND_CL) && !defined(PADDLE_WITH_CINN) && \
-    !defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_RPC)
   BindWorkerInfo(&m);
   BindFuture(&m);
   InitAndSetAgentInstance(&m);

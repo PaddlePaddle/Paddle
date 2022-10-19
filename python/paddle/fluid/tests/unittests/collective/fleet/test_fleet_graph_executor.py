@@ -29,7 +29,8 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
             "http_proxy": "",
-            "https_proxy": ""
+            "https_proxy": "",
+            "FLAGS_CONVERT_GRAPH_TO_PROGRAM": "1"
         }
 
         node_b = {
@@ -38,7 +39,8 @@ class TestFleetGraphExecutionMetaOptimizer(unittest.TestCase):
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36001,127.0.0.1:36002",
             "http_proxy": "",
-            "https_proxy": ""
+            "https_proxy": "",
+            "FLAGS_CONVERT_GRAPH_TO_PROGRAM": "1"
         }
 
         def node_func():

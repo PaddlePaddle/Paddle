@@ -14,10 +14,8 @@
 
 import multiprocessing
 import os
-import six
 import sys
 import warnings
-from .. import compat as cpt
 from . import framework
 from .framework import _get_paddle_place, _get_paddle_place_list
 from .framework import cuda_places, cpu_places, xpu_places
@@ -418,10 +416,10 @@ class CompiledProgram(object):
         for node in self._graph.nodes():
             if node.is_var() and node.var() is not None and node.var().persistable() and \
                     node.var().type() != core.VarDesc.VarType.RAW:
-                name = cpt.to_text(node.name())
+                name = node.name()
                 if self._program is not None and _should_broadcast_or_not_exists(
                         self._program, name):
-                    self._persistable_vars.append(cpt.to_text(node.name()))
+                    self._persistable_vars.append(node.name())
 
         places = list(map(_place_obj, places))
 
@@ -431,11 +429,11 @@ class CompiledProgram(object):
         self._persistable_vars = list(set(self._persistable_vars))
         self._persistable_vars.sort()
 
-        return core.ParallelExecutor(
-            places, self._persistable_vars,
-            cpt.to_text(self._loss_name) if self._loss_name else six.u(''),
-            self._scope, self._local_scopes, self._exec_strategy,
-            self._build_strategy, self._graph)
+        return core.ParallelExecutor(places, self._persistable_vars,
+                                     self._loss_name if self._loss_name else '',
+                                     self._scope, self._local_scopes,
+                                     self._exec_strategy, self._build_strategy,
+                                     self._graph)
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)

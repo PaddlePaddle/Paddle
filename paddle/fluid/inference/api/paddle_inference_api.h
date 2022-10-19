@@ -47,7 +47,6 @@ namespace paddle_infer {
 using PrecisionType = paddle::AnalysisConfig::Precision;
 using Config = paddle::AnalysisConfig;
 using DistConfig = paddle::DistConfig;
-using BackendType = paddle::AnalysisConfig::Backend;
 
 ///
 /// \class Predictor
@@ -208,7 +207,7 @@ PD_INFER_DECL void ConvertToMixedPrecision(
     const std::string& mixed_model_file,
     const std::string& mixed_params_file,
     PrecisionType mixed_precision,
-    BackendType backend,
+    PlaceType backend,
     bool keep_io_types = true,
     std::unordered_set<std::string> black_list = {});
 

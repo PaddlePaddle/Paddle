@@ -23,7 +23,7 @@
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
@@ -35,8 +35,8 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
                         "Interpolation method can only be \"linear\" when"
                         "Input(X) dimension is 3, but got method = %s .",
                         interp_method));
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -124,8 +124,8 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
                         "or \"nearest\" or \"bicubic\" when "
                         "Input(X) dimension is 4, but got method is %s.",
                         interp_method));
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -219,8 +219,8 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
           "Interpolation method can only be \"trilinear\" when Input(X) "
           "dimension is 5, but got method = %s .",
           interp_method));
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -348,15 +348,15 @@ class InterpolateOp : public framework::OperatorWithKernel {
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+        (tensor.layout() != phi::DataLayout::kMKLDNN)) {
       auto attrs = Attrs();
       auto ar = paddle::framework::AttrReader(attrs);
       const std::string data_format = ar.Get<std::string>("data_layout");
-      auto dl = framework::StringToDataLayout(data_format);
+      auto dl = phi::StringToDataLayout(data_format);
       // Some models may have intentionally set "AnyLayout" for pool
       // op. Treat this as NCHW (default data_format value)
-      if (dl != framework::DataLayout::kAnyLayout) {
+      if (dl != phi::DataLayout::kAnyLayout) {
         return framework::OpKernelType(
             expected_kernel_type.data_type_, tensor.place(), dl);
       }

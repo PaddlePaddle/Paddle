@@ -15,7 +15,6 @@
 import paddle.fluid as fluid
 import numpy as np
 import unittest
-import six
 
 
 class TestInferencePartialFeed(unittest.TestCase):
@@ -57,7 +56,7 @@ class TestInferencePartialFeed(unittest.TestCase):
             np.testing.assert_array_equal(merged, unmerged)
 
         def feed_split_test():
-            for place_num in six.moves.range(1, len(places) * 3):
+            for place_num in range(1, len(places) * 3):
                 x_np = gen_random([place_num, self.size])
                 y_np = gen_random([place_num, self.size])
                 if not lr.persistable or place_num <= len(places):
@@ -87,12 +86,12 @@ class TestInferencePartialFeed(unittest.TestCase):
                     self.assertTrue(np.all(expected_relu_lr_np == relu_lr_np))
 
         def feed_list_test():
-            for place_num in six.moves.range(1, len(places) + 1):
+            for place_num in range(1, len(places) + 1):
                 x_np_list = []
                 y_np_list = []
                 lr_np_list = []
                 feed_list = []
-                for _ in six.moves.range(place_num):
+                for _ in range(place_num):
                     x_np = gen_random([1, self.size])
                     y_np = gen_random([1, self.size])
                     lr_np = gen_random([1])
@@ -131,7 +130,7 @@ class TestInferencePartialFeed(unittest.TestCase):
                 assert_result(y_np, relu_y_np)
                 assert_result(lr_np, relu_lr_np)
 
-        for _ in six.moves.range(self.iterations):
+        for _ in range(self.iterations):
             if use_split:
                 feed_split_test()
             else:
@@ -160,7 +159,7 @@ class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
     def create_reader(self):
 
         def __impl__():
-            for _ in six.moves.range(self.batch_num):
+            for _ in range(self.batch_num):
                 yield np.random.random([self.batch_size, 1]).astype('float32'),
 
         return __impl__
@@ -185,7 +184,7 @@ class TestInferencePartialFeedUsingDataLoader(unittest.TestCase):
         loader.set_batch_generator(self.create_reader(),
                                    places=places if iterable else None)
 
-        for _ in six.moves.range(self.epoch_num):
+        for _ in range(self.epoch_num):
             actual_batch_num = 0
             if loader.iterable:
                 for feed_data in loader():

@@ -16,7 +16,7 @@ import re
 import warnings
 import string
 
-from six.moves import cStringIO
+from io import StringIO
 from ..static import Variable
 from ..fluid.proto import framework_pb2
 from ..framework import OpProtoHolder, _non_static_mode, convert_np_dtype_to_dtype_, core, in_dygraph_mode
@@ -76,7 +76,7 @@ def _generate_doc_string_(op_proto,
     if not isinstance(op_proto, framework_pb2.OpProto):
         raise TypeError("OpProto should be `framework_pb2.OpProto`")
 
-    buf = cStringIO()
+    buf = StringIO()
     buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:
