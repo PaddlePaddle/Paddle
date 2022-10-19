@@ -512,6 +512,17 @@ def _dygraph_only_(func):
     return __impl__
 
 
+def _non_static_only_(func):
+
+    def __impl__(*args, **kwargs):
+        from .dygraph.base import in_declarative_mode
+        assert _non_static_mode() or in_declarative_mode(
+        ), "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
 def _static_only_(func):
 
     def __impl__(*args, **kwargs):
@@ -571,6 +582,7 @@ dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
 static_only = wrap_decorator(_static_only_)
 fake_interface_only = wrap_decorator(_fake_interface_only_)
+non_static_only = wrap_decorator(_non_static_only_)
 
 
 def _dygraph_tracer():
@@ -3655,8 +3667,8 @@ class Block(object):
         Rename variable in vars and ops' inputs and outputs
 
         Args:
-            name(bytes): the name that need to be renamed.
-            new_name(bytes): the name that need to rename to.
+            name(str|bytes): the name that need to be renamed.
+            new_name(str|bytes): the name that need to rename to.
 
         Raises:
             ValueError: If this block doesn't have this the giving name,
@@ -3666,8 +3678,10 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
-        name = name.decode()
-        new_name = new_name.decode()
+        # Ensure the type of name and new_name is str
+        name = name.decode() if isinstance(name, bytes) else name
+        new_name = new_name.decode() if isinstance(new_name,
+                                                   bytes) else new_name
 
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)
@@ -6563,10 +6577,6 @@ class Parameter(Variable, metaclass=ParameterMetaClass):
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
 
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
-
         for each in shape:
             if each < 0:
                 raise ValueError(
@@ -6665,10 +6675,6 @@ class ParamBase(core.VarBase):
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
-
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:
@@ -6811,10 +6817,6 @@ class EagerParamBase(_core_eager_eagertensor):
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
-
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:

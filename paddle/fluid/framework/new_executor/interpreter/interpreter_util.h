@@ -81,6 +81,8 @@ void BuildOpFuncList(const platform::Place& place,
 void AddFetch(const std::vector<std::string>& fetch_names,
               framework::BlockDesc* block);
 
+bool IsCommunicationOp(const std::string& op_name);
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle
