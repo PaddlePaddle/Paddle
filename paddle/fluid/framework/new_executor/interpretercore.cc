@@ -254,10 +254,10 @@ paddle::framework::FetchList InterpreterCore::Run(
         HasLocalScope(),
         execution_config_.used_for_jit,
         execution_config_.used_for_control_flow_op);
-    is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    is_build_ = true;
   } else {
     // For the program that only run once, it is no need to
     // create work_queue, so the async_work_queue_ is created
@@ -323,9 +323,10 @@ void InterpreterCore::reset_scope(Scope* new_scope) {
     const auto& var_name = var_scope_.GetNameById(i);
     var_list[i] = new_scope->FindVar(var_name);
   }
-  // must assure the index is valid, cause the interpreterCore may not be fully
-  // built, but was still cached and used.
-  // For example, see unit test `test_assert.py`. 
+  // The index should assured valid, cause the InterpreterCore may not be fully
+  // built, but was still cached and used. For example, see unit test
+  // `test_assert.py`, it may exit before `InterpreterCore::Convert`, but still
+  // was cached and used by later tests.
   for (size_t i = 0; i < std::min(refs_.size(), var_list.size()); i++) {
     refs_[i]->ResetVariable(var_list[i]);
   }
@@ -1123,10 +1124,10 @@ void InterpreterCore::Prepare(const std::vector<std::string>& feed_names,
         HasLocalScope(),
         execution_config_.used_for_jit,
         execution_config_.used_for_control_flow_op);
-    is_build_ = true;
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
+    is_build_ = true;
   }
   // NOTE: Because feed_tensor will be GC after
   // paddle::framework::BuildOpFuncList, so we should
