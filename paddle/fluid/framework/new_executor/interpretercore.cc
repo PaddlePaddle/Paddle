@@ -322,8 +322,14 @@ void InterpreterCore::reset_scope(Scope* new_scope) {
   for (size_t i = 0; i < var_list.size(); i++) {
     const auto& var_name = var_scope_.GetNameById(i);
     var_list[i] = new_scope->FindVar(var_name);
+  }
+  // must assure the index is valid, cause the interpreterCore may not be fully
+  // built, but was still cached and used.
+  // For example, see unit test `test_assert.py`. 
+  for (size_t i = 0; i < std::min(refs_.size(), var_list.size()); i++) {
     refs_[i]->ResetVariable(var_list[i]);
   }
+
   for (size_t i = 0; i < vec_instruction_.size(); i++) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i]);
   }
