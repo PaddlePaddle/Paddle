@@ -34,15 +34,11 @@ class ESC50(AudioClassificationDataset):
         ESC: Dataset for Environmental Sound Classification
         http://dx.doi.org/10.1145/2733373.2806390
 
-    Ags:
-            mode (str, optional):
-                It identifies the dataset mode (train or dev). Default:train.
-            split (int, optional):
-                It specify the fold of dev dataset. Default:1.
-            feat_type (str, optional):
-                It identifies the feature type that user wants to extrace of an audio file. Default:raw.
-            archive(dict, optional):
-                it tells where to download the audio archive. Default:None.
+    Args:
+       mode (str, optional): It identifies the dataset mode (train or dev). Default:train.
+       split (int, optional): It specify the fold of dev dataset. Default:1.
+       feat_type (str, optional): It identifies the feature type that user wants to extrace of an audio file. Default:raw.
+       archive(dict, optional): it tells where to download the audio archive. Default:None.
 
     Returns:
         :ref:`api_paddle_io_Dataset`. An instance of ESC50 dataset.

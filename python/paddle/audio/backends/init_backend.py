@@ -134,9 +134,7 @@ def set_backend(backend_name: str):
     """Set the backend by one of the list_audio_backend return.
 
     Args:
-        backend (str): one of the list_audio_backend.
-        "wave_backend" is the default.
-        "soundfile" imported from paddleaudio.
+        backend (str): one of the list_audio_backend. "wave_backend" is the default. "soundfile" imported from paddleaudio.
 
     Examples:
         .. code-block:: python
