@@ -511,8 +511,10 @@ void ReplaceAllReduceOp(const Node &node,
                         std::vector<OpDesc> *ops) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   bool is_fused = (node.Name() == "fused_all_reduce");
+
   details::OpHandleBase &op_handle =
       const_cast<Node *>(&node)->Wrapper<details::OpHandleBase>();
+  auto &in_var_handles = op_handle.Inputs();
 
   // Even if PADDLE_WITH_NCCL is defined, if the program runs on CPU,
   // nccl_ctxs_ in NCCLOpHandleBase will be nullptr, and calling the
@@ -537,7 +539,6 @@ void ReplaceAllReduceOp(const Node &node,
             << all_reduce_var_name;
 
     // get inputs of check_memory_continue
-    auto in_var_handles = op_handle.Inputs();
     std::vector<std::string> in_names;
     for (const auto &in : in_var_handles) {
       if (dynamic_cast<details::DummyVarHandle *>(in) != nullptr) {
@@ -555,7 +556,7 @@ void ReplaceAllReduceOp(const Node &node,
     fuse_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                          (static_cast<int>(OpRole::kBackward)));
   } else {
-    all_reduce_var_name = op_handle.Inputs()[0]->Name();
+    all_reduce_var_name = in_var_handles[0]->Name();
   }
 
   // add c_allreduce_sum OP
@@ -568,7 +569,7 @@ void ReplaceAllReduceOp(const Node &node,
   int ring_id = platform::NCCLCommContext::Instance().GetRingId(
       dynamic_cast<details::NCCLOpHandleBase *>(&op_handle)->GetComm());
   all_reduce_op_desc.SetAttr("ring_id", ring_id);
-  all_reduce_op_desc.SetAttr("use_calc_stream", true);
+  all_reduce_op_desc.SetAttr("use_calc_stream", false);
   all_reduce_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                              (static_cast<int>(OpRole::kBackward)));
 
@@ -585,6 +586,34 @@ void ReplaceAllReduceOp(const Node &node,
         dynamic_cast<details::GradMergeAllReduceOpHandle *>(&op_handle)
             ->GradMergeCondName();
     all_reduce_op_desc.SetInput("Cond", {cond_name});
+  }
+
+  // Add dependency for FusedAllReduce.
+  // For the following example:
+  // ### fused_grad = FusedAllReduce(grad0, grad1, grad2, ...)
+  // ### v0 = op0(grad0)
+  // ### v1 = op1(grad1)
+  // It is converted to:
+  // ### fused_grad = check_memory_continue(grad0, grad1, grad2, ...)
+  // ### fused_grad = c_sum_allreduce(fused_grad)
+  // ### v0 = op0(grad0)
+  // ### v1 = op1(grad1)
+  // We should add the following dependency to ensure that op0 and op1 both run
+  // afer c_sum_allreduce:
+  // ### grad0 =  depend(grad0, fused_grad)
+  // ### grad1 = depend(grad1, fused_grad)
+  if (is_fused) {
+    for (const auto &in : in_var_handles) {
+      if (dynamic_cast<details::DummyVarHandle *>(in) != nullptr) {
+        continue;
+      }
+      ops->emplace_back();
+      OpDesc &depend_op_desc = ops->back();
+      depend_op_desc.SetType("depend");
+      depend_op_desc.SetInput("X", {in->Name()});
+      depend_op_desc.SetInput("Dep", {all_reduce_var_name});
+      depend_op_desc.SetOutput("Out", {in->Name()});
+    }
   }
 #else
   PADDLE_THROW(
