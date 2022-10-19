@@ -69,13 +69,15 @@ from . import cloud_utils  # noqa: F401
 from .sharding import group_sharded_parallel  # noqa: F401
 from .sharding import save_group_sharded_model  # noqa: F401
 
+from . import rpc
+
 __all__ = [  # noqa
     "spawn", "launch", "scatter", "broadcast", "ParallelEnv", "new_group",
     "init_parallel_env", "gloo_init_parallel_env", "gloo_barrier",
     "gloo_release", "QueueDataset", "split", "CountFilterEntry",
     "ShowClickEntry", "get_world_size", "get_group", "all_gather",
     "all_gather_object", "InMemoryDataset", "barrier", "all_reduce", "alltoall",
-    "send", "reduce", "recv", "ReduceOp", "wait", "get_rank",
-    "ProbabilityEntry", "ParallelMode", "is_initialized", "isend", "irecv",
-    "reduce_scatter"
+    "alltoall_single", "send", "reduce", "recv", "ReduceOp", "wait", "get_rank",
+    "ProbabilityEntry", "ParallelMode", "is_initialized",
+    "destroy_process_group", "isend", "irecv", "reduce_scatter", "rpc", "stream"
 ]

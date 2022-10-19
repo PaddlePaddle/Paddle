@@ -23,7 +23,6 @@ from functools import reduce
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-import paddle.compat as cpt
 
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
@@ -593,7 +592,7 @@ def ps_gpu_pass(program):
             if op.type != "pull_box_sparse" and op.type != "pull_gpups_sparse":
                 continue
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, cpt.to_text(set()), [])
+                op.desc, set(), [])
             for op_desc in grad_op_desc:
                 new_op_desc = program.global_block().desc.append_op()
                 new_op_desc.copy_from(op_desc)

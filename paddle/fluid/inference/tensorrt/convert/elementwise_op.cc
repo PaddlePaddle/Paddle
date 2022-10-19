@@ -216,6 +216,10 @@ REGISTER_TRT_OP_CONVERTER(elementwise_sub_weight,
                           ElementwiseTensorSubOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_div_weight,
                           ElementwiseTensorDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_max_weight,
+                          ElementwiseTensorMaxOpConverter);
+REGISTER_TRT_OP_CONVERTER(elementwise_min_weight,
+                          ElementwiseTensorMinOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_pow_weight,
                           ElementwiseTensorPowOpConverter);
 

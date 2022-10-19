@@ -15,7 +15,6 @@
 from collections import OrderedDict
 
 import paddle
-from paddle import compat as cpt
 from paddle.fluid import framework as framework
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
@@ -220,7 +219,7 @@ class Transform(object):
         block = self.block
         for var in vars_to_erase:
             name = var.name
-            block.desc._remove_var(cpt.to_bytes(name))
+            block.desc._remove_var(name.encode())
             del block.vars[name]
         block._sync_with_cpp()
 
@@ -512,7 +511,7 @@ def _lower(block, reverse, blacklist):
         assert var_name in to_bind_rev, 'var_name "{}" is not in to_bind_rev.'.format(
             var_name)
         if var_name != to_bind_rev[var_name]:
-            block.desc._remove_var(cpt.to_bytes(var_name))
+            block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
     block._sync_with_cpp()
 

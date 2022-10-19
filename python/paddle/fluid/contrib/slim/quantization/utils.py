@@ -334,9 +334,11 @@ def quant_tensor(x, scale, quant_axis=0, weight_bits=8, onnx_format=False):
         x[x < -scale] = -scale
         return x
 
-    assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
     bnt = (1 << (weight_bits - 1)) - 1
+    if isinstance(scale, list) and len(scale) == 1:
+        scale = scale[0]
     if isinstance(scale, list):
+        assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
         for i, s in enumerate(scale):
             if s == 0.0:
                 s = 1e-8
