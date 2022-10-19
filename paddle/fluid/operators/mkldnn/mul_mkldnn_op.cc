@@ -487,13 +487,12 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
   }
 };
 
-template <typename XT, typename YT>
-class MulGradMKLDNNKernel : public MulMKLDNNKernel<XT, YT> {
+template <typename XT>
+class MulGradMKLDNNKernel : public MulMKLDNNKernel<XT, XT> {
  public:
   void Compute(const ExecutionContext &ctx) const override { RunKernel(ctx); }
 
  private:
-  template <typename OT = XT>
   void RunKernel(const ExecutionContext &ctx) const {
     const auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto &onednn_engine = dev_ctx.GetEngine();
@@ -607,19 +606,8 @@ REGISTER_OP_KERNEL(mul,
                                         paddle::platform::bfloat16>,
                    ops::MulMKLDNNKernel<float, float>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(mul_grad,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FP32,
-                                    ops::kMULMKLDNNFP32,
-                                    ops::MulGradMKLDNNKernel<float, float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    mul_grad,
-    MKLDNN,
-    ::paddle::platform::CPUPlace,
-    BF16,
-    ops::kMULMKLDNNFP32,
-    ops::MulGradMKLDNNKernel<paddle::platform::bfloat16,
-                             paddle::platform::bfloat16>,
-    ops::MulGradMKLDNNKernel<float, float>);
+REGISTER_OP_KERNEL(mul_grad,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::MulGradMKLDNNKernel<paddle::platform::bfloat16>,
+                   ops::MulGradMKLDNNKernel<float, float>);
