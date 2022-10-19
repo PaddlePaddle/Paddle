@@ -102,7 +102,7 @@ class DygraphToStaticAst(BaseTransformer):
             PrintTransformer,  # print statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
-            GradTransformer,  # transform paddle.grad to paddle.gradients
+            #GradTransformer,  # transform paddle.grad to paddle.gradients
             DecoratorTransformer,  # transform decorators to function call
         ]
 
