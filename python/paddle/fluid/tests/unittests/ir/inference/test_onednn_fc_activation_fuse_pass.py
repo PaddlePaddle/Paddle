@@ -72,6 +72,13 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                                      inputs={"X": ["fc_output"]},
                                      outputs={"Out": ["activation_output"]},
                                      threshold=6)
+        elif activation_type == "scale":
+            activation_op = OpConfig(activation_type,
+                                     inputs={"X": ["fc_output"]},
+                                     outputs={"Out": ["activation_output"]},
+                                     scale=draw(
+                                         st.sampled_from([0.125, 0.4, 0.875,
+                                                          2])))
         elif activation_type == "swish":
             activation_op = OpConfig(activation_type,
                                      inputs={"X": ["fc_output"]},
@@ -105,11 +112,18 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True, passes=["fc_act_mkldnn_fuse_pass"])
+            use_mkldnn=True,
+            passes=[
+                "fc_act_mkldnn_fuse_pass", "operator_scale_onednn_fuse_pass"
+            ])
         yield config, ["fc"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False, passes=["fc_act_mkldnn_fuse_pass"])
+        self.run_and_statis(quant=False,
+                            passes=[
+                                "fc_act_mkldnn_fuse_pass",
+                                "operator_scale_onednn_fuse_pass"
+                            ])
 
 
 if __name__ == "__main__":

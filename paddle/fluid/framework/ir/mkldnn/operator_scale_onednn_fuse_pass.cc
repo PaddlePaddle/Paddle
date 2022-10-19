@@ -76,7 +76,7 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
       scale = *(scale_tensor->data<float>());
     }
 
-    operator_op->Op()->SetAttr("scale_output", scale);
+    operator_op->Op()->SetAttr("fused_output_scale", scale);
     operator_op->Op()->SetOutput("Out", {scale_out->Name()});
 
     IR_OP_VAR_LINK(operator_op, scale_out);
