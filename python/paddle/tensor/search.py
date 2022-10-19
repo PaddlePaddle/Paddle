@@ -865,7 +865,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     if in_dygraph_mode():
         if axis == None:
             axis = -1
-        out, indices = _C_ops.top_k(x, k, axis, largest, sorted)
+        out, indices = _C_ops.topk(x, k, axis, largest, sorted)
         return out, indices
 
     if _non_static_mode():

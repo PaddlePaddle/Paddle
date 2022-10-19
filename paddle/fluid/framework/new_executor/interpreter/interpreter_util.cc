@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 
 #include <algorithm>
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
@@ -49,6 +49,38 @@ namespace framework {
 namespace interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
+
+// NOTE(Ruibiao): SingleStreamGuard make some multi-strem op (i.e.,
+// c_allreduce_sum) run in single stream. It is dedicated to BuildOpFuncList
+// which run kernel without stream synchronization.
+class SingleStreamGuard {
+ public:
+  explicit SingleStreamGuard(std::shared_ptr<OperatorBase>& op) : op_(op) {
+    if (op_->Type() == "c_allreduce_sum" &&
+        op_->Attr<bool>("use_calc_stream") == false) {
+      VLOG(6) << "Set c_allredce_sum's attr use_calc_stream to true";
+      op_->SetAttr("use_calc_stream", true);
+      is_changed = true;
+    }
+  }
+
+  ~SingleStreamGuard() {
+    if (!is_changed) {
+      return;
+    }
+
+    if (op_->Type() == "c_allreduce_sum") {
+      op_->SetAttr("use_calc_stream", false);
+      VLOG(6) << "Set c_allredce_sum's attr use_calc_stream to false";
+    }
+  }
+
+  DISABLE_COPY_AND_ASSIGN(SingleStreamGuard);
+
+ private:
+  bool is_changed{false};
+  std::shared_ptr<OperatorBase> op_;
+};
 
 const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
     size_t host_num_threads, size_t device_num_threads, EventsWaiter* waiter) {
@@ -496,6 +528,9 @@ void BuildOpFuncList(const platform::Place& place,
     op_func_node.operator_base_ = ops[i];
     op_func_node.input_index = ins_name2id;
     op_func_node.output_index = outs_name2id;
+
+    SingleStreamGuard single_stream_guard(ops[i]);
+
     VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -539,16 +574,13 @@ void BuildOpFuncList(const platform::Place& place,
 
         auto& pool = platform::DeviceContextPool::Instance();
         auto* dev_ctx = pool.Get(place);
-        VLOG(4) << "get dev_ctx";
         auto exec_ctx = ExecutionContext(
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
-        VLOG(4) << "get exec_ctx";
         auto expected_kernel_key =
             op_with_kernel->GetExpectedKernelType(exec_ctx);
-        VLOG(4) << "get expected_kernel_key";
+        VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
         // change device by the device_guard()
         ApplyDeviceGuard(op, place, &expected_kernel_key);
-        VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
 
         // step 2. select op kernel
         auto run_phi_kernel = false;
@@ -745,6 +777,21 @@ void AddFetch(const std::vector<std::string>& fetch_names,
     op->CheckAttrs();
     i++;
   }
+}
+
+bool IsCommunicationOp(const std::string& op_name) {
+  const std::set<std::string> special_comm_op_set = {
+      "send",
+      "recv",
+      "send_v2",
+      "recv_v2",
+  };
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  return false;
 }
 
 }  // namespace interpreter

@@ -513,6 +513,17 @@ def _dygraph_only_(func):
     return __impl__
 
 
+def _non_static_only_(func):
+
+    def __impl__(*args, **kwargs):
+        from .dygraph.base import in_declarative_mode
+        assert _non_static_mode() or in_declarative_mode(
+        ), "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
 def _static_only_(func):
 
     def __impl__(*args, **kwargs):
@@ -572,6 +583,7 @@ dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
 static_only = wrap_decorator(_static_only_)
 fake_interface_only = wrap_decorator(_fake_interface_only_)
+non_static_only = wrap_decorator(_non_static_only_)
 
 
 def _dygraph_tracer():
@@ -1390,11 +1402,10 @@ class Variable(object):
         self.error_clip = error_clip
 
         is_new_var = False
-        name = cpt.to_text(name)
-        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
+        self.desc = self.block.desc.find_var(name.encode())
 
         if self.desc is None:
-            self.desc = self.block.desc.var(cpt.to_bytes(name))
+            self.desc = self.block.desc.var(name.encode())
             is_new_var = True
 
         if is_new_var:
@@ -1757,8 +1768,7 @@ class Variable(object):
         if with_details:
             additional_attr = ("error_clip", )
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name,
-                                         cpt.to_text(getattr(self, attr_name)))
+                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
 
         return res_str
 
@@ -1900,7 +1910,7 @@ class Variable(object):
                                                 dtype='float32')
             print("name of current Var is: {}".format(new_variable.name))
         """
-        return cpt.to_text(self.desc.name())
+        return self.desc.name()
 
     @property
     def grad_name(self):
@@ -2807,7 +2817,7 @@ class Operator(object):
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
                             elif isinstance(arg, (Variable, core.VarBase)):
-                                in_arg_names.append(cpt.to_text(arg.name))
+                                in_arg_names.append(arg.name)
                             else:
                                 raise TypeError(
                                     "The type of '%s' in operator %s should be "
@@ -2843,7 +2853,7 @@ class Operator(object):
                         if isinstance(arg, six.string_types):
                             out_arg_names.append(arg)
                         else:
-                            out_arg_names.append(cpt.to_text(arg.name))
+                            out_arg_names.append(arg.name)
                         # TODO(minqiyang): could we remove variable's op in static mode?
                         if not _non_static_mode():
                             if isinstance(arg, six.string_types):
@@ -3660,8 +3670,8 @@ class Block(object):
         Rename variable in vars and ops' inputs and outputs
 
         Args:
-            name(str): the name that need to be renamed.
-            new_name(str): the name that need to rename to.
+            name(str|bytes): the name that need to be renamed.
+            new_name(str|bytes): the name that need to rename to.
 
         Raises:
             ValueError: If this block doesn't have this the giving name,
@@ -3671,8 +3681,10 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
-        name = cpt.to_text(name)
-        new_name = cpt.to_text(new_name)
+        # Ensure the type of name and new_name is str
+        name = name.decode() if isinstance(name, bytes) else name
+        new_name = new_name.decode() if isinstance(new_name,
+                                                   bytes) else new_name
 
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)
@@ -3691,9 +3703,9 @@ class Block(object):
         else:
             raise ValueError("unsupported var type: %s", type(v))
         orig_var_type = v.type
-        self.desc._rename_var(cpt.to_bytes(name), cpt.to_bytes(new_name))
+        self.desc._rename_var(name.encode(), new_name.encode())
         # NOTE: v is destroyed by C++ after calling _rename_var.
-        d = self.desc.find_var(cpt.to_bytes(new_name))
+        d = self.desc.find_var(new_name.encode())
         if var_type == "Parameter":
             if in_dygraph_mode():
                 var = EagerParamBase(d.shape(),
@@ -3744,7 +3756,7 @@ class Block(object):
     def _remove_var(self, name, sync=True):
         if sync == True:
             self._sync_with_cpp()
-        self.desc._remove_var(cpt.to_bytes(name))
+        self.desc._remove_var(name.encode())
         del self.vars[name]
 
     def create_parameter(self, *args, **kwargs):
@@ -3953,7 +3965,7 @@ class Block(object):
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
-            if not self.desc.find_var(cpt.to_bytes(var)):
+            if not self.desc.find_var(var.encode()):
                 self.vars.pop(var)
 
         # sync operators from cpp
@@ -5839,7 +5851,7 @@ class Program(object):
                 root_block._remove_op(0, read_op_idx + 1)
             for var in root_block.all_vars():
                 if var.type() == core.VarDesc.VarType.READER:
-                    root_block._remove_var(cpt.to_bytes(var.name()))
+                    root_block._remove_var(var.name().encode())
 
         # change all `is_test` attributes to True
         for i in six.moves.range(res.desc.num_blocks()):
@@ -6580,10 +6592,6 @@ class Parameter(Variable):
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
 
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
-
         for each in shape:
             if each < 0:
                 raise ValueError(
@@ -6643,8 +6651,7 @@ class Parameter(Variable):
             additional_attr = ("trainable", "optimize_attr", "regularizer",
                                "do_model_average", "need_clip")
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name,
-                                         cpt.to_text(getattr(self, attr_name)))
+                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str
@@ -6683,10 +6690,6 @@ class ParamBase(core.VarBase):
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
-
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:
@@ -6829,10 +6832,6 @@ class EagerParamBase(_core_eager_eagertensor):
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
-
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:

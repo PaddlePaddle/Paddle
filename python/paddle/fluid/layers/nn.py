@@ -12009,7 +12009,7 @@ def size(input):
     """
 
     if in_dygraph_mode():
-        return _C_ops.size(input)
+        return _C_ops.numel(input)
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.size(input)

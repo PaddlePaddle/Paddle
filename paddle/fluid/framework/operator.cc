@@ -997,7 +997,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
       return ((op_with_kernel.kernel_type()) &&
               (op_with_kernel.kernel_type()->data_layout_ ==
-               framework::DataLayout::kMKLDNN));
+               phi::DataLayout::kMKLDNN));
     } catch (const std::bad_cast& exp) {
       return false;
     }
@@ -2660,6 +2660,19 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
     const OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  // When the op is first oneDNN op (there was some non oneDNN op
+  // previously)
+  // then we also need to rotate shape NHWC -> NCWH
+  if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+      (tensor.layout() != phi::DataLayout::kMKLDNN) &&
+      paddle::platform::MKLDNNDeviceContext::tls()
+              .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(),
+                                   phi::DataLayout::kNHWC);
+  }
+#endif
   return OpKernelType(
       expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
