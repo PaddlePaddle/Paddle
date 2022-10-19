@@ -610,4 +610,4 @@ REGISTER_OP_KERNEL(mul_grad,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    ops::MulGradMKLDNNKernel<paddle::platform::bfloat16>,
-                   ops::MulGradMKLDNNKernel<float, float>);
+                   ops::MulGradMKLDNNKernel<float>);
