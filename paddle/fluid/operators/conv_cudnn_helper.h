@@ -713,7 +713,6 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
         result.exhaustive_search = t.exhaustive_search;
       }
       if (!result.exhaustive_search) {
-        bool need_update_cache = false;
         // In conv2d_tranpose, enable_autotune is set to false because some
         // algorithm picked by exhaustive search method produce wrong result.
         use_autotune = enable_autotune &&
@@ -724,17 +723,18 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
           result =
               SearchAlgorithmBase<PerfT>::template FindAlgoExhaustiveSearch<T>(
                   args, ctx);
-          need_update_cache = true;
+          cache.Set(key,
+                    phi::autotune::ConvAutoTuneResult(
+                        static_cast<int64_t>(result.algo),
+                        result.workspace_size,
+                        true));
         } else if (!find_in_cache) {
-          result = SearchAlgorithmBase<PerfT>::FindAlgoHeuristic(args, ctx);
-          need_update_cache = true;
-        }
-        if (need_update_cache) {
-          phi::autotune::ConvAutoTuneResult node(
-              static_cast<int64_t>(result.algo),
-              result.workspace_size,
-              exhaustive_search || use_autotune);
-          cache.Set(key, node);
+          result = FindAlgoHeuristic(args, ctx);
+          cache.Set(key,
+                    phi::autotune::ConvAutoTuneResult(
+                        static_cast<int64_t>(result.algo),
+                        result.workspace_size,
+                        false));
         }
       }
     }
