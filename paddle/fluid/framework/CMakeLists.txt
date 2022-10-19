@@ -1165,10 +1165,15 @@ cc_library(
   save_load_util
   SRCS save_load_util.cc
   DEPS tensor scope layer)
-cc_test(
+cc_test_old(
   save_load_util_test
-  SRCS save_load_util_test.cc
-  DEPS save_load_util tensor scope layer)
+  SRCS
+  save_load_util_test.cc
+  DEPS
+  save_load_util
+  tensor
+  scope
+  layer)
 cc_library(
   generator
   SRCS generator.cc

@@ -44,7 +44,7 @@ get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
 
 list(LENGTH test_names len)
 if(${len} GREATER_EQUAL 1)
-  message("1111")
+  message("Total tests: ${len}")
   math(EXPR stop "${len} - 1")
   foreach(idx RANGE ${stop})
     if(WITH_TESTING)
@@ -52,7 +52,9 @@ if(${len} GREATER_EQUAL 1)
       list(GET test_names ${idx} test_name)
       get_property(test_arg GLOBAL PROPERTY "${test_name}_ARGS")
       message("add test ${test_name}")
-      cc_test_build(${test_name} SRCS ${test_src})
+      add_executable(${test_name} ${test_src})
+      target_link_libraries(
+        ${test_name} ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/libpaddle.so)
       add_dependencies(${test_name} ${paddle_lib})
       if(NOT
          ("${test_names}" STREQUAL "c_broadcast_op_npu_test"

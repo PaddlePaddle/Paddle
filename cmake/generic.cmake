@@ -457,16 +457,29 @@ function(cc_test_build TARGET_NAME)
       endif()
     endif()
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS}
-                          ${os_dependency_modules} paddle_gtest_main)
-    add_dependencies(${TARGET_NAME} paddle_gtest_main)
+    target_link_libraries(
+      ${TARGET_NAME}
+      ${cc_test_DEPS}
+      ${os_dependency_modules}
+      paddle_gtest_main
+      lod_tensor
+      memory
+      gtest
+      gflags
+      glog)
+    add_dependencies(
+      ${TARGET_NAME}
+      ${cc_test_DEPS}
+      paddle_gtest_main
+      lod_tensor
+      memory
+      gtest
+      gflags
+      glog)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
     endif()
-
-    target_link_libraries(${TARGET_NAME}
-                          ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/libpaddle.so)
     check_coverage_opt(${TARGET_NAME} ${cc_test_SRCS})
   endif()
 endfunction()
