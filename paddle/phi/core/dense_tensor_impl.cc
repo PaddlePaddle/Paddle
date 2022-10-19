@@ -68,9 +68,7 @@ const Place& DenseTensor::place() const {
 
 paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
 
-void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
-  meta_.layout = layout;
-}
+void DenseTensor::set_layout(const DataLayout layout) { meta_.layout = layout; }
 
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
