@@ -21,17 +21,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/ternary.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
 
-constexpr int kMULMKLDNNINT8 = 1;
-
 using framework::OpKernelType;
-using framework::Tensor;
 
 class AddMMOp : public framework::OperatorWithKernel {
  public:
@@ -40,21 +34,6 @@ class AddMMOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      int customized_type_value =
-          framework::OpKernelType::kDefaultCustomizedTypeValue;
-      if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
-          input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
-        customized_type_value = kMULMKLDNNINT8;
-      }
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN,
-                                     customized_type_value);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };

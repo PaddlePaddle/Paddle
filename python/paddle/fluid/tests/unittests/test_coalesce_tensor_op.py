@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -133,7 +131,7 @@ class TestAllocContinuousSpace(OpTest):
             np.testing.assert_allclose(self.outputs['FusedOutput'],
                                        eager_fused_output,
                                        atol=1e-5,
-                                       err_msg=f'not equal fusedoutput')
+                                       err_msg='not equal fusedoutput')
 
     def test_check_output(self):
         self.check_output_with_place(place=core.CUDAPlace(0),

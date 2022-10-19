@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import os
@@ -28,9 +26,6 @@ import paddle.utils as utils
 from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.process_group import new_process_group
 
 paddle.enable_static()
 _global_parallel_strategy = None

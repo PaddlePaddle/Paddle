@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
 from paddle.device.cuda.graphs import CUDAGraph
 import unittest
 import numpy as np

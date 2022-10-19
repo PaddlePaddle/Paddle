@@ -16,8 +16,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 template <typename T>
 __global__ void KeTemporalShiftFwNCHW(const T* input,
                                       T* output,
@@ -162,13 +160,12 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
                       true,
                       platform::errors::InvalidArgument(
                           "This kernel only runs on GPU device."));
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     int t = ctx.Attr<int>("seg_num");
     float shift_ratio = ctx.Attr<float>("shift_ratio");
     const std::string data_format_str = ctx.Attr<std::string>("data_format");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_format_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
 
     const int nt = input->dims()[0];
     const int c = (data_layout == DataLayout::kNCHW ? input->dims()[1]
@@ -215,13 +212,14 @@ template <typename T>
 class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     int t = ctx.Attr<int>("seg_num");
     float shift_ratio = ctx.Attr<float>("shift_ratio");
     const std::string data_format_str = ctx.Attr<std::string>("data_format");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_format_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
 
     const int nt = output_grad->dims()[0];
     const int c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]

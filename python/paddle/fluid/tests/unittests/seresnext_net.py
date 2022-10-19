@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle.fluid as fluid
 
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
 import paddle
-import paddle.fluid.layers.ops as ops
 from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
 from simple_nets import init_data
 from seresnext_test_base import DeviceType
-import math
 import os
 
 os.environ['CPU_NUM'] = str(4)

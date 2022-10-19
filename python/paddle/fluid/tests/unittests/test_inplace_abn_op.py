@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import os
-import six
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import compiler
-import paddle.fluid.unique_name as unique_name
 import paddle
 
 

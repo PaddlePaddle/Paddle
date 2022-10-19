@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import logging
 import os
 import multiprocessing
@@ -29,7 +27,6 @@ from .framework import convert_np_dtype_to_dtype_, _apply_pass
 from . import core
 from . import unique_name
 from . import compiler
-from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
 import copy
@@ -1569,15 +1566,6 @@ class Executor(object):
                 compiled_program = program if isinstance(
                     program, compiler.CompiledProgram) else program._graph
 
-                # delete this code after supporting distribution
-                if compiled_program._build_strategy is not None and (
-                        compiled_program._build_strategy.is_distribution
-                        or compiled_program._build_strategy.num_trainers > 1):
-                    warnings.warn(
-                        "Standalone executor is not used for distribution",
-                        UserWarning)
-                    return use_standalone_executor_for_distribution
-
                 # Unsupported case 1: data parallel
                 if compiled_program._is_data_parallel and len(
                         compiled_program._get_places(
@@ -1676,7 +1664,7 @@ class Executor(object):
             else:
                 global_block = program.global_block()
             for varname in global_block.vars:
-                vardesc = global_block.desc.find_var(cpt.to_bytes(varname))
+                vardesc = global_block.desc.find_var(varname.encode())
                 varobj = global_block.vars[varname]
 
                 # Can not check var build by fluid.layers.data(), bucause fluid.layers.data() had not set need_check_feed

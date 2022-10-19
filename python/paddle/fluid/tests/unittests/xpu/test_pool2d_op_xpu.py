@@ -12,19 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-from __future__ import division
-
 import sys
 
 sys.path.append("..")
 import unittest
 import numpy as np
 
-import paddle.fluid.core as core
 from op_test_xpu import XPUOpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 from test_pool2d_op import adaptive_start_index, adaptive_end_index
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 import paddle
@@ -292,7 +286,6 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
                 'global_pooling': self.global_pool,
                 'use_cudnn': self.use_cudnn,
                 'use_mkldnn': self.use_mkldnn,
-                'ceil_mode': self.ceil_mode,
                 'data_format': self.data_format,
                 'exclusive': self.exclusive,
                 'adaptive': self.adaptive,

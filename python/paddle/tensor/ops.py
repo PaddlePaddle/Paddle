@@ -12,15 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import os
 from .layer_function_generator import generate_layer_fn, generate_activation_fn, generate_inplace_fn, add_sample_code
-from ..framework import core
-from ..framework import convert_np_dtype_to_dtype_
-from ..static import Variable
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.framework import in_dygraph_mode
-from .. import _C_ops, _legacy_C_ops
+from .. import _C_ops
 
 __deprecated_func_name__ = {
     'tanh_shrink': 'tanhshrink',

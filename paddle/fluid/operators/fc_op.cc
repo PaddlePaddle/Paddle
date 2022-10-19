@@ -136,7 +136,7 @@ class FCOp : public framework::OperatorWithKernel {
                                       : kFCMKLDNNFP32;
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN,
                                      customized_type_value);
     }

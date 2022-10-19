@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -21,7 +19,6 @@ import paddle.fluid.core as core
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.framework as framework
 
 
 def reference_unique_consecutive(X, return_inverse=False, return_counts=False):

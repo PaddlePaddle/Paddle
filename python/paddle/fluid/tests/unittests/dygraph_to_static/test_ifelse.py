@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 
@@ -23,7 +21,7 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTra
 from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 import paddle.fluid.core as core
 
-from ifelse_simple_func import *
+from ifelse_simple_func import NetWithControlFlowIf, add_fn, dyfunc_empty_nonlocal, dyfunc_ifelse_ret_int1, dyfunc_ifelse_ret_int2, dyfunc_ifelse_ret_int3, dyfunc_ifelse_ret_int4, dyfunc_with_if_else, dyfunc_with_if_else2, dyfunc_with_if_else3, dyfunc_with_if_else_with_list_geneator, fluid, if_tensor_case, if_with_and_or, if_with_and_or_1, if_with_and_or_2, if_with_and_or_3, if_with_and_or_4, if_with_class_var, loss_fn, nested_if_else, nested_if_else_2, nested_if_else_3
 
 np.random.seed(1)
 

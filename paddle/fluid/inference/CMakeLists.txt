@@ -38,7 +38,7 @@ endif()
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
-set(utils_modules stringpiece pretty_log string_helper benchmark)
+set(utils_modules pretty_log string_helper benchmark)
 
 if(WITH_CUSTOM_DEVICE)
   set(fluid_modules ${fluid_modules} phi_capi)
@@ -106,6 +106,10 @@ endif()
 if(WITH_PSCORE)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service
                             tensor_table)
+endif()
+
+if(WITH_INFERENCE_NVTX AND NOT WIN32)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} cuda_profiler)
 endif()
 
 if(WITH_ONNXRUNTIME)

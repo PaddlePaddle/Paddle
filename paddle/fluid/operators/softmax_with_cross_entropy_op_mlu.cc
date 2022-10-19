@@ -19,17 +19,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class SoftmaxWithCrossEntropyMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* logits = ctx.Input<Tensor>("Logits");
-    auto* labels = ctx.Input<Tensor>("Label");
-    auto* softmax = ctx.Output<Tensor>("Softmax");
-    auto* loss = ctx.Output<Tensor>("Loss");
-    auto* backprop = ctx.Output<Tensor>("Backprop");
+    auto* logits = ctx.Input<phi::DenseTensor>("Logits");
+    auto* labels = ctx.Input<phi::DenseTensor>("Label");
+    auto* softmax = ctx.Output<phi::DenseTensor>("Softmax");
+    auto* loss = ctx.Output<phi::DenseTensor>("Loss");
+    auto* backprop = ctx.Output<phi::DenseTensor>("Backprop");
     auto soft_label = ctx.Attr<bool>("soft_label");
 
     PADDLE_ENFORCE_EQ(ctx.Attr<bool>("use_softmax"),
@@ -103,7 +103,7 @@ class SoftmaxWithCrossEntropyMLUKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "If soft_label=False, axis must be -1 or"
                             " can be regard as last dimention in mlu kernel."));
-      framework::Tensor labels_int32(framework::TransToPhiDataType(VT::INT32));
+      phi::DenseTensor labels_int32(framework::TransToPhiDataType(VT::INT32));
       labels_int32.Resize(labels->dims());
       labels_int32.mutable_data<int32_t>(ctx.GetPlace());
 
@@ -142,9 +142,11 @@ template <typename T>
 class SoftmaxWithCrossEntropyGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* backprop = ctx.Input<Tensor>("Backprop");
-    auto* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
-    auto* logits_grad = ctx.Output<Tensor>(framework::GradVarName("Logits"));
+    auto* backprop = ctx.Input<phi::DenseTensor>("Backprop");
+    auto* loss_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
+    auto* logits_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
     PADDLE_ENFORCE_NOT_NULL(backprop,
                             platform::errors::PreconditionNotMet(
                                 "backprop should not be null in MLU kernel of "

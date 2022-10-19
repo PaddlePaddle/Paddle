@@ -511,20 +511,6 @@ function(op_library TARGET)
     # Append first implemented MKLDNN activation operator
     if(${MKLDNN_FILE} STREQUAL "activation_mkldnn_op")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, MKLDNN);\n")
-    elseif(${MKLDNN_FILE} STREQUAL "conv_mkldnn_op")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, S8);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, U8);\n")
-    elseif(${MKLDNN_FILE} STREQUAL "transpose_mkldnn_op")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, FP32);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, S8);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN, U8);\n")
     elseif(${MKLDNN_FILE} STREQUAL "fc_mkldnn_op")
       file(APPEND ${pybind_file}
            "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, FP32);\n")

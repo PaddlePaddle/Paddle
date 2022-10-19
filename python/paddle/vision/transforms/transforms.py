@@ -12,21 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import math
 import sys
 import random
 
 import numpy as np
 import numbers
-import types
 import collections
-import warnings
 import traceback
 
 import paddle
-from paddle.utils import try_import
 from . import functional as F
 
 if sys.version_info < (3, 3):
@@ -302,7 +297,7 @@ class ToTensor(BaseTransform):
 
     Converts a PIL.Image or numpy.ndarray (H x W x C) to a paddle.Tensor of shape (C x H x W).
 
-    If input is a grayscale image (H x W), it will be converted to a image of shape (H x W x 1).
+    If input is a grayscale image (H x W), it will be converted to an image of shape (H x W x 1).
     And the shape of output tensor will be (1 x H x W).
 
     If you want to keep the shape of output tensor as (H x W x C), you can set data_format = ``HWC`` .

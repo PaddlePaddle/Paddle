@@ -12,28 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import argparse
 import os
 import sys
-import signal
-import time
-import socket
-from contextlib import closing
-from six import string_types
-import math
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-import paddle.fluid.unique_name as nameGen
-from paddle.fluid import core
-import unittest
 import pickle
-from multiprocessing import Process
 import paddle.fluid.layers as layers
-from functools import reduce
 import test_collective_api_base as test_base
 
 paddle.enable_static()

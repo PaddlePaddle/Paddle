@@ -15,24 +15,17 @@
 import copy
 import time
 import logging
-from collections import defaultdict
 
-import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import _non_static_mode, unique_name
+from paddle.fluid.framework import unique_name
 from paddle.distributed.passes import new_pass
 
 from .reshard import Resharder
 from .partitioner import Partitioner
-from .dist_op import DistributedOperator
-from .dist_saver import DistributedSaver
-from .dist_loader import NonIterableGeneratorLoader
-from .utils import make_data_unshard, set_grad_var_shape
-from .utils import print_program_with_dist_attr, to_list
-from .utils import get_logger
-from .process_group import get_all_process_groups, get_world_process_group
-from .dist_context import DistributedContext, get_default_distributed_context
+from .utils import set_grad_var_shape
+from .process_group import get_world_process_group
+from ..utils.log_utils import get_logger
 
 
 class Parallelizer:
@@ -69,7 +62,7 @@ class Parallelizer:
             serial_main_program, serial_startup_program, params_grads = self._apply_pre_optimization(
                 serial_main_program, serial_startup_program, serial_loss,
                 serial_optimizer, params_grads)
-            self._logger.info(
+            self._logger.debug(
                 "within parallel apply_pre_optimization time: {}, mode {}".
                 format(time.time() - time0, self._mode))
             # Do logical partition
@@ -77,14 +70,14 @@ class Parallelizer:
             partitioner = Partitioner(self._dist_context, rank)
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, params_grads)
-            self._logger.info(
+            self._logger.debug(
                 "within parallel partitioner time: {}, mode {}".format(
                     time.time() - time0, self._mode))
             # Generate optimizer
             time0 = time.time()
             self._generate_optimizer(dist_main_prog, dist_startup_prog,
                                      serial_optimizer, dist_params_grads)
-            self._logger.info(
+            self._logger.debug(
                 "within parallel optimizer time: {}, mode {}".format(
                     time.time() - time0, self._mode))
             # Do reshard process
@@ -93,14 +86,14 @@ class Parallelizer:
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, dist_params_grads)
             resharder.reshard()
-            self._logger.info(
+            self._logger.debug(
                 "within parallel reshard time: {}, mode {}".format(
                     time.time() - time0, self._mode))
             # Apply post optimization passes
             time0 = time.time()
             self._apply_post_optimization(dist_main_prog, dist_startup_prog,
                                           rank, dist_params_grads)
-            self._logger.info(
+            self._logger.debug(
                 "within parallel apply_post_optimization time: {}, mode {}".
                 format(time.time() - time0, self._mode))
         else:
@@ -109,7 +102,7 @@ class Parallelizer:
             self._apply_pre_optimization(serial_main_program,
                                          serial_startup_program, None, None,
                                          None)
-            self._logger.info(
+            self._logger.debug(
                 "within parallel apply_pre_optimization time: {}, mode {}".
                 format(time.time() - time0, self._mode))
             # Do logical partition
@@ -118,14 +111,14 @@ class Parallelizer:
             dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
                 serial_main_program, serial_startup_program, [])
             # Do reshard process
-            self._logger.info(
+            self._logger.debug(
                 "within parallel partitioner time: {}, mode {}".format(
                     time.time() - time0, self._mode))
             time0 = time.time()
             resharder = Resharder(dist_main_prog, dist_startup_prog, rank,
                                   self._dist_context, [], 1)
             resharder.reshard()
-            self._logger.info(
+            self._logger.debug(
                 "within parallel reshard time: {}, mode {}".format(
                     time.time() - time0, self._mode))
         # Clone program for test
@@ -150,7 +143,7 @@ class Parallelizer:
         # NOTE: `apply_gradients` will add an Accumulator for a parameter only once,
         # but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
         optimizer = copy.deepcopy(optimizer)
-        self._dist_context._lr_optimizer = optimizer
+        self._dist_context._serial_optimizer = optimizer
         with program_guard(main_program, startup_program):
             with unique_name.guard("opt_"):
                 optimizer_ops = optimizer.apply_gradients(params_grads)
@@ -177,9 +170,7 @@ class Parallelizer:
             startup_program = self._pass_context.get_attr("startup_program")
             params_grads = self._pass_context.get_attr("params_grads")
 
-        # apply amp pass
-        # FIXME we disenable amp for eval since it has a little bug with
-        # eval program and which will be fixed in future
+        # apply amp pass on train/eval/predict
         if self._strategy.amp.enable:
             config = copy.deepcopy(self._strategy.amp.to_dict())
             config["dist_context"] = self._dist_context
@@ -192,10 +183,12 @@ class Parallelizer:
                 auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
                 auto_parallel_fp16_pass.apply([main_program], [startup_program],
                                               self._pass_context)
+                loss = auto_parallel_fp16_pass.get_loss()
             else:
                 auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
                 auto_parallel_amp_pass.apply([main_program], [startup_program],
                                              self._pass_context)
+                loss = auto_parallel_amp_pass.get_loss()
 
         # apply recompute pass
         # recompute is then train-only optimization

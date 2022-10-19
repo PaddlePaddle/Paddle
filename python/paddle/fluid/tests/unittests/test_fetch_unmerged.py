@@ -14,10 +14,8 @@
 
 import os
 import unittest
-import random
 import numpy as np
 import paddle.fluid as fluid
-import six
 import paddle
 
 os.environ["CPU_NUM"] = "2"

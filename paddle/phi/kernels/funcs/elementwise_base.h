@@ -760,8 +760,10 @@ __global__ void VectorizedElementwiseKernel(
     kps::IndexType main_offset,
     int read_lens,
     Functor func) {
-  kps::IndexType data_offset = BLOCK_ID_X * BLOCK_NUM_X * read_lens;
-  kps::IndexType stride = BLOCK_NUM_X * GRID_NUM_X * read_lens;
+  kps::IndexType data_offset =
+      static_cast<kps::IndexType>(BLOCK_ID_X) * BLOCK_NUM_X * read_lens;
+  kps::IndexType stride =
+      static_cast<kps::IndexType>(BLOCK_NUM_X) * GRID_NUM_X * read_lens;
   for (; data_offset < main_offset; data_offset += stride) {
     VectorizedElementwiseKernelImpl<OutT,
                                     Functor,

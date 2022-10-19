@@ -13,13 +13,8 @@
 # limitations under the License.
 """Test cloud role maker."""
 
-from __future__ import print_function
 import os
-import platform
-import shutil
-import tempfile
 import unittest
-import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
 
 

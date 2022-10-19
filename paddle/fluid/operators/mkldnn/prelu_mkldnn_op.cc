@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 using dnnl::memory;
-using framework::Tensor;
+
 using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::MKLDNNGetDataType;
@@ -34,8 +34,8 @@ class PReluMKLDNNHandler
   PReluMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
                      const dnnl::engine engine,
                      platform::Place cpu_place,
-                     const Tensor* x,
-                     const Tensor* weights,
+                     const phi::DenseTensor* x,
+                     const phi::DenseTensor* weights,
                      const std::string& uniq_name,
                      const std::string& mode,
                      const std::string& data_format,
@@ -70,7 +70,7 @@ class PReluMKLDNNHandler
   }
 
   std::shared_ptr<memory> AcquireWeightsMemoryPossiblyWithReorder(
-      const Tensor* weights, const bool is_test) {
+      const phi::DenseTensor* weights, const bool is_test) {
     const T* weights_data = weights->data<T>();
 
     // if weights are 1D, every format tag is correct, so we accept
@@ -88,7 +88,7 @@ class PReluMKLDNNHandler
                                           is_test);
   }
 
-  std::shared_ptr<memory> AcquireDiffWeightsMemory(Tensor* output) {
+  std::shared_ptr<memory> AcquireDiffWeightsMemory(phi::DenseTensor* output) {
     T* output_data = output->mutable_data<T>(
         this->place_, this->bwd_pd_->diff_weights_desc().get_size());
     return this->AcquireMemoryFromPrimitive(
@@ -108,9 +108,9 @@ class PReluMKLDNNKernel : public framework::OpKernel<T> {
     const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* alpha = ctx.Input<Tensor>("Alpha");
-    auto* out = ctx.Output<Tensor>("Out");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    const auto* alpha = ctx.Input<phi::DenseTensor>("Alpha");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     const bool is_test = ctx.Attr<bool>("is_test");
     const auto mode = ctx.Attr<std::string>("mode");
     const auto data_format = ctx.Attr<std::string>("data_format");
@@ -153,11 +153,12 @@ class PReluGradMKLDNNKernel : public framework::OpKernel<T> {
     const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dalpha = ctx.Output<Tensor>(framework::GradVarName("Alpha"));
-    auto* alpha = ctx.Input<Tensor>("Alpha");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dalpha =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Alpha"));
+    auto* alpha = ctx.Input<phi::DenseTensor>("Alpha");
     const bool is_test = ctx.Attr<bool>("is_test");
     const auto mode = ctx.Attr<std::string>("mode");
     const auto data_format = ctx.Attr<std::string>("data_format");

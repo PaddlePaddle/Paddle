@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
@@ -114,6 +113,30 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
         self.new_shape = (10, 1, 1, 2, 5, 1)
+
+
+class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
+
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (-1, )
+        self.new_shape = (1)
+
+
+class TestUnsqueezeOp_ZeroDim2(TestUnsqueezeOp):
+
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (-1, 1)
+        self.new_shape = (1, 1)
+
+
+class TestUnsqueezeOp_ZeroDim3(TestUnsqueezeOp):
+
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (0, 1, 2)
+        self.new_shape = (1, 1, 1)
 
 
 class API_TestUnsqueeze(unittest.TestCase):

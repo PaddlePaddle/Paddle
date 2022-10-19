@@ -20,14 +20,14 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
-                  const Tensor* src,
+                  const phi::DenseTensor* src,
                   int axis,
                   const framework::DDim& dst_dims,
-                  Tensor* transformed_src) {
+                  phi::DenseTensor* transformed_src) {
   auto stream = dev_ctx.stream();
 
   // 1. expand the axis with dim 1
@@ -96,11 +96,11 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
 
 template <typename T>
 void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
-                               const Tensor* x,
-                               const Tensor* y,
+                               const phi::DenseTensor* x,
+                               const phi::DenseTensor* y,
                                int axis,
-                               Tensor* transformed_x,
-                               Tensor* transformed_y) {
+                               phi::DenseTensor* transformed_x,
+                               phi::DenseTensor* transformed_y) {
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   bool is_xsize_larger = true;

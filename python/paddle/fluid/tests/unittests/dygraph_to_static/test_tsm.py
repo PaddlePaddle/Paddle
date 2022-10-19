@@ -13,19 +13,16 @@
 #limitations under the License.
 
 import argparse
-import math
 import numpy as np
 import os
 import random
 import sys
-import time
 import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
 from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Linear, Pool2D
-from paddle.fluid.layer_helper import LayerHelper
-from tsm_config_utils import *
+from tsm_config_utils import merge_configs, parse_config, print_configs
 
 random.seed(0)
 np.random.seed(0)

@@ -14,7 +14,6 @@
 
 import os
 import re
-import json
 
 skip_list = []
 
@@ -22,7 +21,7 @@ skip_list = []
 def remove_grad_kernel(kernels):
     clean_kernels = []
     for kernel_ in kernels:
-        if (not "_grad" in kernel_):
+        if "_grad" not in kernel_:
             clean_kernels.append(kernel_)
     return clean_kernels
 
@@ -37,7 +36,7 @@ def get_compat_kernels_info(register):
     kernel_names = []
     for dirpath, dirnames, filenames in os.walk("../../paddle/fluid/operators"):
         for file_name in filenames:
-            if not ".cc" in file_name:
+            if ".cc" not in file_name:
                 continue
             with open(os.path.join(dirpath, file_name)) as f:
                 txt = f.readlines()

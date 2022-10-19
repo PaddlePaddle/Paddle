@@ -34,4 +34,4 @@ void PadKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pad, OneDNN, ALL_LAYOUT, phi::PadKernel, float) {}
+PD_REGISTER_KERNEL(pad, OneDNN, ONEDNN, phi::PadKernel, float) {}

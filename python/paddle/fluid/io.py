@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import errno
 import warnings
@@ -44,7 +42,6 @@ from .reader import *
 from . import dataloader
 from .dataloader import *
 from . import core
-from .. import compat as cpt
 from paddle.utils import deprecated
 from paddle.fluid.framework import static_only
 
@@ -1662,7 +1659,7 @@ def _save_persistable_nodes(executor, dirname, graph):
     persistable_nodes = []
     all_persistable_nodes = graph.all_persistable_nodes()
     for node in all_persistable_nodes:
-        name = cpt.to_text(node.name())
+        name = node.name()
         if name not in persistable_node_names:
             persistable_node_names.add(name)
             persistable_nodes.append(node)
@@ -1697,7 +1694,7 @@ def _load_persistable_nodes(executor, dirname, graph):
     persistable_nodes = []
     all_persistable_nodes = graph.all_persistable_nodes()
     for node in all_persistable_nodes:
-        name = cpt.to_text(node.name())
+        name = node.name()
         if name not in persistable_node_names:
             persistable_node_names.add(name)
             persistable_nodes.append(node)
