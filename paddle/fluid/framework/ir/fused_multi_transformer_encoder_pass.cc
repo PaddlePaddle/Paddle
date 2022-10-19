@@ -1099,6 +1099,7 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern::operator()() {
 
 }  // namespace patterns
 
+template <typename T>
 inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
                               framework::LoDTensor* wk_tensor,
                               framework::LoDTensor* wv_tensor,
@@ -1108,12 +1109,12 @@ inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
                               const int num_head,
                               const int dim_head,
                               const int dim_embed) {
-  auto* wq_data = wq_tensor->mutable_data<float>(platform::CPUPlace());
-  auto* wk_data = wk_tensor->mutable_data<float>(platform::CPUPlace());
-  auto* wv_data = wv_tensor->mutable_data<float>(platform::CPUPlace());
-  auto* bq_data = bq_tensor->mutable_data<float>(platform::CPUPlace());
-  auto* bk_data = bk_tensor->mutable_data<float>(platform::CPUPlace());
-  auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* wq_data = wq_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* wk_data = wk_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* wv_data = wv_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* bq_data = bq_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* bk_data = bk_tensor->mutable_data<T>(platform::CPUPlace());
+  auto* bv_data = bv_tensor->mutable_data<T>(platform::CPUPlace());
 
   auto combined_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
   auto combined_bias_dims = phi::make_ddim({3, num_head, dim_head});
@@ -1121,9 +1122,9 @@ inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
   framework::LoDTensor tmp_combined_w_tensor;
   tmp_combined_w_tensor.Resize(combined_w_dims);
   auto* tmp_combined_w_data =
-      tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
+      tmp_combined_w_tensor.mutable_data<T>(platform::CPUPlace());
 
-  std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
+  std::vector<T*> w_vec = {wq_data, wk_data, wv_data};
   // Combine the three fc weights together.
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < num_head; j++) {
@@ -1140,44 +1141,45 @@ inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
 
   wq_tensor->Resize(combined_w_dims);
   auto* new_combined_w_data =
-      wq_tensor->mutable_data<float>(platform::CPUPlace());
+      wq_tensor->mutable_data<T>(platform::CPUPlace());
   memcpy(new_combined_w_data,
          tmp_combined_w_data,
-         sizeof(float) * wq_tensor->numel());
+         sizeof(T) * wq_tensor->numel());
 
   framework::LoDTensor tmp_combined_bias_tensor;
   tmp_combined_bias_tensor.Resize(combined_bias_dims);
   auto* tmp_combined_bias_data =
-      tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());
+      tmp_combined_bias_tensor.mutable_data<T>(platform::CPUPlace());
 
   size_t bias_size = bq_tensor->numel();
-  memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
+  memcpy(tmp_combined_bias_data, bq_data, sizeof(T) * bias_size);
   memcpy(
-      tmp_combined_bias_data + bias_size, bk_data, sizeof(float) * bias_size);
+      tmp_combined_bias_data + bias_size, bk_data, sizeof(T) * bias_size);
   memcpy(tmp_combined_bias_data + 2 * bias_size,
          bv_data,
-         sizeof(float) * bias_size);
+         sizeof(T) * bias_size);
 
   bq_tensor->Resize(combined_bias_dims);
   auto* new_combined_bias_data =
-      bq_tensor->mutable_data<float>(platform::CPUPlace());
+      bq_tensor->mutable_data<T>(platform::CPUPlace());
   memcpy(new_combined_bias_data,
          tmp_combined_bias_data,
-         sizeof(float) * bq_tensor->numel());
+         sizeof(T) * bq_tensor->numel());
 }
 
+template <typename T>
 inline void QKVWeightsProcessFuseQKV(framework::LoDTensor* qkv_w_tensor,
                                      framework::LoDTensor* qkv_b_tensor,
                                      const int num_head,
                                      const int dim_head,
                                      const int dim_embed) {
-  auto* qkv_w_data = qkv_w_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* qkv_w_data = qkv_w_tensor->mutable_data<T>(platform::CPUPlace());
   auto transpose_w_dims = phi::make_ddim({3, num_head, dim_head, dim_embed});
 
   framework::LoDTensor tmp_transpose_w_tensor;
   tmp_transpose_w_tensor.Resize(transpose_w_dims);
   auto* tmp_transpose_w_data =
-      tmp_transpose_w_tensor.mutable_data<float>(platform::CPUPlace());
+      tmp_transpose_w_tensor.mutable_data<T>(platform::CPUPlace());
 
   // transpose qkv matmul Y to QKVWeights
   for (int i = 0; i < 3; i++) {
@@ -1196,18 +1198,18 @@ inline void QKVWeightsProcessFuseQKV(framework::LoDTensor* qkv_w_tensor,
 
   qkv_w_tensor->Resize(transpose_w_dims);
   auto* new_transpose_w_data =
-      qkv_w_tensor->mutable_data<float>(platform::CPUPlace());
+      qkv_w_tensor->mutable_data<T>(platform::CPUPlace());
   memcpy(new_transpose_w_data,
          tmp_transpose_w_data,
-         sizeof(float) * qkv_w_tensor->numel());
+         sizeof(T) * qkv_w_tensor->numel());
 
-  auto* qkv_b_data = qkv_b_tensor->mutable_data<float>(platform::CPUPlace());
+  auto* qkv_b_data = qkv_b_tensor->mutable_data<T>(platform::CPUPlace());
   auto transpose_b_dims = phi::make_ddim({3, num_head, dim_head});
 
   framework::LoDTensor tmp_transpose_b_tensor;
   tmp_transpose_b_tensor.Resize(transpose_b_dims);
   auto* tmp_transpose_b_data =
-      tmp_transpose_b_tensor.mutable_data<float>(platform::CPUPlace());
+      tmp_transpose_b_tensor.mutable_data<T>(platform::CPUPlace());
 
   // transpose qkv elemenwise_add Y to QKVBias
   for (int i = 0; i < 3; i++) {
@@ -1222,10 +1224,10 @@ inline void QKVWeightsProcessFuseQKV(framework::LoDTensor* qkv_w_tensor,
 
   qkv_b_tensor->Resize({3, num_head, dim_head});
   auto* new_transpose_b_data =
-      qkv_b_tensor->mutable_data<float>(platform::CPUPlace());
+      qkv_b_tensor->mutable_data<T>(platform::CPUPlace());
   memcpy(new_transpose_b_data,
          tmp_transpose_b_data,
-         sizeof(float) * qkv_b_tensor->numel());
+         sizeof(T) * qkv_b_tensor->numel());
 }
 
 int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
@@ -1304,15 +1306,31 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
     auto* bv_tensor =
         scope->FindVar(eltadd2_b->Name())->GetMutable<LoDTensor>();
 
-    QKVWeightsProcess(wq_tensor,
-                      wk_tensor,
-                      wv_tensor,
-                      bq_tensor,
-                      bk_tensor,
-                      bv_tensor,
-                      num_head,
-                      dim_head,
-                      dim_embed);
+    if (wq_tensor->dtype() == phi::DataType::FLOAT32) {
+      QKVWeightsProcess<float>(wq_tensor,
+                               wk_tensor,
+                               wv_tensor,
+                               bq_tensor,
+                               bk_tensor,
+                               bv_tensor,
+                               num_head,
+                               dim_head,
+                               dim_embed);
+    } else if (wq_tensor->dtype() == phi::DataType::FLOAT16) {
+      QKVWeightsProcess<platform::float16>(wq_tensor,
+                                           wk_tensor,
+                                           wv_tensor,
+                                           bq_tensor,
+                                           bk_tensor,
+                                           bv_tensor,
+                                           num_head,
+                                           dim_head,
+                                           dim_embed);
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "fused_multi_transformer not supported weight dtype. "
+          "we now only support fp32 and fp16."));
+    }
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
     auto* combined_w_desc = matmul0_w->Var();
@@ -2043,8 +2061,17 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto* qkv_b_tensor =
         scope->FindVar(eltadd0_b->Name())->GetMutable<LoDTensor>();
 
-    QKVWeightsProcessFuseQKV(
-        qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
+    if (qkv_w_tensor->dtype() == phi::DataType::FLOAT32) {
+      QKVWeightsProcessFuseQKV<float>(
+          qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
+    } else if (qkv_w_tensor->dtype() == phi::DataType::FLOAT16) {
+      QKVWeightsProcessFuseQKV<platform::float16>(
+          qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "fused_multi_transformer not supported weight dtype. "
+          "we now only support fp32 and fp16."));
+    }
 
     // create fused_multi_transformer
     OpDesc fused_multi_transformer_op_desc(layer_norm->Op()->Block());
@@ -2719,8 +2746,17 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
 
     int dim_embed = qkv_w_tensor->dims()[0];
 
-    QKVWeightsProcessFuseQKV(
-        qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
+    if (qkv_w_tensor->dtype() == phi::DataType::FLOAT32) {
+      QKVWeightsProcessFuseQKV<float>(
+          qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
+    } else if (qkv_w_tensor->dtype() == phi::DataType::FLOAT16) {
+      QKVWeightsProcessFuseQKV<platform::float16>(
+          qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "fused_multi_transformer not supported weight dtype. "
+          "we now only support fp32 and fp16."));
+    }
 
     // create fused_multi_transformer
     OpDesc fused_multi_transformer_op_desc(layer_norm->Op()->Block());
