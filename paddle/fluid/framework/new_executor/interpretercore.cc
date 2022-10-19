@@ -126,6 +126,16 @@ interpreter::CostInfo InterpreterCore::DryRun(
     // until the second step run.
     async_work_queue_ = GetWorkQueue();
 
+    // NOTE(Ruibiao): Release memory cache to avoid memory fragments in Allocator.
+    // It reduce about 10% memory usage for V100 8-GPU training of
+    // transformer_base_bs4096_amp_fp16 and transformer_base_bs4096_pure_fp16
+    // model.
+    // if (is_build_ && (!is_memeory_released_)) {
+    //   memory::Release(place_);
+    //   is_memeory_released_ = true;
+    // }
+
+
     // lazy initialization of gc, do not create gc is the program only run once
     if (!gc_) {
       gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
@@ -323,6 +333,7 @@ std::shared_ptr<interpreter::AsyncWorkQueue> InterpreterCore::GetWorkQueue() {
         execution_config_.deivce_num_threads,
         execution_config_.prepare_num_threads,
         &main_thread_blocker_);
+    // memory::Release(place_);
   }
   return async_work_queue_;
 }

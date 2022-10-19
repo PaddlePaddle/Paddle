@@ -583,16 +583,9 @@ class AllocatorFacadePrivate {
       cuda_allocators_[p][stream] =
           std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
               cuda_allocator, platform::GpuMinChunkSize(), p);
-    } else {
-      auto cuda_allocator = CreateCUDAAllocator(p);
-      cuda_allocators_[p][stream] =
-          std::make_shared<AutoGrowthBestFitAllocator>(
-              cuda_allocator,
-              platform::GpuMinChunkSize(),
-              /*chunk_size=*/0,
-              allow_free_idle_chunk_);
+      return;
     }
-#else
+#endif
     auto cuda_allocator = CreateCUDAAllocator(p);
     auto alignment = platform::GpuMinChunkSize();
     bool need_addr_align = true;
@@ -620,15 +613,13 @@ class AllocatorFacadePrivate {
     if (need_addr_align) {
       VLOG(10) << "use AlignedAllocator with alignment: " << alignment;
       underlying_allocator =
-          std::make_shared<AlignedAllocator>(underlying_allocator, alignment);
+          std::make_shared<AlignedAllocator>(cuda_allocator, alignment);
     } else {
       VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
       underlying_allocator = cuda_allocator;
     }
-
     cuda_allocators_[p][stream] = std::make_shared<AutoGrowthBestFitAllocator>(
         underlying_allocator, alignment, 0, allow_free_idle_chunk_);
-#endif
 #endif
   }
 
@@ -666,16 +657,10 @@ class AllocatorFacadePrivate {
       allocators_[p] =
           std::make_shared<VirtualMemoryAutoGrowthBestFitAllocator>(
               cuda_allocator, platform::GpuMinChunkSize(), p);
-    } else {
-      auto cuda_allocator = CreateCUDAAllocator(p);
-      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-          cuda_allocator,
-          platform::GpuMinChunkSize(),
-          /*chunk_size=*/0,
-          allow_free_idle_chunk);
+      return;
     }
 
-#else
+#endif
     auto cuda_allocator = CreateCUDAAllocator(p);
     auto alignment = platform::GpuMinChunkSize();
     bool need_addr_align = true;
@@ -703,14 +688,13 @@ class AllocatorFacadePrivate {
     if (need_addr_align) {
       VLOG(10) << "use AlignedAllocator with alignment: " << alignment;
       underlying_allocator =
-          std::make_shared<AlignedAllocator>(underlying_allocator, alignment);
+          std::make_shared<AlignedAllocator>(cuda_allocator, alignment);
     } else {
       VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
       underlying_allocator = cuda_allocator;
     }
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
         underlying_allocator, alignment, 0, allow_free_idle_chunk);
-#endif
 #endif
   }
 

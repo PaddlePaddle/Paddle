@@ -19,6 +19,7 @@ limitations under the License. */
 #include <mutex>
 #include <set>
 #include <vector>
+#include <stdexcept>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/memory.h"
@@ -126,7 +127,7 @@ size_t GpuReallocSize() { return GpuAllocSize(/* realloc = */ true); }
 
 size_t GpuMinChunkSize() {
   // Allow to allocate the minimum chunk size is 256 bytes.
-  return 1 << 8;
+  return 1 << 22;
 }
 
 size_t GpuMaxChunkSize() {
@@ -213,6 +214,26 @@ class RecordedGpuMallocHelper {
     return instances_[dev_id].get();
   }
 
+  std::string getLastestGitInfo() {
+    const char* cmd = "nvidia-smi --id=6 --query-compute-apps=used_memory --format=csv | sed -n 2p";  //git log < /dev/null 2>&1 | grep "Date:" | head -n1
+    std::array<char, 512> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    if(!result.empty())
+        return result;
+    else
+        return "vslam";
+  }
+
   /**
    * Try to allocate `size` gpu memory. Only cudaErrorMemoryAllocation
    * or cudaSuccess would be returned, and the cudaGetLastError() flag
@@ -225,8 +246,11 @@ class RecordedGpuMallocHelper {
     if (UNLIKELY(NeedRecord() && cur_size_.load() + size > limit_size_)) {
       return gpuErrorOutOfMemory;
     }
-
     CUDADeviceGuard guard(dev_id_);
+    std::string result1=getLastestGitInfo();
+    VLOG(10) << "Malloc6 " << size;
+    VLOG(10) << "[cudaMalloc] before=" << result1 << " MB";
+
     gpuError_t result;
 #ifdef PADDLE_WITH_HIP
     if (UNLIKELY(malloc_managed_memory)) {
@@ -255,7 +279,8 @@ class RecordedGpuMallocHelper {
 #ifdef PADDLE_WITH_TESTING
       gpu_ptrs.insert(*ptr);
 #endif
-
+      std::string result2=getLastestGitInfo();
+      VLOG(10) << "[cudaMalloc] after=" << result2 << " MB";
       return gpuSuccess;
     } else {
       RaiseNonOutOfMemoryError(&result);
@@ -277,6 +302,10 @@ class RecordedGpuMallocHelper {
     // process is terminating, in which case we don't care if
     // cudaFree succeeds.
     CUDADeviceGuard guard(dev_id_);
+
+    std::string result=getLastestGitInfo();
+    VLOG(10) << "[cudaFree] before=" << result << " MB";
+
 #ifdef PADDLE_WITH_HIP
     auto err = hipFree(ptr);
     if (err != hipErrorDeinitialized) {
@@ -302,6 +331,8 @@ class RecordedGpuMallocHelper {
 #ifdef PADDLE_WITH_TESTING
     gpu_ptrs.erase(ptr);
 #endif
+    std::string result2=getLastestGitInfo();
+    VLOG(10) << "[cudaFree] after=" << result2 << " MB";
   }
 
   void *GetBasePtr(void *ptr) {

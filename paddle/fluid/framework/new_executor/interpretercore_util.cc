@@ -26,6 +26,7 @@
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -154,6 +155,17 @@ void LogDeviceMemoryStats(const platform::Place& place) {
                    "Allocated", place.device)) /
                    1024 / 1024
             << " MB";
+    VLOG(0) << "memory_reserved: "
+            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
+                   "Reserved", place.device)) /
+                   1024 / 1024
+            << " MB";
+    VLOG(0) << "max_memory_reserved: "
+            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
+                   "Reserved", place.device)) /
+                   1024 / 1024
+            << " MB";
+    VLOG(0) << "RecordedGpuMallocSize: " << static_cast<double>(platform::RecordedGpuMallocSize(place.device)) /1024 /1024 << " MB";
   }
 }
 
