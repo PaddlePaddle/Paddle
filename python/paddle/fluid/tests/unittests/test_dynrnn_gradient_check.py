@@ -18,7 +18,7 @@ import collections
 import paddle
 import paddle.fluid as fluid
 import unittest
-from decorator_helper import *
+from decorator_helper import prog_scope
 
 
 class Memory(object):
