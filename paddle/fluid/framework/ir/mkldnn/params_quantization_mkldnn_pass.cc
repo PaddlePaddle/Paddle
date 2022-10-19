@@ -60,17 +60,16 @@ void QuantizeConvInput(Scope* scope,
                        const std::string& scales_attr_name) {
   auto var = scope->GetVar(input_name);
   if (var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
-    VLOG(0) << "Skipping convolution filter: " << input_name
-            << " because it is detected again.";
-    conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
+    VLOG(0) << "Skipping quantize the input: " << input_name
+            << " of convolution because it is detected again.";
   } else {
     const auto scales =
         conv_op->Op()->GetAttrIfExists<std::vector<float>>(scales_attr_name);
 
     auto* tensor = scope->GetVar(input_name)->GetMutable<LoDTensor>();
     QuantizeParams<T>(tensor, scales);
-    conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
   }
+  conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
 }
 
 }  // namespace

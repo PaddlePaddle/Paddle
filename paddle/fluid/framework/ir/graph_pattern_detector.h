@@ -1073,7 +1073,7 @@ struct ResidualElementwise : public PatternBase {
 };
 
 // General struct for immutable ops:
-// reshape, transpose, slice, shape, nearest-interp
+// reshape, transpose, slice, nearest-interp
 // Forward pass for no weights-op.
 // immutable_out is a result of the operator.
 struct Immutable : public PatternBase {
