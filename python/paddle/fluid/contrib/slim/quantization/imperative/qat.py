@@ -32,6 +32,7 @@ from paddle.fluid.io import load_inference_model, save_inference_model
 from ..quantization_pass import ReplaceFakeQuantDequantPass, QuantWeightPass
 from paddle.fluid.log_helper import get_logger
 from .. import quantization_pass
+from ..utils import move_persistable_var_to_global_block
 from . import utils
 from . import fuse_utils
 
@@ -551,6 +552,8 @@ class ImperativeQuantizeOutputs(object):
             infer_program = graph.to_program()
 
             clip_extra = True
+
+        move_persistable_var_to_global_block(infer_program)
 
         save_inference_model(dirname=dirname,
                              feeded_var_names=feed_target_names,
