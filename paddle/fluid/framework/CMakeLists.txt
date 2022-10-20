@@ -1156,10 +1156,15 @@ cc_library(
   op_compatible_info
   SRCS op_compatible_info.cc
   DEPS string_helper proto_desc)
-cc_test(
+cc_test_old(
   op_compatible_info_test
-  SRCS op_compatible_info_test.cc
-  DEPS op_compatible_info proto_desc string_helper glog)
+  SRCS
+  op_compatible_info_test.cc
+  DEPS
+  op_compatible_info
+  proto_desc
+  string_helper
+  glog)
 
 cc_library(
   save_load_util

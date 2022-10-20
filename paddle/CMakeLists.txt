@@ -55,7 +55,12 @@ if(${len} GREATER_EQUAL 1)
       add_executable(${test_name} ${test_src})
       target_link_libraries(
         ${test_name} ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/libpaddle.so)
-      add_dependencies(${test_name} ${paddle_lib})
+      target_link_libraries(${test_name} paddle_gtest_main)
+      add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main)
+      if(WITH_GPU)
+        target_link_libraries(${test_name} ${CUDA_CUDART_LIBRARY}
+                              "-Wl,--as-needed")
+      endif()
       if(NOT
          ("${test_names}" STREQUAL "c_broadcast_op_npu_test"
           OR "${test_names}" STREQUAL "c_allreduce_sum_op_npu_test"
