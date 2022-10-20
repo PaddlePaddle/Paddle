@@ -231,6 +231,35 @@ void TensorRTEngine::FreezeNetwork() {
             nvinfer1::OptProfileSelector::kOPT,
             Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
       }
+
+      for (int input_id = 0; input_id < network()->getNbInputs(); input_id++) {
+        auto input_name = network()->getInput(input_id)->getName();
+        if (!itensor_map_.count(input_name)) continue;
+        if (!GetITensor(input_name)->isShapeTensor()) continue;
+        PADDLE_ENFORCE_EQ(min_shape_tensor_.count(input_name) &&
+                              max_shape_tensor_.count(input_name) &&
+                              optim_shape_tensor_.count(input_name),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Fail to find min/max/optim shape value for TRT "
+                              "network's shape tensor input named %s.",
+                              input_name));
+        auto min_vec = min_shape_tensor_.at(input_name);
+        optim_profiles_[i]->setShapeValues(input_name,
+                                           nvinfer1::OptProfileSelector::kMIN,
+                                           min_vec.data(),
+                                           min_vec.size());
+        optim_profiles_[i]->setShapeValues(input_name,
+                                           nvinfer1::OptProfileSelector::kMAX,
+                                           max_shape_tensor_[input_name].data(),
+                                           min_vec.size());
+        optim_profiles_[i]->setShapeValues(
+            input_name,
+            nvinfer1::OptProfileSelector::kOPT,
+            optim_shape_tensor_[input_name].data(),
+            min_vec.size());
+      }
+
       infer_builder_config_->addOptimizationProfile(optim_profiles_[i]);
     }
     if (WithFp16() && disable_trt_plugin_fp16()) {

@@ -1749,10 +1749,39 @@ void AnalysisPredictor::CollectShapeRangeInfo() {
     if (!var->IsType<framework::LoDTensor>()) {
       continue;
     }
-    framework::DDim dim = var->Get<framework::LoDTensor>().dims();
+    auto tensor = var->Get<framework::LoDTensor>();
+    framework::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
     shape_info_[name].emplace_back(shape);
+
+    // We need collect value range for shape tensor for Paddle-TRT's use.
+    // To be noticed, this method to identify all shape tensors is based on
+    // assumption that all shape tensors in the model have numbers <= 7.
+    // This is a simple method to identify all shape tensors with some
+    // mistakes, but it doesn't matter.
+    auto is_shape_tensor = tensor.numel() <= 7 && tensor.numel() >= 1;
+    if (tensor.dtype() == paddle::experimental::DataType::INT32 &&
+        is_shape_tensor) {
+      std::vector<int> int32_host(tensor.numel());
+      if (tensor.place() == platform::CPUPlace()) {
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int32_host.data(),
+                             platform::CPUPlace(),
+                             tensor.data<int>(),
+                             tensor.numel() * sizeof(int));
+      } else if (tensor.place() == platform::CUDAPlace()) {
+#if defined(PADDLE_WITH_CUDA)
+        paddle::memory::Copy(platform::CPUPlace(),
+                             int32_host.data(),
+                             platform::CUDAPlace(),
+                             tensor.data<int>(),
+                             tensor.numel() * sizeof(int),
+                             nullptr);
+#endif
+      }
+      shape_tensor_value_[name].emplace_back(int32_host);
+    }
   }
 }
 
@@ -1760,43 +1789,61 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
   std::map<std::string, std::vector<int32_t>> min_shapes;
   std::map<std::string, std::vector<int32_t>> max_shapes;
   std::map<std::string, std::vector<int32_t>> opt_shapes;
-  for (auto it : shape_info_) {
-    auto name = it.first;
-    auto shapes = it.second;
+  std::map<std::string, std::vector<int32_t>> min_values;
+  std::map<std::string, std::vector<int32_t>> max_values;
+  std::map<std::string, std::vector<int32_t>> opt_values;
 
-    std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
-    std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
-    std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());
+  auto extract_min_max_opt =
+      [](std::map<std::string, std::vector<int32_t>> &min_data,
+         decltype(min_data) max_data,
+         decltype(min_data) opt_data,
+         decltype(shape_info_) shape_data) {
+        for (auto it : shape_data) {
+          auto name = it.first;
+          auto shapes = it.second;
 
-    auto ShapeMaxFreq = [](const std::map<int32_t, int32_t> &m) -> int32_t {
-      std::vector<std::pair<int32_t, int32_t>> counter;
-      for (auto &it : m) counter.push_back(it);
-      std::sort(
-          counter.begin(),
-          counter.end(),
-          [](std::pair<int32_t, int32_t> &a, std::pair<int32_t, int32_t> &b) {
-            return a.second > b.second;
-          });
-      return counter[0].first;
-    };
+          std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
+          std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
+          std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());
 
-    for (size_t d = 0; d < shapes[0].size(); ++d) {
-      std::map<int32_t, int32_t> counter;
-      for (size_t i = 0; i < shapes.size(); ++i) {
-        counter[shapes[i][d]] += 1;
-        if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
-        if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
-      }
-      opt_shape[d] = ShapeMaxFreq(counter);
-    }
+          auto ShapeMaxFreq =
+              [](const std::map<int32_t, int32_t> &m) -> int32_t {
+            std::vector<std::pair<int32_t, int32_t>> counter;
+            for (auto &it : m) counter.push_back(it);
+            std::sort(counter.begin(),
+                      counter.end(),
+                      [](std::pair<int32_t, int32_t> &a,
+                         std::pair<int32_t, int32_t> &b) {
+                        return a.second > b.second;
+                      });
+            return counter[0].first;
+          };
 
-    min_shapes[name] = min_shape;
-    max_shapes[name] = max_shape;
-    opt_shapes[name] = opt_shape;
-  }
+          for (size_t d = 0; d < shapes[0].size(); ++d) {
+            std::map<int32_t, int32_t> counter;
+            for (size_t i = 0; i < shapes.size(); ++i) {
+              counter[shapes[i][d]] += 1;
+              if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
+              if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
+            }
+            opt_shape[d] = ShapeMaxFreq(counter);
+          }
 
-  inference::SerializeShapeRangeInfo(
-      config_.shape_range_info_path(), min_shapes, max_shapes, opt_shapes);
+          min_data[name] = min_shape;
+          max_data[name] = max_shape;
+          opt_data[name] = opt_shape;
+        }
+      };
+  extract_min_max_opt(min_shapes, max_shapes, opt_shapes, shape_info_);
+  extract_min_max_opt(min_values, max_values, opt_values, shape_tensor_value_);
+
+  inference::SerializeShapeRangeInfo(config_.shape_range_info_path(),
+                                     min_shapes,
+                                     max_shapes,
+                                     opt_shapes,
+                                     min_values,
+                                     max_values,
+                                     opt_values);
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {

@@ -88,33 +88,27 @@ class TestAMPPass(unittest.TestCase):
     def test_amp_pass(self):
         # mp2 training
         mp_engine = self.get_engine()
-        mp_losses = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        mp_losses = np.array(mp_losses["loss"])
+        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        mp_losses = np.array(history.history["loss"])
 
         # mp2 amp-o1 training
         amp_o1_engine = self.get_engine(True, "o1")
-        amp_o1_losses = amp_o1_engine.fit(self.dataset,
-                                          3,
-                                          batch_size=self.batch_size)
-        amp_o1_losses = np.array(amp_o1_losses["loss"])
+        history = amp_o1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o1_losses = np.array(history.history["loss"])
         amp_o1_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o1_losses)
 
         # mp2 amp-o2 training
         amp_o2_engine = self.get_engine(True, "o2")
-        amp_o2_losses = amp_o2_engine.fit(self.dataset,
-                                          3,
-                                          batch_size=self.batch_size)
-        amp_o2_losses = np.array(amp_o2_losses["loss"])
+        history = amp_o2_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o2_losses = np.array(history.history["loss"])
         amp_o2_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o2_losses)
 
         # mp2 amp-o3 training
         amp_o3_engine = self.get_engine(True, "o3")
-        amp_o3_losses = amp_o3_engine.fit(self.dataset,
-                                          3,
-                                          batch_size=self.batch_size)
-        amp_o3_losses = np.array(amp_o3_losses["loss"])
+        history = amp_o3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        amp_o3_losses = np.array(history.history["loss"])
         amp_o3_engine.evaluate(self.dataset, 3, batch_size=self.batch_size)
         # self.check_results(mp_losses, amp_o3_losses)
 

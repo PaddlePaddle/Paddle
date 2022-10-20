@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-import paddle.distributed as dist
 import paddle.fluid.framework as framework
 from paddle.distributed.communication.group import _get_global_group
 from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp

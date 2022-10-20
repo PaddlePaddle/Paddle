@@ -152,6 +152,8 @@ pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
 pass_library(multihead_matmul_fuse_pass inference)
+pass_library(fused_multi_transformer_encoder_pass inference)
+pass_library(fused_multi_transformer_decoder_pass inference)
 pass_library(adaptive_pool2d_convert_global_pass inference)
 pass_library(unsqueeze2_eltwise_fuse_pass inference)
 pass_library(yolo_box_fuse_pass inference)
@@ -354,6 +356,14 @@ cc_test(
   test_multihead_matmul_fuse_pass
   SRCS multihead_matmul_fuse_pass_tester.cc
   DEPS multihead_matmul_fuse_pass)
+cc_test(
+  test_fused_multi_transformer_encoder_pass
+  SRCS fused_multi_transformer_encoder_pass_tester.cc
+  DEPS fused_multi_transformer_encoder_pass)
+cc_test(
+  test_fused_multi_transformer_decoder_pass
+  SRCS fused_multi_transformer_decoder_pass_tester.cc
+  DEPS fused_multi_transformer_decoder_pass)
 cc_test(
   test_conv_bn_fuse_pass_cc
   SRCS conv_bn_fuse_pass_tester.cc
