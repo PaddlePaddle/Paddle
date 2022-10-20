@@ -16,7 +16,6 @@ import os
 import unittest
 import random
 import numpy as np
-import six
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid.framework import IrGraph

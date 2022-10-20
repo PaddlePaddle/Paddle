@@ -24,7 +24,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 /*
  * Convert Input from Fluid to TensorRT Engine.

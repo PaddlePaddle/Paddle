@@ -59,15 +59,15 @@ class ReLU(Layer):
 
 
 class Softmax(Layer):
-    """
+    r"""
     Sparse Softmax Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Note:
         Only support axis=-1 for SparseCsrTensor, which is faster when read data
         by row (axis=-1).
 
-    From the point of view of dense matrix, for each row :math:`i` and each column :math:`j`
-    in the matrix, we have:
+    Transform x to dense matix, and :math:`i` is row index, :math:`j` is column index.
+    If axis=-1, We have:
 
     .. math::
 
@@ -130,7 +130,7 @@ class ReLU6(Layer):
 
     .. math::
 
-        ReLU(x) = min(max(0,x), 6)
+        ReLU6(x) = min(max(0,x), 6)
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -164,7 +164,7 @@ class ReLU6(Layer):
 
 
 class LeakyReLU(Layer):
-    """
+    r"""
     Sparse Leaky ReLU Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::

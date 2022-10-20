@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import paddle
 from paddle.fluid.dygraph.dygraph_to_static.utils import GetterSetterHelper
 
 vars = [1, 2, 3, 4, 5]

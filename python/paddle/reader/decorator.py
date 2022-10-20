@@ -13,22 +13,18 @@
 # limitations under the License.
 
 from threading import Thread
-import subprocess
 import multiprocessing
 import six
 import sys
 import warnings
 import logging
 
-from six.moves.queue import Queue
-from six.moves import zip_longest
-from six.moves import map
-from six.moves import zip
+from queue import Queue
+from itertools import zip_longest
+
 import itertools
 import random
-import zlib
 
-import paddle.compat as cpt
 from paddle.fluid.reader import QUEUE_GET_TIMEOUT
 
 __all__ = []

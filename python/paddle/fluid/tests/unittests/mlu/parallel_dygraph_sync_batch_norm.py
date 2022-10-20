@@ -16,7 +16,6 @@ import os
 import contextlib
 import unittest
 import numpy as np
-import six
 import pickle
 
 import paddle

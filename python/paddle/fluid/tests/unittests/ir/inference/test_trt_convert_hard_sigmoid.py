@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import List
 import unittest
 
 
@@ -98,14 +98,14 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), (1, 2), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-5
+        yield self.create_inference_config(), (1, 2), 1e-3
 
     def test(self):
         self.run_test()

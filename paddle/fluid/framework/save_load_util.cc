@@ -181,7 +181,7 @@ LoadDygraphVarBaseListFromDisk(const std::string& file_name) {
     std::shared_ptr<imperative::VarBase> var(
         new imperative::VarBase(load_tensor.first));
 
-    auto* tensor = var->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* tensor = var->MutableVar()->GetMutable<phi::DenseTensor>();
 
     TensorCopySync(
         *(load_tensor.second.get()), load_tensor.second->place(), tensor);

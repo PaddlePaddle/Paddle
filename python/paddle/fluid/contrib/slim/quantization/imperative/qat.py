@@ -32,6 +32,7 @@ from paddle.fluid.io import load_inference_model, save_inference_model
 from ..quantization_pass import ReplaceFakeQuantDequantPass, QuantWeightPass
 from paddle.fluid.log_helper import get_logger
 from .. import quantization_pass
+from ..utils import move_persistable_var_to_global_block
 from . import utils
 from . import fuse_utils
 
@@ -72,7 +73,8 @@ class ImperativeQuantAware(object):
                  weight_preprocess_layer=None,
                  act_preprocess_layer=None,
                  weight_quantize_layer=None,
-                 act_quantize_layer=None):
+                 act_quantize_layer=None,
+                 onnx_format=False):
         """
         The constructor for ImperativeQuantAware.
 
@@ -124,6 +126,8 @@ class ImperativeQuantAware(object):
                 activation and returns dequantized activation.
                 If None, will use quantization op defined by 'activation_quantize_type'.
                 Default is None.
+            onnx_format (bool, optional): Whether to export the quantized model
+                with format of ONNX. Default is False.
 
         Note:
             If user sets attribute 'skip_quant' to a Layer that support dynamic
@@ -224,7 +228,7 @@ class ImperativeQuantAware(object):
         self._quantize_inputs = ImperativeQuantizeInputs(**kwargs)
 
         self._quantize_outputs = ImperativeQuantizeOutputs(
-            moving_rate, activation_bits)
+            moving_rate, activation_bits, onnx_format)
 
     def quantize(self, model):
         """
@@ -415,7 +419,7 @@ class ImperativeQuantizeOutputs(object):
     Calculate the output scales for target layers.
     """
 
-    def __init__(self, moving_rate=0.9, activation_bits=8):
+    def __init__(self, moving_rate=0.9, activation_bits=8, onnx_format=False):
         """
         The constructor for ImperativeQuantizeOutputs.
 
@@ -427,6 +431,7 @@ class ImperativeQuantizeOutputs(object):
         super(ImperativeQuantizeOutputs, self).__init__()
         self._moving_rate = moving_rate
         self._activation_bits = activation_bits
+        self._onnx_format = onnx_format
 
     def apply(self, model):
         """
@@ -463,12 +468,7 @@ class ImperativeQuantizeOutputs(object):
 
             setattr(parent_layer, sub_name, cur_quant_layer)
 
-    def save_quantized_model(self,
-                             model,
-                             path,
-                             input_spec=None,
-                             onnx_format=False,
-                             **config):
+    def save_quantized_model(self, model, path, input_spec=None, **config):
         """
         Save the quantized model for the inference.
 
@@ -481,8 +481,6 @@ class ImperativeQuantizeOutputs(object):
                 InputSpec or example Tensor. If None, all input variables of
                 the original Layer's forward method would be the inputs of
                 the saved model. Default None.
-            onnx_format (bool, optional): Whether to export the quantized model
-                with format of ONNX. Default is False.
             **config (dict, optional): Other save configuration options for
                 compatibility. We do not recommend using these configurations,
                 they may be removed in the future. If not necessary, DO NOT use
@@ -523,7 +521,7 @@ class ImperativeQuantizeOutputs(object):
                                    model_filename=model_filename,
                                    params_filename=params_filename))
 
-        if not onnx_format:
+        if not self._onnx_format:
             self._gather_scales(infer_program, scope, fetch_targets)
 
             # Remove `moving_average_abs_max_scale` node in sub graphs.
@@ -542,14 +540,20 @@ class ImperativeQuantizeOutputs(object):
             graph = IrGraph(core.Graph(infer_program.desc), for_test=False)
             transform_pass = ReplaceFakeQuantDequantPass(
                 scope, place, quant_bits=self._activation_bits)
-            transform_pass.apply(graph)
+            for sub_graph in graph.all_sub_graphs():
+                sub_graph._for_test = True
+                transform_pass.apply(sub_graph)
 
             quant_weight_pass = QuantWeightPass(scope, place)
-            quant_weight_pass.apply(graph)
+            for sub_graph in graph.all_sub_graphs():
+                sub_graph._for_test = True
+                quant_weight_pass.apply(sub_graph)
 
             infer_program = graph.to_program()
 
             clip_extra = True
+
+        move_persistable_var_to_global_block(infer_program)
 
         save_inference_model(dirname=dirname,
                              feeded_var_names=feed_target_names,
@@ -567,18 +571,24 @@ class ImperativeQuantizeOutputs(object):
         """
         Whether the layer needs to calculate output scales.
         """
+        # exclude fake_quant ops in quant_layers file
+        if not isinstance(layer, dygraph.Layer):
+            return False
+
+        if self._onnx_format:
+            return True if isinstance(layer, tuple(
+                utils.fake_quant_wrap_layers)) else False
+
         flag = False
-        if isinstance(layer, dygraph.Layer):
-            # exclude fake_quant ops in quant_layers file
-            if utils.is_leaf_layer(layer) and \
-                not isinstance(layer, tuple(utils.fake_quant_leaf_layers)):
-                flag = True
+        if utils.is_leaf_layer(layer) and \
+            not isinstance(layer, tuple(utils.fake_quant_leaf_layers)):
+            flag = True
 
-            if isinstance(layer, tuple(utils.fake_quant_wrap_layers)):
-                flag = True
+        if isinstance(layer, tuple(utils.fake_quant_wrap_layers)):
+            flag = True
 
-            if isinstance(layer, paddle.nn.quant.FloatFunctionalLayer):
-                flag = True
+        if isinstance(layer, paddle.nn.quant.FloatFunctionalLayer):
+            flag = True
 
         return flag
 

@@ -18,7 +18,6 @@ from functools import reduce
 import os
 
 import collections
-import six
 import logging
 
 import numpy as np

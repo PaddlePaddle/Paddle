@@ -58,7 +58,7 @@ class MulOp : public framework::OperatorWithKernel {
       }
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN,
                                      customized_type_value);
     }
@@ -153,7 +153,7 @@ class MulGradOp : public framework::OperatorWithKernel {
       }
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN,
                                      customized_type_value);
     }

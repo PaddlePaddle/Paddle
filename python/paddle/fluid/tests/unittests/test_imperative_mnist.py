@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from utils import DyGraphProgramDescTracerTestHelper
 from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
 
 
@@ -260,14 +257,14 @@ class TestImperativeMnist(unittest.TestCase):
                                    static_x_data.all(),
                                    rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             np.testing.assert_allclose(value,
                                        dy_param_init_value[key],
                                        rtol=1e-05)
 
         np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             np.testing.assert_allclose(value,
                                        dy_param_value[key],
                                        rtol=1e-05,

@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-import six
 from paddle import fluid
 
 
@@ -54,7 +52,7 @@ class TestIRGraph(unittest.TestCase):
         prog = fluid.core.ProgramDesc()
         block = prog.block(0)
         shape = [10, 20]
-        x1 = block.var(six.b("x1"))
+        x1 = block.var(b'x1')
         x1.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(shape)
         graph = fluid.core.Graph(prog)
@@ -121,14 +119,14 @@ def build_graph():
     shape = [10, 20]
 
     # prepare input/output
-    x1 = block.var(six.b("x1"))
+    x1 = block.var(b'x1')
     x1.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
     x1.set_shape(shape)
-    x2 = block.var(six.b("x2"))
+    x2 = block.var(b'x2')
     x2.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
     x2.set_shape(shape)
 
-    out = block.var(six.b("out"))
+    out = block.var(b'out')
     out.set_type(fluid.core.VarDesc.VarType.LOD_TENSOR)
 
     sum_op_desc = block.append_op()

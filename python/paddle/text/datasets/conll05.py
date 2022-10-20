@@ -15,11 +15,8 @@
 import gzip
 import tarfile
 import numpy as np
-import six
-from six.moves import cPickle as pickle
 
 from paddle.io import Dataset
-import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = []
@@ -184,8 +181,8 @@ class Conll05st(Dataset):
             labels = []
             one_seg = []
             for word, label in zip(words_file, props_file):
-                word = cpt.to_text(word.strip())
-                label = cpt.to_text(label.strip().split())
+                word = word.strip().decode()
+                label = label.strip().decode().split()
 
                 if len(label) == 0:  # end of sentence
                     for i in range(len(one_seg[0])):

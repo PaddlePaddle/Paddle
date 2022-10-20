@@ -30,7 +30,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 using ExecutionContext = framework::ExecutionContext;
 using DeviceContextPool = platform::DeviceContextPool;
 using MLUDeviceContext = platform::MLUDeviceContext;
@@ -2312,6 +2312,29 @@ class MLUOP {
                         void* boxes,
                         const mluOpTensorDescriptor_t scores_desc,
                         void* scores);
+
+  static void OpPriorBox(const ExecutionContext& ctx,
+                         const mluOpTensorDescriptor_t min_sizes_desc,
+                         const void* min_sizes,
+                         const mluOpTensorDescriptor_t aspect_ratios_desc,
+                         const void* aspect_ratios,
+                         const mluOpTensorDescriptor_t variances_desc,
+                         const void* variances,
+                         const mluOpTensorDescriptor_t max_sizes_desc,
+                         const void* max_sizes,
+                         const int height,
+                         const int width,
+                         const int im_height,
+                         const int im_width,
+                         const float step_h,
+                         const float step_w,
+                         const float offset,
+                         const bool clip,
+                         const bool min_max_aspect_ratios_order,
+                         const mluOpTensorDescriptor_t output_desc,
+                         void* output,
+                         const mluOpTensorDescriptor_t var_desc,
+                         void* var);
 };
 const std::map<const std::string, std::pair<std::vector<int>, std::vector<int>>>
     TransPermMap = {

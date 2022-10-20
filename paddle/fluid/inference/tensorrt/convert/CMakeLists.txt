@@ -4,6 +4,7 @@ list(
   CONVERT_FILES
   matmul_op.cc
   matmul_v2_op.cc
+  bmm_op.cc
   conv2d_op.cc
   fc_op.cc
   pool2d_op.cc
@@ -77,9 +78,12 @@ list(
   fused_token_prune_op.cc
   celu_op.cc
   layernorm_shift_partition_op.cc
-  generic_and_custom_plugin_creater.cc
   tanhshrink_op.cc
-  logsigmoid_op.cc)
+  logsigmoid_op.cc
+  merge_layernorm_op.cc
+  generic_and_custom_plugin_creater.cc
+  fused_lookup_tables_op.cc
+  expand_v2_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc

@@ -16,13 +16,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.autograd import PyLayer
-from paddle.distributed.fleet.utils import recompute
 from paddle.incubate.distributed.fleet import recompute_hybrid
 import random
 from paddle.distributed import fleet
-
-import paddle.fluid.layers as layers
 
 
 def get_fc_block(block_idx, input_size, is_last=False):

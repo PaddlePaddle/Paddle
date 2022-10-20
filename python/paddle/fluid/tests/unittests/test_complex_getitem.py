@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import paddle
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg

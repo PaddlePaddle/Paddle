@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
@@ -30,7 +30,7 @@ class ROIAlignOpMLUKernel : public framework::OpKernel<T> {
     auto* rois = ctx.Input<LoDTensor>("ROIs");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
-    out->set_layout(framework::DataLayout::kNHWC);
+    out->set_layout(phi::DataLayout::kNHWC);
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");

@@ -38,7 +38,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     auto GetWeight = [&](const std::string& var_name,
                          framework::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       *dim = temp_tensor->dims();
       auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
       return weight;
@@ -194,7 +194,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
         "max_seqlen_tensor"));  // max_seqlen, eval_placeholder_3
 
     auto creator = GetPluginRegistry()->getPluginCreator(
-        "ManyEmbLayerNormPluginDynamic", "3");
+        "ManyEmbLayerNormPluginDynamic", "2");
 
     auto plugin_obj =
         creator->createPlugin("ManyEmbLayerNormPluginDynamic", plugin_ptr);

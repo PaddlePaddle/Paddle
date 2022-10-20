@@ -15,18 +15,14 @@ import sys
 sys.path.append("..")
 import unittest
 import numpy as np
-import math
 import paddle.fluid.core as core
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import random
 
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
 
 sys.path.append("../rnn")
-from rnn_numpy import SimpleRNN, LSTM, GRU
+from rnn_numpy import LSTM
 from convert import get_params_for_net
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 

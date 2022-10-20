@@ -13,17 +13,15 @@
 # limitations under the License.
 
 import re
-import functools
 import warnings
 import string
 
-from six.moves import cStringIO
+from io import StringIO
 from ..static import Variable
 from ..fluid.proto import framework_pb2
-from ..framework import OpProtoHolder, core, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from ..framework import OpProtoHolder, _non_static_mode, convert_np_dtype_to_dtype_, core, in_dygraph_mode
 from ..framework import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype
-import paddle
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = []
@@ -78,7 +76,7 @@ def _generate_doc_string_(op_proto,
     if not isinstance(op_proto, framework_pb2.OpProto):
         raise TypeError("OpProto should be `framework_pb2.OpProto`")
 
-    buf = cStringIO()
+    buf = StringIO()
     buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:

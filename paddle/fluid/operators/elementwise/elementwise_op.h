@@ -115,7 +115,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       bool should_rotate =
           ctx->IsRunMKLDNNKernel() &&
           (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
-           framework::DataLayout::kNHWC) &&
+           phi::DataLayout::kNHWC) &&
           (x_dims.size() >= 3 || y_dims.size() >= 3);
       if (should_rotate) {
         // Pick bigger shape and rotate this one
@@ -156,15 +156,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -183,15 +174,13 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // When elementwise is first oneDNN op (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ ==
-           framework::DataLayout::kMKLDNN) &&
-          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+          (tensor.layout() != phi::DataLayout::kMKLDNN) &&
           paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() ==
-              framework::DataLayout::kNHWC) {
+                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
-                                       framework::DataLayout::kNHWC);
+                                       phi::DataLayout::kNHWC);
       }
 #endif
       return framework::OpKernelType(
@@ -317,15 +306,6 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -371,15 +351,6 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -432,15 +403,6 @@ class ElementwiseOpDoubleGradWithoutDXDY
       input_data_type =
           OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "DDX", "DDY");
     }
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -493,15 +455,6 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type input_data_type;
     input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "D_DDOut");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -526,10 +479,9 @@ template <typename T>
 class ElemwiseGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *dx =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto &dout =
-        *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+        *context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     phi::funcs::ElementwiseGradPreProcess(dout, dx);
   }
 };

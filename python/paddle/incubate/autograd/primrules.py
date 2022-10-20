@@ -20,17 +20,15 @@ import paddle
 
 from . import primops
 from .primops import (add, broadcast, concat, cos, div, eq, erf, exp,
-                      fill_const, gather, ge, gt, log, matmul, max, mul, ne,
-                      neg, reduce_sum, reshape, scatter_add, select, set_value,
-                      sin, slice_assign, slice_select, split, sqrt, sub, tanh,
-                      transpose, bernoulli, rsqrt)
+                      fill_const, gather, ge, gt, log, matmul, mul, ne, neg,
+                      reduce_sum, reshape, scatter_add, select, set_value, sin,
+                      slice_assign, slice_select, split, sqrt, sub, tanh,
+                      transpose, bernoulli, rsqrt, uniform_random)
 from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
                       REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
                       lookup_orig2prim, lookup_prim2orig, lookup_transpose,
                       op_position_inputs, op_position_output)
-from .utils import INT_DTYPE_2_STRING, get_input_var_list, get_output_var_list
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from .utils import INT_DTYPE_2_STRING, get_output_var_list
 
 
 def _orig2prim(op, *args):
@@ -79,6 +77,7 @@ select
 equal
 elementwise_pow
 dropout
+uniform_random
 
 These original ops are partially supported:
 
@@ -212,8 +211,7 @@ def fill_any_like_orig2prim(op, x):
         return fill_const(value=op.attr('value'), shape=x.shape, dtype=x.dtype)
     return fill_const(value=op.attr('value'),
                       shape=x.shape,
-                      dtype=convert_np_dtype_to_dtype_(
-                          convert_dtype(INT_DTYPE_2_STRING[op.attr('dtype')])))
+                      dtype=paddle.dtype(op.attr('dtype')))
 
 
 @REGISTER_ORIG2PRIM('fill_constant')
@@ -325,6 +323,13 @@ def slice_orig2prim(op, ends_t, ends_tl, x, starts_t, starts_tl):
     if op.attr('decrease_axis'):
         y = reshape(y, shape=get_output_var_list(op)[0].shape)
     return y
+
+
+@REGISTER_ORIG2PRIM('sigmoid')
+def sigmoid_orig2prim(op, x):
+    return div(
+        fill_const(value=1.0, shape=x.shape, dtype=x.dtype),
+        (add(fill_const(value=1.0, shape=x.shape, dtype=x.dtype), exp(neg(x)))))
 
 
 @REGISTER_ORIG2PRIM('p_norm')
@@ -462,6 +467,20 @@ def dropout_orig2prim(op, seed_t, x):
         raise RuntimeError(
             'Unsupported dropout_implementation, only support upscale_in_train and downgrade_in_infer'
         )
+
+
+@REGISTER_ORIG2PRIM('uniform_random')
+def uniform_random_orig2prim(op, shape_t, shape_tl):
+    if shape_t or shape_tl:
+        raise TypeError(
+            'uniform_random_orig2prim currently not support ShapeTensor input or ShapeTensorList input.'
+        )
+    min_value = op.attr('min')
+    max_value = op.attr('max')
+    seed = op.attr('seed')
+    dtype = paddle.dtype(op.attr('dtype'))
+    shape = op.attr('shape')
+    return uniform_random(dtype, min_value, max_value, seed, shape=shape)
 
 
 @REGISTER_ORIG2PRIM('reduce_sum')
@@ -665,6 +684,15 @@ def bernoulli_prim2orig(op):
                     fill_value=op.attr('p'),
                     dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
     return paddle.bernoulli(t)
+
+
+@REGISTER_PRIM2ORIG('uniform_random_p')
+def uniform_random_prim2orig(op):
+    return paddle.uniform(shape=op.attr('shape'),
+                          dtype=INT_DTYPE_2_STRING[op.attr('dtype')],
+                          min=op.attr('min'),
+                          max=op.attr('max'),
+                          seed=op.attr('seed'))
 
 
 @REGISTER_PRIM2ORIG('select_p')

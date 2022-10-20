@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import os
 import platform
 
@@ -388,7 +387,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_fleet_lamb_meta_optimizer',
     'test_op_version',
     'fused_broadcast_op_test',
-    'stringpiece_test',
     'test_tdm_child_op',
     'test_imperative_group',
     'test_analyzer_capi_exp',
@@ -1500,7 +1498,6 @@ CPU_PARALLEL_JOB = [
     'test_analyzer',
     'test_aligned_allocator',
     'stringprintf_test',
-    'stringpiece_test',
     'split_test',
     'selected_rows_functor_test',
     'scope_test',

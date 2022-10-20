@@ -14,7 +14,7 @@
 
 __all__ = []
 
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.framework import dygraph_only
 from paddle import in_dynamic_mode
 from paddle.fluid.layer_helper import LayerHelper
@@ -61,7 +61,7 @@ def relu(x, name=None):
 
 @dygraph_only
 def softmax(x, axis=-1, name=None):
-    """
+    r"""
     sparse softmax activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Note:
@@ -146,7 +146,7 @@ def relu6(x, name=None):
 
 @dygraph_only
 def leaky_relu(x, negative_slope=0.01, name=None):
-    """
+    r"""
     sparse leaky_relu activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::

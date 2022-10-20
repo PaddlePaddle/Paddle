@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import paddle
 import unittest
-import numpy as np
 
 from paddle.static import InputSpec
 
@@ -106,8 +104,7 @@ class CheckOpAttr(unittest.TestCase):
             ops = cur_block.ops
             for op in ops:
                 if op.type not in self.infos: continue
-                for attr_name, expect_vals in six.iteritems(
-                        self.infos[op.type]):
+                for attr_name, expect_vals in self.infos[op.type].items():
                     op_vals = op.desc.attr(attr_name)
                     if not isinstance(expect_vals, list):
                         expect_vals = [expect_vals]

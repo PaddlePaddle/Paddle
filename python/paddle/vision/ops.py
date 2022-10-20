@@ -14,13 +14,11 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
-from ..fluid import core, layers
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers import nn, utils
 from ..nn import Layer, Conv2D, Sequential, ReLU, BatchNorm2D
 from ..fluid.initializer import Normal
 from ..fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
-from paddle.common_ops_import import *
 from paddle import _C_ops, _legacy_C_ops
 from ..framework import _current_expected_place
 
@@ -1738,7 +1736,7 @@ def generate_proposals(scores,
         assert return_rois_num, "return_rois_num should be True in dygraph mode."
         attrs = (pre_nms_top_n, post_nms_top_n, nms_thresh, min_size, eta,
                  pixel_offset)
-        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals_v2(
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals(
             scores, bbox_deltas, img_size, anchors, variances, *attrs)
 
         return rpn_rois, rpn_roi_probs, rpn_rois_num

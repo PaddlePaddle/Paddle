@@ -15,7 +15,6 @@
 import paddle.fluid as fluid
 import unittest
 import numpy as np
-import six
 import paddle
 from paddle.fluid.framework import _test_eager_guard
 
@@ -37,7 +36,7 @@ class TensorFill_Test(unittest.TestCase):
                 paddle.set_device('cpu')
             else:
                 paddle.set_device('gpu')
-            np_arr = np.reshape(np.array(six.moves.range(np.prod(self.shape))),
+            np_arr = np.reshape(np.array(range(np.prod(self.shape))),
                                 self.shape)
             for dtype in typelist:
                 var = 1.
@@ -65,7 +64,7 @@ class TensorFill_Test(unittest.TestCase):
                 paddle.set_device('cpu')
             else:
                 paddle.set_device('gpu')
-            np_arr = np.reshape(np.array(six.moves.range(np.prod(self.shape))),
+            np_arr = np.reshape(np.array(range(np.prod(self.shape))),
                                 self.shape)
             for dtype in typelist:
                 var = int(1)

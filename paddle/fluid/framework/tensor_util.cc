@@ -471,7 +471,9 @@ void TensorCopySync(const phi::DenseTensor& src,
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
 #ifdef PADDLE_WITH_MKLDNN
-  dst->set_format(src.format());
+  if (src.layout() == DataLayout::kMKLDNN) {
+    dst->set_mem_desc(src.mem_desc());
+  }
 #endif
   auto src_place = src.place();
   auto src_ptr = src.data();
@@ -1199,8 +1201,7 @@ std::ostream& operator<<(std::ostream& os, const phi::DenseTensor& t) {
 
   os << "  - place: " << t.place() << "\n";
   os << "  - shape: [" << t.dims() << "]\n";
-  os << "  - layout: " << paddle::framework::DataLayoutToString(t.layout())
-     << "\n";
+  os << "  - layout: " << phi::DataLayoutToString(t.layout()) << "\n";
 
 #ifdef PADDLE_WITH_MKLDNN
   os << "  - format: "
