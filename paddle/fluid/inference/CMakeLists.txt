@@ -118,6 +118,12 @@ if(WITH_ONNXRUNTIME)
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc)
 endif()
 
+#export all symbols for paddle/phi/api/include/api.h on paddle_inference_shared, only for UNIX
+if(UNIX)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS}
+                            $<TARGET_OBJECTS:phi_function_api>)
+endif()
+
 # Create shared inference library
 cc_library(
   paddle_inference_shared SHARED
