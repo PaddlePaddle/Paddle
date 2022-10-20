@@ -18,20 +18,20 @@ from operator import __add__, __sub__, __mul__, __truediv__
 
 import numpy as np
 import paddle
-import paddle.incubate.sparse as sparse
+import paddle.sparse as sparse
 
 op_list = [__add__, __sub__, __mul__, __truediv__]
 
 
 def get_actual_res(x, y, op):
     if op == __add__:
-        res = paddle.incubate.sparse.add(x, y)
+        res = paddle.sparse.add(x, y)
     elif op == __sub__:
-        res = paddle.incubate.sparse.subtract(x, y)
+        res = paddle.sparse.subtract(x, y)
     elif op == __mul__:
-        res = paddle.incubate.sparse.multiply(x, y)
+        res = paddle.sparse.multiply(x, y)
     elif op == __truediv__:
-        res = paddle.incubate.sparse.divide(x, y)
+        res = paddle.sparse.divide(x, y)
     else:
         raise ValueError("unsupported op")
     return res

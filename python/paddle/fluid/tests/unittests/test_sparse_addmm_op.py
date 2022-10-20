@@ -64,7 +64,7 @@ class TestAddmm(unittest.TestCase):
         sp_x.stop_gradient = False
         sp_y = origin_y.detach()
         sp_y.stop_gradient = False
-        sp_out = paddle.incubate.sparse.addmm(sp_input, sp_x, sp_y, 3.0, 2.0)
+        sp_out = paddle.sparse.addmm(sp_input, sp_x, sp_y, 3.0, 2.0)
 
         np.testing.assert_allclose(sp_out.numpy(),
                                    dense_out.numpy(),
