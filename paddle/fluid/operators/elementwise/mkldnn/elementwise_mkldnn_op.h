@@ -226,8 +226,6 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         binary_prim->execute(astream, args);
       }
       astream.wait();
-
-      dx->set_mem_desc(dst_memory->get_desc());
     }
 
     if (dy) {
@@ -365,10 +363,6 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                  {DNNL_ARG_DST, *dst_memory},
                              });
         astream.wait();
-        dy->set_mem_desc(dst_memory->get_desc().reshape(
-            phi::vectorize<int64_t>(dy->dims())));
-      } else {
-        dy->set_mem_desc(dst_memory->get_desc());
       }
     }
   }
