@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..ps.utils.public import *
+import logging
+
+import paddle.fluid as fluid
+from ..ps.utils.public import get_optimize_ops, get_ps_endpoint, get_role_id, get_trainers
 from .pass_base import PassBase, register_pass
 from paddle.optimizer.lr import LRScheduler
 from paddle.optimizer.lr import ExponentialDecay, InverseTimeDecay, NaturalExpDecay, NoamDecay

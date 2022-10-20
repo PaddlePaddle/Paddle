@@ -16,7 +16,6 @@ import os
 import unittest
 import random
 import numpy as np
-import six
 import tempfile
 import paddle.fluid as fluid
 import paddle

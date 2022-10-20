@@ -151,8 +151,7 @@ class RNNCell(object):
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
                 return True
-            return (isinstance(seq, Sequence)
-                    and not isinstance(seq, six.string_types))
+            return (isinstance(seq, Sequence) and not isinstance(seq, str))
 
         class Shape(object):
 

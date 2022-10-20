@@ -16,7 +16,6 @@ import paddle.fluid as fluid
 import unittest
 import numpy as np
 import os
-import six
 from paddle.fluid.reader import keep_data_loader_order
 
 keep_data_loader_order(False)
@@ -26,7 +25,7 @@ def create_reader(shape, batch_number):
 
     def __impl__():
         idx = 0
-        for _ in six.moves.range(batch_number):
+        for _ in range(batch_number):
             yield np.ones(shape).astype('float32') * idx,
             idx += 1
 
@@ -86,7 +85,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
             self.assertEqual(list(input_data.shape),
                              [self.shape[0] * dev_cnt] + self.shape[1:])
             start_val = dev_cnt * batch_id
-            for idx in six.moves.range(dev_cnt):
+            for idx in range(dev_cnt):
                 data_part = input_data[idx * self.shape[0]:(idx + 1) *
                                        self.shape[0], :]
                 num = data_part.flatten()[0]
@@ -138,7 +137,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
 
                 if loader.iterable:
                     early_break = False
-                    for epoch_id in six.moves.range(self.epoch_num):
+                    for epoch_id in range(self.epoch_num):
                         early_break = False
                         self.clear_visited()
                         batch_id = 0
@@ -164,7 +163,7 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                     if early_break:
                         loader._reset()
                 else:
-                    for epoch_id in six.moves.range(self.epoch_num):
+                    for epoch_id in range(self.epoch_num):
                         batch_id = 0
                         self.clear_visited()
                         loader.start()

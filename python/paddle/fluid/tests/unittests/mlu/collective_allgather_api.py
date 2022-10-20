@@ -20,7 +20,6 @@ import signal
 import time
 import socket
 from contextlib import closing
-from six import string_types
 import math
 import paddle
 import paddle.fluid as fluid

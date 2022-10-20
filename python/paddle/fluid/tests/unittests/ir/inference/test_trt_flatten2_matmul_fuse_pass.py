@@ -21,7 +21,7 @@ import hypothesis.strategies as st
 
 
 class TestFlatten2MatmulFusePass(PassAutoScanTest):
-    """
+    r"""
         x_var
           |
        flatten2
