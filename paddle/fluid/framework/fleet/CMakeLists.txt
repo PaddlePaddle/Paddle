@@ -29,7 +29,7 @@ if(WITH_HETERPS)
       nv_library(
         ps_gpu_wrapper
         SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
-        DEPS heter_ps gloo_wrapper ps_framework_proto ${BRPC_DEPS})
+        DEPS heter_ps gloo_wrapper ps_framework_proto ${BRPC_DEPS} fleet)
     else()
       nv_library(
         ps_gpu_wrapper
