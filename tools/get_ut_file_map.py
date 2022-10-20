@@ -67,7 +67,12 @@ def handle_ut_file_map(rootPath):
         coverage_info = '%s/%s/fnda.tmp' % (ut_map_path, ut)
         if os.path.exists(coverage_info):
             filename = '%s/%s/related_%s.txt' % (ut_map_path, ut, ut)
-            f = open(filename)
+            try:
+                f = open(filename)
+                print("oepn %s succesfully" % filename)
+            except FileNotFoundError:
+                print("%s is not found." % filename)
+
             lines = f.readlines()
             for line in lines:
                 line = line.replace('\n', '').strip()
@@ -85,6 +90,7 @@ def handle_ut_file_map(rootPath):
                     ut_file_map[source_file] = []
                 if ut not in ut_file_map[source_file]:
                     ut_file_map[source_file].append(ut)
+            f.close()
         else:
             not_success_file.write('%s\n' % ut)
             utNotSuccess_list.append(ut)
@@ -96,7 +102,11 @@ def handle_ut_file_map(rootPath):
     for ut in files:
         if ut not in utNotSuccess_list:
             filename = '%s/%s/notrelated_%s.txt' % (ut_map_path, ut, ut)
-            f = open(filename)
+            try:
+                f = open(filename)
+                print("oepn %s succesfully" % filename)
+            except FileNotFoundError:
+                print("%s is not found." % filename)
             lines = f.readlines()
             for line in lines:
                 line = line.replace('\n', '').strip()
@@ -108,7 +118,7 @@ def handle_ut_file_map(rootPath):
                     source_file = line
                 if source_file not in ut_file_map:
                     ut_file_map[source_file] = []
-
+            f.close()
     with open("%s/build/ut_file_map.json" % rootPath, "w") as f:
         json.dump(ut_file_map, f, indent=4)
 

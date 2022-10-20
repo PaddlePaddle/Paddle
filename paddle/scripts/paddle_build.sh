@@ -1829,6 +1829,16 @@ function precise_card_test_single {
     do
         cd ${PADDLE_ROOT}/build
         precise_card_test "^${case}$" $num
+
+        #if test failed,continue,if test succeed ,go on 
+        if_test_failed=$(cat $tmp_dir/^${case}$.log| grep "The following tests FAILED:")
+        if [[ "$if_test_failed" == "The following tests FAILED:" ]];then 
+            echo "$testcases has failed,put it into prec_delta"
+            continue
+        else
+            echo "$testcases succeed"
+        fi
+
         # c++ 
         if [ ! -d "${PADDLE_ROOT}/build/ut_map/$case" ];then
             mkdir ${PADDLE_ROOT}/build/ut_map/$case
@@ -1837,11 +1847,9 @@ function precise_card_test_single {
         find paddle/fluid -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
         find paddle/phi -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
         find paddle/utils -name '*.gcda'|xargs -I {} cp --path {} ut_map/$case
-
         find paddle/phi -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         find paddle/utils -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
         find paddle/fluid -name '*.gcno'|xargs -I {} cp --path {} ut_map/$case
-
         python ${PADDLE_ROOT}/tools/get_single_test_cov.py ${PADDLE_ROOT} $case &
         
         # python
@@ -2008,11 +2016,13 @@ set +x
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
+    ljd_testcases='^graph_node_test$|^send_and_recv_cpu_test$|^test_hdfs1$|^test_dyn_rnn$'
+    precise_card_test_single "$ljd_testcases"
     #run all unittest to get the coverage information of .c and .h files
-    precise_card_test_single "$single_card_tests" 1
-    precise_card_test_single "$single_card_tests_1" 1
-    precise_card_test_single "$multiple_card_tests" 2
-    precise_card_test_single "$exclusive_tests"
+    #precise_card_test_single "$single_card_tests" 1
+    #precise_card_test_single "$single_card_tests_1" 1
+    #precise_card_test_single "$multiple_card_tests" 2
+    #precise_card_test_single "$exclusive_tests"
     wait;
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}
