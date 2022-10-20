@@ -651,6 +651,117 @@ struct SwapDim0And2InTranspose {
   }
 };
 
+// This function is to combine dimension. fox example:
+// (0, 1, 3, 2) --> (0, 2, 1)
+inline void CombineTransposeDim3(const framework::DDim& shape,
+                                 const std::vector<int>& perm,
+                                 std::vector<int>* new_perm,
+                                 framework::DDim* new_dims) {
+  PADDLE_ENFORCE_EQ(shape.size(),
+                    perm.size(),
+                    platform::errors::InvalidArgument(
+                        " shape should have the save dim with perm, but"
+                        " received shape size is:%d, perm size is:%d.",
+                        shape.size(),
+                        perm.size()));
+
+  std::vector<int> dim_vec;
+  if (shape.size() == 1) {
+    // If input dimension is already 1, no need to combine dim.
+    new_perm->resize(1);
+    (*new_perm)[0] = perm[0];
+    dim_vec.push_back(shape[0]);
+    *new_dims = phi::make_ddim(dim_vec);
+    return;
+  }
+  std::vector<int> new_dim_pos(shape.size(), -1);
+  std::vector<int64_t> combined_dims(shape.size(), 0);
+  int cur_head = perm[0];
+  new_dim_pos[cur_head] = 0;
+  combined_dims[0] = shape[cur_head];
+  int dim_idx = 0;
+  for (int perm_idx = 1; perm_idx < shape.size(); ++perm_idx) {
+    // combine consecutive dimensions.
+    if (cur_head + 1 == perm[perm_idx]) {
+      cur_head = perm[perm_idx];
+      combined_dims[dim_idx] *= shape[cur_head];
+    } else {
+      // Else start a new dimension.
+      cur_head = perm[perm_idx];
+      dim_idx++;
+      new_dim_pos[cur_head] = dim_idx;
+      combined_dims[dim_idx] = shape[cur_head];
+    }
+  }
+
+  new_perm->resize(dim_idx + 1);
+
+  dim_idx = 0;
+  for (int i = 0; i < new_dim_pos.size(); ++i) {
+    if (new_dim_pos[i] >= 0) {
+      int new_perm_idx = new_dim_pos[i];
+      (*new_perm)[dim_idx] = new_perm_idx;
+      dim_vec.push_back(combined_dims[new_perm_idx]);
+      dim_idx++;
+    }
+  }
+
+  *new_dims = phi::make_ddim(dim_vec);
+}
+
+template <typename T, typename IndexType = int>
+struct TransposeSimple {
+  static bool run(const phi::GPUContext& ctx,
+                  const phi::DenseTensor& in,
+                  const std::vector<int32_t> perm,
+                  phi::DenseTensor* out) {
+    // First reduce the dimensions of the input tensor if possible.
+    std::vector<int> new_perm;
+    framework::DDim new_dims;
+    CombineTransposeDim3(in.dims(), perm, &new_perm, &new_dims);
+
+    // Only use tile copy GPU kernel when dimension is 2 or 3.
+    int dims = new_dims.size();
+    std::vector<int> new_dim_vec = phi::vectorize<int>(new_dims);
+    if (dims < 2 || dims > 3) return false;
+    auto in_data = in.data<T>();
+    auto out_data = out->data<T>();
+    // In most cases, dim will not greater than 3 after combine.
+    switch (dims) {
+      case 2:
+        if (new_perm[0] == 1 && new_perm[1] == 0) {
+          // Add the first dimension size as 1.
+          new_dim_vec.insert(new_dim_vec.begin(), 1);
+          SwapDim1And2InTranspose<T, IndexType>()(
+              ctx, in_data, new_dim_vec, out_data);
+          return true;
+        }
+        break;
+      case 3:
+        // In this case, suppose we can do coalescing read and write in tile.
+        if (new_perm == std::vector<int>({0, 2, 1})) {
+          SwapDim1And2InTranspose<T, IndexType>()(
+              ctx, in_data, new_dim_vec, out_data);
+          return true;
+        } else if (new_perm == std::vector<int>({2, 1, 0})) {
+          // Maybe can optimize later, find a way to do coalescing memory copy.
+          // But I think it depends on the data size. If span is not large,
+          // maybe
+          // can do coalescing.
+          SwapDim0And2InTranspose<T, IndexType>()(
+              ctx, in_data, new_dim_vec, out_data);
+          return true;
+        } else {
+          return false;
+        }
+        break;
+      default:
+        return false;
+    }
+    return false;
+  }
+};
+
 template <int N, typename T>
 class IdxHelper {
  public:
@@ -1023,101 +1134,48 @@ inline void LaunchWithDispatchVecSize(const phi::GPUContext& ctx,
 #undef CALL_DISPATCH_VEC_SIZE
 }
 
-template <typename T>
-inline void PermuteWithEigen(const phi::GPUContext& ctx,
-                             phi::DenseTensor* in,
-                             phi::DenseTensor* out,
-                             const DimsSimplifier<T>& simplifier) {
-  phi::DDim src_dims, dst_dims;
-  const bool not_same_dims =
-      static_cast<int>(in->dims().size()) != simplifier.GetRank();
-  if (not_same_dims) {
-    src_dims = in->dims();
-    dst_dims = out->dims();
-    in->ResizeAndAllocate(phi::make_ddim(simplifier.GetSrcDims()));
-    out->ResizeAndAllocate(phi::make_ddim(simplifier.GetDstDims()));
-  }
-  TransCompute<phi::GPUContext, T>(
-      simplifier.GetRank(), ctx, *in, out, simplifier.GetPerm());
-
-  if (not_same_dims) {
-    in->ResizeAndAllocate(src_dims);
-    out->ResizeAndAllocate(dst_dims);
-  }
-}
-
-template <typename T, typename IndexType = int>
-inline void TransposeSimple(const phi::GPUContext& ctx,
-                            phi::DenseTensor* in,
-                            phi::DenseTensor* out,
-                            const DimsSimplifier<T>& simplifier) {
-  const std::vector<int> new_perm = simplifier.GetPerm();
-  std::vector<int> new_dims = simplifier.GetSrcDims();
-  auto in_data = in->data<T>();
-  auto out_data = out->data<T>();
-
-  if (simplifier.GetRank() == 2 && new_perm[0] == 1 && new_perm[1] == 0) {
-    // Add the first dimension size as 1.
-    new_dims.insert(new_dims.begin(), 1);
-    SwapDim1And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
-  } else if (new_perm == std::vector<int>({0, 2, 1})) {
-    SwapDim1And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
-  } else if (new_perm == std::vector<int>({2, 1, 0})) {
-    // Maybe can optimize later, find a way to do coalescing memory copy.
-    // But I think it depends on the data size. If span is not large,
-    // maybe can do coalescing.
-    SwapDim0And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
-  } else {
-    PermuteWithEigen<T>(ctx, in, out, simplifier);
-  }
-}
-
-template <typename T>
-inline void TransposeWithSimple(const phi::GPUContext& ctx,
-                                phi::DenseTensor* in,
+template <typename DeviceContext, typename T>
+inline void PermuteAndTranspose(const int rank,
+                                const DeviceContext& ctx,
+                                const phi::DenseTensor& in,
                                 phi::DenseTensor* out,
-                                const DimsSimplifier<T>& simplifier) {
-  if (simplifier.GetCount() < std::numeric_limits<int32_t>::max()) {
-    TransposeSimple<T>(ctx, in, out, simplifier);
-  } else {
-    TransposeSimple<T, int64_t>(ctx, in, out, simplifier);
-  }
-}
+                                const std::vector<int32_t>& perm) {
+  const int64_t numel = in.numel();
+  auto simplifier = DimsSimplifier<T>(ctx.GetSMCount(),
+                                      rank,
+                                      numel,
+                                      perm,
+                                      phi::vectorize<int>(in.dims()),
+                                      in.data<T>(),
+                                      out->data<T>());
 
-template <typename T>
-inline void PermuteAndTranspose(const phi::GPUContext& ctx,
-                                phi::DenseTensor* in,
-                                phi::DenseTensor* out,
-                                const DimsSimplifier<T>& simplifier) {
-  auto count = simplifier.GetCount();
   if (simplifier.GetPermType() == PermuteType::kCopy) {
     // If perm is [0,1,2,3], then just operate a DtoD copy.
-    paddle::memory::Copy(ctx.GetPlace(),
-                         out->data<T>(),
-                         ctx.GetPlace(),
-                         in->data<T>(),
-                         count * sizeof(T),
-                         ctx.stream());
+    phi::backends::gpu::GpuMemcpyAsync(out->data<T>(),
+                                       in.data<T>(),
+                                       numel * sizeof(T),
+                                       cudaMemcpyDeviceToDevice,
+                                       ctx.stream());
   } else {
-    if (count < std::numeric_limits<int>::max()) {
+    if (numel < std::numeric_limits<int>::max()) {
       LaunchWithDispatchVecSize<T, int>(ctx,
                                         simplifier.GetVecSize(),
                                         simplifier.GetPermType(),
                                         simplifier.GetSrcDims(),
                                         simplifier.GetPerm(),
-                                        in->data<T>(),
+                                        in.data<T>(),
                                         out->data<T>(),
-                                        static_cast<int>(count));
+                                        static_cast<int>(numel));
     } else {
-      int64_t cnt = static_cast<int64_t>(count);
+      int64_t cnt = static_cast<int64_t>(numel);
       LaunchWithDispatchVecSize<T, int64_t>(ctx,
                                             simplifier.GetVecSize(),
                                             simplifier.GetPermType(),
                                             simplifier.GetSrcDims(),
                                             simplifier.GetPerm(),
-                                            in->data<T>(),
+                                            in.data<T>(),
                                             out->data<T>(),
-                                            static_cast<int64_t>(count));
+                                            static_cast<int64_t>(numel));
     }
   }
 }
@@ -1127,30 +1185,33 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                               const phi::DenseTensor& in,
                               const std::vector<int32_t>& perm,
                               phi::DenseTensor* out) {
+  const int rank = perm.size();
   int64_t numel = in.numel();
-  auto simplifier = DimsSimplifier<T>(ctx.GetSMCount(),
-                                      perm.size(),
-                                      numel,
-                                      perm,
-                                      phi::vectorize<int>(in.dims()),
-                                      in.data<T>(),
-                                      out->data<T>());
-  auto* tuner = phi::autotune::MakeTransposeTuner<T>(TransposeWithSimple<T>);
-  tuner->AddCallBack(PermuteWithEigen<T>);
-  tuner->AddCallBack(PermuteAndTranspose<T>);
+  bool ret{false};
+  if (numel >= std::numeric_limits<int32_t>::max()) {
+    ret = TransposeSimple<T, int64_t>::run(ctx, in, perm, out);
+  } else {
+    ret = TransposeSimple<T>::run(ctx, in, perm, out);
+  }
+  if (!ret) {
+    auto* tuner =
+        phi::autotune::MakeTransposeTuner<T>(TransCompute<phi::GPUContext, T>);
+    tuner->AddCallBack(PermuteAndTranspose<phi::GPUContext, T>);
 
-  size_t key = phi::autotune::TransposeKey(
-      phi::vectorize(in.dims()),
-      perm,
-      paddle::experimental::CppTypeToDataType<T>::Type());
+    size_t key = phi::autotune::TransposeKey(
+        phi::vectorize(in.dims()),
+        perm,
+        paddle::experimental::CppTypeToDataType<T>::Type());
 
-  tuner->Run(ctx,
-             phi::autotune::AlgorithmType::kTranspose,
-             key,
-             ctx,
-             const_cast<phi::DenseTensor*>(&in),
-             out,
-             simplifier);
+    tuner->Run(ctx,
+               phi::autotune::AlgorithmType::kTranspose,
+               key,
+               rank,
+               ctx,
+               in,
+               out,
+               perm);
+  }
 }
 
 }  // namespace operators

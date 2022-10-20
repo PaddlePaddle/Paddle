@@ -88,7 +88,7 @@ class DimsSimplifier {
                           const std::vector<int>& dims,
                           const T* src,
                           T* dst)
-      : perm_(rank), src_dims(rank), count_(numel) {
+      : perm_(rank), src_dims(rank) {
     SimplifyPermAndDims(rank, dims, perm);
     if (rank_ > 1) {
       vec_size_ = GetPermVecSize(sm_count, src, dst);
@@ -104,7 +104,6 @@ class DimsSimplifier {
 
   int GetRank() const { return rank_; }
   int GetVecSize() const { return vec_size_; }
-  int64_t GetCount() const { return count_; }
   PermuteType GetPermType() const { return type_; }
 
   std::vector<int> GetPerm() const { return perm_; }
@@ -113,7 +112,6 @@ class DimsSimplifier {
 
  private:
   int rank_{1};
-  int64_t count_{0};
   int vec_size_{1};
   std::vector<int> perm_;
   std::vector<int> src_dims;
