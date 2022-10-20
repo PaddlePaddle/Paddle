@@ -61,6 +61,19 @@ def handle_ut_file_map(rootPath):
     ut_file_map = {}
     count = 0
     not_success_file = open("%s/build/prec_delta" % rootPath, 'w')
+    #if testdir is not made,write the test into prec_delta
+    all_ut = '%s/build/all_uts_paddle' % rootPath
+    with open(all_ut, 'r') as f:
+        all_ut_list = []
+        for ut in f.readlines():
+            ut = ut.replace('\n', '')
+            all_ut_list.append(ut.strip())
+        f.close()
+    for ut in all_ut_list:
+        filedir = '%s/build/ut_map/%s' % (rootPath, ut)
+        if not os.path.exists(filedir):
+            not_success_file.write(ut)
+    #if fnda.tmp not exists,write the test into prec_delta
     for ut in files:
         count = count + 1
         print("ut %s: %s" % (count, ut))
@@ -138,6 +151,7 @@ def notsuccessfuc(rootPath):
             utNotSuccess = utNotSuccess + '^%s$|' % ut
 
     # ut not exec
+    """
     get_all_uts(rootPath)
     with open("/paddle/build/all_uts_paddle", "r") as f:
         data = f.readlines()
@@ -147,6 +161,7 @@ def notsuccessfuc(rootPath):
             print(ut)
             count = count + 1
             utNotSuccess = utNotSuccess + '^%s$|' % ut
+    """
 
     if utNotSuccess != '':
         print("utNotSuccess count: %s" % count)
@@ -194,6 +209,7 @@ def ut_file_map_supplement(rootPath):
         for ut in f.readlines():
             prec_delta_new_list.append(ut.strip())
         f.close()
+
     for ut in prec_delta_old_list:
         filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, ut)
         if ut in all_uts_paddle_list:

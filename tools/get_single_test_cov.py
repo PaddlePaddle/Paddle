@@ -26,6 +26,7 @@ def getFNDAFile(rootPath, test):
         print("oepn %s succesfully" % filename)
     except FileNotFoundError:
         print("%s is not found." % filename)
+        return
     lines = f.readlines()
     for line in lines:
         line = line.replace('\n', '')
@@ -51,7 +52,7 @@ def analysisFNDAFile(rootPath, test):
         print("make related.txt and not_related.txt succesfully")
     else:
         print("make related.txt and not_related.txt failed")
-        os._exit()
+        return
 
     fn_filename = '%s/build/ut_map/%s/fnda.tmp' % (rootPath, test)
     try:
@@ -59,6 +60,7 @@ def analysisFNDAFile(rootPath, test):
         print("oepn %s succesfully" % fn_filename)
     except FileNotFoundError:
         print("%s is not found." % fn_filename)
+        return
     data = f.read().split('SF:')
     related_file_list = []
     for message in data:
@@ -92,10 +94,7 @@ def analysisFNDAFile(rootPath, test):
                 if clazz_filename not in related_file_list:  # xx.pb.cc in RELATED xx.pb.h not in RELATED
                     os.system('echo %s >> %s' %
                               (clazz_filename, notrelated_ut_map_file))
-    if os.path.getsize(related_ut_map_file) == 0 or os.path.getsize(
-            notrelated_ut_map_file) == 0:
-        print("related.txt or notrelated.txt is empty")
-        os._exit()
+    f.close()
 
 
 def getCovinfo(rootPath, test):
@@ -111,7 +110,7 @@ def getCovinfo(rootPath, test):
         print("move gcda and gcno files to %s succesfully") % ut_map_path
     else:
         print("move gcda and gcno files to %s failed") % ut_map_path
-        os._exit(0)
+        return
 
     os.system(
         'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
@@ -120,7 +119,7 @@ def getCovinfo(rootPath, test):
     file_size = os.path.getsize(coverage_info_path)
     if file_size == 0:
         print("coverage.info is empty,collect coverage rate failed")
-        os._exit(0)
+        return
     else:
         print("get coverage.info succesfully")
     os.system(
@@ -130,7 +129,7 @@ def getCovinfo(rootPath, test):
     coverage_tmp_size = os.path.getsize(coverage_info_tmp)
     if coverage_tmp_size == 0:
         print("coverage.info.tmp is empty,collect coverage rate failed")
-        os._exit(0)
+        return
     else:
         print("get coverage.info.tmp succesfully")
     os.system('rm -rf %s/paddle' % ut_map_path)
