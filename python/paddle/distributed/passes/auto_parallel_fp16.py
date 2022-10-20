@@ -181,7 +181,8 @@ class FP16State(object):
         try:
             var = block.var(var_name)
         except ValueError as e:
-            var = self.program.global_block().var(var_name)
+            var = block._var_recursive(var_name)
+            # var = self.program.global_block().var(var_name)
 
         # NOTE(JZ-LIANG) "array_" is a hack to adopt for ernie3.0 inference, since there is
         # a trick which make the LOD_TENSOR_ARRAY to the float32 in while block to reset the LOD_TENSOR_ARRAY
