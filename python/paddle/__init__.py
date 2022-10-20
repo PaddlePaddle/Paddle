@@ -82,6 +82,7 @@ import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
 import paddle.audio  # noqa: F401
 import paddle.geometric  # noqa: F401
+import paddle.sparse
 
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401

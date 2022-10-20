@@ -12,27 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import functional as F
-from paddle.nn import Layer
-
 __all__ = []
 
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import dygraph_only
+from paddle import in_dynamic_mode
+from paddle.fluid.layer_helper import LayerHelper
 
-class ReLU(Layer):
+
+def relu(x, name=None):
     """
-    Sparse ReLU Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
+    sparse relu activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
 
-        ReLU(x) = max(x, 0)
+        out = max(x, 0)
 
     Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
-    Shape:
-        - input: Sparse Tensor with any shape.
-        - output: Sparse Tensor with the same shape as input.
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
         .. code-block:: python
@@ -41,26 +43,26 @@ class ReLU(Layer):
 
             dense_x = paddle.to_tensor([-2., 0., 1.])
             sparse_x = dense_x.to_sparse_coo(1)
-            relu = paddle.incubate.sparse.nn.ReLU()
-            out = relu(sparse_x)
+            out = paddle.sparse.nn.functional.relu(sparse_x)
             # [0., 0., 1.]
     """
+    if in_dynamic_mode():
+        return _C_ops.sparse_relu(x)
+    else:
+        op_type = 'sparse_relu'
+        helper = LayerHelper(op_type)
+        out = helper.create_sparse_variable_for_type_inference(x.dtype)
+        helper.append_op(type=op_type,
+                         inputs={'x': x},
+                         outputs={'out': out},
+                         attrs={})
+        return out
 
-    def __init__(self, name=None):
-        super(ReLU, self).__init__()
-        self._name = name
 
-    def forward(self, x):
-        return F.relu(x, self._name)
-
-    def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
-        return name_str
-
-
-class Softmax(Layer):
+@dygraph_only
+def softmax(x, axis=-1, name=None):
     """
-    Sparse Softmax Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
+    sparse softmax activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Note:
         Only support axis=-1 for SparseCsrTensor, which is faster when read data 
@@ -72,16 +74,16 @@ class Softmax(Layer):
     .. math::
 
         softmax_ij = \frac{\exp(x_ij - max_j(x_ij))}{\sum_j(exp(x_ij - max_j(x_ij))}
-
+    
     Parameters:
+        x (Tensor): The input tensor. It can be SparseCooTensor/SparseCsrTensor. The data type can be float32 or float64.
         axis (int, optional): The axis along which to perform softmax calculations. Only support -1 for SparseCsrTensor.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
-    Shape:
-        - input: SparseCooTensor / SparseCsrTensor with any shape.
-        - output: Sparse Tensor with the same shape as input.
-
+    Returns:
+        Tensor: SparseCoo or SparseCsr, whose layout is the same with `x` .
+    
     Examples:
         .. code-block:: python
 
@@ -102,43 +104,33 @@ class Softmax(Layer):
             #        values=[0.96823406, 0.19722934, 0.94373937, 0.02060066, 0.71456372,
             #                0.98275049])
 
-            softmax = paddle.incubate.sparse.nn.Softmax()
-            out = softmax(csr)
+            out = paddle.sparse.nn.functional.softmax(csr)
             # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
             #        crows=[0, 2, 5, 6], 
             #        cols=[2, 3, 0, 2, 3, 3], 
             #        values=[0.68373820, 0.31626180, 0.45610887, 0.18119845, 0.36269269,
             #                1.        ])
+    
     """
-
-    def __init__(self, axis=-1, name=None):
-        super(Softmax, self).__init__()
-        self._axis = axis
-        self._name = name
-
-    def forward(self, x):
-        return F.softmax(x, self._axis, self._name)
-
-    def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
-        return name_str
+    return _C_ops.sparse_softmax(x, axis)
 
 
-class ReLU6(Layer):
+@dygraph_only
+def relu6(x, name=None):
     """
-    Sparse ReLU6 Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
+    sparse relu6 activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
 
-        ReLU(x) = min(max(0,x), 6)
+        relu6(x) = min(max(0, x), 6)
 
     Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
-    Shape:
-        - input: Sparse Tensor with any shape.
-        - output: Sparse Tensor with the same shape as input.
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
         .. code-block:: python
@@ -147,45 +139,34 @@ class ReLU6(Layer):
 
             dense_x = paddle.to_tensor([-2., 0., 8.])
             sparse_x = dense_x.to_sparse_coo(1)
-            relu6 = paddle.incubate.sparse.nn.ReLU6()
-            out = relu6(sparse_x)
+            out = paddle.sparse.nn.functional.relu6(sparse_x)
     """
-
-    def __init__(self, name=None):
-        super(ReLU6, self).__init__()
-        self._name = name
-
-    def forward(self, x):
-        return F.relu6(x, self._name)
-
-    def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
-        return name_str
+    return _C_ops.sparse_relu6(x, 6.0)
 
 
-class LeakyReLU(Layer):
+@dygraph_only
+def leaky_relu(x, negative_slope=0.01, name=None):
     """
-    Sparse Leaky ReLU Activation, requiring x to be a SparseCooTensor or SparseCsrTensor. 
+    sparse leaky_relu activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
-
-        LeakyReLU(x)=
-            \left\{
-                \begin{array}{rcl}
-                    x, & & if \ x >= 0 \\
-                    negative\_slope * x, & & otherwise \\
-                \end{array}
-            \right.
+        leaky\_relu(x)=
+        \left\{
+            \begin{array}{rcl}
+                x, & & if \ x >= 0 \\
+                negative\_slope * x, & & otherwise \\
+            \end{array}
+        \right.
 
     Parameters:
+        x (Tensor): The input Sparse Tensor with data type float32, float64.
         negative_slope (float, optional): Slope of the activation function at
             :math:`x < 0` . Default is 0.01.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
-    Shape:
-        - input: Sparse Tensor with any shape.
-        - output: Sparse Tensor with the same shape as input.
+    Returns:
+        A Sparse Tensor with the same data type and shape as ``x`` .
 
     Examples:
         .. code-block:: python
@@ -194,18 +175,6 @@ class LeakyReLU(Layer):
 
             dense_x = paddle.to_tensor([-2., 0., 5.])
             sparse_x = dense_x.to_sparse_coo(1)
-            leaky_relu = paddle.incubate.sparse.nn.LeakyReLU(0.5)
-            out = leaky_relu(sparse_x)
+            out = paddle.sparse.nn.functional.leaky_relu(sparse_x, 0.5)
     """
-
-    def __init__(self, negative_slope=0.01, name=None):
-        super(LeakyReLU, self).__init__()
-        self._negative_slope = negative_slope
-        self._name = name
-
-    def forward(self, x):
-        return F.leaky_relu(x, self._negative_slope, self._name)
-
-    def extra_repr(self):
-        name_str = 'name={}'.format(self._name) if self._name else ''
-        return name_str
+    return _C_ops.sparse_leaky_relu(x, negative_slope)
