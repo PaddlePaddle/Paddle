@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -1192,17 +1193,65 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
 struct OperatorWithKernel::CacheImpl {
   explicit CacheImpl(phi::KernelContext* kernel_ctx,
-                     RuntimeInferShapeContext* infer_shape_ctx)
-      : kernel_ctx_(kernel_ctx), infer_shape_ctx_(infer_shape_ctx) {}
+                     RuntimeInferShapeContext* infer_shape_ctx,
+                     const VariableNameMap& inputs)
+      : kernel_ctx_(kernel_ctx),
+        infer_shape_ctx_(infer_shape_ctx),
+        inputs_(inputs) {
+    UpdateCacheDims();
+  }
 
   phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
   RuntimeInferShapeContext* getRuntimeInferShapeContext() {
     return infer_shape_ctx_.get();
   }
+  void UpdateCacheDims() {
+    if (old_dims_.empty()) {
+      size_t num{0};
+      for (auto& iter : inputs_) {
+        num += iter.second.size();
+      }
+      old_dims_.resize(num);
+    }
+
+    size_t idx{0};
+    for (auto& iter : inputs_) {
+      auto dims = infer_shape_ctx_->GetInputsDim(iter.first);
+      for (auto& dim : dims) {
+        old_dims_[idx++] = dim;
+      }
+    }
+  }
+  bool ShouldRunInferShape() {
+    bool ret{false};
+    if (old_dims_.empty()) {
+      ret = true;
+    } else {
+      size_t idx{0};
+      for (auto& arg : inputs_) {
+        auto cur_dims = getRuntimeInferShapeContext()->GetInputsDim(arg.first);
+        for (size_t i = 0; i < cur_dims.size(); ++i) {
+          // LOG(INFO) << arg.second[i] << " " << cur_dims[i];
+          if (old_dims_[idx++] != cur_dims[i]) {
+            ret = true;
+            break;
+          }
+        }
+        if (ret) break;
+      }
+    }
+    if (ret) UpdateCacheDims();
+    return ret;
+  }
+  bool InferShapeCacheEnabled() { return infershape_cache_; }
+  void EnableInferShapeCache(bool cache) { infershape_cache_ = cache; }
 
  private:
   std::unique_ptr<phi::KernelContext> kernel_ctx_;
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
+  std::vector<DDim> old_dims_;
+  const VariableNameMap& inputs_;
+  bool infershape_cache_{false};
 };
 
 static void CheckTensorNANOrInf(const std::string& op_type,
@@ -1444,6 +1493,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
+  if (impl_ && !impl_->InferShapeCacheEnabled() &&
+      HasAttr("@ENABLE_INFERSHAPE_CACHE@"))
+    impl_->EnableInferShapeCache(true);
   const Scope* cur_scope = &scope;
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
@@ -1451,8 +1503,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
-    if (!all_kernels_must_compute_runtime_shape_)
-      this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+    if (!all_kernels_must_compute_runtime_shape_) {
+      if (impl_->InferShapeCacheEnabled()) {
+        bool need_infer_shape = impl_->ShouldRunInferShape();
+        VLOG(5) << "should run infer_shape " << need_infer_shape;
+        if (need_infer_shape)
+          this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+      } else {
+        this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+      }
+    }
     (*phi_kernel_)(impl_->getKernelContext());
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
@@ -1746,9 +1806,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
-        impl_ =
-            new CacheImpl(new phi::KernelContext(),
-                          new RuntimeInferShapeContext(*this, *runtime_ctx));
+        impl_ = new CacheImpl(new phi::KernelContext(),
+                              new RuntimeInferShapeContext(*this, *runtime_ctx),
+                              Inputs());
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
         (*phi_kernel_)(impl_->getKernelContext());
       } else {

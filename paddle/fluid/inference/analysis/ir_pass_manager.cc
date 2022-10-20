@@ -65,6 +65,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("tensorrt_transformer_maskid",
               new std::string(argument->tensorrt_transformer_maskid()));
     pass->Set("disable_logs", new bool(argument->disable_logs()));
+    pass->Set("infershape_cache", new bool(argument->infershape_cache()));
     auto precision_mode = argument->tensorrt_precision_mode();
     bool enable_int8 = precision_mode == AnalysisConfig::Precision::kInt8;
     pass->Set("enable_int8", new bool(enable_int8));

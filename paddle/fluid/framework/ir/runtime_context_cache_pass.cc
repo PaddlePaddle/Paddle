@@ -22,9 +22,12 @@ namespace ir {
 
 void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Applies Runtime Context Cache strategy.";
+
+  auto infershape_cache = Get<bool>("infershape_cache");
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp() && n->Op()) {
       n->Op()->SetAttr(kEnableCacheRuntimeContext, true);
+      if (infershape_cache) n->Op()->SetAttr("@ENABLE_INFERSHAPE_CACHE@", true);
     }
   }
 }

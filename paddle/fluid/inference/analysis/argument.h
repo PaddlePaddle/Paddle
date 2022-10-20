@@ -169,6 +169,8 @@ struct Argument {
   // whether to mute all logs in inference.
   DECL_ARGUMENT_FIELD(disable_logs, DisableLogs, bool);
 
+  DECL_ARGUMENT_FIELD(infershape_cache, InferShapeCache, bool);
+
   // Pass a set of op types to enable its mkldnn kernel
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types,
                       MKLDNNEnabledOpTypes,

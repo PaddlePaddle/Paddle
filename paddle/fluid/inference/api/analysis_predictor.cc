@@ -20,6 +20,7 @@
 #include <fstream>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -1051,6 +1052,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
   argument_.SetUseFcPadding(config_.use_fc_padding());
+  argument_.SetInferShapeCache(config_.infershape_cahce_);
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
@@ -1366,6 +1368,17 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       } else {
         process_level_allocator_enabled = true;
       }
+
+      // support set flags from enviorment.
+      const platform::ExportedFlagInfoMap &env_map =
+          platform::GetExportedFlagInfoMap();
+      std::ostringstream os;
+      os << "--tryfromenv=";
+      for (auto &pair : env_map) {
+        os << pair.second.name << ",";
+      }
+      auto tryfromenv_str = os.str();
+      gflags.push_back(os.str().substr(0, tryfromenv_str.size() - 1));
 
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "

@@ -949,6 +949,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   std::string Summary();
 
+  void EnableInferShapeCache(bool x);
+
   LiteNNAdapterConfig& NNAdapter() { return nnadapter_config_; }
 
   void SetDistConfig(const DistConfig& dist_config) {
@@ -976,6 +978,9 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string model_dir_;
   mutable std::string prog_file_;
   mutable std::string params_file_;
+
+  // General optimization.
+  bool infershape_cahce_;
 
   // Mixed precision.
   std::unordered_set<std::string> mixed_black_list_;

@@ -362,6 +362,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(prog_file_);
   CP_MEMBER(params_file_);
 
+  CP_MEMBER(infershape_cahce_);
   CP_MEMBER(use_fc_padding_);
   // GPU related.
   CP_MEMBER(use_gpu_);
@@ -957,7 +958,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << model_dir_;
   ss << prog_file_;
   ss << params_file_;
-
+  ss << infershape_cahce_;
   ss << use_gpu_;
   ss << use_external_stream_;
   ss << exec_stream_;
@@ -1266,6 +1267,8 @@ std::string AnalysisConfig::Summary() {
 
   return os.PrintTable();
 }
+
+void AnalysisConfig::EnableInferShapeCache(bool x) { infershape_cahce_ = x; }
 
 LiteNNAdapterConfig &LiteNNAdapterConfig::SetDeviceNames(
     const std::vector<std::string> &names) {

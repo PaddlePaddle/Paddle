@@ -138,7 +138,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "conv_elementwise_add2_act_fuse_pass",  //
 #endif
 #endif
-      "transpose_flatten_concat_fuse_pass",
+      "transpose_flatten_concat_fuse_pass", "runtime_context_cache_pass",
 });
 
 const std::vector<std::string> kDlnneSubgraphPasses({
@@ -187,6 +187,7 @@ const std::vector<std::string> kTrtLowerPrecisionPasses{
     "trt_map_matmul_to_mul_pass",
     "fc_fuse_pass",
     "tensorrt_subgraph_pass",
+    "runtime_context_cache_pass",
 };
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
