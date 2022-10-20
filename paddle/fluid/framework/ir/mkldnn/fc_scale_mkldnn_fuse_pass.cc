@@ -90,10 +90,6 @@ void FcScaleMKLDNNFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* scope = param_scope();
     float bias_val = PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias"));
     if (std::abs(bias_val) > 1e-5) return;
-    if (!IsCompat(subgraph, g)) {
-      LOG(WARNING) << "fc_scale_fuse_pass in op compat failed.";
-      return;
-    }
 
     float scale = PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale"));
 
