@@ -48,7 +48,7 @@ def launch():
 
         - ``--log_dir``: The path for each process's log. e.g., ``--log_dir=output_dir``. Default ``--log_dir=log``.
 
-        - ``--run_mode``: The run mode of job, can be:collective/ps/ps-heter. e.g., ``--run_mode=ps``. Default ``--run_mode=collective``.
+        - ``--run_mode``: The run mode of job, can be:collective/ps/ps-heter/rpc. e.g., ``--run_mode=ps``. Default ``--run_mode=collective``.
 
         - ``--job_id``: The job unique id, it affects the log files' name. e.g., ``--job_id=job1``. Default ``--job_id=default``.
 
@@ -259,6 +259,27 @@ def launch():
             # Require `training_script_args` as the arguments of IPU distributed training instead of the arguments of the training program/script
             # Please Check the `IPU Parameters` for details
             python -m paddle.distributed.launch --devices 4 ipu --hosts=localhost --nproc_per_host=2 --ipus_per_replica=1 --ipu_partition=pod16 --vipu_server=127.0.0.1 train.py
+
+    Examples 11 (rpc, cpu, single node):
+        .. code-block:: bash
+            :name: code-block-example-bash11
+
+            # Training on single node with two local servers
+            python -m paddle.distributed.launch --master 127.0.0.1:8765 --nnodes 1 --nproc_per_node 2 --rank 0 --run_mode rpc train.py
+
+    Examples 12 (rpc, cpu, multi node):
+        .. code-block:: bash
+            :name: code-block-example-bash12
+
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 where each node with 2 servers.
+
+            # On 192.168.0.16
+
+            python -m paddle.distributed.launch --master 192.168.0.16:8765 --nnodes 2 --nproc_per_node 2 --rank 0 --run_mode rpc train.py
+
+            # On 192.168.0.17
+
+            python -m paddle.distributed.launch --master 192.168.0.16:8765 --nnodes 2 --nproc_per_node 2 --rank 1 --run_mode rpc train.py
 
     """
 

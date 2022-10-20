@@ -337,7 +337,7 @@ bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
     auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
     return ((op_with_kernel.kernel_type()) &&
             (op_with_kernel.kernel_type()->data_layout_ ==
-             framework::DataLayout::kMKLDNN));
+             phi::DataLayout::kMKLDNN));
   } catch (std::bad_cast& exp) {
     return false;
   }

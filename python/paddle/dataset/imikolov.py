@@ -23,7 +23,6 @@ import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 import collections
 import tarfile
-import six
 
 __all__ = []
 
@@ -68,13 +67,11 @@ def build_dict(min_word_freq=50):
             # remove <unk> for now, since we will set it as last index
             del word_freq['<unk>']
 
-        word_freq = [
-            x for x in six.iteritems(word_freq) if x[1] > min_word_freq
-        ]
+        word_freq = [x for x in word_freq.items() if x[1] > min_word_freq]
 
         word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
         words, _ = list(zip(*word_freq_sorted))
-        word_idx = dict(list(zip(words, six.moves.range(len(words)))))
+        word_idx = dict(list(zip(words, range(len(words)))))
         word_idx['<unk>'] = len(words)
 
     return word_idx
@@ -96,7 +93,7 @@ def reader_creator(filename, word_idx, n, data_type):
                     l = ['<s>'] + l.strip().split() + ['<e>']
                     if len(l) >= n:
                         l = [word_idx.get(w, UNK) for w in l]
-                        for i in six.moves.range(n, len(l) + 1):
+                        for i in range(n, len(l) + 1):
                             yield tuple(l[i - n:i])
                 elif DataType.SEQ == data_type:
                     l = l.strip().split()

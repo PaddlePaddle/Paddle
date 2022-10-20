@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -824,7 +823,7 @@ def fake_data_reader():
 
     def __reader__():
         iteration = TrainTaskConfig.batch_size * batch_num
-        for _ in six.moves.range(iteration):
+        for _ in range(iteration):
             # random data
             np.random.seed = 90
             src_word_np = np.arange(1, seq_len + 1).reshape([seq_len

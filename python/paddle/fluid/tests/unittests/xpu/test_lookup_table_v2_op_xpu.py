@@ -22,7 +22,6 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
-import paddle.compat as cpt
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/data_transfer.h"
+#include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -223,14 +223,14 @@ std::shared_ptr<OperatorBase> TransferLayout(const std::string& var_name,
 #ifdef PADDLE_WITH_MKLDNN
 
   // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in fetch_op.cc
-  if (in_layout == framework::DataLayout::kMKLDNN &&
+  if (in_layout == phi::DataLayout::kMKLDNN &&
       var_name == framework::GradVarName("Filter") && is_fetch_v2) {
     VLOG(4) << "Match special case(Filter && fetch_v2) " << var_name;
-    out_layout = framework::DataLayout::kNCHW;
+    out_layout = phi::DataLayout::kNCHW;
   }
 
-  if (in_layout == framework::DataLayout::ONEDNN &&
-      out_layout != framework::DataLayout::ONEDNN) {
+  if (in_layout == phi::DataLayout::ONEDNN &&
+      out_layout != phi::DataLayout::ONEDNN) {
     auto target_layout = phi::OneDNNContext::tls().get_cur_paddle_data_layout();
     VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
             << target_layout;
@@ -378,7 +378,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                         "Required src_place shall be different with dst_place, "
                         "but received same place: %s",
                         src_place));
-  if (IsSupportedHetePlace(dst_place)) {
+  if (IsSupportedHeterPlace(dst_place)) {
     op_type = kMemcpyH2D;
     int dst_place_type = platform::is_gpu_place(dst_place)      ? 0
                          : platform::is_npu_place(dst_place)    ? 1
@@ -387,7 +387,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                          : platform::is_custom_place(dst_place) ? 6
                                                                 : -1;
     attr_map = {{"dst_place_type", dst_place_type}};
-  } else if (IsSupportedHetePlace(src_place)) {
+  } else if (IsSupportedHeterPlace(src_place)) {
     op_type = kMemcpyD2H;
     int dst_place_type = platform::is_cpu_place(dst_place)           ? 0
                          : platform::is_cuda_pinned_place(dst_place) ? 1

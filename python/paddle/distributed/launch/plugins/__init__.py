@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import os
 
 __all__ = []
@@ -21,7 +20,7 @@ __all__ = []
 # print configuration after args are well filled in controller init
 def log(ctx):
     ctx.logger.info("-----------  Configuration  ----------------------")
-    for arg, value in sorted(six.iteritems(vars(ctx.args))):
+    for arg, value in sorted(vars(ctx.args).items()):
         ctx.logger.info("%s: %s" % (arg, value))
     ctx.logger.info("--------------------------------------------------")
 

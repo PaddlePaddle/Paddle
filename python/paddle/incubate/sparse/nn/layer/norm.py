@@ -170,9 +170,9 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 dtype=dtype, stop_gradient=True)
             reserve_space = helper.create_variable_for_type_inference(
                 dtype=dtype, stop_gradient=True)
-            y = helper.create_sparse_variable_for_type_inference(dtype)
+            out = helper.create_sparse_variable_for_type_inference(dtype)
             outputs = {
-                "y": y,
+                "out": out,
                 "mean_out": mean_out,
                 "variance_out": variance_out,
                 "saved_mean": saved_mean,
@@ -183,7 +183,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                              inputs=inputs,
                              outputs=outputs,
                              attrs=attrs)
-            return y
+            return out
 
 
 class SyncBatchNorm(paddle.nn.SyncBatchNorm):
@@ -297,7 +297,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
     def forward(self, x):
         self._check_data_format()
-        sync_batch_norm_out, _, _, _, _, _ = _C_ops.sparse_sync_batch_norm(
+        sync_batch_norm_out, _, _, _, _, _ = _C_ops.sparse_sync_batch_norm_(
             x, self.weight, self.bias, self._mean, self._variance,
             self._momentum, self._epsilon, self._data_format, not self.training,
             False, False, False)

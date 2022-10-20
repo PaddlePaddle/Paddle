@@ -72,15 +72,20 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
     """
     pr_gpu_time = pr_data.get("gpu_time")
     develop_gpu_time = develop_data.get("gpu_time")
-    gpu_time_diff = (pr_gpu_time - develop_gpu_time) / develop_gpu_time
+    if develop_gpu_time != 0.0:
+        gpu_time_diff = (pr_gpu_time - develop_gpu_time) / develop_gpu_time
+        gpu_time_diff_str = "{:.5f}".format(gpu_time_diff * 100)
+    else:
+        gpu_time_diff = None
+        gpu_time_diff_str = ""
 
     pr_total_time = pr_data.get("total")
     develop_total_time = develop_data.get("total")
     total_time_diff = (pr_total_time - develop_total_time) / develop_total_time
 
     logging.info("------ OP: %s ------" % case_name)
-    logging.info("GPU time change: %.5f%% (develop: %.7f -> PR: %.7f)" %
-                 (gpu_time_diff * 100, develop_gpu_time, pr_gpu_time))
+    logging.info("GPU time change: %s (develop: %.7f -> PR: %.7f)" %
+                 (gpu_time_diff_str, develop_gpu_time, pr_gpu_time))
     logging.info("Total time change: %.5f%% (develop: %.7f -> PR: %.7f)" %
                  (total_time_diff * 100, develop_total_time, pr_total_time))
     logging.info("backward: %s" % pr_result.get("backward"))
@@ -196,7 +201,8 @@ if __name__ == "__main__":
         args.develop_logs_dir)
 
     check_path_exists(args.pr_logs_dir)
-    for log_file in os.listdir(args.pr_logs_dir):
+    pr_log_files = os.listdir(args.pr_logs_dir)
+    for log_file in sorted(pr_log_files):
         develop_result = develop_result_dict.get(log_file)
         pr_result = parse_log_file(os.path.join(args.pr_logs_dir, log_file))
         if develop_result is None or pr_result is None:

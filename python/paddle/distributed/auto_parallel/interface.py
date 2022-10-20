@@ -210,12 +210,16 @@ def get_collection(name):
     return _g_collections[name]
 
 
-def add_to_collection(collection_name, value, value_name=None):
+def add_to_collection(collection_name, value, name=None):
     if collection_name not in _g_collections:
         _g_collections[collection_name] = []
-    if value_name is not None:
-        _g_collections[collection_name].append((value_name, value))
+    if name is not None:
+        for _, v in _g_collections[collection_name]:
+            if v == value: return
+        _g_collections[collection_name].append((name, value))
     else:
+        for _, v in _g_collections[collection_name]:
+            if v == value: return
         _g_collections[collection_name].append((None, value))
 
 
