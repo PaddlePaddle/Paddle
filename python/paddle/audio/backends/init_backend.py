@@ -125,7 +125,7 @@ def get_current_backend() -> str:
     if "paddleaudio" in sys.modules:
         import paddleaudio
         current_backend = paddleaudio.backends.get_audio_backend()
-        if backend.load == paddleaudio.load:
+        if paddle.audio.load == paddleaudio.load:
             return current_backend
     return "wave_backend"
 
@@ -173,7 +173,7 @@ def set_backend(backend_name: str):
 
     for func in ["save", "load", "info"]:
         setattr(backend, func, getattr(module, func))
-        setattr(paddle.audio.backends, func, getattr(module, func))
+        setattr(paddle.audio, func, getattr(module, func))
 
 
 def _init_set_audio_backend():
