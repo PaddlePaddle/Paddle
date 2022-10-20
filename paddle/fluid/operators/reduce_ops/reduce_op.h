@@ -589,15 +589,12 @@ class ReduceOp : public framework::OperatorWithKernel {
     if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5)
       return framework::OpKernelType(input_data_type, ctx.GetPlace());
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        HasOptimizedOneDNNKernel(ctx)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     phi::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    if (!HasOptimizedOneDNNKernel(ctx)) {
+      dnn_fallback_ = true;
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by
+    // PADDLE_WITH_MKLDNN
 
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(
@@ -674,22 +671,15 @@ class ReduceGradOp : public framework::OperatorWithKernel {
             ? static_cast<framework::proto::VarType::Type>(out_dtype)
             : OperatorWithKernel::IndicateVarDataType(
                   ctx, framework::GradVarName("Out"));
-#ifdef PADDLE_WITH_MKLDNN
-    auto CanMKLDNNReduceGradBeUsed = [&]() {
-      auto dx_dims = ctx.Input<phi::DenseTensor>("X")->dims();
 
-      if (dx_dims.size() > 5) return false;  // max 5D tensor is supported
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    auto dx_dims = ctx.Input<phi::DenseTensor>("X")->dims();
 
-      return true;
-    };
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        CanMKLDNNReduceGradBeUsed()) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     phi::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    if (dx_dims.size() > 5) {  // max 5D tensor is supported
+      dnn_fallback_ = true;
     }
-#endif
+    // NOTE(jiahongyu) END: Above codes originally enclosed by
+    // PADDLE_WITH_MKLDNN
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }

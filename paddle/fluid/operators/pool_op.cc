@@ -50,13 +50,10 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, data_type) && CanMKLDNNSupportPool(ctx)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = phi::DataLayout::kMKLDNN;
-  }
-#endif
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  dnn_fallback_ = !CanMKLDNNSupportPool(ctx);
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
   return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
 }
@@ -95,14 +92,10 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-      CanMKLDNNSupportPool(ctx)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = phi::DataLayout::kMKLDNN;
-  }
-#endif
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  dnn_fallback_ = !CanMKLDNNSupportPool(ctx);
+  // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
   return framework::OpKernelType(
       input_data_type, ctx.GetPlace(), layout_, library_);

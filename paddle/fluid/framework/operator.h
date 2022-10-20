@@ -756,6 +756,10 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
+  // NOTE(jiahongyu): Whether fallback to plain kernel after calling
+  // GetExpectedKernelType, use this bool flag to solve mkldnn and cudnn hard
+  // code
+  mutable bool dnn_fallback_ = false;
   // NOTE(chenweihang): Similar op members are used to adapt to
   // new phi kernel, if there is a better design in the future,
   // we may polish the implementation here

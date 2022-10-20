@@ -1388,13 +1388,15 @@ bool OperatorWithKernel::SupportsKernelType(
 #endif
 
 // NOTE(jiahongyu): If MKLDNN can be used, the function SupportsKernelType needs
-// to check whether current op supports MKLDNN kernel. There are three
-// statements in if condition: The first statement checks whether library_type_
-// are changed by other high priority backends; the second checks whether this
-// op has specific implementation; the third checks whether mkldnn kernel can be
-// used.
+// to check whether current op supports MKLDNN kernel. There are four statements
+// in if condition:
+// 1. Whether mkldnn kernel fallbacks to plain kernel;
+// 2. Whether library_type_ are changed by other high priority backends;
+// 3. Whether this op has specific implementation;
+// 4. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-  if (kernel_type.library_type_ == framework::LibraryType::kPlain &&
+  if (!this->dnn_fallback_ &&
+      kernel_type.library_type_ == framework::LibraryType::kPlain &&
       !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
@@ -1571,12 +1573,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
 // LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
-// here. There are three statements in if condition: The first statement checks
-// whether library_type_ are changed by other high priority backends; the second
-// checks whether this op has specific implementation; the third checks whether
-// mkldnn kernel can be used.
+// here. There are four statements in if condition:
+// 1. Whether mkldnn kernel fallbacks to plain kernel;
+// 2. Whether library_type_ are changed by other high priority backends;
+// 3. Whether this op has specific implementation;
+// 4. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-      if (kernel_type_->library_type_ == framework::LibraryType::kPlain &&
+      if (!this->dnn_fallback_ &&
+          kernel_type_->library_type_ == framework::LibraryType::kPlain &&
           !paddle::platform::in_mkldnn_white_list(type_) &&
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
@@ -1814,13 +1818,15 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
 // NOTE(jiahongyu): PADDLE_WITH_MKLDNN codes are moved outside function
 // GetExpectedKernelType, so that if MKLDNN can be used, the library_type_ and
-// data_layout_ of expected_kernel_key need to be adjusted. There are three
-// statements in if condition: The first statement checks whether library_type_
-// are changed by other high priority backends; the second checks whether this
-// op has specific implementation; the third checks whether mkldnn kernel can be
-// used.
+// data_layout_ of expected_kernel_key need to be adjusted. There are four
+// statements in if condition:
+// 1. Whether mkldnn kernel fallbacks to plain kernel;
+// 2. Whether library_type_ are changed by other high priority backends;
+// 3. Whether this op has specific implementation;
+// 4. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-  if (expected_kernel_key.library_type_ == framework::LibraryType::kPlain &&
+  if (!this->dnn_fallback_ &&
+      expected_kernel_key.library_type_ == framework::LibraryType::kPlain &&
       !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
