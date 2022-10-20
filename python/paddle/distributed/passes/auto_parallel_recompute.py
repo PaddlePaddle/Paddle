@@ -25,6 +25,11 @@ from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_att
 from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping
 
 
+def _to_be_recomputed(op):
+    return op.has_attr('op_namescope') and "/auto_parallel/rc_" in op.attr(
+        'op_namescope')
+
+
 class RecomputeState(ProgramStats):
 
     def __init__(self, block, ops):
@@ -32,6 +37,7 @@ class RecomputeState(ProgramStats):
         self._block = block
         self._ops = ops
         self.var_op_deps = {}
+        self.seg_op_deps = {}
 
     def build_stats(self):
         for i, op in enumerate(self._ops):
@@ -51,32 +57,53 @@ class RecomputeState(ProgramStats):
                     self.var_op_deps[name]["var_as_input_ops"] = []
                     self.var_op_deps[name]["var_as_output_ops"] = [i]
 
-    def get_recompute_segments(self, checkpoints):
-        """ get recompute segments from checkpoints """
+            if not _to_be_recomputed(op):
+                continue
+
+            seg_name = op.attr('op_namescope')
+            if seg_name not in self.seg_op_deps:
+                self.seg_op_deps[seg_name] = [i]
+            else:
+                assert self.seg_op_deps[seg_name][-1] + 1 == i, \
+                    "The recompute segment's ops should be continuous"
+                self.seg_op_deps[seg_name].extend([i])
+
+    def get_recompute_segments(self, checkpoints_list=None):
+        """ get recompute segments and checkpoints """
         segments = []
+        checkpoints = checkpoints_list or []
+
         start_idx = -1
         pre_segment_end_idx = -1
-        while start_idx + 1 < len(checkpoints):
-            if start_idx == -1:
-                ckpt_name = checkpoints[start_idx + 1]
-                if ckpt_name not in self.var_op_deps:
-                    start_idx += 1
+        if len(checkpoints) == 0:
+            for segment_idx in self.seg_op_deps.values():
+                if len(segment_idx) == 1:
                     continue
-                op_idx_list = self.var_op_deps[ckpt_name]["var_as_output_ops"]
-                if op_idx_list:
-                    segments.append([0, max(op_idx_list) + 1])
-            else:
-                flag, min_idx, max_idx = self.is_subgraph(
-                    [checkpoints[start_idx]], [checkpoints[start_idx + 1]])
-                if flag:
-                    min_idx = self._update_segment_start(
-                        min_idx, pre_segment_end_idx)
-                    segments.append([min_idx, max_idx + 1])
+                segments.append([segment_idx[0], segment_idx[-1] + 1])
+                checkpoints.extend(self._ops[segment_idx[-1]].output_arg_names)
+        else:
+            while start_idx + 1 < len(checkpoints):
+                if start_idx == -1:
+                    ckpt_name = checkpoints[start_idx + 1]
+                    if ckpt_name not in self.var_op_deps:
+                        start_idx += 1
+                        continue
+                    op_idx_list = self.var_op_deps[ckpt_name][
+                        "var_as_output_ops"]
+                    if op_idx_list:
+                        segments.append([0, max(op_idx_list) + 1])
                 else:
-                    logging.info(
-                        "Could not recompute op range [{}] - [{}] ".format(
-                            min_idx, max_idx + 1))
-            start_idx += 1
+                    flag, min_idx, max_idx = self.is_subgraph(
+                        [checkpoints[start_idx]], [checkpoints[start_idx + 1]])
+                    if flag:
+                        min_idx = self._update_segment_start(
+                            min_idx, pre_segment_end_idx)
+                        segments.append([min_idx, max_idx + 1])
+                    else:
+                        logging.info(
+                            "Could not recompute op range [{}] - [{}] ".format(
+                                min_idx, max_idx + 1))
+                start_idx += 1
 
         for i, (idx1, idx2) in enumerate(segments):
             logging.info("recompute segment[{}]".format(i))
@@ -89,7 +116,10 @@ class RecomputeState(ProgramStats):
                 self._ops[idx2 - 1].desc.input_arg_names(),
                 self._ops[idx2 - 1].desc.output_arg_names()))
 
-        return segments
+        return segments, checkpoints
+
+    def is_recompute(self):
+        return True in [_to_be_recomputed(op) for op in self._ops]
 
     def modify_forward_desc_for_recompute(self, dist_context):
         """
@@ -142,6 +172,7 @@ class RecomputeState(ProgramStats):
                     "seed": seed,
                     "force_cpu": True
                 })
+            seed_op._set_attr('op_namescope', cur_op.attr('op_namescope'))
             # set new seed op's dist_attr
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 seed_op, ref_process_mesh, ref_dims_mapping, dist_context)
@@ -228,8 +259,6 @@ class RecomputePass(PassBase):
             return False
         if self.get_attr("loss") is None:
             return False
-        if self.get_attr("checkpoints") is None:
-            return False
         return True
 
     def _check_conflict(self, other_pass):
@@ -248,11 +277,14 @@ class RecomputePass(PassBase):
 
         # step 1: build recompute state
         rc_state = RecomputeState(main_block, op_path)
+        if not rc_state.is_recompute() and not checkpoints:
+            return
+
         rc_state.modify_forward_desc_for_recompute(self._dist_context)
         rc_state.build_stats()
-        checkpoints = rc_state.sort_checkpoints(checkpoints)
-        segments = rc_state.get_recompute_segments(checkpoints)
-        if segments == []:
+        checkpoints = rc_state.sort_checkpoints(checkpoints or [])
+        segments, checkpoints = rc_state.get_recompute_segments(checkpoints)
+        if segments == [] or checkpoints == []:
             return
 
         # step 2: get vars_should_be_hold
