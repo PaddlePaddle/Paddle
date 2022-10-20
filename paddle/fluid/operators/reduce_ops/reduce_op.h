@@ -678,8 +678,7 @@ class ReduceGradOp : public framework::OperatorWithKernel {
     if (dx_dims.size() > 5) {  // max 5D tensor is supported
       dnn_fallback_ = true;
     }
-    // NOTE(jiahongyu) END: Above codes originally enclosed by
-    // PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }

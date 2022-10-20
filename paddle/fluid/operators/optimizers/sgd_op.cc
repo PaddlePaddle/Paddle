@@ -47,8 +47,7 @@ class SGDOp : public framework::OperatorWithKernel {
     if (!(dense_param_sparse_grad || dense_param_and_grad)) {
       dnn_fallback_ = true;
     }
-    // NOTE(jiahongyu): Above codes originally enclosed by
-    // PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
     return framework::OpKernelType(data_type, ctx.device_context());
   }

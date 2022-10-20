@@ -89,8 +89,7 @@ class SumOp : public framework::OperatorWithKernel {
                               })) {
         dnn_fallback_ = true;
       }
-      // NOTE(jiahongyu): Above codes originally enclosed by
-      // PADDLE_WITH_MKLDNN
+      // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
       return framework::OpKernelType(data_type, ctx.GetPlace());
     } else if (x_vars[0]->IsType<phi::SelectedRows>()) {

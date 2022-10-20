@@ -117,8 +117,7 @@ class LayerNormOp : public framework::OperatorWithKernel {
         ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
       dnn_fallback_ = true;
     }
-    // NOTE(jiahongyu): Above codes originally enclosed by
-    // PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }

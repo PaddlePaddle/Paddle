@@ -102,8 +102,7 @@ class CastOp : public framework::OperatorWithKernel {
         (out_dtype != dtype_fp32 && out_dtype != dtype_bf16)) {
       dnn_fallback_ = true;
     }
-    // NOTE(jiahongyu): Above codes originally enclosed by
-    // PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
 #ifdef PADDLE_WITH_MLU
     auto src_type = static_cast<VT::Type>(ctx.Attr<int>("in_dtype"));
