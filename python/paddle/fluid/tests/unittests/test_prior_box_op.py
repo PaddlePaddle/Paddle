@@ -217,6 +217,18 @@ class TestPriorBoxOpWithSpecifiedOutOrder(TestPriorBoxOp):
         self.min_max_aspect_ratios_order = True
 
 
+class TestPriorBoxOpWithFloat64(TestPriorBoxOp):
+
+    def init_test_input(self):
+        self.image = np.random.random(
+            (self.batch_size, self.image_channels, self.image_w,
+             self.image_h)).astype('float64')
+
+        self.input = np.random.random(
+            (self.batch_size, self.input_channels, self.layer_w,
+             self.layer_h)).astype('float64')
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
