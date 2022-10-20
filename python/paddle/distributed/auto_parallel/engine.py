@@ -46,7 +46,7 @@ from .utils import to_list, get_dist_attr, get_lr
 from .process_group import new_process_group, get_all_process_groups
 from .dist_context import DistributedContext, get_default_distributed_context
 from .strategy import Strategy
-from .interface import CollectionNames, get_collection
+from .interface import CollectionNames, get_collection, _g_recompute_idx
 from ..utils.log_utils import get_logger
 
 
@@ -243,8 +243,8 @@ class Engine:
                 else:
                     specs.append(spec.batch(batch_size))
             elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
-                _adjust_item_spec(num_shards, spec)
                 spec = InputSpec.from_tensor(item, name)
+                _adjust_item_spec(num_shards, spec)
                 if batch_size is None:
                     specs.append(spec)
                 else:
@@ -1399,7 +1399,12 @@ class Engine:
         # NOTE hack to enable recompute in engine api for GPT-3
         # TODO support more PaddleNLP/CV models here
 
+        if _g_recompute_idx > -1:
+            return
+
         recompute = self._strategy.recompute
+        if not recompute.enable:
+            return
 
         # extract ckpts by specific model
         if isinstance(self._model, paddle.nn.Layer):
@@ -1413,14 +1418,12 @@ class Engine:
         else:
             exact_ckpts = recompute.checkpoints
 
-        # modify strategy
-        if recompute.enable:
-            recompute.checkpoints = exact_ckpts[:]
-            logs = {
-                'Model Class': self._model.__class__.__name__,
-                'Applied Recompute ckpts': exact_ckpts
-            }
-            self._logger.info(logs)
+        recompute.checkpoints = exact_ckpts[:]
+        logs = {
+            'Model Class': self._model.__class__.__name__,
+            'Applied Recompute ckpts': exact_ckpts
+        }
+        self._logger.info(logs)
 
     def _validate_opt(self, optimizer):
         if optimizer is not None:
@@ -1440,7 +1443,8 @@ class Engine:
 
     def _switch_mode(self, mode):
         self.to_mode(mode)
-        self._optimizer = self._dist_contexts[mode]._serial_optimizer
+        self._initialize(mode)
+        # self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
     def to_mode(self, mode):
         assert mode in ["train", "eval", "predict"], \
@@ -1453,6 +1457,10 @@ class Engine:
         cur_dist_attr = get_dist_attr(program, dist_context)
         converter = Converter(state_dict, dist_attr, cur_dist_attr)
         state_dict = converter.convert(strict=strict)
+        for name, param in program.state_dict("param").items():
+            param_array = np.array(param)
+            if param_array.dtype != state_dict[name].dtype:
+                state_dict[name] = state_dict[name].astype(param_array.dtype)
         program.set_state_dict(state_dict)
 
     def save(self, path, training=True):
