@@ -23,9 +23,9 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.framework import _test_eager_guard
 
-from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
-from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import GroupShardedStage2
 from paddle.distributed.sharding import group_sharded_parallel
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_storage import ParamStorage
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import Type
 
 seed = 2022
 epoch = 2
@@ -160,11 +160,17 @@ def test_dp_stage2():
     for i in range(len(dp_params)):
         np.testing.assert_allclose(dp_params[i].numpy(),
                                    stage2_params[i].numpy(),
-                                   atol=0)
+                                   atol=0.005)
 
     return
+
+
+def test_bfloat16_param_storage():
+    params_storage = ParamStorage(2**10, Type.bf16.value,
+                                  paddle.device.get_device())
 
 
 if __name__ == '__main__':
     with _test_eager_guard():
         test_dp_stage2()
+        test_bfloat16_param_storage()
