@@ -19,7 +19,7 @@ import os
 import sys
 from paddle.dataset.common import download
 import tarfile
-from six.moves import StringIO
+from io import StringIO
 import hashlib
 import tarfile
 import argparse

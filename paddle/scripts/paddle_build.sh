@@ -3270,12 +3270,14 @@ function build_document_preview() {
 # origin name: example
 function exec_samplecode_test() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
-        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
+        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl --force-reinstall
     else
-        pip install ${PADDLE_ROOT}/build/python/dist/*.whl
+        echo "WARNING: PR wheel is not found. Use develop wheel !!!"
+        pip install ${PADDLE_ROOT}/build/python/dist/*.whl  --force-reinstall
     fi
 
-    paddle version
+    python -c "import paddle;print(paddle.__version__);paddle.version.show()"
+
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
         python sampcd_processor.py cpu; example_error=$?
@@ -3486,7 +3488,6 @@ function main() {
         ;;
       build_and_check_gpu)
         set +e
-        set +x
         example_info_gpu=""
         example_code_gpu=0
         if [ "${WITH_GPU}" == "ON" ] ; then
@@ -3496,7 +3497,6 @@ function main() {
         example_info=$(exec_samplecode_test cpu)
         example_code=$?
         summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
-        set -x
         assert_api_spec_approvals
         ;;
       check_whl_size)

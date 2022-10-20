@@ -20,7 +20,7 @@ import hypothesis.strategies as st
 
 
 class TestMatmulV2ScaleFusePass(PassAutoScanTest):
-    """
+    r"""
      x_var    y_var(persistable)        x_var    y_var*scale(persistable)
        \       /                           \       /
         matmul_v2                          matmul_v2

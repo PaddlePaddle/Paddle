@@ -14,8 +14,7 @@
 
 import os
 import paddle
-import paddle.compat as cpt
-from ..ps.utils.public import *
+from ..ps.utils.public import *  # noqa: F403
 from paddle.framework import core
 from paddle.distributed.passes.pass_base import PassBase, register_pass
 from paddle.fluid.transpiler.details.program_utils import delete_ops
@@ -707,7 +706,7 @@ class PsGpuPass(PassBase):
             if op.type != "pull_box_sparse" and op.type != "pull_gpups_sparse":
                 continue
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, cpt.to_text(set()), [])
+                op.desc, set(), [])
             for op_desc in grad_op_desc:
                 new_op_desc = program.global_block().desc._insert_op(
                     insert_index + 1)

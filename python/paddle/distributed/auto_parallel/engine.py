@@ -21,7 +21,7 @@ from collections import defaultdict
 import paddle
 import paddle.utils as utils
 
-from paddle import fluid, profiler, static
+from paddle import fluid, static
 from paddle.metric import Metric
 from paddle.static import InputSpec
 from paddle.fluid import core
@@ -33,6 +33,7 @@ from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed import fleet
 
+from .callbacks import config_callbacks
 from .converter import Converter
 from .helper import ProgramHelper
 from .cluster import Cluster, get_default_cluster
@@ -41,11 +42,14 @@ from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .dist_loader import DistributedDataLoaderFromGenerator, DistributedDataLoader
-from .utils import to_list, get_logger, get_dist_attr
+from .utils import to_list, get_dist_attr, get_lr
 from .process_group import new_process_group, get_all_process_groups
 from .dist_context import DistributedContext, get_default_distributed_context
 from .strategy import Strategy
 from .interface import CollectionNames, get_collection
+from ..utils.log_utils import get_logger
+from .utils import initialize_pg_in_full_mode
+from .cost.estimate_cost import get_cost_from_engine
 
 
 class Engine:
@@ -125,12 +129,6 @@ class Engine:
                 "'model must be sub classes of `paddle.nn.Layer` or any callable function."
             )
         self._model = model
-
-        # if loss and not isinstance(loss,
-        #                            paddle.nn.Layer) and not callable(loss):
-        #     raise TypeError(
-        #         "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
-        #     )
         self._loss = loss
 
         if optimizer and not isinstance(
@@ -199,6 +197,9 @@ class Engine:
         self._planned_mode = None
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
+        self._losses = None
+
+        self.history = None
 
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
@@ -239,8 +240,8 @@ class Engine:
                 else:
                     specs.append(spec.batch(batch_size))
             elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
-                _adjust_item_spec(num_shards, spec)
                 spec = InputSpec.from_tensor(item, name)
+                _adjust_item_spec(num_shards, spec)
                 if batch_size is None:
                     specs.append(spec)
                 else:
@@ -402,24 +403,23 @@ class Engine:
                         lr=None,
                         fetch_names=None,
                         fetch_indices=None,
-                        profiler_log="",
                         mode=None):
-        logs = "[{}] ".format(mode)
+        logs = {}
         if epoch is not None:
-            logs += "epoch: {:d} ".format(epoch)
+            logs["epoch"] = epoch
         if step is not None:
-            logs += "step: {:d} ".format(step)
+            logs["step"] = step + 1
         if lr is not None:
-            logs += "lr: {:5e} ".format(lr)
+            logs["lr"] = lr
         group_idx = 0
-        # logging loss
         if mode != "predict":
+            # logging loss
             loss_indices = fetch_indices[group_idx]
+            assert len(loss_indices) <= 1
             for idx in loss_indices:
-                logs += "loss: {:8f} ".format(outs[idx][0])
+                logs["loss"] = outs[idx][0]
             group_idx += 1
-        # logging metrics
-        if mode != "predict":
+            # logging metrics
             metric_vars = self._fetch_vars[mode]["metrics"]
             if metric_vars:
                 for metric in self._metrics:
@@ -431,61 +431,25 @@ class Engine:
                         metric.update(*metric_out)
                         results = metric.accumulate()
                         for i, res in enumerate(to_list(results)):
-                            logs += "{}: {:8f} ".format(metric.name()[i], res)
+                            logs[metric.name()[i]] = res
                     group_idx += 1
-        # Skip logging outputs
-        if mode == "predict":
+        # logging outputs
+        elif mode == "predict":
+            outputs_indices = fetch_indices[group_idx]
+            logs_out = {}
+            for idx in outputs_indices:
+                logs_out["out%d" % (idx)] = outs[idx]
+            logs["outputs"] = logs_out
             group_idx += 1
         # logging user fetches
-        fetches_logging = get_collection(CollectionNames.LOGGING)
-        for name, var in fetches_logging:
+        collect_fetches = get_collection(CollectionNames.FETCHES)
+        logs_fetch = {}
+        for name, var in collect_fetches:
             if var.name in fetch_names:
                 idx = fetch_names.index(var.name)
-                # Use the user defined name for logging
-                logs += "{}: {} ".format(name, outs[idx])
-        logs += profiler_log
-        self._logger.info(logs)
-
-    def _prepare_history(self, outs, fetch_indices=None, mode=None):
-        history = {}
-        group_idx = 0
-        # store loss
-        if mode != "predict":
-            loss_indices = fetch_indices[group_idx]
-            loss_values = []
-            for idx in loss_indices:
-                loss_values.append(outs[idx][0])
-            history["loss"] = loss_values
-            group_idx += 1
-        # store metrics
-        if mode != "predict":
-            metric_vars = self._fetch_vars[mode]["metrics"]
-            if metric_vars:
-                for metric in self._metrics:
-                    metrics_indices = fetch_indices[group_idx]
-                    metric_out = []
-                    for idx in metrics_indices:
-                        metric_out.append(outs[idx])
-                    if metric_out:
-                        metric.update(*metric_out)
-                        results = metric.accumulate()
-                        history[tuple(metric.name())] = to_list(results)
-                    group_idx += 1
-        # store outputs
-        if mode == "predict":
-            outputs_indices = fetch_indices[group_idx]
-            outputs_values = []
-            for idx in outputs_indices:
-                outputs_values.append(outs[idx])
-            history["outputs"] = outputs_values
-            group_idx += 1
-        # store user fetches
-        fetches_indices = fetch_indices[group_idx]
-        fetches_values = []
-        for idx in fetches_indices:
-            fetches_values.append(outs[idx])
-        history["fetches"] = fetches_values
-        return history
+                logs_fetch[name or var.name] = outs[idx]
+        logs["fetches"] = logs_fetch
+        return logs
 
     def _prepare_program(self, mode):
         # Do the build process
@@ -520,6 +484,7 @@ class Engine:
             outputs = self.program_helper.output_vars
             labels = self.program_helper.label_vars
             losses = self.program_helper.loss_vars
+            self._losses = losses
             metrics = self.program_helper.metric_vars
 
             self._inputs = inputs
@@ -545,6 +510,7 @@ class Engine:
                     outputs = to_list(self._model(*inputs))
                     if mode != "predict" and self._loss:
                         losses = to_list(self._loss(*(outputs + labels)))
+                        self._losses = losses
 
                     if mode != "predict" and (outputs or labels):
                         for metric in self._metrics:
@@ -552,6 +518,7 @@ class Engine:
                                 to_list(metric.compute(*(outputs + labels))))
             else:
                 losses = to_list(self._loss)
+                self.losses = losses
 
         default_ctx = get_default_distributed_context()
         if not default_ctx.has_annotation:
@@ -674,18 +641,20 @@ class Engine:
             mode].dist_startup_programs
         self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
         self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
-        self._lr_optimizer = self._dist_contexts[mode]._lr_optimizer
+        self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
         if self._nranks > 1:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
 
-            # NOTE: add the comm init control in the future for auto search
-            for process_group in all_process_groups:
-                if self._cur_rank not in process_group.ranks:
-                    continue
-                process_group.instantiate()
+            if self._strategy.auto_mode == "full":
+                initialize_pg_in_full_mode(all_process_groups, cur_rank)
+            else:
+                for process_group in all_process_groups:
+                    if self._cur_rank not in process_group.ranks:
+                        continue
+                    process_group.instantiate()
 
         place = _get_device()
         if isinstance(place, fluid.CUDAPlace):
@@ -719,7 +688,7 @@ class Engine:
                                      self._dist_attr)
 
         if self._strategy.reinit:
-            self._logger.info("NOTE: parameters wiil be re-initialized.")
+            self._logger.info("NOTE: parameters will be re-initialized.")
             dist_startup_prog = self._dist_startup_progs[mode][self._cur_rank]
             self._executor.run(dist_startup_prog)
 
@@ -729,12 +698,16 @@ class Engine:
             batch_size=1,
             epochs=1,
             steps_per_epoch=None,
+            log_freq=10,
+            save_dir=None,
+            save_freq=1,
             valid_data=None,
             valid_sample_split=None,
             valid_freq=1,
             valid_steps=None,
             collate_fn=None,
-            callbacks=None):
+            callbacks=None,
+            verbose=2):
         """
         Trains the model for a fixed number of epochs. If `valid_data` is set,
         evaluation will be done at the end of each epoch.
@@ -810,59 +783,81 @@ class Engine:
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
+
+        assert self._mode in self._dist_main_progs, \
+            "train model is not ready, please call `engine._prepare_program('train')` first."
+
         train_dataloader = self._prepare_dataloader_from_generator(
             dataset=train_data,
             capacity=70,
-            # use_double_buffer=use_double_buffer,
             iterable=False,
-            # return_list=return_list,
-            # use_multiprocess=use_multiprocess,
-            # drop_last=drop_last,
             batch_size=batch_size,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
             collate_fn=collate_fn)
+
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
-        lr_scheduler = self._get_lr_scheduler(self.main_program)
 
-        with profiler.Profiler(timer_only=True) as prof:
-            for epoch in range(epochs):
-                for step, _ in enumerate(train_dataloader):
-                    try:
-                        outs = self._executor.run(
-                            self.main_program,
-                            fetch_list=fetch_names,
-                            use_program_cache=self._strategy.use_cache,
-                            return_numpy=self._strategy.return_numpy)
-                    except core.EOFException:
-                        break
-                    if lr_scheduler and step % self._k_steps == 0:
-                        lr_scheduler.step()
-                    lr = self._get_lr(self._lr_optimizer)
+        cbks = config_callbacks(
+            callbacks,
+            engine=self,
+            batch_size=batch_size,
+            epochs=epochs,
+            steps=train_dataloader._steps,
+            log_freq=log_freq,
+            save_freq=save_freq,
+            save_dir=save_dir,
+            verbose=verbose,
+            metrics=self._metrics_name(),
+            acc_step=self._k_steps,
+        )
 
-                    prof.step()
+        cbks.on_begin('train')
+        for epoch in range(epochs):
+            logs = {}
+            cbks.on_epoch_begin(epoch)
+            for step, _ in enumerate(train_dataloader):
+                cbks.on_batch_begin('train', step, logs)
+                try:
+                    outs = self._executor.run(
+                        self.main_program,
+                        fetch_list=fetch_names,
+                        use_program_cache=self._strategy.use_cache,
+                        return_numpy=self._strategy.return_numpy)
+                except core.EOFException:
+                    break
+                lr = get_lr(self._optimizer)
+                logs = self._prepare_logger(outs, epoch, step, lr, fetch_names,
+                                            fetch_indices, self._mode)
+                cbks.on_batch_end('train', step, logs)
 
-                    self._prepare_logger(outs, epoch, step, lr,
-                                         fetch_names, fetch_indices,
-                                         prof.step_info(), self._mode)
-                    history = self._prepare_history(outs, fetch_indices,
-                                                    self._mode)
+            if valid_data and (epoch + 1) % valid_freq == 0:
+                val_logs = self.evaluate(valid_data, valid_sample_split,
+                                         batch_size, valid_steps, log_freq,
+                                         collate_fn, callbacks, verbose)
+                val_logs = {
+                    "val_" + name: val
+                    for name, val in val_logs.items()
+                }
+                logs.update(val_logs)
+                self._switch_mode("train")
+            else:
+                self._reset_metrics()
 
-                if valid_data and epoch % valid_freq == 0:
-                    self.evaluate(valid_data, valid_sample_split, batch_size,
-                                  valid_steps, collate_fn, callbacks)
-                    self._switch_mode("train")
-                else:
-                    self._reset_metrics()
-            return history
+            cbks.on_epoch_end(epoch, logs)
+
+        cbks.on_end('train', logs)
+        return self.history
 
     def evaluate(self,
                  valid_data,
                  valid_sample_split=None,
                  batch_size=1,
                  steps=None,
+                 log_freq=10,
                  collate_fn=None,
-                 callbacks=None):
+                 callbacks=None,
+                 verbose=2):
         """
         Evaluate the loss and metrics of the model on evaluation data.
 
@@ -918,25 +913,36 @@ class Engine:
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
+
         assert self._mode in self._dist_main_progs, \
             "eval model is not ready, please call `engine._prepare_program('eval')` first."
         valid_dataloader = self._prepare_dataloader_from_generator(
             dataset=valid_data,
-            # feed_list=feed_list,
             capacity=70,
-            # use_double_buffer=use_double_buffer,
             iterable=False,
-            # return_list=return_list,
-            # use_multiprocess=use_multiprocess,
-            # drop_last=drop_last,
-            # places=places,
             batch_size=batch_size,
-            # epochs=epochs,
             steps_per_epoch=steps,
             collate_fn=collate_fn)
+
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
+        cbks = config_callbacks(
+            callbacks,
+            engine=self,
+            batch_size=batch_size,
+            log_freq=log_freq,
+            verbose=verbose,
+            metrics=self._metrics_name(),
+        )
+
+        eval_steps = valid_dataloader._steps
+        cbks.on_begin('eval', {
+            'steps': eval_steps,
+            'metrics': self._metrics_name()
+        })
+        logs = {}
         for step, _ in enumerate(valid_dataloader):
+            cbks.on_batch_begin('eval', step, logs)
             try:
                 outs = self._executor.run(
                     self.main_program,
@@ -945,11 +951,12 @@ class Engine:
                     return_numpy=self._strategy.return_numpy)
             except core.EOFException:
                 break
-            self._prepare_logger(outs, None, step, None, fetch_names,
-                                 fetch_indices, "", self._mode)
-            history = self._prepare_history(outs, fetch_indices, self._mode)
+            logs = self._prepare_logger(outs, None, step, None, fetch_names,
+                                        fetch_indices, self._mode)
+            cbks.on_batch_end('eval', step, logs)
+        cbks.on_end('eval', logs)
         self._reset_metrics()
-        return history
+        return logs
 
     def predict(self,
                 test_data,
@@ -957,7 +964,8 @@ class Engine:
                 batch_size=1,
                 steps=None,
                 collate_fn=None,
-                callbacks=None):
+                callbacks=None,
+                verbose=2):
         """
         Compute the output predictions on testing data.
 
@@ -1010,25 +1018,27 @@ class Engine:
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
+
         assert self._mode in self._dist_main_progs, \
             "predict model is not ready, please call `engine._prepare_program('predict')` first."
+
         test_dataloader = self._prepare_dataloader_from_generator(
             dataset=test_data,
-            # feed_list=feed_list,
             capacity=70,
-            # use_double_buffer=use_double_buffer,
             iterable=False,
-            # return_list=return_list,
-            # use_multiprocess=use_multiprocess,
-            # drop_last=drop_last,
-            # places=places,
             batch_size=batch_size,
-            # epochs=epochs,
             steps_per_epoch=steps,
             collate_fn=collate_fn)
+
         fetch_names, fetch_indices = self._prepare_fetch(None, mode=self._mode)
 
+        outputs = []
+        cbks = config_callbacks(callbacks, engine=self, verbose=verbose)
+        test_steps = test_dataloader._steps
+        cbks.on_begin('predict', {'steps': test_steps})
+        logs = {}
         for step, _ in enumerate(test_dataloader):
+            cbks.on_batch_begin('predict', step, logs)
             try:
                 outs = self._executor.run(
                     self.main_program,
@@ -1037,29 +1047,28 @@ class Engine:
                     return_numpy=self._strategy.return_numpy)
             except core.EOFException:
                 break
-            self._prepare_logger(outs, None, step, None, fetch_names,
-                                 fetch_indices, "", self._mode)
-            history = self._prepare_history(outs, fetch_indices, self._mode)
+            logs = self._prepare_logger(outs, None, step, None, fetch_names,
+                                        fetch_indices, self._mode)
+            cbks.on_batch_end('predict', step, logs)
+            outputs.append(list(logs["outputs"].values()))
+        cbks.on_end('predict', logs)
+        return outputs
 
-        return history
-
-    def dataloader(
-            self,
-            dataset,
-            # return_list=True,
-            batch_size=1,
-            shuffle=False,
-            drop_last=False,
-            collate_fn=None,
-            num_workers=0,
-            use_buffer_reader=True,
-            use_shared_memory=True,
-            timeout=0,
-            worker_init_fn=None,
-            epochs=1,
-            steps_per_epoch=None,
-            sample_split=1,
-            mode=None):
+    def dataloader(self,
+                   dataset,
+                   batch_size=1,
+                   shuffle=False,
+                   drop_last=False,
+                   collate_fn=None,
+                   num_workers=0,
+                   use_buffer_reader=True,
+                   use_shared_memory=True,
+                   timeout=0,
+                   worker_init_fn=None,
+                   epochs=1,
+                   steps_per_epoch=None,
+                   sample_split=1,
+                   mode=None):
         if mode is not None:
             self.to_mode(mode)
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
@@ -1086,21 +1095,19 @@ class Engine:
             steps_per_epoch=steps_per_epoch)
         return dataloader
 
-    def dataloader_from_generator(
-            self,
-            dataset,
-            capacity=70,
-            use_double_buffer=True,
-            iterable=True,
-            # return_list=False,
-            use_multiprocess=False,
-            drop_last=True,
-            batch_size=1,
-            epochs=1,
-            steps_per_epoch=None,
-            collate_fn=None,
-            sample_split=1,
-            mode=None):
+    def dataloader_from_generator(self,
+                                  dataset,
+                                  capacity=70,
+                                  use_double_buffer=True,
+                                  iterable=True,
+                                  use_multiprocess=False,
+                                  drop_last=True,
+                                  batch_size=1,
+                                  epochs=1,
+                                  steps_per_epoch=None,
+                                  collate_fn=None,
+                                  sample_split=1,
+                                  mode=None):
         if mode is not None:
             self.to_mode(mode)
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
@@ -1113,14 +1120,12 @@ class Engine:
             self._switch_mode(self._mode)
         dataloader = self._prepare_dataloader_from_generator(
             dataset=dataset,
-            # feed_list=feed_list,
             capacity=capacity,
             use_double_buffer=use_double_buffer,
             iterable=iterable,
             return_list=False,
             use_multiprocess=use_multiprocess,
             drop_last=drop_last,
-            # places=places,
             batch_size=batch_size,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
@@ -1173,20 +1178,7 @@ class Engine:
             assert self._inputs_spec and self._labels_spec, \
                 "Please call the dataloader(...) before calling prepare(...)"
 
-    def run(
-        self,
-        data=None,
-        # program=None,
-        feed=None,
-        fetch_list=None,
-        # feed_var_name='feed',
-        # fetch_var_name='fetch',
-        # scope=None,
-        # return_numpy=True,
-        # use_program_cache=False,
-        # return_merged=True,
-        # use_prune=False,
-        mode=None):
+    def run(self, data=None, feed=None, fetch_list=None, mode=None):
         if mode is not None:
             self.to_mode(mode)
         feed_dict = self._prepare_feed(data, feed, self._mode)
@@ -1199,10 +1191,9 @@ class Engine:
                                   fetch_list=fetch_names,
                                   use_program_cache=self._strategy.use_cache,
                                   return_numpy=self._strategy.return_numpy)
-        self._prepare_logger(outs, None, None, None, fetch_names, fetch_indices,
-                             "", self._mode)
-        history = self._prepare_history(outs, fetch_indices, self._mode)
-        return history
+        logs = self._prepare_logger(outs, None, None, None, fetch_names,
+                                    fetch_indices, self._mode)
+        return logs
 
     def _prepare_dataloader(self,
                             dataset,
@@ -1307,13 +1298,6 @@ class Engine:
                 copy_var.desc.set_original_id(var.desc.original_id())
                 feed_list.append(copy_var)
 
-        # # remove the first three ops if multi run fit/evaluate/predict
-        # self._op_size = len(dist_main_block.ops)
-        # if dist_main_block.ops[0].type == 'create_py_reader':
-        #     op_size -= 3
-        #     for _ in range(3):
-        #         dist_main_block._remove_op(0, sync=False)
-
         places = paddle.static.cuda_places()
         with static.program_guard(dist_main_prog, dist_startup_prog):
             dataloader = DistributedDataLoaderFromGenerator(
@@ -1334,21 +1318,6 @@ class Engine:
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks)
         self._prepare_reader()
-        # # move read op from the end of program to the start of program
-        # new_op_size = len(dist_main_block.ops)
-        # for _ in range(new_op_size - 1, op_size - 1, -1):
-        #     op = dist_main_block.ops[new_op_size - 1]
-        #     new_op_desc = dist_main_block.desc._prepend_op()
-        #     new_op_desc.copy_from(op.desc)
-        #     new_op = Operator(dist_main_block,
-        #                       new_op_desc,
-        #                       type=new_op_desc.type())
-        #     dist_main_block.ops.insert(0, new_op)
-        #     dist_op = DistributedOperator(new_op)
-        #     dist_context.add_dist_op_for_program(dist_op)
-        # for _ in range(new_op_size - op_size):
-        #     dist_main_block._remove_op(new_op_size, sync=False)
-        # dist_main_block._sync_with_cpp()
         return dataloader
 
     def _tune(self, tune_data, tune_sample_split=None, batch_size=1):
@@ -1441,9 +1410,15 @@ class Engine:
         for metric in self._metrics:
             metric.reset()
 
+    def _metrics_name(self):
+        metrics_name = ['loss'] if self._loss else []
+        for m in self._metrics:
+            metrics_name.extend(to_list(m.name()))
+        return metrics_name
+
     def _switch_mode(self, mode):
         self.to_mode(mode)
-        self._initialize(mode)
+        self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
     def to_mode(self, mode):
         assert mode in ["train", "eval", "predict"], \
@@ -1504,20 +1479,19 @@ class Engine:
 
         """
         if training:
-            assert 'train' in self._serial_main_progs, \
-                "training model is not ready, please call `engine._prepare_program('train')` first."
-            serial_program = self._serial_main_progs["train"]
-            dist_main_prog = self._dist_main_progs["train"][self._cur_rank]
-            dist_context = self._dist_contexts["train"]
+            assert self._mode in self._serial_main_progs
+            serial_program = self._serial_main_progs[self._mode]
+            dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
+            dist_context = self._dist_contexts[self._mode]
             self._saver.save(path,
                              serial_program=serial_program,
                              dist_main_program=dist_main_prog,
                              dist_context=dist_context)
         else:
-            mode = "predict"
-            feed_vars = self._feed_vars[mode]['inputs']
-            fetch_vars = self._fetch_vars[mode]['outputs']
-            dist_main_prog = self._dist_main_progs[mode][self._cur_rank]
+            assert "predict" in self._dist_main_progs
+            feed_vars = self._feed_vars["predict"]['inputs']
+            fetch_vars = self._fetch_vars["predict"]['outputs']
+            dist_main_prog = self._dist_main_progs["predict"][self._cur_rank]
             self._saver.save_inference_model(path,
                                              feed_vars,
                                              fetch_vars,
@@ -1534,10 +1508,10 @@ class Engine:
             strict (bool, optional): Whether to skip the loading of mismatch
                 parameter or raise an error when mismatch happens (not found
                 the parameter in file storing model states of or receives a
-                mismatch shape). Default: False.
+                mismatch shape). Default: True.
             load_optimizer (bool, optional): If True, the stored optimizer
                 states is restored. Otherwise, the optimizer states is initialized
-                from scratch. Default: False.
+                from scratch. Default: True.
 
         Returns:
             None
@@ -1575,28 +1549,53 @@ class Engine:
             path, load_optimizer)
         return self._state_dict, self._dist_attr
 
-    @staticmethod
-    def _get_lr_scheduler(program):
-        lr_sheduler = None
-        if hasattr(program, 'lr_sheduler'):
-            from paddle.optimizer.lr import LRScheduler
-            lr_sheduler = program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-        return lr_sheduler
+    def cost(self, inputs_spec=None, labels_spec=None, mode="train"):
+        """
+        Get and Print cost, including memory of every rank,
+        max memory among all ranks, and the global cost of one step based on
+        communication cost(computation cost is 0 by default).
+        In the future, the flops information of every rank and global cost including
+        computation cost will be added.
 
-    def _get_lr(self, optimizer):
-        if isinstance(optimizer, paddle.optimizer.Optimizer):
-            return optimizer.get_lr()
-        elif isinstance(optimizer, paddle.fluid.optimizer.Optimizer):
-            if isinstance(optimizer._learning_rate, float):
-                return optimizer._learning_rate
-            else:
-                return optimizer._learning_rate()
+        Args:
+            inputs_spec(InputSpec): The specification of inputs. Default: None.
+            labels_spec(InputSpec): The specification of labels. Default: None.
+            mode (str): The engine mode must be in ["train", "predict", "eval"]. Default: "train".
+
+        Returns:
+            Return the global execution time (ms) and max memory (B).
+
+        """
+        # Check parallel mode
+        if self._strategy.auto_mode == "full":
+            print(
+                "The cost will be calcudated in the search process when the auto mode is full."
+            )
+            return
+
+        # Check mode
+        accepted_modes = ["train", "predict", "eval"]
+        if mode not in accepted_modes:
+            raise ValueError("The mode {} is not in accepted modes {}".format(
+                mode, accepted_modes))
+        self.to_mode(mode)
+
+        if inputs_spec is not None:
+            self._inputs_spec, self._labels_spec = inputs_spec, labels_spec
+            self._inputs, self._labels = self._prepare_data_tensor(
+                self._inputs_spec, self._labels_spec)
+            self._build(mode)
+            self._plan(mode)
         else:
-            raise TypeError(
-                    "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
-                        " or `paddle.fluid.optimizer.Optimizer`, but got {}.".format(type(optimizer))
+            if _non_static_mode() or self._dygraph_mode:
+                raise ValueError(
+                    "Please call `engine._prepare_program('mode')` firstly when in the static graph mode."
                 )
+
+        # Estimate the exec cost and max memory
+        global_cost, max_memory = get_cost_from_engine(self, mode)
+
+        return global_cost.time, max_memory
 
     @property
     def main_program(self):

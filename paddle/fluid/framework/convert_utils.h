@@ -27,7 +27,7 @@ namespace paddle {
 namespace framework {
 
 using DataType = paddle::experimental::DataType;
-using DataLayout = paddle::experimental::DataLayout;
+using DataLayout = phi::DataLayout;
 
 DataType TransToPhiDataType(
     const paddle::framework::proto::VarType::Type& dtype);

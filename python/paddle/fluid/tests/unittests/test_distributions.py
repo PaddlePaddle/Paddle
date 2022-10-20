@@ -16,7 +16,7 @@ import numpy as np
 import unittest
 from paddle import fluid
 from paddle.fluid import layers
-from paddle.fluid.layers.distributions import *
+from paddle.fluid.layers.distributions import Categorical, MultivariateNormalDiag, Normal, Uniform
 import math
 
 

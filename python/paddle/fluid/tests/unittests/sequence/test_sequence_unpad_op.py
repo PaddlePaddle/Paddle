@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import six
 import numpy as np
 import sys
 
@@ -36,7 +35,7 @@ class TestSequenceUnpadOp(OpTest):
         out_lod = [self.length]
 
         out = x[0, 0:self.length[0]]
-        for i in six.moves.xrange(1, x.shape[0]):
+        for i in range(1, x.shape[0]):
             out = np.append(out, x[i, 0:self.length[i]], axis=0)
 
         out_shape = (sum(self.length), )

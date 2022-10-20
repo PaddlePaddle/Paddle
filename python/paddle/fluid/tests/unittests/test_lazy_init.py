@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 from paddle import LazyGuard
 from paddle.nn import Linear, Layer
-from paddle.nn.initializer import *
+from paddle.nn.initializer import Constant, Normal, TruncatedNormal, Uniform, XavierNormal, XavierUniform
 from paddle.fluid import unique_name
 
 

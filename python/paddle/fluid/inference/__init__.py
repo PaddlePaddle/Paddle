@@ -15,4 +15,4 @@
 from .wrapper import Config, DataType, PlaceType, PrecisionType, Tensor, Predictor
 from .wrapper import convert_to_mixed_precision
 
-from ..core import create_predictor, get_version, get_num_bytes_of_data_type, PredictorPool, get_trt_compile_version, get_trt_runtime_version
+from ..core import create_predictor, get_version, _get_phi_kernel_name, get_num_bytes_of_data_type, PredictorPool, get_trt_compile_version, get_trt_runtime_version

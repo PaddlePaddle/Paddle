@@ -92,8 +92,7 @@ void TemporalShiftGradKernel(const Context& dev_ctx,
   auto* input_grad = x_grad;
   auto* output_grad = &out_grad;
   int t = seg_num;
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
 
   const int nt = output_grad->dims()[0];
   const int c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]

@@ -20,7 +20,7 @@ import hypothesis.strategies as st
 
 
 class TestReshape2MatmulFusePass(PassAutoScanTest):
-    """
+    r"""
         x_var
           |
        reshape2
