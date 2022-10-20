@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-import six
 
 import paddle
 from paddle.fluid import framework, backward, core, program_guard
@@ -873,7 +872,7 @@ class PartialProgramLayer:
             param_and_buffer_names_set.add(var.name)
 
         for block in main_program.blocks:
-            for name, var in six.iteritems(block.vars):
+            for name, var in block.vars.items():
                 if isinstance(var, framework.Parameter):
                     if name not in param_and_buffer_names_set:
                         raise ValueError(

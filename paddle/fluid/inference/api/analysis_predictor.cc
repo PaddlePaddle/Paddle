@@ -79,7 +79,7 @@
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
@@ -92,7 +92,7 @@
 namespace paddle {
 
 using inference::Singleton;
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
 using inference::tensorrt::TRTInt8Calibrator;
@@ -1271,7 +1271,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       [](framework::ProgramDesc *prog) {
 // Note, please do NOT use any member variables, because member variables may
 // have been destructed in multiple threads.
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
         auto &block = prog->Block(0);
         for (auto &op_desc : block.AllOps()) {
           if (op_desc->Type() == "tensorrt_engine") {
@@ -1977,7 +1977,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
   }
 }
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(),
                     true,
@@ -2033,7 +2033,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
 #endif
 
 AnalysisPredictor::~AnalysisPredictor() {
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled() &&
       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
       Singleton<TRTCalibratorEngineManager>::Global().Has()) {
@@ -2157,7 +2157,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
 
 }  // namespace paddle
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 USE_TRT_CONVERTER(elementwise_add_weight);
 USE_TRT_CONVERTER(elementwise_sub_weight);
 USE_TRT_CONVERTER(elementwise_mul_weight);
@@ -2261,6 +2261,7 @@ USE_TRT_CONVERTER(fill_constant)
 USE_TRT_CONVERTER(fused_token_prune)
 USE_TRT_CONVERTER(layernorm_shift_partition)
 USE_TRT_CONVERTER(preln_layernorm_shift_partition)
+USE_TRT_CONVERTER(merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
 USE_TRT_CONVERTER(lookup_table)

@@ -17,7 +17,6 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler
 import paddle
 import unittest
-import six
 import numpy as np
 
 dev_cnt = 2
@@ -52,7 +51,7 @@ def cross_entropy(logits, labels):
     M = logits.shape[0]
     N = logits.shape[1]
     ret = np.ndarray([M, 1]).astype(logits.dtype)
-    for idx in six.moves.range(M):
+    for idx in range(M):
         ret[idx][0] = -np.log(logits[idx][labels[idx][0]])
     return ret
 
@@ -64,7 +63,7 @@ def cross_entropy_grad(logits, labels, bwd_dout):
     M = logits.shape[0]
     N = logits.shape[1]
     dlogits = np.zeros([M, N]).astype(logits.dtype)
-    for idx in six.moves.range(M):
+    for idx in range(M):
         dlogits[idx][labels[idx]
                      [0]] = -bwd_dout[idx] / logits[idx][labels[idx][0]]
     return dlogits, None
@@ -132,7 +131,7 @@ def simple_fc_net(img, label, use_py_func_op):
 
 
 def reader():
-    for _ in six.moves.range(dev_cnt * 100):
+    for _ in range(dev_cnt * 100):
         yield np.random.random([784]), np.random.random_integers(size=[1],
                                                                  low=0,
                                                                  high=9)
@@ -170,7 +169,7 @@ def test_main(use_cuda, use_py_func_op, use_parallel_executor):
                 fetch_list = [loss]
 
             ret = []
-            for epoch_id in six.moves.range(2):
+            for epoch_id in range(2):
                 for d in r():
                     L, = exe.run(train_cp,
                                  feed=feeder.feed(d),
@@ -193,7 +192,7 @@ class TestPyFuncOpUseExecutor(unittest.TestCase):
                 if L is not None:
                     losses.append(L)
 
-                for idx in six.moves.range(len(losses) - 1):
+                for idx in range(len(losses) - 1):
                     max_diff = np.max(np.abs(losses[idx] - losses[0]))
                     self.assertAlmostEqual(max_diff, 0, delta=1e-3)
 

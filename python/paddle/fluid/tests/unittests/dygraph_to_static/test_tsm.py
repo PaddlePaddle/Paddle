@@ -22,7 +22,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
 from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Linear, Pool2D
-from tsm_config_utils import *
+from tsm_config_utils import merge_configs, parse_config, print_configs
 
 random.seed(0)
 np.random.seed(0)

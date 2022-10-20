@@ -34,6 +34,7 @@ list(
   fused_token_prune_op_plugin.cu
   layernorm_shift_partition_op.cu
   prelnlayernorm_shift_partition_op.cu
+  merge_layernorm_op_plugin.cu
   generic_plugin.cu
   lookup_table.cu)
 

@@ -16,7 +16,6 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import time
-import six
 import unittest
 
 EPOCH_NUM = 5
@@ -98,7 +97,7 @@ class TestBase(unittest.TestCase):
             loss_list = []
             start_t = time.time()
             if not py_reader.iterable:
-                for _ in six.moves.range(EPOCH_NUM):
+                for _ in range(EPOCH_NUM):
                     step = 0
                     py_reader.start()
                     while True:
@@ -113,7 +112,7 @@ class TestBase(unittest.TestCase):
                             break
                     step_list.append(step)
             else:
-                for _ in six.moves.range(EPOCH_NUM):
+                for _ in range(EPOCH_NUM):
                     step = 0
                     for d in py_reader():
                         assert len(d) == len(places)
