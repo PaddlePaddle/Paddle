@@ -23,13 +23,11 @@ import hypothesis.strategies as st
 class TestFCActivationOneDNNFusePass(PassAutoScanTest):
 
     def sample_program_config(self, draw):
-        fc_in = draw(st.sampled_from([32, 64]))
-        fc_wei = draw(st.sampled_from([64]))
         activation_type = draw(
             st.sampled_from([
                 'relu', 'gelu', 'swish', 'mish', 'sqrt', 'hard_swish',
                 'sigmoid', 'abs', 'relu6', 'clip', 'tanh', 'hard_sigmoid',
-                'leaky_relu'
+                'leaky_relu', 'scale'
             ]))
 
         def generate_input(shape):
@@ -98,13 +96,13 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
             weights={
                 "fc_weight":
                 TensorConfig(
-                    data_gen=partial(generate_input, [fc_wei, fc_wei])),
+                    data_gen=partial(generate_input, [64, 64])),
                 "fc_bias":
-                TensorConfig(data_gen=partial(generate_input, [fc_wei])),
+                TensorConfig(data_gen=partial(generate_input, [64])),
             },
             inputs={
                 "fc_input":
-                TensorConfig(data_gen=partial(generate_input, [fc_in, fc_wei]))
+                TensorConfig(data_gen=partial(generate_input, [32, 64]))
             },
             outputs=["activation_output"])
 

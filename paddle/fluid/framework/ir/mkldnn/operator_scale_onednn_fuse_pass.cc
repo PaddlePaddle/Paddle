@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void FuseOperatorScaleOneDNNPass::ApplyImpl(Graph *graph) const {
   const std::vector<std::string> fusable_ops{"fc", "matmul", "matmul_v2"};
-  for (auto op : fusable_ops) FuseScale(graph, op);
+  for (const auto &op : fusable_ops) FuseScale(graph, op);
 }
 
 void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
@@ -51,12 +51,13 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
 
     if (operator_op->Op()->HasAttr("use_mkldnn") &&
         !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_mkldnn")))) {
-      VLOG(4) << "Only oneDNN operator can be fused.";
+      VLOG(4) << "Only oneDNN version of " << op_type
+              << "can be fused with scale.";
       return;
     }
 
     if (scale_op->Op()->GetAttrIfExists<float>("bias") != 0.0) {
-      VLOG(4) << "Only unbiased Scale can be fused.";
+      VLOG(4) << op_type << " can be fused only with unbiased scale.";
       return;
     }
 

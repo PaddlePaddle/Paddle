@@ -326,12 +326,12 @@ void CpuPassStrategy::EnableMKLDNN() {
              "softplus_activation_mkldnn_fuse_pass",  //
              "shuffle_channel_mkldnn_detect_pass",    //
              "elt_act_mkldnn_fuse_pass",              //
+             "operator_scale_onednn_fuse_pass",       //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after
              // fuses. Disabled by default due to
              // little gain and lots of problems
-             "operator_scale_onednn_fuse_pass",  //
          })) {
       passes_.push_back(pass);
     }
