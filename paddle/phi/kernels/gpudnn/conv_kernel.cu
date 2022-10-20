@@ -356,7 +356,8 @@ void ConvCudnnKernel(const Context& ctx,
       },
       workspace_size);
 #else
-  paddle::operators::ConvRunner<T>::RunForward(args,
+  paddle::operators::ConvRunner<T>::RunForward(ctx,
+                                               args,
                                                fwd_result,
                                                input_data,
                                                filter_data,

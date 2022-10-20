@@ -48,6 +48,7 @@ struct SearchResult {
   AlgoT algo = static_cast<AlgoT>(0);
   float time = -1.f;
   size_t workspace_size = 0;
+  bool use_tensor_op_math = false;
   bool exhaustive_search = false;
 };
 

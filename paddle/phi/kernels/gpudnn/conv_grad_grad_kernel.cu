@@ -506,7 +506,7 @@ void ConvCudnnGradGradKernel(
     if (ddW) {
 #ifdef PADDLE_WITH_HIP
       // MIOPEN ONLY support beta to be 0.0f
-      wkspace_handle.RunFunc(
+      workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 paddle::platform::dynload::miopenConvolutionForward(
@@ -527,7 +527,7 @@ void ConvCudnnGradGradKernel(
           workspace_size);
 #else
       for (int i = 0; i < groups; i++) {
-        wkspace_handle.RunFunc(
+        workspace_handle.RunFunc(
             [&](void* workspace_ptr) {
               PADDLE_ENFORCE_GPU_SUCCESS(
                   paddle::platform::dynload::cudnnConvolutionForward(

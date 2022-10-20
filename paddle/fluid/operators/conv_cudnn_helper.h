@@ -112,9 +112,9 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
                            SearchResult<AlgoT>* search_result) {
   int best_algo_idx = -1;
   for (size_t i = 0; i < perf_results.size(); ++i) {
-    auto result = perf_results[i];
+    const auto& result = perf_results[i];
     if (result.status == CUDNN_STATUS_SUCCESS &&
-        result.memory < workspace_limit) {
+        result.memory <= workspace_limit) {
       if (best_algo_idx == -1) {
         // The algorithm which has minimize time cost and need a workspace_size
         // fitting the workspace_limit constraint.
@@ -124,8 +124,10 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
           break;
         }
       } else {
-        float best_algo_time = perf_results[best_algo_idx].time;
-        if ((result.time - best_algo_time) / best_algo_time < 0.01) {
+        // Compared to the next suboptimal algorithm, if the best one only has
+        // 1% performance difference, we'd like to pick the one which need less
+        // memory.
+        if (result.time < 1.01 * perf_results[best_algo_idx].time) {
           best_algo_idx = (result.memory < perf_results[best_algo_idx].memory)
                               ? i
                               : best_algo_idx;
@@ -135,9 +137,16 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
     }
   }
   if (best_algo_idx != -1) {
-    search_result->algo = perf_results[best_algo_idx].algo;
-    search_result->time = perf_results[best_algo_idx].time;
-    search_result->workspace_size = perf_results[best_algo_idx].memory;
+    const auto& result = perf_results[best_algo_idx];
+    search_result->algo = result.algo;
+    search_result->time = result.time;
+    search_result->use_tensor_op_math = result.mathType == CUDNN_TENSOR_OP_MATH;
+    search_result->workspace_size = result.memory;
+    auto math_type_str = search_result->use_tensor_op_math ? "T" : "F";
+    VLOG(3) << "  choose algo=" << result.algo
+            << ", tensor_core=" << math_type_str << ", time=" << result.time
+            << " ms, memory=" << ToMegaBytes(result.memory)
+            << " MB, status=" << result.status;
   } else {
     VLOG(3) << "Can not find an algorithm that requires memory < "
             << ToMegaBytes(workspace_limit) << " MB";
@@ -590,7 +599,8 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
           perf_results,
           perf_results.size(),
           workspace_size_limit);
-      ChooseAlgo(perf_results, workspace_size_limit, &result);
+      ChooseAlgoByWorkspace<PerfT, AlgoT>(
+          perf_results, workspace_size_limit, &result);
     }
 
     result.workspace_size = GetWorkspaceSize(args, result.algo);
@@ -635,45 +645,6 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
       return max_workspace_size;
     } else {
       return workspace_size_limit;
-    }
-  }
-
-  static void ChooseAlgo(const std::vector<PerfT>& perf_results,
-                         size_t workspace_limit,
-                         SearchResult<AlgoT>* algo_result) {
-    for (size_t i = 0; i != perf_results.size(); ++i) {
-      const auto& result = perf_results[i];
-      // if (result.algo == 3 || result.algo == 5) {
-      //   continue;
-      // }
-      if (result.status == CUDNN_STATUS_SUCCESS &&
-          (result.memory <= workspace_limit)) {
-        if ((result.mathType == CUDNN_TENSOR_OP_MATH) &&
-            (i != perf_results.size() - 1)) {
-          const auto& next_result = perf_results[i + 1];
-          if (next_result.status == CUDNN_STATUS_SUCCESS &&
-              next_result.algo == result.algo &&
-              next_result.memory == result.memory &&
-              next_result.mathType != CUDNN_TENSOR_OP_MATH &&
-              next_result.time < 1.01 * result.time) {
-            // Skip over this result- it's not really a Tensor Core algo.
-            // Because it is only 1% performance difference.
-            // Prefer to choose the next equivalent non-Tensor Core algo.
-            continue;
-          }
-        }
-        algo_result->algo = result.algo;
-        algo_result->time = result.time;
-        auto math_type_str = "0";
-        if (result.mathType == CUDNN_TENSOR_OP_MATH) {
-          math_type_str = "1";
-        }
-        VLOG(3) << "    choose algo: " << result.algo
-                << ", TC: " << math_type_str << ", time: " << result.time
-                << " ms, wksp = " << result.memory
-                << ", status = " << result.status;
-        break;
-      }
     }
   }
 };
@@ -727,6 +698,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
                     phi::autotune::ConvAutoTuneResult(
                         static_cast<int64_t>(result.algo),
                         result.workspace_size,
+                        result.use_tensor_op_math,
                         true));
         } else if (!find_in_cache) {
           result = FindAlgoHeuristic(args, ctx);
@@ -734,6 +706,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
                     phi::autotune::ConvAutoTuneResult(
                         static_cast<int64_t>(result.algo),
                         result.workspace_size,
+                        result.use_tensor_op_math,
                         false));
         }
       }
@@ -819,6 +792,7 @@ struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
 template <typename T>
 struct ConvRunner {
   static void RunForward(
+      const phi::GPUContext& ctx,
       const ConvArgs& args,
       const SearchResult<cudnnConvolutionFwdAlgo_t>& search_result,
       const T* input_ptr,
@@ -832,13 +806,17 @@ struct ConvRunner {
       ScalingParamType<T> beta,
       size_t workspace_size,
       phi::DnnWorkspaceHandle* workspace_handle) {
-    auto dnn_handle = args.handle;
+    auto dtype = platform::CudnnDataType<T>::type;
+    SetConvolutionMathType(
+        ctx, args.cdesc, dtype, search_result.use_tensor_op_math);
+
+    auto cudnn_handle = ctx.cudnn_handle();
     for (int i = 0; i < groups; i++) {
       workspace_handle->RunFunc(
           [&](void* workspace_ptr) {
             PADDLE_ENFORCE_GPU_SUCCESS(
                 paddle::platform::dynload::cudnnConvolutionForward(
-                    dnn_handle,
+                    cudnn_handle,
                     &alpha,
                     args.idesc.desc(),
                     input_ptr + i * group_offset_in,

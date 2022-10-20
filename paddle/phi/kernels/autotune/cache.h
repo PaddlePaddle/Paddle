@@ -58,11 +58,15 @@ namespace autotune {
 
 struct ConvAutoTuneResult {
   ConvAutoTuneResult() {}
-  ConvAutoTuneResult(int64_t a, size_t size, bool search)
-      : algo(a), workspace_size(size), exhaustive_search(search) {}
+  ConvAutoTuneResult(int64_t a, size_t size, bool use_tensor_core, bool search)
+      : algo(a),
+        workspace_size(size),
+        use_tensor_op_math(use_tensor_core),
+        exhaustive_search(search) {}
 
   int64_t algo;
   size_t workspace_size = 0;
+  bool use_tensor_op_math = false;
   bool exhaustive_search = false;
 };
 
