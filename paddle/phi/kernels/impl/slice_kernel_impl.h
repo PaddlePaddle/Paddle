@@ -14,9 +14,13 @@
 
 #pragma once
 
+#include <glog/logging.h>
+
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
+#include "paddle/phi/kernels/slice_kernel.h"
 
 namespace phi {
 
@@ -149,6 +153,61 @@ void SliceRawKernel(const Context& ctx,
       PADDLE_THROW(phi::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
+}
+
+template <typename T, typename Context>
+void SliceArrayKernel(const Context& dev_ctx,
+                      const TensorArray& input,
+                      const IntArray& starts,
+                      const IntArray& ends,
+                      TensorArray* out) {
+  int64_t in_size = input.size();
+  int64_t start = starts[0] < 0 ? (starts[0] + in_size) : starts[0];
+  int64_t end = ends[0] < 0 ? (ends[0] + in_size) : ends[0];
+
+  start = std::max(start, static_cast<int64_t>(0));
+  end = std::max(end, static_cast<int64_t>(0));
+  end = std::min(end, in_size);
+
+  if (starts[0] == -1 && end == 0) {
+    end = start + 1;
+  }
+
+  PADDLE_ENFORCE_GT(end,
+                    start,
+                    phi::errors::InvalidArgument(
+                        "Attr(ends) should be greater than attr(starts) in "
+                        "slice op. But received end = %d, start = %d.",
+                        ends[0],
+                        starts[0]));
+  int64_t out_size = end - start;
+
+  out->resize(out_size);
+  for (int i = 0; i < out_size; ++i) {
+    auto* out_tensor = &out->at(i);
+    const auto& in_tensor = input.at(i + start);
+    out_tensor->set_lod(in_tensor.lod());
+    if (in_tensor.memory_size() > 0) {
+      phi::Copy<Context>(
+          dev_ctx, in_tensor, dev_ctx.GetPlace(), false, out_tensor);
+    } else {
+      VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
+                  "nothing has been written to output array["
+               << i << "].";
+    }
+  }
+}
+
+template <typename T, typename Context>
+void SliceArrayDenseKernel(const Context& dev_ctx,
+                           const TensorArray& input,
+                           const IntArray& starts,
+                           DenseTensor* out) {
+  int64_t in_size = input.size();
+  int64_t start = starts[0] < 0 ? (starts[0] + in_size) : starts[0];
+  start = std::max(start, static_cast<int64_t>(0));
+
+  phi::Copy<Context>(dev_ctx, input[start], dev_ctx.GetPlace(), false, out);
 }
 
 }  // namespace phi
