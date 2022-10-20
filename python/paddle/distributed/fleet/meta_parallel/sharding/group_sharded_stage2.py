@@ -103,11 +103,12 @@ class GroupShardedStage2(nn.Layer):
         # sharing stage 2 comm overlap flag
         self._reduce_overlap = False
 
-        self._trainable_params = []
         self._grad_reduced = []
         self._trainable_param2rank = {}
         self._trainable_param2align = {}
-        self._trainable_mask = list(map(_trainable, self._all_params))
+        self._trainable_params = list(
+            filter(lambda x: x.trainable, self._all_params))
+        self._trainable_mask = list(map(_trainable, self._trainable_params))
         self._param_grads = []
 
         # Set grad storage size & Display param sizes and model sizes
@@ -488,7 +489,7 @@ class GroupShardedStage2(nn.Layer):
 
     def _detect_train_change(self):
         # Current trainable parameters
-        trainable_mask = list(map(_trainable, self._all_params))
+        trainable_mask = list(map(_trainable, self._trainable_params))
 
         # Whether parameters trainability changed
         trainability_changed = trainable_mask != self._trainable_mask
