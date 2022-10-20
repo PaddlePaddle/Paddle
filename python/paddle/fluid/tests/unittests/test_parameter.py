@@ -16,7 +16,7 @@ import unittest
 import copy
 import paddle
 from paddle.fluid.dygraph import guard
-from paddle.fluid.framework import default_main_program, Variable, _test_eager_guard
+from paddle.fluid.framework import default_main_program, Variable, _test_eager_guard, ParamBase
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 import paddle.fluid.io as io
@@ -48,6 +48,9 @@ class ParameterChecks(unittest.TestCase):
         p = io.get_parameter_value_by_name('fc.w', exe, main_program)
         np.testing.assert_array_equal(p, np.ones(shape) * val)
 
+        zero_dim_param = b.create_parameter(name='x', shape=[], dtype='float32')
+        self.assertEqual(zero_dim_param.shape, ())
+
     def func_parambase(self):
         with guard():
             linear = paddle.nn.Linear(10, 10)
@@ -69,6 +72,9 @@ class ParameterChecks(unittest.TestCase):
 
             pram_copy2 = copy.deepcopy(param, memo)
             self.assertEqual(id(param_copy), id(pram_copy2))
+
+            zero_dim_param = ParamBase(shape=[], dtype='float32')
+            self.assertEqual(zero_dim_param.shape, [])
 
     def test_parambase(self):
         with _test_eager_guard():

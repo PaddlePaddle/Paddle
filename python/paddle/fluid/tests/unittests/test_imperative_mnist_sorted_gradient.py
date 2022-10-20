@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -142,14 +140,14 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                                    static_x_data.all(),
                                    rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             np.testing.assert_allclose(value,
                                        dy_param_init_value2[key],
                                        rtol=1e-05)
 
         np.testing.assert_allclose(static_out, dy_out2, rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             np.testing.assert_allclose(value,
                                        dy_param_value2[key],
                                        rtol=1e-05,

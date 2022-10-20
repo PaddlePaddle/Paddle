@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import re
-import json
 
 skip_list = ["adam_sig.cc", "adamw_sig.cc"]
 
@@ -38,7 +36,7 @@ def parse_compat_registry(kernel_info):
 def remove_grad_registry(kernels_registry):
     clean_kernel_registry = {}
     for registry in kernels_registry:
-        if (not "_grad" in registry):
+        if "_grad" not in registry:
             clean_kernel_registry[registry] = kernels_registry[registry]
     return clean_kernel_registry
 
@@ -47,7 +45,7 @@ def get_compat_kernels_info():
     kernels_info = {}
     compat_files = os.listdir("../../paddle/phi/ops/compat")
     for file_ in compat_files:
-        if not ".cc" in file_:
+        if ".cc" not in file_:
             compat_files.remove(file_)
 
     for file_ in compat_files:
@@ -67,7 +65,7 @@ def get_compat_kernels_info():
                     data = content.replace("\n", "").replace(
                         " ",
                         "").strip("return").strip("KernelSignature(").strip(
-                            "\);").replace("\"", "").replace("\\", "")
+                            r"\);").replace("\"", "").replace("\\", "")
                     registry = False
                     if is_grad_kernel(data):
                         continue

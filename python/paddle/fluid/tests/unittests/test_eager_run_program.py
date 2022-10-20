@@ -14,13 +14,12 @@
 
 import paddle
 import numpy as np
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard, Variable, _in_legacy_dygraph
 from paddle.fluid import core
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
-import paddle.compat as cpt
 
 import unittest
 
@@ -49,7 +48,7 @@ def _append_backward_desc(main_program, outs):
 #     for param in params:
 #         grad_name = param.name + core.grad_var_suffix()
 #         grad_var = train_program.desc.block(0).find_var(
-#             cpt.to_bytes(grad_name))
+#             grad_name.encode())
 #         # NOTE: cannot find var desc maybe no problem, such as in batch_norm
 #         if grad_var is None:
 #             continue

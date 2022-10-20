@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import tempfile
-from paddle.distributed.fleet import launch_utils
-from paddle.distributed.fleet import cloud_utils
-from paddle.distributed.fleet import ascend_utils
+import os
+import shutil
+import paddle
 
-from paddle.distributed.fleet.launch_utils import *
-
+from paddle.distributed.fleet.launch_utils import logger, pull_worker_log, start_local_trainers
 from paddle.distributed.fleet.elastic.manager import LauncherInterface
 
 

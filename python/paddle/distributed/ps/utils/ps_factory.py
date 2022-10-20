@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from .ps_program_builder import *
-from .public import *
+from .ps_program_builder import *  # noqa: F403
+from .public import *  # noqa: F403
 
 __all__ = [
     'PsProgramBuilder', 'GeoPsProgramBuilder', 'CpuSyncPsProgramBuilder',

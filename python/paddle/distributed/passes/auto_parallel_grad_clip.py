@@ -17,7 +17,6 @@ from functools import reduce
 
 import paddle
 
-from paddle.fluid import core
 from .pass_base import PassBase, register_pass
 from ..auto_parallel.reshard import Resharder
 from ..auto_parallel.process_group import get_world_process_group
@@ -213,7 +212,7 @@ class ClipGradByGloblNormPass(PassBase):
         if self.get_attr("dist_context") is None:
             return False
         dist_context = self.get_attr("dist_context")
-        if dist_context._lr_optimizer._grad_clip is None:
+        if dist_context._serial_optimizer._grad_clip is None:
             return False
         if self.get_attr("params_grads") is None:
             return False

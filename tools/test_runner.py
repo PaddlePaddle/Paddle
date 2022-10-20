@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid as fluid
 import importlib
 import paddle.fluid.core as core
-from six.moves import cStringIO
+from io import StringIO
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import static_mode_white_list
@@ -38,7 +38,7 @@ def main():
         if module_name in static_mode_white_list.STATIC_MODE_TESTING_LIST:
             flag_need_static_mode = True
             paddle.enable_static()
-        buffer = cStringIO()
+        buffer = StringIO()
         main = fluid.Program()
         startup = fluid.Program()
         scope = fluid.core.Scope()

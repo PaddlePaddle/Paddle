@@ -20,7 +20,7 @@ from ..utils.hybrid_parallel_util import broadcast_mp_parameters
 from ..utils.hybrid_parallel_util import broadcast_dp_parameters
 from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
 from ..utils.log_util import logger
-from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer, HybridParallelGradScaler
+from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 import paddle.fluid.framework as framework
 from .pp_utils import p2p_communication as p2p
 import paddle.fluid.core as core
@@ -46,7 +46,10 @@ class PipelineParallel(MetaParallelBase):
             'micro_batch_size']
         self.accumulate_steps = self._strategy.pipeline_configs[
             'accumulate_steps']
-
+        # If sent tensor are not the same from different hosts,
+        # they shouldn't been sent partially and then concated as a whole tensor.
+        self._enable_partial_send_recv = self._strategy.pipeline_configs[
+            'enable_partial_send_recv']
         self._using_cache = self._strategy.pipeline_configs['p2p_cache_shape']
 
         self.num_stages = self._hcg.get_pipe_parallel_world_size()
@@ -58,7 +61,8 @@ class PipelineParallel(MetaParallelBase):
         self._real_pp_world_size = self.num_stages
         self._real_pp_rank = self.stage_id
 
-        p2p.initialize_p2p_groups(hcg, self._using_cache)
+        p2p.initialize_p2p_groups(hcg, self._using_cache,
+                                  self._enable_partial_send_recv)
 
         self.global_rank = self._hcg.get_global_rank()
         self.micro_batch_id = 0

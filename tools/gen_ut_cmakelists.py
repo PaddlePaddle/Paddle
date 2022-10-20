@@ -158,8 +158,8 @@ def _process_name(name, curdir):
     """
     name = name.strip()
     assert re.compile("^test_[0-9a-zA-Z_]+").search(name), \
-        f"""If line is not the header of table, the test name must begin with "test_" """ \
-        f"""and the following substring must include at least one char of "0-9", "a-z", "A-Z" or "_"."""
+        """If line is not the header of table, the test name must begin with "test_" """ \
+        """and the following substring must include at least one char of "0-9", "a-z", "A-Z" or "_"."""
     filepath_prefix = os.path.join(curdir, name)
     suffix = [".py", ".sh"]
     assert _file_with_extension(filepath_prefix, suffix), \
@@ -319,7 +319,7 @@ class DistUTPortManager():
                     self.process_dist_port_num(num_port)
 
             # step 2
-            err_msg = f"""==================[No Old CMakeLists.txt Error]==================================
+            err_msg = """==================[No Old CMakeLists.txt Error]==================================
         Following directories has no CmakeLists.txt files:
     """
             for c in self.no_cmake_dirs:
@@ -452,7 +452,7 @@ class CMakeGenerator():
             set_properties = ""
         cmd = cmd % set_properties
         for _ in conditions:
-            cmd += f"endif()\n"
+            cmd += "endif()\n"
         return cmd
 
     def _gen_cmakelists(self, current_work_dir, depth=0):

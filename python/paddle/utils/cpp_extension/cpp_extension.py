@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import copy
 import re
 
@@ -22,11 +21,11 @@ from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from distutils.command.build import build
 
-from .extension_utils import find_cuda_home, find_rocm_home, normalize_extension_kwargs, add_compile_flag, run_cmd
+from .extension_utils import add_compile_flag, find_cuda_home, find_rocm_home, normalize_extension_kwargs
 from .extension_utils import is_cuda_file, prepare_unix_cudaflags, prepare_win_cudaflags
 from .extension_utils import _import_module_from_library, _write_setup_file, _jit_compile
 from .extension_utils import check_abi_compatibility, log_v, CustomOpInfo, parse_op_name_from
-from .extension_utils import clean_object_if_change_cflags, _reset_so_rpath, _get_fluid_path
+from .extension_utils import _reset_so_rpath, clean_object_if_change_cflags
 from .extension_utils import bootstrap_context, get_build_directory, add_std_without_repeat
 
 from .extension_utils import IS_WINDOWS, OS_NAME, MSVC_COMPILE_FLAGS, MSVC_COMPILE_FLAGS
@@ -37,7 +36,7 @@ from ...fluid import core
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
 # The solution is: 1.User add function PyInit_[name] 2. set not to export
 # refer to https://stackoverflow.com/questions/34689210/error-exporting-symbol-when-building-python-c-extension-in-windows
-if IS_WINDOWS and six.PY3:
+if IS_WINDOWS:
     from distutils.command.build_ext import build_ext as _du_build_ext
     from unittest.mock import Mock
     _du_build_ext.get_export_symbols = Mock(return_value=None)
@@ -594,7 +593,7 @@ class BuildExtension(build_ext, object):
         ext_name = super(BuildExtension, self).get_ext_filename(fullname)
         split_str = '.'
         name_items = ext_name.split(split_str)
-        if self.no_python_abi_suffix and six.PY3:
+        if self.no_python_abi_suffix:
             assert len(
                 name_items
             ) > 2, "Expected len(name_items) > 2, but received {}".format(

@@ -14,13 +14,12 @@
 
 # TODO: define statistical functions of a tensor
 
-import numpy as np
 from ..static import Variable
 from ..framework import LayerHelper
 from ..framework import core
 from paddle.fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from .search import where
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.layers import utils
 import paddle
 from paddle import _C_ops, _legacy_C_ops
@@ -245,7 +244,7 @@ def numel(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.size(x)
+        return _C_ops.numel(x)
     elif _in_legacy_dygraph():
         return _legacy_C_ops.size(x)
 

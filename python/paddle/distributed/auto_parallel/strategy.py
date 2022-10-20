@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-import os
 import copy
-import argparse
 from . import constants
 
 
@@ -116,6 +114,13 @@ class TuningConfig(BaseConfig):
         super(TuningConfig, self).__init__(category, config_dict)
 
 
+class DatasetConfig(BaseConfig):
+
+    def __init__(self, config_dict=None):
+        category = constants.DATASET
+        super(DatasetConfig, self).__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
     The `Strategy` object is used to configure the paralleization and optimization beheviors.
@@ -180,3 +185,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.TUNING, None)
         self.tuning = TuningConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.DATASET, None)
+        self.dataset = DatasetConfig(config_dict)

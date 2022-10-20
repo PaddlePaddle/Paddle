@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
+from hypothesis import given
 import hypothesis.strategies as st
 
 
@@ -102,7 +101,7 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-4
+            attrs, False), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -111,7 +110,7 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-4
+            attrs, True), 1e-3
 
     @given(repeat_times=st.sampled_from([[100], [1, 2], [0, 3], [1, 2, 100]]))
     def test(self, *args, **kwargs):

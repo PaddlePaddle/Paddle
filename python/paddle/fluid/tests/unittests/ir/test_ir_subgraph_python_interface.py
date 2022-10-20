@@ -15,14 +15,12 @@
 import unittest
 import paddle
 import paddle.fluid as fluid
-import six
 
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.framework import IrNode
 from paddle.fluid.tests.unittests.op_test import OpTestTool
 from paddle.fluid import core
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard, default_startup_program
+from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 
 paddle.enable_static()
@@ -38,7 +36,7 @@ class TestQuantizationSubGraph(unittest.TestCase):
                                      dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             hidden = data
-            for _ in six.moves.xrange(num):
+            for _ in range(num):
                 hidden = fluid.layers.fc(hidden, size=128, act='relu')
             loss = fluid.layers.cross_entropy(input=hidden, label=label)
             loss = paddle.mean(loss)

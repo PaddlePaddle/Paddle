@@ -94,10 +94,10 @@ struct CustomOpAttrVisitor {
 };
 
 struct ConstantOpAttrVisitor {
-  ConstantOpAttrVisitor(framework::LoDTensor* tensor, VarType::Type dtype)
+  ConstantOpAttrVisitor(phi::DenseTensor* tensor, VarType::Type dtype)
       : tensor_(tensor), dtype_(dtype) {}
 
-  framework::LoDTensor* tensor_;
+  phi::DenseTensor* tensor_;
   VarType::Type dtype_;
 
   void operator()(const std::vector<int>& vec) const {
@@ -411,7 +411,7 @@ void Compiler::LowerConstants(const Scope* scope) {
       auto tensor_name = GetOpOutputs(op_desc).front();
       auto* var = kid_scope.Var(tensor_name);
       VLOG(10) << "lowering constant: " << tensor_name;
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      auto* tensor = var->GetMutable<phi::DenseTensor>();
       ConstantOpAttrVisitor visitor(tensor, dtype);
       auto value = op_desc->GetAttr("value");
       paddle::visit(visitor, value);
@@ -455,7 +455,7 @@ void Compiler::LowerWeights(const Scope* scope) {
           var,
           platform::errors::NotFound("Tensor %s is not found in the scope",
                                      var_name));
-      auto tensor = var->Get<framework::LoDTensor>();
+      auto tensor = var->Get<phi::DenseTensor>();
       auto dtype = PhiDType2PopartDType(tensor.dtype());
       auto shape = std::vector<int64_t>();
       for (size_t i = 0; i < tensor.dims().size(); ++i) {

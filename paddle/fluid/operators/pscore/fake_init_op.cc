@@ -36,8 +36,8 @@ class FakeInitOp : public framework::OperatorBase {
 
     auto &out_var = *scope.FindVar(Output("Out"));
 
-    if (out_var.IsType<framework::LoDTensor>()) {
-      tensor = out_var.GetMutable<framework::LoDTensor>();
+    if (out_var.IsType<phi::DenseTensor>()) {
+      tensor = out_var.GetMutable<phi::DenseTensor>();
       tensor->Resize(phi::make_ddim(Attr<std::vector<int64_t>>("shape")));
     } else if (out_var.IsType<phi::SelectedRows>()) {
       tensor = out_var.GetMutable<phi::SelectedRows>()->mutable_value();

@@ -25,8 +25,8 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using LoDTensor = phi::DenseTensor;
+using DataLayout = phi::DataLayout;
 
 class LayerNormOp : public framework::OperatorWithKernel {
  public:
@@ -118,7 +118,7 @@ class LayerNormOp : public framework::OperatorWithKernel {
             ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
       return framework::OpKernelType(input_data_type,
                                      ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
+                                     phi::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -229,7 +229,7 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
         t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
 
     framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),

@@ -17,7 +17,6 @@ import inspect
 import logging
 import os
 import warnings
-import six
 import numpy as np
 
 import paddle
@@ -33,7 +32,7 @@ from paddle.fluid import (
 )
 from paddle.fluid.io import prepend_feed_ops, append_fetch_ops
 from paddle.fluid.framework import static_only, Parameter
-from paddle.fluid.executor import Executor, global_scope
+from paddle.fluid.executor import global_scope
 from paddle.fluid.log_helper import get_logger
 
 __all__ = []
@@ -69,7 +68,7 @@ def _normalize_path_prefix(path_prefix):
     """
     convert path_prefix to absolute path.
     """
-    if not isinstance(path_prefix, six.string_types):
+    if not isinstance(path_prefix, str):
         raise ValueError("'path_prefix' should be a string.")
     if path_prefix.endswith("/"):
         raise ValueError("'path_prefix' should not be a directory")

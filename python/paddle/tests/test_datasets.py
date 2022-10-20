@@ -22,7 +22,7 @@ import cv2
 import paddle.vision.transforms as T
 from paddle.vision.datasets import DatasetFolder, ImageFolder, MNIST, FashionMNIST, Flowers
 from paddle.dataset.common import _check_exists_and_download
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestFolderDatasets(unittest.TestCase):

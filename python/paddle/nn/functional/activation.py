@@ -18,12 +18,10 @@ from ...tensor.math import tanh_  # noqa: F401
 
 from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ...tensor.manipulation import chunk
-from ...tensor.math import multiply
 
-import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import convert_np_dtype_to_dtype_
-from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
+from ...fluid.framework import _in_legacy_dygraph, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
@@ -230,7 +228,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.hard_shrink(x, threshold)
+        return _C_ops.hardshrink(x, threshold)
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.hard_shrink(x, 'threshold', threshold)
@@ -338,7 +336,7 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.hard_sigmoid(x, slope, offset)
+        return _C_ops.hardsigmoid(x, slope, offset)
 
     if _in_legacy_dygraph():
         return _legacy_C_ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
@@ -395,7 +393,7 @@ def hardswish(x, name=None):
     if _in_legacy_dygraph():
         return _legacy_C_ops.hard_swish(x)
     if in_dygraph_mode():
-        return _C_ops.hard_swish(x, 6, 6, 3)
+        return _C_ops.hardswish(x, 6, 6, 3)
 
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                              'hardswish')
@@ -1058,9 +1056,9 @@ def softmax(x, axis=-1, dtype=None, name=None):
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
-        axis (int, optional): The axis along which to perform log_softmax
+        axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
-            dimensions of ``x`` . If ``axis`` < 0, it works the same way as
+            rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
         dtype (str, optional): The data type of the output tensor, can be float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1250,7 +1248,7 @@ def softshrink(x, threshold=0.5, name=None):
                 threshold))
 
     if in_dygraph_mode():
-        return _C_ops.soft_shrink(x, threshold)
+        return _C_ops.softshrink(x, threshold)
     if _in_legacy_dygraph():
         return _legacy_C_ops.softshrink(x, 'lambda', threshold)
 

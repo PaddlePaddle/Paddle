@@ -78,7 +78,7 @@ class CastOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     // CastOp kernel's device type is decided by input tensor place
-    auto *tensor = ctx.Input<framework::LoDTensor>("X");
+    auto *tensor = ctx.Input<phi::DenseTensor>("X");
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
                       true,
                       platform::errors::PreconditionNotMet(
@@ -112,7 +112,7 @@ class CastOp : public framework::OperatorWithKernel {
       return framework::OpKernelType(
           framework::TransToProtoVarType(tensor->dtype()),
           ctx.GetPlace(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           framework::LibraryType::kMKLDNN);
     }
 #endif

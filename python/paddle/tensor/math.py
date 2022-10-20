@@ -18,13 +18,12 @@ import numpy as np
 
 from paddle.common_ops_import import VarDesc
 from paddle.common_ops_import import dygraph_only
-from paddle.common_ops_import import OpProtoHolder
 from paddle.common_ops_import import templatedoc
 from paddle.common_ops_import import dygraph_utils
 
 from .manipulation import cast
 from .creation import _complex_to_real_dtype
-from .layer_function_generator import _generate_doc_string_, generate_activation_fn, generate_layer_fn
+from .layer_function_generator import generate_layer_fn
 
 import paddle
 from ..static import Variable
@@ -538,7 +537,7 @@ def add(x, y, name=None):
     For case 2:
 
     1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
-    2. If $axis$ is -1 (default), $axis$=rank($X$)−rank($Y$).
+    2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
     3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
 
         For example:
@@ -558,7 +557,7 @@ def add(x, y, name=None):
         name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        N-D Tensor. A location into which the result is stored. It’s dimension equals with x.
+        N-D Tensor. A location into which the result is stored. It's dimension equals with x.
 
     Examples:
 
@@ -3174,7 +3173,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        dtype (str, optional): The data type of the output tensor, can be float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3247,7 +3246,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
     Args:
         x (Tensor): The input tensor.
         axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        dtype (str, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3296,7 +3295,8 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
             return _legacy_C_ops.logcumsumexp(x, 'axis', axis, 'flatten',
                                               flatten)
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "logcumsumexp")
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             "logcumsumexp")
 
     helper = LayerHelper('logcumsumexp', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)

@@ -14,11 +14,8 @@
 
 import unittest
 import numpy as np
-import six
-import sys
 import collections
 import math
-import paddle.fluid as fluid
 from op_test import OpTest
 
 
@@ -180,7 +177,7 @@ class TestDetectionMAPOp(OpTest):
             true_pos[label].append([score, tp])
             false_pos[label].append([score, fp])
 
-        for (label, label_pos_num) in six.iteritems(label_count):
+        for (label, label_pos_num) in label_count.items():
             if label_pos_num == 0: continue
             if label not in true_pos:
                 count += 1

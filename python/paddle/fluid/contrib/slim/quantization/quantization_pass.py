@@ -18,7 +18,6 @@ try:
     from tqdm import tqdm
 except:
     from .utils import tqdm
-from ..... import compat as cpt
 from .... import core
 from ....framework import IrGraph
 from ....framework import IrNode
@@ -59,6 +58,7 @@ _fake_dequant_op_list = [
 _fake_quant_dequant_op_list = [
     'fake_quantize_dequantize_moving_average_abs_max',
     "fake_channel_wise_quantize_dequantize_abs_max",
+    "fake_quantize_dequantize_abs_max",
 ]
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -399,7 +399,7 @@ class QuantizationTransformPass(object):
     def _create_global_step(self, graph):
         if self._weight_quantize_type == 'range_abs_max' or \
                 self._activation_quantize_type == 'range_abs_max':
-            counter_name = cpt.to_text('@STEP_COUNTER@')
+            counter_name = '@STEP_COUNTER@'
             for node in graph.all_var_nodes():
                 if node.name() == counter_name:
                     self._global_step = node
@@ -1338,7 +1338,7 @@ class ConvertToInt8Pass(object):
     def _convert_to_int8(self, graph, var_node):
         int8_var_node_name = var_node.name() + ".int8"
         int8_var_node = graph.create_persistable_node(
-            name=cpt.to_text(int8_var_node_name),
+            name=int8_var_node_name,
             var_type=var_node.type(),
             shape=var_node.shape(),
             var_dtype=core.VarDesc.VarType.INT8)
