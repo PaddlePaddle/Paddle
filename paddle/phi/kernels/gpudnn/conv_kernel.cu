@@ -201,11 +201,14 @@ void ConvCudnnKernel(const Context& ctx,
   }
 
   const T* input_data = transformed_input.data<T>();
-
   const T* filter_data = transformed_filter_channel.data<T>();
 
+  auto handle = ctx.cudnn_handle();
+  auto workspace_handle = ctx.cudnn_workspace_handle();
+
   // ------------------- cudnn descriptors ---------------------
-  paddle::operators::ConvArgs args{&transformed_input,
+  paddle::operators::ConvArgs args{handle,
+                                   &transformed_input,
                                    &transformed_filter_channel,
                                    &transformed_output,
                                    strides,
@@ -215,8 +218,6 @@ void ConvCudnnKernel(const Context& ctx,
                                    groups,
                                    compute_format};
 
-  auto handle = ctx.cudnn_handle();
-  auto workspace_handle = ctx.cudnn_workspace_handle();
   paddle::platform::DataLayout layout =
       compute_format == paddle::platform::DataLayout::kNHWC
           ? paddle::platform::DataLayout::kNHWC
@@ -227,8 +228,6 @@ void ConvCudnnKernel(const Context& ctx,
                  : paddle::platform::DataLayout::kNCDHW;
   }
   auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
-
-  args.handle = handle;
 
 #ifdef PADDLE_WITH_HIP
   // MIOPEN need to set groups in cdesc in miopen_desc.h
@@ -366,8 +365,6 @@ void ConvCudnnKernel(const Context& ctx,
                                                group_offset_in,
                                                group_offset_filter,
                                                group_offset_out,
-                                               alpha,
-                                               beta,
                                                workspace_size,
                                                &workspace_handle);
 #endif

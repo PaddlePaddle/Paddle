@@ -172,8 +172,10 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 #endif
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
+  auto handle = ctx.cudnn_handle();
 
-  paddle::operators::ConvArgs args1{&transformed_dout,
+  paddle::operators::ConvArgs args1{handle,
+                                    &transformed_dout,
                                     &filter,
                                     &x_transpose,
                                     strides,
@@ -182,7 +184,8 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                                     dtype,
                                     groups,
                                     layout};
-  paddle::operators::ConvArgs args2{&transformed_dout,
+  paddle::operators::ConvArgs args2{handle,
+                                    &transformed_dout,
                                     &filter,
                                     &x_transpose,
                                     strides,
@@ -204,14 +207,12 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 
   auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
   size_t workspace_size = 0;
-  auto handle = ctx.cudnn_handle();
   bool deterministic = FLAGS_cudnn_deterministic;
   T* dx_data = nullptr;
   T* dfilter_data = nullptr;
 
   if (dx) {
     dx_data = ctx.template Alloc<T>(dx);
-    args1.handle = handle;
     args1.idesc.set(transformed_dout, iwo_groups);
     args1.wdesc.set(filter, layout_tensor, iwo_groups);
     args1.odesc.set(x_transpose, iwo_groups);
@@ -231,14 +232,12 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     using search1 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
     fwd_result = search1::Find<T>(ctx, args1, false, deterministic, false);
-    workspace_size = std::max(
-        workspace_size, search1::GetWorkspaceSize(args1, fwd_result.algo));
+    workspace_size = std::max(workspace_size, fwd_result.workspace_size);
 #endif
   }
 
   if (dfilter) {
     dfilter_data = ctx.template Alloc<T>(dfilter);
-    args2.handle = handle;
     args2.idesc.set(transformed_dout, iwo_groups);
     args2.wdesc.set(*dfilter, layout_tensor, iwo_groups);
     args2.odesc.set(x_transpose, iwo_groups);
@@ -258,8 +257,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
     using search2 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
     filter_result = search2::Find<T>(ctx, args2, false, deterministic, false);
-    workspace_size = std::max(
-        workspace_size, search2::GetWorkspaceSize(args2, filter_result.algo));
+    workspace_size = std::max(workspace_size, filter_result.workspace_size);
 #endif
   }
 
@@ -631,7 +629,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   auto handle = ctx.cudnn_handle();
   auto layout = paddle::platform::GetCudnnTensorFormat(GPUDNNDataLayout::kNCHW);
 
-  paddle::operators::ConvArgs args1{&transformed_ddout_channel,
+  paddle::operators::ConvArgs args1{handle,
+                                    &transformed_ddout_channel,
                                     &filter,
                                     &transformed_ddx,
                                     strides,
@@ -640,7 +639,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                                     dtype,
                                     groups,
                                     GPUDNNDataLayout::kNCHW};
-  paddle::operators::ConvArgs args2{&transformed_ddout_channel,
+  paddle::operators::ConvArgs args2{handle,
+                                    &transformed_ddout_channel,
                                     &ddfilter,
                                     &transformed_x,
                                     strides,
@@ -650,7 +650,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                                     groups,
                                     GPUDNNDataLayout::kNCHW};
 
-  paddle::operators::ConvArgs args3{&transformed_dout,
+  paddle::operators::ConvArgs args3{handle,
+                                    &transformed_dout,
                                     dfilter,
                                     &transformed_ddx_channel,
                                     strides,
@@ -659,7 +660,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                                     dtype,
                                     groups,
                                     GPUDNNDataLayout::kNCHW};
-  paddle::operators::ConvArgs args4{&transformed_dout,
+  paddle::operators::ConvArgs args4{handle,
+                                    &transformed_dout,
                                     &ddfilter,
                                     &transformed_dx_channel,
                                     strides,
@@ -691,7 +693,6 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     ddout_ = ddout->data<T>();
     transformed_ddout_channel_ = transformed_ddout_channel.data<T>();
 
-    args1.handle = handle;
     args1.idesc.set(transformed_ddout_channel, iwo_group);
     args1.wdesc.set(filter, layout, iwo_group);
     args1.odesc.set(transformed_ddx, iwo_group);
@@ -711,11 +712,10 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     using search1 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     bwd_result1 = search1::Find<T>(ctx, args1, false, deterministic, false);
-    workspace_size = search1::GetWorkspaceSize(args1, bwd_result1.algo);
+    workspace_size = bwd_result1.workspace_size;
 #endif
 
     ddfilter_ = ddfilter.data<T>();
-    args2.handle = handle;
     args2.idesc.set(transformed_ddout_channel, iwo_group);
     args2.wdesc.set(ddfilter, layout, iwo_group);
     args2.odesc.set(transformed_x, iwo_group);
@@ -735,14 +735,12 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     using search2 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     bwd_result2 = search2::Find<T>(ctx, args2, false, deterministic, false);
-    workspace_size = std::max(
-        workspace_size, search2::GetWorkspaceSize(args2, bwd_result2.algo));
+    workspace_size = std::max(workspace_size, bwd_result2.workspace_size);
 #endif
   }
 
   if (dfilter) {
     dfilter_ = dfilter->data<T>();
-    args3.handle = handle;
     args3.idesc.set(transformed_dout, iwo_group);
     args3.wdesc.set(*dfilter, layout, iwo_group);
     args3.odesc.set(transformed_ddx_channel, iwo_group);
@@ -762,15 +760,13 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     using search3 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
     filter_result = search3::Find<T>(ctx, args3, false, deterministic, false);
-    workspace_size = std::max(
-        workspace_size, search3::GetWorkspaceSize(args3, filter_result.algo));
+    workspace_size = std::max(workspace_size, filter_result.workspace_size);
 #endif
   }
 
   if (dx) {
     transformed_dx_ = transformed_dx_channel.data<T>();
 
-    args4.handle = handle;
     args4.idesc.set(transformed_dout, iwo_group);
     args4.wdesc.set(ddfilter, layout, iwo_group);
     args4.odesc.set(transformed_dx_channel, iwo_group);
@@ -790,8 +786,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     using search4 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
     fwd_result = search4::Find<T>(ctx, args4, false, deterministic, false);
-    workspace_size = std::max(
-        workspace_size, search4::GetWorkspaceSize(args4, fwd_result.algo));
+    workspace_size = std::max(workspace_size, fwd_result.workspace_size);
 #endif
   }
 

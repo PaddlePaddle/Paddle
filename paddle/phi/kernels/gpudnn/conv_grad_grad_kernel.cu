@@ -257,7 +257,8 @@ void ConvCudnnGradGradKernel(
   auto layout = paddle::platform::GetCudnnTensorFormat(
       paddle::platform::DataLayout::kNCHW);
 
-  paddle::operators::ConvArgs args1{&transformed_ddX,
+  paddle::operators::ConvArgs args1{handle,
+                                    &transformed_ddX,
                                     W,
                                     &transformed_ddO_channel,
                                     strides,
@@ -266,7 +267,8 @@ void ConvCudnnGradGradKernel(
                                     dtype,
                                     groups,
                                     paddle::platform::DataLayout::kNCHW};
-  paddle::operators::ConvArgs args2{&transformed_X,
+  paddle::operators::ConvArgs args2{handle,
+                                    &transformed_X,
                                     ddW,
                                     &transformed_ddO_channel,
                                     strides,
@@ -275,7 +277,8 @@ void ConvCudnnGradGradKernel(
                                     dtype,
                                     groups,
                                     paddle::platform::DataLayout::kNCHW};
-  paddle::operators::ConvArgs args3{&transformed_ddX,
+  paddle::operators::ConvArgs args3{handle,
+                                    &transformed_ddX,
                                     dW,
                                     &transformed_dO_channel,
                                     strides,
@@ -284,7 +287,8 @@ void ConvCudnnGradGradKernel(
                                     dtype,
                                     groups,
                                     paddle::platform::DataLayout::kNCHW};
-  paddle::operators::ConvArgs args4{&transformed_dX,
+  paddle::operators::ConvArgs args4{handle,
+                                    &transformed_dX,
                                     ddW,
                                     &transformed_dO_channel,
                                     strides,
@@ -316,7 +320,6 @@ void ConvCudnnGradGradKernel(
     ddy = ddO->data<T>();
     transformed_ddy_channel = transformed_ddO_channel.data<T>();
     if (ddX) {
-      args1.handle = handle;
       args1.idesc.set(transformed_ddX, iwo_group);
       args1.wdesc.set(*W, layout, iwo_group);
       args1.odesc.set(transformed_ddO_channel, iwo_group);
@@ -337,13 +340,12 @@ void ConvCudnnGradGradKernel(
       using search1 =
           paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
       fwd_result1 = search1::Find<T>(ctx, args1, exhaustive_search, false);
-      workspace_size = search1::GetWorkspaceSize(args1, fwd_result1.algo);
+      workspace_size = fwd_result1.workspace_size;
 #endif
     }
 
     if (ddW) {
       ddw = ddW->data<T>();
-      args2.handle = handle;
       args2.idesc.set(transformed_X, iwo_group);
       args2.wdesc.set(*ddW, layout, iwo_group);
       args2.odesc.set(transformed_ddO_channel, iwo_group);
@@ -365,15 +367,13 @@ void ConvCudnnGradGradKernel(
       using search2 =
           paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
       fwd_result2 = search2::Find<T>(ctx, args2, exhaustive_search, false);
-      workspace_size = std::max(
-          workspace_size, search2::GetWorkspaceSize(args2, fwd_result2.algo));
+      workspace_size = std::max(workspace_size, fwd_result2.workspace_size);
 #endif
     }
   }
 
   if (dW && ddX) {
     dw = dW->data<T>();
-    args3.handle = handle;
     args3.idesc.set(transformed_ddX, iwo_group);
     args3.wdesc.set(*dW, layout, iwo_group);
     args3.odesc.set(transformed_dO_channel, iwo_group);
@@ -395,15 +395,13 @@ void ConvCudnnGradGradKernel(
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
     filter_result =
         search3::Find<T>(ctx, args3, exhaustive_search, deterministic);
-    workspace_size = std::max(
-        workspace_size, search3::GetWorkspaceSize(args3, filter_result.algo));
+    workspace_size = std::max(workspace_size, filter_result.workspace_size);
 #endif
   }
 
   if (ddW && dX) {
     transformed_dx = transformed_dX.data<T>();
 
-    args4.handle = handle;
     args4.idesc.set(transformed_dX, iwo_group);
     args4.wdesc.set(*ddW, layout, iwo_group);
     args4.odesc.set(transformed_dO_channel, iwo_group);
@@ -425,8 +423,7 @@ void ConvCudnnGradGradKernel(
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     data_result =
         search4::Find<T>(ctx, args4, exhaustive_search, deterministic);
-    workspace_size = std::max(
-        workspace_size, search4::GetWorkspaceSize(args4, data_result.algo));
+    workspace_size = std::max(workspace_size, data_result.workspace_size);
 #endif
   }
 
