@@ -95,8 +95,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
             ops=model_net,
             weights={
                 "fc_weight":
-                TensorConfig(
-                    data_gen=partial(generate_input, [64, 64])),
+                TensorConfig(data_gen=partial(generate_input, [64, 64])),
                 "fc_bias":
                 TensorConfig(data_gen=partial(generate_input, [64])),
             },
