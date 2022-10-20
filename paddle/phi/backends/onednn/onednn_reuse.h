@@ -845,7 +845,6 @@ class ReorderOneDNNHandler {
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
 
-
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
       DenseTensor* output, const dnnl::memory::desc& src_md, Place place) {
     if (ptype_dst_ == ptype_) {
@@ -861,15 +860,15 @@ class ReorderOneDNNHandler {
     }
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(DenseTensor* output,
-                                                  const std::vector<int64_t>& dims,
-                                                  const std::vector<long int> &strides,
-                                                 Place place) {
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(
+      DenseTensor* output,
+      const std::vector<int64_t>& dims,
+      const std::vector<long int>& strides,
+      Place place) {
     auto dst_md = dnnl::memory::desc(dims, dtype_dst_, strides);
     auto dst_data = output->mutable_data(place, ptype_dst_, dst_md.get_size());
     return std::make_shared<dnnl::memory>(dst_md, engine_, dst_data);
   }
-
 
   std::shared_ptr<dnnl::memory> AcquireDstMemory(
       DenseTensor* output,
