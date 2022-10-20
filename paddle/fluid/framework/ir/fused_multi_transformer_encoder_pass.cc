@@ -1140,11 +1140,9 @@ inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
   }
 
   wq_tensor->Resize(combined_w_dims);
-  auto* new_combined_w_data =
-      wq_tensor->mutable_data<T>(platform::CPUPlace());
-  memcpy(new_combined_w_data,
-         tmp_combined_w_data,
-         sizeof(T) * wq_tensor->numel());
+  auto* new_combined_w_data = wq_tensor->mutable_data<T>(platform::CPUPlace());
+  memcpy(
+      new_combined_w_data, tmp_combined_w_data, sizeof(T) * wq_tensor->numel());
 
   framework::LoDTensor tmp_combined_bias_tensor;
   tmp_combined_bias_tensor.Resize(combined_bias_dims);
@@ -1153,11 +1151,9 @@ inline void QKVWeightsProcess(framework::LoDTensor* wq_tensor,
 
   size_t bias_size = bq_tensor->numel();
   memcpy(tmp_combined_bias_data, bq_data, sizeof(T) * bias_size);
+  memcpy(tmp_combined_bias_data + bias_size, bk_data, sizeof(T) * bias_size);
   memcpy(
-      tmp_combined_bias_data + bias_size, bk_data, sizeof(T) * bias_size);
-  memcpy(tmp_combined_bias_data + 2 * bias_size,
-         bv_data,
-         sizeof(T) * bias_size);
+      tmp_combined_bias_data + 2 * bias_size, bv_data, sizeof(T) * bias_size);
 
   bq_tensor->Resize(combined_bias_dims);
   auto* new_combined_bias_data =
