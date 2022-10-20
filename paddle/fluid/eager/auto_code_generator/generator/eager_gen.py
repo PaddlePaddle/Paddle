@@ -1554,6 +1554,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             self.to_next_grad_name_mapping[grad_ret_name] = next_ret_name
 
     def GenerateHigherOrderNodeCreationCode(self):
+        has_higher_order_node = False
         namespace = self.namespace
         grad_api_contents = self.grad_api_contents
         forward_apis_dict = self.forward_apis_dict
@@ -1579,9 +1580,17 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             self.RecordGrad2NextGradNameMapping(next_node_generator)
         if next_node_generator is not None:
-            return next_grad_node_creation_str, next_grad_node_out_list, next_node_generator.backward_forward_inputs_map
+            has_higher_order_node = True
+            return next_grad_node_creation_str, next_grad_node_out_list, next_node_generator.backward_forward_inputs_map, has_higher_order_node
         else:
-            return next_grad_node_creation_str, next_grad_node_out_list, None
+            next_grad_node_creation_str = f"""  if(trace_backward) {{
+    PADDLE_THROW(phi::errors::Unavailable(
+    \"The Op {self.backward_api_name} doesn't have any grad op. If you \"
+    \"don't intend calculating higher order \"
+    \"derivatives, please set `create_graph` to \"
+    \"False.\"));
+  }}"""
+            return next_grad_node_creation_str, next_grad_node_out_list, None, has_higher_order_node
 
     def GenerateNodeDeclaration(self):
         forward_op_name = self.forward_api_name
@@ -1644,7 +1653,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
     def GenerateNodeDefinition(self, next_grad_node_creation_str,
                                next_grad_node_out_list,
-                               backward_forward_inputs_map_next):
+                               backward_forward_inputs_map_next,
+                               has_higher_order_node):
         namespace = self.namespace
         forward_api_name = self.forward_api_name
         backward_api_name = self.backward_api_name
@@ -1692,7 +1702,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             is_optional = (name in self.optional_inputs)
             tensor_wrapper_recover_str = f"{indent}auto {transformed_tensor_name} = egr::EagerUtils::RecoverTensorWrapper(&this->{tensor_wrapper_name});"
             if backward_inplace_map and name in backward_inplace_map.keys():
-                if len(next_grad_node_creation_str) > 0:
+                if has_higher_order_node:
                     if (transformed_tensor_name
                             in backward_forward_inputs_map_next) and (
                                 backward_forward_inputs_map_next[
@@ -1735,7 +1745,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
                 # Inplace in backward op
                 if backward_inplace_map and name in backward_inplace_map.keys():
-                    if len(next_grad_node_creation_str) > 0:
+                    if has_higher_order_node:
                         if (transformed_tensor_name
                                 in backward_forward_inputs_map_next) and (
                                     backward_forward_inputs_map_next[
@@ -1814,7 +1824,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                     inplace_str = f""" if (api_output_{out_index} != nullptr && can_be_inplaced) {{
       egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output_{out_index});
     }}"""
-                    if len(next_grad_node_creation_str) > 0:
+                    if has_higher_order_node:
                         inplace_for_grad_outs_str += f"""
   if (trace_backward) {{
     {optional_inplace_str}
@@ -1895,7 +1905,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
             else:
                 assert IsVectorTensorType(rtype)
-                if len(next_grad_node_creation_str) > 0:
+                if has_higher_order_node > 0:
                     output_autograd_meta = f"""
     auto& {transformed_tensor_name} = returns[{pos}];
     std::vector<egr::AutogradMeta*> {output_autograd_meta_vec_name} = egr::EagerUtils::autograd_meta(&{transformed_tensor_name});
@@ -1966,14 +1976,15 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         ## Code Generation ##
         #####################
         # Higher-order GradNode generation
-        next_grad_node_creation_str, next_grad_node_out_list, backward_forward_inputs_map = self.GenerateHigherOrderNodeCreationCode(
+        next_grad_node_creation_str, next_grad_node_out_list, backward_forward_inputs_map, has_higher_order_node = self.GenerateHigherOrderNodeCreationCode(
         )
 
         self.GenerateNodeDeclaration()
 
         self.GenerateNodeDefinition(next_grad_node_creation_str,
                                     next_grad_node_out_list,
-                                    backward_forward_inputs_map)
+                                    backward_forward_inputs_map,
+                                    has_higher_order_node)
 
 
 class DygraphForwardAndNodesGenerator(GeneratorBase):
