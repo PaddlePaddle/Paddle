@@ -60,7 +60,7 @@ void QuantizeConvInput(Scope* scope,
                        const std::string& scales_attr_name) {
   auto var = scope->GetVar(input_name);
   if (var->Get<LoDTensor>().dtype() != phi::DataType::FLOAT32) {
-    VLOG(0) << "Skipping quantize the input: " << input_name
+    VLOG(1) << "Skipping quantize the input: " << input_name
             << " of convolution because it is detected again.";
   } else {
     const auto scales =
