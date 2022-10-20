@@ -2018,6 +2018,7 @@ set -x
     mkdir -p ${PADDLE_ROOT}/build/pytest
     ljd_testcases='^graph_node_test$|^send_and_recv_cpu_test$|^test_hdfs1$|^test_dyn_rnn$'
     precise_card_test_single "$ljd_testcases"
+    
     #run all unittest to get the coverage information of .c and .h files
     #precise_card_test_single "$single_card_tests" 1
     #precise_card_test_single "$single_card_tests_1" 1
