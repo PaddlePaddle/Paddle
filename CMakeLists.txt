@@ -530,34 +530,34 @@ if(WITH_RPC)
         OFF
         CACHE BOOL "Disable WITH_RPC when not compiled with distribute" FORCE)
   endif()
-  if(WITH_ASCEND_CL AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with NPU. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with NPU" FORCE)
-  endif()
-  if(WITH_ROCM AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with ROCM. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with ROCM" FORCE)
-  endif()
-  if(WITH_XPU AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with XPU. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with XPU" FORCE)
-  endif()
-  if(WITH_CINN AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with CINN. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with CINN" FORCE)
-  endif()
+  #   if(WITH_ASCEND_CL AND WITH_RPC)
+  #     message(
+  #       WARNING "Disable WITH_RPC when compiling with NPU. Force WITH_RPC=OFF.")
+  #     set(WITH_RPC
+  #         OFF
+  #         CACHE BOOL "Disable WITH_RPC when compiling with NPU" FORCE)
+  #   endif()
+  #   if(WITH_ROCM AND WITH_RPC)
+  #     message(
+  #       WARNING "Disable WITH_RPC when compiling with ROCM. Force WITH_RPC=OFF.")
+  #     set(WITH_RPC
+  #         OFF
+  #         CACHE BOOL "Disable WITH_RPC when compiling with ROCM" FORCE)
+  #   endif()
+  #   if(WITH_XPU AND WITH_RPC)
+  #     message(
+  #       WARNING "Disable WITH_RPC when compiling with XPU. Force WITH_RPC=OFF.")
+  #     set(WITH_RPC
+  #         OFF
+  #         CACHE BOOL "Disable WITH_RPC when compiling with XPU" FORCE)
+  #   endif()
+  #   if(WITH_CINN AND WITH_RPC)
+  #     message(
+  #       WARNING "Disable WITH_RPC when compiling with CINN. Force WITH_RPC=OFF.")
+  #     set(WITH_RPC
+  #         OFF
+  #         CACHE BOOL "Disable WITH_RPC when compiling with CINN" FORCE)
+  #   endif()
 endif()
 
 if(WITH_MPI)
