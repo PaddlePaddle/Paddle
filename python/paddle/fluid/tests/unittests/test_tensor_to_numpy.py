@@ -15,7 +15,6 @@
 import paddle.fluid as fluid
 import unittest
 import numpy as np
-import six
 
 
 class TensorToNumpyTest(unittest.TestCase):
@@ -36,8 +35,8 @@ class TensorToNumpyTest(unittest.TestCase):
         for p in places:
             for dtype in dtypes:
                 np_arr = np.reshape(
-                    np.array(six.moves.range(np.prod(
-                        self.shape))).astype(dtype), self.shape)
+                    np.array(range(np.prod(self.shape))).astype(dtype),
+                    self.shape)
 
                 t = fluid.LoDTensor()
                 t.set(np_arr, p)

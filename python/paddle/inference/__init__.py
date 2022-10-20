@@ -20,6 +20,7 @@ from ..fluid.inference import Tensor  # noqa: F401
 from ..fluid.inference import Predictor  # noqa: F401
 from ..fluid.inference import create_predictor  # noqa: F401
 from ..fluid.inference import get_version  # noqa: F401
+from ..fluid.inference import _get_phi_kernel_name
 from ..fluid.inference import get_trt_compile_version  # noqa: F401
 from ..fluid.inference import get_trt_runtime_version  # noqa: F401
 from ..fluid.inference import convert_to_mixed_precision  # noqa: F401
@@ -28,7 +29,7 @@ from ..fluid.inference import PredictorPool  # noqa: F401
 
 __all__ = [  # noqa
     'Config', 'DataType', 'PlaceType', 'PrecisionType', 'Tensor', 'Predictor',
-    'create_predictor', 'get_version', 'get_trt_compile_version',
-    'convert_to_mixed_precision', 'get_trt_runtime_version',
-    'get_num_bytes_of_data_type', 'PredictorPool'
+    'create_predictor', 'get_version', '_get_phi_kernel_name',
+    'get_trt_compile_version', 'convert_to_mixed_precision',
+    'get_trt_runtime_version', 'get_num_bytes_of_data_type', 'PredictorPool'
 ]

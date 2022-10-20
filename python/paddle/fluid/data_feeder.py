@@ -15,8 +15,6 @@
 from . import core
 import numpy as np
 import os
-import six
-from six.moves import zip, range, xrange
 import multiprocessing
 import warnings
 
@@ -188,7 +186,7 @@ class DataToLoDTensorConverter(object):
 
     def _reset(self):
         self.data = []
-        self.lod = [[] for _ in six.moves.range(self.lod_level)]
+        self.lod = [[] for _ in range(self.lod_level)]
 
     def feed(self, data):
         self._feed_impl_(data, self.lod, self.lod_level)
@@ -249,8 +247,7 @@ class BatchedTensorProvider(object):
     def __call__(self):
         idx = 0
         for each_sample in self.generator():
-            for each_slot, each_converter in six.moves.zip(
-                    each_sample, self.converters):
+            for each_slot, each_converter in zip(each_sample, self.converters):
                 each_converter.data.append(each_slot)
 
             idx += 1
@@ -333,7 +330,7 @@ class DataFeeder(object):
         if program is None:
             program = default_main_program()
         for each_var in feed_list:
-            if isinstance(each_var, six.string_types):
+            if isinstance(each_var, str):
                 each_var = program.block(0).var(each_var)
             if not isinstance(each_var, Variable):
                 raise TypeError("Feed list should contain a list of variable")
@@ -383,9 +380,8 @@ class DataFeeder(object):
 
         """
         converter = []
-        for lod_level, shape, dtype in six.moves.zip(self.feed_lod_level,
-                                                     self.feed_shapes,
-                                                     self.feed_dtypes):
+        for lod_level, shape, dtype in zip(self.feed_lod_level,
+                                           self.feed_shapes, self.feed_dtypes):
             converter.append(
                 DataToLoDTensorConverter(place=self.place,
                                          lod_level=lod_level,
@@ -396,12 +392,10 @@ class DataFeeder(object):
             assert len(each_sample) == len(converter), (
                 "The number of fields in data (%d) does not match " +
                 "len(feed_list) (%d)") % (len(each_sample), len(converter))
-            for each_converter, each_slot in six.moves.zip(
-                    converter, each_sample):
+            for each_converter, each_slot in zip(converter, each_sample):
                 each_converter.feed(each_slot)
         ret_dict = {}
-        for each_name, each_converter in six.moves.zip(self.feed_names,
-                                                       converter):
+        for each_name, each_converter in zip(self.feed_names, converter):
             ret_dict[each_name] = each_converter.done()
         return ret_dict
 
@@ -461,13 +455,13 @@ class DataFeeder(object):
         """
         if isinstance(self.place, core.CUDAPlace):
             places = [
-                core.CUDAPlace(i) for i in six.moves.xrange(
-                    self._get_number_of_places_(num_places))
+                core.CUDAPlace(i)
+                for i in range(self._get_number_of_places_(num_places))
             ]
         else:
             places = [
-                core.CPUPlace() for _ in six.moves.xrange(
-                    self._get_number_of_places_(num_places))
+                core.CPUPlace()
+                for _ in range(self._get_number_of_places_(num_places))
             ]
 
         if len(iterable) != len(places):
@@ -477,7 +471,7 @@ class DataFeeder(object):
                              "must be same.")
 
         place = self.place
-        for p, batch in six.moves.zip(places, iterable):
+        for p, batch in zip(places, iterable):
             self.place = p
             yield self.feed(batch)
         self.place = place

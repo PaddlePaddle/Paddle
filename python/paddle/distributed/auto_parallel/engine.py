@@ -48,6 +48,8 @@ from .dist_context import DistributedContext, get_default_distributed_context
 from .strategy import Strategy
 from .interface import CollectionNames, get_collection, _g_recompute_idx
 from ..utils.log_utils import get_logger
+from .utils import initialize_pg_in_full_mode
+from .cost.estimate_cost import get_cost_from_engine
 
 
 class Engine:
@@ -127,12 +129,6 @@ class Engine:
                 "'model must be sub classes of `paddle.nn.Layer` or any callable function."
             )
         self._model = model
-
-        # if loss and not isinstance(loss,
-        #                            paddle.nn.Layer) and not callable(loss):
-        #     raise TypeError(
-        #         "'loss' must be sub classes of `paddle.nn.Layer` or any callable function."
-        #     )
         self._loss = loss
 
         if optimizer and not isinstance(
@@ -201,6 +197,7 @@ class Engine:
         self._planned_mode = None
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
+        self._losses = None
 
         self.history = None
 
@@ -487,6 +484,7 @@ class Engine:
             outputs = self.program_helper.output_vars
             labels = self.program_helper.label_vars
             losses = self.program_helper.loss_vars
+            self._losses = losses
             metrics = self.program_helper.metric_vars
 
             self._inputs = inputs
@@ -512,6 +510,7 @@ class Engine:
                     outputs = to_list(self._model(*inputs))
                     if mode != "predict" and self._loss:
                         losses = to_list(self._loss(*(outputs + labels)))
+                        self._losses = losses
 
                     if mode != "predict" and (outputs or labels):
                         for metric in self._metrics:
@@ -519,6 +518,7 @@ class Engine:
                                 to_list(metric.compute(*(outputs + labels))))
             else:
                 losses = to_list(self._loss)
+                self.losses = losses
 
         default_ctx = get_default_distributed_context()
         if not default_ctx.has_annotation:
@@ -648,11 +648,13 @@ class Engine:
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
 
-            # NOTE: add the comm init control in the future for auto search
-            for process_group in all_process_groups:
-                if self._cur_rank not in process_group.ranks:
-                    continue
-                process_group.instantiate()
+            if self._strategy.auto_mode == "full":
+                initialize_pg_in_full_mode(all_process_groups, cur_rank)
+            else:
+                for process_group in all_process_groups:
+                    if self._cur_rank not in process_group.ranks:
+                        continue
+                    process_group.instantiate()
 
         place = _get_device()
         if isinstance(place, fluid.CUDAPlace):
@@ -1022,16 +1024,9 @@ class Engine:
 
         test_dataloader = self._prepare_dataloader_from_generator(
             dataset=test_data,
-            # feed_list=feed_list,
             capacity=70,
-            # use_double_buffer=use_double_buffer,
             iterable=False,
-            # return_list=return_list,
-            # use_multiprocess=use_multiprocess,
-            # drop_last=drop_last,
-            # places=places,
             batch_size=batch_size,
-            # epochs=epochs,
             steps_per_epoch=steps,
             collate_fn=collate_fn)
 
@@ -1100,21 +1095,19 @@ class Engine:
             steps_per_epoch=steps_per_epoch)
         return dataloader
 
-    def dataloader_from_generator(
-            self,
-            dataset,
-            capacity=70,
-            use_double_buffer=True,
-            iterable=True,
-            # return_list=False,
-            use_multiprocess=False,
-            drop_last=True,
-            batch_size=1,
-            epochs=1,
-            steps_per_epoch=None,
-            collate_fn=None,
-            sample_split=1,
-            mode=None):
+    def dataloader_from_generator(self,
+                                  dataset,
+                                  capacity=70,
+                                  use_double_buffer=True,
+                                  iterable=True,
+                                  use_multiprocess=False,
+                                  drop_last=True,
+                                  batch_size=1,
+                                  epochs=1,
+                                  steps_per_epoch=None,
+                                  collate_fn=None,
+                                  sample_split=1,
+                                  mode=None):
         if mode is not None:
             self.to_mode(mode)
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
@@ -1127,14 +1120,12 @@ class Engine:
             self._switch_mode(self._mode)
         dataloader = self._prepare_dataloader_from_generator(
             dataset=dataset,
-            # feed_list=feed_list,
             capacity=capacity,
             use_double_buffer=use_double_buffer,
             iterable=iterable,
             return_list=False,
             use_multiprocess=use_multiprocess,
             drop_last=drop_last,
-            # places=places,
             batch_size=batch_size,
             epochs=epochs,
             steps_per_epoch=steps_per_epoch,
@@ -1187,20 +1178,7 @@ class Engine:
             assert self._inputs_spec and self._labels_spec, \
                 "Please call the dataloader(...) before calling prepare(...)"
 
-    def run(
-        self,
-        data=None,
-        # program=None,
-        feed=None,
-        fetch_list=None,
-        # feed_var_name='feed',
-        # fetch_var_name='fetch',
-        # scope=None,
-        # return_numpy=True,
-        # use_program_cache=False,
-        # return_merged=True,
-        # use_prune=False,
-        mode=None):
+    def run(self, data=None, feed=None, fetch_list=None, mode=None):
         if mode is not None:
             self.to_mode(mode)
         feed_dict = self._prepare_feed(data, feed, self._mode)
@@ -1537,10 +1515,10 @@ class Engine:
             strict (bool, optional): Whether to skip the loading of mismatch
                 parameter or raise an error when mismatch happens (not found
                 the parameter in file storing model states of or receives a
-                mismatch shape). Default: False.
+                mismatch shape). Default: True.
             load_optimizer (bool, optional): If True, the stored optimizer
                 states is restored. Otherwise, the optimizer states is initialized
-                from scratch. Default: False.
+                from scratch. Default: True.
 
         Returns:
             None
@@ -1577,6 +1555,54 @@ class Engine:
         self._state_dict, self._dist_attr = self._saver.load(
             path, load_optimizer)
         return self._state_dict, self._dist_attr
+
+    def cost(self, inputs_spec=None, labels_spec=None, mode="train"):
+        """
+        Get and Print cost, including memory of every rank,
+        max memory among all ranks, and the global cost of one step based on
+        communication cost(computation cost is 0 by default).
+        In the future, the flops information of every rank and global cost including
+        computation cost will be added.
+
+        Args:
+            inputs_spec(InputSpec): The specification of inputs. Default: None.
+            labels_spec(InputSpec): The specification of labels. Default: None.
+            mode (str): The engine mode must be in ["train", "predict", "eval"]. Default: "train".
+
+        Returns:
+            Return the global execution time (ms) and max memory (B).
+
+        """
+        # Check parallel mode
+        if self._strategy.auto_mode == "full":
+            print(
+                "The cost will be calcudated in the search process when the auto mode is full."
+            )
+            return
+
+        # Check mode
+        accepted_modes = ["train", "predict", "eval"]
+        if mode not in accepted_modes:
+            raise ValueError("The mode {} is not in accepted modes {}".format(
+                mode, accepted_modes))
+        self.to_mode(mode)
+
+        if inputs_spec is not None:
+            self._inputs_spec, self._labels_spec = inputs_spec, labels_spec
+            self._inputs, self._labels = self._prepare_data_tensor(
+                self._inputs_spec, self._labels_spec)
+            self._build(mode)
+            self._plan(mode)
+        else:
+            if _non_static_mode() or self._dygraph_mode:
+                raise ValueError(
+                    "Please call `engine._prepare_program('mode')` firstly when in the static graph mode."
+                )
+
+        # Estimate the exec cost and max memory
+        global_cost, max_memory = get_cost_from_engine(self, mode)
+
+        return global_cost.time, max_memory
 
     @property
     def main_program(self):

@@ -18,7 +18,7 @@ import unittest
 import warnings
 import numpy as np
 import random
-import six
+import functools
 import struct
 from collections import defaultdict
 from copy import copy
@@ -113,7 +113,7 @@ def randomize_probability(batch_size, class_num, dtype='float32'):
     prob = np.random.uniform(0.1, 1.0,
                              size=(batch_size, class_num)).astype(dtype)
     prob_sum = prob.sum(axis=1)
-    for i in six.moves.xrange(len(prob)):
+    for i in range(len(prob)):
         prob[i] /= prob_sum[i]
     return prob
 
@@ -130,7 +130,7 @@ def get_numeric_gradient(place,
     set_input(scope, op, inputs, place)
 
     def product(dim):
-        return six.moves.reduce(lambda a, b: a * b, dim, 1)
+        return functools.reduce(lambda a, b: a * b, dim, 1)
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
@@ -214,7 +214,7 @@ def get_numeric_gradient(place,
 
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
-    for i in six.moves.xrange(tensor_size):
+    for i in range(tensor_size):
         if in_place:
             set_input(scope, op, inputs, place)
 
@@ -438,7 +438,7 @@ class OpTest(unittest.TestCase):
             # case 3: inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
             # case 4: inputs = {'X': [("x1", (x1, [x1_lod1])), ("x2", (x2, [x2_.lod2]))]}
             # TODO(juncaipeng) infer dtype from inputs maybe obtain wrong type.
-            for _, var_value in six.iteritems(numpy_dict):
+            for _, var_value in numpy_dict.items():
                 if is_np_data(var_value):  # case 1
                     dtype_set.add(var_value.dtype)
                 elif isinstance(var_value, (list, tuple)):  # case 2, 3, 4
@@ -549,7 +549,7 @@ class OpTest(unittest.TestCase):
 
     def _get_io_vars(self, block, numpy_inputs):
         inputs = {}
-        for name, value in six.iteritems(numpy_inputs):
+        for name, value in numpy_inputs.items():
             if isinstance(value, list):
                 var_list = [
                     block.var(sub_name) for sub_name, sub_value in value
@@ -980,7 +980,7 @@ class OpTest(unittest.TestCase):
         # if the fetch_list is customized by user, we use it directly.
         # if not, fill the fetch_list by the user configured outputs in test.
         if len(fetch_list) == 0:
-            for var_name, var in six.iteritems(outputs):
+            for var_name, var in outputs.items():
                 if no_check_set is not None and var_name in no_check_set:
                     continue
                 if isinstance(var, list):
@@ -1578,8 +1578,8 @@ class OpTest(unittest.TestCase):
                         str(place) + " in dygraph mode")
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                if six.moves.reduce(lambda x, y: x * y, actual_np.shape,
-                                    1) == 0 and six.moves.reduce(
+                if functools.reduce(lambda x, y: x * y, actual_np.shape,
+                                    1) == 0 and functools.reduce(
                                         lambda x, y: x * y, expect_np.shape,
                                         1) == 0:
                     pass
@@ -1825,7 +1825,7 @@ class OpTest(unittest.TestCase):
 
     def _assert_is_close(self, numeric_grads, analytic_grads, names,
                          max_relative_error, msg_prefix):
-        for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
+        for a, b, name in zip(numeric_grads, analytic_grads, names):
             # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
             # max_relative_error is 1e-7. According to the value of np.abs(a), we
             # change np.abs(a) to achieve dynamic threshold. For example, if
@@ -1973,7 +1973,7 @@ class OpTest(unittest.TestCase):
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
             tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
-            tensor_size = six.moves.reduce(lambda a, b: a * b,
+            tensor_size = functools.reduce(lambda a, b: a * b,
                                            tensor_to_check.shape(), 1)
             tensor_ndim = len(tensor_to_check.shape())
             # for 0D Tensor, it's additional case for OP, so not raise error

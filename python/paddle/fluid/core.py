@@ -277,6 +277,7 @@ try:
     from .libpaddle import _get_current_stream
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream
+    from .libpaddle import _get_phi_kernel_name
     if sys.platform != 'win32':
         from .libpaddle import _set_process_pids
         from .libpaddle import _erase_process_pids

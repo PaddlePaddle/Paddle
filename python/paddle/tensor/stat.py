@@ -244,7 +244,7 @@ def numel(x, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.size(x)
+        return _C_ops.numel(x)
     elif _in_legacy_dygraph():
         return _legacy_C_ops.size(x)
 

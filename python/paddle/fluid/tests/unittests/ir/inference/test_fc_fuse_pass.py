@@ -22,7 +22,7 @@ import hypothesis.strategies as st
 
 
 class TestFcFusePass(PassAutoScanTest):
-    """
+    r"""
     x_var   y_var(persistable)
       \       /
          mul     bias_var(persistable)

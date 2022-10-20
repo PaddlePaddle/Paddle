@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import math
 from functools import reduce
 
@@ -188,8 +187,7 @@ class RNNCellBase(Layer):
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
                 return True
-            return (isinstance(seq, Sequence)
-                    and not isinstance(seq, six.string_types))
+            return (isinstance(seq, Sequence) and not isinstance(seq, str))
 
         class Shape(object):
 

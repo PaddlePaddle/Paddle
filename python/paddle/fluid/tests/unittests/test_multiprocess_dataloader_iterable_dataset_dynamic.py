@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import sys
-import six
 import time
 import unittest
 import numpy as np
@@ -78,7 +77,7 @@ class TestDygraphDataLoader(unittest.TestCase):
             step_list = []
             loss_list = []
             start_t = time.time()
-            for _ in six.moves.range(EPOCH_NUM):
+            for _ in range(EPOCH_NUM):
                 step = 0
                 for image, label in dataloader():
                     out = fc_net(image)
@@ -137,7 +136,7 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
             step_list = []
             loss_list = []
             start_t = time.time()
-            for _ in six.moves.range(EPOCH_NUM):
+            for _ in range(EPOCH_NUM):
                 step = 0
                 for image, label in dataloader():
                     out = fc_net(image)

@@ -15,7 +15,6 @@
 import collections
 from paddle.utils import gast
 import inspect
-import six
 import textwrap
 import threading
 import weakref
@@ -983,7 +982,7 @@ class ProgramCache(object):
         return len(self._caches)
 
     def concrete_programs(self):
-        return [cp for key, (cp, _) in six.iteritems(self._caches)]
+        return [cp for key, (cp, _) in self._caches.items()]
 
 
 def synchronized(func):

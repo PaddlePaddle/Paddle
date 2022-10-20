@@ -43,7 +43,7 @@ def remove_grad_op_and_kernel(content, pattern1, pattern2):
 
 def update_operator_cmake(cmake_file):
     pat1 = 'add_subdirectory(optimizers)'
-    pat2 = 'register_operators\(EXCLUDES.*?py_func_op.*?\)'
+    pat2 = r'register_operators\(EXCLUDES.*?py_func_op.*?\)'
 
     code1 = 'if(ON_INFER)\nadd_subdirectory(optimizers)\nendif()'
     code2 = 'if(ON_INFER)\nfile(GLOB LOSS_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*loss_op.cc")\nstring(REPLACE ".cc" "" LOSS_OPS "${LOSS_OPS}")\nendif()'
@@ -80,27 +80,27 @@ if __name__ == '__main__':
     # 1. remove all grad op and kernel
     for op_file in all_op:
         # remove all grad op
-        op_pattern1 = 'REGISTER_OPERATOR\(.*?\);?'
-        op_pattern2 = 'REGISTER_OPERATOR\(.*?_grad,.*?\);?'
+        op_pattern1 = r'REGISTER_OPERATOR\(.*?\);?'
+        op_pattern2 = r'REGISTER_OPERATOR\(.*?_grad,.*?\);?'
 
         # remove all cpu grad kernel
-        cpu_kernel_pattern1 = 'REGISTER_OP_CPU_KERNEL\(.*?\);?'
-        cpu_kernel_pattern2 = 'REGISTER_OP_CPU_KERNEL\(.*?_grad,.*?\);?'
+        cpu_kernel_pattern1 = r'REGISTER_OP_CPU_KERNEL\(.*?\);?'
+        cpu_kernel_pattern2 = r'REGISTER_OP_CPU_KERNEL\(.*?_grad,.*?\);?'
 
         # remove all gpu grad kernel
-        gpu_kernel_pattern1 = 'REGISTER_OP_CUDA_KERNEL\(.*?\);?'
-        gpu_kernel_pattern2 = 'REGISTER_OP_CUDA_KERNEL\(.*?_grad,.*?\);?'
+        gpu_kernel_pattern1 = r'REGISTER_OP_CUDA_KERNEL\(.*?\);?'
+        gpu_kernel_pattern2 = r'REGISTER_OP_CUDA_KERNEL\(.*?_grad,.*?\);?'
 
         # remove all xpu grad kernel
-        xpu_kernel_pattern1 = 'REGISTER_OP_XPU_KERNEL\(.*?\);?'
-        xpu_kernel_pattern2 = 'REGISTER_OP_XPU_KERNEL\(.*?_grad,.*?\);?'
+        xpu_kernel_pattern1 = r'REGISTER_OP_XPU_KERNEL\(.*?\);?'
+        xpu_kernel_pattern2 = r'REGISTER_OP_XPU_KERNEL\(.*?_grad,.*?\);?'
 
         # remove custom grad kernel, mkldnn or cudnn etc.
-        op_kernel_pattern1 = 'REGISTER_OP_KERNEL\(.*?\);?'
-        op_kernel_pattern2 = 'REGISTER_OP_KERNEL\(.*?_grad,.*?\);?'
+        op_kernel_pattern1 = r'REGISTER_OP_KERNEL\(.*?\);?'
+        op_kernel_pattern2 = r'REGISTER_OP_KERNEL\(.*?_grad,.*?\);?'
 
-        custom_pattern1 = 'REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE\(.*?\);?'
-        custom_pattern2 = 'REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE\(.*?_grad,.*?\);?'
+        custom_pattern1 = r'REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE\(.*?\);?'
+        custom_pattern2 = r'REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE\(.*?_grad,.*?\);?'
 
         op_name = os.path.split(op_file)[1]
         if op_name in spec_ops:
