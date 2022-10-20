@@ -205,7 +205,7 @@ class GroupShardedStage2(nn.Layer):
         Before the gradient accumulation, scale the gradient.
         """
 
-        if self._dp_group is None:
+        if self._dp_group is None or self._dp_group.nranks <= 1:
             scale_factor = self._world_size_scaling
         else:
             scale_factor = 1.0 / (self._group.nranks * self._dp_group.nranks)
@@ -296,7 +296,7 @@ class GroupShardedStage2(nn.Layer):
                                  self._group,
                                  sync_op=True)
 
-            if self._dp_group:
+            if self._dp_group and self._dp_group.nranks > 1:
                 collective.broadcast(buffer,
                                      self._dp_group.ranks[0],
                                      self._dp_group,
@@ -369,8 +369,8 @@ class GroupShardedStage2(nn.Layer):
                                           group=self._group,
                                           sync_op=not self._reduce_overlap))
 
-                    if self._dp_group:
-                        assert not self._comm_overlap, 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
+                    if self._dp_group and self._dp_group.nranks > 1:
+                        assert not self._reduce_overlap, 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
                         #TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
                         collective.all_reduce(tensor=param.grad,
                                               group=self._dp_group,
@@ -426,8 +426,8 @@ class GroupShardedStage2(nn.Layer):
                                 group=self._group,
                                 sync_op=not self._reduce_overlap))
 
-                        if self._dp_group:
-                            assert not self._comm_overlap, 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
+                        if self._dp_group and self._dp_group.nranks > 1:
+                            assert not self._reduce_overlap, 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
                             #TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
                             collective.all_reduce(tensor=grad_storage.buffer,
                                                   group=self._dp_group,
