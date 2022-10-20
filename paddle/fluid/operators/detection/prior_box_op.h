@@ -68,7 +68,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
   }
 
   template <typename data_t>
-  void PriorBoxOpHandler(const framework::ExecutionContext& ctx) {
+  void PriorBoxOpHandler(const framework::ExecutionContext& ctx) const {
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* image = ctx.Input<phi::DenseTensor>("Image");
     auto* boxes = ctx.Output<phi::DenseTensor>("Boxes");
