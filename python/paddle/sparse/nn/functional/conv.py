@@ -201,9 +201,9 @@ def conv3d(x,
               indices = paddle.to_tensor(indices, dtype='int32')
               values = paddle.to_tensor(values, dtype='float32')
               dense_shape = [1, 1, 3, 4, 1]
-              sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+              sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
               weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-              y = paddle.incubate.sparse.nn.functional.conv3d(sparse_x, weight)
+              y = paddle.sparse.nn.functional.conv3d(sparse_x, weight)
               print(y.shape)
               # (1, 1, 1, 2, 1)
     """
@@ -321,9 +321,9 @@ def subm_conv3d(x,
               indices = paddle.to_tensor(indices, dtype='int32')
               values = paddle.to_tensor(values, dtype='float32')
               dense_shape = [1, 1, 3, 4, 1]
-              sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+              sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
               weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-              y = paddle.incubate.sparse.nn.functional.subm_conv3d(sparse_x, weight)
+              y = paddle.sparse.nn.functional.subm_conv3d(sparse_x, weight)
               print(y.shape)
               #(1, 1, 3, 4, 1)
     """

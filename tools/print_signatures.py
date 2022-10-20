@@ -262,6 +262,9 @@ def check_public_api():
         paddle.audio,
         paddle.audio.backends,
         paddle.audio.datasets,
+        paddle.sparse,
+        paddle.sparse.nn,
+        paddle.sparse.nn.functional,
     ]
 
     apinum = 0

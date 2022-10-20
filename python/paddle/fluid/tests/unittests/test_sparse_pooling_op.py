@@ -45,7 +45,7 @@ class TestMaxPool3DFunc(unittest.TestCase):
             self.setUp()
             self.dense_x.stop_gradient = False
             sparse_x = self.dense_x.to_sparse_coo(4)
-            sparse_out = paddle.incubate.sparse.nn.functional.max_pool3d(
+            sparse_out = paddle.sparse.nn.functional.max_pool3d(
                 sparse_x,
                 self.kernel_sizes,
                 stride=self.strides,
@@ -106,8 +106,8 @@ class TestMaxPool3DAPI(unittest.TestCase):
         with _test_eager_guard():
             dense_x = paddle.randn((2, 3, 6, 6, 3))
             sparse_x = dense_x.to_sparse_coo(4)
-            max_pool3d = paddle.incubate.sparse.nn.MaxPool3D(
-                kernel_size=3, data_format='NDHWC')
+            max_pool3d = paddle.sparse.nn.MaxPool3D(kernel_size=3,
+                                                    data_format='NDHWC')
             out = max_pool3d(sparse_x)
             out = out.to_dense()
 

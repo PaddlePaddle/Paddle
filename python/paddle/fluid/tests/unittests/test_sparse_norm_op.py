@@ -15,8 +15,8 @@
 import unittest
 import numpy as np
 import paddle
-from paddle.incubate.sparse import nn
-import paddle.incubate.sparse as sparse
+from paddle.sparse import nn
+import paddle.sparse as sparse
 import paddle.fluid as fluid
 import copy
 
@@ -40,7 +40,7 @@ class TestSparseBatchNorm(unittest.TestCase):
         dense_x2 = copy.deepcopy(dense_x)
         dense_x2.stop_gradient = False
         sparse_x = dense_x2.to_sparse_coo(sparse_dim)
-        sparse_batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
+        sparse_batch_norm = paddle.sparse.nn.BatchNorm(channels)
         # set same params
         sparse_batch_norm._mean.set_value(batch_norm._mean)
         sparse_batch_norm._variance.set_value(batch_norm._variance)
@@ -66,8 +66,8 @@ class TestSparseBatchNorm(unittest.TestCase):
             shape = [2, 3, 6, 6, 3]
             x = paddle.randn(shape)
             sparse_x = x.to_sparse_coo(4)
-            sparse_batch_norm = paddle.incubate.sparse.nn.BatchNorm(
-                3, data_format='NCDHW')
+            sparse_batch_norm = paddle.sparse.nn.BatchNorm(3,
+                                                           data_format='NCDHW')
             sparse_batch_norm(sparse_x)
 
     def test2(self):
@@ -76,7 +76,7 @@ class TestSparseBatchNorm(unittest.TestCase):
         x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
         dense_x = paddle.to_tensor(x_data)
         sparse_x = dense_x.to_sparse_coo(4)
-        batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
+        batch_norm = paddle.sparse.nn.BatchNorm(channels)
         batch_norm_out = batch_norm(sparse_x)
         dense_bn = paddle.nn.BatchNorm1D(channels)
         dense_x = dense_x.reshape((-1, dense_x.shape[-1]))
@@ -132,7 +132,7 @@ class TestStatic(unittest.TestCase):
         dense_shape = [1, 1, 3, 4, channels]
         sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
 
-        sparse_batch_norm = paddle.incubate.sparse.nn.BatchNorm(channels)
+        sparse_batch_norm = paddle.sparse.nn.BatchNorm(channels)
         sp_y = sparse_batch_norm(sp_x)
         out = sp_y.to_dense()
 
