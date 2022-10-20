@@ -61,7 +61,7 @@ def list_available_backends() -> List[str]:
             if 'soundfile' in backends:
                 paddle.audio.backends.set_backend('soundfile')
 
-            paddle.audio.backends.save(wav_path, waveform, sample_rate)
+            paddle.audio.save(wav_path, waveform, sample_rate)
 
     """
     backends = []
@@ -118,7 +118,7 @@ def get_current_backend() -> str:
             if 'soundfile' in backends:
                 paddle.audio.backends.set_backend('soundfile')
 
-            paddle.audio.backends.save(wav_path, waveform, sample_rate)
+            paddle.audio.save(wav_path, waveform, sample_rate)
 
     """
     current_backend = None
@@ -158,7 +158,7 @@ def set_backend(backend_name: str):
             if 'soundfile' in backends:
                 paddle.audio.backends.set_backend('soundfile')
 
-            paddle.audio.backends.save(wav_path, waveform, sample_rate)
+            paddle.audio.save(wav_path, waveform, sample_rate)
 
     """
     if backend_name not in list_available_backends():

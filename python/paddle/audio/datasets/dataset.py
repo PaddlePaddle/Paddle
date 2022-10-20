@@ -66,7 +66,7 @@ class AudioClassificationDataset(paddle.io.Dataset):
 
     def _convert_to_record(self, idx):
         file, label = self.files[idx], self.labels[idx]
-        waveform, sample_rate = paddle.audio.backends.load(file)
+        waveform, sample_rate = paddle.audio.load(file)
         self.sample_rate = sample_rate
 
         feat_func = feat_funcs[self.feat_type]
