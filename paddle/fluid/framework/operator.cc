@@ -1395,7 +1395,7 @@ bool OperatorWithKernel::SupportsKernelType(
 // 3. Whether this op has specific implementation;
 // 4. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-  if (!this->dnn_fallback_ &&
+  if (!this->dnn_fallback() &&
       kernel_type.library_type_ == framework::LibraryType::kPlain &&
       !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
@@ -1579,7 +1579,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // 3. Whether this op has specific implementation;
 // 4. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-      if (!this->dnn_fallback_ &&
+      if (!this->dnn_fallback() &&
           kernel_type_->library_type_ == framework::LibraryType::kPlain &&
           !paddle::platform::in_mkldnn_white_list(type_) &&
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
@@ -1825,7 +1825,7 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 // 3. Whether this op has specific implementation;
 // 4. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-  if (!this->dnn_fallback_ &&
+  if (!this->dnn_fallback() &&
       expected_kernel_key.library_type_ == framework::LibraryType::kPlain &&
       !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
