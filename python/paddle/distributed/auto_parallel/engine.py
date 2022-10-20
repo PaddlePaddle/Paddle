@@ -1443,8 +1443,7 @@ class Engine:
 
     def _switch_mode(self, mode):
         self.to_mode(mode)
-        self._initialize(mode)
-        # self._optimizer = self._dist_contexts[mode]._serial_optimizer
+        self._optimizer = self._dist_contexts[mode]._serial_optimizer
 
     def to_mode(self, mode):
         assert mode in ["train", "eval", "predict"], \
