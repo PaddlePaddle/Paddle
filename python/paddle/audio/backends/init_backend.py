@@ -53,7 +53,7 @@ def list_available_backends() -> List[str]:
             waveform = wav_data.tile([num_channels, 1])
             wav_path = "./test.wav"
 
-            current_backend = paddle.audio.backends.get_current_audio_backend()
+            current_backend = paddle.audio.backends.get_current_backend()
             print(current_backend) # wave_backend, the default backend.
             backends = paddle.audio.backends.list_available_backends()
             # default backends is ['wave_backend']
@@ -89,7 +89,7 @@ def list_available_backends() -> List[str]:
     return backends
 
 
-def get_current_audio_backend() -> str:
+def get_current_backend() -> str:
     """ Get the name of the current audio backend
 
     Returns:
@@ -109,7 +109,7 @@ def get_current_audio_backend() -> str:
             waveform = wav_data.tile([num_channels, 1])
             wav_path = "./test.wav"
 
-            current_backend = paddle.audio.backends.get_current_audio_backend()
+            current_backend = paddle.audio.backends.get_current_backend()
             print(current_backend) # wave_backend, the default backend.
             backends = paddle.audio.backends.list_available_backends()
             # default backends is ['wave_backend']
@@ -149,7 +149,7 @@ def set_backend(backend_name: str):
             waveform = wav_data.tile([num_channels, 1])
             wav_path = "./test.wav"
 
-            current_backend = paddle.audio.backends.get_current_audio_backend()
+            current_backend = paddle.audio.backends.get_current_backend()
             print(current_backend) # wave_backend, the default backend.
             backends = paddle.audio.backends.list_available_backends()
             # default backends is ['wave_backend']

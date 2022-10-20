@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from . import init_backend
-from .init_backend import get_current_audio_backend  # noqa: F401
+from .init_backend import get_current_backend  # noqa: F401
 from .init_backend import list_available_backends  # noqa: F401
 from .init_backend import set_backend
 
@@ -23,7 +23,7 @@ from .backend import info  # noqa: F401
 from .backend import save  # noqa: F401
 
 __all__ = [
-    'get_current_audio_backend',
+    'get_current_backend',
     'list_available_backends',
     'set_backend',
     'info',
