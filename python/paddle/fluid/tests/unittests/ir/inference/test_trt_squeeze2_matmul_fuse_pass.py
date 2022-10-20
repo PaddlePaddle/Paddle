@@ -21,7 +21,7 @@ import hypothesis.strategies as st
 
 
 class TestSqueeze2MatmulFusePass(PassAutoScanTest):
-    """
+    r"""
         x_var
           |
        squeeze2

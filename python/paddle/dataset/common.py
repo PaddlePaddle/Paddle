@@ -32,7 +32,7 @@ HOME = os.path.expanduser('~')
 # If the default HOME dir does not support writing, we
 # will create a temporary folder to store the cache files.
 if not os.access(HOME, os.W_OK):
-    """
+    r"""
     gettempdir() return the name of the directory used for temporary files.
     On Windows, the directories C:\TEMP, C:\TMP, \TEMP, and \TMP, in that order.
     On all other platforms, the directories /tmp, /var/tmp, and /usr/tmp, in that order.

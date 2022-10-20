@@ -297,7 +297,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
     def forward(self, x):
         self._check_data_format()
-        sync_batch_norm_out, _, _, _, _, _ = _C_ops.sparse_sync_batch_norm(
+        sync_batch_norm_out, _, _, _, _, _ = _C_ops.sparse_sync_batch_norm_(
             x, self.weight, self.bias, self._mean, self._variance,
             self._momentum, self._epsilon, self._data_format, not self.training,
             False, False, False)
