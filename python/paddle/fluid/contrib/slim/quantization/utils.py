@@ -38,6 +38,7 @@ _act_supported_quantizable_op_type = [
     "mean",
     "not_equal",
     "reshape",
+    "reshape2",
     "dropout",
     "bilinear_interp",
     "nearest_interp",
@@ -112,9 +113,11 @@ _act_supported_quantizable_op_type = [
     "scale",
 ]
 
-_out_scale_op_list = list(
+QUANT_SUPPORTED_OP_TYPE_LIST = list(
     set(_weight_supported_quantizable_op_type +
         _act_supported_quantizable_op_type))
+
+_out_scale_op_list = QUANT_SUPPORTED_OP_TYPE_LIST
 
 _channelwise_quant_axis1_ops = [
     'conv2d_transpose', 'mul', 'matmul', 'matmul_v2'
@@ -331,9 +334,11 @@ def quant_tensor(x, scale, quant_axis=0, weight_bits=8, onnx_format=False):
         x[x < -scale] = -scale
         return x
 
-    assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
     bnt = (1 << (weight_bits - 1)) - 1
+    if isinstance(scale, list) and len(scale) == 1:
+        scale = scale[0]
     if isinstance(scale, list):
+        assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
         for i, s in enumerate(scale):
             if s == 0.0:
                 s = 1e-8
@@ -428,6 +433,28 @@ def calculate_quant_cos_error(orig_tensor, qdq_tensor):
     cos_sim = np.inner(orig_tensor.flatten(), qdq_tensor.flatten()) \
               / (np.linalg.norm(orig_tensor.flatten()) * np.linalg.norm(qdq_tensor.flatten()))
     return cos_sim
+
+
+def move_persistable_var_to_global_block(program):
+    # Move sub blocks persistable var to global block
+    global_block = program.global_block()
+    for _op in global_block.ops:
+        if _op.type == "while":
+            _block_id = _op.attr("sub_block").id
+            _block = program.block(_block_id)
+            persistables = []
+            for _name, _var in _block.vars.items():
+                if _var.persistable:
+                    global_block._clone_variable(_var)
+                    persistables.append(_name)
+            for _name in persistables:
+                _block._remove_var(_name)
+            persistables.extend(_op.input('X'))
+            _op.desc.set_input("X", persistables)
+
+
+def l2_loss(gt, pred):
+    return ((gt - pred)**2).mean()
 
 
 class tqdm(object):

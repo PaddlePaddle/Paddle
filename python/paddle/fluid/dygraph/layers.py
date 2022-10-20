@@ -16,7 +16,6 @@ import collections
 import contextlib
 import sys
 import numpy as np
-import six
 import re
 import copy
 import weakref
@@ -441,7 +440,7 @@ class Layer(object):
 
         """
         temp_attr = copy.deepcopy(attr)
-        if isinstance(temp_attr, six.string_types) and temp_attr == "":
+        if isinstance(temp_attr, str) and temp_attr == "":
             temp_attr = None
         return self._helper.create_parameter(temp_attr, shape, dtype, is_bias,
                                              default_initializer)
@@ -770,7 +769,7 @@ class Layer(object):
         if '_buffers' not in self.__dict__:
             raise ValueError(
                 "super(YourLayer, self).__init__() should be called first")
-        elif not isinstance(name, six.string_types):
+        elif not isinstance(name, str):
             raise TypeError(
                 "The name of buffer should be a string, but received {}.".
                 format(type(name).__name__))
@@ -1038,7 +1037,7 @@ class Layer(object):
         if '_parameters' not in self.__dict__:
             raise RuntimeError(
                 "super(YourLayer, self).__init__() should be called firstly.")
-        elif not isinstance(name, six.string_types):
+        elif not isinstance(name, str):
             raise TypeError(
                 "The name of parameter should be a string, but received {}.".
                 format(type(name).__name__))
@@ -1321,7 +1320,7 @@ class Layer(object):
                                    include_sublayers=True,
                                    structured_name_prefix=""):
         """
-        The difference from state_dict() is that state_dict_hook will not be called, 
+        The difference from state_dict() is that state_dict_hook will not be called,
         but the original types of parameters and buffers will be maintained.
         """
         if destination is None:
@@ -1538,13 +1537,18 @@ class Layer(object):
                     place = core.CUDAPlace(p.gpu_device_id())
                 t.set(ndarray, place)
 
-            executor = Executor(_get_device())._default_executor
-            # restore parameter states
-            core._create_loaded_parameter(
-                [param for param, state in matched_param_state], global_scope(),
-                executor)
-            for param, state in matched_param_state:
-                _set_var(param, state)
+            try:
+                executor = Executor(_get_device())._default_executor
+                # restore parameter states
+                core._create_loaded_parameter(
+                    [param for param, state in matched_param_state],
+                    global_scope(), executor)
+                for param, state in matched_param_state:
+                    _set_var(param, state)
+            except ValueError as e:
+                raise ValueError(
+                    "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
+                )
 
     def to(self, device=None, dtype=None, blocking=None):
         '''
@@ -1559,7 +1563,7 @@ class Layer(object):
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
-            
+
         Returns:
             self
 
@@ -1689,7 +1693,7 @@ class Layer(object):
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
-            
+
             include_sublayers(bool|True, optional): If True, deal with self and all sublayers parameters and buffers, if not only deal with self parameters and buffers. Default: True.
 
             floating_only(bool|False, optional): If True, only cast all floating point parameters and buffers of Layer by the give device, dtype and blocking.

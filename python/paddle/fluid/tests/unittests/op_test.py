@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import sys
 import unittest
 import warnings
 import numpy as np
 import random
-import six
+import functools
 import struct
-import time
-import itertools
-import collections
 from collections import defaultdict
 from copy import copy
 
@@ -37,7 +32,7 @@ from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
+from paddle.fluid.framework import OpProtoHolder, Program, _current_expected_place
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
 
@@ -118,7 +113,7 @@ def randomize_probability(batch_size, class_num, dtype='float32'):
     prob = np.random.uniform(0.1, 1.0,
                              size=(batch_size, class_num)).astype(dtype)
     prob_sum = prob.sum(axis=1)
-    for i in six.moves.xrange(len(prob)):
+    for i in range(len(prob)):
         prob[i] /= prob_sum[i]
     return prob
 
@@ -135,7 +130,7 @@ def get_numeric_gradient(place,
     set_input(scope, op, inputs, place)
 
     def product(dim):
-        return six.moves.reduce(lambda a, b: a * b, dim, 1)
+        return functools.reduce(lambda a, b: a * b, dim, 1)
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
@@ -219,7 +214,7 @@ def get_numeric_gradient(place,
 
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
-    for i in six.moves.xrange(tensor_size):
+    for i in range(tensor_size):
         if in_place:
             set_input(scope, op, inputs, place)
 
@@ -443,7 +438,7 @@ class OpTest(unittest.TestCase):
             # case 3: inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
             # case 4: inputs = {'X': [("x1", (x1, [x1_lod1])), ("x2", (x2, [x2_.lod2]))]}
             # TODO(juncaipeng) infer dtype from inputs maybe obtain wrong type.
-            for _, var_value in six.iteritems(numpy_dict):
+            for _, var_value in numpy_dict.items():
                 if is_np_data(var_value):  # case 1
                     dtype_set.add(var_value.dtype)
                 elif isinstance(var_value, (list, tuple)):  # case 2, 3, 4
@@ -510,6 +505,7 @@ class OpTest(unittest.TestCase):
                 else:
                     tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
+
         return feed_map
 
     def _append_ops(self, block):
@@ -553,7 +549,7 @@ class OpTest(unittest.TestCase):
 
     def _get_io_vars(self, block, numpy_inputs):
         inputs = {}
-        for name, value in six.iteritems(numpy_inputs):
+        for name, value in numpy_inputs.items():
             if isinstance(value, list):
                 var_list = [
                     block.var(sub_name) for sub_name, sub_value in value
@@ -744,7 +740,7 @@ class OpTest(unittest.TestCase):
         def prepare_python_api_arguments(api, op_proto_ins, op_proto_attrs,
                                          kernel_sig):
             """ map from `op proto inputs and attrs` to `api input list and api attrs dict`
-                
+
                 NOTE: the op_proto_attrs and op_proto_ins is a default dict. default value is []
             """
 
@@ -916,7 +912,7 @@ class OpTest(unittest.TestCase):
             args = prepare_python_api_arguments(self.python_api,
                                                 eager_tensor_inputs,
                                                 attrs_outputs, kernel_sig)
-            """ we directly return the cal_python_api value because the value is already tensor. 
+            """ we directly return the cal_python_api value because the value is already tensor.
             """
             return cal_python_api(self.python_api, args, kernel_sig)
 
@@ -984,7 +980,7 @@ class OpTest(unittest.TestCase):
         # if the fetch_list is customized by user, we use it directly.
         # if not, fill the fetch_list by the user configured outputs in test.
         if len(fetch_list) == 0:
-            for var_name, var in six.iteritems(outputs):
+            for var_name, var in outputs.items():
                 if no_check_set is not None and var_name in no_check_set:
                     continue
                 if isinstance(var, list):
@@ -1141,6 +1137,7 @@ class OpTest(unittest.TestCase):
                             continue
                         else:
                             grad_feed_map[arg] = fwd_outs[i]._copy(p)
+
         return grad_feed_map
 
     def _get_need_run_ops(self, op_desc, fwd_op_desc=None):
@@ -1259,6 +1256,7 @@ class OpTest(unittest.TestCase):
                                                  build_strategy=build_strategy,
                                                  places=place)
             program = compiled_program
+
         outs = exe.run(program,
                        feed=grad_feed_map,
                        fetch_list=grad_fetch_list,
@@ -1295,6 +1293,7 @@ class OpTest(unittest.TestCase):
                                             fwd_res,
                                             grad_op_desc,
                                             enable_inplace=True)
+
         self._compare_expect_and_actual_outputs(place,
                                                 expect_res[1],
                                                 expect_res[0],
@@ -1425,7 +1424,6 @@ class OpTest(unittest.TestCase):
                 judge whether convert current output and expect to uint16.
                 return True | False
                 """
-                pass
 
             def _is_skip_name(self, name):
                 if name not in self.expects:
@@ -1463,7 +1461,7 @@ class OpTest(unittest.TestCase):
                 # NOTE(zhiqiu): np.allclose([], [1.]) returns True
                 # see details: https://stackoverflow.com/questions/38331703/why-does-numpys-broadcasting-sometimes-allow-comparing-arrays-of-different-leng
                 if expect_np.size == 0:
-                    self.op_test.assertTrue(actual_np.size == 0)  # }}}
+                    self.op_test.assertTrue(actual_np.size == 0)
                 self._compare_numpy(name, actual_np, expect_np)
                 if isinstance(expect, tuple):
                     self._compare_list(name, actual, expect)
@@ -1580,8 +1578,8 @@ class OpTest(unittest.TestCase):
                         str(place) + " in dygraph mode")
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                if six.moves.reduce(lambda x, y: x * y, actual_np.shape,
-                                    1) == 0 and six.moves.reduce(
+                if functools.reduce(lambda x, y: x * y, actual_np.shape,
+                                    1) == 0 and functools.reduce(
                                         lambda x, y: x * y, expect_np.shape,
                                         1) == 0:
                     pass
@@ -1669,7 +1667,6 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             # always enable legacy dygraph
             g_enable_legacy_dygraph()
-
             dygraph_checker = DygraphChecker(self, self.outputs)
             dygraph_checker.check()
             dygraph_outs = dygraph_checker.outputs
@@ -1828,7 +1825,7 @@ class OpTest(unittest.TestCase):
 
     def _assert_is_close(self, numeric_grads, analytic_grads, names,
                          max_relative_error, msg_prefix):
-        for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
+        for a, b, name in zip(numeric_grads, analytic_grads, names):
             # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
             # max_relative_error is 1e-7. According to the value of np.abs(a), we
             # change np.abs(a) to achieve dynamic threshold. For example, if
@@ -1836,15 +1833,29 @@ class OpTest(unittest.TestCase):
             # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
             # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
             abs_a = np.abs(a)
-            if self.dtype == np.float64 and \
-                self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
-                abs_a[abs_a < 1e-10] = 1e-3
-                abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
-                abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
-            elif self.is_bfloat16_op():
-                abs_a[abs_a < 1e-2] = 1
-            else:
-                abs_a[abs_a < 1e-3] = 1
+            if abs_a.ndim > 0:
+                if self.dtype == np.float64 and \
+                    self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
+                    abs_a[abs_a < 1e-10] = 1e-3
+                    abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
+                    abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
+                elif self.is_bfloat16_op():
+                    abs_a[abs_a < 1e-2] = 1
+                else:
+                    abs_a[abs_a < 1e-3] = 1
+            elif abs_a.ndim == 0:
+                if self.dtype == np.float64 and \
+                    self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
+                    if abs_a < 1e-10:
+                        abs_a = 1e-3
+                    elif abs_a > 1e-10 and abs_a <= 1e-8:
+                        abs_a = abs_a * 1e4
+                    elif abs_a > 1e-8 and abs_a <= 1e-6:
+                        abs_a = abs_a * 1e2
+                elif self.is_bfloat16_op():
+                    abs_a = 1 if abs_a < 1e-2 else abs_a
+                else:
+                    abs_a = 1 if abs_a < 1e-3 else abs_a
 
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
@@ -1962,9 +1973,11 @@ class OpTest(unittest.TestCase):
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
             tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
-            tensor_size = six.moves.reduce(lambda a, b: a * b,
+            tensor_size = functools.reduce(lambda a, b: a * b,
                                            tensor_to_check.shape(), 1)
-            if tensor_size < 100:
+            tensor_ndim = len(tensor_to_check.shape())
+            # for 0D Tensor, it's additional case for OP, so not raise error
+            if tensor_ndim > 0 and tensor_size < 100:
                 self.__class__.input_shape_is_large = False
 
         if not type(output_names) is list:

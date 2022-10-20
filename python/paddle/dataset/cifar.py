@@ -27,15 +27,11 @@ images per class.
 
 """
 
-from __future__ import print_function
-
-import itertools
 import numpy
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 import tarfile
-import six
-from six.moves import cPickle as pickle
+import pickle
 
 __all__ = []
 
@@ -49,11 +45,10 @@ CIFAR100_MD5 = 'eb9058c3a382ffc7106e4002c42a8d85'
 def reader_creator(filename, sub_name, cycle=False):
 
     def read_batch(batch):
-        data = batch[six.b('data')]
-        labels = batch.get(six.b('labels'), batch.get(six.b('fine_labels'),
-                                                      None))
+        data = batch[b'data']
+        labels = batch.get(b'labels', batch.get(b'fine_labels', None))
         assert labels is not None
-        for sample, label in six.moves.zip(data, labels):
+        for sample, label in zip(data, labels):
             yield (sample / 255.0).astype(numpy.float32), int(label)
 
     def reader():

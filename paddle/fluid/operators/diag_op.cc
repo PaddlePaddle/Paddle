@@ -45,7 +45,7 @@ class DiagOpMaker : public framework::OpProtoAndCheckerMaker {
              "Diagonal values of square matrix. It is a tensor with rank 1.");
     AddOutput("Out", "A square matrix.");
     AddComment(R"DOC(
-    Return a square matrix with specified diagonal values. 
+    Return a square matrix with specified diagonal values.
 )DOC");
   }
 };

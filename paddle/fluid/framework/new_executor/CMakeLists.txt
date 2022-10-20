@@ -2,47 +2,11 @@ add_subdirectory(garbage_collector)
 add_subdirectory(interpreter)
 add_subdirectory(workqueue)
 
-set(STANDALONE_EXECUTOR_SRCS
-    data_transfer.cc
-    new_executor_defs.cc
-    interpretercore_util.cc
-    event_manager.cc
-    stream_analyzer.cc
-    interpretercore.cc
-    standalone_executor.cc)
+set(STANDALONE_EXECUTOR_SRCS interpretercore.cc new_executor_defs.cc
+                             stream_analyzer.cc standalone_executor.cc)
 
-set(STANDALONE_EXECUTOR_DEPS
-    dependency_builder
-    device_context
-    op_registry
-    scope
-    framework_proto
-    data_feed_proto
-    ops_extra_info
-    heter_service_proto
-    trainer_desc_proto
-    glog
-    lod_rank_table
-    fs
-    shell
-    fleet_wrapper
-    heter_wrapper
-    ps_gpu_wrapper
-    box_wrapper
-    lodtensor_printer
-    feed_fetch_method
-    graph_to_program_pass
-    variable_helper
-    timer
-    monitor
-    nan_inf_utils
-    enforce
-    scope
-    glog
-    workqueue
-    interpretercore_garbage_collector
-    ${DEVICE_EVENT_LIBS}
-    glog)
+set(STANDALONE_EXECUTOR_DEPS interpreter interpretercore_garbage_collector
+                             workqueue)
 
 cc_library(
   standalone_executor

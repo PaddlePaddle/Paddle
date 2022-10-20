@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import collections
 import copy
 import six
@@ -83,7 +82,7 @@ def is_sequence(seq):
     """
     if isinstance(seq, dict):
         return True
-    return (isinstance(seq, Sequence) and not isinstance(seq, six.string_types))
+    return (isinstance(seq, Sequence) and not isinstance(seq, str))
 
 
 def _hash_with_id(*args):
@@ -100,7 +99,7 @@ def _sorted(dict_):
     Returns a sorted list of the dict keys, with error if keys not sortable.
     """
     try:
-        return sorted(six.iterkeys(dict_))
+        return sorted(dict_.keys())
     except TypeError:
         raise TypeError("nest only supports dicts with sortable keys.")
 
@@ -160,11 +159,10 @@ def _sequence_like(instance, args):
         # ordered and plain dicts (e.g., flattening a dict but using a
         # corresponding `OrderedDict` to pack it back).
         result = dict(zip(_sorted(instance), args))
-        return type(instance)(
-            (key, result[key]) for key in six.iterkeys(instance))
+        return type(instance)((key, result[key]) for key in instance.keys())
     elif (isinstance(instance, tuple) and hasattr(instance, "_fields")
           and isinstance(instance._fields, Sequence)
-          and all(isinstance(f, six.string_types) for f in instance._fields)):
+          and all(isinstance(f, str) for f in instance._fields)):
         # This is a namedtuple
         return type(instance)(*args)
     else:
@@ -257,8 +255,8 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
                 "structure has type %s, while second structure has type %s." %
                 (type_nest1, type_nest2))
         if isinstance(nest1, dict):
-            keys1 = set(six.iterkeys(nest1))
-            keys2 = set(six.iterkeys(nest2))
+            keys1 = set(nest1.keys())
+            keys2 = set(nest2.keys())
             if keys1 != keys2:
                 raise ValueError(
                     "The two dictionaries don't have the same set of keys. First "
@@ -364,9 +362,6 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
             shape = cast(shape, 'int32')
         inputs["ShapeTensor"] = shape
     elif isinstance(shape, (list, tuple)):
-        assert len(shape) > 0, ("The size of 'shape' in" + op_type +
-                                " can't be zero, "
-                                "but received %s." % len(shape))
         attrs["shape"] = _get_attr_shape(shape)
         if _contain_var(shape):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)
@@ -386,7 +381,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
             ele.stop_gradient = True
             new_list_tensor.append(ele)
         else:
-            assert isinstance(ele, six.integer_types)
+            assert isinstance(ele, int)
             temp_out = fill_constant([1], dtype, ele, force_cpu=True)
             new_list_tensor.append(temp_out)
     return new_list_tensor
@@ -418,7 +413,7 @@ def check_shape(shape):
                     raise ValueError(
                         "All elements in ``shape`` must be positive when it's a list or tuple"
                     )
-                if not isinstance(ele, six.integer_types):
+                if not isinstance(ele, int):
                     raise TypeError(
                         "All elements in ``shape`` must be integers when it's a list or tuple"
                     )
@@ -426,17 +421,17 @@ def check_shape(shape):
 
 def try_set_static_shape_tensor(tensor, shape):
     """Try to set static shape of tensor from a shape tensor.
-    
+
     For example,
 
     import paddle
     paddle.enable_static()
     data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
     shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
-    x = paddle.uniform(shape) 
-    print(x.shape) 
+    x = paddle.uniform(shape)
+    print(x.shape)
     # (-1, 2)
-    
+
     """
     if not _non_static_mode():
         # static mode, and shape is not all inferred (contains -1)
@@ -451,15 +446,15 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     """Try to get shape from a tensor with constant value.
 
     For example,
-    
+
     import paddle
     paddle.enable_static()
     data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
     shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
-    x = paddle.uniform(shape) 
-    print(x.shape) 
+    x = paddle.uniform(shape)
+    print(x.shape)
     # (-1, 2)
-    
+
     """
     if not _non_static_mode():
         try:

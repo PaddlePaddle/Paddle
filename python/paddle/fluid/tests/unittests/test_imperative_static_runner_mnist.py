@@ -12,20 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import contextlib
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid import unique_name
 from test_imperative_base import new_program_scope
-from jit_load_rename_var import rename_var_with_generator
 
 LOADED_VAR_SUFFIX = ".load_0"
 
@@ -315,14 +309,14 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         # Phase 3. compare
         np.testing.assert_array_equal(static_x_data, dy_x_data)
 
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             key = dict_old_new_init[key]
             np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
         np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-4)
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             key = dict_old_new_init[key]
             np.testing.assert_allclose(value,
                                        dy_param_value[key],
@@ -345,14 +339,14 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
 
         # Phase 3. compare
         np.testing.assert_array_equal(static_x_data, dy_x_data)
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             key = dict_old_new_init[key]
             np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
         np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-4)
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             key = dict_old_new_init[key]
             np.testing.assert_allclose(value,
                                        dy_param_value[key],

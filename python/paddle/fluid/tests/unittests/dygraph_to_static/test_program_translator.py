@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import astor
 from paddle.utils import gast
 import inspect
@@ -25,7 +23,6 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 import paddle.jit.dy2static as _jst
 

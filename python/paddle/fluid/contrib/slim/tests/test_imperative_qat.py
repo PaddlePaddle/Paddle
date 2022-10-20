@@ -12,8 +12,6 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-from __future__ import print_function
-
 import os
 import numpy as np
 import random
@@ -68,7 +66,8 @@ class TestImperativeQat(unittest.TestCase):
         imperative_qat = ImperativeQuantAware(
             weight_quantize_type=self.weight_quantize_type,
             activation_quantize_type=self.activation_quantize_type,
-            fuse_conv_bn=self.fuse_conv_bn)
+            fuse_conv_bn=self.fuse_conv_bn,
+            onnx_format=self.onnx_format)
 
         with fluid.dygraph.guard():
             # For CI coverage
@@ -187,8 +186,7 @@ class TestImperativeQat(unittest.TestCase):
                 input_spec=[
                     paddle.static.InputSpec(shape=[None, 1, 28, 28],
                                             dtype='float32')
-                ],
-                onnx_format=self.onnx_format)
+                ])
             print('Quantized model saved in %s' % tmpdir)
 
             if core.is_compiled_with_cuda():

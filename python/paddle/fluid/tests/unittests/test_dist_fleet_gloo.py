@@ -12,19 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import shutil
 import tempfile
 import unittest
 import subprocess
 import time
-import paddle.fluid as fluid
 #import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 from test_dist_fleet_base import TestFleetBase
 
 #from dist_simnet_bow import train_network

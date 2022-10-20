@@ -137,7 +137,7 @@ def _run_paddle_while(cond, body, getter, setter, return_name_ids,
         return helper.get(return_name_ids)
 
     def new_cond_fn(*args):
-        """ cond is a zero-args function, which is not 
+        """ cond is a zero-args function, which is not
             compatible with `while_loop`.
         """
         return cond()
@@ -462,6 +462,7 @@ def convert_len(var):
           `shape_op` in var.block.
     """
     if isinstance(var, Variable):
+        assert var.ndim > 0, "len() of a 0D tensor is wrong"
         if var.type in [
                 core.VarDesc.VarType.LOD_TENSOR,
                 core.VarDesc.VarType.SELECTED_ROWS
@@ -495,7 +496,7 @@ def convert_zip(*args):
 
 # TODO(xiongkun): delete when list<variable> is ready.
 class VariableTuple:
-    """ 
+    """
         this class will cause enumerate can't be wrapped by other iterator change function.
         this will be fixed when list<Variable> is producted.
         VariableTuple can only deal with variables which is fixed.
@@ -577,7 +578,7 @@ def convert_shape_compare(left, *args):
         Python like "a op1 b and b op2 c and ... ".
         If the variables to compare are Paddle Variables, we will do elementwise
         comparsion first and then reduce to a boolean whose numel is 1.
-        
+
     """
     args_len = len(args)
     assert args_len >= 2, "convert_shape_compare needs at least one right compare variable"

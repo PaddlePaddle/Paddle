@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -24,7 +21,7 @@ from paddle.optimizer.lr import NoamDecay
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 """
-Note(chenweihang): To compare loss of single-card and multi-card 
+Note(chenweihang): To compare loss of single-card and multi-card
     in our dist test framework, two parameters need to be adjusted:
   1. set the dropout rate to 0.
   2. set the weights for Transformer.forward to constant.
@@ -826,7 +823,7 @@ def fake_data_reader():
 
     def __reader__():
         iteration = TrainTaskConfig.batch_size * batch_num
-        for _ in six.moves.range(iteration):
+        for _ in range(iteration):
             # random data
             np.random.seed = 90
             src_word_np = np.arange(1, seq_len + 1).reshape([seq_len

@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
-import shutil
 import tempfile
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
-from paddle.distributed import fleet
-from paddle.fluid.dygraph import nn
 from paddle.fluid.framework import _test_eager_guard
 from paddle.distributed.sharding import group_sharded_parallel, save_group_sharded_model
 
@@ -79,7 +75,9 @@ def train_mlp(model,
               shard_level,
               use_multi_precision,
               output_dir,
-              amp_level='O1'):
+              amp_level='O1',
+              sync_buffers=False,
+              dp_group=None):
     optimizer = optimizer_setting(model=model,
                                   use_multi_precision=use_multi_precision)
     model = paddle.amp.decorate(models=model,
@@ -90,7 +88,9 @@ def train_mlp(model,
     model, optimizer, scaler = group_sharded_parallel(model=model,
                                                       optimizer=optimizer,
                                                       level=shard_level,
-                                                      scaler=scaler)
+                                                      scaler=scaler,
+                                                      sync_buffers=sync_buffers,
+                                                      dp_group=dp_group)
 
     train_reader = paddle.batch(reader_decorator(),
                                 batch_size=batch_size,
@@ -137,6 +137,18 @@ def test_sharding_api():
     mlp2.set_state_dict(state_dict)
 
     output_dir = tempfile.mkdtemp()
+
+    #test sharding + dp, just for test
+    dp_group = paddle.distributed.new_group(
+        list(range(paddle.distributed.get_world_size())))
+
+    stage2_dp_params = train_mlp(mlp1,
+                                 shard_level="os_g",
+                                 use_multi_precision=True,
+                                 output_dir=output_dir,
+                                 amp_level='O2',
+                                 sync_buffers=True,
+                                 dp_group=dp_group)
 
     # fp16
     stage2_params = train_mlp(mlp1,

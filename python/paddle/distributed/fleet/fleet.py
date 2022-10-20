@@ -13,14 +13,11 @@
 # limitations under the License.
 
 import copy
-import warnings
 import paddle
 import os
-from types import MethodType
-import numpy as np
 from paddle.fluid.framework import _global_flags
 from paddle.fluid import compiler
-from .base.role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
+from .base.role_maker import PaddleCloudRoleMaker, RoleMakerBase
 from .base.strategy_compiler import StrategyCompiler
 from .base.distributed_strategy import DistributedStrategy
 from .base.meta_optimizer_factory import MetaOptimizerFactory
@@ -30,8 +27,7 @@ from paddle.fluid.dygraph import parallel_helper
 from paddle.fluid.ir import apply_build_strategy
 from .base import topology as tp
 from .meta_parallel import model_parallel_random_seed
-from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import core
+from .utils.log_util import logger, set_log_level
 
 __all__ = []
 
@@ -54,7 +50,7 @@ def apply_ir_passes(main_program, startup_program, config):
         # RawProgramOptimizer also inserts coalesce_tensor
         # into program. These two procedures may conflict
         # in which vars are to be fused.
-        warnings.warn(
+        logger.warning(
             'Currently, the fuse_all_optimizer_ops pass has conflict with fuse_all_reduce_ops pass. Disable the fuse_all_optimizer_ops pass temporarily.'
         )
         build_strategy.fuse_all_optimizer_ops = False
@@ -83,7 +79,7 @@ def _is_non_distributed_check_(func):
 
         if cls._role_maker is not None and cls._role_maker._is_non_distributed(
         ) is True:
-            warnings.warn(
+            logger.warning(
                 "%s() function doesn't work when use non_distributed fleet." %
                 (func.__name__))
             return
@@ -100,7 +96,7 @@ is_non_distributed_check = wrap_decorator(_is_non_distributed_check_)
 class Fleet(object):
     """
     Unified API for distributed training of PaddlePaddle
-    Please reference the https://github.com/PaddlePaddle/FleetX for details
+    Please reference the https://github.com/PaddlePaddle/PaddleFleetX for details
 
 
     Returns:
@@ -165,7 +161,11 @@ class Fleet(object):
         self._context = {}
         self.user_defined_optimizer = paddle.optimizer.Optimizer(0.0)
 
-    def init(self, role_maker=None, is_collective=False, strategy=None):
+    def init(self,
+             role_maker=None,
+             is_collective=False,
+             strategy=None,
+             log_level="INFO"):
         """
         Initialize role_maker in Fleet.
 
@@ -174,14 +174,17 @@ class Fleet(object):
 
         Args:
             role_maker (RoleMakerBase, optional): A ``RoleMakerBase`` containing the configuration
-                of environment variables related to distributed training.If you did not initialize 
+                of environment variables related to distributed training.If you did not initialize
                 the rolemaker by yourself, it will be automatically initialized to PaddleRoleMaker.
                 The default value is None.
-            is_collective (Boolean, optional): A ``Boolean`` variable determines whether the program 
-                runs on the CPU or GPU. False means set distributed training using CPU, and True means
-                GPU.The default value is False.The default value is False.
-            strategy (DistributedStrategy): Extra properties for distributed training. 
+            is_collective (Boolean, optional): A ``Boolean`` variable determines whether the program
+                runs on Collective mode or ParameterServer mode. True means the program runs on
+                Collective mode, and False means running on ParameterServer mode. The default value
+                is False.
+            strategy (DistributedStrategy): Extra properties for distributed training.
                 For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
+            log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight
+                the logging level is. Default is "INFO".
 
 
         Returns:
@@ -217,7 +220,18 @@ class Fleet(object):
                 strategy = fleet.DistributedStrategy()
                 fleet.init(strategy=strategy)
 
+        Examples5:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                strategy = fleet.DistributedStrategy()
+                fleet.init(log_level = "DEBUG")
+
         """
+
+        set_log_level(log_level)
+
         if strategy is None:
             strategy = DistributedStrategy()
         self._user_defined_strategy = copy.deepcopy(strategy)
@@ -261,12 +275,12 @@ class Fleet(object):
                 self._hcg = tp.HybridCommunicateGroup(self._topology)
                 return
             if parallel_helper._is_parallel_ctx_initialized():
-                warnings.warn(
+                logger.warning(
                     "The dygraph parallel environment has been initialized.")
             else:
                 # FLAGS_nccl_nrings is used for dynamic graph multi-stream communication
                 if "FLAGS_nccl_nrings" in os.environ:
-                    warnings.warn(
+                    logger.warning(
                         "You have set the environment variable FLAGS_nccl_nrings "
                         "outside the program, so the nccl_comm_num in "
                         "DistributedStrategy will not take effect here.")
@@ -281,7 +295,7 @@ class Fleet(object):
                 if tp._HYBRID_PARALLEL_GROUP is None:
                     self._init_hybrid_parallel_env()
                 else:
-                    warnings.warn(
+                    logger.warning(
                         "The dygraph hybrid parallel environment has been initialized."
                     )
         elif self._is_collective:
@@ -850,9 +864,6 @@ class Fleet(object):
                 fleet.init_server()
 
         """
-        # warnings.warn(
-        #     "'save_inference_model' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
-        # )
 
         self._runtime_handle._save_inference_model(executor, dirname,
                                                    feeded_var_names,
@@ -902,10 +913,6 @@ class Fleet(object):
                 fleet.save_persistables(exe, "dirname", paddle.static.default_main_program())
 
         """
-        # warnings.warn(
-        #     "'save_persistables' is a deprecated, will be deleted after v2.2.0, Please use fleet.save instead."
-        # )
-
         self._runtime_handle._save_persistables(executor, dirname, main_program,
                                                 mode)
 
@@ -990,10 +997,10 @@ class Fleet(object):
 
         Args:
             optimizer(Optimizer): The executor to run for init server.
-            strategy(DistributedStrategy): Extra properties for distributed optimizer. 
+            strategy(DistributedStrategy): Extra properties for distributed optimizer.
                 It is recommended to use DistributedStrategy in fleet.init(). The strategy
-                here is for compatibility. If the strategy in fleet.distributed_optimizer() 
-                is not None, then it will overwrite the DistributedStrategy in fleet.init(), 
+                here is for compatibility. If the strategy in fleet.distributed_optimizer()
+                is not None, then it will overwrite the DistributedStrategy in fleet.init(),
                 which will take effect in distributed training.
 
         Returns:
@@ -1015,7 +1022,7 @@ class Fleet(object):
 
         if strategy is not None:
             if self._is_collective:
-                warnings.warn(
+                logger.warning(
                     "It is recommended to use DistributedStrategy "
                     "in fleet.init(). The strategy here is only for compatibility. "
                     "If the strategy in fleet.distributed_optimizer() is "
@@ -1056,14 +1063,14 @@ class Fleet(object):
                  use_fp16_test=False):
         """
         Init the amp training, such as cast fp32 parameters to fp16 type.
-  
+
         Args:
-            place(CUDAPlace): place is used to initialize 
+            place(CUDAPlace): place is used to initialize
                 fp16 parameters with fp32 values.
             scope(Scope): The scope is used to find fp32 parameters.
             test_program(Program): The program is used for testing.
             use_fp16_test(bool): Whether to use fp16 testing.
-            
+
         Examples:
             .. code-block:: python
 
@@ -1085,7 +1092,7 @@ class Fleet(object):
                         loss = paddle.mean(hidden)
                     # 2) Create the optimizer and set `multi_precision` to True.
                     # Setting `multi_precision` to True can avoid the poor accuracy
-                    # or the slow convergence in a way. 
+                    # or the slow convergence in a way.
                     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
                     amp_list = paddle.static.amp.CustomOpLists(
@@ -1105,9 +1112,9 @@ class Fleet(object):
                     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                     optimizer.amp_init(place, scope=paddle.static.global_scope())
-                    
+
                 if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-                    run_example_code()       
+                    run_example_code()
         """
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
@@ -1191,7 +1198,7 @@ class Fleet(object):
                 optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
                 optimizer.minimize(avg_cost)
 
-                # for more examples, please reference https://github.com/PaddlePaddle/FleetX
+                # for more examples, please reference https://github.com/PaddlePaddle/PaddleFleetX
 
         """
         if not isinstance(loss, list):
@@ -1304,8 +1311,9 @@ class Fleet(object):
             copy_user_defined_strategy, can_not_apply_optimizer_list)
 
         context["valid_strategy"] = copy.deepcopy(valid_strategy)
-        # print("valid_strategy:", context["valid_strategy"])
-        # print("user_defined_strategy:", context["user_defined_strategy"])
+        logger.debug("valid_strategy: " + str(context["valid_strategy"]))
+        logger.debug("user_defined_strategy: " +
+                     str(context["user_defined_strategy"]))
 
         applied_meta_list = self.strategy_compiler._get_applied_meta_list()
         applied_graph_list = self.strategy_compiler._get_applied_graph_list()
@@ -1335,17 +1343,19 @@ class Fleet(object):
                                                         no_grad_set=no_grad_set)
 
         if meta_optimizer:
-            # print("before minimize program id:", id(loss.block.program))
+            logger.debug("before minimize program id: " +
+                         str(id(loss.block.program)))
             optimize_ops, params_grads = meta_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
-            # print("after minimize program id:", id(loss.block.program))
-
+            logger.debug("after minimize program id: " +
+                         str(id(loss.block.program)))
             default_program = paddle.static.default_main_program()
-            # print("default program id:", id(default_program))
+            logger.debug("default program id: " + str(id(default_program)))
 
             if id(default_program) != id(loss.block.program):
                 paddle.fluid.framework.switch_main_program(loss.block.program)
-            # print("default program id after switch:", id(default_program))
+            logger.debug("default program id after switch: " +
+                         str(id(default_program)))
 
         else:
             optimize_ops, params_grads = self.user_defined_optimizer.minimize(
@@ -1355,7 +1365,8 @@ class Fleet(object):
         context["program_params_grads"] = params_grads
 
         if graph_optimizer:
-            # print("before graph minimize program id:", id(loss.block.program))
+            logger.debug("before graph minimize program id: " +
+                         str(id(loss.block.program)))
             optimize_ops, params_grads = graph_optimizer.minimize(
                 loss, startup_program, parameter_list, no_grad_set=no_grad_set)
             # since we do not encourage users to use graph operations
@@ -1454,7 +1465,8 @@ class Fleet(object):
                 if v or k not in opt_info:
                     opt_info[k] = v
             program._fleet_opt = opt_info
-            # print("fleet base opt info:", id(program), program._fleet_opt)
+            logger.debug("fleet base opt info: " + str(id(program)) +
+                         str(program._fleet_opt))
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)

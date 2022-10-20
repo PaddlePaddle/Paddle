@@ -12,28 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
-    """
+    r"""
         x_1_var              x_2_var
           |                     |
       transpose2            transpose2
-          |                     | 
+          |                     |
        flatten2              flatten2
           \                     /
     flatten2_out_var    flatten2_out_var
               \              /
-                   concat 
+                   concat
     """
 
     def sample_predictor_configs(self, program_config):

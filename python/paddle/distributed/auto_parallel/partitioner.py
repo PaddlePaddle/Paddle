@@ -13,22 +13,17 @@
 # limitations under the License
 
 import copy
-import numpy as np
-import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid import framework as framework
-from paddle.fluid import core, unique_name
-from paddle.fluid.framework import Program, Parameter, Variable, program_guard
+from paddle.fluid import core
+from paddle.fluid.framework import Parameter, Program
 from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container
-from paddle.distributed.auto_parallel.dist_context import DistributedContext, DistributedOperatorContext
+from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from .dist_attribute import OperatorDistributedAttribute
-from .process_group import new_process_group
-from .utils import set_dist_op_desc_original_id
-from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op, is_loss_op, is_optimize_op
+from .utils import is_backward_op, is_forward_op, is_loss_op, is_optimize_op
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 
-__varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
+__varname_not_in_block__ = ["lod_tensor_blocking_queue"]
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER, core.VarDesc.VarType.STEP_SCOPES
 ]
@@ -39,7 +34,7 @@ class Partitioner(object):
     warning:: Partitioner is experimental and subject to change.
 
     Partitioner convert a program into another program.
-    Given a serial program which has been auto completed with shard annotation, the Partitioner 
+    Given a serial program which has been auto completed with shard annotation, the Partitioner
     convert the serial program into a "distributed" program. The Partitioner will  modify the serial
     program in following two ways, which is also the major difference between serial and distributed program:
         1. partition op: replace a serial op into its corresponding dist op infered from the shard annotation
@@ -243,7 +238,9 @@ class Partitioner(object):
                                        target_block, serial_input_varname,
                                        new_varname)
                     else:
-                        assert serial_input_varname in __varname_not_in_block__
+                        for varname_not_in_block in __varname_not_in_block__:
+                            assert varname_not_in_block in serial_input_varname, \
+                                "{} is not found".format(serial_input_varname)
 
                     self._serial2dist_varname_mapping[
                         serial_input_varname] = new_varname

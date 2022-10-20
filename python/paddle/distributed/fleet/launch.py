@@ -54,26 +54,21 @@ launch a process on each of the given gpu card or cpu machine.
                 your_training_py (arg1 arg2 and all others)
 """
 
-from __future__ import print_function
-
 import shutil
 import sys
 import tempfile
-from sys import version
-import subprocess
 import os
 import time
-import six
 import copy
 import pathlib
-import argparse
 from argparse import ArgumentParser, REMAINDER
-import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet import launch_utils
-
-# TODO(danleifeng): Don't import * from a module
-from paddle.distributed.fleet.launch_utils import *
+from paddle.distributed.fleet.launch_utils import (
+    get_host_name_ip, find_free_ports, logger, get_cluster, DeviceMode,
+    start_local_trainers, direct_start, watch_local_trainers,
+    terminate_local_procs, DistributeMode, ParameterServerLauncher, get_logger,
+    check_backend, block_windows_and_macos)
 from paddle.distributed.fleet import cloud_utils
 from paddle.distributed.fleet import ascend_utils
 
@@ -84,7 +79,7 @@ __all__ = []
 
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
-    for arg, value in sorted(six.iteritems(vars(args))):
+    for arg, value in sorted(vars(args).items()):
         print("%s: %s" % (arg, value))
     print("------------------------------------------------")
 
@@ -543,7 +538,7 @@ def which_distributed_mode(args):
 def launch():
     """
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
-    
+
     Usage:
         .. code-block:: bash
             :name: code-block-bash1
@@ -553,7 +548,7 @@ def launch():
                              [--worker_num WORKER_NUM] [--server_num SERVER_NUM] [--heter_worker_num HETER_WORKER_NUM]
                              [--http_port HTTP_PORT] [--elastic_server ELASTIC_SERVER] [--job_id JOB_ID] [--np NP] [--scale SCALE]
                              [--host HOST] [--force FORCE]
-                             training_script ...    
+                             training_script ...
 
 
     Base Parameters:
@@ -566,9 +561,9 @@ def launch():
         - ``--gpus``: It's for gpu training. e.g., ``--gpus=0,1,2,3`` will launch four training processes each bound to one gpu.
 
         - ``--selected_gpus``: gpus aliases, recommend to use ``--gpus``.
-        
+
         - ``--xpus``: It's for xpu training if xpu is available. e.g., ``--xpus=0,1,2,3``.
-        
+
         - ``--selected_xpus``: xpus aliases, recommend to use ``--xpus``.
 
         - ``--mlus``: It's for mlu training. e.g., ``--mlus=0,1,2,3`` will launch four training processes each bound to one mlu.
@@ -594,7 +589,7 @@ def launch():
         - ``--server_num``: Number of servers (It recommend to set when in the emulated distributed environment using single node)
 
         - ``--heter_worker_num``: Number of heter_workers in each stage (It recommend to set when in the emulated distributed environment using single node)
-        
+
         - ``--heter_devices``: Type of heter_device in each stage
 
         - ``--http_port``: Gloo http Port
@@ -615,18 +610,18 @@ def launch():
     Examples 1 (collective, single node):
         .. code-block:: bash
             :name: code-block-example-bash1
-            
+
             # For training on single node using 4 gpus.
 
             python -m paddle.distributed.launch --gpus=0,1,2,3 train.py --lr=0.01
-        
+
     Examples 2 (collective, multi node):
         .. code-block:: bash
             :name: code-block-example-bash2
 
             # The parameters of --gpus and --ips must be consistent in each node.
 
-            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17
 
             # On 192.168.0.16:
 
@@ -634,15 +629,15 @@ def launch():
 
             # On 192.168.0.17:
             python -m paddle.distributed.launch --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --lr=0.01
-        
+
     Examples 3 (ps, cpu, single node):
         .. code-block:: bash
             :name: code-block-example-bash3
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers.
-            
+
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
-        
+
     Examples 4 (ps, cpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash4
@@ -662,10 +657,10 @@ def launch():
             :name: code-block-example-bash5
 
            # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, each worker use single gpu.
-            
+
             export CUDA_VISIBLE_DEVICES=0,1,2,3
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
-            
+
     Examples 6 (ps, gpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash6
@@ -687,10 +682,10 @@ def launch():
             :name: code-block-example-bash7
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, two workers use gpu, two workers use cpu.
-            
+
             export CUDA_VISIBLE_DEVICES=0,1
             python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
-            
+
     Examples 8 (ps-heter, cpu + gpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash8
@@ -712,7 +707,7 @@ def launch():
             :name: code-block-example-bash9
 
             python -m paddle.distributed.launch --elastic_server=127.0.0.1:2379 --np=2 --job_id=job1  --gpus=0,1,2,3 train.py
-        
+
     """
 
     args = _parse_args()

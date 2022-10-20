@@ -14,7 +14,7 @@
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
-    from paddle.cuda_env import *
+    from paddle.cuda_env import *  # noqa: F403
 except ImportError:
     import sys
     sys.stderr.write('''Warning with import paddle: you should not
@@ -35,7 +35,7 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
-from .fluid.dataset import *  # noqa: F401
+from .fluid.dataset import *  # noqa: F401, F403
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
@@ -80,6 +80,7 @@ import paddle.onnx  # noqa: F401
 import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
+import paddle.audio  # noqa: F401
 import paddle.geometric  # noqa: F401
 
 from .tensor.attribute import is_complex  # noqa: F401
@@ -286,6 +287,7 @@ from .tensor.math import heaviside  # noqa: F401
 from .tensor.math import frac  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
+from .tensor.math import frexp  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -386,7 +388,6 @@ if is_compiled_with_cinn():
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
 disable_static()
-
 __all__ = [  # noqa
     'iinfo',
     'dtype',
@@ -667,4 +668,5 @@ __all__ = [  # noqa
     'sgn',
     'triu_indices',
     'take',
+    'frexp',
 ]

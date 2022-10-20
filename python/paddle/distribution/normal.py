@@ -13,18 +13,17 @@
 # limitations under the License.
 
 import math
-import warnings
-
 import numpy as np
-from paddle import _C_ops, _legacy_C_ops
+import paddle
 from paddle.distribution import distribution
-from paddle.fluid import core
-from paddle.fluid.data_feeder import (check_dtype, check_type,
-                                      check_variable_and_dtype, convert_dtype)
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
-from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
-                                 elementwise_mul, elementwise_sub, nn, ops,
-                                 tensor)
+from paddle.fluid.data_feeder import (check_type, convert_dtype)
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.layers import (elementwise_add, elementwise_div,
+                                 elementwise_sub, nn, ops, tensor)
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
 
 
 class Normal(distribution.Distribution):
@@ -36,7 +35,7 @@ class Normal(distribution.Distribution):
 
     .. math::
 
-        pdf(x; \mu, \sigma) = \\frac{1}{Z}e^{\\frac {-0.5 (x - \mu)^2}  {\sigma^2} }
+        pdf(x; \mu, \sigma) = \frac{1}{Z}e^{\frac {-0.5 (x - \mu)^2}  {\sigma^2} }
 
     .. math::
 
@@ -49,43 +48,43 @@ class Normal(distribution.Distribution):
     * :math:`Z`: is the normalization constant.
 
     Args:
-        loc(int|float|list|tuple|numpy.ndarray|Tensor): The mean of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
-        scale(int|float|list|tuple|numpy.ndarray|Tensor): The std of normal distribution.The data type is int, float, list, numpy.ndarray or Tensor.
+        loc(int|float|list|tuple|numpy.ndarray|Tensor): The mean of normal distribution.The data type is float32 and float64.
+        scale(int|float|list|tuple|numpy.ndarray|Tensor): The std of normal distribution.The data type is float32 and float64.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
-          
-          import paddle
-          from paddle.distribution import Normal
 
-          # Define a single scalar Normal distribution.
-          dist = Normal(loc=0., scale=3.)
-          # Define a batch of two scalar valued Normals.
-          # The first has mean 1 and standard deviation 11, the second 2 and 22.
-          dist = Normal(loc=[1., 2.], scale=[11., 22.])
-          # Get 3 samples, returning a 3 x 2 tensor.
-          dist.sample([3])
+            import paddle
+            from paddle.distribution import Normal
 
-          # Define a batch of two scalar valued Normals.
-          # Both have mean 1, but different standard deviations.
-          dist = Normal(loc=1., scale=[11., 22.])
+            # Define a single scalar Normal distribution.
+            dist = Normal(loc=0., scale=3.)
+            # Define a batch of two scalar valued Normals.
+            # The first has mean 1 and standard deviation 11, the second 2 and 22.
+            dist = Normal(loc=[1., 2.], scale=[11., 22.])
+            # Get 3 samples, returning a 3 x 2 tensor.
+            dist.sample([3])
 
-          # Complete example
-          value_tensor = paddle.to_tensor([0.8], dtype="float32")
+            # Define a batch of two scalar valued Normals.
+            # Both have mean 1, but different standard deviations.
+            dist = Normal(loc=1., scale=[11., 22.])
 
-          normal_a = Normal([0.], [1.])
-          normal_b = Normal([0.5], [2.])
-          sample = normal_a.sample([2])
-          # a random tensor created by normal distribution with shape: [2, 1]
-          entropy = normal_a.entropy()
-          # [1.4189385] with shape: [1]
-          lp = normal_a.log_prob(value_tensor)
-          # [-1.2389386] with shape: [1]
-          p = normal_a.probs(value_tensor)
-          # [0.28969154] with shape: [1]
-          kl = normal_a.kl_divergence(normal_b)
-          # [0.34939718] with shape: [1]
+            # Complete example
+            value_tensor = paddle.to_tensor([0.8], dtype="float32")
+
+            normal_a = Normal([0.], [1.])
+            normal_b = Normal([0.5], [2.])
+            sample = normal_a.sample([2])
+            # a random tensor created by normal distribution with shape: [2, 1]
+            entropy = normal_a.entropy()
+            # [1.4189385] with shape: [1]
+            lp = normal_a.log_prob(value_tensor)
+            # [-1.2389386] with shape: [1]
+            p = normal_a.probs(value_tensor)
+            # [0.28969154] with shape: [1]
+            kl = normal_a.kl_divergence(normal_b)
+            # [0.34939718] with shape: [1]
     """
 
     def __init__(self, loc, scale, name=None):
@@ -128,21 +127,42 @@ class Normal(distribution.Distribution):
                 self.scale = tensor.cast(self.scale, dtype=self.dtype)
         super(Normal, self).__init__(self.loc.shape)
 
-    def sample(self, shape, seed=0):
+    @property
+    def mean(self):
+        """Mean of multinomial distribuion.
+
+        Returns:
+            Tensor: mean value.
+        """
+        return self.loc
+
+    @property
+    def variance(self):
+        """Variance of lognormal distribution.
+
+        Returns:
+            Tensor: variance value.
+        """
+        return self.scale.pow(2)
+
+    def sample(self, shape=(), seed=0):
         """Generate samples of the specified shape.
 
         Args:
-          shape (list): 1D `int32`. Shape of the generated samples.
-          seed (int): Python integer number.
+            shape (Sequence[int], optional): Shape of the generated samples.
+            seed (int): Python integer number.
 
         Returns:
-          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+            Tensor, A tensor with prepended dimensions shape.The data type is float32.
 
         """
+        if not isinstance(shape, Iterable):
+            raise TypeError('sample shape must be Iterable object.')
+
         if not _non_static_mode():
-            check_type(shape, 'shape', (list), 'sample')
             check_type(seed, 'seed', (int), 'sample')
 
+        shape = list(shape)
         batch_shape = list((self.loc + self.scale).shape)
         name = self.name + '_sample'
 
@@ -162,13 +182,31 @@ class Normal(distribution.Distribution):
             return output
         else:
             output_shape = shape + batch_shape
-            output = nn.gaussian_random(output_shape, mean=0., std=1., seed=seed, dtype=self.dtype) * \
-                     (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
+            output = nn.gaussian_random(
+                output_shape, mean=0., std=1., seed=seed, dtype=self.dtype) * (
+                    tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
                 return nn.reshape(output, shape, name=name)
             else:
                 return output
+
+    def rsample(self, shape=()):
+        """Generate reparameterized samples of the specified shape.
+
+        Args:
+          shape (Sequence[int], optional): Shape of the generated samples.
+
+        Returns:
+          Tensor: A tensor with prepended dimensions shape.The data type is float32.
+
+        """
+        if not isinstance(shape, Iterable):
+            raise TypeError('sample shape must be Iterable object.')
+
+        shape = self._extend_shape(tuple(shape))
+        eps = paddle.normal(shape=shape)
+        return (self.loc + eps * self.scale)
 
     def entropy(self):
         r"""Shannon entropy in nats.
@@ -177,14 +215,14 @@ class Normal(distribution.Distribution):
 
         .. math::
 
-            entropy(\sigma) = 0.5 \\log (2 \pi e \sigma^2)
+            entropy(\sigma) = 0.5 \log (2 \pi e \sigma^2)
 
         In the above equation:
 
         * :math:`scale = \sigma`: is the std.
 
         Returns:
-          Tensor: Shannon entropy of normal distribution.The data type is float32.
+            Tensor, Shannon entropy of normal distribution.The data type is float32.
 
         """
         name = self.name + '_entropy'
@@ -204,7 +242,7 @@ class Normal(distribution.Distribution):
           value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability.The data type is same with value.
+          Tensor: log probability.The data type is same with :attr:`value` .
 
         """
         name = self.name + '_log_prob'
@@ -221,10 +259,10 @@ class Normal(distribution.Distribution):
         """Probability density/mass function.
 
         Args:
-          value (Tensor): The input tensor.
+            value (Tensor): The input tensor.
 
         Returns:
-          Tensor: probability.The data type is same with value.
+            Tensor, probability. The data type is same with :attr:`value` .
 
         """
         name = self.name + '_probs'
@@ -243,12 +281,12 @@ class Normal(distribution.Distribution):
 
         .. math::
 
-            KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = 0.5 (ratio^2 + (\\frac{diff}{\sigma_1})^2 - 1 - 2 \\ln {ratio})
+            KL\_divergence(\mu_0, \sigma_0; \mu_1, \sigma_1) = 0.5 (ratio^2 + (\frac{diff}{\sigma_1})^2 - 1 - 2 \ln {ratio})
 
         .. math::
 
-            ratio = \\frac{\sigma_0}{\sigma_1}
-        
+            ratio = \frac{\sigma_0}{\sigma_1}
+
         .. math::
 
             diff = \mu_1 - \mu_0
@@ -266,7 +304,7 @@ class Normal(distribution.Distribution):
             other (Normal): instance of Normal.
 
         Returns:
-            Tensor: kl-divergence between two normal distributions.The data type is float32.
+            Tensor, kl-divergence between two normal distributions.The data type is float32.
 
         """
         if not _non_static_mode():

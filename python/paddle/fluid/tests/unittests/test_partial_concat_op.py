@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import random
-import six
 
 
 def np_partial_concat(inputs, start, length):
@@ -46,11 +43,9 @@ class TestPartialConcatOp(OpTest):
         self.op_type = "partial_concat"
         self.init_kernel_type()
         self.init_para()
-        self.var_names = [
-            'x' + str(num) for num in six.moves.range(self.var_num)
-        ]
+        self.var_names = ['x' + str(num) for num in range(self.var_num)]
         self.vars = [np.random.random((self.batch_size, self.column)).astype(self.dtype)\
-                     for num in six.moves.range(self.var_num) ]
+                     for num in range(self.var_num) ]
         self.inputs = {'X': list(zip(self.var_names, self.vars))}
         self.attrs = {'start_index': self.start_index, 'length': self.length}
         y = np_partial_concat(self.vars[:], self.start_index, self.length)

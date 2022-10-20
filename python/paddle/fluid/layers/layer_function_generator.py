@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import re
 import functools
 import warnings
 import string
 
-from six.moves import cStringIO
+from io import StringIO
 from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
 from ..layer_helper import LayerHelper
@@ -81,7 +80,7 @@ def _generate_doc_string_(op_proto,
     if not isinstance(op_proto, framework_pb2.OpProto):
         raise TypeError("OpProto should be `framework_pb2.OpProto`")
 
-    buf = cStringIO()
+    buf = StringIO()
     buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:
@@ -393,7 +392,7 @@ def templatedoc(op_type=None):
 
 def add_sample_code(func, sample_code):
     """
-    Append sample code for dynamically generated functions. 
+    Append sample code for dynamically generated functions.
 
     Args:
        func: The function of the function to be append sample code to.

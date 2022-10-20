@@ -15,11 +15,6 @@
 import typing
 import enum
 import sys
-import re
-import inspect
-import functools
-import contextlib
-import collections
 import numpy as np
 import paddle
 from paddle.incubate.autograd.utils import as_tensors
@@ -280,7 +275,7 @@ TEST_CASE_NAME = 'suffix'
 
 
 def place(devices, key='place'):
-    """A Decorator for a class which will make the class running on different 
+    """A Decorator for a class which will make the class running on different
     devices .
 
     Args:
@@ -308,7 +303,7 @@ def place(devices, key='place'):
 
 
 def parameterize(fields, values=None):
-    """Decorator for a unittest class which make the class running on different 
+    """Decorator for a unittest class which make the class running on different
     test cases.
 
     Args:
@@ -365,7 +360,7 @@ def _np_transpose_matrix_format(src, src_format, des_format):
 
 
 def _np_concat_matrix_sequence(src, src_format=MatrixFormat.NM):
-    """Convert a sequence of sequence of Jacobian/Hessian matrix into one huge 
+    """Convert a sequence of sequence of Jacobian/Hessian matrix into one huge
     matrix."""
 
     def concat_col(xs):
@@ -425,3 +420,19 @@ def gen_static_data_and_feed(xs, v, stop_gradient=True):
         static_v = v
 
     return feed, static_xs, static_v
+
+
+def gen_static_inputs_and_feed(xs, stop_gradient=True):
+    feed = {}
+    if isinstance(xs, typing.Sequence):
+        static_xs = []
+        for i, x in enumerate(xs):
+            x = paddle.static.data(f"x{i}", x.shape, x.dtype)
+            x.stop_gradient = stop_gradient
+            static_xs.append(x)
+        feed.update({f'x{idx}': value for idx, value in enumerate(xs)})
+    else:
+        static_xs = paddle.static.data('x', xs.shape, xs.dtype)
+        static_xs.stop_gradient = stop_gradient
+        feed.update({'x': xs})
+    return feed, static_xs

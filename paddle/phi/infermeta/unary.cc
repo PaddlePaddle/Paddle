@@ -1460,11 +1460,6 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
 void InferMetaFromVecValue(const MetaTensor& x,
                            const std::vector<int64_t>& shape,
                            MetaTensor* out) {
-  PADDLE_ENFORCE_EQ(!shape.empty(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The parameter 'shape' in ReshapeOp must be set. "
-                        "But received 'shape' is empty."));
   auto x_dims = x.dims();
   auto out_dims = ValidateShape(shape, x_dims);
   out->set_dims(out_dims);
@@ -2035,8 +2030,8 @@ void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
                         "whose shape must be [N, 4] "
                         "N is the number of boxes "
                         "in last dimension in format [x1, x2, y1, y2]. "));
-  auto num_boxes = boxes_dim[0];
-  out->set_dims(phi::make_ddim({num_boxes}));
+  out->set_dims(phi::make_ddim({-1}));
+  out->set_dtype(DataType::INT64);
 }
 
 void NormInferMeta(const MetaTensor& x,
@@ -2668,7 +2663,7 @@ DDim ReduceInferDim(const MetaTensor& x,
                       x_rank,
                       errors::InvalidArgument(
                           "The reduce dim index %d should be in the "
-                          "range [-dimension(X), dimension(X)] "
+                          "range [ -dimension(X), dimension(X) ) "
                           "which dimesion = %d. But received dim index = %d.",
                           i,
                           x_rank,
@@ -2677,7 +2672,7 @@ DDim ReduceInferDim(const MetaTensor& x,
                       -x_rank,
                       errors::InvalidArgument(
                           "The reduce dim index %d should be in the "
-                          "range [-dimension(X), dimension(X)] "
+                          "range [ -dimension(X), dimension(X) )  "
                           "which dimesion = %d. But received dim index = %d.",
                           i,
                           x_rank,
@@ -2833,6 +2828,7 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
   out->share_lod(x);
   out->set_dtype(x.dtype());
 }
+
 void ReshapeInferMeta(const MetaTensor& x,
                       const IntArray& shape,
                       MetaTensor* out,
@@ -2846,10 +2842,6 @@ void ReshapeInferMeta(const MetaTensor& x,
     out->share_lod(x);
     return;
   }
-  PADDLE_ENFORCE_GT(shape_data.size(),
-                    0,
-                    phi::errors::InvalidArgument(
-                        "The shape's size in ReshapeOp can't be zero."));
   InferMetaFromVecValue(x, shape_data, out);
 }
 
@@ -3713,7 +3705,7 @@ void TileInferMeta(const MetaTensor& x,
           repeat_times_data.size()));
   PADDLE_ENFORCE_GE(
       repeat_times_data.size(),
-      1,
+      0,
       errors::InvalidArgument(
           "The size of the shape of input 'repeat_times' for tile op "
           "must be positive integers, but the value received is %d.",
@@ -3746,7 +3738,7 @@ void TileInferMeta(const MetaTensor& x,
   }
 
   out->set_dims(phi::make_ddim(out_shape));
-  if (out_shape[0] == x_dims[0]) {
+  if (out_rank > 0 && (out_shape[0] == x_dims[0])) {
     out->share_lod(x);
   }
   out->set_dtype(x.dtype());

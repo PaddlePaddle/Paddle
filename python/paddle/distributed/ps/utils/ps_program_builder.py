@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from .public import *
+from .public import *  # noqa: F403
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
-from paddle.distributed.passes import new_pass, PassContext
+from paddle.distributed.passes import new_pass
 
 
 class PsProgramBuilder(object):
@@ -373,8 +372,8 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
         _main_file = ps_log_root_dir + '4_fl_worker_main_program.prototxt'
         #debug_program(_main_file, self.cloned_main)
 
-        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.attrs)
-        fake_init_ops_pass.apply([None], [self.cloned_startup], self.pass_ctx)
+        #fake_init_ops_pass = new_pass("fake_init_ops_pass", self.attrs)
+        #fake_init_ops_pass.apply([None], [self.cloned_startup], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '5_fl_worker_main_program.prototxt'
         #debug_program(_main_file, self.cloned_main)

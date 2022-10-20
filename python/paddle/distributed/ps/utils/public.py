@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from functools import reduce
 
 import collections
-import math
 import os
 import warnings
 import logging
-import six
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.fluid.framework as framework
@@ -611,7 +608,7 @@ def find_heter_ops(program, default_device="cpu"):
                     if no_grad_var in var2idx:
                         """
                        insert sum op & remove sum op from var2idx and origin place
-  
+
                        """
                         op_list = list(block.ops)
                         sum_op = op_list[var2idx[no_grad_var]]
@@ -785,7 +782,7 @@ def union_forward_gradient_op(program_block_ops_list):
 
     block_op_list = {"forward": [], "backward": []}
     for op in program_block_ops_list[block_length // 2]:
-        if not "_grad" in op.type and not (op.type == "sum"):
+        if "_grad" not in op.type and not (op.type == "sum"):
             block_op_list["forward"].append(op)
         else:
             block_op_list["backward"].append(op)
@@ -902,7 +899,7 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
             if var not in previous_block_private and var not in previous_block_entrance:
                 previous_block_entrance.append(var)
             previous_block_exit.append(var)
-            if not var in current_block_entrance:
+            if var not in current_block_entrance:
                 current_block_entrance.append(var)
 
     for index in range(0, len(block_var_detail) - 1, 1):
@@ -919,7 +916,7 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
         need_add_vars = list(set(current_block_entrance) - set(exist_vars))
         need_ignore_vars = []
         for var in need_add_vars:
-            if not "@GRAD" in var:
+            if "@GRAD" not in var:
                 need_ignore_vars.append(var)
         need_add_vars = list(
             set(need_add_vars).difference(set(need_ignore_vars)))
@@ -1031,7 +1028,7 @@ def _get_output_map_from_op(varmap, op):
 
 def get_varlist_from_op_map(var_map):
     var_list = []
-    for key, varlist in six.iteritems(var_map):
+    for key, varlist in var_map.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for i in range(len(varlist)):
@@ -1081,7 +1078,7 @@ def block_append_op(program, origin_program, block, op):
     merge_ordereddict = origin_program.global_block().vars.copy()
     merge_ordereddict.update(block.vars)
     inputs = _get_input_map_from_op(merge_ordereddict, op)
-    for key, varlist in six.iteritems(inputs):
+    for key, varlist in inputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
@@ -1094,7 +1091,7 @@ def block_append_op(program, origin_program, block, op):
                     block._clone_variable(var, force_persistable=False)
 
     outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
-    for key, varlist in six.iteritems(outputs):
+    for key, varlist in outputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
@@ -1335,7 +1332,7 @@ def build_var_distributed(context):
 
     context["param_name_to_grad_name"] = param_name_to_grad_name
     context["grad_name_to_param_name"] = grad_name_to_param_name
-    '''    
+    '''
     print("public build_var_distributed origin_sparse_pairs:",
         context["origin_sparse_pairs"])
     print("public build_var_distributed origin_for_dense:",

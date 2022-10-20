@@ -14,19 +14,8 @@
 
 import unittest
 
-import os
-import numpy as np
-
 import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
-import paddle.distributed.auto_parallel as auto
-import paddle.distributed.fleet as fleet
-
-from paddle.io import Dataset
-from paddle.static import InputSpec
-from paddle.fluid.framework import _non_static_mode
-from paddle.distributed.auto_parallel.engine import Engine
+from paddle.distributed.fleet import auto
 
 from test_to_static import MLPLayer, MyDataset
 
@@ -60,15 +49,13 @@ class TestEngineBase(unittest.TestCase):
         self.dataset = MyDataset(self.batch_num * self.batch_size)
 
     def init_engine(self):
-        inputs = InputSpec([self.batch_size, self.hidden_size], 'float32', 'x')
-        labels = InputSpec([self.batch_size], 'int64', 'label')
+        # inputs = InputSpec([self.batch_size, self.hidden_size], 'float32', 'x')
+        # labels = InputSpec([self.batch_size], 'int64', 'label')
 
-        self.engine = Engine(model=self.mlp,
-                             inputs_spec=inputs,
-                             labels_spec=labels)
-        self.engine.prepare(optimizer=self.optimizer,
-                            loss=self.loss,
-                            metrics=paddle.metric.Accuracy())
+        self.engine = auto.Engine(model=self.mlp,
+                                  loss=self.loss,
+                                  optimizer=self.optimizer,
+                                  metrics=paddle.metric.Accuracy())
 
 
 class TestLRScheduler(TestEngineBase):
@@ -80,9 +67,9 @@ class TestLRScheduler(TestEngineBase):
 
     def test_lr_scheduler(self):
         self.init_engine()
+        self.engine.fit(self.dataset, batch_size=self.batch_size)
         lr = self.engine._optimizer._learning_rate
         assert isinstance(lr, paddle.optimizer.lr.LRScheduler)
-        self.engine.fit(self.dataset, batch_size=self.batch_size)
 
 
 class TestGradClipByGlobalNorm(TestEngineBase):
@@ -94,7 +81,6 @@ class TestGradClipByGlobalNorm(TestEngineBase):
 
     def test_grad_clip(self):
 
-        clip = self.engine._optimizer._grad_clip
         self.engine.fit(self.dataset, batch_size=self.batch_size)
         self.check_program()
 

@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import random
 import collections
 import paddle
 import paddle.fluid as fluid
 import unittest
-from decorator_helper import *
+from decorator_helper import prog_scope
 
 
 class Memory(object):

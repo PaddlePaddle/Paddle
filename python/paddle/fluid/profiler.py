@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from . import core
 from .wrapped_decorator import signature_safe_contextmanager
 import os
-import six
 import sys
 
 from paddle.utils.deprecated import deprecated

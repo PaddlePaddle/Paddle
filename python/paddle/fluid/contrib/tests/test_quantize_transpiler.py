@@ -13,7 +13,6 @@
 # limitations under the license.
 
 import numpy as np
-import six
 
 import unittest
 import paddle
@@ -29,7 +28,7 @@ def linear_fc(num):
     data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = data
-    for _ in six.moves.xrange(num):
+    for _ in range(num):
         hidden = fluid.layers.fc(hidden, size=128, act='relu')
     loss = fluid.layers.cross_entropy(input=hidden, label=label)
     loss = paddle.mean(loss)
@@ -57,7 +56,7 @@ def residual_block(num):
     data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = data
-    for _ in six.moves.xrange(num):
+    for _ in range(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')

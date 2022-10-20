@@ -14,28 +14,23 @@
 
 from auto_scan_test import PassAutoScanTest, IgnoreReasons
 from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
 import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestFlatten2MatmulFusePass(PassAutoScanTest):
-    """
-        x_var  
-          |          
-       flatten2 
+    r"""
+        x_var
+          |
+       flatten2
           \
     flatten2_out_var    y_var
              \           /
                  matmul      bias_var
                     \          /
-                   elementwise_add  
+                   elementwise_add
     """
 
     def sample_predictor_configs(self, program_config):

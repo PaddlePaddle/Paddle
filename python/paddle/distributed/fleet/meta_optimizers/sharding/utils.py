@@ -15,7 +15,7 @@ import paddle
 from paddle.fluid import core, unique_name
 from functools import reduce
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op, is_backward_op, is_optimizer_op
-from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 import re
 import os
@@ -816,7 +816,7 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
 
 def comm_analyse(main_program):
     """
-    Analyse the parameter size that need to be broadcast/allreduce during sharding training 
+    Analyse the parameter size that need to be broadcast/allreduce during sharding training
     """
     reduce_vars = {}
     broadcast_vars = {}
@@ -858,7 +858,7 @@ def comm_analyse(main_program):
 
 def add_sync_comm(program, sharding_ring_id):
     """
-    When clone a test prog by clone from the sharding main prog, 
+    When clone a test prog by clone from the sharding main prog,
     part of the sync_comm op maybe be pruned by mistake, this function
     add the sync_comm op for the test prog.
 

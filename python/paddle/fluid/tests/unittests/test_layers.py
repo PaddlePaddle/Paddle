@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import contextlib
 import numpy as np
 from decorator_helper import prog_scope
 import inspect
-from six.moves import filter
 
 import paddle
 import paddle.fluid as fluid

@@ -428,10 +428,10 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
   return place;
 }
 
-framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
+phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_IsInstance(
           obj, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
-    return ::pybind11::handle(obj).cast<framework::Tensor>();
+    return ::pybind11::handle(obj).cast<phi::DenseTensor>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -441,9 +441,9 @@ framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos) {
   }
 }
 
-std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
-                                                            ssize_t arg_pos) {
-  std::vector<framework::LoDTensor> result;
+std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
+                                                           ssize_t arg_pos) {
+  std::vector<phi::DenseTensor> result;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
@@ -451,8 +451,7 @@ std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
       item = PyList_GetItem(obj, i);
       if (PyObject_IsInstance(
               item, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
-        result.emplace_back(
-            ::pybind11::handle(item).cast<framework::LoDTensor>());
+        result.emplace_back(::pybind11::handle(item).cast<phi::DenseTensor>());
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
@@ -469,8 +468,7 @@ std::vector<framework::Tensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
       item = PyTuple_GetItem(obj, i);
       if (PyObject_IsInstance(
               item, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
-        result.emplace_back(
-            ::pybind11::handle(item).cast<framework::LoDTensor>());
+        result.emplace_back(::pybind11::handle(item).cast<phi::DenseTensor>());
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "argument (position %d) must be "
@@ -740,7 +738,7 @@ PyObject* ToPyObject(const paddle::framework::proto::VarType& type) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const paddle::framework::LoDTensor* value) {
+PyObject* ToPyObject(const phi::DenseTensor* value) {
   auto obj = ::pybind11::cast(value, py::return_value_policy::reference);
   obj.inc_ref();
   return obj.ptr();
@@ -763,7 +761,7 @@ PyObject* ToPyObject(const void* value) {
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value) {
   PyObject* dict = PyDict_New();
-  for (const auto map_iter : value) {
+  for (const auto& map_iter : value) {
     // Convert Key
     PyObject* key_string = PyUnicode_FromString(map_iter.first.c_str());
     if (!key_string) {
@@ -773,7 +771,7 @@ PyObject* ToPyObject(
 
     // Convert Val
     PyObject* py_list = PyList_New(0);
-    for (const auto vector_iter : map_iter.second) {
+    for (const auto& vector_iter : map_iter.second) {
       PyObject* val_string = PyUnicode_FromString(vector_iter.c_str());
       if (!val_string) {
         PADDLE_THROW(platform::errors::Fatal(
@@ -800,7 +798,7 @@ PyObject* ToPyObject(
 
 PyObject* ToPyObject(const std::unordered_map<std::wstring, int>& value) {
   PyObject* dict = PyDict_New();
-  for (const auto map_iter : value) {
+  for (const auto& map_iter : value) {
     // Convert Key
     PyObject* key_string =
         PyUnicode_FromWideChar(map_iter.first.c_str(), map_iter.first.size());
@@ -1300,6 +1298,9 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
     return paddle::experimental::Scalar(value);
   } else if (type_name.find("numpy") != std::string::npos) {
     return CastNumpy2Scalar(obj, op_type, arg_pos);
+  } else if (PyComplex_Check(obj)) {
+    auto value = CastPyArg2Complex(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else if (PyObject_CheckLongOrToLong(&obj)) {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
@@ -1387,14 +1388,12 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   auto type_name = std::string(type->tp_name);
   if (type_name == "list" || type_name == "tuple" ||
       type_name == "numpy.ndarray") {
-    std::vector<int> value = CastPyArg2Ints(obj, op_type, arg_pos);
+    std::vector<int64_t> value = CastPyArg2Longs(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
-
   } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);
-
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/conv_base_helper.h"
 
 namespace paddle {
@@ -23,8 +24,8 @@ using ConvArgs = ConvArgsBase<miopenHandle_t, miopenDataType_t>;
 
 template <typename DeviceContext, typename T, size_t D>
 static void RemovePaddingSlice(const phi::GPUContext& context,
-                               const Tensor* input,
-                               Tensor* out,
+                               const phi::DenseTensor* input,
+                               phi::DenseTensor* out,
                                const std::vector<int>& starts,
                                const std::vector<int>& axes) {
   auto& place = *context.eigen_device();
@@ -54,6 +55,9 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
           *out, new_out_dims);
   out_t.device(place) = in_t.slice(offsets, extents);
 }
+
+template <typename PerfT>
+struct SearchAlgorithm {};
 
 template <>
 struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {

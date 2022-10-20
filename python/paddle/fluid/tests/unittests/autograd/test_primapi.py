@@ -23,6 +23,129 @@ import autograd.numpy as anp
 import autograd.scipy as ascipy
 import config
 import utils
+from paddle.incubate.autograd import primx
+
+
+@utils.place(config.DEVICES)
+@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'xs', 'dtype'), (
+    ('uniform_random',
+     lambda: paddle.uniform([1, 2, 3], dtype='float32', min=0, max=1.0, seed=1),
+     (), 'int32'), ('sigmoid', paddle.nn.functional.sigmoid,
+                    (np.random.rand(5, ), ), 'float32')))
+class TestFowardApi(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
+
+    def setUp(self):
+        paddle.enable_static()
+        paddle.incubate.autograd.enable_prim()
+
+    def tearDown(self):
+        paddle.incubate.autograd.disable_prim()
+        paddle.disable_static()
+
+    def test_grad(self):
+
+        def expected():
+            paddle.incubate.autograd.disable_prim()
+            sp = paddle.static.Program()
+            mp = paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                feed, static_xs = utils.gen_static_inputs_and_feed(
+                    self.xs, stop_gradient=False)
+                out = self.fun(*static_xs)
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            out = exe.run(mp, feed=feed, fetch_list=out)
+            paddle.incubate.autograd.enable_prim()
+            return out
+
+        def actual():
+            paddle.incubate.autograd.enable_prim()
+            sp = paddle.static.Program()
+            mp = paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                feed, static_xs = utils.gen_static_inputs_and_feed(
+                    self.xs, stop_gradient=False)
+                out = self.fun(*static_xs)
+                primx.orig2prim(mp.block(0))
+                primx.prim2orig(mp.block(0))
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            out = exe.run(mp, feed=feed, fetch_list=out)
+            paddle.incubate.autograd.disable_prim()
+            return out
+
+        expected = expected()
+        actual = actual()
+        self.assertEqual(type(actual), type(expected))
+        for i, j in zip(actual, expected):
+            np.testing.assert_allclose(i, j, atol=1e-3, rtol=1e-3)
+
+
+@utils.place(config.DEVICES)
+@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
+                    (('dropout', paddle.nn.functional.dropout,
+                      (np.random.rand(5000, 5000), ), None, 'float32'), ))
+class TestDropoutGrad(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.xs = tuple(x.astype(cls.dtype) for x in cls.xs)
+        cls._rtol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("rtol")
+        cls._atol = config.TOLERANCE.get(str(
+            cls.dtype)).get("first_order_grad").get("atol")
+
+    def setUp(self):
+        paddle.enable_static()
+        paddle.incubate.autograd.enable_prim()
+
+    def tearDown(self):
+        paddle.incubate.autograd.disable_prim()
+        paddle.disable_static()
+
+    def test_grad(self):
+
+        def expected():
+            paddle.incubate.autograd.disable_prim()
+            sp = paddle.static.Program()
+            mp = paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                feed, static_xs, static_v = utils.gen_static_data_and_feed(
+                    self.xs, self.v, stop_gradient=False)
+                _, ys_grad = paddle.incubate.autograd.vjp(
+                    self.fun, static_xs, static_v)
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            out = exe.run(mp, feed=feed, fetch_list=ys_grad)
+            paddle.incubate.autograd.enable_prim()
+            return out
+
+        def actual():
+            paddle.incubate.autograd.enable_prim()
+            sp = paddle.static.Program()
+            mp = paddle.static.Program()
+            with paddle.static.program_guard(mp, sp):
+                feed, static_xs, static_v = utils.gen_static_data_and_feed(
+                    self.xs, self.v, stop_gradient=False)
+                ys = self.fun(*static_xs) if isinstance(
+                    static_xs, typing.Sequence) else self.fun(static_xs)
+                ys_grad = paddle.incubate.autograd.grad(ys, static_xs, static_v)
+                paddle.incubate.autograd.prim2orig(mp.block(0))
+            exe = paddle.static.Executor()
+            exe.run(sp)
+            out = exe.run(mp, feed=feed, fetch_list=ys_grad)
+            paddle.incubate.autograd.disable_prim()
+            return out
+
+        expected = expected()
+        actual = actual()
+        self.assertEqual(type(actual), type(expected))
+        for i, j in zip(actual, expected):
+            np.testing.assert_allclose(np.sum(i), np.sum(j), rtol=1e-1)
 
 
 @utils.place(config.DEVICES)
@@ -137,20 +260,25 @@ class TestWithoutProgramGuard(unittest.TestCase):
 
 
 @utils.place(config.DEVICES)
-@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'), (
-    ('matmul', paddle.matmul,
-     (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
-    ('multiply', paddle.multiply,
-     (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
-    ('add', paddle.add,
-     (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
-    ('input_not_sequence', paddle.tanh,
-     (np.random.rand(5, 5), ), None, 'float64'),
-    ('input_gradients_not_none', paddle.matmul,
-     (np.random.rand(3, 3), np.random.rand(3, 3)),
-     (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
-    ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
-))
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'dtype'),
+    (('matmul', paddle.matmul,
+      (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
+     ('multiply', paddle.multiply,
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+     ('add', paddle.add,
+      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+     ('input_not_sequence', paddle.tanh,
+      (np.random.rand(5, 5), ), None, 'float64'),
+     ('input_gradients_not_none', paddle.matmul,
+      (np.random.rand(3, 3), np.random.rand(3, 3)),
+      (np.random.rand(3, 3), np.random.rand(3, 3)), 'float64'),
+     ('log', paddle.log, (np.random.rand(3, 4), ), None, 'float32'),
+     ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                            (10, 10)), ), None, 'float32'),
+     ('rsqrt', paddle.rsqrt, (np.random.rand(100, 200), ), None, 'float32'),
+     ('sigmoid', paddle.nn.functional.sigmoid,
+      (np.random.rand(5, ), ), None, 'float32')))
 # paddle.where, paddle.pow, paddle.maximum has no double grad definition,
 # can not compute forward grad use double trick
 class TestForwardGrad(unittest.TestCase):
@@ -255,6 +383,8 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          (np.random.rand(2, 3), np.random.rand(3, 2)), None, 'float32'),
         ('multiply', paddle.multiply,
          (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
+        ('div', paddle.divide,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float64'),
         ('add', paddle.add,
          (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
         ('input_not_sequence', paddle.tanh,
@@ -263,6 +393,7 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          (np.random.rand(3, 3), np.random.rand(3, 3)),
          (np.random.rand(3, 3), ), 'float64'),
         ('sin', paddle.sin, (np.random.rand(100, 200), ), None, 'float32'),
+        ('rsqrt', paddle.rsqrt, (np.random.rand(100, 200), ), None, 'float32'),
         ('cos', paddle.cos, (np.random.rand(200, 90), ), None, 'float32'),
         ('exp', paddle.exp, (np.random.rand(299, 320), ), None, 'float32'),
         # In where op, grad of condition computed by paddle.static.gradients is None,
@@ -283,6 +414,69 @@ where_wrap = lambda x, y: paddle.where(paddle.eye(3, 4) == 1, x, y)
          (np.random.rand(200, 189), ), None, 'float32'),
         ('gelu_approximate', lambda x: paddle.nn.functional.gelu(x, True),
          (np.random.rand(200, 189), ), None, 'float32'),
+        ('sum', paddle.sum, (np.random.rand(200, 345), ), None, 'float32'),
+        ('sigmoid', paddle.nn.functional.sigmoid,
+         (np.random.rand(5, ), ), None, 'float32'),
+        ('sum_with_axis', lambda x: paddle.sum(x, axis=1),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('sum_with_keepdim', lambda x: paddle.sum(x, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean', paddle.mean, (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_axis', lambda x: paddle.mean(x, axis=1),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_keepdim', lambda x: paddle.mean(x, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('mean_with_axis_keepdim',
+         lambda x: paddle.mean(x, axis=0, keepdim=True),
+         (np.random.rand(200, 345), ), None, 'float32'),
+        ('abs', paddle.abs, (np.random.uniform(-10, 10,
+                                               (200, 345)), ), None, 'float32'),
+        ('cast_float', lambda x: paddle.cast(x, paddle.float64),
+         (np.random.rand(10, 20), ), None, 'float32'),
+        ('cast_int', lambda x: paddle.cast(x, paddle.int32),
+         (np.random.rand(10, 20), ), None, 'float32'),
+        ('square', paddle.square, (np.random.rand(100), ), None, 'float32'),
+        ('pow_scalar', lambda x: paddle.pow(x, 2),
+         (np.random.rand(20, 30), ), None, 'float32'),
+        ('var', paddle.var, (np.random.rand(200, 324), ), None, 'float32'),
+        ('var_with_axis', lambda x: paddle.var(x, axis=1),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('var_without_unbiased',
+         lambda x: paddle.var(x, axis=1, unbiased=False),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('var_with_keepdim', lambda x: paddle.var(x, axis=1, keepdim=True),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('bn', lambda x, w, b: paddle.nn.functional.batch_norm(
+            x, paddle.ones((10, )), paddle.ones(
+                (10, )), w, b), (np.random.rand(10, 10), np.random.rand(10),
+                                 np.random.rand(10)), None, 'float32'),
+        ('bn_train', lambda x, w, b: paddle.nn.functional.batch_norm(
+            x, paddle.ones((10, )), paddle.ones((10, )), w, b, training=True),
+         (np.random.rand(
+             10, 10), np.random.rand(10), np.random.rand(10)), None, 'float32'),
+        ('bn_nhwc', lambda x, w, b: paddle.nn.functional.batch_norm(
+            x,
+            paddle.ones((10, )) + 1,
+            paddle.ones((10, )),
+            w,
+            b,
+            training=True,
+            data_format='NHWC',
+        ), (np.random.rand(
+            10, 10), np.random.rand(10), np.random.rand(10)), None, 'float32'),
+        ('bn_global_stat',
+         lambda x, w, b: paddle.nn.functional.batch_norm(x,
+                                                         paddle.ones(
+                                                             (10, )) + 3.2,
+                                                         paddle.ones(
+                                                             (10, )) + 6.7,
+                                                         w,
+                                                         b,
+                                                         training=True,
+                                                         data_format='NHWC',
+                                                         use_global_stats=True),
+         (np.random.rand(
+             10, 10), np.random.rand(10), np.random.rand(10)), None, 'float32'),
     ))
 class TestGrad(unittest.TestCase):
 
@@ -408,6 +602,7 @@ exp_ag = lambda xs: anp.exp(xs[0])
 pow_ag = lambda xs: xs[0]**xs[1]
 log_ag = lambda xs: anp.log(xs[0])
 erf_ag = lambda xs: ascipy.special.erf(xs[0])
+sigmoid_ag = lambda xs: 1.0 / (1 + anp.exp(-xs[0]))
 
 
 def gelu_ag(x, approximate=False):
@@ -421,22 +616,26 @@ def gelu_ag(x, approximate=False):
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
-    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'),
-    (('multiply', multiply_pd, multiply_ag,
-      (np.random.rand(3, 5), ), None, 'float32'),
-     ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
-     ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
-     ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
-     ('pow', paddle.pow, pow_ag,
-      (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
-     ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
-     ('erf', paddle.erf, erf_ag, (np.random.rand(100, 200), ), None, 'float32'),
-     ('gelu', paddle.nn.functional.gelu, lambda xs: gelu_ag(xs[0]),
-      (np.random.rand(10, 20, 30), ), None, 'float32'),
-     ('gelu_approximate',
-      lambda x: paddle.nn.functional.gelu(x, approximate=True),
-      lambda xs: gelu_ag(xs[0], approximate=True),
-      (np.random.rand(10, 20, 30), ), None, 'float32')))
+    (utils.TEST_CASE_NAME, 'fun_pd', 'fun_ag', 'xs', 'v', 'dtype'), (
+        ('multiply', multiply_pd, multiply_ag,
+         (np.random.rand(3, 5), ), None, 'float32'),
+        ('sin', paddle.sin, sin_ag, (np.random.rand(2, 3), ), None, 'float32'),
+        ('cos', paddle.cos, cos_ag, (np.random.rand(3, 4), ), None, 'float32'),
+        ('exp', paddle.exp, exp_ag, (np.random.rand(2, 3), ), None, 'float32'),
+        ('pow', paddle.pow, pow_ag,
+         (np.random.rand(2, 3), np.random.rand(2, 3)), None, 'float32'),
+        ('log', paddle.log, log_ag, (np.random.rand(3, 8), ), None, 'float32'),
+        ('erf', paddle.erf, erf_ag,
+         (np.random.rand(100, 200), ), None, 'float32'),
+        ('gelu', paddle.nn.functional.gelu, lambda xs: gelu_ag(xs[0]),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('gelu_approximate',
+         lambda x: paddle.nn.functional.gelu(x, approximate=True),
+         lambda xs: gelu_ag(xs[0], approximate=True),
+         (np.random.rand(10, 20, 30), ), None, 'float32'),
+        ('sigmoid', paddle.nn.functional.sigmoid, sigmoid_ag,
+         (np.random.rand(10, 20), ), None, 'float32'),
+    ))
 class TestGradWithHigherOrder(unittest.TestCase):
 
     def setUp(self):

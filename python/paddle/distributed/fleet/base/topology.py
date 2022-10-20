@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import sys
 import paddle
 import collections
-import numpy as np
 from itertools import product
 from functools import reduce
 from ..utils.log_util import logger
@@ -32,7 +29,7 @@ class ParallelMode(object):
     - DATA_PARALLEL: Distribute input data to different devices.
     - TENSOR_PARALLEL: Shards tensors in the network to different devices.
     - PIPELINE_PARALLEL: Place different layers of the network on different devices.
-    - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states 
+    - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states
                          corresponding to the parameters to each device.
 
     Examples:
@@ -378,8 +375,8 @@ class _CommunicateGroup(object):
 
     def set_comm_group(self, group_name, group_rank, group_size, ring_id,
                        group_ranks):
-        group = paddle.distributed.collective.Group(group_rank, group_size,
-                                                    ring_id, group_ranks)
+        group = paddle.distributed.collective.Group(group_rank, ring_id,
+                                                    group_ranks)
         self.groups[group_name] = group
 
     def get_group(self, group_name):

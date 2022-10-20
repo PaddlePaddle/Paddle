@@ -132,7 +132,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
 
-    // Only support 2D-Tensor as weight for FC
+    // Only support 2D-phi::DenseTensor as weight for FC
     std::vector<int64_t> w_shape = w->Var()->GetShape();
     size_t w_rank = w_shape.size();
     if (w_rank != 2) return;
@@ -203,7 +203,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       int w_w = weight_dims[1];
       if (w_h % 128 == 0 && w_w % 128 == 0) {
         auto* w_var = scope->Var(w_name);
-        auto* w_tensor = w_var->GetMutable<framework::LoDTensor>();
+        auto* w_tensor = w_var->GetMutable<phi::DenseTensor>();
 
         auto* weight_data_tmp = new float[weight_num];
         for (int i = 0; i < w_h; i++) {

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import ast
 import astor
 import atexit
@@ -22,7 +20,8 @@ import collections
 from paddle.utils import gast
 import inspect
 import os
-import six
+import sys
+import shutil
 import tempfile
 import textwrap
 import numpy as np
@@ -44,6 +43,7 @@ DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
 DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
 GET_ARGS_FUNC_PREFIX = 'get_args'
 SET_ARGS_FUNC_PREFIX = 'set_args'
+ALREADY_D2S = '__already_d2s'
 ARGS_NAME = '__args'
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
 ORIGI_INFO = "Original information of source code for ast node."
@@ -51,7 +51,7 @@ ORIGI_INFO = "Original information of source code for ast node."
 
 class BaseNodeVisitor(gast.NodeVisitor):
     """
-    Implement customized NodeVisitor inherited from gast.NodeVisitor. 
+    Implement customized NodeVisitor inherited from gast.NodeVisitor.
     Ancestor nodes are traced to easily support more operations of currently
     visited node.
     """
@@ -83,6 +83,7 @@ dygraph_class_to_static_api = {
     "PolynomialDecay": "polynomial_decay",
 }
 
+DEL_TEMP_DIR = True  # A flag to avoid atexit.register more than once
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
 FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
 FOR_ITER_TARGET_PREFIX = '__for_loop_iter_target'
@@ -91,6 +92,9 @@ FOR_ITER_TUPLE_INDEX_PREFIX = '__for_loop_iter_tuple_index'
 FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
 FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
 FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
+
+RE_PYNAME = '[a-zA-Z0-9_]+'
+RE_PYMODULE = r'[a-zA-Z0-9_]+\.'
 
 # FullArgSpec is valid from Python3. Defined a Namedtuple to
 # to make it available in Python2.
@@ -107,7 +111,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     data can be various-length. This API is used in translating dygraph into
     static graph.
 
-     Note: 
+     Note:
         The default :code:`stop_gradient` attribute of the Tensor created by
         this API is true, which means the gradient won't be passed backward
         through the data Tensor. Set :code:`var.stop_gradient = False` If
@@ -118,7 +122,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
            for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape. You can
            set "None" at a dimension to indicate the dimension can be of any
-           size. For example, it is useful to set changeable batch size as "None" 
+           size. For example, it is useful to set changeable batch size as "None"
        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: float32
@@ -131,7 +135,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
-    for i in six.moves.range(len(shape)):
+    for i in range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
 
@@ -143,21 +147,6 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
                                          lod_level=lod_level,
                                          is_data=True,
                                          need_check_feed=False)
-
-
-def create_undefined_var_like(variable):
-    """ create a undefined var with the same shape and dtype like varaible.
-    """
-    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
-    var = data_layer_not_check(unique_name.generate("undefined_var"),
-                               variable.shape, variable.dtype)
-    var.stop_gradient = False
-    helper = LayerHelper('create_undefined_var_like', **locals())
-    saved_block_ids = helper.main_program.current_block_idx
-    helper.main_program.current_block_idx = 0
-    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
-    helper.main_program.current_block_idx = saved_block_ids
-    return var
 
 
 def create_undefined_variable():
@@ -335,26 +324,10 @@ def is_numpy_api(node):
             func_str, "numpy"))
         # BUG: np.random.uniform doesn't have module and cannot be analyzed
         # TODO: find a better way
-        if not module_result:
-            return func_str.startswith("numpy.") or func_str.startswith("np.")
+        return module_result or (func_str.startswith("numpy.")
+                                 or func_str.startswith("np."))
     except Exception:
         return False
-
-
-def is_control_flow_to_transform(node,
-                                 static_analysis_visitor=None,
-                                 var_name_to_type=None):
-    """
-    Determines whether the node is a PaddlePaddle control flow statement which needs to
-    be transformed into a static graph control flow statement.
-    """
-    assert isinstance(node, gast.AST), \
-        "The type of input node must be gast.AST, but received %s." % type(node)
-    visitor = IsControlFlowVisitor(node,
-                                   static_analysis_visitor,
-                                   node_var_type_map=var_name_to_type)
-    need_to_transform = visitor.transform()
-    return need_to_transform
 
 
 def _delete_keywords_from(node):
@@ -499,7 +472,7 @@ def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
 
     This function is used at several gast.Return statements.
     """
-    if isinstance(name_ids, six.string_types):
+    if isinstance(name_ids, str):
         name_ids = [name_ids]
     if not isinstance(name_ids, (list, tuple, set)):
         raise TypeError(
@@ -559,6 +532,22 @@ def create_assign_node(name, node):
     return targets, assign_node
 
 
+def get_temp_dir():
+    """
+    Return @to_static temp directory.
+    """
+    dir_name = "paddle/to_static_tmp"
+    temp_dir = os.path.join(os.path.expanduser('~/.cache'), dir_name)
+    is_windows = sys.platform.startswith('win')
+    if is_windows:
+        temp_dir = os.path.normpath(temp_dir)
+
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+
+    return temp_dir
+
+
 def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
@@ -566,27 +555,40 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     function, the other inner functions are invisible for the decorated function.
     """
 
-    def remove_if_exit(filepath):
-        if os.path.exists(filepath):
-            os.remove(filepath)
+    def remove_if_exit(dir_path):
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
+
+    def func_prefix(func):
+        pre_fix = func.__name__
+        if hasattr(func, '__self__'):
+            try:
+                pre_fix = func.__self__.__class__.__name__ + '_' + func.__name__
+            except:
+                pass
+        return pre_fix
 
     source = ast_to_source_code(ast_root)
     source = _inject_import_statements() + source
-
+    temp_dir = get_temp_dir()
     f = tempfile.NamedTemporaryFile(mode='w',
+                                    prefix=func_prefix(dyfunc),
                                     suffix='.py',
                                     delete=False,
+                                    dir=temp_dir,
                                     encoding='utf-8')
     with f:
         module_name = os.path.basename(f.name[:-3])
         f.write(source)
 
-    if delete_on_exit:
-        atexit.register(lambda: remove_if_exit(f.name))
-        atexit.register(lambda: remove_if_exit(f.name[:-3] + ".pyc"))
+    global DEL_TEMP_DIR
+    if delete_on_exit and DEL_TEMP_DIR:
+        # Clear temporary files in TEMP_DIR while exitting Python process
+        atexit.register(remove_if_exit, dir_path=temp_dir)
+        DEL_TEMP_DIR = False
 
-    module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
+    module = SourceFileLoader(module_name, f.name).load_module()
     # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
     # through 'func_name'. So set the special function name '__i_m_p_l__'.
     if hasattr(module, '__i_m_p_l__'):
@@ -622,7 +624,7 @@ def recover_globals_attribute(src_obj, dst_obj):
     src_globals = getattr(src_obj, attr_name, {})
     dst_globals = getattr(dst_obj, attr_name, {})
 
-    for k, v in six.iteritems(src_globals):
+    for k, v in src_globals.items():
         # ignore builtin attribute.
         if not (k.startswith('__') and k.endswith('__')):
             dst_globals[k] = v
@@ -871,7 +873,7 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
         # Look up the node_var_type_map by name_id.
         if self.node_var_type_map:
-            if name_id and isinstance(name_id, six.string_types):
+            if name_id and isinstance(name_id, str):
                 var_type = self.node_var_type_map.get(name_id, None)
                 if var_type and var_type & NodeVarType.TENSOR_TYPES:
                     return True
@@ -983,36 +985,11 @@ def _compatible_non_tensor_spec(src_spec, desired_spec):
         return True
 
 
-def slice_is_num(slice_node):
-    # A slice_node.slice can be a:
-    # (1) ast.Index, which is a simple number such as [1], [-2]
-    # (2) ast.Slice, which is represented by bounds such as [2:-1]
-    # (3) ast.Tuple, which includes the above two cases such as [2:-1, 1]
-    # If slice node is case (1), return True, Otherwise, return False.
-    #
-    # NOTE: In (1) case, when gast>=0.4.0, gast.Index is not used, which is replaced
-    # other gast node such as gast.Constant, gast.Name, gast.UnaryOp and so on.
-    # Considering the compatibility of gast, here use ast note to check whether the
-    # node is a num. For more details, please visit https://github.com/serge-sans-paille/gast
-
-    assert isinstance(slice_node, gast.Subscript)
-    slice_node_str = ast_to_source_code(slice_node).strip()
-    ast_node = ast.parse(slice_node_str).body[0].value
-
-    if isinstance(ast_node.slice, (ast.Tuple, ast.Slice)):
-        return False
-
-    if isinstance(ast_node.slice, ast.Index):
-        return True
-
-    return False
-
-
 class NameScope:
 
     def __init__(self):
-        """ 
-            A NameScope is a object which manager all the variable names. 
+        """
+            A NameScope is a object which manager all the variable names.
             only FunctionDef and Controlflow node will have a namescope property.
 
             type can be "function" and "controlflow"
@@ -1033,7 +1010,7 @@ class NameScope:
         self.father = father
 
     def existed_vars(self):
-        """ vars existing in current scope. 
+        """ vars existing in current scope.
             they must not contain qualified names.
         """
         local_vars = self.w_vars - self.globals - self.nonlocals - self.args
@@ -1047,9 +1024,9 @@ class NameScope:
         return self.w_vars
 
     def variadic_length_vars(self):
-        """ 
+        """
         At present, we do not support global append, such as
-        
+
         import numpy as np
         a = []
         def func():
@@ -1078,9 +1055,9 @@ class NameScope:
         return True
 
     def is_global_var(self, name):
-        """ 
+        """
         Return whether the name is a var created in global scope.
-        Search from bottom to top. If it is not created or modified, 
+        Search from bottom to top. If it is not created or modified,
         it means global vars; otherwise, it means local vars.
         Only valid after FunctionNameLivenessAnalysis visitor.
         """
@@ -1108,16 +1085,16 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
     """ analyze the liveness of a function.
 
         every variables stored in this scope will be collected,
-        in addition with global/nonlocal information and 
+        in addition with global/nonlocal information and
         push_pop information.
 
         1. global variable is stored in node.var_globals.
         2. nonlocal variable is stored in node.var_nonlocals.
         3. arguments is stored in node.var_args.
-        4. if a variable's push and pop attribute is called, 
+        4. if a variable's push and pop attribute is called,
            it will be collected in push_pop_vars. They are
            used for transformation to tensor_array.
-           NOTE: push_pop_vars **may not** in w_vars. 
+           NOTE: push_pop_vars **may not** in w_vars.
            a.push(0) don't modify the variable a, but the content
            of a.
 
@@ -1135,13 +1112,13 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
                 q = 12
                 b.push(1)
                 c.pop()
-        
-        After this visitor we have: 
+
+        After this visitor we have:
         # node is the FunctionDef node with name: "func"
         node.pd_scope = NameScope(
             globals = ['i', 'j'],
             nonlocals = ['x', 'y'],
-            args = ['args', 'kargs'], 
+            args = ['args', 'kargs'],
             wr_vars = ['a', 'i', 'q', 'm', 'c', 'b']
             push_pop_vars = ['b', 'c']
         )
@@ -1175,7 +1152,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
     def visit_ListComp(self, node):
         """ [ i for i in range(10) ]
-            In this case, `i` will not created in FunctionScope. 
+            In this case, `i` will not created in FunctionScope.
             We don't collect `i` by not calling generic_visit.
         """
         pass
@@ -1198,7 +1175,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
                 self._get_argument_names(node))
 
         def post_func():
-            """ NOTE: why we need merge w_vars and push_pop_vars here ? 
+            """ NOTE: why we need merge w_vars and push_pop_vars here ?
                 because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
             """
             from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import WHILE_CONDITION_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX, FOR_BODY_PREFIX
@@ -1286,7 +1263,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
 
     def _get_argument_names(self, node):
         """ get all arguments name in the functiondef node.
-            this node is local to the function and shouldn't 
+            this node is local to the function and shouldn't
             be created.
         """
         assert isinstance(
@@ -1387,7 +1364,7 @@ def create_nonlocal_stmt_nodes(names):
 
 
 class GetterSetterHelper:
-    """ we have two classes of names in setter and getter function: 
+    """ we have two classes of names in setter and getter function:
         w_vars(loop_vars) + push_pop_vars
         To simplify the setter logic in convert_while and convert_cond,
         we extract the helper class here.

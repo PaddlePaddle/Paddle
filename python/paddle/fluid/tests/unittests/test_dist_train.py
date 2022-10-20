@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import time
 import unittest
@@ -28,7 +26,7 @@ from paddle.fluid.layers.io import ListenAndServ
 from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
 import paddle.fluid.layers.ops as ops
-from dist_test_utils import *
+from dist_test_utils import remove_ps_flag
 
 from paddle.fluid import core
 

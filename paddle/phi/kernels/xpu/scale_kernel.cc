@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/scale_kernel.h"
 
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/float16.h"
@@ -30,7 +30,7 @@ void ScaleKernel(const Context& dev_ctx,
                  float bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
 
   PADDLE_ENFORCE_EQ(
       x.dims(),
@@ -47,11 +47,7 @@ void ScaleKernel(const Context& dev_ctx,
                      bias_after_scale,
                      scale.to<float>(),
                      bias);
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      phi::errors::External(
-          "XPU scale kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 }
 
 }  // namespace phi

@@ -18,14 +18,11 @@ This module will download dataset from http://yann.lecun.com/exdb/mnist/ and
 parse training set and test set into paddle reader creators.
 """
 
-from __future__ import print_function
-
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 import gzip
 import numpy
 import struct
-from six.moves import range
 
 __all__ = []
 

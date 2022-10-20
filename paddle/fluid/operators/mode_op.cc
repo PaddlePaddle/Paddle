@@ -30,7 +30,7 @@ class ModeOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
-    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout_ = phi::DataLayout::kAnyLayout;
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context(),
@@ -51,7 +51,7 @@ class ModeOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1);
     AddAttr<bool>("keepdim", "Keep the dim that to reduce.").SetDefault(false);
     AddComment(R"DOC(
-This operator finds the mode of input Tensor. And outputs their values and indices as vectors. 
+This operator finds the mode of input Tensor. And outputs their values and indices as vectors.
 )DOC");
   }
 };

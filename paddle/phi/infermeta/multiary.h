@@ -123,6 +123,10 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
+void AddNTensorArrayInferMeta(const std::vector<const MetaTensor*>& x,
+                              MetaTensor* out,
+                              MetaConfig config);
+
 void AucInferMeta(const MetaTensor& input,
                   const MetaTensor& label,
                   const MetaTensor& stat_pos,
@@ -479,8 +483,8 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       const MetaTensor& labels_length,
                       int blank,
                       bool norm_by_times,
-                      MetaTensor* warpctcgrad,
-                      MetaTensor* loss);
+                      MetaTensor* loss,
+                      MetaTensor* warpctcgrad);
 
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,

@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
 import numpy as np
 
 import paddle
@@ -47,7 +44,7 @@ class UCIHousing(Dataset):
         Dataset: instance of UCI housing dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
             import paddle
@@ -96,7 +93,7 @@ class UCIHousing(Dataset):
         data = data.reshape(data.shape[0] // feature_num, feature_num)
         maximums, minimums, avgs = data.max(axis=0), data.min(
             axis=0), data.sum(axis=0) / data.shape[0]
-        for i in six.moves.range(feature_num - 1):
+        for i in range(feature_num - 1):
             data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
         offset = int(data.shape[0] * ratio)
         if self.mode == 'train':

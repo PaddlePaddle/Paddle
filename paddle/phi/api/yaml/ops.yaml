@@ -1,4 +1,4 @@
-- api : atan2
+- op : atan2
   args : (Tensor x, Tensor y)
   output : Tensor
   infer_meta :
@@ -7,7 +7,7 @@
     func : atan2
   backward : atan2_grad
 
-- api : bernoulli
+- op : bernoulli
   args : (Tensor x)
   output : Tensor(out)
   infer_meta :
@@ -15,7 +15,7 @@
   kernel :
     func : bernoulli
 
-- api : cholesky
+- op : cholesky
   args : (Tensor x, bool upper=false)
   output : Tensor
   infer_meta :
@@ -24,7 +24,7 @@
     func : cholesky
   backward : cholesky_grad
 
-- api : cholesky_solve
+- op : cholesky_solve
   args : (Tensor x, Tensor y, bool upper=false)
   output : Tensor
   infer_meta :
@@ -33,7 +33,7 @@
     func : cholesky_solve
   backward : cholesky_solve_grad
 
-- api : cross
+- op : cross
   args : (Tensor x, Tensor y, int axis = 9)
   output : Tensor
   infer_meta :
@@ -43,7 +43,7 @@
     data_type : x
   backward : cross_grad
 
-- api : diag
+- op : diag
   args : (Tensor x, int offset = 0, float padding_value = 0.0)
   output : Tensor
   infer_meta :
@@ -52,7 +52,7 @@
     func : diag
   backward : diag_grad
 
-- api : diagonal
+- op : diagonal
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
   output : Tensor
   infer_meta :
@@ -61,7 +61,7 @@
     func : diagonal
   backward : diagonal_grad
 
-- api : digamma
+- op : digamma
   args : (Tensor x)
   output : Tensor
   infer_meta :
@@ -70,7 +70,7 @@
     func : digamma
   backward : digamma_grad
 
-- api : dist
+- op : dist
   args : (Tensor x, Tensor y, float p = 2.0)
   output : Tensor
   infer_meta :
@@ -79,7 +79,7 @@
     func : dist
   backward : dist_grad
 
-- api : dot
+- op : dot
   args : (Tensor x, Tensor y)
   output : Tensor
   infer_meta :
@@ -89,7 +89,7 @@
     data_type : x
   backward : dot_grad
 
-- api : erf
+- op : erf
   args : (Tensor x)
   output : Tensor
   infer_meta :
@@ -98,7 +98,7 @@
     func : erf
   backward : erf_grad
 
-- api : erfinv
+- op : erfinv
   args : (Tensor x)
   output : Tensor(out)
   infer_meta :
@@ -108,7 +108,7 @@
   inplace : (x -> out)
   backward : erfinv_grad
 
-- api : fft_c2c
+- op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
   output : Tensor
   infer_meta :
@@ -117,7 +117,7 @@
     func : fft_c2c
   backward : fft_c2c_grad
 
-- api : fft_c2r
+- op : fft_c2r
   args : (Tensor x, int64_t[] axes, str normalization, bool forward, int64_t last_dim_size=0L)
   output : Tensor
   infer_meta :
@@ -126,7 +126,7 @@
     func : fft_c2r
   backward : fft_c2r_grad
 
-- api : fft_r2c
+- op : fft_r2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward, bool onesided)
   output : Tensor
   infer_meta :
@@ -135,7 +135,7 @@
     func : fft_r2c
   backward : fft_r2c_grad
 
-- api : graph_send_uv
+- op : graph_send_uv
   args : (Tensor x, Tensor y, Tensor src_index, Tensor dst_index, str message_op = "ADD")
   output : Tensor(out)
   infer_meta :
@@ -145,7 +145,7 @@
     data_type : x
   backward : graph_send_uv_grad
 
-- api : lgamma
+- op : lgamma
   args : (Tensor x)
   output : Tensor(out)
   infer_meta :
@@ -154,7 +154,7 @@
     func : lgamma
   backward : lgamma_grad
 
-- api : mv
+- op : mv
   args : (Tensor x, Tensor vec)
   output : Tensor
   infer_meta :
@@ -163,7 +163,7 @@
     func : mv
   backward : mv_grad
 
-- api : poisson
+- op : poisson
   args : (Tensor x)
   output : Tensor
   infer_meta :
@@ -172,7 +172,7 @@
     func : poisson
   backward : poisson_grad
 
-- api : solve
+- op : solve
   args : (Tensor x, Tensor y)
   output : Tensor
   infer_meta :
@@ -182,7 +182,7 @@
     data_type : x
   backward : solve_grad
 
-- api : trace
+- op : trace
   args : (Tensor x, int offset = 0, int axis1 = 0, int axis2 = 1)
   output : Tensor
   infer_meta :
@@ -191,11 +191,20 @@
     func : trace
   backward : trace_grad
 
-- api : trunc
-  args : (Tensor x)
+- op : trunc
+  args : (Tensor input)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : trunc
   backward : trunc_grad
+
+- op : flip
+  args : (Tensor x, int[] axis)
+  output : Tensor (out)
+  infer_meta :
+    func : FlipInferMeta
+  kernel :
+    func : flip
+  backward : flip_grad

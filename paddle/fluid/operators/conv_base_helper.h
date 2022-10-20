@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = platform::DataLayout;
 using framework::AlgorithmsCache;
 using framework::ConvSearchCache;
@@ -36,17 +36,10 @@ using framework::ConvSearchCache;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
-// As the basic for SearchAlgorithm struct.
-template <typename PerfT>
-struct SearchAlgorithm {};
-
 // As the container of searchAlgorithm::Find() result.
 template <typename AlgoT>
 struct SearchResult {
   SearchResult() {}
-  explicit SearchResult(const phi::autotune::DnnNode& node)
-      : algo(static_cast<AlgoT>(node.algo)),
-        workspace_size(node.workspace_size) {}
 
   explicit SearchResult(AlgoT a) : algo(a) {}
   explicit SearchResult(AlgoT a, float t, size_t size)
@@ -55,12 +48,21 @@ struct SearchResult {
   AlgoT algo = static_cast<AlgoT>(0);
   float time = -1.f;
   size_t workspace_size = 0;
+  bool exhaustive_search = false;
 };
 
 template <typename T>
 static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
   out << "[";
-  for (auto const& tmp : v) out << tmp << ",";
+  bool is_first = true;
+  for (auto const& tmp : v) {
+    if (is_first) {
+      out << tmp;
+      is_first = false;
+    } else {
+      out << ", " << tmp;
+    }
+  }
   out << "]";
   return out;
 }
@@ -72,7 +74,7 @@ struct ConvArgsBase {
   platform::TensorDescriptor idesc, odesc;
   platform::FilterDescriptor wdesc;
   platform::ConvolutionDescriptor cdesc;
-  const framework::Tensor *x, *w, *o;
+  const phi::DenseTensor *x, *w, *o;
   DataT cudnn_dtype;
 
   // strides
@@ -88,9 +90,9 @@ struct ConvArgsBase {
   // data foramt
   DataLayout data_layout;
 
-  ConvArgsBase(const framework::Tensor* x,
-               const framework::Tensor* w,
-               const framework::Tensor* o,
+  ConvArgsBase(const phi::DenseTensor* x,
+               const phi::DenseTensor* w,
+               const phi::DenseTensor* o,
                const std::vector<int> s,
                const std::vector<int> p,
                const std::vector<int> d,
@@ -113,7 +115,7 @@ struct ConvArgsBase {
     auto w_shape = phi::vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
              << ", strides=" << s << ", paddings=" << p << ", dilations=" << d
-             << ",data= " << paddle::experimental::CppTypeToDataType<T>::Type()
+             << ", data=" << paddle::experimental::CppTypeToDataType<T>::Type()
              << ", group=" << group
              << ", data layout=" << static_cast<int64_t>(data_layout);
 

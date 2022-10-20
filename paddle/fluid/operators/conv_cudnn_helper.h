@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_base_helper.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace paddle {
@@ -28,8 +28,8 @@ using ConvArgs = ConvArgsBase<cudnnHandle_t, cudnnDataType_t>;
 
 template <typename DeviceContext, typename T, size_t D>
 static void RemovePaddingSlice(const phi::GPUContext& context,
-                               const Tensor* input,
-                               Tensor* out,
+                               const phi::DenseTensor* input,
+                               phi::DenseTensor* out,
                                const std::vector<int>& starts,
                                const std::vector<int>& axes) {
   auto& place = *context.eigen_device();
@@ -52,11 +52,9 @@ static void RemovePaddingSlice(const phi::GPUContext& context,
   }
 
   auto in_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *input);
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *out, new_out_dims);
+      phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
+  auto out_t = phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+      *out, new_out_dims);
 
   phi::funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
       place, out_t, in_t, offsets, extents);
@@ -146,83 +144,21 @@ void ChooseAlgoByWorkspace(const std::vector<PerfT>& perf_results,
   }
 }
 
-static void SetConvMathType(const phi::GPUContext& ctx,
-                            cudnnDataType_t dtype,
-                            const platform::ConvolutionDescriptor& cdesc) {
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-  if (ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
-        cdesc.desc(), CUDNN_TENSOR_OP_MATH));
-    VLOG(5) << "use cudnn_tensor_op_math";
-#if CUDA_VERSION >= 11000
-#if CUDNN_VERSION_MIN(8, 1, 0)
-  } else if (ctx.GetComputeCapability() >= 80 && dtype == CUDNN_DATA_BFLOAT16) {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
-        cdesc.desc(), CUDNN_TENSOR_OP_MATH));
-#endif  // CUDNN_VERSION_MIN(8, 1, 0)
-  } else if (dtype == CUDNN_DATA_FLOAT && !cdesc.allow_tf32_) {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
-        cdesc.desc(), CUDNN_FMA_MATH));
-#endif  // CUDA_VERSION >= 11000
-  } else {
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
-        cdesc.desc(), CUDNN_DEFAULT_MATH));
-    VLOG(5) << "NOT use cudnn_tensor_op_math";
-  }
-#endif
-}
+template <typename PerfT>
+struct SearchAlgorithmBase {};
 
 // cuDNN convolution forward algorithm searcher, consisted of three searching
 // modes, namely: deterministic, heuristic and exhaustive_search mode.
 // As well as one workspace size acquirsition function with respect to
 // the chosen alogrithm.
 template <>
-struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
+struct SearchAlgorithmBase<cudnnConvolutionFwdAlgoPerf_t> {
   using PerfT = cudnnConvolutionFwdAlgoPerf_t;
   using AlgoT = cudnnConvolutionFwdAlgo_t;
+  constexpr static phi::autotune::AlgorithmType kAlgoType =
+      phi::autotune::AlgorithmType::kConvForward;
 
-  template <typename T>
-  static SearchResult<AlgoT> Find(const ConvArgs& args,
-                                  bool exhaustive_search,
-                                  bool deterministic,
-                                  const phi::GPUContext& ctx) {
-    SearchResult<AlgoT> result;
-    auto dtype = platform::CudnnDataType<T>::type;
-    SetConvMathType(ctx, dtype, args.cdesc);
-
-    if (deterministic) {
-      result = FindAlgoDeterministic(args);
-    } else {
-      // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
-      // 2. Once turning on auto-tune, runn heuristic search(default) before
-      //    auto-tune process, run exhaustive_search during mentioned process.
-      // 3. After auto-tune process, run cached algorithm if cached, run
-      //    default mode for the rest.
-      auto key = args.Convert2ConvCacheKey<T>();
-      auto& cache = phi::autotune::AutoTuneCache::Instance().GetConvForward();
-      if (cache.Find(key)) {
-        auto t = cache.Get(key);
-        result.algo = static_cast<AlgoT>(t.algo);
-        result.workspace_size = t.workspace_size;
-      } else {
-        bool use_autotune =
-            phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
-        if (exhaustive_search || use_autotune) {
-          result = FindAlgoExhaustiveSearch<T>(args, ctx);
-        } else {
-          result = FindAlgoHeuristic(args, ctx);
-        }
-        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                    result.workspace_size);
-        cache.Set(key, node);
-      }
-    }
-    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
-            << ", deterministic=" << deterministic
-            << ", choose algo=" << result.algo
-            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
-    return result;
-  }
+  static const std::string GetPerfName() { return "ConvForward"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionFwdAlgo_t algo) {
@@ -239,7 +175,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
     return workspace_size;
   }
 
- private:
+ protected:
   static SearchResult<AlgoT> FindAlgoDeterministic(const ConvArgs& args) {
     auto workspace_size = GetWorkspaceSize(args, static_cast<AlgoT>(1));
     return SearchResult<AlgoT>(static_cast<AlgoT>(1), -1.0, workspace_size);
@@ -271,6 +207,10 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 
     if (result.workspace_size > workspace_size_limit) {
 #if CUDNN_VERSION >= 8000
+      VLOG(4) << GetPerfResultString<PerfT>("[Heuristic] FwdAlgo Perf result",
+                                            perf_results,
+                                            actual_perf_count,
+                                            workspace_size_limit);
       // cudnnGetConvolutionForwardAlgorithm is removed in CUDNN-8
       ChooseAlgoByWorkspace<PerfT, AlgoT>(
           perf_results, workspace_size_limit, &result);
@@ -387,53 +327,13 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 // As well as one workspace size acquirsition function with
 // respect to the chosen alogrithm.
 template <>
-struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
+struct SearchAlgorithmBase<cudnnConvolutionBwdDataAlgoPerf_t> {
   using PerfT = cudnnConvolutionBwdDataAlgoPerf_t;
   using AlgoT = cudnnConvolutionBwdDataAlgo_t;
+  constexpr static phi::autotune::AlgorithmType kAlgoType =
+      phi::autotune::AlgorithmType::kConvBackwardData;
 
-  template <typename T>
-  static SearchResult<AlgoT> Find(const ConvArgs& args,
-                                  bool exhaustive_search,
-                                  bool deterministic,
-                                  const phi::GPUContext& ctx) {
-    SearchResult<AlgoT> result;
-    auto dtype = platform::CudnnDataType<T>::type;
-    SetConvMathType(ctx, dtype, args.cdesc);
-
-    if (deterministic) {
-      result = FindAlgoDeterministic(args);
-    } else {
-      // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
-      // 2. Once turning on auto-tune, runn heuristic search(default) before
-      //    auto-tune process, run exhaustive_search during mentioned process.
-      // 3. After auto-tune process, run cached algorithm if cached, run
-      //    default mode for the rest.
-      auto key = args.Convert2ConvCacheKey<T>();
-      auto& cache =
-          phi::autotune::AutoTuneCache::Instance().GetConvBackwardData();
-      if (cache.Find(key)) {
-        auto t = cache.Get(key);
-        result.algo = static_cast<AlgoT>(t.algo);
-        result.workspace_size = t.workspace_size;
-      } else {
-        bool use_autotune =
-            phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
-        if (exhaustive_search || use_autotune) {
-          result = FindAlgoExhaustiveSearch<T>(args, ctx);
-        } else {
-          result = FindAlgoHeuristic(args, ctx);
-        }
-        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                    result.workspace_size);
-        cache.Set(key, node);
-      }
-    }
-    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
-            << ", deterministic=" << deterministic
-            << ", choose algo=" << result.algo
-            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
-    return result;
-  }
+  static const std::string GetPerfName() { return "ConvBackwardData"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionBwdDataAlgo_t algo) {
@@ -450,7 +350,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     return workspace_size;
   }
 
- private:
+ protected:
   static SearchResult<AlgoT> FindAlgoDeterministic(const ConvArgs& args) {
     auto workspace_size =
         GetWorkspaceSize(args, CUDNN_CONVOLUTION_BWD_DATA_ALGO_1);
@@ -609,54 +509,13 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
 // exhaustive_search mode. As well as one workspace size acquirsition function
 // with respect to the chosen alogrithm.
 template <>
-struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
+struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
   using PerfT = cudnnConvolutionBwdFilterAlgoPerf_t;
   using AlgoT = cudnnConvolutionBwdFilterAlgo_t;
+  constexpr static phi::autotune::AlgorithmType kAlgoType =
+      phi::autotune::AlgorithmType::kConvBackwardFilter;
 
-  template <typename T>
-  static SearchResult<AlgoT> Find(const ConvArgs& args,
-                                  bool exhaustive_search,
-                                  bool deterministic,
-                                  const phi::GPUContext& ctx) {
-    platform::CUDAGraphCaptureModeGuard guard;
-    SearchResult<AlgoT> result;
-    auto dtype = platform::CudnnDataType<T>::type;
-    SetConvMathType(ctx, dtype, args.cdesc);
-
-    if (deterministic) {
-      result = FindAlgoDeterministic(args);
-    } else {
-      // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
-      // 2. Once turning on auto-tune, runn heuristic search(default) before
-      //    auto-tune process, run exhaustive_search during mentioned process.
-      // 3. After auto-tune process, run cached algorithm if cached, run
-      //    default mode for the rest.
-      auto key = args.Convert2ConvCacheKey<T>();
-      auto& cache =
-          phi::autotune::AutoTuneCache::Instance().GetConvBackwardFilter();
-      if (cache.Find(key)) {
-        auto t = cache.Get(key);
-        result.algo = static_cast<AlgoT>(t.algo);
-        result.workspace_size = t.workspace_size;
-      } else {
-        bool use_autotune =
-            phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
-        if (exhaustive_search || use_autotune) {
-          result = FindAlgoExhaustiveSearch<T>(args, ctx);
-        } else {
-          result = FindAlgoHeuristic(args, ctx);
-        }
-        phi::autotune::DnnNode node(static_cast<int64_t>(result.algo),
-                                    result.workspace_size);
-        cache.Set(key, node);
-      }
-    }
-    VLOG(3) << "[cuDNN Convoltion] exhaustive_search=" << exhaustive_search
-            << ", deterministic=" << deterministic
-            << ", choose algo=" << result.algo
-            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
-    return result;
-  }
+  static const std::string GetPerfName() { return "ConvBackwardFilter"; }
 
   static size_t GetWorkspaceSize(const ConvArgs& args,
                                  cudnnConvolutionBwdFilterAlgo_t algo) {
@@ -674,7 +533,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     return workspace_size;
   }
 
- private:
+ protected:
   static SearchResult<AlgoT> FindAlgoDeterministic(const ConvArgs& args) {
     auto workspace_size =
         GetWorkspaceSize(args, CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1);
@@ -888,6 +747,104 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
         break;
       }
     }
+  }
+};
+
+template <typename PerfT>
+struct SearchAlgorithm : public SearchAlgorithmBase<PerfT> {
+  using AlgoT = typename SearchAlgorithmBase<PerfT>::AlgoT;
+
+  template <typename T>
+  static SearchResult<AlgoT> Find(const phi::GPUContext& ctx,
+                                  const ConvArgs& args,
+                                  bool exhaustive_search,
+                                  bool deterministic,
+                                  bool enable_autotune = true) {
+    SearchResult<AlgoT> result;
+    bool use_autotune = false;
+    auto dtype = platform::CudnnDataType<T>::type;
+    SetConvMathType(ctx, dtype, args.cdesc);
+
+    if (deterministic) {
+      result = SearchAlgorithmBase<PerfT>::FindAlgoDeterministic(args);
+    } else {
+      // 1. Once turning on exhaustive FLAGS, always get exhaustive_search.
+      // 2. Once turning on auto-tune, run heuristic (default) before
+      //    auto-tune process, run exhaustive_search during mentioned process.
+      //    Auto tune is only enabled between specified range.
+      // 3. After auto-tune process, run cached algorithm if cached, run
+      //    default mode for the rest.
+      auto key = args.Convert2ConvCacheKey<T>();
+      auto& cache = phi::autotune::AutoTuneCache::Instance().GetConv(
+          SearchAlgorithmBase<PerfT>::kAlgoType);
+      bool find_in_cache = cache.Find(key);
+      if (find_in_cache) {
+        auto t = cache.Get(key);
+        result.algo = static_cast<AlgoT>(t.algo);
+        result.workspace_size = t.workspace_size;
+        result.exhaustive_search = t.exhaustive_search;
+      }
+      if (!result.exhaustive_search) {
+        bool need_update_cache = false;
+        // In conv2d_tranpose, enable_autotune is set to false because some
+        // algorithm picked by exhaustive search method produce wrong result.
+        use_autotune = enable_autotune &&
+                       phi::autotune::AutoTuneStatus::Instance().UseAutoTune();
+        if (exhaustive_search || use_autotune) {
+          // Once autotune is enabled, the autotuned result can rewrite the
+          // previous result in cache found by heuristic method.
+          result =
+              SearchAlgorithmBase<PerfT>::template FindAlgoExhaustiveSearch<T>(
+                  args, ctx);
+          need_update_cache = true;
+        } else if (!find_in_cache) {
+          result = SearchAlgorithmBase<PerfT>::FindAlgoHeuristic(args, ctx);
+          need_update_cache = true;
+        }
+        if (need_update_cache) {
+          phi::autotune::ConvAutoTuneResult node(
+              static_cast<int64_t>(result.algo),
+              result.workspace_size,
+              exhaustive_search || use_autotune);
+          cache.Set(key, node);
+        }
+      }
+    }
+    VLOG(3) << "[cuDNN " << SearchAlgorithmBase<PerfT>::GetPerfName()
+            << "] exhaustive_search=" << exhaustive_search
+            << ", use_autotune=" << use_autotune
+            << ", deterministic=" << deterministic
+            << ", choose algo=" << result.algo
+            << ", workspace=" << ToMegaBytes(result.workspace_size) << " MB";
+    return result;
+  }
+
+  static void SetConvMathType(const phi::GPUContext& ctx,
+                              cudnnDataType_t dtype,
+                              const platform::ConvolutionDescriptor& cdesc) {
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+    if (ctx.GetComputeCapability() >= 70 && dtype == CUDNN_DATA_HALF) {
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
+          cdesc.desc(), CUDNN_TENSOR_OP_MATH));
+      VLOG(5) << "Enable Tensor Core for FLOAT16";
+#if CUDA_VERSION >= 11000
+#if CUDNN_VERSION_MIN(8, 1, 0)
+    } else if (ctx.GetComputeCapability() >= 80 &&
+               dtype == CUDNN_DATA_BFLOAT16) {
+      VLOG(5) << "Enable Tensor Core for BFLOAT16";
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
+          cdesc.desc(), CUDNN_TENSOR_OP_MATH));
+#endif  // CUDNN_VERSION_MIN(8, 1, 0)
+    } else if (dtype == CUDNN_DATA_FLOAT && !cdesc.allow_tf32_) {
+      VLOG(5) << "Disable TensorFloat (Tensor Core) for FLOAT";
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
+          cdesc.desc(), CUDNN_FMA_MATH));
+#endif  // CUDA_VERSION >= 11000
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
+          cdesc.desc(), CUDNN_DEFAULT_MATH));
+    }
+#endif
   }
 };
 

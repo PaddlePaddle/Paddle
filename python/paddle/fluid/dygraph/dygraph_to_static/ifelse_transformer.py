@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
 import copy
 import textwrap
 from collections import defaultdict
@@ -272,7 +269,7 @@ class NameVisitor(gast.NodeVisitor):
         return False
 
     def _update_name_ids(self, new_name_ids):
-        for name_id, ctxs in six.iteritems(new_name_ids):
+        for name_id, ctxs in new_name_ids.items():
             self.name_ids[name_id] = ctxs + self.name_ids[name_id]
 
 
@@ -280,7 +277,7 @@ def _valid_nonlocal_names(return_name_ids, nonlocal_names):
     """
     All var in return_name_ids should be in nonlocal_names.
     Moreover, we will always put return_name_ids in front of nonlocal_names.
-    
+
     For Example:
 
         return_name_ids: [x, y]

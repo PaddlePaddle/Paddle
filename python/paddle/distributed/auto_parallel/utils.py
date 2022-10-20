@@ -27,6 +27,23 @@ from paddle.distributed.auto_parallel.process_group import get_all_process_group
 from paddle.fluid.io import is_parameter, is_belong_to_optimizer
 from paddle.distributed.auto_parallel.dist_attribute import TensorDistributedAttribute, OperatorDistributedAttribute
 
+__not_shape_var_type__ = [
+    core.VarDesc.VarType.READER, core.VarDesc.VarType.STEP_SCOPES
+]
+
+
+def get_logger(log_level, name="auto_parallel"):
+    logger = logging.getLogger(name)
+    logger.propagate = False
+    if not logger.handlers:
+        logger.setLevel(log_level)
+        log_handler = logging.StreamHandler()
+        log_format = logging.Formatter(
+            '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+        log_handler.setFormatter(log_format)
+        logger.addHandler(log_handler)
+    return logger
+
 
 def is_valid_list_index(list, index):
     if index >= -len(list) and index < len(list):
@@ -47,6 +64,60 @@ def is_dim_replicate(mapping):
         return True
     else:
         return False
+
+
+def verify_dims_mapping(dims_mapping, process_mesh):
+    if dims_mapping is None:
+        return False
+    if not all(isinstance(d, int) for d in dims_mapping):
+        return False
+    for i in range(len(dims_mapping)):
+        if dims_mapping[i] < -1 or dims_mapping[i] >= len(process_mesh.shape):
+            return False
+    for i in range(len(process_mesh.shape)):
+        if dims_mapping.count(i) > 1:
+            return False
+    return True
+
+
+def convert_to_dims_mapping(shard_spec, process_mesh):
+    dims_mapping = []
+    for shard in shard_spec:
+        if shard is None:
+            dims_mapping.append(-1)
+        elif process_mesh.topology[process_mesh.dim_names.index(shard)] == 1:
+            dims_mapping.append(-1)
+        else:
+            dims_mapping.append(process_mesh.dim_names.index(shard))
+    return dims_mapping
+
+
+def convert_to_shard_spec(dims_mapping, process_mesh):
+    shard_spec = []
+    for dim_mapping in dims_mapping:
+        if dim_mapping == -1:
+            shard_spec.append(None)
+        else:
+            shard_spec.append(process_mesh.dim_names[dim_mapping])
+    return shard_spec
+
+
+def verify_shard_spec(shard_spec, tensor_shape, process_mesh):
+    if len(shard_spec) != len(tensor_shape):
+        return False
+    for shard in shard_spec:
+        if shard is not None and not isinstance(shard, str):
+            return False
+        if shard is not None and shard not in process_mesh.dim_names:
+            return False
+    dims_mapping = convert_to_dims_mapping(shard_spec, process_mesh)
+    if not verify_dims_mapping(dims_mapping, process_mesh):
+        return False
+    for i in range(len(tensor_shape)):
+        if dims_mapping[i] != -1 and tensor_shape[i] > 0 \
+            and tensor_shape[i] % process_mesh.shape[dims_mapping[i]] != 0:
+            return False
+    return True
 
 
 def compute_compatible_dim_mapping(dim_mappings):
@@ -171,7 +242,7 @@ def print_program_with_dist_attr(program, dist_context=None):
 
 def _get_comm_group(processes, shape, axis, rank):
     """
-    Given a rank and the processes mesh the rank belongs to,  
+    Given a rank and the processes mesh the rank belongs to,
     compute the communication peers of the rank based on the give axis in the mesh.
 
     Example: 16 processes managed in a 4-Dimensinal mesh with shape of [2, 2, 2, 2].
@@ -205,7 +276,7 @@ def _get_comm_group(processes, shape, axis, rank):
 
 def _get_idx_in_axis(processes, shape, axis, rank):
     """
-    Given a rank and the processes mesh the rank belongs to,  
+    Given a rank and the processes mesh the rank belongs to,
     compute the index of the rank in given axis.
 
     Example: 27 processes managed in a 3-Dimensinal mesh with shape of [3, 3, 3].
@@ -226,20 +297,20 @@ def _coordinate2linear_idx(mesh_shape, coordinate):
     """
     convert a coordinate in multidimensional mesh space into a scala idx in linear space.
 
-    it use Row-major order for dimension conversion. 
+    it use Row-major order for dimension conversion.
     so it has:  [most_significant_dim, ..., least_significant_dim]
-    assume: 
+    assume:
 
         the size of i-th dimension to be:  S[i]
         the index of j-th dimension is: I[j]
 
-    linear_idx of a n dimensional coordinate is: 
+    linear_idx of a n dimensional coordinate is:
 
         I[n-1] * (S[n-2] * S[n-3] * S[n-4] *     ....    S[0]) +
-        I[n-2] * (         S[n-3] * S[n-4] *     ....    S[0]) +       
-        I[n-3] * (                  S[n-4] *     ....    S[0]) +  
+        I[n-2] * (         S[n-3] * S[n-4] *     ....    S[0]) +
+        I[n-3] * (                  S[n-4] *     ....    S[0]) +
         ...
-        I[1]   * (                                       S[0]) + 
+        I[1]   * (                                       S[0]) +
         I[0]
 
     """
@@ -279,7 +350,7 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
     mapping a linear scala into multidimensional mesh space, return it coordinate in that space.
 
     it is the inverse function of _coordinate2linear_idx.
-    assume: 
+    assume:
 
         the size of i-th dimension to be:  S[i]
         the index of j-th dimension is: I[j]
@@ -460,8 +531,8 @@ def save_distributed_checkpoint(program,
                                 addition_info=None,
                                 is_integrated=False,
                                 dist_context=None):
-    """ 
-    Save model parameter state, optimzer state, distributed attribute and 
+    """
+    Save model parameter state, optimzer state, distributed attribute and
     additional information of each rank.
 
     Args:
@@ -502,7 +573,7 @@ def save_distributed_checkpoint(program,
 
 
 def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
-    """ 
+    """
     Load parameter, optimizer, distributed attribute and addition_info.
 
     Args:
@@ -512,7 +583,7 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
     Returns:
         param_dict(dict): parameters' value of all ranks.
         dist_attr(dict): parameters' distributed attribute.
-        addition_info(dict): additional information user saved in last training. 
+        addition_info(dict): additional information user saved in last training.
 
     Notes:
         The return, 'addition_info', is belonging to the first file of checkpoint_path by default.
@@ -520,9 +591,9 @@ def load_distributed_checkpoint(checkpoint_path, dist_attr_path):
     Examples:
         .. code-block:: python
 
-            ckpt_path = ['./model_state_rank0.pdmodel', 
+            ckpt_path = ['./model_state_rank0.pdmodel',
                          './model_state_rank1.pdmodel']
-            dist_attr_path = ['./dist_attr_rank0.pdattr', 
+            dist_attr_path = ['./dist_attr_rank0.pdattr',
                               './dist_attr_rank1.pdattr']
             param_dict, dist_attr, add_info = load_distributed_checkpoint(ckpt_path, dist_attr_path)
     """
@@ -542,7 +613,7 @@ def load_checkpoint_into_program(checkpoint_path,
                                  dist_attr_path,
                                  program,
                                  dist_context=None):
-    """ 
+    """
     Load parameter, optimizer, distributed attribute and addition_info into model.
 
     Args:
@@ -553,7 +624,7 @@ def load_checkpoint_into_program(checkpoint_path,
 
     Returns:
         addition_info(dict): user saved in last train.
-    
+
     Notes:
         The return, 'addition_info', is belonging to the first file of checkpoint_path by default.
 
@@ -561,9 +632,9 @@ def load_checkpoint_into_program(checkpoint_path,
         .. code-block:: python
 
             exe.run(startup_program)
-            ckpt_path = ['./model_state_rank0.pdmodel', 
+            ckpt_path = ['./model_state_rank0.pdmodel',
                          './model_state_rank1.pdmodel']
-            dist_attr_path = ['./dist_attr_rank0.pdattr', 
+            dist_attr_path = ['./dist_attr_rank0.pdattr',
                               './dist_attr_rank1.pdattr']
             load_checkpoint_into_program(ckpt_path, dist_attr_path, main_program)
     """
@@ -590,7 +661,7 @@ def load_checkpoint_into_program(checkpoint_path,
 
 
 def load_parameter_into_program(param_dict, program):
-    """ 
+    """
     Load parameters into program.
 
     Args:
@@ -672,7 +743,7 @@ def _load_distributed_state_dict(checkpoint_path):
 
 
 def get_dist_attr(program, dist_context=None):
-    """ 
+    """
     Get distributed attribute of current rank.
 
     Args:
@@ -935,7 +1006,7 @@ def _get_sliced_param_index(rank, complete_shape, dims_mapping, process_shape,
             process_group = [0, 1, 2]
 
             slice_param = _slice_parameter(complete_param, [[], [], [2, 4]], 3)
-            # slice_param: 
+            # slice_param:
             # [array([[[1.11, 1.12]]]), array([[[1.13, 1.14]]]), array([[[1.15, 1.16]]])]
 
             index = _get_sliced_param_index(rank, complete_shape, dims_mapping
@@ -1040,7 +1111,7 @@ def set_grad_var_shape(program, dist_context):
 
             if op.type in [
                     "c_allreduce_sum", "c_identity", "scale", "cast",
-                    "fill_zeros_like"
+                    "fill_any_like"
             ]:
                 forward_var_name = op.input_arg_names[0]
             elif op.type == "matmul_v2_grad" or op.type == "matmul_grad" or op.type == "mul_grad":
@@ -1319,7 +1390,7 @@ def update_op_dims_mapping_by_elementwise_like_dist_impl(dist_op):
 def get_all_distributed_main_program(serial_program_info, dist_context,
                                      parallelizer):
     "Get all distributed main programs by dist_context."
-    from .dist_context import DistributedOperatorContext, DistributedContext
+    from .dist_context import DistributedOperatorContext
     cluster = serial_program_info.cluster
     copied_parallelizer = copy.deepcopy(parallelizer)
     all_dist_main_program = []
@@ -1504,3 +1575,92 @@ def ring_id_to_process_group(ring_id):
         if g.id == ring_id:
             return g
     return None
+
+
+def find_higher_order_backward_op(program):
+
+    higher_order_op_suffix = ['_grad_grad', 'triple_grad']
+    for block in program.blocks:
+        for op in block.ops:
+            for suffix in higher_order_op_suffix:
+                if suffix in op.type:
+                    return True
+
+    return False
+
+
+def get_lr(optimizer):
+    if isinstance(optimizer, paddle.optimizer.Optimizer):
+        return optimizer.get_lr()
+    elif isinstance(optimizer, paddle.fluid.optimizer.Optimizer):
+        if isinstance(optimizer._learning_rate, float):
+            return optimizer._learning_rate
+        else:
+            return optimizer._learning_rate()
+    else:
+        raise TypeError(
+                "'optimizer' must be object of class `paddle.optimizer.Optimizer`" \
+                    " or `paddle.fluid.optimizer.Optimizer`, but got {}.".format(type(optimizer))
+            )
+
+
+def initialize_pg_in_full_mode(all_process_groups, cur_rank):
+    import socket
+    from ..collective import _get_global_env
+
+    has_recv_by_socket = []
+    # This is a magic number
+    magic_num = 500
+    genv = _get_global_env()
+    cur_rank_ip, cur_rank_port = genv.current_endpoint.split(":")
+    cur_rank_recv_port = int(cur_rank_port) + magic_num
+    server_socket = None
+    # Large enough for recv rank
+    buff_size = 1024
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((cur_rank_ip, cur_rank_recv_port))
+    # The 10 is an empirical value
+    server_socket.listen(10)
+    client_sockets = {}
+    for process_group in all_process_groups:
+        if cur_rank not in process_group.ranks:
+            continue
+        if len(process_group.ranks) == 2:
+            index = process_group.ranks.index(cur_rank)
+            is_send = True if index == 0 else False
+            if is_send:
+                recv_rank = process_group.ranks[1]
+                recv_rank_ip, recv_rank_port = genv.trainer_endpoints[
+                    recv_rank].split(":")
+                connect_port = int(recv_rank_port) + magic_num
+                client_socket = socket.socket(socket.AF_INET,
+                                              socket.SOCK_STREAM)
+                client_socket.connect((recv_rank_ip, connect_port))
+                client_socket.send(str(cur_rank).encode('utf-8'))
+                rank = client_socket.recv(buff_size).decode('utf-8')
+                rank = int(rank)
+                if rank != recv_rank:
+                    raise ValueError(
+                        "Please check comm pair, the recv rank should be {} but got {}."
+                        .format(recv_rank, rank))
+                else:
+                    print("It is able to instantiate {} as sender now.".format(
+                        process_group.ranks))
+                client_socket.close()
+            else:
+                send_rank = process_group.ranks[0]
+                while True:
+                    if send_rank not in has_recv_by_socket:
+                        client_socket, recv_addr = server_socket.accept()
+                        rank = int(client_socket.recv(buff_size).decode())
+                        client_sockets[rank] = client_socket
+                        has_recv_by_socket.append(rank)
+                    else:
+                        client_sockets[send_rank].send(
+                            str(cur_rank).encode("utf-8"))
+                        client_sockets[send_rank].close()
+                        print("It is able to instantiate {} as recver now.".
+                              format(process_group.ranks))
+                        break
+        process_group.instantiate()
+    server_socket.close()

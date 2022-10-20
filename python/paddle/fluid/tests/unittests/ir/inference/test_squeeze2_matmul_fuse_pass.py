@@ -12,30 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestSqueeze2MatmulFusePass(PassAutoScanTest):
-    """
-        x_var  
-          |          
-       squeeze2 
+    r"""
+        x_var
+          |
+       squeeze2
           \
     squeeze2_out_var    y_var
              \           /
                  matmul      bias_var
                     \          /
-                   elementwise_add  
+                   elementwise_add
     """
 
     def sample_predictor_configs(self, program_config):

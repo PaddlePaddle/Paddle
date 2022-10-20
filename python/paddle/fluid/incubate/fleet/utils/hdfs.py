@@ -24,7 +24,6 @@ import copy
 import errno
 import time
 import logging
-import six
 #from . import fs
 from paddle.distributed.fleet.utils.fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut, FSShellCmdAborted
 from paddle.fluid import core
@@ -91,7 +90,7 @@ class HDFSClient(FS):
         self.pre_commands.append(dfs)
 
         if configs:
-            for k, v in six.iteritems(configs):
+            for k, v in configs.items():
                 config_command = '-D%s=%s' % (k, v)
                 self.pre_commands.append(config_command)
 
@@ -119,8 +118,8 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def ls_dir(self, fs_path):
-        """	
-        list directory under fs_path, and only give the pure name, not include the fs_path	
+        """
+        list directory under fs_path, and only give the pure name, not include the fs_path
         """
         if not self.is_exist(fs_path):
             return [], []

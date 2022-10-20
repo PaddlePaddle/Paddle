@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import yaml
 import argparse
 
@@ -45,9 +44,10 @@ PD_REGISTER_INFER_META_FN({api.kernel['func'][0]}, phi::{api.infer_meta['func']}
 
             tensor_type_map = {
                 'const Tensor&': 'const MetaTensor&',
-                'const std::vector<Tensor>&': 'const std::vector<MetaTensor>&',
+                'const std::vector<Tensor>&':
+                'const std::vector<const MetaTensor*>&',
                 'Tensor': 'MetaTensor*',
-                'std::vector<Tensor>': 'std::vector<MetaTensor>*',
+                'std::vector<Tensor>': 'std::vector<MetaTensor*>',
                 'const paddle::optional<Tensor>&': 'const MetaTensor&'
             }
 

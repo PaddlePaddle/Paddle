@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.framework import dygraph_only
 from .base.topology import ParallelMode
 from paddle.distributed import fleet
 from types import MethodType
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
 import numpy as np
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 
 def distributed_scaler(scaler):

@@ -1,4 +1,14 @@
-- api : trace
+- op : flip
+  version :
+    - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
+      action :
+        - add_attr : axis
+          comment : The added attr 'axis' doesn't set default value
+          default : paddle::none
+        - delete_attr : dims
+          comment : The attr 'dims' is deleted.
+
+- op : trace
   version :
     - checkpoint : Upgrade trace add a new attribute [axis2]
       action :

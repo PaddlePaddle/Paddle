@@ -13,18 +13,11 @@
 # limitations under the License.
 
 import os
-import random
 import sys
-import pickle
 import shlex
-import shutil
-import inspect
 import unittest
-import numpy as np
-from collections import OrderedDict
-from paddle.distributed.ps.utils.public import logger
-from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import prepare_python_path_and_return_module, remove_path_if_exists
-import paddle.distributed.fleet as fleet
+from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import (  # noqa: F401
+    prepare_python_path_and_return_module, remove_path_if_exists)
 
 
 class PsPassTestBase(unittest.TestCase):
