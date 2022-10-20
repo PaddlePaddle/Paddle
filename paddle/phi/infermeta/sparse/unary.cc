@@ -24,7 +24,7 @@ void IndicesInferMeta(const MetaTensor& x, MetaTensor* out) {
   // correct shape is: shape[0] = x.sparse_dim()
   // In the 3D point cloud model:
   // the input x is 5-D tensor, non_zero_elements is 1-D tensor
-  out->set_dims({x_dims.size() - 1, -1});
+  out->set_dims({x.dims().size() - 1, -1});
   out->set_dtype(DataType::INT32);
   out->set_layout(DataLayout::NCHW);
 }
