@@ -337,8 +337,10 @@ void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
       graph, "has_quant_info", "var_quant_scales", var_quant_scales_);
 }
 
-void CPUQuantizePass::QuantizeConv(Graph* graph,
-                                   bool with_residual_data) const {
+void CPUQuantizePass::QuantizeConv(
+    Graph* graph,
+    bool with_residual_data,
+    std::vector<std::string>* changed_weight) const {
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::ConvResidual conv_pattern{pattern, name_scope_};
@@ -411,7 +413,16 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     auto filter_scale_tensor = GetScaleTensorForNode(conv_filter);
     EigenVectorArrayMap eigen_tensor{filter_scale_tensor.data<double>(),
                                      filter_scale_tensor.numel()};
-    eigen_tensor *= static_cast<double>(S8_MAX);
+
+    // If the scale value of a weight is already multiplied by S8_MAX, it does
+    // not need to be multiplied again
+    if (std::find(changed_weight->begin(),
+                  changed_weight->end(),
+                  conv_filter->Name()) == changed_weight->end()) {
+      eigen_tensor *= static_cast<double>(S8_MAX);
+      changed_weight->push_back(conv_filter->Name());
+    }
+
     std::vector<float> filter_scale{
         filter_scale_tensor.data<double>(),
         filter_scale_tensor.data<double>() + filter_scale_tensor.numel()};
@@ -694,6 +705,13 @@ void CPUQuantizePass::QuantizeImmutable(Graph* graph,
     if (!IsOpDequantized(prev_op) && !IsOpQuantized(immutable_out)) {
       MarkAndLogCannotQuantizeOp(immutable_op,
                                  "No other quantizable operators nearby");
+      return;
+    }
+
+    // skip if the dtype of immutable_in is not float32
+    auto dtype = immutable_in->Var()->GetDataType();
+    if (dtype != proto::VarType::FP32) {
+      MarkAndLogCannotQuantizeOp(immutable_op, "The input dtype is not float.");
       return;
     }
 
@@ -1156,9 +1174,12 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
       param_scope(),
       platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
+  // Save the scale values of which weights have been processed to avoid
+  // secondary processing
+  std::vector<std::string> changed_weight = {};
   GetQuantInfo(graph);
-  QuantizeConv(graph, false /* with_residual_data */);
-  QuantizeConv(graph, true /* with_residual_data */);
+  QuantizeConv(graph, false /* with_residual_data */, &changed_weight);
+  QuantizeConv(graph, true /* with_residual_data */, &changed_weight);
   QuantizePool(graph);
   QuantizeConcat(graph);
   QuantizePriorBox(graph);
@@ -1168,7 +1189,6 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeImmutable(graph, "reshape2", "X");
   QuantizeImmutable(graph, "transpose2", "X");
   QuantizeImmutable(graph, "slice", "Input");
-  QuantizeImmutable(graph, "shape", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeElementwise(graph, "elementwise_add");
