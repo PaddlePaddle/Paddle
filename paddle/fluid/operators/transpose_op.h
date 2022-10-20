@@ -73,6 +73,8 @@ enum PermuteType {
 constexpr int kBlockRows = 16;
 constexpr int kTileSize = 32;
 
+#define GETTILESIZE(LEN, ALIGN) ((LEN + (ALIGN - 1)) & ~(ALIGN - 1)) / ALIGN
+
 // Simplify the input dims and permute dims if possible.
 template <typename T>
 class DimsSimplifier {
@@ -182,38 +184,40 @@ class DimsSimplifier {
   }
 
   int GetPermVecSize(const int sm_count, const T* src, T* dst) {
-    // For gerneal_permute kernel, there is good chance for
-    // vectorized write.
+    // For gerneal_permute kernel, there is chance for vectorized write.
     type_ = PermuteType::kNormalPermute;
     int vec_size = phi::GetVectorizedSize<T>(dst);
 
-    // While the last dim is fixed, there is good chance for
-    // both vectorized read and write.
+    // While the last dim is fixed, there is chance for vectorized IO.
     if (perm_[rank_ - 1] == rank_ - 1) {
       int tmp_size = std::min(vec_size, phi::GetVectorizedSize<T>(src));
-      tmp_size = GetDimVesSize(tmp_size, src_dims[rank_ - 1]);
+      tmp_size = GetDimVecSize(tmp_size, src_dims[rank_ - 1]);
       if (tmp_size > 1) {
         type_ = kVecPermute;
         vec_size = tmp_size;
       }
     }
 
-    // Once only transpose at the last 2 dims, there is good
-    // chance for vectorized read.
+    // Once only transpose at the last 2 dims.
     if ((rank_ == 2 && perm_[1] == 0 && perm_[0] == 1) ||
         (rank_ == 3 && perm_[2] == 1 && perm_[1] == 2)) {
       type_ = PermuteType::kTranspose;
-      // With bytes limitation of shared_memory, the VecSize shall be
-      // restricted for the type whose byte-size is less than 8 (double).
+      // With bytes limitation of shared_memory, the VecSize
+      // shall be restricted to sizeof(float).
       int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
-      vec_size =
-          sizeof(T) > 4 ? 1 : GetDimVesSize(tmp_vec, src_dims[rank_ - 1]);
+      vec_size = sizeof(T) > sizeof(float)
+                     ? 1
+                     : GetDimVecSize(tmp_vec, src_dims[rank_ - 1]);
+      const int tile_size = (rank_ == 2 ? 1 : src_dims[0]) *
+                            GETTILESIZE(src_dims[rank_ - 1], kTileSize) *
+                            GETTILESIZE(src_dims[rank_ - 2], kTileSize);
+      vec_size = tile_size < sm_count ? 1 : vec_size;
     }
     return vec_size;
   }
 
   // To find if highest common divisor and make it as vec_size.
-  int GetDimVesSize(const int vec_size, const size_t target_dim) {
+  int GetDimVecSize(const int vec_size, const size_t target_dim) {
     int dim_vec_size = 1;
     for (auto size = vec_size; size > 0; size /= 2) {
       if (target_dim % size == 0) {

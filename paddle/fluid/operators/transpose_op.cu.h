@@ -720,15 +720,6 @@ class IdxAndOffsetHelper {
     index_helper = IdxHelper<N, T>(dims);
   }
 
-  template <typename U>
-  explicit IdxAndOffsetHelper(const U* dims) {
-    T temp_dims[N];
-    for (int i = 0; i < N; ++i) {
-      temp_dims[i] = static_cast<T>(dims[i]);
-    }
-    index_helper = IdxHelper<N, T>(temp_dims);
-  }
-
   __device__ inline T IndexToOffset(const T* index) const {
     T offset = 0;
 #pragma unroll
@@ -756,13 +747,15 @@ struct PermuteParams {
 
   explicit PermuteParams(const std::vector<int>& dims,
                          const std::vector<int>& perm_) {
-    size_t dst_dims[Rank];
-    for (size_t i = 0; i < Rank; ++i) {
+    IndexT dst_dims[Rank];
+    IndexT src_dims[Rank];
+    for (auto i = 0; i < Rank; ++i) {
+      src_dims[i] = dims[i];
       dst_dims[i] = dims[perm_[i]];
       perm[i] = perm_[i];
     }
     dst_index_helper = IdxAndOffsetHelper<IndexT, Rank>(dst_dims);
-    src_index_helper = IdxAndOffsetHelper<IndexT, Rank>(dims.data());
+    src_index_helper = IdxAndOffsetHelper<IndexT, Rank>(src_dims);
   }
 };
 
@@ -915,10 +908,9 @@ template <typename T,
           typename IndexT,
           int ReadSize,
           bool IsVecWrite,
-          int WritSize = IsVecWrite ? (sizeof(T) < sizeof(float)
-                                           ? sizeof(float) / sizeof(T)
-                                           : 1)
-                                    : 1>
+          int WritSize = (IsVecWrite && (sizeof(T) < sizeof(float)))
+                             ? sizeof(float) / sizeof(T)
+                             : 1>
 __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
                                      T* dst_data,
                                      IndexT rows,
@@ -1000,22 +992,20 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
   const int rank = dims.size();
   IndexT num_batch = (rank == 2) ? 1 : dims[0];
   IndexT rows = dims[rank - 2];
+  IndexT cols = dims[rank - 1] / VecSize;
+  IndexT num_tile_cols = GETTILESIZE(cols, kTileSize);
 
   int write_size = 1;
   bool is_write_size = sizeof(T) < sizeof(float)
                            ? (rows % (sizeof(float) / sizeof(T)) ? false : true)
                            : false;
   if (is_write_size) {
-    is_write_size = (num_batch * ((rows + kTileSize - 1) & ~(kTileSize - 1)) /
-                     kTileSize) >= ctx.GetSMCount();
+    is_write_size = (num_batch * num_tile_cols * GETTILESIZE(rows, kTileSize)) >
+                    ctx.GetSMCount();
     write_size = is_write_size ? sizeof(float) / sizeof(T) : 1;
   }
 
-  IndexT cols = dims[rank - 1] / VecSize;
-  IndexT num_tile_cols = (cols + kTileSize - 1) / kTileSize;
-  IndexT num_tile_rows =
-      (rows + kTileSize * write_size - 1) / (kTileSize * write_size);
-
+  IndexT num_tile_rows = GETTILESIZE(rows, (kTileSize * write_size));
   dim3 blocks(num_tile_cols, num_tile_rows, num_batch);
   dim3 threads(kTileSize, kBlockRows, 1);
 
@@ -1174,14 +1164,15 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                                       phi::vectorize<int>(in.dims()),
                                       in.data<T>(),
                                       out->data<T>());
-  auto* tuner = phi::autotune::MakeTransposeTuner<T>(TransposeWithSimple<T>);
+  auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteAndTranspose<T>);
   tuner->AddCallBack(PermuteWithEigen<T>);
-  tuner->AddCallBack(PermuteAndTranspose<T>);
+  tuner->AddCallBack(TransposeWithSimple<T>);
 
   size_t key = phi::autotune::TransposeKey(
-      phi::vectorize(in.dims()),
-      perm,
+      simplifier.GetSrcDims(),
+      simplifier.GetPerm(),
       paddle::experimental::CppTypeToDataType<T>::Type());
+
   tuner->Run(ctx,
              phi::autotune::AlgorithmType::kTranspose,
              key,

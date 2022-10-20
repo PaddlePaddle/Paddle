@@ -21,7 +21,7 @@
 namespace phi {
 namespace autotune {
 
-size_t TransposeKey(const std::vector<int64_t>& x_dims,
+size_t TransposeKey(const std::vector<int32_t>& x_dims,
                     const std::vector<int32_t>& perm,
                     phi::DataType dtype) {
   const auto rank = perm.size();
