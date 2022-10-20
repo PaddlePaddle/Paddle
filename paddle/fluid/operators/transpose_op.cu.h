@@ -1154,7 +1154,7 @@ inline void PermuteAndTranspose(const int rank,
     phi::backends::gpu::GpuMemcpyAsync(out->data<T>(),
                                        in.data<T>(),
                                        numel * sizeof(T),
-                                       cudaMemcpyDeviceToDevice,
+                                       phi::gpuMemcpyDeviceToDevice,
                                        ctx.stream());
   } else {
     if (numel < std::numeric_limits<int>::max()) {
