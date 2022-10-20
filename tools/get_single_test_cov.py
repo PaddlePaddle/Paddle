@@ -107,9 +107,9 @@ def getCovinfo(rootPath, test):
         txt for txt in os.listdir(ut_map_path) if txt.endswith('.gcno')
     ]
     if len(list_gcda) != 0 and len(list_gcno) != 0:
-        print("move gcda and gcno files to %s succesfully") % ut_map_path
+        print("move gcda and gcno files to %s succesfully" % ut_map_path)
     else:
-        print("move gcda and gcno files to %s failed") % ut_map_path
+        print("move gcda and gcno files to %s failed" % ut_map_path)
         return
 
     os.system(
