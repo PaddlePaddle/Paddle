@@ -21,7 +21,6 @@
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/imperative/var_helper.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -98,8 +97,8 @@ static std::string DebugString(
     const framework::Variable& var = vars[i]->Var();
     if (!var.IsInitialized()) {
       ss << "NOT_INITED_VAR";
-    } else if (var.IsType<framework::LoDTensor>()) {
-      auto& tensor = var.Get<framework::LoDTensor>();
+    } else if (var.IsType<phi::DenseTensor>()) {
+      auto& tensor = var.Get<phi::DenseTensor>();
       ss << "LoDTensor<";
       if (tensor.IsInitialized()) {
         ss << framework::DataTypeToString(
@@ -237,8 +236,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
     } else {
       platform::RecordEvent record_event(
           "ClearGradient", platform::TracerEventType::UserDefined, 2);
-      auto* grad_t =
-          grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
       if (grad_t->IsInitialized()) {
         if (set_to_zero) {
           auto* dev_ctx =
@@ -284,21 +282,20 @@ bool VarBase::_IsGradientSetEmpty() {
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
   PADDLE_ENFORCE_EQ(
-      Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
+      Var().IsInitialized() && (Var().IsType<phi::DenseTensor>() ||
                                 Var().IsType<phi::SelectedRows>()),
       true,
       platform::errors::InvalidArgument(
           "Variable is not initialized or Variable's type is not "
           "LoDTensor or SelectedRows when getting numpy tensor"));
 
-  if (Var().IsType<framework::LoDTensor>()) {
-    auto& src_tensor = Var().Get<framework::LoDTensor>();
+  if (Var().IsType<phi::DenseTensor>()) {
+    auto& src_tensor = Var().Get<phi::DenseTensor>();
     // TODO(Jiabin): change this after move unique_name generator to CXX
     auto new_var = std::make_shared<VarBase>(
         true, Name() + std::to_string(copied_counter_++));
 
-    auto* dst_tensor =
-        new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* dst_tensor = new_var->MutableVar()->GetMutable<phi::DenseTensor>();
     dst_tensor->set_lod(src_tensor.lod());
     new_var->SetPersistable(Persistable());
     new_var->SetDataType(DataType());
@@ -369,9 +366,9 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
   }
 
   platform::Place place = src.Place();
-  if (src.Var().IsType<framework::LoDTensor>()) {
-    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
-    auto* dst_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
+  if (src.Var().IsType<phi::DenseTensor>()) {
+    auto& src_tensor = src.Var().Get<phi::DenseTensor>();
+    auto* dst_tensor = MutableVar()->GetMutable<phi::DenseTensor>();
     if (dst_tensor && dst_tensor->IsInitialized()) {
       PADDLE_ENFORCE_EQ(dst_tensor->dims(),
                         src_tensor.dims(),
@@ -451,13 +448,13 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
   }
   VLOG(4) << " VarBase copy gradient with " << src.Name();
   if (grad_var_) {
-    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+    auto& src_tensor = src.Var().Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
                       true,
                       platform::errors::InvalidArgument(
                           "Tensor %s has not been initialized", src.Name()));
-    auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
-    auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
+    auto* var_ = MutableVar()->GetMutable<phi::DenseTensor>();
     grad_t->ShareDataWith(src_tensor);
     grad_t->Resize(var_->dims());
   }
@@ -524,243 +521,10 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
       PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
   auto tmp_ins_ptr =
       PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
-
-  struct timeval ts, te;
-  gettimeofday(&ts, NULL);
-
   if (tmp_ins_ptr == nullptr) {
     prepared_op.Run(ins, outs, attrs, default_attrs);
   } else {
     prepared_op.Run(*tmp_ins_ptr, outs, attrs, default_attrs);
-  }
-
-  if (std::getenv("XPU_PADDLE_STAT") != nullptr) {
-    if (platform::is_xpu_place(place)) {
-      xpu_wait();
-    }
-    gettimeofday(&te, NULL);
-    std::cout << "op_name: " << op.Type()
-              << " place: " << prepared_op.kernel_type().place_
-              << " datatype: " << prepared_op.kernel_type().data_type_
-              << " duration: "
-              << 1000000 * (te.tv_sec - ts.tv_sec) + (te.tv_usec - ts.tv_usec)
-              << std::endl;
-  }
-
-  if (std::getenv("XPU_PADDLE_CHECKSUM")) {
-    int64_t op_step_id = 0;
-    op_step_id++;
-
-    if (platform::is_xpu_place(place)) {
-      int r = xpu_wait();
-      PADDLE_ENFORCE_EQ(
-          r,
-          0,
-          platform::errors::InvalidArgument("not initialized.[", op.Type()));
-    }
-
-    auto& op_place = prepared_op.kernel_type().place_;
-    // auto dtype = prepared_op.kernel_type().data_type_;
-    std::cout << "op_name: " << op.Type() << " at " << op_step_id
-              << " place: " << op_place
-              << " dtype: " << prepared_op.kernel_type().data_type_
-              << " ins: " << std::endl;
-
-    for (auto& pair : ins) {
-      for (size_t i = 0; i < pair.second.size(); i++) {
-        if (pair.second[i] == nullptr) continue;
-        std::cout << GetNameFromVar(pair.second[i]) << " ";
-        const framework::Variable& var = pair.second[i]->Var();
-        if (!var.IsInitialized()) {
-          std::cout << "NOT_INITED_VAR ";
-        } else if (var.IsType<framework::LoDTensor>()) {
-          auto& tensor = var.Get<framework::LoDTensor>();
-          if (tensor.IsInitialized()) {
-            if (platform::is_xpu_place(op_place) &&
-                tensor.dtype() ==
-                    paddle::experimental::CppTypeToDataType<float>::Type()) {
-#ifdef PADDLE_WITH_XPU
-              // auto &dev_ctx = prepared_op.ctx_.template
-              // device_context<platform::DeviceContext>();
-              //                        auto &dev_ctx = prepared_op.dev_ctx_;
-              //                        platform::DeviceContextPool& pool =
-              //                        platform::DeviceContextPool::Instance();
-              //                        auto* dev_ctx = pool.Get(place);
-
-              auto tdims = tensor.dims();
-              std::cout << "var_name: " << pair.first
-                        << " dims size = " << tdims.size() << " = [";
-              std::vector<int> dims_vec = phi::vectorize<int>(tdims);
-              for (int i : dims_vec) {
-                std::cout << i << " ";
-              }
-              std::cout << "] " << std::endl;
-
-              float* t_data = new float[tensor.numel()];
-              xpu_wait();
-              xpu_memcpy(t_data,
-                         tensor.data<float>(),
-                         sizeof(float) * tensor.numel(),
-                         XPU_DEVICE_TO_HOST);
-              float sum = 0.0f;
-              for (int i = 0; i < tensor.numel(); i++) {
-                sum += t_data[i];
-              }
-
-              //                        phi::DDim sum_dims = phi::make_ddim({1,
-              //                        1, 1});
-              //
-              //                        std::vector<int> r_dims;
-              //                        for (int i = 0; i < tdims.size(); i++) {
-              //                          r_dims.push_back(i);
-              //                        }
-              //                        framework::Tensor sum;
-              //                        float* sum_data =
-              //                        sum.mutable_data<float>(sum_dims,
-              //                        tensor.place()); int r =
-              //                        xpu::reduce_sum(static_cast<const
-              //                        phi::XPUContext
-              //                        *>(dev_ctx)->x_context(),
-              //                                                tensor.data<float>(),
-              //                                               sum_data,
-              //                                               dims_vec,
-              //                                               r_dims);
-              //
-              //                        PADDLE_ENFORCE_XDNN_SUCCESS(r,
-              //                        "reduce_sum");
-              std::cout << "checksum = " << sum << std::endl;
-              delete[] t_data;
-#endif
-            } else if (platform::is_cpu_place(op_place) &&
-                       tensor.dtype() ==
-                           paddle::experimental::CppTypeToDataType<
-                               float>::Type()) {
-              float* val = const_cast<float*>(tensor.data<float>());
-              int size = tensor.numel();
-              float res = 0.0f;
-              for (int i = 0; i < size; i++) {
-                res += val[i];
-              }
-              auto tdims = tensor.dims();
-              std::cout << "var_name: " << pair.first
-                        << " dims size = " << tdims.size() << " = [";
-              std::vector<int> dims_vec = phi::vectorize<int>(tdims);
-              for (int i : dims_vec) {
-                std::cout << i << " ";
-              }
-              std::cout << "] " << std::endl;
-              std::cout << "checksum = " << res << std::endl;
-            }
-
-            // std::cout << tensor.checksum() << " ";
-          } else {
-            std::cout << "NOT_INITED ";
-          }
-        } else {
-          std::cout << "NonTensor ";
-        }
-      }
-    }
-
-    std::cout << " outs:" << std::endl;
-
-    for (auto& pair : outs) {
-      for (size_t i = 0; i < pair.second.size(); i++) {
-        if (pair.second[i] == nullptr) continue;
-        std::cout << GetNameFromVar(pair.second[i]) << " ";
-        const framework::Variable& var = pair.second[i]->Var();
-        if (!var.IsInitialized()) {
-          std::cout << "NOT_INITED_VAR ";
-        } else if (var.IsType<framework::LoDTensor>()) {
-          auto& tensor = var.Get<framework::LoDTensor>();
-          if (tensor.IsInitialized()) {
-            if (platform::is_xpu_place(op_place) &&
-                tensor.dtype() ==
-                    paddle::experimental::CppTypeToDataType<float>::Type()) {
-#ifdef PADDLE_WITH_XPU
-              // auto &dev_ctx = prepared_op.ctx_.template
-              // device_context<platform::DeviceContext>();
-              //                        auto &dev_ctx = prepared_op.dev_ctx_;
-              //                        platform::DeviceContextPool& pool =
-              //                        platform::DeviceContextPool::Instance();
-              // auto* dev_ctx = pool.Get(place);
-
-              auto tdims = tensor.dims();
-              std::cout << "var_name: " << pair.first
-                        << " dims size = " << tdims.size() << " = [";
-              std::vector<int> dims_vec = phi::vectorize<int>(tdims);
-              for (int i : dims_vec) {
-                std::cout << i << " ";
-              }
-              std::cout << "] " << std::endl;
-              float* t_data = new float[tensor.numel()];
-              xpu_wait();
-              xpu_memcpy(t_data,
-                         tensor.data<float>(),
-                         sizeof(float) * tensor.numel(),
-                         XPU_DEVICE_TO_HOST);
-              float sum = 0.0f;
-              for (int i = 0; i < tensor.numel(); i++) {
-                sum += t_data[i];
-              }
-
-              //                        phi::DDim sum_dims = phi::make_ddim({1,
-              //                        1, 1});
-              //
-              //                        std::vector<int> r_dims;
-              //                        for (int i = 0; i < tdims.size(); i++) {
-              //                          r_dims.push_back(i);
-              //                        }
-              //                        framework::Tensor sum;
-              //                        float* sum_data =
-              //                        sum.mutable_data<float>(sum_dims,
-              //                        tensor.place()); int r =
-              //                        xpu::reduce_sum(static_cast<const
-              //                        phi::XPUContext
-              //                        *>(dev_ctx)->x_context(),
-              //                                                tensor.data<float>(),
-              //                                               sum_data,
-              //                                               dims_vec,
-              //                                               r_dims);
-              //
-              //                        PADDLE_ENFORCE_XDNN_SUCCESS(r,
-              //                        "reduce_sum");
-              std::cout << "checksum = " << sum << std::endl;
-
-              delete[] t_data;
-
-#endif
-            } else if (platform::is_cpu_place(op_place) &&
-                       tensor.dtype() ==
-                           paddle::experimental::CppTypeToDataType<
-                               float>::Type()) {
-              float* val = const_cast<float*>(tensor.data<float>());
-              int size = tensor.numel();
-              float res = 0.0f;
-              for (int i = 0; i < size; i++) {
-                res += val[i];
-              }
-              auto tdims = tensor.dims();
-              std::cout << "var_name: " << pair.first
-                        << " dims size = " << tdims.size() << " = [";
-              std::vector<int> dims_vec = phi::vectorize<int>(tdims);
-              for (int i : dims_vec) {
-                std::cout << i << " ";
-              }
-              std::cout << "] " << std::endl;
-              std::cout << "checksum = " << res << std::endl;
-            }
-
-            // std::cout << tensor.checksum() << " ";
-          } else {
-            std::cout << "NOT_INITED ";
-          }
-        } else {
-          std::cout << "NonTensor ";
-        }
-      }
-    }
-    std::cout << "\n\n" << std::endl;
   }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
@@ -819,14 +583,13 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       if (!each_var) continue;
 
       auto& var = each_var->Var();
-      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(),
+      PADDLE_ENFORCE_EQ(var.IsType<phi::DenseTensor>(),
                         true,
                         platform::errors::PermissionDenied(
                             "NoNeedBufferVars only support LoDTensor"));
       auto new_var = new VariableWrapper(each_var->Name());
-      auto* new_tensor =
-          new_var->MutableVar()->GetMutable<framework::LoDTensor>();
-      auto& old_tensor = var.Get<framework::LoDTensor>();
+      auto* new_tensor = new_var->MutableVar()->GetMutable<phi::DenseTensor>();
+      auto& old_tensor = var.Get<phi::DenseTensor>();
       new_tensor->Resize(old_tensor.dims());
       new_tensor->set_lod(old_tensor.lod());
       new_tensor->set_type(old_tensor.dtype());
