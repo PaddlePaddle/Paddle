@@ -3535,8 +3535,20 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
           });
   auto reshape1_out = pattern->NewNode(reshape1_out_repr())
                           ->AsIntermediate()
-                          ->assert_is_op_input("reshape2", "X")
                           ->assert_is_op_output("reshape2", "Out");
+  PDNode *roll1_op = nullptr;
+  PDNode *roll1_out = nullptr;
+
+  if (!with_roll_) {
+    reshape1_out->assert_is_op_input("reshape2", "X");
+  } else {
+    reshape1_out->assert_is_op_input("roll", "X");
+    roll1_op = pattern->NewNode(roll1_op_repr())->assert_is_op("roll");
+    roll1_out = pattern->NewNode(roll1_out_repr())
+                    ->AsIntermediate()
+                    ->assert_is_op_output("roll", "Out")
+                    ->assert_is_op_input("reshape2", "X");
+  }
   auto reshape2_op =
       pattern->NewNode(reshape2_op_repr())
           ->assert_is_op("reshape2")
@@ -3546,6 +3558,7 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
                                      node->Op()->GetAttr("shape"))
                         .size() == 6);
           });
+
   auto reshape2_out = pattern->NewNode(reshape2_out_repr())
                           ->AsIntermediate()
                           ->assert_is_op_input("transpose2", "X")
@@ -3594,7 +3607,12 @@ PDNode *patterns::LayernormShiftPartitionPattern::operator()() {
   layer_norm_op->LinksFrom({layer_norm_in, layer_norm_bias, layer_norm_scale})
       .LinksTo({layer_norm_out});
   reshape1_op->LinksFrom({layer_norm_out}).LinksTo({reshape1_out});
-  reshape2_op->LinksFrom({reshape1_out}).LinksTo({reshape2_out});
+  if (!with_roll_) {
+    reshape2_op->LinksFrom({reshape1_out}).LinksTo({reshape2_out});
+  } else {
+    roll1_op->LinksFrom({reshape1_out}).LinksTo({roll1_out});
+    reshape2_op->LinksFrom({roll1_out}).LinksTo({reshape2_out});
+  }
   transpose_op->LinksFrom({reshape2_out}).LinksTo({transpose_out});
   reshape3_op->LinksFrom({transpose_out}).LinksTo({reshape3_out});
   reshape4_op->LinksFrom({reshape3_out}).LinksTo({reshape4_out});
