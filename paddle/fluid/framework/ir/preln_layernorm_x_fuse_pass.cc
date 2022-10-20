@@ -33,16 +33,10 @@ namespace ir {
 namespace patterns {
 
 struct PrelnLayerNormX : public PatternBase {
-  PrelnLayerNormX(PDPattern *pattern,
-                  const std::string &name_scope,
-                  bool with_bias)
-      : PatternBase(pattern, name_scope, "preln_layernorm_x") {
-    with_bias_ = with_bias;
-  }
+  PrelnLayerNormX(PDPattern *pattern, const std::string &name_scope)
+      : PatternBase(pattern, name_scope, "preln_layernorm_x") {}
 
   void operator()(PDNode *x, PDNode *y);
-
-  bool with_bias_;
   // declare operator node's name
   PATTERN_DECL_NODE(elementwise_bias);
   PATTERN_DECL_NODE(elementwise0);
@@ -95,8 +89,7 @@ void PrelnLayerNormX::operator()(PDNode *x, PDNode *y) {
 
 }  // namespace patterns
 
-int PrelnLayerNormXFusePass::ApplyPattern(ir::Graph *graph,
-                                          bool with_bias) const {
+int PrelnLayerNormXFusePass::ApplyPattern(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_layernorm_x_fuse", graph);
@@ -118,8 +111,8 @@ int PrelnLayerNormXFusePass::ApplyPattern(ir::Graph *graph,
           ->AsInput()
           ->assert_var_not_persistable()
           ->assert_is_op_input("elementwise_add", "Y");
-  patterns::PrelnLayerNormX fused_pattern(
-      gpd.mutable_pattern(), "preln_layernorm_x_fuse", with_bias);
+  patterns::PrelnLayerNormX fused_pattern(gpd.mutable_pattern(),
+                                          "preln_layernorm_x_fuse");
   fused_pattern(x, y);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
@@ -183,8 +176,7 @@ void PrelnLayerNormXFusePass::ApplyImpl(ir::Graph *graph) const {
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_layernorm_x_fuse", graph);
 
-  int found_subgraph_count = 0;
-  found_subgraph_count += ApplyPattern(graph, false);
+  int found_subgraph_count = ApplyPattern(graph);
   AddStatis(found_subgraph_count);
 }
 

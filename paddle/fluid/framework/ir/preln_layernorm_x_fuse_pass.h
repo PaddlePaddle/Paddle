@@ -23,7 +23,7 @@ namespace ir {
 //     |           |                            |            |
 // other_op1     other_op2                  other_op1    other_op2
 //     |           |              fuse           \          /
-//     |------elementwise_add      ->          layernorm_shift_partition
+//     |------elementwise_add      ->    preln_layernorm_shift_partition
 //             |          |                        |      |
 //        other_op4  layernorm_shift_partition  other_op4  other_op3
 //                        |
@@ -52,7 +52,7 @@ class PrelnLayerNormXFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
-  int ApplyPattern(ir::Graph* graph, bool with_bias) const;
+  int ApplyPattern(ir::Graph* graph) const;
 };
 
 }  // namespace ir

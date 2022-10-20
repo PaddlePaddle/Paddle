@@ -59,19 +59,19 @@ __inline__ __device__ T blockReduceSum(T val) {
 }
 
 template <typename T>
-__global__ void layernorm_shift_partition(T *out0,
-                                          T *out1,
-                                          const T *input0,
-                                          const T *input1,
-                                          const T *gamma,
-                                          const T *beta,
-                                          int batch,
-                                          int H,
-                                          int W,
-                                          int n,
-                                          int shift_size,
-                                          int window_size,
-                                          const float eps) {
+__global__ void preln_layernorm_shift_partition(T *out0,
+                                                T *out1,
+                                                const T *input0,
+                                                const T *input1,
+                                                const T *gamma,
+                                                const T *beta,
+                                                int batch,
+                                                int H,
+                                                int W,
+                                                int n,
+                                                int shift_size,
+                                                int window_size,
+                                                const float eps) {
   int tid = threadIdx.x;
   const int batch_offset = blockIdx.z * gridDim.y * gridDim.x;
   const int bid = batch_offset + blockIdx.y * gridDim.x + blockIdx.x;
@@ -108,9 +108,6 @@ __global__ void layernorm_shift_partition(T *out0,
     local_out += static_cast<float>(input1[index]);
 #endif
     out0[index] = local_out;
-    if (index == 0 || index == 1 || index == 2 || index == 3) {
-      printf("%d %f \n", index, local_out);
-    }
   }
 
   mean = blockReduceSum<float>(local_out);
@@ -142,19 +139,19 @@ __global__ void layernorm_shift_partition(T *out0,
 }
 
 template <>
-__global__ void layernorm_shift_partition(half2 *out0_ptr,
-                                          half2 *out1_ptr,
-                                          const half2 *input0_ptr,
-                                          const half2 *input1_ptr,
-                                          const half2 *gamma_ptr,
-                                          const half2 *beta_ptr,
-                                          int batch,
-                                          int H,
-                                          int W,
-                                          int n,
-                                          int shift_size,
-                                          int window_size,
-                                          const float eps) {
+__global__ void preln_layernorm_shift_partition(half2 *out0_ptr,
+                                                half2 *out1_ptr,
+                                                const half2 *input0_ptr,
+                                                const half2 *input1_ptr,
+                                                const half2 *gamma_ptr,
+                                                const half2 *beta_ptr,
+                                                int batch,
+                                                int H,
+                                                int W,
+                                                int n,
+                                                int shift_size,
+                                                int window_size,
+                                                const float eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int batch_offset = blockIdx.z * gridDim.y * gridDim.x;
   const int bid = batch_offset + blockIdx.y * gridDim.x + blockIdx.x;
@@ -220,19 +217,19 @@ __global__ void layernorm_shift_partition(half2 *out0_ptr,
 
 #define kITE 4
 template <typename T>
-__global__ void layernorm_shift_partition_v2(T *out0,
-                                             T *out1,
-                                             const T *__restrict input0,
-                                             const T *__restrict input1,
-                                             const T *__restrict gamma,
-                                             const T *__restrict beta,
-                                             int batch,
-                                             int H,
-                                             int W,
-                                             int n,
-                                             int shift_size,
-                                             int window_size,
-                                             const float eps) {
+__global__ void preln_layernorm_shift_partition_v2(T *out0,
+                                                   T *out1,
+                                                   const T *__restrict input0,
+                                                   const T *__restrict input1,
+                                                   const T *__restrict gamma,
+                                                   const T *__restrict beta,
+                                                   int batch,
+                                                   int H,
+                                                   int W,
+                                                   int n,
+                                                   int shift_size,
+                                                   int window_size,
+                                                   const float eps) {
   // constexpr int kITE = 4;
   const int tid = threadIdx.x;
   const int batch_offset = blockIdx.z * gridDim.y * gridDim.x;
@@ -324,19 +321,20 @@ __global__ void layernorm_shift_partition_v2(T *out0,
 }
 
 template <>
-__global__ void layernorm_shift_partition_v2(half2 *out0_ptr,
-                                             half2 *out1_ptr,
-                                             const half2 *__restrict input0_ptr,
-                                             const half2 *__restrict input1_ptr,
-                                             const half2 *__restrict gamma_ptr,
-                                             const half2 *__restrict beta_ptr,
-                                             int batch,
-                                             int H,
-                                             int W,
-                                             int n,
-                                             int shift_size,
-                                             int window_size,
-                                             const float eps) {
+__global__ void preln_layernorm_shift_partition_v2(
+    half2 *out0_ptr,
+    half2 *out1_ptr,
+    const half2 *__restrict input0_ptr,
+    const half2 *__restrict input1_ptr,
+    const half2 *__restrict gamma_ptr,
+    const half2 *__restrict beta_ptr,
+    int batch,
+    int H,
+    int W,
+    int n,
+    int shift_size,
+    int window_size,
+    const float eps) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   // constexpr int ite = 4;
   const int tid = threadIdx.x;
@@ -418,76 +416,78 @@ __global__ void layernorm_shift_partition_v2(half2 *out0_ptr,
 }
 
 template <typename T>
-void invokeLayernormShiftPartition(T *out0,
-                                   T *out1,
-                                   const T *input0,
-                                   const T *input1,
-                                   const T *gamma,
-                                   const T *beta,
-                                   int batch,
-                                   int H,
-                                   int W,
-                                   int n,
-                                   int shift_size,
-                                   int window_size,
-                                   const float eps,
-                                   cudaStream_t stream) {
+void invokePrelnLayernormShiftPartition(T *out0,
+                                        T *out1,
+                                        const T *input0,
+                                        const T *input1,
+                                        const T *gamma,
+                                        const T *beta,
+                                        int batch,
+                                        int H,
+                                        int W,
+                                        int n,
+                                        int shift_size,
+                                        int window_size,
+                                        const float eps,
+                                        cudaStream_t stream) {
   dim3 grid(W, H, batch);
   int blockSize = (n + 31) / 32 * 32;
   if (blockSize >= 768) {
     blockSize = ((blockSize / 4) + 31) / 32 * 32;
-    layernorm_shift_partition_v2<T><<<grid, blockSize, 0, stream>>>(out0,
-                                                                    out1,
-                                                                    input0,
-                                                                    input1,
-                                                                    gamma,
-                                                                    beta,
-                                                                    batch,
-                                                                    H,
-                                                                    W,
-                                                                    n,
-                                                                    shift_size,
-                                                                    window_size,
-                                                                    eps);
+    preln_layernorm_shift_partition_v2<T>
+        <<<grid, blockSize, 0, stream>>>(out0,
+                                         out1,
+                                         input0,
+                                         input1,
+                                         gamma,
+                                         beta,
+                                         batch,
+                                         H,
+                                         W,
+                                         n,
+                                         shift_size,
+                                         window_size,
+                                         eps);
   } else {
-    layernorm_shift_partition<T><<<grid, blockSize, 0, stream>>>(out0,
-                                                                 out1,
-                                                                 input0,
-                                                                 input1,
-                                                                 gamma,
-                                                                 beta,
-                                                                 batch,
-                                                                 H,
-                                                                 W,
-                                                                 n,
-                                                                 shift_size,
-                                                                 window_size,
-                                                                 eps);
+    preln_layernorm_shift_partition<T>
+        <<<grid, blockSize, 0, stream>>>(out0,
+                                         out1,
+                                         input0,
+                                         input1,
+                                         gamma,
+                                         beta,
+                                         batch,
+                                         H,
+                                         W,
+                                         n,
+                                         shift_size,
+                                         window_size,
+                                         eps);
   }
 }
 
 template <>
-void invokeLayernormShiftPartition(half *out0,
-                                   half *out1,
-                                   const half *input0,
-                                   const half *input1,
-                                   const half *gamma,
-                                   const half *beta,
-                                   int batch,
-                                   int H,
-                                   int W,
-                                   int n,
-                                   int shift_size,
-                                   int window_size,
-                                   const float eps,
-                                   cudaStream_t stream) {
+void invokePrelnLayernormShiftPartition(half *out0,
+                                        half *out1,
+                                        const half *input0,
+                                        const half *input1,
+                                        const half *gamma,
+                                        const half *beta,
+                                        int batch,
+                                        int H,
+                                        int W,
+                                        int n,
+                                        int shift_size,
+                                        int window_size,
+                                        const float eps,
+                                        cudaStream_t stream) {
   dim3 grid(W, H, batch);
   int blockSize = n / 2;
   blockSize = (blockSize + 31) / 32 * 32;
 
   if ((batch * H * W >= 512 && blockSize >= 768) || blockSize > 1024) {
     blockSize = ((blockSize / 4) + 31) / 32 * 32;
-    layernorm_shift_partition_v2<<<grid, blockSize, 0, stream>>>(
+    preln_layernorm_shift_partition_v2<<<grid, blockSize, 0, stream>>>(
         reinterpret_cast<half2 *>(out0),
         reinterpret_cast<half2 *>(out1),
         (const half2 *)input0,
@@ -502,7 +502,7 @@ void invokeLayernormShiftPartition(half *out0,
         window_size,
         eps);
   } else {
-    layernorm_shift_partition<<<grid, blockSize, 0, stream>>>(
+    preln_layernorm_shift_partition<<<grid, blockSize, 0, stream>>>(
         reinterpret_cast<half2 *>(out0),
         reinterpret_cast<half2 *>(out1),
         (const half2 *)input0,
@@ -687,22 +687,7 @@ int PrelnLnormShiftPartitionPluginDynamic::enqueue(
           input_dims.d[1]));
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(3) << "TRT Plugin DataType selected. LayernormShiftPartition-->fp32";
-    std::cout << batch << " " << input_resolution_ << " " << emb_dim << " "
-              << "\n";
-    for (int i = 0; i < 2; i++) {
-      printf("inputs : %d %d %p\n", i, input_desc[i].dims.nbDims, inputs[i]);
-      for (int j = 0; j < input_desc[i].dims.nbDims; j++) {
-        printf("dims : %d ", input_desc[i].dims.d[j]);
-      }
-      printf("\n");
-
-      printf("outputs : %d %d %p\n", i, output_desc[i].dims.nbDims, outputs[i]);
-      for (int j = 0; j < output_desc[i].dims.nbDims; j++) {
-        printf("dims : %d ", output_desc[i].dims.d[j]);
-      }
-      printf("\n");
-    }
-    invokeLayernormShiftPartition(
+    invokePrelnLayernormShiftPartition(
         reinterpret_cast<float *>(outputs[0]),
         reinterpret_cast<float *>(outputs[1]),
         reinterpret_cast<const float *>(inputs[0]),
@@ -719,7 +704,7 @@ int PrelnLnormShiftPartitionPluginDynamic::enqueue(
         stream);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(3) << "TRT Plugin DataType selected. LayernormShiftPartition-->half";
-    invokeLayernormShiftPartition(
+    invokePrelnLayernormShiftPartition(
         reinterpret_cast<half *>(outputs[0]),
         reinterpret_cast<half *>(outputs[1]),
         reinterpret_cast<const half *>(inputs[0]),
