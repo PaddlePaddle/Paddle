@@ -106,6 +106,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "delete_c_identity_op_pass",            //
       "trt_multihead_matmul_fuse_pass_v2",    //
       "trt_multihead_matmul_fuse_pass_v3",    //
+      "constant_folding_pass",                //
       "vit_attention_fuse_pass",              //
       "trt_skip_layernorm_fuse_pass",         //
       "preln_skip_layernorm_fuse_pass",       //
@@ -127,9 +128,8 @@ const std::vector<std::string> kTRTSubgraphPasses({
       // "yolo_box_fuse_pass",      //
       "dense_fc_to_sparse_pass",                //
       "dense_multihead_matmul_to_sparse_pass",  //
-      "constant_folding_pass",
-      "tensorrt_subgraph_pass",  //
-      "conv_bn_fuse_pass",       //
+      "tensorrt_subgraph_pass",                 //
+      "conv_bn_fuse_pass",                      //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
