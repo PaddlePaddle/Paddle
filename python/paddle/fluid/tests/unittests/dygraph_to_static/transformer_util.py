@@ -14,7 +14,6 @@
 
 import pickle
 import warnings
-import six
 from functools import partial
 import numpy as np
 
@@ -271,11 +270,10 @@ def load(program, model_path, executor=None, var_list=None):
             "An UnicodeDecodeError is catched, which might be caused by loading "
             "a python2 saved model. Encoding of pickle.load would be set and "
             "load again automatically.")
-        if six.PY3:
-            load_bak = pickle.load
-            pickle.load = partial(load_bak, encoding="latin1")
-            fluid.load(program, model_path, executor, var_list)
-            pickle.load = load_bak
+        load_bak = pickle.load
+        pickle.load = partial(load_bak, encoding="latin1")
+        fluid.load(program, model_path, executor, var_list)
+        pickle.load = load_bak
 
 
 def load_dygraph(model_path, keep_name_table=False):
@@ -291,10 +289,9 @@ def load_dygraph(model_path, keep_name_table=False):
             "An UnicodeDecodeError is catched, which might be caused by loading "
             "a python2 saved model. Encoding of pickle.load would be set and "
             "load again automatically.")
-        if six.PY3:
-            load_bak = pickle.load
-            pickle.load = partial(load_bak, encoding="latin1")
-            para_dict, opti_dict = fluid.load_dygraph(
-                model_path, keep_name_table=keep_name_table)
-            pickle.load = load_bak
-            return para_dict, opti_dict
+        load_bak = pickle.load
+        pickle.load = partial(load_bak, encoding="latin1")
+        para_dict, opti_dict = fluid.load_dygraph(
+            model_path, keep_name_table=keep_name_table)
+        pickle.load = load_bak
+        return para_dict, opti_dict

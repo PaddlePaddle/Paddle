@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import os
-import six
 import collections
 import warnings
 import math
@@ -1834,7 +1833,7 @@ def block_append_op(program, origin_program, block, op):
     merge_ordereddict = origin_program.global_block().vars.copy()
     merge_ordereddict.update(block.vars)
     inputs = _get_input_map_from_op(merge_ordereddict, op)
-    for key, varlist in six.iteritems(inputs):
+    for key, varlist in inputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
@@ -1847,7 +1846,7 @@ def block_append_op(program, origin_program, block, op):
                     block._clone_variable(var, force_persistable=False)
 
     outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
-    for key, varlist in six.iteritems(outputs):
+    for key, varlist in outputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
@@ -1898,7 +1897,7 @@ def add_vars_by_var_list(var_name_list, origin_program, program, block):
 
 def get_varlist_from_op_map(var_map):
     var_list = []
-    for key, varlist in six.iteritems(var_map):
+    for key, varlist in var_map.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for i in range(len(varlist)):

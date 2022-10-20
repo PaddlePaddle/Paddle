@@ -15,7 +15,6 @@
 import unittest
 import paddle.fluid as fluid
 import numpy as np
-import six
 import os
 
 
@@ -51,7 +50,7 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
                 layer._offset.name
             ])
 
-            for _ in six.moves.range(10):
+            for _ in range(10):
                 in_x = fluid.dygraph.to_variable(
                     np.random.random(
                         (batch_size, feature_size)).astype('float32'))

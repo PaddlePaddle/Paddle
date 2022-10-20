@@ -98,7 +98,7 @@ class Gumbel(TransformedDistribution):
 
     @property
     def mean(self):
-        """Mean of distribution
+        r"""Mean of distribution
 
         The mean is
 
@@ -120,7 +120,7 @@ class Gumbel(TransformedDistribution):
 
     @property
     def variance(self):
-        """Variance of distribution.
+        r"""Variance of distribution.
 
         The variance is
 
@@ -144,7 +144,7 @@ class Gumbel(TransformedDistribution):
 
     @property
     def stddev(self):
-        """Standard deviation of distribution
+        r"""Standard deviation of distribution
 
         The standard deviation is
 
