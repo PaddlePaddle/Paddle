@@ -615,17 +615,6 @@ bool PrelnLnormShiftPartitionPluginDynamic::supportsFormatCombination(
     const nvinfer1::PluginTensorDesc *in_out,
     int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_NOT_NULL(
-      in_out,
-      platform::errors::InvalidArgument("The input of LayernormShiftPartition "
-                                        "plugin shoule not be nullptr."));
-  PADDLE_ENFORCE_LT(
-      pos,
-      nb_inputs + nb_outputs,
-      platform::errors::InvalidArgument("The pos(%d) should be less than the "
-                                        "num(%d) of the input and the output.",
-                                        pos,
-                                        nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
@@ -679,14 +668,9 @@ int PrelnLnormShiftPartitionPluginDynamic::enqueue(
   auto input_type = input_desc[0].type;
   int batch = input_dims.d[0];
   int emb_dim = input_dims.d[2];
-  PADDLE_ENFORCE_EQ(
-      input_resolution_ * input_resolution_,
-      input_dims.d[1],
-      platform::errors::InvalidArgument(
-          "The LayernormShiftPartition‘s input_resolution is wrong (%d)",
-          input_dims.d[1]));
   if (input_type == nvinfer1::DataType::kFLOAT) {
-    VLOG(3) << "TRT Plugin DataType selected. LayernormShiftPartition-->fp32";
+    VLOG(3)
+        << "TRT Plugin DataType selected. PreLayernormShiftPartition-->fp32";
     invokePrelnLayernormShiftPartition(
         reinterpret_cast<float *>(outputs[0]),
         reinterpret_cast<float *>(outputs[1]),
@@ -703,7 +687,8 @@ int PrelnLnormShiftPartitionPluginDynamic::enqueue(
         eps_,
         stream);
   } else if (input_type == nvinfer1::DataType::kHALF) {
-    VLOG(3) << "TRT Plugin DataType selected. LayernormShiftPartition-->half";
+    VLOG(3)
+        << "TRT Plugin DataType selected. PreLayernormShiftPartition-->half";
     invokePrelnLayernormShiftPartition(
         reinterpret_cast<half *>(outputs[0]),
         reinterpret_cast<half *>(outputs[1]),
@@ -719,9 +704,6 @@ int PrelnLnormShiftPartitionPluginDynamic::enqueue(
         window_size_,
         eps_,
         stream);
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "The LayerNorm TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }

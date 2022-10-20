@@ -172,10 +172,7 @@ int PrelnLayerNormXFusePass::ApplyPattern(ir::Graph *graph) const {
 }
 
 void PrelnLayerNormXFusePass::ApplyImpl(ir::Graph *graph) const {
-  PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_layernorm_x_fuse", graph);
-
   int found_subgraph_count = ApplyPattern(graph);
   AddStatis(found_subgraph_count);
 }

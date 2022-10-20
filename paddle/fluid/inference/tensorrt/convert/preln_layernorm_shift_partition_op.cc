@@ -52,21 +52,6 @@ class PrelnLayerNormShiftPartitionOpConverter : public OpConverter {
             ? PADDLE_GET_CONST(int, op_desc.GetAttr("shift_size"))
             : 0;
 
-    PADDLE_ENFORCE_NOT_NULL(
-        Bias_v,
-        platform::errors::InvalidArgument(
-            "Input(Bias) of layer_norm should not be null."));
-    PADDLE_ENFORCE_NOT_NULL(
-        Scale_v,
-        platform::errors::InvalidArgument(
-            "Input(Scale) of layer_norm should not be null."));
-    PADDLE_ENFORCE_EQ(
-        begin_norm_axis,
-        2,
-        platform::errors::InvalidArgument(
-            "The begin_norm_axis of LayernormShiftPartition should be %d",
-            begin_norm_axis));
-
     auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
     auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
 
@@ -75,13 +60,6 @@ class PrelnLayerNormShiftPartitionOpConverter : public OpConverter {
     auto scale_weight =
         engine_->GetFp32TrtWeight(op_desc.Input("Scale").front(), *Scale_t);
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
-    PADDLE_ENFORCE_EQ(bias_weight.get().count,
-                      scale_weight.get().count,
-                      platform::errors::InvalidArgument(
-                          "The num between bias_weight and cale_weight should "
-                          "be equal. (%d vs %d)",
-                          bias_weight.get().count,
-                          scale_weight.get().count));
     nvinfer1::ILayer* layernorm_layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       plugin::PrelnLnormShiftPartitionPluginDynamic* plugin =
@@ -96,10 +74,6 @@ class PrelnLayerNormShiftPartitionOpConverter : public OpConverter {
               with_fp16);
       layernorm_layer =
           engine_->AddDynamicPlugin(inputs.data(), inputs.size(), plugin);
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "preln_layernorm_shift_partition TRT Plugin should run in dynamic "
-          "shape."));
     }
 
     std::vector<std::string> output_names;
