@@ -136,6 +136,9 @@ def set_backend(backend_name: str):
     Args:
         backend (str): one of the list_audio_backend. "wave_backend" is the default. "soundfile" imported from paddleaudio.
 
+    Returns:
+        None
+
     Examples:
         .. code-block:: python
 

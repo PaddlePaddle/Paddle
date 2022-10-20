@@ -124,6 +124,9 @@ def save(
         encoding:encoding format, wave_backend only support PCM16 now.
         bits_per_sample: bits per sample, wave_backend only support 16 bits now.
 
+    Returns:
+        None
+
     Examples:
         .. code-block:: python
 
