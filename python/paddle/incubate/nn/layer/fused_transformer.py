@@ -1246,7 +1246,7 @@ class FusedMultiTransformer(Layer):
                 caches=None,
                 pre_caches=None,
                 time_step=None):
-        """
+        r"""
         Applies multi transformer layers on the input.
 
         Parameters:

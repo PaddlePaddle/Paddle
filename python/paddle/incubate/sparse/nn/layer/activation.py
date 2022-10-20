@@ -59,7 +59,7 @@ class ReLU(Layer):
 
 
 class Softmax(Layer):
-    """
+    r"""
     Sparse Softmax Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     Note:
@@ -164,7 +164,7 @@ class ReLU6(Layer):
 
 
 class LeakyReLU(Layer):
-    """
+    r"""
     Sparse Leaky ReLU Activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
 
     .. math::
