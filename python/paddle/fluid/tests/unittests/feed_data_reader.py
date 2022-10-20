@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import paddle.fluid as fluid
 from paddle.fluid.framework import Variable
 
@@ -44,13 +43,13 @@ class FeedDataReader(object):
         next_data = next(self._iter)
         feed_data = dict()
         assert len(self._feed_list) == len(next_data)
-        for key, value in six.moves.zip(self._feed_list, next_data):
+        for key, value in zip(self._feed_list, next_data):
             feed_data[key] = value
         return feed_data
 
     def _feed_parallel_executor(self, device_num):
         feed_data = []
-        for _ in six.moves.range(device_num):
+        for _ in range(device_num):
             feed_data.append(self._feed_executor())
 
         return feed_data

@@ -16,7 +16,6 @@ Contrib layers just related to the neural network.
 """
 
 import os
-import six
 import warnings
 import inspect
 
