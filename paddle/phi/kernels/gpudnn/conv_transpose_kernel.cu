@@ -241,8 +241,9 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   paddle::operators::ScalingParamType<T> alpha = 1.0f;
   paddle::operators::ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = ctx.cudnn_workspace_handle();
-  for (int g = 0; g < groups; g++) {
+
 #ifdef PADDLE_WITH_HIP
+  for (int g = 0; g < groups; g++) {
     auto cudnn_func = [&](void* cudnn_workspace) {
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenConvolutionBackwardData(
           handle,
@@ -259,26 +260,23 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
           cudnn_workspace,
           workspace_size));
     };
-#else   // PADDLE_WITH_HIP
-    auto cudnn_func = [&](void* cudnn_workspace) {
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnConvolutionBackwardData(
-          handle,
-          &alpha,
-          args.wdesc.desc(),
-          filter_data + filter_offset * g,
-          args.odesc.desc(),
-          x_data + x_offset * g,
-          args.cdesc.desc(),
-          bwd_result.algo,
-          cudnn_workspace,
-          workspace_size,
-          &beta,
-          args.idesc.desc(),
-          transformed_out_data + out_offset * g));
-    };
-#endif  // PADDLE_WITH_HIP
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
+#else   // PADDLE_WITH_HIP
+  paddle::operators::ConvRunner<T>::RunBackwardData(ctx,
+                                                    args,
+                                                    bwd_result,
+                                                    x_data,
+                                                    filter_data,
+                                                    transformed_out_data,
+                                                    groups,
+                                                    out_offset,
+                                                    filter_offset,
+                                                    x_offset,
+                                                    workspace_size,
+                                                    &workspace_handle);
+#endif  // PADDLE_WITH_HIP
+
   if (!is_sys_pad && strides.size() == 2U) {
     funcs::Slice<Context, T, 4>(ctx, &transformed_out, out, starts, ends, axes);
   } else if (!is_sys_pad && strides.size() == 3U) {

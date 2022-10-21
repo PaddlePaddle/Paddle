@@ -477,27 +477,18 @@ void ConvCudnnGradGradKernel(
           },
           workspace_size);
 #else
-      for (int i = 0; i < groups; i++) {
-        workspace_handle.RunFunc(
-            [&](void* workspace_ptr) {
-              PADDLE_ENFORCE_GPU_SUCCESS(
-                  paddle::platform::dynload::cudnnConvolutionForward(
-                      handle,
-                      &alpha,
-                      args1.idesc.desc(),
-                      ddx + i * group_offset_in,
-                      args1.wdesc.desc(),
-                      w + i * group_offset_filter,
-                      args1.cdesc.desc(),
-                      fwd_result1.algo,
-                      workspace_ptr,
-                      workspace_size,
-                      &beta,
-                      args1.odesc.desc(),
-                      transformed_ddy_channel + i * group_offset_out));
-            },
-            workspace_size);
-      }
+      paddle::operators::ConvRunner<T>::RunForward(ctx,
+                                                   args1,
+                                                   fwd_result1,
+                                                   ddx,
+                                                   w,
+                                                   transformed_ddy_channel,
+                                                   groups,
+                                                   group_offset_in,
+                                                   group_offset_filter,
+                                                   group_offset_out,
+                                                   workspace_size,
+                                                   &workspace_handle);
 #endif
     }
     if (ddW) {
@@ -523,27 +514,18 @@ void ConvCudnnGradGradKernel(
           },
           workspace_size);
 #else
-      for (int i = 0; i < groups; i++) {
-        workspace_handle.RunFunc(
-            [&](void* workspace_ptr) {
-              PADDLE_ENFORCE_GPU_SUCCESS(
-                  paddle::platform::dynload::cudnnConvolutionForward(
-                      handle,
-                      &alpha,
-                      args2.idesc.desc(),
-                      x + i * group_offset_in,
-                      args2.wdesc.desc(),
-                      ddw + i * group_offset_filter,
-                      args2.cdesc.desc(),
-                      fwd_result2.algo,
-                      workspace_ptr,
-                      workspace_size,
-                      &alpha,
-                      args2.odesc.desc(),
-                      transformed_ddy_channel + i * group_offset_out));
-            },
-            workspace_size);
-      }
+      paddle::operators::ConvRunner<T>::RunForward(ctx,
+                                                   args2,
+                                                   fwd_result2,
+                                                   x,
+                                                   ddw,
+                                                   transformed_ddy_channel,
+                                                   groups,
+                                                   group_offset_in,
+                                                   group_offset_filter,
+                                                   group_offset_out,
+                                                   workspace_size,
+                                                   &workspace_handle);
 #endif
     }
     if (channel_last) {
@@ -574,27 +556,18 @@ void ConvCudnnGradGradKernel(
         },
         workspace_size);
 #else
-    for (int i = 0; i < groups; i++) {
-      workspace_handle.RunFunc(
-          [&](void* workspace_ptr) {
-            PADDLE_ENFORCE_GPU_SUCCESS(
-                paddle::platform::dynload::cudnnConvolutionBackwardFilter(
-                    handle,
-                    &alpha,
-                    args3.idesc.desc(),
-                    ddx + i * group_offset_in,
-                    args3.odesc.desc(),
-                    transformed_dy_channel + i * group_offset_out,
-                    args3.cdesc.desc(),
-                    filter_result.algo,
-                    workspace_ptr,
-                    workspace_size,
-                    &beta,
-                    args3.wdesc.desc(),
-                    dw + i * group_offset_filter));
-          },
-          workspace_size);
-    }
+    paddle::operators::ConvRunner<T>::RunBackwardFilter(ctx,
+                                                        args3,
+                                                        filter_result,
+                                                        transformed_dy_channel,
+                                                        ddx,
+                                                        dw,
+                                                        groups,
+                                                        group_offset_in,
+                                                        group_offset_filter,
+                                                        group_offset_out,
+                                                        workspace_size,
+                                                        &workspace_handle);
 #endif
   }
 
@@ -621,27 +594,18 @@ void ConvCudnnGradGradKernel(
         },
         workspace_size);
 #else
-    for (int i = 0; i < groups; i++) {
-      workspace_handle.RunFunc(
-          [&](void* workspace_ptr) {
-            PADDLE_ENFORCE_GPU_SUCCESS(
-                paddle::platform::dynload::cudnnConvolutionBackwardData(
-                    handle,
-                    &alpha,
-                    args4.wdesc.desc(),
-                    ddw + i * group_offset_filter,
-                    args4.odesc.desc(),
-                    transformed_dy_channel + i * group_offset_out,
-                    args4.cdesc.desc(),
-                    data_result.algo,
-                    workspace_ptr,
-                    workspace_size,
-                    &beta,
-                    args4.idesc.desc(),
-                    transformed_dx + i * group_offset_in));
-          },
-          workspace_size);
-    }
+    paddle::operators::ConvRunner<T>::RunBackwardData(ctx,
+                                                      args4,
+                                                      data_result,
+                                                      transformed_dy_channel,
+                                                      ddw,
+                                                      transformed_dx,
+                                                      groups,
+                                                      group_offset_in,
+                                                      group_offset_filter,
+                                                      group_offset_out,
+                                                      workspace_size,
+                                                      &workspace_handle);
 #endif
 
     if (!is_sys_pad) {
