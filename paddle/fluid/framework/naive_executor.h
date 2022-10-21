@@ -69,7 +69,7 @@ class NaiveExecutor {
 
   void ResetTrtOps(int num);
 
-  void RegisterHook(const HookFunc& hookfunc);
+  void RegisterOutputHook(const HookFunc& hookfunc);
 
   void EnableHook();
 
@@ -84,7 +84,6 @@ class NaiveExecutor {
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   Scope* scope_;
 
-  bool hook_enabled_{false};
   HookFunc hookfunc_;
 };
 

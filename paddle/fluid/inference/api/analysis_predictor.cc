@@ -597,22 +597,6 @@ bool AnalysisPredictor::PrepareExecutor() {
                           platform::errors::PreconditionNotMet(
                               "The sub_scope should not be nullptr."));
 
-  auto hook = [this](framework::OperatorBase *op) {
-    for (auto &output : op->Outputs()) {
-      for (auto &var_name : output.second) {
-        auto *var = this->sub_scope_->FindVar(var_name);
-        if (!var || !var->IsType<phi::DenseTensor>()) continue;
-        auto dense_tensor = var->Get<phi::DenseTensor>();
-        if (!dense_tensor.initialized()) continue;
-        auto tensor = this->GetOutputTensor(var_name);
-        for (auto &hookfunc : this->hookfuncs_) {
-          hookfunc(op->Type(), var_name, *tensor);
-        }
-      }
-    }
-  };
-  executor_->RegisterHook(hook);
-
   return true;
 }
 
@@ -2171,7 +2155,23 @@ void AnalysisPredictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
                     "reuse!";
     return;
   }
-  executor_->EnableHook();
+  static std::once_flag register_hook_flag;
+  std::call_once(register_hook_flag, [this] {
+    executor_->RegisterOutputHook([this](framework::OperatorBase *op) {
+      for (auto &output : op->Outputs()) {
+        for (auto &var_name : output.second) {
+          auto *var = this->sub_scope_->FindVar(var_name);
+          if (!var || !var->IsType<phi::DenseTensor>()) continue;
+          auto dense_tensor = var->Get<phi::DenseTensor>();
+          if (!dense_tensor.initialized()) continue;
+          auto tensor = this->GetOutputTensor(var_name);
+          for (auto &hookfunc : this->hookfuncs_) {
+            hookfunc(op->Type(), var_name, *tensor);
+          }
+        }
+      }
+    });
+  });
   hookfuncs_.push_back(hookfunc);
 }
 

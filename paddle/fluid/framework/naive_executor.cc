@@ -65,7 +65,7 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
     platform::CudaNvtxRangePop();
 #endif
-    if (hook_enabled_) {
+    if (hookfunc_) {
       hookfunc_(op.get());
     }
   }
@@ -145,11 +145,9 @@ LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   return tensor;
 }
 
-void NaiveExecutor::RegisterHook(const HookFunc &hookfunc) {
+void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
   hookfunc_ = hookfunc;
 }
-
-void NaiveExecutor::EnableHook() { hook_enabled_ = true; }
 
 NaiveExecutor::~NaiveExecutor() {
 #ifdef PADDLE_WITH_MKLDNN
