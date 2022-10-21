@@ -837,6 +837,7 @@ def load(path, **configs):
 
     Examples:
         .. code-block:: python
+            :name: code-example-1
 
             # example 1: dynamic graph
             import paddle
@@ -865,7 +866,9 @@ def load(path, **configs):
             # load weight of emb
             load_weight = paddle.load("emb.weight.pdtensor")
 
-
+        .. code-block:: python
+            :name: code-example-2
+            
             # example 2: Load multiple state_dict at the same time
             from paddle import nn
             from paddle.optimizer import Adam
@@ -877,7 +880,9 @@ def load(path, **configs):
             paddle.save(obj, path)
             obj_load = paddle.load(path)
 
-
+        .. code-block:: python
+            :name: code-example-3
+            
             # example 3: static graph
             import paddle
             import paddle.static as static
@@ -907,7 +912,9 @@ def load(path, **configs):
             paddle.save(prog.state_dict("param"), path_tensor)
             load_state_dict = paddle.load(path_tensor)
 
-
+    .. code-block:: python
+            :name: code-example-4
+            
             # example 4: load program
             import paddle
 
@@ -922,7 +929,9 @@ def load(path, **configs):
             load_main = paddle.load(path)
             print(load_main)
 
-
+    .. code-block:: python
+            :name: code-example-5
+            
             # example 5: save object to memory
             from io import BytesIO
             import paddle
