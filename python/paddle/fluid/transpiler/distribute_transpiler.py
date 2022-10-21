@@ -34,7 +34,6 @@ import math
 from functools import reduce
 
 import collections
-import six
 import logging
 
 import numpy as np
@@ -690,7 +689,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         #       fc_w@GRAD_trainer_0, fc_w@GRAD_trainer_1 --> pserver1
         #       fc_b@GRAD_trainer_0, fc_b@GRAD_trainer_1 --> pserver2
         # shuffle the map will avoid the uneven distribution above
-        grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
+        grad_var_mapping_items = list(self.grad_var_mapping.items())
 
         if not self.config.slice_var_up:
             np.random.seed(self.origin_program.random_seed)
@@ -872,7 +871,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         # step4: Concat the parameters splits together after recv.
         all_recv_outputs = []
-        for param_varname, splited_var in six.iteritems(self.param_var_mapping):
+        for param_varname, splited_var in self.param_var_mapping.items():
             eps = []
             table_names = []
             for var in splited_var:
@@ -943,7 +942,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                                                  RPC_OP_ROLE_ATTR_VALUE
                                              })
 
-        for param_varname, splited_var in six.iteritems(self.param_var_mapping):
+        for param_varname, splited_var in self.param_var_mapping.items():
             if len(splited_var) <= 1:
                 continue
             orig_param = program.global_block().vars[param_varname]
@@ -1106,7 +1105,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         # self._fake_init_sparsetable(sparse_table_names)
         # self._delete_trainer_optimizer(is_startup=True)
 
-        for varname, splited_var in six.iteritems(self.param_var_mapping):
+        for varname, splited_var in self.param_var_mapping.items():
             if varname in sparse_table_names:
                 continue
             # Get the eplist of recv vars
@@ -1149,7 +1148,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
-        for varname, splited_var in six.iteritems(self.param_var_mapping):
+        for varname, splited_var in self.param_var_mapping.items():
             if varname in sparse_table_names:
                 continue
             # add concat ops to merge split parameters received from parameter servers.
@@ -1526,7 +1525,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         # 1. create vars in pserver program to startup program
         pserver_vars = pserver_program.global_block().vars
         created_var_map = collections.OrderedDict()
-        for _, var in six.iteritems(pserver_vars):
+        for _, var in pserver_vars.items():
             tmpvar = s_prog.global_block()._clone_variable(var)
             created_var_map[var.name] = tmpvar
 
@@ -2068,7 +2067,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 block_map[varname] = []
             block_map[varname].append((int(offset), int(size)))
 
-        for varname, split in six.iteritems(block_map):
+        for varname, split in block_map.items():
             orig_var = program.global_block().var(varname)
             if len(split) == 1:
                 if self.sync_mode and add_trainer_suffix:
@@ -2427,7 +2426,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             _generated_var_123 -> None
         """
         grad_block = None
-        for _, g in six.iteritems(var_dict):
+        for _, g in var_dict.items():
             if self._orig_varname(g.name) == self._orig_varname(var.name):
                 # skip per trainer vars
                 if g.name.find(".trainer_") == -1:
@@ -2441,7 +2440,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
     def _clone_lr_op(self, program, block, op):
         inputs = self._get_input_map_from_op(
             self.origin_program.global_block().vars, op)
-        for key, varlist in six.iteritems(inputs):
+        for key, varlist in inputs.items():
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for var in varlist:
@@ -2450,7 +2449,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, op)
-        for key, varlist in six.iteritems(outputs):
+        for key, varlist in outputs.items():
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for var in varlist:
@@ -2467,7 +2466,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         # Append the ops for parameters that do not need to be optimized/updated
         inputs = self._get_input_map_from_op(
             self.origin_program.global_block().vars, opt_op)
-        for key, varlist in six.iteritems(inputs):
+        for key, varlist in inputs.items():
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for i in range(len(varlist)):
@@ -2488,7 +2487,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, opt_op)
-        for key, varlist in six.iteritems(outputs):
+        for key, varlist in outputs.items():
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for i in range(len(varlist)):

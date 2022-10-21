@@ -105,7 +105,7 @@ class Laplace(distribution.Distribution):
 
     @property
     def variance(self):
-        """Variance of distribution.
+        r"""Variance of distribution.
 
         The variance is
 

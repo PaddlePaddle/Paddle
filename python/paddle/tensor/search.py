@@ -13,16 +13,13 @@
 # limitations under the License.
 import numpy as np
 import paddle
-from ..framework import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
-from ..fluid import layers
+from ..framework import LayerHelper, convert_np_dtype_to_dtype_
+from ..fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ..framework import core, in_dygraph_mode, _non_static_mode
 from ..fluid.framework import _in_legacy_dygraph
-from paddle.common_ops_import import convert_np_dtype_to_dtype_
 from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops, _legacy_C_ops
-from .logic import logical_not
 
 # TODO: define searching & indexing functions of a tensor
 # from ..fluid.layers import has_inf  #DEFINE_ALIAS
@@ -868,7 +865,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     if in_dygraph_mode():
         if axis == None:
             axis = -1
-        out, indices = _C_ops.top_k(x, k, axis, largest, sorted)
+        out, indices = _C_ops.topk(x, k, axis, largest, sorted)
         return out, indices
 
     if _non_static_mode():

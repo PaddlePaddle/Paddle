@@ -54,6 +54,12 @@ class TestTransposeOp(OpTest):
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
+class TestCase_ZeroDim(TestTransposeOp):
+
+    def init_shape_axis(self):
+        self.shape = ()
+        self.axis = ()
+
 class TestCase0(TestTransposeOp):
 
     def init_shape_axis(self):

@@ -192,10 +192,19 @@
   backward : trace_grad
 
 - op : trunc
-  args : (Tensor x)
+  args : (Tensor input)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
   kernel :
     func : trunc
   backward : trunc_grad
+
+- op : flip
+  args : (Tensor x, int[] axis)
+  output : Tensor (out)
+  infer_meta :
+    func : FlipInferMeta
+  kernel :
+    func : flip
+  backward : flip_grad

@@ -1,8 +1,4 @@
 cc_library(
-  stringpiece
-  SRCS piece.cc
-  DEPS flags)
-cc_library(
   pretty_log
   SRCS pretty_log.cc
   DEPS flags)
@@ -10,10 +6,6 @@ cc_library(
   string_helper
   SRCS string_helper.cc
   DEPS flags)
-cc_test(
-  stringpiece_test
-  SRCS piece_test.cc
-  DEPS stringpiece gflags)
 cc_test(
   stringprintf_test
   SRCS printf_test.cc

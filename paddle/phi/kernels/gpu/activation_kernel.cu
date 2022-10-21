@@ -265,5 +265,12 @@ PD_REGISTER_KERNEL(pow,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(selu, GPU, ALL_LAYOUT, phi::SeluKernel, float, double) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(selu,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SeluKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16) {}

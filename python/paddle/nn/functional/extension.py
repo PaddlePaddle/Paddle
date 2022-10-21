@@ -19,14 +19,12 @@ from ...fluid.data_feeder import check_dtype
 from ...fluid.layer_helper import LayerHelper
 from ...static import Variable
 from ...tensor.creation import assign
-from ...fluid import dygraph_utils
 from ...tensor.layer_function_generator import templatedoc
 from paddle import in_dynamic_mode
 from paddle import _C_ops, _legacy_C_ops
 from ...fluid.framework import _non_static_mode, _in_legacy_dygraph, in_dygraph_mode
 from ...fluid.data_feeder import check_variable_and_dtype, check_type
-from ...framework import core
-from ...common_ops_import import convert_np_dtype_to_dtype_
+from ...framework import core, convert_np_dtype_to_dtype_
 
 __all__ = []
 
@@ -305,6 +303,13 @@ def gather_tree(ids, parents):
             # [[[2, 2], [1, 6]], [[3, 3], [6, 1]], [[0, 1], [9, 0]]]
 
     """
+    if ids.ndim != 3:
+        raise ValueError(
+            "The input ids must be a 3D tensor with shape [length, batch_size, beam_size]"
+        )
+    if ids.ndim != parents.ndim:
+        raise ValueError("The ids's shape must be the same as parents' shape. ")
+
     if in_dygraph_mode():
         return _C_ops.gather_tree(ids, parents)
     else:

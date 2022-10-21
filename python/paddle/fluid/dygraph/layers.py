@@ -16,7 +16,6 @@ import collections
 import contextlib
 import sys
 import numpy as np
-import six
 import re
 import copy
 import weakref
@@ -441,7 +440,7 @@ class Layer(object):
 
         """
         temp_attr = copy.deepcopy(attr)
-        if isinstance(temp_attr, six.string_types) and temp_attr == "":
+        if isinstance(temp_attr, str) and temp_attr == "":
             temp_attr = None
         return self._helper.create_parameter(temp_attr, shape, dtype, is_bias,
                                              default_initializer)
@@ -770,7 +769,7 @@ class Layer(object):
         if '_buffers' not in self.__dict__:
             raise ValueError(
                 "super(YourLayer, self).__init__() should be called first")
-        elif not isinstance(name, six.string_types):
+        elif not isinstance(name, str):
             raise TypeError(
                 "The name of buffer should be a string, but received {}.".
                 format(type(name).__name__))
@@ -1038,7 +1037,7 @@ class Layer(object):
         if '_parameters' not in self.__dict__:
             raise RuntimeError(
                 "super(YourLayer, self).__init__() should be called firstly.")
-        elif not isinstance(name, six.string_types):
+        elif not isinstance(name, str):
             raise TypeError(
                 "The name of parameter should be a string, but received {}.".
                 format(type(name).__name__))

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import copy
-import six
 import warnings
 
 import functools
@@ -50,8 +49,9 @@ def _clip_by_global_norm_using_mp_type(*args):
 
 
 def _cast_to_mp_type_if_enabled(x):
-    if x.dtype == core.VarDesc.VarType.FP16 and _clip_by_global_norm_using_mp_type(
-    ):
+    if (x.dtype == core.VarDesc.VarType.FP16
+            or x.dtype == core.VarDesc.VarType.BF16
+        ) and _clip_by_global_norm_using_mp_type():
         return x.astype(core.VarDesc.VarType.FP32)
     else:
         return x
@@ -63,7 +63,8 @@ def _squared_l2_norm(x):
     """
 
     x = _cast_to_mp_type_if_enabled(x)
-    if core.is_compiled_with_xpu() or x.dtype == core.VarDesc.VarType.FP16:
+    if core.is_compiled_with_xpu(
+    ) or x.dtype == core.VarDesc.VarType.FP16 or x.dtype == core.VarDesc.VarType.BF16:
         square = layers.square(x)
         sum_square = layers.reduce_sum(square)
         return sum_square
@@ -499,7 +500,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
             sum_square = _squared_l2_norm(merge_grad)
-            if sum_square.dtype == core.VarDesc.VarType.FP16:
+            if sum_square.dtype == core.VarDesc.VarType.FP16 or sum_square.dtype == core.VarDesc.VarType.BF16:
                 sum_square_list_fp16.append(sum_square)
             elif sum_square.dtype == core.VarDesc.VarType.FP32:
                 sum_square_list_fp32.append(sum_square)
@@ -552,8 +553,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 continue
             # TODO(wangxi): use inplace elementwise_mul
             if need_clip:
-                clip_input = (clip_var.astype('float16') if g.dtype
-                              == core.VarDesc.VarType.FP16 else clip_var)
+                clip_input = (clip_var.astype(g.dtype)
+                              if clip_var.dtype != g.dtype else clip_var)
                 new_grad = layers.elementwise_mul(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
@@ -827,7 +828,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
     if param_list is None:
         param_list = program.block(0).all_parameters()
-    if all(isinstance(elem, six.string_types) for elem in param_list):
+    if all(isinstance(elem, str) for elem in param_list):
         param_list = [program.block(0).var(elem) for elem in param_list]
     if not all(isinstance(elem, framework.Parameter) for elem in param_list):
         raise TypeError(
