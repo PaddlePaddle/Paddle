@@ -80,9 +80,9 @@ class NaiveExecutor {
   const platform::Place place_;
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-  Scope* scope_;
+  Scope* scope_{nullptr};
 
-  HookFunc hookfunc_;
+  HookFunc hookfunc_{nullptr};
 };
 
 }  // namespace framework
