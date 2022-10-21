@@ -91,10 +91,19 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
   __shared__ T shared[2 * kWarpSize];
   int block_dim_x = blockDim.x;
   if (blockDim.x > kWarpSize) {
-    block_dim_x = blockDim.x / kWarpSize;
-    int lane = threadIdx.x % kWarpSize;
-    int tid = threadIdx.y * blockDim.x + threadIdx.x;
-    int wid = tid / kWarpSize;
+    int lane, tid, wid, n;
+    if (kWarpSize == 32 || kWarpSize == 64) {
+      n = kWarpSize == 32 ? 5 : 6;
+      block_dim_x = blockDim.x >> n;
+      lane = threadIdx.x & (kWarpSize - 1);
+      tid = threadIdx.y * blockDim.x + threadIdx.x;
+      wid = tid >> n;
+    } else {
+      block_dim_x = blockDim.x / kWarpSize;
+      lane = threadIdx.x % kWarpSize;
+      tid = threadIdx.y * blockDim.x + threadIdx.x;
+      wid = tid / kWarpSize;
+    }
     int bid = threadIdx.y;
     val = WarpReduce(val, reducer);
     if (lane == 0) {
