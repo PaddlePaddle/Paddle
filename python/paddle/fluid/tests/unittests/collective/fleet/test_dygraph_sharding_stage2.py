@@ -17,7 +17,7 @@ from __future__ import print_function
 import os
 import unittest
 import paddle.fluid as fluid
-
+from paddle.device.cuda import get_device_name
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
@@ -37,7 +37,7 @@ class TestDygraphShardingStage2(TestMultipleGpus):
         self.run_mnist_2gpu('dygraph_group_sharded_stage2_comm_overlap.py')
 
     def test_dygrapgh_sharding_stage2_bfloat16(self):
-        if "v100" in paddle.device.cuda.get_device_name():
+        if "v100" in get_device_name():
             pass
         else:
             self.run_mnist_2gpu('dygraph_group_sharding_stage2_bloat16.py')
