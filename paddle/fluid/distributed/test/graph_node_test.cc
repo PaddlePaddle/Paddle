@@ -546,7 +546,7 @@ void RunBrpcPushSparse() {
   VLOG(0) << "start to pull graph list";
   nodes = client1.pull_graph_list(std::string("user"), 0, 1, 4, 1);
   VLOG(0) << "pull list done";
-  ASSERT_EQ(nodes[0].get_id(), 59);
+  ASSERT_EQ(nodes[0].get_id(), 59UL);
   nodes.clear();
 
   // Test Pull by step
