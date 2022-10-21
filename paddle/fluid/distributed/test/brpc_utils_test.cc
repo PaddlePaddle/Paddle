@@ -116,7 +116,7 @@ void RunMultiVarMsg(platform::Place place) {
   // check var3
   framework::Variable* var3 = scope_recv.FindVar("x3");
   auto* slr = var3->GetMutable<phi::SelectedRows>();
-  EXPECT_EQ(slr->rows().size(), 564);
+  EXPECT_EQ(slr->rows().size(), 564UL);
   for (int i = 0; i < 564; ++i) {
     EXPECT_EQ(slr->rows()[i], i);
   }

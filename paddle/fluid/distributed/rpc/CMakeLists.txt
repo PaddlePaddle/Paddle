@@ -1,6 +1,6 @@
 set(PADDLE_RPC_SRCS python_rpc_handler.cc rpc_agent.cc)
 set(DISTRIBUTE_COMPILE_FLAGS
-    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
 )
 
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
