@@ -211,7 +211,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             if self._broadcast_order_params is None:
                 # Params' names should be like column_linear_32.w_0 patter to get the best performance.
                 warnings.warn(
-                    "The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
+                    r"The param name passed to the optimizer doesn't follow .+_[0-9]+\..+ patter, "
                     "overlap broadcast may harm the performance.")
                 self._broadcast_order_params = self._local_params
 
@@ -301,7 +301,9 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
         if len(self._dtype_rank_params) == 0:
             # Assign the parameters of each rank according to the type
-            for param in self._local_params:
+            trainable_params = list(
+                filter(lambda x: x.trainable, self._local_params))
+            for param in trainable_params:
                 if param.dtype not in self._dtype_rank_params.keys():
                     self._dtype_rank_params[param.dtype] = [
                         [] for _ in range(self.world_size)

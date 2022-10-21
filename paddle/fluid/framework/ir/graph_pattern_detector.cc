@@ -112,6 +112,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   if (graph.Nodes().empty()) return false;
 
   for (auto &node : GraphTraits::DFS(graph)) {
+    if (node.Name().rfind("__control_var") == 0) continue;
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
         VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
@@ -383,7 +384,6 @@ std::string PDPattern::DotString() const {
   // Create Edges
   for (const auto &edge : edges()) {
     if (!node2dot.count(edge.first) || !node2dot.count(edge.second)) {
-      LOG(ERROR) << "no node " << edge.first << " " << edge.second;
       continue;
     }
     auto &src = node2dot.at(edge.first);
@@ -453,7 +453,8 @@ PDNode *PDNode::assert_var_not_persistable() {
 
 PDNode *PDNode::assert_is_persistable_var() {
   assert_is_var();
-  asserts_.emplace_back([=](Node *x) { return x->Var()->Persistable(); });
+  asserts_.emplace_back(
+      [=](Node *x) { return x->Var() && x->Var()->Persistable(); });
   return this;
 }
 

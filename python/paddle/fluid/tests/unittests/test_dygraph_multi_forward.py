@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -202,7 +201,7 @@ class TestDygraphMultiForward(unittest.TestCase):
                                    static_x_data.all(),
                                    rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             np.testing.assert_allclose(value,
                                        dy_param_init_value[key],
                                        rtol=1e-05)

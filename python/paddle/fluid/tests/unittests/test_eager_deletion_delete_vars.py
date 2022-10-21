@@ -19,7 +19,6 @@ os.environ['FLAGS_use_mkldnn'] = '0'
 os.environ['CPU_NUM'] = '4'
 
 import paddle.fluid as fluid
-import six
 import unittest
 import multiprocessing
 from functools import reduce
@@ -54,7 +53,7 @@ def get_persistables_and_non_persistables(prog, fetch_list):
     num_block = prog.num_blocks
     persitables = set()
     non_persistables = set()
-    for bid in six.moves.range(num_block):
+    for bid in range(num_block):
         block = prog.block(bid)
         for _, var in block.vars.items():
             if var.persistable or var.name in fetch_list:
@@ -145,7 +144,7 @@ class TestExecutor(unittest.TestCase):
         p.set_place(self.place)
         exe = fluid.core.Executor(p)
 
-        for _ in six.moves.range(10):
+        for _ in range(10):
             image_np, label_np = self.prepare_feed(image, label)
             fluid.global_scope().var(image.name).get_tensor().set(
                 image_np, self.place)
@@ -183,7 +182,7 @@ class TestExecutor(unittest.TestCase):
         dev_cnt = fluid.core.get_cuda_device_count() if isinstance(self.place, fluid.CUDAPlace)    \
             else int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
 
-        for idx in six.moves.range(10):
+        for idx in range(10):
             image_np, label_np = self.prepare_feed(image, label, dev_cnt)
             feed = {image.name: image_np, label.name: label_np}
 

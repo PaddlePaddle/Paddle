@@ -14,7 +14,7 @@
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
-    from paddle.cuda_env import *
+    from paddle.cuda_env import *  # noqa: F403
 except ImportError:
     import sys
     sys.stderr.write('''Warning with import paddle: you should not
@@ -35,7 +35,7 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
-from .fluid.dataset import *  # noqa: F401
+from .fluid.dataset import *  # noqa: F401, F403
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
@@ -82,6 +82,7 @@ import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
 import paddle.audio  # noqa: F401
 import paddle.geometric  # noqa: F401
+import paddle.sparse  # noqa: F401
 
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401

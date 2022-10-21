@@ -23,7 +23,6 @@ import paddle.utils.deprecated as deprecated
 import gzip
 import numpy
 import struct
-from six.moves import range
 
 __all__ = []
 

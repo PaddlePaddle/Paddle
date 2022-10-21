@@ -14,7 +14,7 @@
 
 import os
 import paddle
-from ..ps.utils.public import *
+from ..ps.utils.public import *  # noqa: F403
 from paddle.framework import core
 from paddle.distributed.passes.pass_base import PassBase, register_pass
 from paddle.fluid.transpiler.details.program_utils import delete_ops

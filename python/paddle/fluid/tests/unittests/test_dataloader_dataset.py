@@ -17,7 +17,7 @@ import unittest
 
 import paddle
 import paddle.vision.transforms as transforms
-from paddle.io import *
+from paddle.io import Dataset
 from paddle.fluid.framework import _test_eager_guard
 
 

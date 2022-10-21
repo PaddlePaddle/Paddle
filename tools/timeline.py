@@ -14,7 +14,6 @@
 
 import argparse
 import json
-import six
 
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
@@ -143,7 +142,7 @@ class Timeline(object):
         return cur_pid
 
     def _allocate_pids(self):
-        for k, profile_pb in six.iteritems(self._profile_dict):
+        for k, profile_pb in self._profile_dict.items():
             for event in profile_pb.events:
                 if event.type == profiler_pb2.Event.CPU:
                     if (k, event.device_id, "CPU") not in self._devices:
@@ -216,7 +215,7 @@ class Timeline(object):
                         "memory usage on %s:npu:%d" % (k, 0), pid)
 
     def _allocate_events(self):
-        for k, profile_pb in six.iteritems(self._profile_dict):
+        for k, profile_pb in self._profile_dict.items():
             for event in profile_pb.events:
                 if event.type == profiler_pb2.Event.CPU:
                     type = "CPU"
@@ -243,7 +242,7 @@ class Timeline(object):
             profiler_pb2.MemEvent.CUDAPinnedPlace: "CUDAPinnedPlace",
             profiler_pb2.MemEvent.NPUPlace: "NPU"
         }
-        for k, profile_pb in six.iteritems(self._profile_dict):
+        for k, profile_pb in self._profile_dict.items():
             mem_list = []
             end_profiler = 0
             for mevent in profile_pb.mem_events:

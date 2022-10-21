@@ -20,7 +20,7 @@ import hypothesis.strategies as st
 
 
 class TestMapMatmulToMulPass(PassAutoScanTest):
-    """
+    r"""
      x_var    y_var(persistable)
        \       /
          matmul

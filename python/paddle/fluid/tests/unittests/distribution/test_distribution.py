@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 import paddle
-from paddle.distribution import *
+from paddle.distribution import Categorical, Normal, Uniform
 from paddle.fluid import layers
 
 import config

@@ -240,8 +240,8 @@ class Engine:
                 else:
                     specs.append(spec.batch(batch_size))
             elif isinstance(item, (Variable, core.VarBase, core.eager.Tensor)):
-                _adjust_item_spec(num_shards, spec)
                 spec = InputSpec.from_tensor(item, name)
+                _adjust_item_spec(num_shards, spec)
                 if batch_size is None:
                     specs.append(spec)
                 else:
@@ -647,12 +647,13 @@ class Engine:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
-
+            cur_rank = self._cur_rank
+            # NOTE: After the implementation of the unified dynamic and static communication group initialization mode in the future, the initialization logic of full mode will be removed because port occupation error may occur.
             if self._strategy.auto_mode == "full":
                 initialize_pg_in_full_mode(all_process_groups, cur_rank)
             else:
                 for process_group in all_process_groups:
-                    if self._cur_rank not in process_group.ranks:
+                    if cur_rank not in process_group.ranks:
                         continue
                     process_group.instantiate()
 
@@ -1508,10 +1509,10 @@ class Engine:
             strict (bool, optional): Whether to skip the loading of mismatch
                 parameter or raise an error when mismatch happens (not found
                 the parameter in file storing model states of or receives a
-                mismatch shape). Default: False.
+                mismatch shape). Default: True.
             load_optimizer (bool, optional): If True, the stored optimizer
                 states is restored. Otherwise, the optimizer states is initialized
-                from scratch. Default: False.
+                from scratch. Default: True.
 
         Returns:
             None

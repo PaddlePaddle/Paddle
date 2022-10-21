@@ -1736,7 +1736,7 @@ def generate_proposals(scores,
         assert return_rois_num, "return_rois_num should be True in dygraph mode."
         attrs = (pre_nms_top_n, post_nms_top_n, nms_thresh, min_size, eta,
                  pixel_offset)
-        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals_v2(
+        rpn_rois, rpn_roi_probs, rpn_rois_num = _C_ops.generate_proposals(
             scores, bbox_deltas, img_size, anchors, variances, *attrs)
 
         return rpn_rois, rpn_roi_probs, rpn_rois_num

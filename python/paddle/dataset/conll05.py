@@ -24,7 +24,6 @@ import tarfile
 import gzip
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
-from six.moves import zip, range
 
 __all__ = []
 

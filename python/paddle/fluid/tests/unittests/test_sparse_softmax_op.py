@@ -44,7 +44,7 @@ class TestCsrSoftmax(unittest.TestCase):
                 np_out = np.concatenate([np_out, x_exp / x_exp_sum])
 
             csr = paddle.to_tensor(np_x, stop_gradient=False).to_sparse_csr()
-            m = paddle.incubate.sparse.nn.Softmax()
+            m = paddle.sparse.nn.Softmax()
             out = m(csr)
             np.testing.assert_allclose(out.crows().numpy(),
                                        np_csr.indptr,
@@ -101,7 +101,7 @@ class TestCsrSoftmax(unittest.TestCase):
                     np_out = np.concatenate([np_out, x_exp / x_exp_sum])
 
             csr = paddle.to_tensor(np_x, stop_gradient=False).to_sparse_csr()
-            m = paddle.incubate.sparse.nn.Softmax()
+            m = paddle.sparse.nn.Softmax()
             out = m(csr)
             np.testing.assert_allclose(out.values().numpy(), np_out, rtol=1e-05)
 
