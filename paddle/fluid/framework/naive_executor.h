@@ -71,8 +71,6 @@ class NaiveExecutor {
 
   void RegisterOutputHook(const HookFunc& hookfunc);
 
-  void EnableHook();
-
  private:
   void CreateOps(const ProgramDesc& desc,
                  int block_id,
