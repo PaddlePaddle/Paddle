@@ -239,8 +239,8 @@ bool SelectProperTileSize(std::vector<std::pair<int, int>>* tiles) {
       platform::errors::InvalidArgument(
           "Data types should be powers of 2, but reived size is:%d.", TSIZE));
 
-  const int kMaxLongSideLen = 1024;
-  const int kMaxShortSideLen = 15;
+  constexpr int kMaxLongSideLen = 1024;
+  constexpr int kMaxShortSideLen = 15;
 
   for (int long_side = 32; long_side <= kMaxLongSideLen; long_side *= 2) {
     for (int short_side = 2; short_side <= kMaxShortSideLen; short_side += 1) {
@@ -496,20 +496,19 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
   // The tile size we select should be match with input dim, long side to long
   // short side to short.
   // First set long side  as i if dim1 > Tile min size, then set dim2 as j.
-  int select_tile_size_i =
-      input_dims[1] >= kMinTileSize ? tile_long_edge : input_dims[1];
-  int select_tile_size_j =
-      input_dims[1] >= kMinTileSize ? input_dims[2] : tile_long_edge;
+  bool is_first_dim_big = input_dims[1] >= kMinTileSize;
+  int select_tile_size_i = is_first_dim_big ? tile_long_edge : input_dims[1];
+  int select_tile_size_j = is_first_dim_big ? input_dims[2] : tile_long_edge;
 
   // Check if i is long edge, if not set i as short.
-  select_tile_size_i = select_tile_size_i == tile_long_edge
+  select_tile_size_i = is_first_dim_big
                            ? tile_long_edge
                            : std::min(select_tile_size_i, tile_short_edge);
 
   // Check if j is long edge, if not set j as short.
-  select_tile_size_j = select_tile_size_j == tile_long_edge
-                           ? tile_long_edge
-                           : std::min(select_tile_size_j, tile_short_edge);
+  select_tile_size_j = is_first_dim_big
+                           ? std::min(select_tile_size_j, tile_short_edge)
+                           : tile_long_edge;
 
   // Here finally get proper long X short tile size.
   Dim3 input_dims_aligned = {
@@ -518,9 +517,8 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
       framework::CeilOrFloor<int, true>(input_dims[2], select_tile_size_j),
   };
 
-  IndexType total_tiles_count = input_dims_aligned[0];
-  total_tiles_count *= input_dims_aligned[1];
-  total_tiles_count *= input_dims_aligned[2];
+  IndexType total_tiles_count =
+      input_dims_aligned[0] * input_dims_aligned[1] * input_dims_aligned[2];
 
   // Suppose T can be replaced by system builtin types
   using ElemType = typename SystemElemType<sizeof(T)>::type;
@@ -580,18 +578,15 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
   if (large_tile) {
     // If input is large square, such as 32X32, use SM to do copy.
     // suppose 32 X 32 gives best performance, and 8 warp in block.
-    constexpr int kTileSize = 32;
     constexpr int kNumThreads = 256;
-
     Dim3 input_dims_aligned = {
         input_dims[0],
         framework::CeilOrFloor<int, true>(input_dims[1], kTileSize),
         framework::CeilOrFloor<int, true>(input_dims[2], kTileSize),
     };
 
-    IndexType total_tiles_count = input_dims_aligned[0];
-    total_tiles_count *= input_dims_aligned[1];
-    total_tiles_count *= input_dims_aligned[2];
+    IndexType total_tiles_count =
+        input_dims_aligned[0] * input_dims_aligned[1] * input_dims_aligned[2];
 
     TilingSwapDim1And2<T, kNumThreads, kTileSize, kTileSize, IndexType>
         <<<total_tiles_count, kNumThreads, 0, d.stream()>>>(
@@ -851,13 +846,13 @@ inline void LaunchPermuteKernel(const phi::GPUContext& ctx,
                                 const std::vector<int>& perm,
                                 const T* src,
                                 T* dst) {
-  size_t main_count = count / VecSize;
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, main_count);
+  const size_t main_count = count / VecSize;
+  const auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, main_count);
 
   if (perm_type == PermuteType::kNormalPermute) {
-    size_t tail_count = count - main_count * VecSize;
-    size_t offset = count - tail_count;
-    auto params = PermuteParams<Rank, IndexT>(dims, perm);
+    const size_t tail_count = count - main_count * VecSize;
+    const size_t offset = count - tail_count;
+    const auto params = PermuteParams<Rank, IndexT>(dims, perm);
 
     GeneralPermuteKernel<T, IndexT, VecSize, Rank>
         <<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
@@ -865,7 +860,7 @@ inline void LaunchPermuteKernel(const phi::GPUContext& ctx,
   } else {
     std::vector<int> vec_dims(dims);
     vec_dims[dims.size() - 1] /= VecSize;
-    auto params = PermuteParams<Rank, IndexT>(vec_dims, perm);
+    const auto params = PermuteParams<Rank, IndexT>(vec_dims, perm);
 
     VectorizedPermuteKernel<T, IndexT, VecSize, Rank>
         <<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
@@ -902,39 +897,117 @@ inline void LaunchPermuteRankDispatch(const phi::GPUContext& ctx,
 #undef CALL_DISPATCH_RANK
 }
 
+template <typename T, typename IndexT, int ReadSize, int WriteSize>
+struct TransposeDataWriter {
+  __device__ __forceinline__ void operator()(const IndexT rows,
+                                             const IndexT cols,
+                                             const IndexT offset,
+                                             const IndexT round_tile_cols,
+                                             const T* shared_data,
+                                             T* dst_data) {
+    constexpr int kColTile = kTileSize * ReadSize;
+    constexpr int kColStride = (kTileSize + 1) * ReadSize;
+
+    using OutVecT = phi::AlignedVector<T, WriteSize>;
+    OutVecT* vec_dst = reinterpret_cast<OutVecT*>(dst_data);
+
+    // Write data from shared memory into dst and dst_cols = rows,
+    // dst_rows = cols * Vecsize
+    const IndexT vec_rows = rows / WriteSize;
+    const IndexT col_in_matrix = blockIdx.y * kTileSize + threadIdx.x;
+    __syncthreads();
+
+    if (col_in_matrix < /*dst_cols=*/vec_rows) {
+      const int col_range = (blockIdx.x < round_tile_cols)
+                                ? kTileSize
+                                : (cols - kTileSize * round_tile_cols);
+
+      const IndexT write_offset = offset * ReadSize / WriteSize + col_in_matrix;
+      const int share_tile = threadIdx.x * (WriteSize * kColStride);
+#pragma unroll
+      for (int tile_y = threadIdx.y; tile_y < col_range; tile_y += kBlockRows) {
+        OutVecT tmp_data[ReadSize];
+#pragma unroll
+        for (int i = 0; i < ReadSize; ++i) {
+          const int tile_tail = tile_y * ReadSize + i;
+          const int major_share_idx = share_tile + tile_tail;
+          const IndexT row_in_matrix = blockIdx.x * kColTile + tile_tail;
+#pragma unroll
+          for (int j = 0; j < WriteSize; ++j) {
+            tmp_data[i].val[j] = shared_data[j * kColStride + major_share_idx];
+          }
+          vec_dst[write_offset + row_in_matrix * vec_rows] = tmp_data[i];
+        }
+      }
+    }
+  }
+};
+
+template <typename T, typename IndexT, int ReadSize>
+struct TransposeDataWriter<T, IndexT, ReadSize, 1> {
+  __device__ __forceinline__ void operator()(const IndexT rows,
+                                             const IndexT cols,
+                                             const IndexT offset,
+                                             const IndexT round_tile_cols,
+                                             const T* shared_data,
+                                             T* dst_data) {
+    constexpr int kShareCol = kTileSize + 1;
+
+    // Write data from shared memory into dst and
+    // dst_cols = rows, dst_rows = cols * Vecsize
+    const IndexT col_in_matrix = blockIdx.y * kTileSize + threadIdx.x;
+    __syncthreads();
+
+    if (col_in_matrix < /*dst_cols=*/rows) {
+      const IndexT write_offset = offset * ReadSize + col_in_matrix;
+
+      int col_range = (blockIdx.x < round_tile_cols)
+                          ? kTileSize
+                          : (cols - kTileSize * round_tile_cols);
+#pragma unroll
+      for (int tile_y = threadIdx.y; tile_y < col_range; tile_y += kBlockRows) {
+#pragma unroll
+        const IndexT row_major = (tile_y + blockIdx.x * kTileSize) * ReadSize;
+        const IndexT shared_major =
+            (tile_y + threadIdx.x * kShareCol) * ReadSize;
+#pragma unroll
+        for (int i = 0; i < ReadSize; ++i) {
+          const IndexT row_in_matrix = row_major + i;
+          const IndexT shared_idx = shared_major + i;
+          dst_data[write_offset + row_in_matrix * rows] =
+              shared_data[shared_idx];
+        }
+      }
+    }
+  }
+};
+
 // Aim at transposing the last 2 dimensions. Reference from
 // https://developer.nvidia.com/blog/efficient-matrix-transpose-cuda-cc/
 template <typename T,
           typename IndexT,
           int ReadSize,
           bool IsVecWrite,
-          int WritSize = (IsVecWrite && (sizeof(T) < sizeof(float)))
-                             ? sizeof(float) / sizeof(T)
-                             : 1>
+          int WriteSize = (IsVecWrite && (sizeof(T) < sizeof(float)))
+                              ? sizeof(float) / sizeof(T)
+                              : 1>
 __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
                                      T* dst_data,
-                                     IndexT rows,
-                                     IndexT cols,
-                                     IndexT round_tile_rows,
-                                     IndexT round_tile_cols) {
+                                     const IndexT rows,
+                                     const IndexT cols,
+                                     const IndexT round_tile_rows,
+                                     const IndexT round_tile_cols) {
   constexpr int kShareCol = kTileSize + 1;
-  constexpr int kRowTile = kTileSize * WritSize;
-  constexpr int kColTile = kTileSize * ReadSize;
-  constexpr int kColStride = kShareCol * ReadSize;
+  constexpr int kRowTile = kTileSize * WriteSize;
 
   using InVecT = phi::AlignedVector<T, ReadSize>;
-  using OutVecT = phi::AlignedVector<T, WritSize>;
-
   __shared__ InVecT v_shared[kRowTile * kShareCol];
-  T* s_shared = reinterpret_cast<T*>(v_shared);
 
   const InVecT* __restrict__ vec_src =
       reinterpret_cast<const InVecT* __restrict__>(src_data);
-  OutVecT* vec_dst = reinterpret_cast<OutVecT*>(dst_data);
 
   IndexT col_in_matrix = blockIdx.x * kTileSize + threadIdx.x;
   IndexT offset = blockIdx.z * rows * cols;
-
   if (col_in_matrix < cols) {
     int row_range = (blockIdx.y < round_tile_rows)
                         ? kRowTile
@@ -947,35 +1020,13 @@ __global__ void BatchTransposeKernel(const T* __restrict__ src_data,
     }
   }
 
-  // Write data from shared memory into dst and dst_cols = rows,
-  // dst_rows = cols * Vecsize
-  const IndexT vec_rows = rows / WritSize;
-  col_in_matrix = blockIdx.y * kTileSize + threadIdx.x;
-  __syncthreads();
-
-  if (col_in_matrix < /*dst_cols=*/vec_rows) {
-    const int col_range = (blockIdx.x < round_tile_cols)
-                              ? kTileSize
-                              : (cols - kTileSize * round_tile_cols);
-
-    offset = offset * ReadSize / WritSize + col_in_matrix;
-    const int share_tile = threadIdx.x * (WritSize * kColStride);
-#pragma unroll
-    for (int tile_y = threadIdx.y; tile_y < col_range; tile_y += kBlockRows) {
-      OutVecT tmp_data[ReadSize];
-#pragma unroll
-      for (int i = 0; i < ReadSize; ++i) {
-        const int tile_tail = tile_y * ReadSize + i;
-        const int major_share_idx = share_tile + tile_tail;
-#pragma unroll
-        for (int j = 0; j < WritSize; ++j) {
-          tmp_data[i].val[j] = s_shared[j * kColStride + major_share_idx];
-        }
-        const IndexT row_in_matrix = blockIdx.x * kColTile + tile_tail;
-        vec_dst[offset + row_in_matrix * vec_rows] = tmp_data[i];
-      }
-    }
-  }
+  TransposeDataWriter<T, IndexT, ReadSize, WriteSize>()(
+      rows,
+      cols,
+      offset,
+      round_tile_cols,
+      reinterpret_cast<T*>(v_shared),
+      dst_data);
 }
 
 // With the byte limitation of shared_memory, the VecSize shall be
@@ -990,10 +1041,10 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
                                   const T* src,
                                   T* dst) {
   const int rank = dims.size();
-  IndexT num_batch = (rank == 2) ? 1 : dims[0];
-  IndexT rows = dims[rank - 2];
-  IndexT cols = dims[rank - 1] / VecSize;
-  IndexT num_tile_cols = GETTILESIZE(cols, kTileSize);
+  const IndexT num_batch = (rank == 2) ? 1 : dims[0];
+  const IndexT rows = dims[rank - 2];
+  const IndexT cols = dims[rank - 1] / VecSize;
+  const IndexT num_tile_cols = GETTILESIZE(cols, kTileSize);
 
   int write_size = 1;
   bool is_write_size = sizeof(T) < sizeof(float)
@@ -1005,7 +1056,7 @@ inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
     write_size = is_write_size ? sizeof(float) / sizeof(T) : 1;
   }
 
-  IndexT num_tile_rows = GETTILESIZE(rows, (kTileSize * write_size));
+  const IndexT num_tile_rows = GETTILESIZE(rows, (kTileSize * write_size));
   dim3 blocks(num_tile_cols, num_tile_rows, num_batch);
   dim3 threads(kTileSize, kBlockRows, 1);
 
@@ -1058,21 +1109,21 @@ inline void PermuteWithEigen(const phi::GPUContext& ctx,
                              phi::DenseTensor* in,
                              phi::DenseTensor* out,
                              const DimsSimplifier<T>& simplifier) {
-  phi::DDim src_dims, dst_dims;
   const bool not_same_dims =
-      static_cast<int>(in->dims().size()) != simplifier.GetRank();
+      simplifier.GetRank() != static_cast<int>(in->dims().size());
   if (not_same_dims) {
-    src_dims = in->dims();
-    dst_dims = out->dims();
+    phi::DDim src_dims = in->dims();
+    phi::DDim dst_dims = out->dims();
     in->ResizeAndAllocate(phi::make_ddim(simplifier.GetSrcDims()));
     out->ResizeAndAllocate(phi::make_ddim(simplifier.GetDstDims()));
-  }
-  TransCompute<phi::GPUContext, T>(
-      simplifier.GetRank(), ctx, *in, out, simplifier.GetPerm());
 
-  if (not_same_dims) {
+    TransCompute<phi::GPUContext, T>(
+        simplifier.GetRank(), ctx, *in, out, simplifier.GetPerm());
     in->ResizeAndAllocate(src_dims);
     out->ResizeAndAllocate(dst_dims);
+  } else {
+    TransCompute<phi::GPUContext, T>(
+        simplifier.GetRank(), ctx, *in, out, simplifier.GetPerm());
   }
 }
 
@@ -1093,9 +1144,8 @@ inline void TransposeSimple(const phi::GPUContext& ctx,
   } else if (new_perm == std::vector<int>({0, 2, 1})) {
     SwapDim1And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
   } else if (new_perm == std::vector<int>({2, 1, 0})) {
-    // Maybe can optimize later, find a way to do coalescing memory copy.
-    // But I think it depends on the data size. If span is not large,
-    // maybe can do coalescing.
+    // May optimized later, find a way to do coalescing memory copy.
+    // But it depends on data size. If span is not large, coalescing may work.
     SwapDim0And2InTranspose<T, IndexType>()(ctx, in_data, new_dims, out_data);
   } else {
     PermuteWithEigen<T>(ctx, in, out, simplifier);
@@ -1107,7 +1157,7 @@ inline void TransposeWithSimple(const phi::GPUContext& ctx,
                                 phi::DenseTensor* in,
                                 phi::DenseTensor* out,
                                 const DimsSimplifier<T>& simplifier) {
-  if (simplifier.GetCount() < std::numeric_limits<int32_t>::max()) {
+  if (simplifier.GetCount() < std::numeric_limits<int>::max()) {
     TransposeSimple<T>(ctx, in, out, simplifier);
   } else {
     TransposeSimple<T, int64_t>(ctx, in, out, simplifier);
@@ -1119,29 +1169,35 @@ inline void PermuteAndTranspose(const phi::GPUContext& ctx,
                                 phi::DenseTensor* in,
                                 phi::DenseTensor* out,
                                 const DimsSimplifier<T>& simplifier) {
-  auto count = simplifier.GetCount();
-  if (simplifier.GetPermType() == PermuteType::kCopy) {
+  const auto count = simplifier.GetCount();
+  const auto classifier = PermTypeClassifier<T>(ctx.GetSMCount(),
+                                                simplifier.GetRank(),
+                                                simplifier.GetPerm(),
+                                                simplifier.GetSrcDims(),
+                                                in->data<T>(),
+                                                out->data<T>());
+
+  if (classifier.GetPermType() == PermuteType::kCopy) {
     // If perm is [0,1,2,3], then just operate a DtoD copy.
-    phi::backends::gpu::GpuMemcpyAsync(out->data<T>(),
-                                       in->data<T>(),
-                                       count * sizeof(T),
-                                       cudaMemcpyDeviceToDevice,
-                                       ctx.stream());
+    platform::GpuMemcpyAsync(out->data<T>(),
+                             in->data<T>(),
+                             count * sizeof(T),
+                             phi::gpuMemcpyDeviceToDevice,
+                             ctx.stream());
   } else {
     if (count < std::numeric_limits<int>::max()) {
       LaunchWithDispatchVecSize<T, int>(ctx,
-                                        simplifier.GetVecSize(),
-                                        simplifier.GetPermType(),
+                                        classifier.GetVecSize(),
+                                        classifier.GetPermType(),
                                         simplifier.GetSrcDims(),
                                         simplifier.GetPerm(),
                                         in->data<T>(),
                                         out->data<T>(),
                                         static_cast<int>(count));
     } else {
-      int64_t cnt = static_cast<int64_t>(count);
       LaunchWithDispatchVecSize<T, int64_t>(ctx,
-                                            simplifier.GetVecSize(),
-                                            simplifier.GetPermType(),
+                                            classifier.GetVecSize(),
+                                            classifier.GetPermType(),
                                             simplifier.GetSrcDims(),
                                             simplifier.GetPerm(),
                                             in->data<T>(),
@@ -1156,17 +1212,11 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
                               const phi::DenseTensor& in,
                               const std::vector<int32_t>& perm,
                               phi::DenseTensor* out) {
-  int64_t numel = in.numel();
-  auto simplifier = DimsSimplifier<T>(ctx.GetSMCount(),
-                                      perm.size(),
-                                      numel,
-                                      perm,
-                                      phi::vectorize<int>(in.dims()),
-                                      in.data<T>(),
-                                      out->data<T>());
-  auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteAndTranspose<T>);
+  auto simplifier = DimsSimplifier<T>(
+      perm.size(), in.numel(), perm, phi::vectorize<int>(in.dims()));
+  auto* tuner = phi::autotune::MakeTransposeTuner<T>(TransposeWithSimple<T>);
   tuner->AddCallBack(PermuteWithEigen<T>);
-  tuner->AddCallBack(TransposeWithSimple<T>);
+  tuner->AddCallBack(PermuteAndTranspose<T>);
 
   size_t key = phi::autotune::TransposeKey(
       simplifier.GetSrcDims(),
