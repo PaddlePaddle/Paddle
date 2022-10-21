@@ -280,6 +280,15 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 #endif
+      auto* block = desc.Block();
+      if (block) {
+        auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
+        if (!filter_var_desc->Persistable()) {
+          VLOG(3) << "Trt not support filter is  a intermediate tensor in "
+                     "conv2d op.";
+          return false;
+        }
+      }
     }
 
     if (op_type == "deformable_conv") {
