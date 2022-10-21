@@ -241,9 +241,9 @@ struct SearchAlgorithmBase<cudnnConvolutionFwdAlgoPerf_t> {
   }
 
 #if CUDNN_VERSION < 8000
-  static int GetConvolutionAlgorithm(const ConvArgs& args,
-                                     int64_t workspace_size_limit) {
-    int algo = -1;
+  static AlgoT GetConvolutionAlgorithm(const ConvArgs& args,
+                                       int64_t workspace_size_limit) {
+    AlgoT algo = static_cast<AlgoT>(0);
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnGetConvolutionForwardAlgorithm(
             args.handle,
@@ -384,9 +384,9 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdDataAlgoPerf_t> {
   }
 
 #if CUDNN_VERSION < 8000
-  static int GetConvolutionAlgorithm(const ConvArgs& args,
-                                     int64_t workspace_size_limit) {
-    int algo = -1;
+  static AlgoT GetConvolutionAlgorithm(const ConvArgs& args,
+                                       int64_t workspace_size_limit) {
+    AlgoT algo = static_cast<AlgoT>(0);
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
             args.handle,
@@ -528,9 +528,9 @@ struct SearchAlgorithmBase<cudnnConvolutionBwdFilterAlgoPerf_t> {
   }
 
 #if CUDNN_VERSION < 8000
-  static int GetConvolutionAlgorithm(const ConvArgs& args,
-                                     int64_t workspace_size_limit) {
-    int algo = -1;
+  static AlgoT GetConvolutionAlgorithm(const ConvArgs& args,
+                                       int64_t workspace_size_limit) {
+    AlgoT algo = static_cast<AlgoT>(0);
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
             args.handle,
