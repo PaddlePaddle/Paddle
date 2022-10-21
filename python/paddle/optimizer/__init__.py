@@ -15,6 +15,7 @@
 from .optimizer import Optimizer  # noqa: F401
 from .adagrad import Adagrad  # noqa: F401
 from .adam import Adam  # noqa: F401
+from .multi_tensor_adam import MultiTensorAdam  # noqa: F401
 from .adamw import AdamW  # noqa: F401
 from .adamax import Adamax  # noqa: F401
 from .rmsprop import RMSProp  # noqa: F401
@@ -25,6 +26,6 @@ from .lamb import Lamb  # noqa: F401
 from . import lr  # noqa: F401
 
 __all__ = [  #noqa
-    'Optimizer', 'Adagrad', 'Adam', 'AdamW', 'Adamax', 'RMSProp', 'Adadelta',
+    'Optimizer', 'Adagrad', 'Adam', 'MultiTensorAdam', 'AdamW', 'Adamax', 'RMSProp', 'Adadelta',
     'SGD', 'Momentum', 'Lamb'
 ]

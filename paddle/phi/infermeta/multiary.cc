@@ -2909,6 +2909,44 @@ void GraphSendUVInferMeta(const MetaTensor& x,
   out->set_dims(phi::make_ddim(out_dims_array));
 }
 
+void MultiTensorAdamInferMeta(const std::vector<const MetaTensor *> &params,
+                              const std::vector<const MetaTensor *> &grads,
+                              const std::vector<const MetaTensor *> &moments1,
+                              const std::vector<const MetaTensor *> &moments2,
+                              const paddle::optional<std::vector<const MetaTensor*>>& master_param,
+                              const MetaTensor &beta1_pow,
+                              const MetaTensor &beta2_pow,
+                              const MetaTensor &learning_rate,
+                              const MetaTensor& skip_update,
+                              const Scalar& beta1,
+                              const Scalar& beta2,
+                              const Scalar& epsilon,
+                              int chunk_size,
+                              float weight_decay,
+                              bool mode,
+                              bool multi_precision,
+                              bool use_global_beta_pow,
+                              std::vector<MetaTensor *> params_out,
+                              std::vector<MetaTensor *> moments1_out,
+                              std::vector<MetaTensor *> moments2_out,
+                              std::vector<MetaTensor *> master_param_out,
+                              MetaTensor *beta1_pow_out,
+                              MetaTensor *beta2_pow_out){
+  int in_size = params.size();
+  for(int i = 0; i < in_size; i++){
+    params_out[i]->set_dims(params[i]->dims());
+    params_out[i]->set_dtype(params[i]->dtype());
+    moments1_out[i]->set_dims(moments1[i]->dims());
+    moments1_out[i]->set_dtype(moments1[i]->dtype());
+    moments2_out[i]->set_dims(moments2[i]->dims());
+    moments2_out[i]->set_dtype(moments2[i]->dtype());
+  }
+  beta1_pow_out->set_dims(beta1_pow.dims());
+  beta1_pow_out->set_dtype(beta1_pow.dtype());
+  beta2_pow_out->set_dims(beta2_pow.dims());
+  beta2_pow_out->set_dtype(beta2_pow.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

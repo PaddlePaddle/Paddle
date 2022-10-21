@@ -523,4 +523,28 @@ void GraphSendUVInferMeta(const MetaTensor& x,
                           const std::string& message_op,
                           MetaTensor* out);
 
+void MultiTensorAdamInferMeta(const std::vector<const MetaTensor *> &params,
+                              const std::vector<const MetaTensor *> &grads,
+                              const std::vector<const MetaTensor *> &moments1,
+                              const std::vector<const MetaTensor *> &moments2,
+                              const paddle::optional<std::vector<const MetaTensor*>>& master_param,
+                              const MetaTensor &beta1_pow,
+                              const MetaTensor &beta2_pow,
+                              const MetaTensor &learning_rate,
+                              const MetaTensor &skip_update,
+                              const Scalar& beta1,
+                              const Scalar& beta2,
+                              const Scalar& epsilon,
+                              int chunk_size,
+                              float weight_decay,
+                              bool mode,
+                              bool multi_precision,
+                              bool use_global_beta_pow,
+                              std::vector<MetaTensor *> params_out,
+                              std::vector<MetaTensor *> moments1_out,
+                              std::vector<MetaTensor *> moments2_out,
+                              std::vector<MetaTensor *> master_param_out,
+                              MetaTensor *beta1_pow_out,
+                              MetaTensor *beta2_pow_out);
+
 }  // namespace phi

@@ -1787,6 +1787,17 @@
     data_type : param
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
 
+- op : multi_tensor_adam_
+  args : (Tensor[] params, Tensor[] grads, Tensor[] moments1, Tensor[] moments2, Tensor[] master_param, Tensor beta1_pow, Tensor beta2_pow, Tensor learning_rate,  Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool mode, bool multi_precision, bool use_global_beta_pow)
+  output : Tensor[](params_out){params.size()}, Tensor[](moments1_out){params.size()}, Tensor[](moments2_out){params.size()}, Tensor[](master_param_out){params.size()}, Tensor(beta1_pow_out), Tensor(beta2_pow_out)
+  infer_meta :
+    func : MultiTensorAdamInferMeta
+  kernel :
+    func : multi_tensor_adam
+    data_type : params
+  optional : skip_update, master_param
+  inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (master_param -> master_param_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out)
+
 - op : merged_momentum_
   args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov = false, str[] regularization_method = {}, float[] regularization_coeff = {}, bool multi_precision = false, float rescale_grad = 1.0f)
   output : Tensor[](param_out){param.size()}, Tensor[](velocity_out){param.size()}, Tensor[](master_param_out){param.size()}
