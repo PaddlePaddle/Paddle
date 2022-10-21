@@ -14,34 +14,36 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 
-template <typename T,typename Context>
-void MultiTensorAdamKernel(const Context& dev_ctx,
-                           const std::vector<const DenseTensor *> &params,
-                           const std::vector<const DenseTensor *> &grads,
-                           const std::vector<const DenseTensor *> &moments1,
-                           const std::vector<const DenseTensor *> &moments2,
-                           const paddle::optional<std::vector<const DenseTensor*>>& master_param,
-                           const DenseTensor &beta1_pow,
-                           const DenseTensor &beta2_pow,
-                           const DenseTensor &learning_rate,
-                           const paddle::optional<DenseTensor>& skip_update,
-                           const Scalar& beta1,
-                           const Scalar& beta2,
-                           const Scalar& epsilon,
-                           int chunk_size,
-                           float weight_decay,
-                           bool mode,
-                           bool multi_precision,
-                           bool use_global_beta_pow,
-                           std::vector<DenseTensor *> params_out,
-                           std::vector<DenseTensor *> moments1_out,
-                           std::vector<DenseTensor *> moments2_out,
-                           std::vector<DenseTensor *> master_param_out,
-                           DenseTensor *beta1_pow_out,
-                           DenseTensor *beta2_pow_out);
+template <typename T, typename Context>
+void MultiTensorAdamKernel(
+    const Context &dev_ctx,
+    const std::vector<const DenseTensor *> &params,
+    const std::vector<const DenseTensor *> &grads,
+    const std::vector<const DenseTensor *> &moments1,
+    const std::vector<const DenseTensor *> &moments2,
+    const paddle::optional<std::vector<const DenseTensor *>> &master_param,
+    const DenseTensor &beta1_pow,
+    const DenseTensor &beta2_pow,
+    const DenseTensor &learning_rate,
+    const paddle::optional<DenseTensor> &skip_update,
+    const Scalar &beta1,
+    const Scalar &beta2,
+    const Scalar &epsilon,
+    int chunk_size,
+    float weight_decay,
+    bool mode,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<DenseTensor *> params_out,
+    std::vector<DenseTensor *> moments1_out,
+    std::vector<DenseTensor *> moments2_out,
+    std::vector<DenseTensor *> master_param_out,
+    DenseTensor *beta1_pow_out,
+    DenseTensor *beta2_pow_out);
 
 }  // namespace phi

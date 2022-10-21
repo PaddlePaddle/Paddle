@@ -22,7 +22,7 @@ constexpr int depth_to_max_blocks[6] = {320, 320, 320, 320, 320, 320};
 
 template<int n> struct TensorListMetadata
 {
-  const void* addresses[n][depth_to_max_tensors[n-1]];
+  void* addresses[n][depth_to_max_tensors[n-1]];
   int sizes[depth_to_max_tensors[n-1]];
   unsigned char block_to_tensor[depth_to_max_blocks[n-1]];
   //int16
@@ -97,7 +97,7 @@ void multi_tensor_apply(
   for(int t = 0; t < ntensors; t++)
   {
     tl.sizes[loc_tensor_info] = tensor_lists[0][t]->numel();
-    tl.addresses[0][loc_tensor_info] = g[t]->data();
+    tl.addresses[0][loc_tensor_info] = const_cast<void *>(g[t]->data());
     for(int d = 1; d < depth; d++)
       tl.addresses[d][loc_tensor_info] = tensor_lists[d - 1][t]->data();
     loc_tensor_info++;
