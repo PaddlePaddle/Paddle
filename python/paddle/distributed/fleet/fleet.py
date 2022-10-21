@@ -1078,7 +1078,6 @@ class Fleet(object):
         Examples:
             .. code-block:: python
 
-                import numpy as np
                 import paddle
                 import paddle.nn.functional as F
                 paddle.enable_static()
