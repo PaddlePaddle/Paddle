@@ -7,3 +7,5 @@ decorator
 astor
 paddle_bfloat==0.1.7
 opt_einsum==3.3.0
+wheel
+pyyaml
