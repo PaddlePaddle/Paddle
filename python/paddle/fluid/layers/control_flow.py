@@ -23,7 +23,6 @@ from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, padding_to_same_structure, is_sequence, pack_sequence_as, flatten, to_sequence
 import numpy
 import warnings
-import six
 from functools import reduce, partial
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ... import compat as cpt
@@ -143,7 +142,7 @@ def select_input_with_buildin_type(inputs, mask, name):
             raise RuntimeError(
                 f"Exceptions throwed while doing select_input on {name}:\n{e}")
 
-    elif (isinstance(false_var, (support_ret_buildin_type))
+    elif (isinstance(false_var, support_ret_buildin_type)
           and isinstance(false_var, type(true_var))):
         if false_var == true_var:
             return false_var
@@ -962,7 +961,7 @@ class StaticRNN(object):
         boot_memories = []
         pre_memories = []
         memories = []
-        for _, mem in six.iteritems(self.memories):
+        for _, mem in self.memories.items():
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             assert mem.mem is not None, "%s should be updated in every step." % (
@@ -1205,7 +1204,7 @@ class While(object):
             })
 
 
-support_ret_buildin_type = (bool, float, six.integer_types)
+support_ret_buildin_type = (bool, float, int)
 
 
 def assign_skip_lod_tensor_array(input, output):

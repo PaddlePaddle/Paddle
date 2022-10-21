@@ -15,7 +15,6 @@
 import os
 import threading
 
-import six
 from paddle.fluid import log_helper
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 
@@ -117,7 +116,7 @@ class TranslatorLogger(object):
         self._need_to_echo_code_to_stdout = code_to_stdout
 
     def check_level(self, level):
-        if isinstance(level, (six.integer_types, type(None))):
+        if isinstance(level, (int, type(None))):
             rv = level
         else:
             raise TypeError("Level is not an integer: {}".format(level))

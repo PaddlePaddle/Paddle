@@ -19,10 +19,9 @@ import sys
 import warnings
 import logging
 
-from six.moves.queue import Queue
-from six.moves import zip_longest
-from six.moves import map
-from six.moves import zip
+from queue import Queue
+from itertools import zip_longest
+
 import itertools
 import random
 

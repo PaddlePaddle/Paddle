@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import six
 import itertools
 
 import paddle
@@ -191,7 +190,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 for i in range(1, len(out)):
                     static_param_value[static_param_name_list[i - 1]] = out[i]
 
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             np.testing.assert_allclose(value,
                                        dy_param_init_value[key],
                                        rtol=1e-05)
@@ -204,7 +203,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         else:
             np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             if core.is_compiled_with_rocm():
                 np.testing.assert_allclose(value,
                                            dy_param_value[key],

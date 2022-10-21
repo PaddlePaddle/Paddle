@@ -22,7 +22,6 @@ from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid import core
 import numpy as np
-import six
 
 np.set_printoptions(suppress=True)
 
@@ -1140,9 +1139,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             np.testing.assert_array_equal(static_token_num_value,
                                           dy_token_num_value)
 
-            for key, value in six.iteritems(static_param_init):
+            for key, value in static_param_init.items():
                 np.testing.assert_array_equal(value, dy_param_init[key])
-            for key, value in six.iteritems(static_param_updated):
+            for key, value in static_param_updated.items():
                 np.testing.assert_array_equal(value, dy_param_updated[key])
 
         # compare eager result with imperative result
@@ -1169,9 +1168,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                                    eager_token_num_value,
                                    rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_init):
+        for key, value in static_param_init.items():
             np.testing.assert_array_equal(value, eager_param_init[key])
-        for key, value in six.iteritems(dy_param_updated):
+        for key, value in dy_param_updated.items():
             np.testing.assert_allclose(value,
                                        eager_param_updated[key],
                                        rtol=1e-05)

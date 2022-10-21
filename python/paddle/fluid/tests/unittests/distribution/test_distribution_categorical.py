@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import paddle
 from paddle import fluid
-from paddle.distribution import *
+from paddle.distribution import Categorical, Distribution, Normal, Uniform
 from paddle.fluid import layers
 
 from test_distribution import DistributionNumpy

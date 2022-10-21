@@ -15,7 +15,7 @@
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-from paddle.fluid.dygraph.nn import *
+from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Conv3D, Embedding, GroupNorm, LayerNorm, Linear, NCE, PRelu
 import numpy as np
 import os
 import tempfile
