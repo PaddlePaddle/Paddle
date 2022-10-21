@@ -375,8 +375,6 @@ class FusedFeedForwardOpGradMaker : public framework::SingleGradOpMaker<T> {
       op->SetInput("Dropout2Out", this->Output("Dropout2Out"));
     }
 
-    op->SetAttrMap(this->Attrs());
-
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     if (pre_layer_norm) {
       op->SetInput("Ln1Scale", this->Input("Ln1Scale"));
