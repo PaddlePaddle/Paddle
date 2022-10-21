@@ -24,11 +24,11 @@ const T& GetAttrWithDefault(
     const std::string& name) {
   auto iter1 = attrs.find(name);
   if (iter1 != attrs.end()) {
-    return paddle::get<T>(iter1->second);
+    return PADDLE_GET_CONST(T, iter1->second);
   }
   auto iter2 = default_attrs.find(name);
   if (iter2 != default_attrs.end()) {
-    return paddle::get<T>(iter2->second);
+    return PADDLE_GET_CONST(T, iter2->second);
   }
   PADDLE_THROW(
       phi::errors::InvalidArgument("Attribute(%s) cannot be found.", name));
