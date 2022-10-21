@@ -531,12 +531,6 @@ class GroupShardedStage2(nn.Layer):
                 "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======"
                 .format(rank_buffer_size[Type.fp16.value] / 2**19,
                         model_size / 2**19))
-        if Type.bf16.value in rank_buffer_size.keys():
-            # FP16 GradStorage and model size
-            logger_.info(
-                "====== BF16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======"
-                .format(rank_buffer_size[Type.bf16.value] / 2**19,
-                        model_size / 2**19))
         if Type.fp32.value in rank_buffer_size.keys():
             # FP32 GradStorage and model size
             logger_.info(

@@ -254,10 +254,6 @@ static void ConcatTensorsWithType(
       ConcatTensorsForAllReduce<DeviceContext, double>()(
           context, dense_tensors_, p_dense_contents);
       break;
-    case phi::DataType::BFLOAT16:
-      ConcatTensorsForAllReduce<DeviceContext, platform::bfloat16>()(
-          context, dense_tensors_, p_dense_contents);
-      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
@@ -283,10 +279,6 @@ static void SplitTensorsWithType(const DeviceContext &context,
       break;
     case phi::DataType::FLOAT64:
       SplitTensorsForAllReduce<DeviceContext, double>()(
-          context, p_dense_contents, p_dense_tensors);
-      break;
-    case phi::DataType::BFLOAT16:
-      SplitTensorsForAllReduce<DeviceContext, platform::bfloat16>()(
           context, p_dense_contents, p_dense_tensors);
       break;
     default:

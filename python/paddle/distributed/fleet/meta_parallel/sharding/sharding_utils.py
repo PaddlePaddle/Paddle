@@ -45,7 +45,6 @@ class Type(Enum):
     Type of trainable parameters
     """
     fp16 = paddle.float16
-    bf16 = paddle.bfloat16
     fp32 = paddle.float32
 
 

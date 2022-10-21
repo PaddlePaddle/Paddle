@@ -43,7 +43,6 @@ from .group_sharded_utils import Type, device_guard, GroupShardedClipGrad
 alignment = {"gpu": 256, "cpu": 4096}
 align = {
     Type.fp16.value: 2,
-    Type.bf16.value: 2,
     Type.fp32.value: 4,
 }
 
