@@ -452,7 +452,7 @@ class ShardingPass(PassBase):
                 if is_optimizer_op(op):
                     continue
 
-                for input_name in op.desc.input_arg_names():
+                for input_name in op.input_arg_names():
                     # NOTE hack for embedding op when AMP 02-3
                     # paddle amp force embedding (lookup table) to be run on fp32
                     if _is_param_fp16_cast_op(main_block, op,
@@ -837,7 +837,7 @@ class ShardingInfo(object):
         for op in block.ops:
             if is_optimizer_op(op):
                 continue
-            for input_name in op.desc.input_arg_names():
+            for input_name in op.input_arg_names:
                 if input_name in self.param_names:
                     param_usage[input_name] += 1
 
@@ -877,7 +877,7 @@ def _order_param_grads(block, param_grads):
 
     use_order = []
     for op in block.ops:
-        for input_name in op.input_arg_names():
+        for input_name in op.input_arg_names:
             if (input_name in pname_to_pg_pairs) and (input_name not in order):
                 use_order.append(input_name)
         if len(order) == len(pname_to_pg_pairs):
