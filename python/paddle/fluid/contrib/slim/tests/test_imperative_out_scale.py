@@ -123,7 +123,7 @@ class TestImperativeOutSclae(unittest.TestCase):
     def func_out_scale_acc(self):
         seed = 1000
         lr = 0.001
-        loss_decrease_threshold = 2.0
+        loss_decrease_threshold = 1.5
 
         weight_quantize_type = 'abs_max'
         activation_quantize_type = 'moving_average_abs_max'
