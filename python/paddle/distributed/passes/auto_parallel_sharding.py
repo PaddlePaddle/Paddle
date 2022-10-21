@@ -284,7 +284,7 @@ class ShardingPass(PassBase):
                         reserved_vars.append(input_name)
                 op.desc.set_input("X", reserved_vars)
 
-                sum_op_output = op.desc.output_arg_names()[0]
+                sum_op_output = op.output_arg_names[0]
                 for i, sharding_info in enumerate(self.sharding_infos):
                     new_op = main_block._insert_op(
                         idx + i + 1,
@@ -452,7 +452,7 @@ class ShardingPass(PassBase):
                 if is_optimizer_op(op):
                     continue
 
-                for input_name in op.input_arg_names():
+                for input_name in op.input_arg_names:
                     # NOTE hack for embedding op when AMP 02-3
                     # paddle amp force embedding (lookup table) to be run on fp32
                     if _is_param_fp16_cast_op(main_block, op,
@@ -617,7 +617,7 @@ def _is_param_grad_fp32_cast_op(block, op):
     if not _is_desired_cast_op(block, op, core.VarDesc.VarType.FP16,
                                core.VarDesc.VarType.FP32):
         return False
-    output_name = op.desc.output_arg_names()[0]
+    output_name = op.output_arg_names[0]
     base_name = output_name[:output_name.find("@")]
     if not block.has_var(base_name):
         return False
@@ -630,7 +630,7 @@ def _is_param_fp16_cast_op(block, op, params):
         return False
     if not _is_desired_cast_op(block, op):
         return False
-    input_name = op.desc.input_arg_names()[0]
+    input_name = op.input_arg_names[0]
     if input_name not in params:
         return False
     return True
@@ -642,10 +642,10 @@ def _is_desired_cast_op(block,
                         dst_var_type=core.VarDesc.VarType.FP16):
     if op.type != "cast":
         return False
-    assert (len(op.desc.input_arg_names()) == 1)
-    assert (len(op.desc.output_arg_names()) == 1)
-    input_var = block.var(op.desc.input_arg_names()[0])
-    output_var = block.var(op.desc.output_arg_names()[0])
+    assert (len(op.input_arg_names) == 1)
+    assert (len(op.output_arg_names) == 1)
+    input_var = block.var(op.input_arg_names[0])
+    output_var = block.var(op.output_arg_names[0])
 
     if input_var.dtype != src_var_type or \
         output_var.dtype != dst_var_type:
