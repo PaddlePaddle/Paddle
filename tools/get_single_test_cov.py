@@ -99,19 +99,6 @@ def analysisFNDAFile(rootPath, test):
 
 def getCovinfo(rootPath, test):
     ut_map_path = '%s/build/ut_map/%s' % (rootPath, test)
-
-    list_gcda = [
-        txt for txt in os.listdir(ut_map_path) if txt.endswith('.gcda')
-    ]
-    list_gcno = [
-        txt for txt in os.listdir(ut_map_path) if txt.endswith('.gcno')
-    ]
-    if len(list_gcda) != 0 and len(list_gcno) != 0:
-        print("move gcda and gcno files to %s succesfully" % ut_map_path)
-    else:
-        print("move gcda and gcno files to %s failed" % ut_map_path)
-        return
-
     os.system(
         'cd %s && lcov --capture -d . -o coverage.info --rc lcov_branch_coverage=0 > /dev/null 2>&1'
         % ut_map_path)

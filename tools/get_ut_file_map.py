@@ -62,6 +62,7 @@ def handle_ut_file_map(rootPath):
     count = 0
     not_success_file = open("%s/build/prec_delta" % rootPath, 'w')
     #if testdir is not made,write the test into prec_delta
+    get_all_uts(rootPath)
     all_ut = '%s/build/all_uts_paddle' % rootPath
     with open(all_ut, 'r') as f:
         all_ut_list = []
