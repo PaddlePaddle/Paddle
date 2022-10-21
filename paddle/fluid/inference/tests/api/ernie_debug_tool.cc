@@ -53,7 +53,7 @@ std::shared_ptr<Predictor> InitPredictor() {
   int max_single_seq_len = 128;
   int opt_single_seq_len = 64;
 
-  std::string input_name0 = "sids";
+  // std::string input_name0 = "sids";
   std::string input_name1 = "ids";
 
   std::vector<int> min_shape = {1, 1};
@@ -61,11 +61,11 @@ std::shared_ptr<Predictor> InitPredictor() {
   std::vector<int> opt_shape = {1, opt_single_seq_len};
   // Set the input's min, max, opt shape
   std::map<std::string, std::vector<int>> min_input_shape = {
-      {input_name0, min_shape}, {input_name1, min_shape}};
+      /*{input_name0, min_shape},*/ {input_name1, min_shape}};
   std::map<std::string, std::vector<int>> max_input_shape = {
-      {input_name0, max_shape}, {input_name1, max_shape}};
+      /*{input_name0, max_shape},*/ {input_name1, max_shape}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
-      {input_name0, opt_shape}, {input_name1, opt_shape}};
+      /*{input_name0, opt_shape},*/ {input_name1, opt_shape}};
 
   // only kHalf supported
   // config.EnableTensorRtEngine(1 << 30, 1, 5, Config::Precision::kHalf, false,
@@ -117,10 +117,10 @@ void run(Predictor *predictor, std::vector<float> *out_data) {
   input_t1->Reshape({run_batch, run_seq_len});
   input_t1->CopyFromCpu(i1);
 
-  // second input
-  auto input_t2 = predictor->GetInputHandle(input_names[1]);
-  input_t2->Reshape({run_batch, run_seq_len});
-  input_t2->CopyFromCpu(i2);
+  //// second input
+  // auto input_t2 = predictor->GetInputHandle(input_names[1]);
+  // input_t2->Reshape({run_batch, run_seq_len});
+  // input_t2->CopyFromCpu(i2);
 
   clock_t startTime, endTime;
   for (int i = 0; i < 1; i++) {
