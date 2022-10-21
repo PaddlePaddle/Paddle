@@ -647,12 +647,13 @@ class Engine:
             # Traverse different rank programs and traverse each op of them,
             # instantiate communication by process_mapping.
             all_process_groups = get_all_process_groups()
-
+            cur_rank = self._cur_rank
+            # NOTE: After the implementation of the unified dynamic and static communication group initialization mode in the future, the initialization logic of full mode will be removed because port occupation error may occur.
             if self._strategy.auto_mode == "full":
                 initialize_pg_in_full_mode(all_process_groups, cur_rank)
             else:
                 for process_group in all_process_groups:
-                    if self._cur_rank not in process_group.ranks:
+                    if cur_rank not in process_group.ranks:
                         continue
                     process_group.instantiate()
 
