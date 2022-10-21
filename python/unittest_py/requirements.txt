@@ -17,4 +17,4 @@ numpy>=1.20,<1.22; python_version >= "3.7"
 autograd==1.4
 librosa==0.8.1
 parameterized
-wandb
+wandb>=0.13
