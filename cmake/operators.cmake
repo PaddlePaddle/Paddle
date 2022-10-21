@@ -511,13 +511,6 @@ function(op_library TARGET)
     # Append first implemented MKLDNN activation operator
     if(${MKLDNN_FILE} STREQUAL "activation_mkldnn_op")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, MKLDNN);\n")
-    elseif(${MKLDNN_FILE} STREQUAL "fc_mkldnn_op")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, FP32);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, S8);\n")
-      file(APPEND ${pybind_file}
-           "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, U8);\n")
     else()
       foreach(mkldnn_src ${mkldnn_cc_srcs})
         set(op_name "")

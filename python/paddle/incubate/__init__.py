@@ -31,7 +31,6 @@ from .passes import fuse_resnet_unit_pass
 
 from . import autograd  #noqa: F401
 from . import autotune  #noqa: F401
-from . import sparse  #noqa: F401
 from . import nn  #noqa: F401
 from . import asp  #noqa: F401
 

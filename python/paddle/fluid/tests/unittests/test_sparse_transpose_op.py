@@ -35,7 +35,7 @@ class TestTranspose(unittest.TestCase):
             else:
                 sp_x = origin_x.detach().to_sparse_csr()
             sp_x.stop_gradient = False
-            sp_out = paddle.incubate.sparse.transpose(sp_x, dims)
+            sp_out = paddle.sparse.transpose(sp_x, dims)
 
             np.testing.assert_allclose(sp_out.to_dense().numpy(),
                                        dense_out.numpy(),
