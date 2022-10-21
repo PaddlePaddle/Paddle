@@ -37,7 +37,10 @@ class TestDygraphShardingStage2(TestMultipleGpus):
         self.run_mnist_2gpu('dygraph_group_sharded_stage2_comm_overlap.py')
 
     def test_dygrapgh_sharding_stage2_bfloat16(self):
-        self.run_mnist_2gpu('dygraph_group_sharding_stage2_bloat16.py')
+        if "v100" in paddle.device.cuda.get_device_name():
+            pass
+        else:
+            self.run_mnist_2gpu('dygraph_group_sharding_stage2_bloat16.py')
 
 
 if __name__ == "__main__":
