@@ -742,7 +742,7 @@ def partition_by_use_order(params, group_size):
         mem_accu += mem
     print()
     print("######" * 6)
-    for k, v in mapping:
+    for k, v in mapping.items():
         print("rank:{}, size:{}.".format(k,
                                          sum([get_var_size(var) for var in v])))
         print([var.name for var in v])
