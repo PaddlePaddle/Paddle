@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -225,13 +224,13 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
         with unique_name.guard():
             dict_old_new_init = rename_var_with_generator(
                 static_param_init_value.keys())
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             key = dict_old_new_init[key]
             np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             key += LOADED_VAR_SUFFIX
             np.testing.assert_allclose(value,
                                        dy_param_value[key],

@@ -69,14 +69,7 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "reduce_sum_grad",
     // NOTE(jiahongyu): Below ops register kernel with customized_type_value, we
     // need to analysis and solve them one-by-one.
-    "conv2d",
-    "conv2d_grad",
-    "depthwise_conv2d",
-    "depthwise_conv2d_grad",
-    "conv3d",
-    "conv3d_grad",
     "prior_box",
-    "fc",
     "mul",
     "mul_grad"};
 

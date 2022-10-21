@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import numpy as np
 import unittest
 
@@ -106,7 +105,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
 
 # Test to call function defined outside of class.
 def update_cache(cache):
-    for k, val in six.iteritems(cache):
+    for k, val in cache.items():
         cache[k] = fluid.layers.softmax(val)
 
     return cache

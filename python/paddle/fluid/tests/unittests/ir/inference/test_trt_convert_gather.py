@@ -184,7 +184,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            False), 1e-5
+            False), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)

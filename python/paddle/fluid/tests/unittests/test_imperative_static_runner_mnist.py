@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -310,14 +309,14 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         # Phase 3. compare
         np.testing.assert_array_equal(static_x_data, dy_x_data)
 
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             key = dict_old_new_init[key]
             np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
         np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-4)
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             key = dict_old_new_init[key]
             np.testing.assert_allclose(value,
                                        dy_param_value[key],
@@ -340,14 +339,14 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
 
         # Phase 3. compare
         np.testing.assert_array_equal(static_x_data, dy_x_data)
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             key = dict_old_new_init[key]
             np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
         np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-4)
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             key = dict_old_new_init[key]
             np.testing.assert_allclose(value,
                                        dy_param_value[key],

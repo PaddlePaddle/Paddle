@@ -19,7 +19,6 @@ import unittest
 import os
 import sys
 import subprocess
-import six
 import argparse
 import pickle
 import random
@@ -146,7 +145,7 @@ class TestDistRunnerBase(object):
 
         main_program = fluid.default_main_program()
         lr_sheduler = self.get_lr_scheduler(main_program)
-        for i in six.moves.xrange(RUN_STEP):
+        for i in range(RUN_STEP):
             loss = exe.run(main_program, fetch_list=[avg_cost])
             loss = loss[0] if loss else None
             out_losses.append(loss)
@@ -219,7 +218,7 @@ class TestDistRunnerBase(object):
 
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
-        for i in six.moves.xrange(RUN_STEP):
+        for i in range(RUN_STEP):
             loss, = exe.run(fluid.default_main_program(),
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
@@ -304,7 +303,7 @@ class TestDistRunnerBase(object):
 
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
-        for i in six.moves.xrange(RUN_STEP):
+        for i in range(RUN_STEP):
             loss, = exe.run(dist_prog,
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
@@ -479,7 +478,7 @@ class TestDistRunnerBase(object):
         lr_scheduler = self.get_lr_scheduler(trainer_prog)
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
-        for i in six.moves.xrange(RUN_STEP):
+        for i in range(RUN_STEP):
             loss, = exe.run(binary,
                             fetch_list=[avg_cost.name],
                             feed=feeder.feed(get_data()))
@@ -1477,7 +1476,8 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_rpc_disable_reuse_port": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
-            "NCCL_SHM_DISABLE": "1"
+            "NCCL_SHM_DISABLE": "1",
+            "FLAGS_CONVERT_GRAPH_TO_PROGRAM": "1"
         }
 
         if check_error_log:

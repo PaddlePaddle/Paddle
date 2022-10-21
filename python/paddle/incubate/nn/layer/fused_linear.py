@@ -17,7 +17,7 @@ from paddle.incubate.nn import functional as F
 
 
 class FusedLinear(Layer):
-    """
+    r"""
     Linear layer takes only one multi-dimensional tensor as input with the
     shape :math:`[batch\_size, *, in\_features]` , where :math:`*` means any
     number of additional dimensions. It multiplies input tensor with the weight

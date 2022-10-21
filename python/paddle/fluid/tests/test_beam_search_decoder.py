@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
-from paddle.fluid.contrib.decoder.beam_search_decoder import *
+from paddle.fluid.contrib.decoder.beam_search_decoder import BeamSearchDecoder, InitState, StateCell, TrainingDecoder
 import unittest
 
 paddle.enable_static()

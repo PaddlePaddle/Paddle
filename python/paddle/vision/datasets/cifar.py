@@ -14,9 +14,8 @@
 
 import tarfile
 import numpy as np
-import six
 from PIL import Image
-from six.moves import cPickle as pickle
+import pickle
 
 import paddle
 from paddle.io import Dataset
@@ -154,11 +153,10 @@ class Cifar10(Dataset):
             for name in names:
                 batch = pickle.load(f.extractfile(name), encoding='bytes')
 
-                data = batch[six.b('data')]
-                labels = batch.get(six.b('labels'),
-                                   batch.get(six.b('fine_labels'), None))
+                data = batch[b'data']
+                labels = batch.get(b'labels', batch.get(b'fine_labels', None))
                 assert labels is not None
-                for sample, label in six.moves.zip(data, labels):
+                for sample, label in zip(data, labels):
                     self.data.append((sample, label))
 
     def __getitem__(self, idx):

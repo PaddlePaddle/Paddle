@@ -15,7 +15,7 @@
 import numpy as np
 import time
 import os
-import six
+import functools
 import time
 from functools import partial
 from os.path import expanduser
@@ -26,7 +26,6 @@ import tarfile
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
-import paddle.compat as cpt
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -307,7 +306,7 @@ def pad_batch_data(insts,
     """
     return_list = []
     max_len = max(len(inst) for inst in insts)
-    num_token = six.moves.reduce(lambda x, y: x + y,
+    num_token = functools.reduce(lambda x, y: x + y,
                                  [len(inst)
                                   for inst in insts]) if return_num_token else 0
     # Any token included in dict can be used to pad, since the paddings' loss
@@ -548,7 +547,7 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                         np.log(TrainTaskConfig.label_smooth_eps /
                                (ModelHyperParams.trg_vocab_size - 1) + 1e-20))
     init = False
-    for pass_id in six.moves.xrange(TrainTaskConfig.pass_num):
+    for pass_id in range(TrainTaskConfig.pass_num):
         pass_start_time = time.time()
         for batch_id, data in enumerate(train_data()):
             if batch_id >= RUN_STEP:
@@ -856,7 +855,7 @@ class DataReader(object):
 
             f = tarfile.open(fpaths[0], "r")
             for line in f.extractfile(tar_fname):
-                line = cpt.to_text(line)
+                line = line.decode()
                 fields = line.strip("\n").split(self._field_delimiter)
                 if (not self._only_src
                         and len(fields) == 2) or (self._only_src
@@ -869,7 +868,7 @@ class DataReader(object):
 
                 with open(fpath, "rb") as f:
                     for line in f:
-                        line = cpt.to_text(line)
+                        line = line.decode()
                         fields = line.strip("\n").split(self._field_delimiter)
                         if (not self._only_src
                                 and len(fields) == 2) or (self._only_src
@@ -881,7 +880,7 @@ class DataReader(object):
         word_dict = {}
         with open(dict_path, "rb") as fdict:
             for idx, line in enumerate(fdict):
-                line = cpt.to_text(line)
+                line = line.decode()
                 if reverse:
                     word_dict[idx] = line.strip("\n")
                 else:

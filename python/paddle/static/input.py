@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
-
 import paddle
 from paddle.fluid import core, Variable
 from paddle.fluid.layer_helper import LayerHelper
@@ -90,11 +88,11 @@ def data(name, shape, dtype=None, lod_level=0):
 
     """
     helper = LayerHelper('data', **locals())
-    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(name, 'name', (bytes, str), 'data')
     check_type(shape, 'shape', (list, tuple), 'data')
 
     shape = list(shape)
-    for i in six.moves.range(len(shape)):
+    for i in range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
 
@@ -250,7 +248,7 @@ class InputSpec(object):
                     "Length of batch_size: {} shall be 1, but received {}.".
                     format(batch_size, len(batch_size)))
             batch_size = batch_size[1]
-        elif not isinstance(batch_size, six.integer_types):
+        elif not isinstance(batch_size, int):
             raise TypeError(
                 "type(batch_size) shall be `int`, but received {}.".format(
                     type(batch_size).__name__))
@@ -299,7 +297,7 @@ class InputSpec(object):
 
         for i, ele in enumerate(shape):
             if ele is not None:
-                if not isinstance(ele, six.integer_types):
+                if not isinstance(ele, int):
                     raise ValueError(
                         "shape[{}] should be an `int`, but received `{}`:{}.".
                         format(i,
