@@ -12,24 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import typing
+import sys
 
 import paddle
 from paddle.fluid import framework as framework
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 
-
-class PrimOption(object):
-
-    def __init__(self):
-        self.enable_prim = False
-
-    def get_status(self):
-        return self.enable_prim
-
-    def set_status(self, flag):
-        self.enable_prim = flag
-
-
-prim_option = PrimOption()
+_prim_enabled_manager = None
 
 
 @framework.static_only
@@ -60,7 +50,12 @@ def prim_enabled():
 
             print(prim_enabled()) # False
     """
-    return prim_option.get_status()
+    return _prim_enabled_manager is not None
+
+
+@signature_safe_contextmanager
+def prim_guard():
+    yield
 
 
 @framework.static_only
@@ -84,7 +79,12 @@ def enable_prim():
 
             print(prim_enabled()) # True
     """
-    prim_option.set_status(True)
+    global _prim_enabled_manager
+    if _prim_enabled_manager is None:
+        _prim_enabled_manager = prim_guard()
+        _prim_enabled_manager.__enter__()
+
+        CleanupFuncRegistrar.register(disable_prim)
 
 
 @framework.static_only
@@ -112,7 +112,10 @@ def disable_prim():
 
             print(prim_enabled()) # False
     """
-    prim_option.set_status(False)
+    global _prim_enabled_manager
+    if _prim_enabled_manager is not None:
+        _prim_enabled_manager.__exit__(*sys.exc_info())
+        _prim_enabled_manager = None
 
 
 INT_DTYPE_2_STRING = {
