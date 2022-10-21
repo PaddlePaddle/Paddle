@@ -406,6 +406,7 @@ class ConvOneDNNHandlerT
 
     // Scales for int8 bias are to be cached to avoid
     // computing them each iteration
+    groups = std::max(groups, 1);
     auto bias_scale_tuple =
         std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
             this->dev_ctx_.GetBlob(key_bs));
@@ -709,7 +710,6 @@ class ConvOneDNNHandlerT
         LOG(ERROR) << "Bias should be of type int32 but is " << bias->dtype();
       }
       const K_Bias* bias_data = bias->data<K_Bias>();
-
       return this->AcquireMemoryWithReorder(
           bias->mem_desc(),
           this->fwd_pd_->bias_desc(),
