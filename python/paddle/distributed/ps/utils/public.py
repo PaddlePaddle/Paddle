@@ -18,7 +18,6 @@ import collections
 import os
 import warnings
 import logging
-import six
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.fluid.framework as framework
@@ -1029,7 +1028,7 @@ def _get_output_map_from_op(varmap, op):
 
 def get_varlist_from_op_map(var_map):
     var_list = []
-    for key, varlist in six.iteritems(var_map):
+    for key, varlist in var_map.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for i in range(len(varlist)):
@@ -1079,7 +1078,7 @@ def block_append_op(program, origin_program, block, op):
     merge_ordereddict = origin_program.global_block().vars.copy()
     merge_ordereddict.update(block.vars)
     inputs = _get_input_map_from_op(merge_ordereddict, op)
-    for key, varlist in six.iteritems(inputs):
+    for key, varlist in inputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
@@ -1092,7 +1091,7 @@ def block_append_op(program, origin_program, block, op):
                     block._clone_variable(var, force_persistable=False)
 
     outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
-    for key, varlist in six.iteritems(outputs):
+    for key, varlist in outputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:

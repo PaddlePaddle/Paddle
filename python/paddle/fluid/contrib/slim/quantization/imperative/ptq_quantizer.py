@@ -98,8 +98,7 @@ def combine_abs_max_and_hist(tensor, origin_max, origin_hist, bins,
         return new_max, new_hist
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseQuantizer(object):
+class BaseQuantizer(metaclass=abc.ABCMeta):
     """
     Base quantizer for activation and weight.
     """
@@ -173,8 +172,7 @@ class PerChannelAbsmaxQuantizer(BaseQuantizer):
         self.thresholds = self.abs_max_vals
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseHistQuantizer(BaseQuantizer):
+class BaseHistQuantizer(BaseQuantizer, metaclass=abc.ABCMeta):
     """
     """
 

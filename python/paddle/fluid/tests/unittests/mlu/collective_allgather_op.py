@@ -19,7 +19,6 @@ import sys
 import signal
 import time
 from contextlib import closing
-from six import string_types
 import math
 import paddle
 import paddle.fluid as fluid

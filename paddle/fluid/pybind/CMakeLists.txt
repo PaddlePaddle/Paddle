@@ -49,13 +49,19 @@ if(WITH_PSCORE)
     set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
   endif()
 endif()
-if(WITH_DISTRIBUTE
-   AND LINUX
-   AND NOT WITH_ASCEND_CL
-   AND NOT WITH_XPU
-   AND NOT WITH_CINN
-   AND NOT WITH_ROCM)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc)
+if(WITH_RPC)
+  set(PYBIND_DEPS
+      ${PYBIND_DEPS}
+      paddle_rpc
+      brpc
+      ssl
+      crypto
+      protobuf
+      zlib
+      leveldb
+      snappy
+      gflags
+      glog)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -198,7 +204,7 @@ endif()
 
 if(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS
-      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
   )
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
@@ -209,11 +215,11 @@ endif()
 if(WITH_PSCORE)
   if(WITH_ARM_BRPC)
     set(DISTRIBUTE_COMPILE_FLAGS
-        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
     )
   else()
     set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
     )
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
@@ -226,19 +232,14 @@ if(WITH_PSCORE)
   set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
 endif()
 
-if(WITH_DISTRIBUTE
-   AND LINUX
-   AND NOT WITH_ASCEND_CL
-   AND NOT WITH_XPU
-   AND NOT WITH_CINN
-   AND NOT WITH_ROCM)
+if(WITH_RPC)
   if(WITH_ARM_BRPC)
     set(DISTRIBUTE_COMPILE_FLAGS
-        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
     )
   else()
     set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
     )
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")

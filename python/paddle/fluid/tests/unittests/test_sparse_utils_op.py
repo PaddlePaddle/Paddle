@@ -31,10 +31,10 @@ class TestSparseCreate(unittest.TestCase):
             dense_shape = [3, 4]
             dense_indices = paddle.to_tensor(indices)
             dense_elements = paddle.to_tensor(values, dtype='float32')
-            coo = paddle.incubate.sparse.sparse_coo_tensor(dense_indices,
-                                                           dense_elements,
-                                                           dense_shape,
-                                                           stop_gradient=False)
+            coo = paddle.sparse.sparse_coo_tensor(dense_indices,
+                                                  dense_elements,
+                                                  dense_shape,
+                                                  stop_gradient=False)
             # test the to_string.py
             assert np.array_equal(indices, coo.indices().numpy())
             assert np.array_equal(values, coo.values().numpy())
@@ -44,8 +44,7 @@ class TestSparseCreate(unittest.TestCase):
             indices = [[0, 1, 2], [1, 2, 0]]
             values = [1.0, 2.0, 3.0]
             dense_shape = [3, 3]
-            coo = paddle.incubate.sparse.sparse_coo_tensor(
-                indices, values, dense_shape)
+            coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
             assert np.array_equal(3, coo.nnz())
             assert np.array_equal(indices, coo.indices().numpy())
             assert np.array_equal(values, coo.values().numpy())
@@ -60,12 +59,11 @@ class TestSparseCreate(unittest.TestCase):
             dense_cols = paddle.to_tensor(cols)
             dense_elements = paddle.to_tensor(values, dtype='float32')
             stop_gradient = False
-            csr = paddle.incubate.sparse.sparse_csr_tensor(
-                dense_crows,
-                dense_cols,
-                dense_elements,
-                dense_shape,
-                stop_gradient=stop_gradient)
+            csr = paddle.sparse.sparse_csr_tensor(dense_crows,
+                                                  dense_cols,
+                                                  dense_elements,
+                                                  dense_shape,
+                                                  stop_gradient=stop_gradient)
 
     def test_create_csr_by_np(self):
         with _test_eager_guard():
@@ -73,8 +71,8 @@ class TestSparseCreate(unittest.TestCase):
             cols = [1, 3, 2, 0, 1]
             values = [1, 2, 3, 4, 5]
             dense_shape = [3, 4]
-            csr = paddle.incubate.sparse.sparse_csr_tensor(
-                crows, cols, values, dense_shape)
+            csr = paddle.sparse.sparse_csr_tensor(crows, cols, values,
+                                                  dense_shape)
             # test the to_string.py
             assert np.array_equal(5, csr.nnz())
             assert np.array_equal(crows, csr.crows().numpy())
@@ -87,10 +85,10 @@ class TestSparseCreate(unittest.TestCase):
             indices = [[0, 1], [0, 1]]
             values = [1.0, 2.0]
             dense_shape = [2, 2]
-            coo = paddle.incubate.sparse.sparse_coo_tensor(indices,
-                                                           values,
-                                                           dense_shape,
-                                                           place=place)
+            coo = paddle.sparse.sparse_coo_tensor(indices,
+                                                  values,
+                                                  dense_shape,
+                                                  place=place)
             assert coo.place.is_cpu_place()
             assert coo.values().place.is_cpu_place()
             assert coo.indices().place.is_cpu_place()
@@ -98,10 +96,10 @@ class TestSparseCreate(unittest.TestCase):
             crows = [0, 2, 3, 5]
             cols = [1, 3, 2, 0, 1]
             values = [1.0, 2.0, 3.0, 4.0, 5.0]
-            csr = paddle.incubate.sparse.sparse_csr_tensor(crows,
-                                                           cols,
-                                                           values, [3, 5],
-                                                           place=place)
+            csr = paddle.sparse.sparse_csr_tensor(crows,
+                                                  cols,
+                                                  values, [3, 5],
+                                                  place=place)
             assert csr.place.is_cpu_place()
             assert csr.crows().place.is_cpu_place()
             assert csr.cols().place.is_cpu_place()
@@ -114,19 +112,19 @@ class TestSparseCreate(unittest.TestCase):
             dense_shape = [2, 2]
             indices = paddle.to_tensor(indices, dtype='int32')
             values = paddle.to_tensor(values, dtype='float32')
-            coo = paddle.incubate.sparse.sparse_coo_tensor(indices,
-                                                           values,
-                                                           dense_shape,
-                                                           dtype='float64')
+            coo = paddle.sparse.sparse_coo_tensor(indices,
+                                                  values,
+                                                  dense_shape,
+                                                  dtype='float64')
             assert coo.dtype == paddle.float64
 
             crows = [0, 2, 3, 5]
             cols = [1, 3, 2, 0, 1]
             values = [1.0, 2.0, 3.0, 4.0, 5.0]
-            csr = paddle.incubate.sparse.sparse_csr_tensor(crows,
-                                                           cols,
-                                                           values, [3, 5],
-                                                           dtype='float16')
+            csr = paddle.sparse.sparse_csr_tensor(crows,
+                                                  cols,
+                                                  values, [3, 5],
+                                                  dtype='float16')
             assert csr.dtype == paddle.float16
 
     def test_create_coo_no_shape(self):
@@ -135,7 +133,7 @@ class TestSparseCreate(unittest.TestCase):
             values = [1.0, 2.0]
             indices = paddle.to_tensor(indices, dtype='int32')
             values = paddle.to_tensor(values, dtype='float32')
-            coo = paddle.incubate.sparse.sparse_coo_tensor(indices, values)
+            coo = paddle.sparse.sparse_coo_tensor(indices, values)
             assert [2, 2] == coo.shape
 
 
@@ -153,7 +151,7 @@ class TestSparseConvert(unittest.TestCase):
             #test to_sparse_coo_grad backward
             out_grad_indices = [[0, 1], [0, 1]]
             out_grad_values = [2.0, 3.0]
-            out_grad = paddle.incubate.sparse.sparse_coo_tensor(
+            out_grad = paddle.sparse.sparse_coo_tensor(
                 paddle.to_tensor(out_grad_indices),
                 paddle.to_tensor(out_grad_values),
                 shape=out.shape,
@@ -169,7 +167,7 @@ class TestSparseConvert(unittest.TestCase):
             values = [1.0, 2.0, 3.0, 4.0, 5.0]
             indices_dtypes = ['int32', 'int64']
             for indices_dtype in indices_dtypes:
-                sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
+                sparse_x = paddle.sparse.sparse_coo_tensor(
                     paddle.to_tensor(indices, dtype=indices_dtype),
                     paddle.to_tensor(values),
                     shape=[3, 4],
@@ -185,7 +183,7 @@ class TestSparseConvert(unittest.TestCase):
                                       sparse_x.grad.values().numpy())
 
                 paddle.device.set_device("cpu")
-                sparse_x_cpu = paddle.incubate.sparse.sparse_coo_tensor(
+                sparse_x_cpu = paddle.sparse.sparse_coo_tensor(
                     paddle.to_tensor(indices, dtype=indices_dtype),
                     paddle.to_tensor(values),
                     shape=[3, 4],
@@ -216,7 +214,7 @@ class TestSparseConvert(unittest.TestCase):
         with _test_eager_guard():
             indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
             values = [1.0, 2.0, 3.0, 4.0, 5.0]
-            sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
+            sparse_x = paddle.sparse.sparse_coo_tensor(
                 paddle.to_tensor(indices),
                 paddle.to_tensor(values),
                 shape=[3, 4],
@@ -229,7 +227,7 @@ class TestSparseConvert(unittest.TestCase):
             indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
             values = [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0], [4.0, 4.0],
                       [5.0, 5.0]]
-            sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
+            sparse_x = paddle.sparse.sparse_coo_tensor(
                 paddle.to_tensor(indices),
                 paddle.to_tensor(values),
                 shape=[3, 4, 2],
@@ -254,13 +252,13 @@ class TestSparseConvert(unittest.TestCase):
                     values = paddle.to_tensor(values,
                                               dtype='float32',
                                               stop_gradient=False)
-                    sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
+                    sparse_x = paddle.sparse.sparse_coo_tensor(
                         indices, values, shape=[2, 2], stop_gradient=False)
                     grad_indices = [[0, 1], [1, 1]]
                     grad_values = [2, 3]
                     grad_indices = paddle.to_tensor(grad_indices, dtype='int32')
                     grad_values = paddle.to_tensor(grad_values, dtype='float32')
-                    sparse_out_grad = paddle.incubate.sparse.sparse_coo_tensor(
+                    sparse_out_grad = paddle.sparse.sparse_coo_tensor(
                         grad_indices, grad_values, shape=[2, 2])
                     sparse_x.backward(sparse_out_grad)
                     correct_values_grad = [0, 3]
@@ -272,11 +270,11 @@ class TestSparseConvert(unittest.TestCase):
                     values = paddle.to_tensor(values,
                                               dtype='float32',
                                               stop_gradient=False)
-                    sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
+                    sparse_x = paddle.sparse.sparse_coo_tensor(
                         indices, values, shape=[2, 2, 2], stop_gradient=False)
                     grad_values = [[2, 2], [3, 3]]
                     grad_values = paddle.to_tensor(grad_values, dtype='float32')
-                    sparse_out_grad = paddle.incubate.sparse.sparse_coo_tensor(
+                    sparse_out_grad = paddle.sparse.sparse_coo_tensor(
                         grad_indices, grad_values, shape=[2, 2, 2])
                     sparse_x.backward(sparse_out_grad)
                     correct_values_grad = [[0, 0], [3, 3]]
@@ -294,9 +292,8 @@ class TestSparseConvert(unittest.TestCase):
                     values = [1.0, 2.0, 3.0]
                     indices = paddle.to_tensor(indices, dtype='int32')
                     values = paddle.to_tensor(values, dtype='float32')
-                    sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
-                        indices, values)
-                    sparse_x = paddle.incubate.sparse.coalesce(sparse_x)
+                    sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
+                    sparse_x = paddle.sparse.coalesce(sparse_x)
                     indices_sorted = [[0, 1], [1, 0]]
                     values_sorted = [5.0, 1.0]
                     assert np.array_equal(indices_sorted,
@@ -307,9 +304,8 @@ class TestSparseConvert(unittest.TestCase):
                     # test the non-zero values is a vector
                     values = [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]
                     values = paddle.to_tensor(values, dtype='float32')
-                    sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
-                        indices, values)
-                    sparse_x = paddle.incubate.sparse.coalesce(sparse_x)
+                    sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
+                    sparse_x = paddle.sparse.coalesce(sparse_x)
                     values_sorted = [[5.0, 5.0], [1.0, 1.0]]
                     assert np.array_equal(indices_sorted,
                                           sparse_x.indices().numpy())
@@ -363,8 +359,9 @@ class TestCooError(unittest.TestCase):
                 values = [1, 2]
                 # 1. the shape too small
                 dense_shape = [2, 2]
-                sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
-                    indices, values, shape=dense_shape)
+                sparse_x = paddle.sparse.sparse_coo_tensor(indices,
+                                                           values,
+                                                           shape=dense_shape)
 
     def test_same_nnz(self):
         with _test_eager_guard():
@@ -372,8 +369,7 @@ class TestCooError(unittest.TestCase):
                 # 2. test the nnz of indices must same as nnz of values
                 indices = [[1, 2], [1, 0]]
                 values = [1, 2, 3]
-                sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
-                    indices, values)
+                sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
 
     def test_same_dimensions(self):
         with _test_eager_guard():
@@ -381,17 +377,16 @@ class TestCooError(unittest.TestCase):
                 indices = [[1, 2], [1, 0]]
                 values = [1, 2, 3]
                 shape = [2, 3, 4]
-                sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices,
-                                                                    values,
-                                                                    shape=shape)
+                sparse_x = paddle.sparse.sparse_coo_tensor(indices,
+                                                           values,
+                                                           shape=shape)
 
     def test_indices_dtype(self):
         with _test_eager_guard():
             with self.assertRaises(TypeError):
                 indices = [[1.0, 2.0], [0, 1]]
                 values = [1, 2]
-                sparse_x = paddle.incubate.sparse.sparse_coo_tensor(
-                    indices, values)
+                sparse_x = paddle.sparse.sparse_coo_tensor(indices, values)
 
 
 class TestCsrError(unittest.TestCase):
@@ -403,7 +398,7 @@ class TestCsrError(unittest.TestCase):
                 cols = [0, 1, 2]
                 values = [1, 2, 3]
                 shape = [3]
-                sparse_x = paddle.incubate.sparse.sparse_csr_tensor(
+                sparse_x = paddle.sparse.sparse_csr_tensor(
                     crows, cols, values, shape)
 
     def test_dimension2(self):
@@ -413,7 +408,7 @@ class TestCsrError(unittest.TestCase):
                 cols = [0, 1, 2]
                 values = [1, 2, 3]
                 shape = [3, 3, 3, 3]
-                sparse_x = paddle.incubate.sparse.sparse_csr_tensor(
+                sparse_x = paddle.sparse.sparse_csr_tensor(
                     crows, cols, values, shape)
 
     def test_same_shape1(self):
@@ -423,7 +418,7 @@ class TestCsrError(unittest.TestCase):
                 cols = [0, 1, 2, 3]
                 values = [1, 2, 3]
                 shape = [3, 4]
-                sparse_x = paddle.incubate.sparse.sparse_csr_tensor(
+                sparse_x = paddle.sparse.sparse_csr_tensor(
                     crows, cols, values, shape)
 
     def test_same_shape2(self):
@@ -433,7 +428,7 @@ class TestCsrError(unittest.TestCase):
                 cols = [0, 1, 2, 3]
                 values = [1, 2, 3, 4]
                 shape = [3, 4]
-                sparse_x = paddle.incubate.sparse.sparse_csr_tensor(
+                sparse_x = paddle.sparse.sparse_csr_tensor(
                     crows, cols, values, shape)
 
     def test_same_shape3(self):
@@ -443,7 +438,7 @@ class TestCsrError(unittest.TestCase):
                 cols = [0, 1, 2, 3, 0, 1, 2]
                 values = [1, 2, 3, 4, 0, 1, 2]
                 shape = [2, 3, 4]
-                sparse_x = paddle.incubate.sparse.sparse_csr_tensor(
+                sparse_x = paddle.sparse.sparse_csr_tensor(
                     crows, cols, values, shape)
 
     def test_crows_first_value(self):
@@ -453,7 +448,7 @@ class TestCsrError(unittest.TestCase):
                 cols = [0, 1, 2]
                 values = [1, 2, 3]
                 shape = [3, 4]
-                sparse_x = paddle.incubate.sparse.sparse_csr_tensor(
+                sparse_x = paddle.sparse.sparse_csr_tensor(
                     crows, cols, values, shape)
 
     def test_dtype(self):
@@ -463,7 +458,7 @@ class TestCsrError(unittest.TestCase):
                 cols = [0, 1, 2]
                 values = [1, 2, 3]
                 shape = [3]
-                sparse_x = paddle.incubate.sparse.sparse_csr_tensor(
+                sparse_x = paddle.sparse.sparse_csr_tensor(
                     crows, cols, values, shape)
 
 

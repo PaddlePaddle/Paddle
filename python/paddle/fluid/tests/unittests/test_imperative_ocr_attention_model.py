@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import six
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
@@ -571,10 +570,10 @@ class TestDygraphOCRAttention(unittest.TestCase):
 
         np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-8)
 
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             np.testing.assert_array_equal(value, dy_param_init_value[key])
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             np.testing.assert_allclose(value,
                                        dy_param_value[key],
                                        rtol=1e-05,
@@ -583,10 +582,10 @@ class TestDygraphOCRAttention(unittest.TestCase):
         # check eager here
         np.testing.assert_allclose(static_out, eager_out, rtol=1e-05, atol=1e-8)
 
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             np.testing.assert_array_equal(value, eager_param_init_value[key])
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             np.testing.assert_allclose(value,
                                        eager_param_value[key],
                                        rtol=1e-05,

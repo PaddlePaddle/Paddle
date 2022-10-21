@@ -34,12 +34,12 @@ TEST(FuseFCActOneDNNPass, ThrowUseMkldnn) {
                  "fc",
                  {
                      {"Input", "x"},
-                     {"Weights", "weights"},
+                     {"W", "weights"},
                      {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}},
                  false);
-  test::CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  test::CreateOp(&prog, "gelu", {{"X", "fc_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
   // No fusion in this attribute configuration
@@ -58,12 +58,12 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluTanh) {
                  "fc",
                  {
                      {"Input", "x"},
-                     {"Weights", "weights"},
+                     {"W", "weights"},
                      {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
-  auto* act_op = test::CreateOp(
-      &prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  auto* act_op =
+      test::CreateOp(&prog, "gelu", {{"X", "fc_y"}}, {{"Out", "act_y"}}, false);
   act_op->SetAttr("approximate", true);
 
   Graph graph(prog);
@@ -78,9 +78,9 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluTanh) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("gelu_tanh"), 0);
     }
   }
@@ -93,12 +93,12 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluErf) {
                  "fc",
                  {
                      {"Input", "x"},
-                     {"Weights", "weights"},
+                     {"W", "weights"},
                      {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
-  auto* act_op = test::CreateOp(
-      &prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  auto* act_op =
+      test::CreateOp(&prog, "gelu", {{"X", "fc_y"}}, {{"Out", "act_y"}}, false);
   act_op->SetAttr("approximate", false);
 
   Graph graph(prog);
@@ -113,9 +113,9 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluErf) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("gelu_erf"), 0);
     }
   }
@@ -128,11 +128,11 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluAuto) {
                  "fc",
                  {
                      {"Input", "x"},
-                     {"Weights", "weights"},
+                     {"W", "weights"},
                      {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
-  test::CreateOp(&prog, "gelu", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  test::CreateOp(&prog, "gelu", {{"X", "fc_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;
@@ -146,9 +146,9 @@ TEST(FuseFCActOneDNNPass, FuseWithGeluAuto) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("gelu"), 0);
     }
   }
@@ -161,11 +161,11 @@ TEST(FuseFCActOneDNNPass, FuseWithTanh) {
                  "fc",
                  {
                      {"Input", "x"},
-                     {"Weights", "weights"},
+                     {"W", "weights"},
                      {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
-  test::CreateOp(&prog, "tanh", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  test::CreateOp(&prog, "tanh", {{"X", "fc_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;
@@ -179,9 +179,9 @@ TEST(FuseFCActOneDNNPass, FuseWithTanh) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("tanh"), 0);
     }
   }
@@ -194,12 +194,11 @@ TEST(FuseFCActOneDNNPass, FuseWithSigmoid) {
                  "fc",
                  {
                      {"Input", "x"},
-                     {"Weights", "weights"},
+                     {"W", "weights"},
                      {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
-  test::CreateOp(
-      &prog, "sigmoid", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  test::CreateOp(&prog, "sigmoid", {{"X", "fc_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;
@@ -213,9 +212,9 @@ TEST(FuseFCActOneDNNPass, FuseWithSigmoid) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("sigmoid"), 0);
     }
   }
@@ -228,11 +227,11 @@ TEST(FuseFCActOneDNNPass, FuseWithMish) {
                  "fc",
                  {
                      {"Input", "x"},
-                     {"Weights", "weights"},
+                     {"W", "weights"},
                      {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
-  test::CreateOp(&prog, "mish", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+  test::CreateOp(&prog, "mish", {{"X", "fc_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;
@@ -246,9 +245,9 @@ TEST(FuseFCActOneDNNPass, FuseWithMish) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("mish"), 0);
     }
   }
@@ -261,12 +260,12 @@ TEST(FuseFCActOneDNNPass, FuseWithHardSwish) {
                  "fc",
                  {
                      {"Input", "x"},
-                     {"Weights", "weights"},
+                     {"W", "weights"},
                      {"Bias", "bias"},
                  },
                  {{"Out", "fc_y"}});
   test::CreateOp(
-      &prog, "hard_swish", {{"Input", "fc_y"}}, {{"Out", "act_y"}}, false);
+      &prog, "hard_swish", {{"X", "fc_y"}}, {{"Out", "act_y"}}, false);
 
   Graph graph(prog);
   constexpr int removed_nodes_count = 2;
@@ -280,9 +279,9 @@ TEST(FuseFCActOneDNNPass, FuseWithHardSwish) {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
       EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
-      ASSERT_TRUE(op->HasAttr("activation_type"));
+      ASSERT_TRUE(op->HasAttr("fuse_activation"));
       auto act_type =
-          PADDLE_GET_CONST(std::string, op->GetAttr("activation_type"));
+          PADDLE_GET_CONST(std::string, op->GetAttr("fuse_activation"));
       EXPECT_EQ(act_type.compare("hard_swish"), 0);
     }
   }

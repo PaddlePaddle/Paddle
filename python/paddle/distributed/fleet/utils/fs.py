@@ -17,7 +17,6 @@ import multiprocessing
 
 import re
 import time
-import six
 import abc
 from paddle.fluid import core
 import functools
@@ -456,7 +455,7 @@ class HDFSClient(FS):
         self.pre_commands.append(dfs)
 
         if configs:
-            for k, v in six.iteritems(configs):
+            for k, v in configs.items():
                 config_command = '-D%s=%s' % (k, v)
                 self.pre_commands.append(config_command)
 

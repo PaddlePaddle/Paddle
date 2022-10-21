@@ -1023,7 +1023,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             forward_outputs_position_map.keys()) - len(intermediate_outputs)
         # for layout autotune attr
         lightly_sensitive_attr = [
-            'axis', 'axes', 'dim', 'dims', 'start', 'end', 'stop'
+            'axis', 'axes', 'dim', 'dims', 'start', 'end', 'stop', 'perm'
         ]
         heavily_sensitive_attr = ['data_format', 'data_layout']
         layout_autotune_attr = []
