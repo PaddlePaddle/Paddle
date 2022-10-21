@@ -132,8 +132,8 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
   };
 
   gpd(graph_with_stats.first, handler);
-  if (!Has("disable_logs") ||
-      !Get<bool>("disable_logs") && (found_fc_count > 0)) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_fc_count > 0)) {
     std::stringstream msg_ss;
     std::string fusionMode = fc_as_x ? "x" : "y";
     msg_ss << "---    Fused " << found_fc_count << " fc (as " << fusionMode

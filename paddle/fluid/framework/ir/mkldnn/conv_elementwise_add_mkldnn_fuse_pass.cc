@@ -140,8 +140,8 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
   };
 
   gpd(graph_with_stats.first, handler);
-  if (!Has("disable_logs") ||
-      !Get<bool>("disable_logs") && (found_conv_count > 0)) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_conv_count > 0)) {
     std::stringstream msg_ss;
     std::string fusionMode = as_x ? "x" : "y";
     msg_ss << "---    Fused " << found_conv_count << " conv (as " << fusionMode
@@ -229,8 +229,8 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
   };
 
   gpd(graph_with_stats.first, handler);
-  if (!Has("disable_logs") ||
-      !Get<bool>("disable_logs") && (found_projection_conv_count > 0)) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_projection_conv_count > 0)) {
     std::stringstream msg_ss;
     msg_ss << "---    Fused " << found_projection_conv_count
            << " projection conv (as y) + elementwise_add patterns";
