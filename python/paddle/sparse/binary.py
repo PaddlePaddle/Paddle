@@ -64,19 +64,20 @@ def matmul(x, y, name=None):
 
         .. code-block:: python
 
+            # required: gpu
             import paddle
 
             # csr @ dense -> dense
             crows = [0, 1, 2, 3]
             cols = [1, 2, 0]
             values = [1., 2., 3.]
-            csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, [3, 3])
+            csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, [3, 3])
             # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
             #        crows=[0, 1, 2, 3],
             #        cols=[1, 2, 0],
             #        values=[1., 2., 3.])
             dense = paddle.ones([3, 2])
-            out = paddle.incubate.sparse.matmul(csr, dense)
+            out = paddle.sparse.matmul(csr, dense)
             # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [[1., 1.],
             #         [2., 2.],
@@ -85,13 +86,13 @@ def matmul(x, y, name=None):
             # coo @ dense -> dense
             indices = [[0, 1, 2], [1, 2, 0]]
             values = [1., 2., 3.]
-            coo = paddle.incubate.sparse.sparse_coo_tensor(indices, values, [3, 3])
+            coo = paddle.sparse.sparse_coo_tensor(indices, values, [3, 3])
             # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
             #        indices=[[0, 1, 2],
             #                 [1, 2, 0]],
             #        values=[1., 2., 3.])
             dense = paddle.ones([3, 2])
-            out = paddle.incubate.sparse.matmul(coo, dense)
+            out = paddle.sparse.matmul(coo, dense)
             # Tensor(shape=[3, 2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [[1., 1.],
             #         [2., 2.],
@@ -133,6 +134,7 @@ def masked_matmul(x, y, mask, name=None):
 
         .. code-block:: python
 
+            # required: gpu
             import paddle
             paddle.seed(100)
 
@@ -141,7 +143,7 @@ def masked_matmul(x, y, mask, name=None):
             cols = [1, 3, 2, 0, 1]
             values = [1., 2., 3., 4., 5.]
             dense_shape = [3, 4]
-            mask = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            mask = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
             # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
             #       crows=[0, 2, 3, 5],
             #       cols=[1, 3, 2, 0, 1],
@@ -150,7 +152,7 @@ def masked_matmul(x, y, mask, name=None):
             x = paddle.rand([3, 5])
             y = paddle.rand([5, 4])
 
-            out = paddle.incubate.sparse.masked_matmul(x, y, mask)
+            out = paddle.sparse.masked_matmul(x, y, mask)
             # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
             #        crows=[0, 2, 3, 5],
             #        cols=[1, 3, 2, 0, 1],
@@ -191,6 +193,7 @@ def mv(x, vec, name=None):
 
         .. code-block:: python
 
+            # required: gpu
             import paddle
             paddle.seed(100)
 
@@ -199,14 +202,14 @@ def mv(x, vec, name=None):
             cols = [1, 3, 2, 0, 1]
             values = [1., 2., 3., 4., 5.]
             dense_shape = [3, 4]
-            csr = paddle.incubate.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
             # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
             #        crows=[0, 2, 3, 5],
             #        cols=[1, 3, 2, 0, 1],
             #        values=[1., 2., 3., 4., 5.])
             vec = paddle.randn([4])
 
-            out = paddle.incubate.sparse.mv(csr, vec)
+            out = paddle.sparse.mv(csr, vec)
             # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [-3.85499096, -2.42975140, -1.75087738])
 
@@ -245,7 +248,7 @@ def add(x, y, name=None):
             y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
             sparse_x = x.to_sparse_csr()
             sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.incubate.sparse.add(sparse_x, sparse_y)
+            sparse_z = paddle.sparse.add(sparse_x, sparse_y)
             print(sparse_z.to_dense())
 
         # [[ 0., -1.,  0.,  0.],
@@ -302,7 +305,7 @@ def subtract(x, y, name=None):
             y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
             sparse_x = x.to_sparse_csr()
             sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.incubate.sparse.subtract(sparse_x, sparse_y)
+            sparse_z = paddle.sparse.subtract(sparse_x, sparse_y)
             print(sparse_z.to_dense())
 
         # [[ 0., -1.,  0.,  4.],
@@ -347,7 +350,7 @@ def multiply(x, y, name=None):
             y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
             sparse_x = x.to_sparse_csr()
             sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.incubate.sparse.multiply(sparse_x, sparse_y)
+            sparse_z = paddle.sparse.multiply(sparse_x, sparse_y)
             print(sparse_z.to_dense())
 
         # [[ 0.,  0.,  0., -4.],
@@ -395,7 +398,7 @@ def divide(x, y, name=None):
             y = paddle.to_tensor([[0, 0, 0, -2], [0, 2, -3, 0], [2, 3, 4, 8]], 'float32')
             sparse_x = x.to_sparse_csr()
             sparse_y = y.to_sparse_csr()
-            sparse_z = paddle.incubate.sparse.divide(sparse_x, sparse_y)
+            sparse_z = paddle.sparse.divide(sparse_x, sparse_y)
             print(sparse_z.to_dense())
 
         # [[ nan      , -inf.     ,  nan      , -1.       ],
@@ -438,9 +441,9 @@ def is_same_shape(x, y):
             y = y.to_sparse_csr()
             z = paddle.rand([2, 5])
 
-            paddle.incubate.sparse.is_same_shape(x, y)
+            paddle.sparse.is_same_shape(x, y)
             # True
-            paddle.incubate.sparse.is_same_shape(x, z)
+            paddle.sparse.is_same_shape(x, z)
             # False
 
     """

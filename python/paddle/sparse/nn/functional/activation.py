@@ -43,7 +43,7 @@ def relu(x, name=None):
 
             dense_x = paddle.to_tensor([-2., 0., 1.])
             sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.incubate.sparse.nn.functional.relu(sparse_x)
+            out = paddle.sparse.nn.functional.relu(sparse_x)
             # [0., 0., 1.]
     """
     if in_dynamic_mode():
@@ -104,7 +104,7 @@ def softmax(x, axis=-1, name=None):
             #        values=[0.96823406, 0.19722934, 0.94373937, 0.02060066, 0.71456372,
             #                0.98275049])
 
-            out = paddle.incubate.sparse.nn.functional.softmax(csr)
+            out = paddle.sparse.nn.functional.softmax(csr)
             # Tensor(shape=[3, 4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True,
             #        crows=[0, 2, 5, 6],
             #        cols=[2, 3, 0, 2, 3, 3],
@@ -139,7 +139,7 @@ def relu6(x, name=None):
 
             dense_x = paddle.to_tensor([-2., 0., 8.])
             sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.incubate.sparse.nn.functional.relu6(sparse_x)
+            out = paddle.sparse.nn.functional.relu6(sparse_x)
     """
     return _C_ops.sparse_relu6(x, 6.0)
 
@@ -175,6 +175,6 @@ def leaky_relu(x, negative_slope=0.01, name=None):
 
             dense_x = paddle.to_tensor([-2., 0., 5.])
             sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.incubate.sparse.nn.functional.leaky_relu(sparse_x, 0.5)
+            out = paddle.sparse.nn.functional.leaky_relu(sparse_x, 0.5)
     """
     return _C_ops.sparse_leaky_relu(x, negative_slope)
