@@ -85,16 +85,14 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
                                     std::string scale_attr_name,
                                     float shift,
                                     std::string shift_attr_name) const {
-  bool residual_fc = input_name == "ResidualData" && op->Op()->Type() == "fc";
-  auto inputs = residual_fc ? op->Op()->OutputNames() : op->Op()->InputNames();
+  auto inputs = op->Op()->InputNames();
   bool name_found =
       std::find(inputs.begin(), inputs.end(), input_name) != inputs.end();
   PADDLE_ENFORCE_EQ(name_found,
                     true,
                     platform::errors::InvalidArgument(
-                        "Var(%s) isn't the %s of the %s operator.",
+                        "Var(%s) isn't the input of the %s operator.",
                         input_name,
-                        residual_fc ? "output" : "input",
                         op->Op()->Type()));
   unsigned max = is_input_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_to_one * max;
@@ -127,13 +125,8 @@ void CPUQuantizePass::QuantizeInput(Graph* g,
   auto quantize_op = g->CreateOpNode(&q_desc);  // OpDesc will be copied.
 
   // update op's input
-  if (residual_fc) {
-    op->Op()->SetOutput(input_name,
-                        std::vector<std::string>({quantize_out_node->Name()}));
-  } else {
-    op->Op()->SetInput(input_name,
-                       std::vector<std::string>({quantize_out_node->Name()}));
-  }
+  op->Op()->SetInput(input_name,
+                     std::vector<std::string>({quantize_out_node->Name()}));
 
   // link quantize op
   UnlinkNodes(input, op);

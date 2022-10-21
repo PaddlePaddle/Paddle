@@ -1081,21 +1081,12 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
   if (with_residual_data) {
     auto res_fc_var = pattern->NewNode(residual_data_repr())
                           ->AsInput()
-                          ->assert_is_op_input("fc")
-                          // assert_is_op_input with two arguments doesn't work
-                          // because ResidualData in FC is set as output with
-                          // SetOutput so we do custom assert output
-                          ->assert_more([&](Node *x) {
-                            for (auto *op : x->outputs)
-                              if (IsNthOutput(x, op, "ResidualData", 0))
-                                return true;
-                            return false;
-                          });
+                          ->assert_is_op_input("fc", "ResidualData");
     links_from.push_back(res_fc_var);
   } else {
     fc_op->assert_more([&](Node *x) {
-      if (!HasOutput(x, "ResidualData") ||
-          x->Op()->Output("ResidualData").size() == 0)
+      if (!HasInput(x, "ResidualData") ||
+          x->Op()->Input("ResidualData").size() == 0)
         return true;
       return false;
     });

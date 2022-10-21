@@ -119,7 +119,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
       return;
     }
 
-    fc_op->Op()->SetOutput("ResidualData", {residual_data->Name()});
+    fc_op->Op()->SetInput("ResidualData", {residual_data->Name()});
     fc_op->Op()->SetOutput("Out", {elementwise_out->Name()});
     fc_op->Op()->SetAttr("fuse_residual_connection", true);
 

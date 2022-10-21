@@ -400,25 +400,9 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
         auto quant_out = quant_op->outputs[0];
         auto last_op = quant_out->outputs[0];
         auto last_op_op = last_op->Op();
-        bool residual_fc = false;
 
         std::string last_op_input_name =
             FindInputNameByVarName(last_op_op, quant_out->Name());
-        if (last_op_input_name.empty()) {
-          last_op_input_name =
-              FindOutputNameByVarName(last_op_op, quant_out->Name());
-          PADDLE_ENFORCE_EQ(last_op_input_name,
-                            "ResidualData",
-                            platform::errors::InvalidArgument(
-                                "Only the ResidualData output is allowed to be "
-                                "linked to earlier op."));
-          PADDLE_ENFORCE_EQ(last_op_op->Type(),
-                            "fc",
-                            platform::errors::InvalidArgument(
-                                "Only fc operator supports ResidualData output "
-                                "linked as input."));
-          residual_fc = true;
-        }
 
         PADDLE_ENFORCE_NE(
             last_op_input_name.empty(),
@@ -429,21 +413,14 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
 
         // update the next operator input,
         // by replacing quant_out with first_quant_out
-        auto last_op_names = residual_fc
-                                 ? last_op->Op()->Output(last_op_input_name)
-                                 : last_op->Op()->Input(last_op_input_name);
+        auto last_op_names = last_op->Op()->Input(last_op_input_name);
         last_op_names.erase(
             std::remove(
                 last_op_names.begin(), last_op_names.end(), quant_out->Name()),
             last_op_names.end());
         last_op_names.push_back(first_quant_out->Name());
-        if (residual_fc) {
-          last_op_op->SetOutput(last_op_input_name,
-                                std::vector<std::string>(last_op_names));
-        } else {
-          last_op_op->SetInput(last_op_input_name,
-                               std::vector<std::string>(last_op_names));
-        }
+        last_op_op->SetInput(last_op_input_name,
+                             std::vector<std::string>(last_op_names));
 
         IR_NODE_LINK_TO(first_quant_out, last_op);
         GraphSafeRemoveNodes(graph, {quant_op, quant_out});

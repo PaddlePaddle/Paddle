@@ -317,7 +317,7 @@ class FCMKLDNNHandler
       const ExecutionContext& ctx, phi::DenseTensor* out) {
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
-      auto* residual_param = ctx.Output<phi::DenseTensor>("ResidualData");
+      auto* residual_param = ctx.Input<phi::DenseTensor>("ResidualData");
 
       PADDLE_ENFORCE_EQ(
           out->dims(),
