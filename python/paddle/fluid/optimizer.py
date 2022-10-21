@@ -6128,19 +6128,35 @@ class PipelineOptimizer(object):
         self._check_pipeline_persist_var(program_list[self.local_rank])
 
         main_program._pipeline_opt = {
-            "trainer": "PipelineTrainer",
-            "device_worker": "Section",
-            "pipeline_stage": self.local_rank,
-            "num_pipeline_stages": len(device_list),
-            "schedule_mode": self.schedule_mode,
-            "inner_parallelism": len(device_list),
-            "section_program": program_list[self.local_rank],
-            "place": place_list[self.local_rank],
-            "place_id": place_id,
-            "sync_steps": -1,
-            "num_microbatches": self._num_microbatches,
-            "start_cpu_core_id": self._start_cpu_core_id,
+            "trainer":
+            "PipelineTrainer",
+            "device_worker":
+            "Section",
+            "pipeline_stage":
+            self.local_rank,
+            "num_pipeline_stages":
+            len(device_list),
+            "schedule_mode":
+            self.schedule_mode,
+            "inner_parallelism":
+            len(device_list),
+            "section_program":
+            program_list[self.local_rank],
+            "place":
+            place_list[self.local_rank],
+            "place_id":
+            place_id,
+            "sync_steps":
+            -1,
+            "num_microbatches":
+            self._num_microbatches,
+            "start_cpu_core_id":
+            self._start_cpu_core_id,
+            "set_num_microbatches_func":
+            lambda num, is_last: \
+                _set_num_microbatches(main_program, num, is_last)
         }
+
         return optimize_ops, params_grads, program_list, self._pipeline_pair, self._pp_ring_map
 
 
@@ -7325,3 +7341,52 @@ class GradientMergeOptimizer(object):
                                            params_grads=params_grads)
 
         return optimize_ops, params_grads
+
+
+import re
+
+
+def _scale_gradient_merge(program, new_acc_step, last_pp_stage):
+    block = program.global_block()
+    convert_mean = not last_pp_stage  # only in last_pp stage the loss need to be converted
+    convert_var = False
+
+    for _, op in enumerate(block.ops):
+        if not op.type == "scale": continue
+
+        # convert some scale op
+        # use fp32
+        if len(op.output("Out")) == 1 and "@GRAD@MERGED" in op.output("Out")[0]:
+            convert_var = True
+            op._set_attr("scale", 1. / new_acc_step)
+
+        # use amp
+        if len(op.output("Out")) == 1 and re.compile(
+                "^loss_scaling_.+@TMP").search(op.output("Out")[0]) is not None:
+            assert not convert_var, "already converted a loss scaling var"
+            convert_var = True
+            op._set_attr("scale", float(new_acc_step))
+
+        # convert loss
+        if last_pp_stage:
+            if re.compile("^mean").search(op.input("X")[0]) is not None:
+                assert not convert_mean, "already converted a loss var"
+                convert_mean = True
+                op._set_attr("scale", 1. / new_acc_step)
+    assert convert_mean, "there is no loss var to convert, please check if you correctly specified use_amp"
+    assert convert_var, "there is no var to convert, please check if you correctly specified use_amp"
+
+
+def _set_num_microbatches(train_program, num, last_pp_stage):
+    '''
+        Args:
+            train_program(fluid.Program): train program used in exe.run()
+            num(int): number of micro batches
+            use_amp(bool): if use amp
+            last_pp_stage(bool): if this process belongs to the last pp stage
+    '''
+    assert hasattr(train_program, "_pipeline_opt") \
+        and "num_microbatches" in train_program._pipeline_opt, "Only support program with pipeline parallelism"
+    _scale_gradient_merge(train_program._pipeline_opt["section_program"], num,
+                          last_pp_stage)
+    train_program._pipeline_opt["num_microbatches"] = num

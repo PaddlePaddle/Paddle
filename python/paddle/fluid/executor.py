@@ -514,8 +514,14 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
 
     inner_program = program._program if isinstance(
         program, compiler.CompiledProgram) else program
+
+    accstep = ""
+    if hasattr(program, "_pipeline_opt") and \
+            "num_microbatches" in program._pipeline_opt:
+        accstep = "\n accstep" + str(program._pipeline_opt["num_microbatches"])
+
     return _get_varname_from_block(inner_program.blocks[0]) + str(
-        id(program)) + _get_program_cache_key(feed, fetch_list)
+        id(program)) + _get_program_cache_key(feed, fetch_list) + accstep
 
 
 def _get_program_cache_key(feed, fetch_list):
