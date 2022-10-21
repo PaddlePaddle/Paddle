@@ -14,47 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/conv_base_helper.h"
+#include "paddle/fluid/framework/conv_search_cache.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn_base.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 using ConvArgs = ConvArgsBase<miopenHandle_t, miopenDataType_t>;
-
-template <typename DeviceContext, typename T, size_t D>
-static void RemovePaddingSlice(const phi::GPUContext& context,
-                               const phi::DenseTensor* input,
-                               phi::DenseTensor* out,
-                               const std::vector<int>& starts,
-                               const std::vector<int>& axes) {
-  auto& place = *context.eigen_device();
-  auto in_dims = input->dims();
-  auto new_out_dims = out->dims();
-  auto offsets = Eigen::array<int, D>();
-  auto extents = Eigen::array<int, D>();
-  for (size_t i = 0; i < D; ++i) {
-    offsets[i] = 0;
-    extents[i] = new_out_dims[i];
-  }
-
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int start = starts[i];
-    if (start < 0) {
-      start = (start + in_dims[axes[i]]);
-    }
-    start = std::max(start, 0);
-    offsets[axes[i]] = start;
-  }
-  auto in_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *input);
-
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *out, new_out_dims);
-  out_t.device(place) = in_t.slice(offsets, extents);
-}
+using paddle::framework::AlgorithmsCache;
+using paddle::framework::ConvSearchCache;
 
 template <typename PerfT>
 struct SearchAlgorithm {};
@@ -227,5 +195,4 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
