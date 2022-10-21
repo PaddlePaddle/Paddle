@@ -20,7 +20,6 @@ from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import os
 import re
 import traceback
-import six
 import copy
 from types import MethodType, FunctionType
 
@@ -448,7 +447,7 @@ def require_version(min_version, max_version=None):
     zero_version = ['0', '0', '0', '0']
 
     def version_cmp(ver_a, ver_b):
-        for i in six.moves.range(len(ver_a)):
+        for i in range(len(ver_a)):
             if int(ver_a[i]) > int(ver_b[i]):
                 return 1
             elif int(ver_a[i]) < int(ver_b[i]):
@@ -507,6 +506,17 @@ def _dygraph_only_(func):
 
     def __impl__(*args, **kwargs):
         assert _non_static_mode(
+        ), "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
+def _non_static_only_(func):
+
+    def __impl__(*args, **kwargs):
+        from .dygraph.base import in_declarative_mode
+        assert _non_static_mode() or in_declarative_mode(
         ), "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode." % func.__name__
         return func(*args, **kwargs)
 
@@ -572,6 +582,7 @@ dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
 static_only = wrap_decorator(_static_only_)
 fake_interface_only = wrap_decorator(_fake_interface_only_)
+non_static_only = wrap_decorator(_non_static_only_)
 
 
 def _dygraph_tracer():
@@ -676,7 +687,7 @@ def _cuda_ids():
     if gpus_env:
         device_ids = [int(s) for s in gpus_env.split(",")]
     else:
-        device_ids = six.moves.range(core.get_cuda_device_count())
+        device_ids = range(core.get_cuda_device_count())
     return device_ids
 
 
@@ -685,7 +696,7 @@ def _xpu_ids():
     if xpus_env:
         device_ids = [int(s) for s in xpus_env.split(",")]
     else:
-        device_ids = six.moves.range(core.get_xpu_device_count())
+        device_ids = range(core.get_xpu_device_count())
     return device_ids
 
 
@@ -694,7 +705,7 @@ def _npu_ids():
     if npus_env:
         device_ids = [int(s) for s in npus_env.split(",")]
     else:
-        device_ids = six.moves.range(core.get_npu_device_count())
+        device_ids = range(core.get_npu_device_count())
     return device_ids
 
 
@@ -703,7 +714,7 @@ def _mlu_ids():
     if mlus_env:
         device_ids = [int(s) for s in mlus_env.split(",")]
     else:
-        device_ids = six.moves.range(core.get_mlu_device_count())
+        device_ids = range(core.get_mlu_device_count())
     return device_ids
 
 
@@ -1310,8 +1321,7 @@ class ParameterMetaClass(VariableMetaClass):
             return issubclass(t, Parameter)
 
 
-@six.add_metaclass(VariableMetaClass)
-class Variable(object):
+class Variable(metaclass=VariableMetaClass):
     """
     **Notes**:
         **The constructor of Variable should not be invoked directly.**
@@ -1390,11 +1400,10 @@ class Variable(object):
         self.error_clip = error_clip
 
         is_new_var = False
-        name = cpt.to_text(name)
-        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
+        self.desc = self.block.desc.find_var(name.encode())
 
         if self.desc is None:
-            self.desc = self.block.desc.var(cpt.to_bytes(name))
+            self.desc = self.block.desc.var(name.encode())
             is_new_var = True
 
         if is_new_var:
@@ -1752,13 +1761,12 @@ class Variable(object):
         assert isinstance(throw_on_error, bool) and isinstance(
             with_details, bool)
         protostr = self.desc.serialize_to_string()
-        proto = framework_pb2.VarDesc.FromString(six.binary_type(protostr))
+        proto = framework_pb2.VarDesc.FromString(bytes(protostr))
         res_str = _debug_string_(proto, throw_on_error)
         if with_details:
             additional_attr = ("error_clip", )
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name,
-                                         cpt.to_text(getattr(self, attr_name)))
+                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
 
         return res_str
 
@@ -1900,7 +1908,7 @@ class Variable(object):
                                                 dtype='float32')
             print("name of current Var is: {}".format(new_variable.name))
         """
-        return cpt.to_text(self.desc.name())
+        return self.desc.name()
 
     @property
     def grad_name(self):
@@ -2569,7 +2577,7 @@ def get_all_op_protos():
     protostrs = core.get_all_op_protos()
     ret_values = []
     for pbstr in protostrs:
-        op_proto = framework_pb2.OpProto.FromString(six.binary_type(pbstr))
+        op_proto = framework_pb2.OpProto.FromString(bytes(pbstr))
         ret_values.append(op_proto)
     return ret_values
 
@@ -2802,12 +2810,12 @@ class Operator(object):
                                 % (in_proto.name, len(in_args)))
                         in_arg_names = []
                         for index, arg in enumerate(in_args):
-                            if isinstance(arg, six.string_types):
+                            if isinstance(arg, str):
                                 in_arg_names.append(arg)
-                            elif isinstance(arg, six.binary_type):
+                            elif isinstance(arg, bytes):
                                 in_arg_names.append(arg.decode())
                             elif isinstance(arg, (Variable, core.VarBase)):
-                                in_arg_names.append(cpt.to_text(arg.name))
+                                in_arg_names.append(arg.name)
                             else:
                                 raise TypeError(
                                     "The type of '%s' in operator %s should be "
@@ -2840,13 +2848,13 @@ class Operator(object):
                             % (out_proto.name, len(out_args)))
                     out_arg_names = []
                     for arg in out_args:
-                        if isinstance(arg, six.string_types):
+                        if isinstance(arg, str):
                             out_arg_names.append(arg)
                         else:
-                            out_arg_names.append(cpt.to_text(arg.name))
+                            out_arg_names.append(arg.name)
                         # TODO(minqiyang): could we remove variable's op in static mode?
                         if not _non_static_mode():
-                            if isinstance(arg, six.string_types):
+                            if isinstance(arg, str):
                                 block.var(arg).op = self
                             else:
                                 arg.op = self
@@ -2901,7 +2909,7 @@ class Operator(object):
 
         """
         protostr = self.desc.serialize_to_string()
-        proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
+        proto = framework_pb2.OpDesc.FromString(bytes(protostr))
         return _debug_string_(proto, throw_on_error)
 
     def _to_readable_code(self, skip_op_callstack=True):
@@ -3518,8 +3526,7 @@ class Block(object):
             res_str += "\n}"
         else:
             protostr = self.desc.serialize_to_string()
-            proto = framework_pb2.BlockDesc.FromString(
-                six.binary_type(protostr))
+            proto = framework_pb2.BlockDesc.FromString(bytes(protostr))
             res_str = _debug_string_(proto, throw_on_error)
         return res_str
 
@@ -3571,7 +3578,7 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
-        if not isinstance(name, six.string_types):
+        if not isinstance(name, str):
             raise TypeError(
                 "var require string as parameter, but get %s instead." %
                 (type(name)))
@@ -3640,7 +3647,7 @@ class Block(object):
         return list(self.iter_parameters())
 
     def iter_parameters(self):
-        return (item[1] for item in six.iteritems(self.vars)
+        return (item[1] for item in self.vars.items()
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
@@ -3660,8 +3667,8 @@ class Block(object):
         Rename variable in vars and ops' inputs and outputs
 
         Args:
-            name(str): the name that need to be renamed.
-            new_name(str): the name that need to rename to.
+            name(str|bytes): the name that need to be renamed.
+            new_name(str|bytes): the name that need to rename to.
 
         Raises:
             ValueError: If this block doesn't have this the giving name,
@@ -3671,8 +3678,10 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
-        name = cpt.to_text(name)
-        new_name = cpt.to_text(new_name)
+        # Ensure the type of name and new_name is str
+        name = name.decode() if isinstance(name, bytes) else name
+        new_name = new_name.decode() if isinstance(new_name,
+                                                   bytes) else new_name
 
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)
@@ -3691,9 +3700,9 @@ class Block(object):
         else:
             raise ValueError("unsupported var type: %s", type(v))
         orig_var_type = v.type
-        self.desc._rename_var(cpt.to_bytes(name), cpt.to_bytes(new_name))
+        self.desc._rename_var(name.encode(), new_name.encode())
         # NOTE: v is destroyed by C++ after calling _rename_var.
-        d = self.desc.find_var(cpt.to_bytes(new_name))
+        d = self.desc.find_var(new_name.encode())
         if var_type == "Parameter":
             if in_dygraph_mode():
                 var = EagerParamBase(d.shape(),
@@ -3744,7 +3753,7 @@ class Block(object):
     def _remove_var(self, name, sync=True):
         if sync == True:
             self._sync_with_cpp()
-        self.desc._remove_var(cpt.to_bytes(name))
+        self.desc._remove_var(name.encode())
         del self.vars[name]
 
     def create_parameter(self, *args, **kwargs):
@@ -3953,7 +3962,7 @@ class Block(object):
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
-            if not self.desc.find_var(cpt.to_bytes(var)):
+            if not self.desc.find_var(var.encode()):
                 self.vars.pop(var)
 
         # sync operators from cpp
@@ -4724,14 +4733,14 @@ class IrGraph(object):
         """
         op_desc = core.OpDesc()
         op_desc.set_type(op_type)
-        for attr, value in six.iteritems(attrs):
+        for attr, value in attrs.items():
             self._update_desc_attr(op_desc, attr, value)
-        for input_name, var_nodes in six.iteritems(inputs):
+        for input_name, var_nodes in inputs.items():
             if not isinstance(var_nodes, list):
                 var_nodes = [var_nodes]
             op_desc.set_input(input_name,
                               [var_node.name() for var_node in var_nodes])
-        for output_name, var_nodes in six.iteritems(outputs):
+        for output_name, var_nodes in outputs.items():
             if not isinstance(var_nodes, list):
                 var_nodes = [var_nodes]
             op_desc.set_output(output_name,
@@ -4877,7 +4886,7 @@ class IrGraph(object):
         """
         adj_list = core.build_adjacency_list(self.graph)
         wrapped_adj_list = dict()
-        for k, v in six.iteritems(adj_list):
+        for k, v in adj_list.items():
             wrapped_adj_list[IrNode(k)] = {IrNode(n) for n in v}
         return wrapped_adj_list
 
@@ -5449,8 +5458,7 @@ class Program(object):
                 res_str += block.to_string(throw_on_error, with_details)
         else:
             protostr = self.desc.serialize_to_string()
-            proto = framework_pb2.ProgramDesc.FromString(
-                six.binary_type(protostr))
+            proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))
             res_str = _debug_string_(proto, throw_on_error)
         return res_str
 
@@ -5533,7 +5541,7 @@ class Program(object):
                         print("op type is {}".format(op.type))
                         print("op inputs are {}".format(op.input_arg_names))
                         print("op outputs are {}".format(op.output_arg_names))
-                        for key, value in sorted(six.iteritems(op.all_attrs())):
+                        for key, value in sorted(op.all_attrs().items()):
                             if key not in ['op_callstack', 'op_role_var']:
                                 print(" [ attrs: {}:   {} ]".format(key, value))
 
@@ -5541,7 +5549,6 @@ class Program(object):
             1. To clone a test program, the sample code is:
                 .. code-block:: python
 
-                    import six
                     import paddle
                     import paddle.static as static
                     import paddle.utils as utils
@@ -5550,13 +5557,13 @@ class Program(object):
                     paddle.enable_static()
 
                     def print_prog(prog):
-                        for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                        for name, value in sorted(prog.block(0).vars.items()):
                             print(value)
                         for op in prog.block(0).ops:
                             print("op type is {}".format(op.type))
                             print("op inputs are {}".format(op.input_arg_names))
                             print("op outputs are {}".format(op.output_arg_names))
-                            for key, value in sorted(six.iteritems(op.all_attrs())):
+                            for key, value in sorted(op.all_attrs().items()):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
 
@@ -5594,7 +5601,6 @@ class Program(object):
             2. The clone method can be avoid if you create program for training and program for testing individually.
                 .. code-block:: python
 
-                    import six
                     import paddle
                     import paddle.static as static
                     import paddle.utils as utils
@@ -5603,13 +5609,13 @@ class Program(object):
                     paddle.enable_static()
 
                     def print_prog(prog):
-                        for name, value in sorted(six.iteritems(prog.block(0).vars)):
+                        for name, value in sorted(prog.block(0).vars.items()):
                             print(value)
                         for op in prog.block(0).ops:
                             print("op type is {}".format(op.type))
                             print("op inputs are {}".format(op.input_arg_names))
                             print("op outputs are {}".format(op.output_arg_names))
-                            for key, value in sorted(six.iteritems(op.all_attrs())):
+                            for key, value in sorted(op.all_attrs().items()):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
 
@@ -5651,7 +5657,7 @@ class Program(object):
                 self.desc)
             forward_prog.blocks = [
                 Block(forward_prog, i)
-                for i in six.moves.range(forward_prog.desc.num_blocks())
+                for i in range(forward_prog.desc.num_blocks())
             ]
             forward_prog._sync_with_cpp()
             p = forward_prog._inference_optimize(prune_read_op=False)
@@ -5660,9 +5666,7 @@ class Program(object):
             p.current_block_idx = self.current_block_idx
             p._seed = self._seed
             p.desc = core.ProgramDesc(self.desc)
-            p.blocks = [
-                Block(p, i) for i in six.moves.range(self.desc.num_blocks())
-            ]
+            p.blocks = [Block(p, i) for i in range(self.desc.num_blocks())]
 
             p._current_role = self._current_role
             p.__op_role_var = self.__op_role_var
@@ -5725,7 +5729,7 @@ class Program(object):
             targets = [targets]
 
         for var in feeded_var_names:
-            if not isinstance(var, six.string_types):
+            if not isinstance(var, str):
                 raise ValueError(
                     "All feeded_var_names of Program._prune_with_input() can only be "
                     "str, but received %s." % type(var))
@@ -5751,7 +5755,7 @@ class Program(object):
             if not isinstance(t, Operator):
                 if isinstance(t, Variable):
                     name = t.name
-                elif isinstance(t, six.string_types):
+                elif isinstance(t, str):
                     name = str(t)
                 else:
                     raise ValueError(
@@ -5791,9 +5795,7 @@ class Program(object):
         res = Program()
         res.desc, pruned_origin_block_id_map = core.prune(
             self.desc, set(feeded_var_names), targets_idx)
-        res.blocks = [
-            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
-        ]
+        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
         res._sync_with_cpp()
 
         res._copy_param_info_from(self)
@@ -5839,21 +5841,19 @@ class Program(object):
                 root_block._remove_op(0, read_op_idx + 1)
             for var in root_block.all_vars():
                 if var.type() == core.VarDesc.VarType.READER:
-                    root_block._remove_var(cpt.to_bytes(var.name()))
+                    root_block._remove_var(var.name().encode())
 
         # change all `is_test` attributes to True
-        for i in six.moves.range(res.desc.num_blocks()):
+        for i in range(res.desc.num_blocks()):
             block = res.desc.block(i)
-            for j in six.moves.range(block.op_size()):
+            for j in range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
                     op._set_attr('is_test', True)
                 if op.type() == "batch_norm":
                     # Remove the output ReserveSpace of batch_norm if exists.
                     op.remove_output("ReserveSpace")
-        res.blocks = [
-            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
-        ]
+        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
         res._sync_with_cpp()
         return res
 
@@ -5872,16 +5872,14 @@ class Program(object):
         res = Program()
         res.desc = core.ProgramDesc(self.desc)
 
-        res.blocks = [
-            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
-        ]
+        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
         res._sync_with_cpp()
 
         # Note: The op_role and op_role_var cann't be deleted currently,
         # and we will try to remove them in the future.
         common_clipped_attrs_list = ['op_callstack', 'with_quant_attr']
 
-        for i in six.moves.range(res.desc.num_blocks()):
+        for i in range(res.desc.num_blocks()):
             block = res.desc.block(i)
             for var in block.all_vars():
                 var.clear_is_parameter()
@@ -6004,7 +6002,7 @@ class Program(object):
         """
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
-        p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
+        p.blocks = [Block(p, i) for i in range(p.desc.num_blocks())]
         p._sync_with_cpp()
         return p
 
@@ -6021,7 +6019,7 @@ class Program(object):
         """
         p = Program()
         p.desc = desc
-        p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
+        p.blocks = [Block(p, i) for i in range(p.desc.num_blocks())]
         p._sync_with_cpp()
         return p
 
@@ -6292,7 +6290,7 @@ class Program(object):
         if not pruned_origin_block_id_map:
             pruned_origin_block_id_map = {
                 i: i
-                for i in six.moves.range(self.desc.num_blocks())
+                for i in range(self.desc.num_blocks())
             }
 
         # NOTE(zhiqiu): All vars in cloned program exist in original program.
@@ -6544,8 +6542,7 @@ class Program(object):
                      .format(name)))
 
 
-@six.add_metaclass(ParameterMetaClass)
-class Parameter(Variable):
+class Parameter(Variable, metaclass=ParameterMetaClass):
     """
     Parameter is derived from Variable. A parameter is a persistable
     Variable, and will be updated by optimizers after each iteration.
@@ -6579,10 +6576,6 @@ class Parameter(Variable):
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
-
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:
@@ -6643,8 +6636,7 @@ class Parameter(Variable):
             additional_attr = ("trainable", "optimize_attr", "regularizer",
                                "do_model_average", "need_clip")
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name,
-                                         cpt.to_text(getattr(self, attr_name)))
+                res_str += "%s: %s\n" % (attr_name, getattr(self, attr_name))
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str
@@ -6683,10 +6675,6 @@ class ParamBase(core.VarBase):
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
-
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:
@@ -6829,10 +6817,6 @@ class EagerParamBase(_core_eager_eagertensor):
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
-
-        if len(shape) == 0:
-            raise ValueError(
-                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:

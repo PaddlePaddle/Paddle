@@ -16,7 +16,6 @@ import inspect
 import os
 import pickle
 import numpy as np
-import six
 import warnings
 import time
 import socket
@@ -46,6 +45,7 @@ from paddle.static import InputSpec as Input
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet.base import role_maker
+from paddle.autograd import no_grad
 
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
@@ -107,7 +107,7 @@ def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
 
 
 def wait_server_ready(endpoints):
-    assert not isinstance(endpoints, six.string_types)
+    assert not isinstance(endpoints, str)
     while True:
         all_ok = True
         not_ready_endpoints = []
@@ -715,11 +715,9 @@ class DynamicGraphAdapter(object):
                                   **self._amp_custom_lists,
                                   level=self._amp_level):
             if self._nranks > 1:
-                outputs = self.ddp_model.forward(
-                    *[to_variable(x) for x in inputs])
+                outputs = self.ddp_model(*[to_variable(x) for x in inputs])
             else:
-                outputs = self.model.network.forward(
-                    *[to_variable(x) for x in inputs])
+                outputs = self.model.network(*[to_variable(x) for x in inputs])
 
         losses = self.model._loss(*(to_list(outputs) + labels))
         losses = to_list(losses)
@@ -754,7 +752,7 @@ class DynamicGraphAdapter(object):
         labels = labels or []
         labels = [to_variable(l) for l in to_list(labels)]
 
-        outputs = self.model.network.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.network(*[to_variable(x) for x in inputs])
 
         # Transfrom data to expected device
         expected_device = paddle.device.get_device()
@@ -809,7 +807,7 @@ class DynamicGraphAdapter(object):
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
         self._input_info = _update_input_info(inputs)
-        outputs = self.model.network.forward(*inputs)
+        outputs = self.model.network(*inputs)
         if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
             outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
 
@@ -1101,7 +1099,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
-    @paddle.no_grad()
+    @no_grad()
     def eval_batch(self, inputs, labels=None):
         """
         Run one evaluating step on a batch of data.
@@ -1153,7 +1151,7 @@ class Model(object):
             self._update_inputs()
         return loss
 
-    @paddle.no_grad()
+    @no_grad()
     def predict_batch(self, inputs):
         """
         Run one predicting step on a batch of data.

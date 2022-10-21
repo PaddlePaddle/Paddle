@@ -22,7 +22,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using framework::DataLayout;
+using phi::DataLayout;
 
 inline dnnl::memory::dims GetWeightsTz(const phi::DenseTensor* filter,
                                        const int groups) {

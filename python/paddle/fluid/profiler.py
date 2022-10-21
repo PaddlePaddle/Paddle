@@ -15,7 +15,6 @@
 from . import core
 from .wrapped_decorator import signature_safe_contextmanager
 import os
-import six
 import sys
 
 from paddle.utils.deprecated import deprecated

@@ -82,27 +82,18 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
 framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
                                       const framework::OperatorWithKernel& oper,
                                       const std::string& name) {
-  framework::LibraryType library{framework::LibraryType::kPlain};
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = oper.IndicateVarDataType(ctx, name);
-// FIXME(liuwei1031) temporarily disable the code to unblock users
-// TODO(liuwei1031) figure out the reason behind
-// https://github.com/PaddlePaddle/Paddle/issues/16096
-// and re-enable this in the future
-// #ifdef PADDLE_WITH_CUDA
-//   auto it1 = oper.Attrs().find("use_cudnn");
-//   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
-//     library = framework::LibraryType::kCUDNN;
-//   }
-// #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      oper.CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-#endif
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  // FIXME(liuwei1031) temporarily disable the code to unblock users
+  // TODO(liuwei1031) figure out the reason behind
+  // https://github.com/PaddlePaddle/Paddle/issues/16096
+  // and re-enable this in the future
+  // #ifdef PADDLE_WITH_CUDA
+  //   auto it1 = oper.Attrs().find("use_cudnn");
+  //   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+  //     library = framework::LibraryType::kCUDNN;
+  //   }
+  // #endif
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 class ActivationOp : public framework::OperatorWithKernel {
@@ -118,27 +109,6 @@ class ActivationOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return GetKernelType(ctx, *this, "X");
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-#ifdef PADDLE_WITH_MKLDNN
-    // When activation is first oneDNN op (there was some non oneDNN op
-    // previously)
-    // then we also need to rotate shape NHWC -> NCWH
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
-        paddle::platform::MKLDNNDeviceContext::tls()
-                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(),
-                                     framework::DataLayout::kNHWC);
-    }
-#endif
-    return framework::OpKernelType(
-        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -1278,7 +1248,7 @@ class LogitOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
@@ -1313,7 +1283,7 @@ class LogitGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }

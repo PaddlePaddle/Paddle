@@ -192,7 +192,7 @@
   backward : trace_grad
 
 - op : trunc
-  args : (Tensor x)
+  args : (Tensor input)
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta

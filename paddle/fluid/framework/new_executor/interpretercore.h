@@ -20,11 +20,11 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/exception_holder.h"
-#include "paddle/fluid/framework/new_executor/event_manager.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
+#include "paddle/fluid/framework/new_executor/interpreter/event_manager.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/new_executor/stream_analyzer.h"
@@ -68,45 +68,42 @@ class InterpreterCore {
   void reset_scope(Scope* new_scope);
 
  private:
+  // build graph
+  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
+  void BuildOperatorDependences();
+  void BuildAndCacheInstructionCtx(Instruction* instr_node);
+  void BuildSkipShareLoDInfo();
+
+  // inplace
+  void BuildInplace();
   bool BuildInplaceCheckVarIsOnlyInput(
       const std::vector<std::vector<size_t>>& input_var2op, size_t var_index);
+  void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
-  std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
-
-  void BuildAndCacheInstructionCtx(Instruction* instr_node);
-
-  void BuildInplace();
-
-  void BuildOperatorDependences();
-
-  void ClearLoDTensorArrayInLocalScope();
-
-  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
-
-  void RunInstruction(const Instruction& instr_node);
-
+  // execution
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
-
+  void RunInstructionAsync(size_t instr_id);
+  void RunInstruction(const Instruction& instr_node);
+  void RunNextInstructions(const Instruction& instr_id,
+                           std::queue<size_t>* reserved_next_ops);
+  // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,
                const std::vector<phi::DenseTensor>& feed_tensors,
                bool prepare_feed);
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // gc
   void RecordStreamForGC(const Instruction& instr);
-#endif
-
   void CheckGC(const Instruction& instr);
+  void ClearLoDTensorArrayInLocalScope();
 
-  void RunInstructionAsync(size_t instr_id);
-  void RunNextInstructions(const Instruction& instr_id,
-                           std::queue<size_t>* reserved_next_ops);
+  // workqueue
+  std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
-  void BuildSkipShareLoDInfo();
-
-  void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
+  // scope
+  bool HasLocalScope() const;
 
  private:
-  bool is_build_;
+  bool is_build_{false};
 
   platform::Place place_;
   const BlockDesc& block_;  // not owned
@@ -127,11 +124,7 @@ class InterpreterCore {
 
   std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
-  // last_live_ops_[i] contains the id of operators that last access var[i]
-  std::map<size_t, std::set<size_t>> last_live_ops_;
-
-  std::vector<size_t> dependecy_count_;
-  std::atomic<size_t> unfinished_op_numer_{0};
+  std::atomic<size_t> unfinished_op_number_{0};
   VariableScope var_scope_;
   Scope* local_scope_{nullptr};  // not owned
 
@@ -145,8 +138,13 @@ class InterpreterCore {
 
   std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
 
-  std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_deps_;
-  std::future<std::unique_ptr<AtomicVectorSizeT>> atomic_var_ref_;
+  // last_live_ops_[i] contains the id of operators that last access the i-th
+  // var
+  std::map<size_t, std::set<size_t>> last_live_ops_;
+
+  // dependecy_count_[i] contains the number of dependencies that the i-th op
+  // need to wait
+  std::vector<size_t> dependecy_count_;
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;

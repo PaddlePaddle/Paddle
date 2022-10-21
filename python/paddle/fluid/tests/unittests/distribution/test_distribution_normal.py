@@ -19,7 +19,7 @@ import config
 import numpy as np
 import paddle
 from paddle import fluid
-from paddle.distribution import *
+from paddle.distribution import Normal
 from paddle.fluid import layers
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
 import scipy.stats

@@ -60,6 +60,13 @@ class TestXPUTransposeOp(XPUOpTest):
         self.axis = (1, 0)
 
 
+class TestCase_ZeroDim(TestXPUTransposeOp):
+
+    def initTestCase(self):
+        self.shape = ()
+        self.axis = ()
+
+
 class TestCase0(TestXPUTransposeOp):
 
     def initTestCase(self):

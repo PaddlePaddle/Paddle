@@ -23,7 +23,7 @@ from .dist_attribute import OperatorDistributedAttribute
 from .utils import is_backward_op, is_forward_op, is_loss_op, is_optimize_op
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 
-__varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
+__varname_not_in_block__ = ["lod_tensor_blocking_queue"]
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER, core.VarDesc.VarType.STEP_SCOPES
 ]
@@ -238,7 +238,9 @@ class Partitioner(object):
                                        target_block, serial_input_varname,
                                        new_varname)
                     else:
-                        assert serial_input_varname in __varname_not_in_block__
+                        for varname_not_in_block in __varname_not_in_block__:
+                            assert varname_not_in_block in serial_input_varname, \
+                                "{} is not found".format(serial_input_varname)
 
                     self._serial2dist_varname_mapping[
                         serial_input_varname] = new_varname
