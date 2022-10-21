@@ -566,23 +566,23 @@ void RunBrpcPushSparse() {
         nodes.clear();
       }
     }
-    ASSERT_EQ(count_item_nodes.size(), 12);
+    ASSERT_EQ(count_item_nodes.size(), 12UL);
   }
 
   std::pair<std::vector<std::vector<int64_t>>, std::vector<float>> res;
   VLOG(0) << "start to sample neighbors ";
   res = client1.batch_sample_neighbors(
       std::string("user2item"), std::vector<int64_t>(1, 96), 4, true, false);
-  ASSERT_EQ(res.first[0].size(), 3);
+  ASSERT_EQ(res.first[0].size(), 3UL);
   std::vector<int64_t> node_ids;
   node_ids.push_back(96);
   node_ids.push_back(37);
   res = client1.batch_sample_neighbors(
       std::string("user2item"), node_ids, 4, true, false);
 
-  ASSERT_EQ(res.first[1].size(), 1);
+  ASSERT_EQ(res.first[1].size(), 1UL);
   std::vector<int64_t> nodes_ids = client2.random_sample_nodes("user", 0, 6);
-  ASSERT_EQ(nodes_ids.size(), 2);
+  ASSERT_EQ(nodes_ids.size(), 2UL);
   ASSERT_EQ(true,
             (nodes_ids[0] == 59 && nodes_ids[1] == 37) ||
                 (nodes_ids[0] == 37 && nodes_ids[1] == 59));
@@ -597,8 +597,8 @@ void RunBrpcPushSparse() {
   feature_names.push_back(std::string("d"));
   auto node_feat =
       client1.get_node_feat(std::string("user"), node_ids, feature_names);
-  ASSERT_EQ(node_feat.size(), 2);
-  ASSERT_EQ(node_feat[0].size(), 2);
+  ASSERT_EQ(node_feat.size(), 2UL);
+  ASSERT_EQ(node_feat[0].size(), 2UL);
   VLOG(0) << "get_node_feat: " << node_feat[0][0];
   VLOG(0) << "get_node_feat: " << node_feat[0][1];
   VLOG(0) << "get_node_feat: " << node_feat[1][0];
@@ -625,8 +625,8 @@ void RunBrpcPushSparse() {
   feature_names.push_back(std::string("b"));
   node_feat =
       client1.get_node_feat(std::string("user"), node_ids, feature_names);
-  ASSERT_EQ(node_feat.size(), 2);
-  ASSERT_EQ(node_feat[0].size(), 2);
+  ASSERT_EQ(node_feat.size(), 2UL);
+  ASSERT_EQ(node_feat[0].size(), 2UL);
   VLOG(0) << "get_node_feat: " << node_feat[0][0].size();
   VLOG(0) << "get_node_feat: " << node_feat[0][1].size();
   VLOG(0) << "get_node_feat: " << node_feat[1][0].size();
