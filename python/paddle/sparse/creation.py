@@ -101,18 +101,16 @@ def sparse_coo_tensor(indices,
     .. code-block:: python
 
         import paddle
-        from paddle.fluid.framework import _test_eager_guard
 
-        with _test_eager_guard():
-            indices = [[0, 1, 2], [1, 2, 0]]
-            values = [1.0, 2.0, 3.0]
-            dense_shape = [3, 3]
-            coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-            # print(coo)
-            # Tensor(shape=[2, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-            #       indices=[[0, 1, 2],
-            #                [1, 2, 0]],
-            #       values=[1., 2., 3.])
+        indices = [[0, 1, 2], [1, 2, 0]]
+        values = [1.0, 2.0, 3.0]
+        dense_shape = [3, 3]
+        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        # print(coo)
+        # Tensor(shape=[2, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+        #       indices=[[0, 1, 2],
+        #                [1, 2, 0]],
+        #       values=[1., 2., 3.])
     """
 
     if in_dynamic_mode():
@@ -221,19 +219,17 @@ def sparse_csr_tensor(crows,
     .. code-block:: python
 
         import paddle
-        from paddle.fluid.framework import _test_eager_guard
 
-        with _test_eager_guard():
-            crows = [0, 2, 3, 5]
-            cols = [1, 3, 2, 0, 1]
-            values = [1, 2, 3, 4, 5]
-            dense_shape = [3, 4]
-            csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-            # print(csr)
-            # Tensor(shape=[3, 4], dtype=paddle.int64, place=Place(gpu:0), stop_gradient=True,
-            #       crows=[0, 2, 3, 5],
-            #       cols=[1, 3, 2, 0, 1],
-            #       values=[1, 2, 3, 4, 5])
+        crows = [0, 2, 3, 5]
+        cols = [1, 3, 2, 0, 1]
+        values = [1, 2, 3, 4, 5]
+        dense_shape = [3, 4]
+        csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+        # print(csr)
+        # Tensor(shape=[3, 4], dtype=paddle.int64, place=Place(gpu:0), stop_gradient=True,
+        #       crows=[0, 2, 3, 5],
+        #       cols=[1, 3, 2, 0, 1],
+        #       values=[1, 2, 3, 4, 5])
     """
 
     place = _get_place(place)

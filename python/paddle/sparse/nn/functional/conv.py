@@ -137,10 +137,10 @@ def conv3d(x,
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M].
-        stride (int|list|tuple): The stride size. It means the stride in convolution. If stride is a
+        stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width).
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
-        padding (string|int|list|tuple): The padding size. It means the number of zero-paddings
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings
             on both sides for each dimension. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_depth, pad_height, pad_width]` or
@@ -150,11 +150,11 @@ def conv3d(x,
             when `data_format` is `"NDHWC"`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        dilation (int|list|tuple): The dilation size. It means the spacing between the kernel points.
+        dilation (int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
             If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height,
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation.
             Default: dilation = 1.
-        groups (int): The groups number of the Conv3D Layer. According to grouped
+        groups (int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -163,7 +163,7 @@ def conv3d(x,
             will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
             The default is `"NDHWC"`. When it is `"NDHWC"`, the data is stored in the order of:
             `[batch_size, input_depth, input_height, input_width, input_channels]`.
-        name(str|None): For detailed information, please refer
+        name(str, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
@@ -174,19 +174,17 @@ def conv3d(x,
         .. code-block:: python
 
             import paddle
-            from paddle.fluid.framework import _test_eager_guard
 
-            with _test_eager_guard():
-              indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-              values = [[1], [2], [3], [4]]
-              indices = paddle.to_tensor(indices, dtype='int32')
-              values = paddle.to_tensor(values, dtype='float32')
-              dense_shape = [1, 1, 3, 4, 1]
-              sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
-              weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-              y = paddle.sparse.nn.functional.conv3d(sparse_x, weight)
-              print(y.shape)
-              # (1, 1, 1, 2, 1)
+            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            values = [[1], [2], [3], [4]]
+            indices = paddle.to_tensor(indices, dtype='int32')
+            values = paddle.to_tensor(values, dtype='float32')
+            dense_shape = [1, 1, 3, 4, 1]
+            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+            weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
+            y = paddle.sparse.nn.functional.conv3d(sparse_x, weight)
+            print(y.shape)
+            # (1, 1, 1, 2, 1)
     """
     return _conv3d(x, weight, bias, stride, padding, dilation, groups, False,
                    None, data_format, name)
@@ -233,7 +231,7 @@ def subm_conv3d(x,
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M].
-        stride (int|list|tuple): The stride size. It means the stride in convolution. If stride is a
+        stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width).
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         padding (string|int|list|tuple): The padding size. It means the number of zero-paddings
@@ -246,11 +244,11 @@ def subm_conv3d(x,
             when `data_format` is `"NHWC"`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
-        dilation (int|list|tuple): The dilation size. It means the spacing between the kernel points.
+        dilation (int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
             If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height,
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation.
             Default: dilation = 1.
-        groups (int): The groups number of the Conv3D Layer. According to grouped
+        groups (int, optional): The groups number of the Conv3D Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -263,7 +261,7 @@ def subm_conv3d(x,
             the definition and role of rulebook refers to
             https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The
             default value is None.
-        name(str|None): For detailed information, please refer
+        name(str, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
 
@@ -275,19 +273,17 @@ def subm_conv3d(x,
         .. code-block:: python
 
             import paddle
-            from paddle.fluid.framework import _test_eager_guard
 
-            with _test_eager_guard():
-              indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
-              values = [[1], [2], [3], [4]]
-              indices = paddle.to_tensor(indices, dtype='int32')
-              values = paddle.to_tensor(values, dtype='float32')
-              dense_shape = [1, 1, 3, 4, 1]
-              sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
-              weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-              y = paddle.sparse.nn.functional.subm_conv3d(sparse_x, weight)
-              print(y.shape)
-              #(1, 1, 3, 4, 1)
+            indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            values = [[1], [2], [3], [4]]
+            indices = paddle.to_tensor(indices, dtype='int32')
+            values = paddle.to_tensor(values, dtype='float32')
+            dense_shape = [1, 1, 3, 4, 1]
+            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+            weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
+            y = paddle.sparse.nn.functional.subm_conv3d(sparse_x, weight)
+            print(y.shape)
+            #(1, 1, 3, 4, 1)
     """
     return _conv3d(x, weight, bias, stride, padding, dilation, groups, True,
                    key, data_format, name)
