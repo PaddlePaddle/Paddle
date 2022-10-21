@@ -819,6 +819,18 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnBfloat16();
 
   ///
+  /// \brief Turn off MKLDNN fc passes.
+  ///
+  void DisableMkldnnFcPasses();
+
+  ///
+  /// \brief A boolean state telling whether to disable the MKLDNN Fc passes.
+  ///
+  /// \return bool Whether to disable the MKLDNN Fc passes.
+  ///
+  bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
+
+  ///
   /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
   ///
   /// \return bool Whether to use the MKLDNN Bfloat16.
@@ -1128,6 +1140,8 @@ struct PD_INFER_DECL AnalysisConfig {
       "fusion_lstm",
       "multi_gru",
       "slice"};
+
+  bool disable_mkldnn_fc_passes_{false};
 
   // ipu related.
   bool use_ipu_{false};

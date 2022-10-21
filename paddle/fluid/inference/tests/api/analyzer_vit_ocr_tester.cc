@@ -71,12 +71,8 @@ void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false) {
 
   if (use_mkldnn) {
     cfg->EnableMKLDNN();
+    cfg->pass_builder()->AppendPass("fc_elementwise_add_mkldnn_fuse_pass");
     cfg->SwitchIrOptim();
-
-    size_t insertingIndex = cfg->pass_builder()->GetPassIndex(
-        "fc_elementwise_add_mkldnn_fuse_pass");
-    cfg->pass_builder()->InsertPass(insertingIndex, "fc_act_mkldnn_fuse_pass");
-    cfg->pass_builder()->InsertPass(insertingIndex, "fc_mkldnn_pass");
   }
 }
 
