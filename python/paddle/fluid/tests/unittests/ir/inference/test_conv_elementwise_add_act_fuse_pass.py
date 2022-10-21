@@ -14,7 +14,6 @@
 
 from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
 import unittest
 import os
 import hypothesis.strategies as st
@@ -23,7 +22,7 @@ os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
 
 class TestConvElementwiseAddActPass(PassAutoScanTest):
-    """
+    r"""
     x_var   f_var(persistable)
       \       /
          conv2d

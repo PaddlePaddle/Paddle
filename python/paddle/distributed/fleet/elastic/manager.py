@@ -17,7 +17,6 @@ import socket
 import os
 import six
 import copy
-import logging
 import signal
 import random
 import threading
@@ -178,10 +177,10 @@ class ElasticManager(object):
         if self.min_np == self.max_np or \
                 (self.min_np > 0 and self.max_np == 0):
             self.elastic_level = ElasticLevel.FAULT_TOLERANCE
-            logger.info(f'start job with ElasticLevel.FAULT_TOLERANCE')
+            logger.info('start job with ElasticLevel.FAULT_TOLERANCE')
         if self.min_np > 0 and self.max_np > self.min_np:
             self.elastic_level = ElasticLevel.ELASTIC
-            logger.info(f'start job with ElasticLevel.ELASTIC')
+            logger.info('start job with ElasticLevel.ELASTIC')
 
         # compatible with kuberntes service discovery
         if not server and os.getenv(
@@ -263,7 +262,7 @@ class ElasticManager(object):
                         logger.info(
                             f"[lease_heartbeat] register host={self.curr_host}")
                         self.etcd.put(self.host_path,
-                                      six.b(self.curr_host),
+                                      self.curr_host.encode('latin-1'),
                                       lease=host_lease)
                 except Exception as e:
                     logger.error(
@@ -277,11 +276,15 @@ class ElasticManager(object):
                                              daemon=True)
         keepalived_thread.start()
 
-        self.etcd.put(self.host_path, six.b(self.curr_host), lease=host_lease)
+        self.etcd.put(self.host_path,
+                      self.curr_host.encode('latin-1'),
+                      lease=host_lease)
 
         # endpoints handle DISTRIBUTED_TRAINER_ENDPOINTS and PADDLE_TRAINERS
-        self.etcd.put(self.endpoints_path,
-                      six.b('{}|{}'.format(self.dist_endpoints, self.trainers)))
+        self.etcd.put(
+            self.endpoints_path,
+            '{}|{}'.format(self.dist_endpoints,
+                           self.trainers).encode('latin-1'))
 
         def endpoints_call_back(event):
             if not self.dist_endpoints:
@@ -434,7 +437,7 @@ class ElasticManager(object):
 
     def _update_endpoint(self, endpoints, hosts):
         self.etcd.put(self.endpoints_path,
-                      six.b('{}|{}'.format(endpoints, hosts)))
+                      '{}|{}'.format(endpoints, hosts).encode('latin-1'))
 
     def _update_fault_tolrance(self):
         rank = int(os.getenv('PADDLE_TRAINER_ID', -1))

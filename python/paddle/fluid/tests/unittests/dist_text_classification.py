@@ -12,24 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import argparse
-import time
-import math
-
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-from paddle.fluid import core
-import unittest
-from multiprocessing import Process
 import os
-import signal
-import six
 import tarfile
 import string
 import re
-from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 DTYPE = "float32"
@@ -165,9 +153,8 @@ def tokenize(pattern):
         while tf != None:
             if bool(pattern.match(tf.name)):
                 # newline and punctuations removal and ad-hoc tokenization.
-                yield tarf.extractfile(tf).read().rstrip(
-                    six.b("\n\r")).translate(None, six.b(
-                        string.punctuation)).lower().split()
+                yield tarf.extractfile(tf).read().rstrip(b'\n\r').translate(
+                    None, string.punctuation.encode('latin-1')).lower().split()
             tf = tarf.next()
 
 

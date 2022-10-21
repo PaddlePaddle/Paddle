@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import yaml
 import re
-import argparse
-import os
 
 ########################
 ### Global Variables ###
@@ -47,7 +44,7 @@ yaml_types_mapping = {
     'float' : 'float', 'double' : 'double', 'bool' : 'bool', \
     'str' : 'std::string', \
     'str[]' : 'std::vector<std::string>', 'float[]' : 'std::vector<float>', \
-    'Place' : 'paddle::Place', 'DataLayout' : 'paddle::experimental::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
+    'Place' : 'paddle::Place', 'DataLayout' : 'phi::DataLayout', 'DataType' : 'paddle::experimental::DataType', \
     'int64_t[]' : 'std::vector<int64_t>', 'int[]' : 'std::vector<int>',
     'Tensor' : 'Tensor',
     'Tensor[]' : 'std::vector<Tensor>',
@@ -298,7 +295,7 @@ def ParseYamlForwardFromBackward(string):
     wspace = r'\s*'
     fargs = r'(.*?)'
     frets = r'(.*)'
-    pattern = f'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
+    pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
 
     m = re.search(pattern, string)
     function_name = m.group(1)
@@ -317,7 +314,7 @@ def ParseYamlForward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = f'^\({fargs}\)$'
+    args_pattern = fr'^\({fargs}\)$'
     args_str = re.search(args_pattern, args_str.strip()).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
@@ -332,7 +329,7 @@ def ParseYamlBackward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = f'\({fargs}\)'
+    args_pattern = fr'\({fargs}\)'
     args_str = re.search(args_pattern, args_str).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)

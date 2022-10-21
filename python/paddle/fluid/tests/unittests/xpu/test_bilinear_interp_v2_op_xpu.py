@@ -17,11 +17,9 @@ import numpy as np
 import sys
 
 sys.path.append("..")
-from paddle.nn.functional import interpolate
 import paddle
 from op_test_xpu import XPUOpTest
 import unittest
-import paddle.fluid as fluid
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()

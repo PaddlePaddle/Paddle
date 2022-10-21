@@ -47,18 +47,17 @@ except ImportError as e:
     from .. import compat as cpt
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
-        raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+        raise ImportError("""NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
         if you encounters \"DLL load failed\" errors. If you have python
         installed in other directory, replace \"%s\" with your own
         directory. The original error is: \n %s""" %
-            (executable_path, executable_path, cpt.get_exception_message(e)))
+                          (executable_path, executable_path, str(e)))
     else:
         raise ImportError(
             """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
         if you encounters \"libmkldnn.so not found\" errors. If you have python
         installed in other directory, replace \"/usr/local/lib\" with your own
-        directory. The original error is: \n""" + cpt.get_exception_message(e))
+        directory. The original error is: \n""" + str(e))
 except Exception as e:
     raise e
 
@@ -75,8 +74,7 @@ def avx_supported():
             has_avx = os.popen('cat /proc/cpuinfo | grep -i avx').read() != ''
         except Exception as e:
             sys.stderr.write('Can not get the AVX flag from /proc/cpuinfo.\n'
-                             'The original error is: %s\n' %
-                             cpt.get_exception_message(e))
+                             'The original error is: %s\n' % str(e))
         return has_avx
     elif sysstr == 'darwin':
         try:
@@ -85,7 +83,7 @@ def avx_supported():
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from machdep.cpu.features.\n'
-                'The original error is: %s\n' % cpt.get_exception_message(e))
+                'The original error is: %s\n' % str(e))
         if not has_avx:
             import subprocess
             pipe = subprocess.Popen(
@@ -155,8 +153,7 @@ def avx_supported():
                                                ctypes.c_size_t(0), ONE_PAGE)
         except Exception as e:
             sys.stderr.write('Failed getting the AVX flag on Windows.\n'
-                             'The original error is: %s\n' %
-                             cpt.get_exception_message(e))
+                             'The original error is: %s\n' % str(e))
         return (retval & (1 << avx_bit)) > 0
     else:
         sys.stderr.write('Do not get AVX flag on %s\n' % sysstr)
@@ -280,6 +277,7 @@ try:
     from .libpaddle import _get_current_stream
     from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
     from .libpaddle import _set_current_stream
+    from .libpaddle import _get_phi_kernel_name
     if sys.platform != 'win32':
         from .libpaddle import _set_process_pids
         from .libpaddle import _erase_process_pids

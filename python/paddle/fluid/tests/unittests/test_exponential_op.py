@@ -16,7 +16,6 @@ import unittest
 import paddle
 import numpy as np
 from op_test import OpTest
-import os
 
 paddle.seed(100)
 
@@ -102,7 +101,7 @@ class TestExponentialAPI(unittest.TestCase):
             return
 
         # Different GPU generatte different random value. Only test V100 here.
-        if not "V100" in paddle.device.cuda.get_device_name():
+        if "V100" not in paddle.device.cuda.get_device_name():
             return
 
         print("Test Fixed Random number on V100 GPU------>")

@@ -18,7 +18,7 @@ from op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 

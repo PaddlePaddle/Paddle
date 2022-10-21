@@ -42,14 +42,11 @@ import math
 import re
 import glob
 import os
-import numpy as np
-import random
 from functools import partial
 
 import paddle
 from paddle.fluid.dygraph.layers import Layer
 from ...utils.log_util import logger, layer_to_str
-from paddle.distributed import fleet
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.incubate.distributed.fleet import recompute_hybrid
 

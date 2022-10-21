@@ -17,7 +17,6 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
-from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 

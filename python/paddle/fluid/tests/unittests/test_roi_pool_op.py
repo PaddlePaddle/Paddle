@@ -17,9 +17,19 @@ import unittest
 import numpy as np
 import math
 import sys
-import paddle.compat as cpt
 from op_test import OpTest
 import paddle.fluid as fluid
+
+from decimal import Decimal, ROUND_HALF_UP
+
+
+def _round(x):
+    """In Python3 round function rounds to the nearest even number,
+    we use this function to make the result always round up when the
+    remainder is 0.5. See more at:
+    https://stackoverflow.com/questions/33019698/how-to-properly-round-up-half-float-numbers
+    """
+    return Decimal(x).to_integral_value(rounding=ROUND_HALF_UP)
 
 
 class TestROIPoolOp(OpTest):
@@ -67,10 +77,10 @@ class TestROIPoolOp(OpTest):
         for i in range(self.rois_num):
             roi = self.rois[i]
             roi_batch_id = int(roi[0])
-            roi_start_w = int(cpt.round(roi[1] * self.spatial_scale))
-            roi_start_h = int(cpt.round(roi[2] * self.spatial_scale))
-            roi_end_w = int(cpt.round(roi[3] * self.spatial_scale))
-            roi_end_h = int(cpt.round(roi[4] * self.spatial_scale))
+            roi_start_w = int(_round(roi[1] * self.spatial_scale))
+            roi_start_h = int(_round(roi[2] * self.spatial_scale))
+            roi_end_w = int(_round(roi[3] * self.spatial_scale))
+            roi_end_h = int(_round(roi[4] * self.spatial_scale))
 
             roi_height = int(max(roi_end_h - roi_start_h + 1, 1))
             roi_width = int(max(roi_end_w - roi_start_w + 1, 1))

@@ -18,12 +18,11 @@ import os
 import paddle.fluid as fluid
 from paddle.distributed import fleet
 from paddle.fluid import core
-from paddle.distributed.ps.utils.public import *
+from paddle.distributed.ps.utils.public import *  # noqa: F403
 from paddle.fluid.framework import Program
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
-from paddle.fluid.framework import Variable, Parameter
 from paddle.distributed.fleet.runtime.runtime_base import RuntimeBase
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
 from paddle.distributed.fleet.proto import the_one_ps_pb2

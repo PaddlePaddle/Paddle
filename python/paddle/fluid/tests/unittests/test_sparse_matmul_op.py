@@ -14,7 +14,6 @@
 
 import paddle
 import numpy as np
-import scipy
 import scipy.sparse as sp
 import unittest
 import os
@@ -58,7 +57,7 @@ class TestMatmul(unittest.TestCase):
         sp_x.stop_gradient = False
         sp_y = origin_y.detach()
         sp_y.stop_gradient = False
-        sp_out = paddle.incubate.sparse.matmul(sp_x, sp_y)
+        sp_out = paddle.sparse.matmul(sp_x, sp_y)
 
         np.testing.assert_allclose(sp_out.numpy(),
                                    dense_out.numpy(),
@@ -107,7 +106,7 @@ class TestMaskedMatmul(unittest.TestCase):
         x = paddle.to_tensor(np_x, stop_gradient=False)
         y = paddle.to_tensor(np_y, stop_gradient=False)
         mask = paddle.to_tensor(np.ones([10, 6]) * np_mask).to_sparse_csr()
-        out = paddle.incubate.sparse.masked_matmul(x, y, mask)
+        out = paddle.sparse.masked_matmul(x, y, mask)
 
         np.testing.assert_allclose(np_out.indptr,
                                    out.crows().numpy(),
@@ -145,7 +144,7 @@ class TestMaskedMatmul(unittest.TestCase):
         sp_x.stop_gradient = False
         sp_y = origin_y.detach()
         sp_y.stop_gradient = False
-        sp_out = paddle.incubate.sparse.matmul(sp_x, sp_y)
+        sp_out = paddle.sparse.matmul(sp_x, sp_y)
         sp_out.backward()
 
         np.testing.assert_allclose(sp_out.numpy(),

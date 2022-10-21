@@ -26,7 +26,6 @@ import collections
 import tarfile
 import re
 import string
-import six
 
 __all__ = []
 
@@ -49,9 +48,8 @@ def tokenize(pattern):
         while tf != None:
             if bool(pattern.match(tf.name)):
                 # newline and punctuations removal and ad-hoc tokenization.
-                yield tarf.extractfile(tf).read().rstrip(
-                    six.b("\n\r")).translate(None, six.b(
-                        string.punctuation)).lower().split()
+                yield tarf.extractfile(tf).read().rstrip(b'\n\r').translate(
+                    None, string.punctuation.encode('latin-1')).lower().split()
             tf = tarf.next()
 
 
@@ -66,11 +64,11 @@ def build_dict(pattern, cutoff):
             word_freq[word] += 1
 
     # Not sure if we should prune less-frequent words here.
-    word_freq = [x for x in six.iteritems(word_freq) if x[1] > cutoff]
+    word_freq = [x for x in word_freq.items() if x[1] > cutoff]
 
     dictionary = sorted(word_freq, key=lambda x: (-x[1], x[0]))
     words, _ = list(zip(*dictionary))
-    word_idx = dict(list(zip(words, six.moves.range(len(words)))))
+    word_idx = dict(list(zip(words, range(len(words)))))
     word_idx['<unk>'] = len(words)
     return word_idx
 

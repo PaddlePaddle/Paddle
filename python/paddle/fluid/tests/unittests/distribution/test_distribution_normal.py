@@ -15,12 +15,14 @@
 import math
 import unittest
 
+import config
 import numpy as np
 import paddle
 from paddle import fluid
-from paddle.distribution import *
+from paddle.distribution import Normal
 from paddle.fluid import layers
-
+from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand
+import scipy.stats
 from test_distribution import DistributionNumpy
 
 np.random.seed(2022)
@@ -131,7 +133,6 @@ class NormalTest(unittest.TestCase):
         # There is a loss of accuracy in this conversion.
         # So set the tolerance from 1e-6 to 1e-4.
         log_tolerance = 1e-4
-
         np.testing.assert_equal(sample.shape, np_sample.shape)
         np.testing.assert_allclose(entropy,
                                    np_entropy,
@@ -497,6 +498,124 @@ class NormalTest10(NormalTest):
             self.static_values = layers.data(name='values',
                                              shape=[dims],
                                              dtype='float32')
+
+
+@place(config.DEVICES)
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample', xrand(
+    (4, )), xrand((4, )))])
+class TestNormalSampleDygraph(unittest.TestCase):
+
+    def setUp(self):
+        paddle.disable_static()
+        self.paddle_normal = Normal(loc=self.loc, scale=self.scale)
+        n = 100000
+        self.sample_shape = (n, )
+        self.rsample_shape = (n, )
+        self.samples = self.paddle_normal.sample(self.sample_shape)
+        self.rsamples = self.paddle_normal.rsample(self.rsample_shape)
+
+    def test_sample(self):
+        samples_mean = self.samples.mean(axis=0)
+        samples_var = self.samples.var(axis=0)
+        np.testing.assert_allclose(samples_mean,
+                                   self.paddle_normal.mean,
+                                   rtol=0.1,
+                                   atol=0)
+        np.testing.assert_allclose(samples_var,
+                                   self.paddle_normal.variance,
+                                   rtol=0.1,
+                                   atol=0)
+
+        rsamples_mean = self.rsamples.mean(axis=0)
+        rsamples_var = self.rsamples.var(axis=0)
+        np.testing.assert_allclose(rsamples_mean,
+                                   self.paddle_normal.mean,
+                                   rtol=0.1,
+                                   atol=0)
+        np.testing.assert_allclose(rsamples_var,
+                                   self.paddle_normal.variance,
+                                   rtol=0.1,
+                                   atol=0)
+
+        batch_shape = (self.loc + self.scale).shape
+        self.assertEqual(self.samples.shape,
+                         list(self.sample_shape + batch_shape))
+        self.assertEqual(self.rsamples.shape,
+                         list(self.rsample_shape + batch_shape))
+
+        for i in range(len(self.scale)):
+            self.assertTrue(
+                self._kstest(self.loc[i], self.scale[i], self.samples[:, i]))
+            self.assertTrue(
+                self._kstest(self.loc[i], self.scale[i], self.rsamples[:, i]))
+
+    def _kstest(self, loc, scale, samples):
+        # Uses the Kolmogorov-Smirnov test for goodness of fit.
+        ks, _ = scipy.stats.kstest(samples,
+                                   scipy.stats.norm(loc=loc, scale=scale).cdf)
+        return ks < 0.02
+
+
+@place(config.DEVICES)
+@parameterize_cls((TEST_CASE_NAME, 'loc', 'scale'), [('sample', xrand(
+    (4, )), xrand((4, )))])
+class TestNormalSampleStaic(unittest.TestCase):
+
+    def setUp(self):
+        paddle.enable_static()
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        executor = paddle.static.Executor(self.place)
+        with paddle.static.program_guard(main_program, startup_program):
+            loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
+            scale = paddle.static.data('scale', self.scale.shape,
+                                       self.scale.dtype)
+            n = 100000
+            self.sample_shape = (n, )
+            self.rsample_shape = (n, )
+            self.paddle_normal = Normal(loc=loc, scale=scale)
+            mean = self.paddle_normal.mean
+            variance = self.paddle_normal.variance
+            samples = self.paddle_normal.sample(self.sample_shape)
+            rsamples = self.paddle_normal.rsample(self.rsample_shape)
+        fetch_list = [mean, variance, samples, rsamples]
+        self.feeds = {'loc': self.loc, 'scale': self.scale}
+
+        executor.run(startup_program)
+        [self.mean, self.variance, self.samples,
+         self.rsamples] = executor.run(main_program,
+                                       feed=self.feeds,
+                                       fetch_list=fetch_list)
+
+    def test_sample(self):
+        samples_mean = self.samples.mean(axis=0)
+        samples_var = self.samples.var(axis=0)
+        np.testing.assert_allclose(samples_mean, self.mean, rtol=0.1, atol=0)
+        np.testing.assert_allclose(samples_var, self.variance, rtol=0.1, atol=0)
+
+        rsamples_mean = self.rsamples.mean(axis=0)
+        rsamples_var = self.rsamples.var(axis=0)
+        np.testing.assert_allclose(rsamples_mean, self.mean, rtol=0.1, atol=0)
+        np.testing.assert_allclose(rsamples_var,
+                                   self.variance,
+                                   rtol=0.1,
+                                   atol=0)
+
+        batch_shape = (self.loc + self.scale).shape
+        self.assertEqual(self.samples.shape, self.sample_shape + batch_shape)
+        self.assertEqual(self.rsamples.shape, self.rsample_shape + batch_shape)
+
+        for i in range(len(self.scale)):
+            self.assertTrue(
+                self._kstest(self.loc[i], self.scale[i], self.samples[:, i]))
+            self.assertTrue(
+                self._kstest(self.loc[i], self.scale[i], self.rsamples[:, i]))
+
+    def _kstest(self, loc, scale, samples):
+        # Uses the Kolmogorov-Smirnov test for goodness of fit.
+        ks, _ = scipy.stats.kstest(samples,
+                                   scipy.stats.norm(loc=loc, scale=scale).cdf)
+        return ks < 0.02
 
 
 if __name__ == '__main__':

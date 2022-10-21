@@ -17,7 +17,6 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler
 import unittest
 import logging
-import six
 import os
 
 os.environ['CPU_NUM'] = str(4)
@@ -52,8 +51,8 @@ class TestBase(unittest.TestCase):
                 train_cp = compiler.CompiledProgram(
                     main_prog).with_data_parallel(loss_name=loss.name,
                                                   exec_strategy=exe_strategy)
-                for _ in six.moves.xrange(iter):
-                    for _ in six.moves.xrange(iter_per_pe):
+                for _ in range(iter):
+                    for _ in range(iter_per_pe):
                         exe.run(train_cp)
 
 
@@ -71,7 +70,7 @@ class TestMNISTDryRun(TestBase):
         img = fluid.layers.data(name='img', shape=[784], dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
         hidden = img
-        for _ in six.moves.xrange(10):
+        for _ in range(10):
             hidden = fluid.layers.fc(input=img, size=200, act='tanh')
         prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=prediction, label=label)

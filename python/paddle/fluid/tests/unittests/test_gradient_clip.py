@@ -17,7 +17,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-import six
 from fake_reader import fake_imdb_reader
 from paddle.fluid.clip import _allow_pure_fp16_global_norm_clip
 

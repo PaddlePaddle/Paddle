@@ -19,7 +19,6 @@ import sys
 sys.path.append("..")
 
 import paddle
-import paddle.fluid as fluid
 
 from op_test import OpTest
 from op_test_xpu import XPUOpTest

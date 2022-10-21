@@ -14,10 +14,8 @@
 
 import unittest
 import numpy as np
-import sys
 import math
 import paddle
-import paddle.fluid as fluid
 from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
 import copy
