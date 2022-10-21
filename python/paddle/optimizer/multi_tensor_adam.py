@@ -16,18 +16,15 @@ from .optimizer import Optimizer
 from ..fluid import core
 from ..fluid.framework import Variable, Parameter
 from ..fluid.clip import GradientClipBase
-from collections.abc import Callable
 from .lr import LRScheduler
 from ..fluid import framework
-from ..fluid.framework import Variable, _in_legacy_dygraph, in_dygraph_mode
+from ..fluid.framework import Variable, in_dygraph_mode
 from ..fluid import layers
 from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
 import warnings
 from ..fluid.dygraph import base as imperative_base
 from collections import defaultdict
-import numpy as np
-import time
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
@@ -37,14 +34,14 @@ __all__ = []
 
 class MultiTensorAdam(Optimizer):
     r"""
-    The Adam optimizer is implemented based on the Adam and Adam Optimization 
-    in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ and in paper 
+    The Adam optimizer is implemented based on the Adam and Adam Optimization
+    in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ and in paper
     `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
     The MultiTensorAdam optimizer can deal with multiple tensor optimizations using Adam or
     AdamW at once.
-    
+
     The parameter ``param_out`` update rule with gradient ``grad``:
-    
+
      .. math::
 
         t & = t + 1
@@ -57,7 +54,7 @@ class MultiTensorAdam(Optimizer):
                           \frac{\sqrt{1 - {\beta}_2^t}}{1 - {\beta}_1^t}
 
         param\_out & = param - learning\_rate * \frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
-        
+
     Related paper: `Adam: A Method for Stochastic Optimization <https://arxiv.org/abs/1412.6980>`_
 
     .. math(AdamW)::
@@ -68,7 +65,7 @@ class MultiTensorAdam(Optimizer):
 
         moemnt\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
 
-        learning\_rate & = learning\_rate * 
+        learning\_rate & = learning\_rate *
             \frac{\sqrt{1 - {\beta}_2^t}}{1 - {beta}_1^t}
 
         param\_out & = param - learning\_rate * (\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
@@ -78,18 +75,18 @@ class MultiTensorAdam(Optimizer):
             It can be a float value or a LRScheduler. In MultiTensorAdam, learning_rate is same for all tensors.
             The default value is 0.001.
         beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
-            In MultiTensorAdam, beta1 is same for all tensors. 
+            In MultiTensorAdam, beta1 is same for all tensors.
             The default value is 0.9.
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
-            In MultiTensorAdam, beta1 is same for all tensors. 
+            In MultiTensorAdam, beta1 is same for all tensors.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
-            In MultiTensorAdam, beta1 is same for all tensors. 
+            In MultiTensorAdam, beta1 is same for all tensors.
             The default value is 1e-08.
-	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode.  \
-	    The default value is None in static mode, at this time all parameters will be updated.
-	weight_decay (float, optional): weight decay (L2 penalty)
+    parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
+        This parameter is required in dygraph mode.  \
+        The default value is None in static mode, at this time all parameters will be updated.
+    weight_decay (float, optional): weight decay (L2 penalty)
         The default value is 0.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
@@ -107,7 +104,7 @@ class MultiTensorAdam(Optimizer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import numpy as np
 
@@ -141,7 +138,7 @@ class MultiTensorAdam(Optimizer):
                  beta2=0.999,
                  epsilon=1e-8,
                  parameters=None,
-                 weight_decay=0,
+                 weight_decay=0.,
                  mode=False,
                  grad_clip=None,
                  multi_precision=False,
@@ -165,7 +162,7 @@ class MultiTensorAdam(Optimizer):
         if not isinstance(weight_decay, float) and \
                 not isinstance(weight_decay, Variable):
             raise TypeError("weight_decay should be float or Tensor.")
-        
+
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether
             # the input is iterable, if the input is paddle.Tensor, the
@@ -183,9 +180,9 @@ class MultiTensorAdam(Optimizer):
             self._parameter_list = list(parameters)
         else:
             self._parameter_list = None
-            
+
         self._name = name
-        
+
         if framework._non_static_mode():
             if self._parameter_list is None:
                 raise AttributeError(
@@ -201,7 +198,7 @@ class MultiTensorAdam(Optimizer):
                 raise TypeError(
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
-                
+
         self._dtype = None
         # Infer the dtype form parameter
         if self._parameter_list:
@@ -214,19 +211,19 @@ class MultiTensorAdam(Optimizer):
                 self._dtype = self._parameter_list[0].dtype
         if not mode:
             super(MultiTensorAdam, self).__init__(learning_rate=learning_rate,
-                                        parameters=parameters,
-                                        weight_decay=weight_decay,
-                                        grad_clip=grad_clip,
-                                        name=name)
+                                                  parameters=parameters,
+                                                  weight_decay=weight_decay,
+                                                  grad_clip=grad_clip,
+                                                  name=name)
         else:
             super(MultiTensorAdam, self).__init__(learning_rate=learning_rate,
-                                        parameters=parameters,
-                                        grad_clip=grad_clip,
-                                        name=name)
-        
+                                                  parameters=parameters,
+                                                  grad_clip=grad_clip,
+                                                  name=name)
+
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
-        
+
         self.type = "multi_tensor_adam"
         self._learning_rate = learning_rate
         self._beta1 = beta1
@@ -245,7 +242,7 @@ class MultiTensorAdam(Optimizer):
             'mode': mode,
             'grad_clip': grad_clip
         }
-        
+
         self._param_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
         self._moment1_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
         self._moment2_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
@@ -253,7 +250,7 @@ class MultiTensorAdam(Optimizer):
             'FP32_LODTensor': None,
             'FP16_LODTensor': []
         }
-        
+
         self._param_groups = []
         if self._parameter_list and isinstance(self._parameter_list[0], dict):
             for param_group in self._parameter_list:
@@ -264,13 +261,13 @@ class MultiTensorAdam(Optimizer):
                 self._add_param_group(param_group.copy())
         else:
             self._param_groups = self._parameter_list
-            
+
     def _get_auxiliary_var(self, key):
         if key in self._auxiliary_vars:
             return self._auxiliary_vars[key]
         else:
             return None
-        
+
     def _add_param_group(self, param_group):
         """
         Add a param group to parameter_list.
@@ -278,8 +275,8 @@ class MultiTensorAdam(Optimizer):
         Args:
             param_group (dict): The group of Tensors to be optimzed with
             different optimization options.
-        """        
-        
+        """
+
         params = param_group['params']
         if isinstance(params, Parameter):
             param_group['params'] = [params]
@@ -303,7 +300,7 @@ class MultiTensorAdam(Optimizer):
                 "some parameters appear in more than one parameter group")
 
         for param in param_group['params']:
-            
+
             if 'mode' in param_group:
                 if not param_group['mode']:
                     weight_decay = param_group['weight_decay']
@@ -313,12 +310,12 @@ class MultiTensorAdam(Optimizer):
                     else:
                         regularization = weight_decay
                     param.regularizer = regularization
-            
+
             param.optimize_attr['learning_rate'] = param_group.get(
                 'learning_rate', 1.)
 
         self._param_groups.append(param_group)
-        
+
     def _create_master_weight(self, param):
         if param.name in self._master_weights:
             var = self._master_weights[param.name]
@@ -404,7 +401,7 @@ class MultiTensorAdam(Optimizer):
                     "Consider using multi_precision=True option of the MultiTensorAdam optimizer."
                 )
             self._add_moments_pows(p)
-            
+
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
@@ -418,7 +415,7 @@ class MultiTensorAdam(Optimizer):
             .. code-block:: python
 
                 import paddle
-                
+
                 a = paddle.rand([2,13], dtype="float32")
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
@@ -430,7 +427,7 @@ class MultiTensorAdam(Optimizer):
                 multi_tensor_adam.clear_grad()
         """
         if not isinstance(self._parameter_list[0], dict):
-            
+
             params_grads = []
             for param in self._parameter_list:
                 if param.stop_gradient:
@@ -483,11 +480,11 @@ class MultiTensorAdam(Optimizer):
                 params_grads.update(
                     {k: v
                      for k, v in param_group.items() if k != 'params'})
-                
+
                 self._apply_optimize(loss=None,
                                      startup_program=None,
                                      params_grads=params_grads)
-                
+
     def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to tensors.
 
@@ -525,7 +522,7 @@ class MultiTensorAdam(Optimizer):
         self.helper = LayerHelper(self.__class__.__name__)
 
         self._create_global_learning_rate()
-        
+
         self._param_dict['FP32_LODTensor'].clear()
         self._moment1_dict['FP32_LODTensor'].clear()
         self._moment2_dict['FP32_LODTensor'].clear()
@@ -539,8 +536,7 @@ class MultiTensorAdam(Optimizer):
                 self._param_dict['FP16_LODTensor']) == 0:
             if isinstance(parameters_and_grads, list):
                 self._multi_tensor_adam_init(target_block, [
-                    p[0]
-                    for p in parameters_and_grads if not p[0].stop_gradient
+                    p[0] for p in parameters_and_grads if not p[0].stop_gradient
                 ])
             else:
                 self._update_param_group(parameters_and_grads)
@@ -550,10 +546,9 @@ class MultiTensorAdam(Optimizer):
                 ])
         if framework._non_static_mode():
             self._append_optimize_multi_tensor_adam_op(target_block,
-                                                    parameters_and_grads)
+                                                       parameters_and_grads)
         else:
-            self._update_param_device_map(parameters_and_grads,
-                                            target_block)
+            self._update_param_device_map(parameters_and_grads, target_block)
             # NOTE: Multi Tensor requires all parameters to be in the same device and program.
             # param_grad_list = [p_0,g_0,p_1,g_1,....]
             param_grad_list = []
@@ -576,7 +571,6 @@ class MultiTensorAdam(Optimizer):
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
 
-
     def _multi_tensor_adam_init(self, target_block, parameters):
         """
         All parameters used for optimizer (such as: parameters, master_weight, velocity_acc for momentum) calculations are grouped into a python list by data type (float16, float32).
@@ -585,13 +579,13 @@ class MultiTensorAdam(Optimizer):
             target_block: the block in which the loss tensor is present
             parameters: list of parameter tensors for the optimizer
         """
-        
+
         self._create_accumulators(target_block, parameters)
-        
+
         self.beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                            parameters[0])
+                                                   parameters[0])
         self.beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                            parameters[0])
+                                                   parameters[0])
         self.lr = self._create_param_lr(parameters)
 
         for param in parameters:
@@ -617,8 +611,8 @@ class MultiTensorAdam(Optimizer):
                 )
 
     def _append_optimize_multi_tensor_adam_op(self, target_block,
-                                         parameters_and_grads):
-        """ 
+                                              parameters_and_grads):
+        """
         For Multi Tensor Adam, append optimize merged_operator to block.
         """
         assert isinstance(target_block, framework.Block)
@@ -626,7 +620,7 @@ class MultiTensorAdam(Optimizer):
         grad_dict = {'FP32_LODTensor': [], 'FP16_LODTensor': []}
 
         if isinstance(parameters_and_grads, list):
-            
+
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
@@ -640,7 +634,7 @@ class MultiTensorAdam(Optimizer):
                                 1].type == core.VarDesc.VarType.LOD_TENSOR:
                         grad_dict['FP16_LODTensor'].append(param_and_grad[1])
         else:
-            
+
             for param_and_grad in parameters_and_grads['params']:
                 if param_and_grad[1] is None:
                     continue
@@ -675,9 +669,9 @@ class MultiTensorAdam(Optimizer):
                 if framework._non_static_mode():
                     if in_dygraph_mode():
                         found_inf = self._get_auxiliary_var('found_inf')
-                        
+
                         # print("\n\n\n\n\n\n\n\nmulti_tensor_adam: ")
-                        
+
                         # print("self._param_dict[key]", self._param_dict[key])
                         # print("grad_dict[key]", grad_dict[key])
                         # print("self._moment1_dict[key]", self._moment1_dict[key])
@@ -693,34 +687,32 @@ class MultiTensorAdam(Optimizer):
                         # print("self._weight_decay", self._weight_decay)
                         # print("self.mode", self.mode)
                         # print("find_master", find_master)
-                        
+
                         _, _, _, _, _, _ = _C_ops.multi_tensor_adam_(
-                            self._param_dict[key], grad_dict[key], 
+                            self._param_dict[key], grad_dict[key],
                             self._moment1_dict[key], self._moment2_dict[key],
-                            self._master_weight_dict[key],
-                            self.beta1_pow_acc, self.beta2_pow_acc,
-                            self.lr, found_inf, _beta1, _beta2,
-                            self._epsilon, 2048*32, self._weight_decay,
-                            self.mode, find_master, False)
-                        
+                            self._master_weight_dict[key], self.beta1_pow_acc,
+                            self.beta2_pow_acc, self.lr, found_inf, _beta1,
+                            _beta2, self._epsilon, 2048 * 32,
+                            self._weight_decay, self.mode, find_master, False)
+
                         return None
-                    
+
                     else:
                         _, _, _, _, _, _ = _legacy_C_ops.multi_tensor_adam(
                             self._param_dict[key], grad_dict[key],
                             self._moment1_dict[key], self._moment2_dict[key],
-                            self._master_weight_dict[key],
-                            self.beta1_pow_acc, self.beta2_pow_acc, self.lr,
-                            self._param_dict[key], self._moment1_dict[key],
-                            self._moment2_dict[key],
-                            self._master_weight_dict[key],
-                            self.beta1_pow_acc, self.beta2_pow_acc, 'epsilon',
-                            self._epsilon, 'beta1', _beta1, 'beta2', _beta2,
-                            'chunk_size', 2048*32, 'weight_decay', self._weight_decay,
+                            self._master_weight_dict[key], self.beta1_pow_acc,
+                            self.beta2_pow_acc, self.lr, self._param_dict[key],
+                            self._moment1_dict[key], self._moment2_dict[key],
+                            self._master_weight_dict[key], self.beta1_pow_acc,
+                            self.beta2_pow_acc, 'epsilon', self._epsilon,
+                            'beta1', _beta1, 'beta2', _beta2, 'chunk_size',
+                            2048 * 32, 'weight_decay', self._weight_decay,
                             'mode', self.mode, 'multi_precision', find_master)
-                        
+
                         return None
-                    
+
                 else:
                     inputs = {
                         "Param": self._param_dict[key],
@@ -751,11 +743,12 @@ class MultiTensorAdam(Optimizer):
                         outputs["MasterParamOut"] = self._master_weight_dict[
                             key]
                         attrs["multi_precision"] = find_master
-                    multi_tensor_adam_op = target_block.append_op(type="multi_tensor_adam",
-                                           inputs=inputs,
-                                           outputs=outputs,
-                                           attrs=attrs,
-                                           stop_gradient=True)
+                    multi_tensor_adam_op = target_block.append_op(
+                        type="multi_tensor_adam",
+                        inputs=inputs,
+                        outputs=outputs,
+                        attrs=attrs,
+                        stop_gradient=True)
         return multi_tensor_adam_op
 
     def _update_param_group(self, parameters):
@@ -763,6 +756,7 @@ class MultiTensorAdam(Optimizer):
         self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
         self.mode = parameters.get('mode', self._default_dict['mode'])
-        self._weight_decay = parameters.get('weight_decay', self._default_dict['weight_decay'])
+        self._weight_decay = parameters.get('weight_decay',
+                                            self._default_dict['weight_decay'])
         parameters = parameters.get('params')
         return parameters

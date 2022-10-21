@@ -2,7 +2,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/tensor_utils.h"
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#endif
 
 #include <assert.h>
 
@@ -80,7 +82,7 @@ void multi_tensor_apply(
       PADDLE_ENFORCE_EQ(
         tensor_lists[l][t]->numel(),
         tensor_lists[0][t]->numel(),
-        errors::InvalidArgument("Size mismatch"));
+        errors::InvalidArgument("The number of elements of Inputs msut be equal"));
     }
   }
 
