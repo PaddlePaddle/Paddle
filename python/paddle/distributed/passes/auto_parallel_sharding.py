@@ -878,9 +878,10 @@ def _order_param_grads(block, param_grads):
     use_order = []
     for op in block.ops:
         for input_name in op.input_arg_names:
-            if (input_name in pname_to_pg_pairs) and (input_name not in order):
+            if (input_name in pname_to_pg_pairs) and (input_name
+                                                      not in use_order):
                 use_order.append(input_name)
-        if len(order) == len(pname_to_pg_pairs):
+        if len(use_order) == len(pname_to_pg_pairs):
             break
     print("the parameter order after sort: ")
     print(use_order)
