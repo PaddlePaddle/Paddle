@@ -31,35 +31,31 @@ void TransposeGradKernel(const Context& dev_ctx,
   if (!x_grad) return;
 
   const auto& onednn_engine = dev_ctx.GetEngine();
-  std::vector<int> reversed_axis(axis);
+
   if (axis.size() == 1) {
     paddle::framework::TensorCopy(out_grad, out_grad.place(), x_grad);
-    x_grad->set_format(out_grad.format());
+    x_grad->set_mem_desc(out_grad.mem_desc());
     return;
   }
+  
+  std::vector<int64_t> out_grad_tz = vectorize(out_grad.dims());
+  funcs::ReorderOneDNNHandler reorder_handler(
+       out_grad_tz, out_grad.dtype(), funcs::ToOneDNNDataType(out_grad.dtype()), onednn_engine);
 
-  for (size_t i = 0; i < axis.size(); i++) {
-    reversed_axis[axis[i]] = i;
-  }
+  auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
+      out_grad.mem_desc(), funcs::to_void_cast(out_grad.data<T>()));
 
-  const T* out_grad_data = out_grad.data<T>();
-  dev_ctx.template Alloc<T>(x_grad);
-  auto nchw_tz = vectorize<int64_t>(out_grad.dims());
+  auto reorder_dst_memory_p =
+      reorder_handler.AcquireDstMemory(x_grad, out_grad.mem_desc(), dev_ctx.GetPlace());
 
-  funcs::TransposeOneDNNHandler<T> handler(
-      dev_ctx, nchw_tz, reversed_axis, onednn_engine);
-
-  auto transpose_src_memory_p = handler.AcquireSrcMemory(
-      out_grad.format(), funcs::to_void_cast<T>(out_grad_data));
-  auto transpose_dst_memory_p =
-      handler.AcquireDstMemory(x_grad, dev_ctx.GetPlace());
-  auto transpose_p =
-      handler.AcquireTranspose(transpose_dst_memory_p, transpose_src_memory_p);
+  auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
+                                                  reorder_src_memory_p);
 
   auto& astream = OneDNNContext::tls().get_stream();
-  transpose_p->execute(
-      astream, *transpose_src_memory_p, *transpose_dst_memory_p);
+  reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
+  x_grad->set_mem_desc(
+      reorder_dst_memory_p->get_desc().permute_axes(axis));
 }
 
 }  // namespace phi
