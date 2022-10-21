@@ -369,6 +369,7 @@ class FusedFeedForwardOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Linear1Out", this->Output("Linear1Out"));
     op->SetInput("Dropout1Out", this->Output("Dropout1Out"));
 
+    op->SetAttrMap(this->Attrs());
     bool pre_layer_norm = PADDLE_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
     if (!pre_layer_norm) {
       op->SetInput("Dropout2Out", this->Output("Dropout2Out"));
