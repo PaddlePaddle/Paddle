@@ -20,6 +20,7 @@ limitations under the License. */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <cinttypes>
 
 namespace paddle {
 namespace operators {
@@ -151,7 +152,7 @@ int bloomfilter_check(struct bloomfilter *filter) {
   if (filter->magic_num == BLOOMFILTER_MAGIC_NUM_NEW) {
     return 1;
   } else {
-    fprintf(stderr, "error magic_num %ld\n", filter->magic_num);
+    fprintf(stderr, "error magic_num, %" PRIu64 "\n", filter->magic_num);
     return 0;
   }
 }

@@ -15,7 +15,6 @@
 import paddle
 import paddle.fluid as fluid
 import os
-import six
 import tarfile
 import string
 import re
@@ -154,9 +153,8 @@ def tokenize(pattern):
         while tf != None:
             if bool(pattern.match(tf.name)):
                 # newline and punctuations removal and ad-hoc tokenization.
-                yield tarf.extractfile(tf).read().rstrip(
-                    six.b("\n\r")).translate(None, six.b(
-                        string.punctuation)).lower().split()
+                yield tarf.extractfile(tf).read().rstrip(b'\n\r').translate(
+                    None, string.punctuation.encode('latin-1')).lower().split()
             tf = tarf.next()
 
 

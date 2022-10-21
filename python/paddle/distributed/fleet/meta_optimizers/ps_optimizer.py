@@ -19,7 +19,7 @@ import subprocess
 import re
 import os
 import platform
-from paddle.distributed.ps.utils.public import *
+from paddle.distributed.ps.utils.public import TrainerRuntimeConfig, build_var_distributed, dtype_to_size, get_dist_env, get_var_mem_size, logger
 from paddle.distributed.passes import PassContext
 from paddle.distributed.ps.utils.ps_factory import PsProgramBuilderFactory
 

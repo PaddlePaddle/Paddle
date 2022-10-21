@@ -23,7 +23,7 @@ import hypothesis.strategies as st
 
 
 class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
-    '''
+    r'''
   in_var1  emb_var   in_var2   emb_var   in_var3   emb_var   in_var   emb_var
     |        |        |         |        |         |           |         |
    lookup_table      lookup_table       lookup_table   ...    lookup_table

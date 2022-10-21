@@ -19,9 +19,9 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/operators/conv_miopen_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
-#include "paddle/fluid/operators/conv_cudnn_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
@@ -257,59 +257,57 @@ void ConvCudnnGradGradKernel(
   auto layout = paddle::platform::GetCudnnTensorFormat(
       paddle::platform::DataLayout::kNCHW);
 
-  paddle::operators::ConvArgs args1{handle,
-                                    &transformed_ddX,
-                                    W,
-                                    &transformed_ddO_channel,
-                                    strides,
-                                    padding_common,
-                                    dilations,
-                                    dtype,
-                                    groups,
-                                    paddle::platform::DataLayout::kNCHW};
-  paddle::operators::ConvArgs args2{handle,
-                                    &transformed_X,
-                                    ddW,
-                                    &transformed_ddO_channel,
-                                    strides,
-                                    padding_common,
-                                    dilations,
-                                    dtype,
-                                    groups,
-                                    paddle::platform::DataLayout::kNCHW};
-  paddle::operators::ConvArgs args3{handle,
-                                    &transformed_ddX,
-                                    dW,
-                                    &transformed_dO_channel,
-                                    strides,
-                                    padding_common,
-                                    dilations,
-                                    dtype,
-                                    groups,
-                                    paddle::platform::DataLayout::kNCHW};
-  paddle::operators::ConvArgs args4{handle,
-                                    &transformed_dX,
-                                    ddW,
-                                    &transformed_dO_channel,
-                                    strides,
-                                    padding_common,
-                                    dilations,
-                                    dtype,
-                                    groups,
-                                    paddle::platform::DataLayout::kNCHW};
+  ConvArgs args1{handle,
+                 &transformed_ddX,
+                 W,
+                 &transformed_ddO_channel,
+                 strides,
+                 padding_common,
+                 dilations,
+                 dtype,
+                 groups,
+                 paddle::platform::DataLayout::kNCHW};
+  ConvArgs args2{handle,
+                 &transformed_X,
+                 ddW,
+                 &transformed_ddO_channel,
+                 strides,
+                 padding_common,
+                 dilations,
+                 dtype,
+                 groups,
+                 paddle::platform::DataLayout::kNCHW};
+  ConvArgs args3{handle,
+                 &transformed_ddX,
+                 dW,
+                 &transformed_dO_channel,
+                 strides,
+                 padding_common,
+                 dilations,
+                 dtype,
+                 groups,
+                 paddle::platform::DataLayout::kNCHW};
+  ConvArgs args4{handle,
+                 &transformed_dX,
+                 ddW,
+                 &transformed_dO_channel,
+                 strides,
+                 padding_common,
+                 dilations,
+                 dtype,
+                 groups,
+                 paddle::platform::DataLayout::kNCHW};
 
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result1;
-  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result2;
-  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> data_result;
-  paddle::operators::SearchResult<miopenConvBwdWeightsAlgorithm_t>
-      filter_result;
+  SearchResult<miopenConvFwdAlgorithm_t> fwd_result1;
+  SearchResult<miopenConvFwdAlgorithm_t> fwd_result2;
+  SearchResult<miopenConvBwdDataAlgorithm_t> data_result;
+  SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
 #else
-  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result1;
-  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result2;
-  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> data_result;
-  paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
-      filter_result;
+  SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result1;
+  SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result2;
+  SearchResult<cudnnConvolutionBwdDataAlgo_t> data_result;
+  SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif
 
   // ddo = conv(ddI, W) + conv(I, ddW)
@@ -331,14 +329,12 @@ void ConvCudnnGradGradKernel(
                       c_group);
 
 #ifdef PADDLE_WITH_HIP
-      using search1 =
-          paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
+      using search1 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size = search1::GetWorkspaceSize(args1);
       fwd_result1.algo = search1::Find<T>(
           args1, exhaustive_search, false, workspace_size, ctx);
 #else
-      using search1 =
-          paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+      using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
       fwd_result1 = search1::Find<T>(ctx, args1, exhaustive_search, false);
       workspace_size = fwd_result1.workspace_size;
 #endif
@@ -357,15 +353,13 @@ void ConvCudnnGradGradKernel(
                       c_group);
 
 #ifdef PADDLE_WITH_HIP
-      using search2 =
-          paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
+      using search2 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
       workspace_size =
           std::max(workspace_size, search2::GetWorkspaceSize(args2));
       fwd_result2.algo = search2::Find<T>(
           args2, exhaustive_search, false, workspace_size, ctx);
 #else
-      using search2 =
-          paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+      using search2 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
       fwd_result2 = search2::Find<T>(ctx, args2, exhaustive_search, false);
       workspace_size = std::max(workspace_size, fwd_result2.workspace_size);
 #endif
@@ -385,14 +379,12 @@ void ConvCudnnGradGradKernel(
                     c_group);
 
 #ifdef PADDLE_WITH_HIP
-    using search3 =
-        paddle::operators::SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
+    using search3 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
     workspace_size = std::max(workspace_size, search3::GetWorkspaceSize(args3));
     filter_result.algo = search3::Find<T>(
         args3, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-    using search3 =
-        paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
     filter_result =
         search3::Find<T>(ctx, args3, exhaustive_search, deterministic);
     workspace_size = std::max(workspace_size, filter_result.workspace_size);
@@ -413,14 +405,12 @@ void ConvCudnnGradGradKernel(
                     c_group);
 
 #ifdef PADDLE_WITH_HIP
-    using search4 =
-        paddle::operators::SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
+    using search4 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
     workspace_size = std::max(workspace_size, search4::GetWorkspaceSize(args4));
     data_result.algo = search4::Find<T>(
         args4, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-    using search4 =
-        paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    using search4 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     data_result =
         search4::Find<T>(ctx, args4, exhaustive_search, deterministic);
     workspace_size = std::max(workspace_size, data_result.workspace_size);
@@ -444,8 +434,8 @@ void ConvCudnnGradGradKernel(
   int group_offset_out = o_c / groups * o_h * o_w * o_d;
   int group_offset_filter = W->numel() / groups;
 
-  paddle::operators::ScalingParamType<T> alpha = 1.0f;
-  paddle::operators::ScalingParamType<T> beta = 0.0f;
+  ScalingParamType<T> alpha = 1.0f;
+  ScalingParamType<T> beta = 0.0f;
 
   // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
   // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f :
@@ -477,18 +467,18 @@ void ConvCudnnGradGradKernel(
           },
           workspace_size);
 #else
-      paddle::operators::ConvRunner<T>::RunForward(ctx,
-                                                   args1,
-                                                   fwd_result1,
-                                                   ddx,
-                                                   w,
-                                                   transformed_ddy_channel,
-                                                   groups,
-                                                   group_offset_in,
-                                                   group_offset_filter,
-                                                   group_offset_out,
-                                                   workspace_size,
-                                                   &workspace_handle);
+      ConvRunner<T>::RunForward(ctx,
+                                args1,
+                                fwd_result1,
+                                ddx,
+                                w,
+                                transformed_ddy_channel,
+                                groups,
+                                group_offset_in,
+                                group_offset_filter,
+                                group_offset_out,
+                                workspace_size,
+                                &workspace_handle);
 #endif
     }
     if (ddW) {
@@ -514,18 +504,18 @@ void ConvCudnnGradGradKernel(
           },
           workspace_size);
 #else
-      paddle::operators::ConvRunner<T>::RunForward(ctx,
-                                                   args2,
-                                                   fwd_result2,
-                                                   x,
-                                                   ddw,
-                                                   transformed_ddy_channel,
-                                                   groups,
-                                                   group_offset_in,
-                                                   group_offset_filter,
-                                                   group_offset_out,
-                                                   workspace_size,
-                                                   &workspace_handle);
+      ConvRunner<T>::RunForward(ctx,
+                                args2,
+                                fwd_result2,
+                                x,
+                                ddw,
+                                transformed_ddy_channel,
+                                groups,
+                                group_offset_in,
+                                group_offset_filter,
+                                group_offset_out,
+                                workspace_size,
+                                &workspace_handle);
 #endif
     }
     if (channel_last) {
@@ -556,18 +546,18 @@ void ConvCudnnGradGradKernel(
         },
         workspace_size);
 #else
-    paddle::operators::ConvRunner<T>::RunBackwardFilter(ctx,
-                                                        args3,
-                                                        filter_result,
-                                                        transformed_dy_channel,
-                                                        ddx,
-                                                        dw,
-                                                        groups,
-                                                        group_offset_in,
-                                                        group_offset_filter,
-                                                        group_offset_out,
-                                                        workspace_size,
-                                                        &workspace_handle);
+    ConvRunner<T>::RunBackwardFilter(ctx,
+                                     args3,
+                                     filter_result,
+                                     transformed_dy_channel,
+                                     ddx,
+                                     dw,
+                                     groups,
+                                     group_offset_in,
+                                     group_offset_filter,
+                                     group_offset_out,
+                                     workspace_size,
+                                     &workspace_handle);
 #endif
   }
 
@@ -594,18 +584,18 @@ void ConvCudnnGradGradKernel(
         },
         workspace_size);
 #else
-    paddle::operators::ConvRunner<T>::RunBackwardData(ctx,
-                                                      args4,
-                                                      data_result,
-                                                      transformed_dy_channel,
-                                                      ddw,
-                                                      transformed_dx,
-                                                      groups,
-                                                      group_offset_in,
-                                                      group_offset_filter,
-                                                      group_offset_out,
-                                                      workspace_size,
-                                                      &workspace_handle);
+    ConvRunner<T>::RunBackwardData(ctx,
+                                   args4,
+                                   data_result,
+                                   transformed_dy_channel,
+                                   ddw,
+                                   transformed_dx,
+                                   groups,
+                                   group_offset_in,
+                                   group_offset_filter,
+                                   group_offset_out,
+                                   workspace_size,
+                                   &workspace_handle);
 #endif
 
     if (!is_sys_pad) {
@@ -618,10 +608,10 @@ void ConvCudnnGradGradKernel(
         axes[i] = i;
       }
       if (X->dims().size() == 4) {
-        paddle::operators::RemovePaddingSlice<Context, T, 4>(
+        RemovePaddingSlice<Context, T, 4>(
             ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
       } else {
-        paddle::operators::RemovePaddingSlice<Context, T, 5>(
+        RemovePaddingSlice<Context, T, 5>(
             ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
       }
     }

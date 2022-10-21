@@ -20,7 +20,7 @@ import hypothesis.strategies as st
 
 
 class TestConvActMkldnnFusePass(PassAutoScanTest):
-    """
+    r"""
     x_var   f_var(persistable)
       \       /
         conv2d
