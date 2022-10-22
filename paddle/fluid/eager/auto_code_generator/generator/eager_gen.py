@@ -1579,10 +1579,13 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             next_grad_node_out_list = next_node_generator.grad_node_out_list
 
             self.RecordGrad2NextGradNameMapping(next_node_generator)
+
+        is_invoke_forward_api = IsInvokeForwardApi(self.grad_api_contents,
+                                                   self.forward_apis_dict)
         if next_node_generator is not None:
             has_higher_order_node = True
             return next_grad_node_creation_str, next_grad_node_out_list, next_node_generator.backward_forward_inputs_map, has_higher_order_node
-        else:
+        elif not is_invoke_forward_api:
             next_grad_node_creation_str = f"""  if(trace_backward) {{
     PADDLE_THROW(phi::errors::Unavailable(
     \"The Op {self.backward_api_name} doesn't have any grad op. If you \"
@@ -1590,7 +1593,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
     \"derivatives, please set `create_graph` to \"
     \"False.\"));
   }}"""
-            return next_grad_node_creation_str, next_grad_node_out_list, None, has_higher_order_node
+        return next_grad_node_creation_str, next_grad_node_out_list, None, has_higher_order_node
 
     def GenerateNodeDeclaration(self):
         forward_op_name = self.forward_api_name
@@ -1667,6 +1670,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 
         is_invoke_forward_api = IsInvokeForwardApi(self.grad_api_contents,
                                                    self.forward_apis_dict)
+
         # Construct grad_api function args
         # Order: TensorWrappers, GradTensors, Attributes
         grad_api_args_len = len(backward_forward_inputs_map.keys()) + len(
