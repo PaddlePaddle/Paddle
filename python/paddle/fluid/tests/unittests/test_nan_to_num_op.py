@@ -17,7 +17,7 @@ from typing import Optional
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from op_test import OpTest
+# from op_test import OpTest
 
 
 def np_nan_to_num(x: np.ndarray,
@@ -89,7 +89,7 @@ class TestNanToNum(unittest.TestCase):
             # NOTE(tiancaishaonvjituizi): float64 input fails the test
             x_np = np.array([[1, np.nan, -2], [np.inf, 0,
                                                -np.inf]]).astype(np.float32)
-                                               # -np.inf]]).astype(np.float64)
+            # -np.inf]]).astype(np.float64)
             x_tensor = paddle.to_tensor(x_np, stop_gradient=False)
 
             out_tensor = paddle.nan_to_num(x_tensor)
@@ -195,7 +195,6 @@ class TestNanToNum(unittest.TestCase):
 #             'replace_neginf_with_min': False,
 #             'neginf': -10
 #         }
-
 
 if __name__ == "__main__":
     unittest.main()

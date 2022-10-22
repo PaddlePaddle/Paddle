@@ -1339,10 +1339,12 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     assert x.dtype in [paddle.float32, paddle.float64]
     is_float32 = x.dtype == paddle.float32
     if posinf is None:
-        posinf = np.finfo(np.float32).max if is_float32 else np.finfo(np.float64).max
+        posinf = np.finfo(np.float32).max if is_float32 else np.finfo(
+            np.float64).max
     posinf = paddle.full_like(x, posinf)
     if neginf is None:
-        neginf = np.finfo(np.float32).min if is_float32 else np.finfo(np.float64).min
+        neginf = np.finfo(np.float32).min if is_float32 else np.finfo(
+            np.float64).min
     neginf = paddle.full_like(x, neginf)
     x = paddle.where(paddle.isnan(x), nan, x)
     x = paddle.where(x == posinf_value, posinf, x)
