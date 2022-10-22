@@ -25,7 +25,6 @@ from test_attribute_var import UnittestBase
 
 
 class TestPadOp(OpTest):
-
     def setUp(self):
         self.initTestCase()
         self.dtype = self.get_dtype()
@@ -37,11 +36,12 @@ class TestPadOp(OpTest):
         self.attrs['paddings'] = np.array(self.paddings).flatten()
         self.attrs['pad_value'] = self.pad_value
         self.outputs = {
-            'Out':
-            np.pad(self.inputs['X'],
-                   self.paddings,
-                   mode='constant',
-                   constant_values=self.pad_value)
+            'Out': np.pad(
+                self.inputs['X'],
+                self.paddings,
+                mode='constant',
+                constant_values=self.pad_value,
+            )
         }
 
     def get_dtype(self):
@@ -60,7 +60,6 @@ class TestPadOp(OpTest):
 
 
 class TestCase1(TestPadOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1)]
@@ -68,7 +67,6 @@ class TestCase1(TestPadOp):
 
 
 class TestCase2(TestPadOp):
-
     def initTestCase(self):
         self.shape = (5, 5, 5)
         self.paddings = [(0, 0), (0, 0), (1, 2)]
@@ -76,22 +74,20 @@ class TestCase2(TestPadOp):
 
 
 class TestCase3(TestPadOp):
-
     def initTestCase(self):
-        self.shape = (100)
+        self.shape = 100
         self.paddings = [(0, 1)]
         self.pad_value = 0.9
 
 
-#----------------Pad Fp16----------------
+# ----------------Pad Fp16----------------
 
 
 def create_test_fp16(parent):
-
-    @unittest.skipIf(not core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
     class TestPadFp16(parent):
-
         def get_dtype(self):
             return np.float16
 
@@ -110,7 +106,6 @@ create_test_fp16(TestCase3)
 
 
 class TestPadOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.random((2, 2)).astype("float32")
@@ -125,7 +120,6 @@ class TestPadOpError(unittest.TestCase):
 
 
 class TestPaddingValueTensor(UnittestBase):
-
     def init_info(self):
         self.shapes = [[2, 4]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
@@ -148,15 +142,16 @@ class TestPaddingValueTensor(UnittestBase):
             exe = paddle.static.Executor()
             exe.run(starup_prog)
             res = exe.run(fetch_list=[feat, out])
-            gt = np.pad(res[0], [1, 1], 'constant', constant_values=[1., 1.])
+            gt = np.pad(res[0], [1, 1], 'constant', constant_values=[1.0, 1.0])
             np.testing.assert_allclose(res[1], gt)
-            paddle.static.save_inference_model(self.save_path, [x], [feat, out],
-                                               exe)
+            paddle.static.save_inference_model(
+                self.save_path, [x], [feat, out], exe
+            )
             # Test for Inference Predictor
             infer_outs = self.infer_prog()
-            gt = np.pad(infer_outs[0], [1, 1],
-                        'constant',
-                        constant_values=[1., 1.])
+            gt = np.pad(
+                infer_outs[0], [1, 1], 'constant', constant_values=[1.0, 1.0]
+            )
             np.testing.assert_allclose(infer_outs[1], gt)
 
     def path_prefix(self):
@@ -167,22 +162,20 @@ class TestPaddingValueTensor(UnittestBase):
 
     def call_func(self, x):
         padding_value = paddle.assign([1.0])
-        out = paddle.nn.functional.pad(x,
-                                       pad=[1, 1, 1, 1],
-                                       value=padding_value,
-                                       mode='constant')
+        out = paddle.nn.functional.pad(
+            x, pad=[1, 1, 1, 1], value=padding_value, mode='constant'
+        )
         return out
 
 
 class TestPaddingValueTensor2(TestPaddingValueTensor):
-
     def call_func(self, x):
         padding_value = paddle.assign([1.0])
         # test for int value
         tmp = paddle.fluid.layers.pad(x, paddings=[1, 1, 1, 1], pad_value=1)
-        out = paddle.fluid.layers.pad(x,
-                                      paddings=[1, 1, 1, 1],
-                                      pad_value=padding_value)
+        out = paddle.fluid.layers.pad(
+            x, paddings=[1, 1, 1, 1], pad_value=padding_value
+        )
         return out
 
 

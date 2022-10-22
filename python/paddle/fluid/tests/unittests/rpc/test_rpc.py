@@ -35,7 +35,6 @@ def paddle_add(a, b):
 
 
 class TestMultiProcessRpc(RpcTestBase):
-
     def test_one_server_sync_paddle_add(self):
         a = np.random.random((10, 100))
         b = np.random.random((10, 100))
@@ -78,7 +77,6 @@ class TestMultiProcessRpc(RpcTestBase):
 
 
 class TestSingleProcessRpc(RpcTestBase):
-
     def setUp(self):
         self._port_set = set()
         master_endpoint = "127.0.0.1:{}".format(self._find_free_port())
@@ -123,7 +121,6 @@ class TestSingleProcessRpc(RpcTestBase):
 
 
 class RpcLaunchTest(RpcLaunchTestBase):
-
     def test_sync_rpc_paddle_add1(self):
         nnodes = 2
         nproc_per_node = 1

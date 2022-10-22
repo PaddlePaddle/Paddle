@@ -22,7 +22,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSplitOp(OpTest):
-
     def setUp(self):
         self._set_op_type()
         self.dtype = self.get_dtype()
@@ -31,14 +30,19 @@ class TestSplitOp(OpTest):
             x = np.random.random((4, 5, 6)).astype(np.float32)
             out = np.split(x, [2, 3], axis)
             self.inputs = {'X': convert_float_to_uint16(x)}
-            self.outputs = {'Out': [('out%d' % i, convert_float_to_uint16(out[i])) \
-                for i in range(len(out))]}
+            self.outputs = {
+                'Out': [
+                    ('out%d' % i, convert_float_to_uint16(out[i]))
+                    for i in range(len(out))
+                ]
+            }
         else:
             x = np.random.random((4, 5, 6)).astype(self.dtype)
             out = np.split(x, [2, 3], axis)
             self.inputs = {'X': x}
-            self.outputs = {'Out': [('out%d' % i, out[i]) \
-                for i in range(len(out))]}
+            self.outputs = {
+                'Out': [('out%d' % i, out[i]) for i in range(len(out))]
+            }
         self.attrs = {'axis': axis, 'sections': [2, 1, 2]}
 
     def get_dtype(self):
@@ -56,7 +60,6 @@ class TestSplitOp(OpTest):
 
 # test with attr(num)
 class TestSplitOp_2(OpTest):
-
     def setUp(self):
         self._set_op_type()
         self.dtype = self.get_dtype()
@@ -65,12 +68,11 @@ class TestSplitOp_2(OpTest):
         self.attrs = {
             'axis': self.axis,
             'sections': self.sections,
-            'num': self.num
+            'num': self.num,
         }
 
         out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) \
-                                for i in range(len(out))]}
+        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
 
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype(self.dtype)
@@ -94,20 +96,18 @@ class TestSplitOp_2(OpTest):
 
 # attr(axis) is Tensor
 class TestSplitOp_AxisTensor(OpTest):
-
     def setUp(self):
         self._set_op_type()
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {
             'X': self.x,
-            'AxisTensor': np.array([self.axis]).astype("int32")
+            'AxisTensor': np.array([self.axis]).astype("int32"),
         }
         self.attrs = {'sections': self.sections, 'num': self.num}
 
         out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) \
-                                for i in range(len(out))]}
+        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
 
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype(self.dtype)
@@ -131,7 +131,6 @@ class TestSplitOp_AxisTensor(OpTest):
 
 # attr(sections) is list containing Tensor
 class TestSplitOp_SectionsTensor(OpTest):
-
     def setUp(self):
         self._set_op_type()
         self.dtype = self.get_dtype()
@@ -140,20 +139,20 @@ class TestSplitOp_SectionsTensor(OpTest):
 
         sections_tensor = []
         for index, ele in enumerate(self.sections):
-            sections_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            sections_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs['SectionsTensorList'] = sections_tensor
 
         self.attrs = {
             'axis': self.axis,
             'sections': self.sections_infer,
-            'num': self.num
+            'num': self.num,
         }
 
         out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) \
-                                for i in range(len(out))]}
+        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
 
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype(self.dtype)
@@ -177,7 +176,6 @@ class TestSplitOp_SectionsTensor(OpTest):
 
 
 class TestSplitOp_unk_section(OpTest):
-
     def setUp(self):
         self._set_op_type()
         self.dtype = self.get_dtype()
@@ -186,12 +184,11 @@ class TestSplitOp_unk_section(OpTest):
         self.attrs = {
             'axis': self.axis,
             'sections': self.sections,
-            'num': self.num
+            'num': self.num,
         }
 
         out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) \
-                                for i in range(len(out))]}
+        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
 
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype(self.dtype)
@@ -214,20 +211,18 @@ class TestSplitOp_unk_section(OpTest):
 
 
 class TestSplitByrefOp(OpTest):
-
     def _set_op_type(self):
         self.op_type = "split_byref"
 
 
-#----------------Split Fp16----------------
+# ----------------Split Fp16----------------
 
 
 def create_test_fp16(parent):
-
-    @unittest.skipIf(not core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
     class TestSplitFp16(parent):
-
         def get_dtype(self):
             return np.float16
 
@@ -241,15 +236,14 @@ def create_test_fp16(parent):
 
 create_test_fp16(TestSplitOp)
 
-#----------------Split Bf16----------------
+# ----------------Split Bf16----------------
 
 
 def create_test_bf16(parent):
-
-    @unittest.skipIf(not core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
     class TestSplitBf16(parent):
-
         def get_dtype(self):
             return np.uint16
 
@@ -269,7 +263,6 @@ create_test_bf16(TestSplitOp)
 
 
 class TestSplitAPI(unittest.TestCase):
-
     def test_api(self):
         input_1 = np.random.random([4, 5, 6]).astype("int32")
         positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
@@ -281,21 +274,20 @@ class TestSplitAPI(unittest.TestCase):
         out_0, out_1, out_2 = fluid.layers.split(
             input=x_1,
             num_or_sections=[positive_2_int64, positive_1_int32, -1],
-            dim=positive_1_int64)
+            dim=positive_1_int64,
+        )
 
-        out_3, out_4, out_5 = fluid.layers.split(input=x_1,
-                                                 num_or_sections=[2, 1, 2],
-                                                 dim=positive_1_int32)
+        out_3, out_4, out_5 = fluid.layers.split(
+            input=x_1, num_or_sections=[2, 1, 2], dim=positive_1_int32
+        )
         fluid.layers.split(input=x_2, num_or_sections=2, dim=2)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        [res_0, res_1, res_2, res_3, res_4,
-         res_5] = exe.run(fluid.default_main_program(),
-                          feed={
-                              "x_1": input_1,
-                              "x_2": input_1
-                          },
-                          fetch_list=[out_0, out_1, out_2, out_3, out_4, out_5])
+        [res_0, res_1, res_2, res_3, res_4, res_5] = exe.run(
+            fluid.default_main_program(),
+            feed={"x_1": input_1, "x_2": input_1},
+            fetch_list=[out_0, out_1, out_2, out_3, out_4, out_5],
+        )
 
         out = np.split(input_1, [2, 3], 1)
         assert np.array_equal(res_0, out[0])
@@ -307,7 +299,6 @@ class TestSplitAPI(unittest.TestCase):
 
 
 class TestSplitOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The type of axis in split_op should be int or Variable.
@@ -346,7 +337,6 @@ class TestSplitOpError(unittest.TestCase):
 
 
 class API_TestSplit(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[4, 6, 6], dtype='float64')
@@ -356,11 +346,9 @@ class API_TestSplit(unittest.TestCase):
             exe = fluid.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
             input2 = np.array([2]).astype('int32')
-            r0, r1, r2, = exe.run(feed={
-                "data1": input1,
-                "data2": input2
-            },
-                                  fetch_list=[x0, x1, x2])
+            r0, r1, r2, = exe.run(
+                feed={"data1": input1, "data2": input2}, fetch_list=[x0, x1, x2]
+            )
             ex_x0, ex_x1, ex_x2 = np.split(input1, 3, axis=2)
             np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
@@ -368,7 +356,6 @@ class API_TestSplit(unittest.TestCase):
 
 
 class API_TestSplit2(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[4, 6, 6], dtype='float64')
@@ -376,8 +363,11 @@ class API_TestSplit2(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
-            r0, r1, r2, = exe.run(feed={"data1": input1},
-                                  fetch_list=[x0, x1, x2])
+            (
+                r0,
+                r1,
+                r2,
+            ) = exe.run(feed={"data1": input1}, fetch_list=[x0, x1, x2])
             ex_x0, ex_x1, ex_x2 = np.split(input1, 3, axis=2)
             np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
@@ -385,7 +375,6 @@ class API_TestSplit2(unittest.TestCase):
 
 
 class API_TestSplit3(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
@@ -394,13 +383,12 @@ class API_TestSplit3(unittest.TestCase):
             exe = fluid.Executor(place)
             input1 = np.random.random([1, 10]).astype('float64')
             r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
-            ex_x0, ex_x1 = np.split(input1, (3, ), axis=1)
+            ex_x0, ex_x1 = np.split(input1, (3,), axis=1)
             np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
 
 
 class API_TestSplit4(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
@@ -410,21 +398,19 @@ class API_TestSplit4(unittest.TestCase):
             exe = fluid.Executor(place)
             input1 = np.random.random([1, 10]).astype('float64')
             input2 = np.array([7]).astype('int32')
-            r0, r1 = exe.run(feed={
-                "data": input1,
-                "index": input2
-            },
-                             fetch_list=[x0, x1])
-            ex_x0, ex_x1 = np.split(input1, (3, ), axis=1)
+            r0, r1 = exe.run(
+                feed={"data": input1, "index": input2}, fetch_list=[x0, x1]
+            )
+            ex_x0, ex_x1 = np.split(input1, (3,), axis=1)
             np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
 
 
 class API_TestSplit5(unittest.TestCase):
-
     def test_out(self):
-        for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 input_1 = np.random.random([5, 4]).astype("int32")
@@ -441,7 +427,6 @@ class API_TestSplit5(unittest.TestCase):
 
 
 class API_TestSplit6(unittest.TestCase):
-
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
@@ -450,13 +435,12 @@ class API_TestSplit6(unittest.TestCase):
             exe = fluid.Executor(place)
             input1 = np.random.random([2, 10]).astype('float64')
             r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
-            ex_x0, ex_x1 = np.split(input1, (1, ), axis=0)
+            ex_x0, ex_x1 = np.split(input1, (1,), axis=0)
             np.testing.assert_allclose(ex_x0, r0, rtol=1e-05)
             np.testing.assert_allclose(ex_x1, r1, rtol=1e-05)
 
 
 class API_TestDygraphFluidSplit(unittest.TestCase):
-
     def test_out1(self):
         with fluid.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
@@ -479,9 +463,9 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
                 loss.backward()
                 manul_grad = np.zeros_like(input_1)
                 manul_grad[:, :2, :] = 1
-                np.testing.assert_allclose(input.gradient(),
-                                           manul_grad,
-                                           rtol=1e-05)
+                np.testing.assert_allclose(
+                    input.gradient(), manul_grad, rtol=1e-05
+                )
                 np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
                 np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
                 np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
@@ -512,9 +496,9 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
                 loss.backward()
                 manul_grad = np.zeros_like(input_1)
                 manul_grad[:, :2, :] = 1
-                np.testing.assert_allclose(input.gradient(),
-                                           manul_grad,
-                                           rtol=1e-05)
+                np.testing.assert_allclose(
+                    input.gradient(), manul_grad, rtol=1e-05
+                )
                 np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
                 np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
                 np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
@@ -525,7 +509,6 @@ class API_TestDygraphFluidSplit(unittest.TestCase):
 
 
 class API_TestDygraphSplit(unittest.TestCase):
-
     def test_out1(self):
         with fluid.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
@@ -549,9 +532,9 @@ class API_TestDygraphSplit(unittest.TestCase):
                 loss.backward()
                 manul_grad = np.zeros_like(input_1)
                 manul_grad[:, :2, :] = 1
-                np.testing.assert_allclose(input.gradient(),
-                                           manul_grad,
-                                           rtol=1e-05)
+                np.testing.assert_allclose(
+                    input.gradient(), manul_grad, rtol=1e-05
+                )
                 np.testing.assert_allclose(ex_x0, eager_x0_out, rtol=1e-05)
                 np.testing.assert_allclose(ex_x1, eager_x1_out, rtol=1e-05)
                 np.testing.assert_allclose(ex_x2, eager_x2_out, rtol=1e-05)
@@ -599,9 +582,9 @@ class API_TestDygraphSplit(unittest.TestCase):
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
             num1 = paddle.full(shape=[1], fill_value=2, dtype='int32')
-            x0, x1, x2 = paddle.split(input,
-                                      num_or_sections=[num1, 2, 2],
-                                      axis=1)
+            x0, x1, x2 = paddle.split(
+                input, num_or_sections=[num1, 2, 2], axis=1
+            )
             x0_out = x0.numpy()
             x1_out = x1.numpy()
             x2_out = x2.numpy()
@@ -616,9 +599,9 @@ class API_TestDygraphSplit(unittest.TestCase):
             # input is a variable which shape is [4, 6, 6]
             input = paddle.to_tensor(input_1)
             num1 = paddle.full(shape=[1], fill_value=1, dtype='int32')
-            x0, x1, x2 = paddle.split(input,
-                                      num_or_sections=[2, 2, 2],
-                                      axis=num1)
+            x0, x1, x2 = paddle.split(
+                input, num_or_sections=[2, 2, 2], axis=num1
+            )
             x0_out = x0.numpy()
             x1_out = x1.numpy()
             x2_out = x2.numpy()
@@ -644,7 +627,6 @@ class API_TestDygraphSplit(unittest.TestCase):
 
 
 class API_TestEmptySplit(unittest.TestCase):
-
     def test_axis_input_empty_section(self):
         with fluid.dygraph.guard():
             input_1 = np.random.random([8, 6, 6]).astype("float32")
@@ -654,10 +636,13 @@ class API_TestEmptySplit(unittest.TestCase):
             x0_out = x0.numpy()
             x1_out = x1.numpy()
             x2_out = x2.numpy()
-            ex_x0, ex_x1, ex_x2 = np.split(input_1, [
-                5,
-                5,
-            ])
+            ex_x0, ex_x1, ex_x2 = np.split(
+                input_1,
+                [
+                    5,
+                    5,
+                ],
+            )
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)

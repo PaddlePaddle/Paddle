@@ -17,10 +17,12 @@ import time
 
 
 class KVClient(object):
-
     def __init__(self, endpoint='localhost:2379'):
-        self.endpoint = endpoint if endpoint.startswith(
-            "http://") else "http://{}".format(endpoint)
+        self.endpoint = (
+            endpoint
+            if endpoint.startswith("http://")
+            else "http://{}".format(endpoint)
+        )
 
     def put(self, key, value):
         key = key if key.startswith('/') else "/{}".format(key)

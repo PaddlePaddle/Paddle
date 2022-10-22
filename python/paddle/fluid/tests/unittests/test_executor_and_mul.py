@@ -20,17 +20,15 @@ from paddle.fluid.layers import mul, data, zeros, array_write, increment
 
 
 class TestExecutor(unittest.TestCase):
-
     def test_mul(self):
         i = zeros(shape=[1], dtype='int64')
         a = data(name='a', shape=[784], dtype='float32')
         array = array_write(x=a, i=i)
 
         i = increment(i)
-        b = data(name='b',
-                 shape=[784, 100],
-                 dtype='float32',
-                 append_batch_size=False)
+        b = data(
+            name='b', shape=[784, 100], dtype='float32', append_batch_size=False
+        )
         array_write(x=b, i=i, array=array)
 
         i = increment(i)
@@ -41,11 +39,9 @@ class TestExecutor(unittest.TestCase):
         b_np = np.random.random((784, 100)).astype('float32')
 
         exe = Executor()
-        res, res_array = exe.run(feed={
-            'a': a_np,
-            'b': b_np
-        },
-                                 fetch_list=[out, array])
+        res, res_array = exe.run(
+            feed={'a': a_np, 'b': b_np}, fetch_list=[out, array]
+        )
 
         self.assertEqual((100, 100), res.shape)
         np.testing.assert_allclose(res, np.dot(a_np, b_np), rtol=1e-05)

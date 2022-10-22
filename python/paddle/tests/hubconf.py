@@ -18,6 +18,5 @@ from test_hapi_hub_model import MM as _MM
 
 
 def MM(out_channels=8, pretrained=False):
-    '''This is a test demo for paddle hub
-    '''
+    '''This is a test demo for paddle hub'''
     return _MM(out_channels)

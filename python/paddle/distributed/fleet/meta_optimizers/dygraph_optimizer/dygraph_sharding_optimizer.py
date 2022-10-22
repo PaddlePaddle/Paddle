@@ -42,17 +42,26 @@ class DygraphShardingOptimizer(object):
     # 3. dynamic trainable params, which is the case bewteen pretraining and finetuning
     # 4. option to choose fuse comm (more GPU MEM need) or un-fuse comm
 
-    def __init__(self, hcg, user_defined_strategy, params,
-                 inner_optimizer_class, **inner_optimizer_kargs):
+    def __init__(
+        self,
+        hcg,
+        user_defined_strategy,
+        params,
+        inner_optimizer_class,
+        **inner_optimizer_kargs
+    ):
 
         if not isinstance(params, list):
             raise TypeError(
                 "`parameters` argument given to the DygraphShardingOptimizer should be "
-                "an iterable of paddle Tensors, but got argument type is `{}`.".
-                format(type(params)))
+                "an iterable of paddle Tensors, but got argument type is `{}`.".format(
+                    type(params)
+                )
+            )
         self._parameter_list = params
         self._reference_is_trainable_params = list(
-            map(_is_trainable, self._parameter_list))
+            map(_is_trainable, self._parameter_list)
+        )
 
         self._inner_optimizer_class = inner_optimizer_class
         self._inner_optimizer_kargs = inner_optimizer_kargs
@@ -102,8 +111,11 @@ class DygraphShardingOptimizer(object):
             rank = sizes.index(min(sizes))
             mapping[rank].append(param)
             numel = reduce(lambda x, y: x * y, param.shape)
-            assert numel > 0, "param [{}] should larger than 0, but it is [{}]".format(
-                param.name, numel)
+            assert (
+                numel > 0
+            ), "param [{}] should larger than 0, but it is [{}]".format(
+                param.name, numel
+            )
             sizes[rank] += numel
 
         return mapping
@@ -127,7 +139,8 @@ class DygraphShardingOptimizer(object):
         # update related ops: clip, regular, opt
         self._inner_optimizer = self._inner_optimizer_class(
             parameters=self._rank2params[self._sharding_rank],
-            **self._inner_optimizer_kargs)
+            **self._inner_optimizer_kargs
+        )
 
     def _sharding_sync_parameters(self):
         """
@@ -146,7 +159,8 @@ class DygraphShardingOptimizer(object):
                         # instead of the relative logic rank id within group
                         src=self._hcg.get_sharding_parallel_group().ranks[rank],
                         group=self._hcg.get_sharding_parallel_group(),
-                        sync_op=True)
+                        sync_op=True,
+                    )
 
     def _update_trainable(self):
         """
@@ -154,21 +168,23 @@ class DygraphShardingOptimizer(object):
         """
         raise NotImplementedError
 
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameters=None,
-                 no_grad_set=None):
+    def minimize(
+        self, loss, startup_program=None, parameters=None, no_grad_set=None
+    ):
 
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
 
         input_param_names = set([param.name for param in parameters])
         parameters = list(
-            filter(lambda x: x.name in input_param_names,
-                   self._rank2params[self._sharding_rank]))
-        result = self._inner_optimizer.minimize(loss, startup_program,
-                                                parameters, no_grad_set)
+            filter(
+                lambda x: x.name in input_param_names,
+                self._rank2params[self._sharding_rank],
+            )
+        )
+        result = self._inner_optimizer.minimize(
+            loss, startup_program, parameters, no_grad_set
+        )
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()
@@ -187,7 +203,9 @@ class DygraphShardingOptimizer(object):
     # TODO is it a good way to make _grad_clip a property
     @property
     def _grad_clip(self):
-        assert self._inner_optimizer is not None, "inner opt of sharding is not initiliazed."
+        assert (
+            self._inner_optimizer is not None
+        ), "inner opt of sharding is not initiliazed."
         return self._inner_optimizer._grad_clip
 
     def __getattr__(self, item):

@@ -30,7 +30,6 @@ def atan2_grad(x1, x2, dout):
 
 
 class TestAtan2(OpTest):
-
     def setUp(self):
         self.op_type = "atan2"
         self.python_api = paddle.atan2
@@ -54,40 +53,39 @@ class TestAtan2(OpTest):
 
 
 class TestAtan2_float(TestAtan2):
-
     def init_dtype(self):
         self.dtype = np.float32
 
     def test_check_grad(self):
         if self.dtype not in [np.int32, np.int64]:
-            self.check_grad(['X1', 'X2'],
-                            'Out',
-                            user_defined_grads=atan2_grad(
-                                self.inputs['X1'], self.inputs['X2'],
-                                1 / self.inputs['X1'].size),
-                            check_eager=True)
+            self.check_grad(
+                ['X1', 'X2'],
+                'Out',
+                user_defined_grads=atan2_grad(
+                    self.inputs['X1'],
+                    self.inputs['X2'],
+                    1 / self.inputs['X1'].size,
+                ),
+                check_eager=True,
+            )
 
 
 class TestAtan2_float16(TestAtan2_float):
-
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestAtan2_int32(TestAtan2_float):
-
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestAtan2_int64(TestAtan2_float):
-
     def init_dtype(self):
         self.dtype = np.int64
 
 
 class TestAtan2API(unittest.TestCase):
-
     def init_dtype(self):
         self.dtype = 'float64'
         self.shape = [11, 17]
@@ -118,7 +116,6 @@ class TestAtan2API(unittest.TestCase):
             run(place)
 
     def test_dygraph_api(self):
-
         def run(place):
             paddle.disable_static(place)
             X1 = paddle.to_tensor(self.x1)

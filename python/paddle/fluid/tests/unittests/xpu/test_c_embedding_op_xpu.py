@@ -17,7 +17,11 @@ import sys
 
 sys.path.append("..")
 import paddle
-from paddle.fluid.tests.unittests.c_embedding_op_base import TestCEmbeddingCPU, TestCEmbeddingOpBase, TestCEmbeddingOpFP32
+from paddle.fluid.tests.unittests.c_embedding_op_base import (
+    TestCEmbeddingCPU,
+    TestCEmbeddingOpBase,
+    TestCEmbeddingOpFP32,
+)
 
 paddle.enable_static()
 

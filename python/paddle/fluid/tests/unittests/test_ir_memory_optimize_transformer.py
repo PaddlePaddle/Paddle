@@ -25,7 +25,6 @@ from test_parallel_executor_transformer import get_feed_data_reader, transformer
 # NOTE(dzhwinter): test diferent strategy colisions.
 # open the eager delete tensor strategy by default.
 class TestTransformerWithIR(TestParallelExecutorBase):
-
     def test_main(self):
         if core.is_compiled_with_cuda():
             # check python transpiler
@@ -34,14 +33,16 @@ class TestTransformerWithIR(TestParallelExecutorBase):
                 use_device=DeviceType.CUDA,
                 feed_data_reader=get_feed_data_reader(),
                 use_ir_memory_optimize=False,
-                iter=2)
+                iter=2,
+            )
             # check IR memory optimize
             self.check_network_convergence(
                 transformer,
                 use_device=DeviceType.CUDA,
                 feed_data_reader=get_feed_data_reader(),
                 use_ir_memory_optimize=True,
-                iter=2)
+                iter=2,
+            )
 
 
 if __name__ == '__main__':
