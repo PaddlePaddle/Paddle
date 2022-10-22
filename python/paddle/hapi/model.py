@@ -42,10 +42,10 @@ from paddle.io import Dataset
 from paddle.io import DistributedBatchSampler
 from paddle.metric import Metric
 from paddle.static import InputSpec as Input
-import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.autograd import no_grad
+from paddle.distributed import fleet
+from paddle.distributed.parallel import init_parallel_env
 
 from .callbacks import config_callbacks, EarlyStopping
 from .model_summary import summary
@@ -679,7 +679,7 @@ class DynamicGraphAdapter(object):
         self._use_fp16_guard = True
 
         if self._nranks > 1:
-            dist.init_parallel_env()
+            init_parallel_env()
             stradegy = fluid.dygraph.parallel.ParallelStrategy()
             stradegy.nranks = ParallelEnv().nranks
             stradegy.local_rank = ParallelEnv().local_rank
