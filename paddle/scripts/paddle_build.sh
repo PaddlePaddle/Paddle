@@ -2016,14 +2016,14 @@ set +x
 set -x
     mkdir -p ${PADDLE_ROOT}/build/ut_map
     mkdir -p ${PADDLE_ROOT}/build/pytest
-    ljd_testcases='^graph_node_test$|^send_and_recv_cpu_test$|^test_hdfs1$|^test_dyn_rnn$'
-    precise_card_test_single "$ljd_testcases"
+    #ljd_testcases='^graph_node_test$|^send_and_recv_cpu_test$|^test_hdfs1$|^test_dyn_rnn$'
+    #precise_card_test_single "$ljd_testcases"
     
     #run all unittest to get the coverage information of .c and .h files
-    #precise_card_test_single "$single_card_tests" 1
-    #precise_card_test_single "$single_card_tests_1" 1
-    #precise_card_test_single "$multiple_card_tests" 2
-    #precise_card_test_single "$exclusive_tests"
+    precise_card_test_single "$single_card_tests" 1
+    precise_card_test_single "$single_card_tests_1" 1
+    precise_card_test_single "$multiple_card_tests" 2
+    precise_card_test_single "$exclusive_tests"
     wait;
     #get notSuccessut including the failed uniitests and not executed unittests
     python ${PADDLE_ROOT}/tools/get_ut_file_map.py 'get_not_success_ut' ${PADDLE_ROOT}

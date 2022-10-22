@@ -73,7 +73,8 @@ def handle_ut_file_map(rootPath):
     for ut in all_ut_list:
         filedir = '%s/build/ut_map/%s' % (rootPath, ut)
         if not os.path.exists(filedir):
-            not_success_file.write(ut)
+            not_success_file.write('%s\n' % ut)
+            utNotSuccess_list.append(ut)
     #if fnda.tmp not exists,write the test into prec_delta
     for ut in files:
         count = count + 1
@@ -86,7 +87,7 @@ def handle_ut_file_map(rootPath):
                 print("oepn %s succesfully" % filename)
             except FileNotFoundError:
                 print("%s is not found." % filename)
-
+                return
             lines = f.readlines()
             for line in lines:
                 line = line.replace('\n', '').strip()
@@ -152,7 +153,7 @@ def notsuccessfuc(rootPath):
             utNotSuccess = utNotSuccess + '^%s$|' % ut
 
     # ut not exec
-    """
+
     get_all_uts(rootPath)
     with open("/paddle/build/all_uts_paddle", "r") as f:
         data = f.readlines()
@@ -162,7 +163,6 @@ def notsuccessfuc(rootPath):
             print(ut)
             count = count + 1
             utNotSuccess = utNotSuccess + '^%s$|' % ut
-    """
 
     if utNotSuccess != '':
         print("utNotSuccess count: %s" % count)
