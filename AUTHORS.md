@@ -31,6 +31,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | jacquesqiao | Long-Fei Qiao |
 | [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
 | [jczaja](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jacek Czaja |
+| jiahy0825 | Hongyu Jia |
 | JiayiFeng | Jia-Yi Feng |
 | kbinias | Krzysztof Binias |
 | kexinzhao | Ke-Xin Zhao |
