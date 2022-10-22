@@ -42,14 +42,15 @@ from .parallelizer_v2 import Parallelizer
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .dist_loader import DistributedDataLoaderFromGenerator, DistributedDataLoader
-from .utils import to_list, get_dist_attr, get_lr
 from .process_group import new_process_group, get_all_process_groups
 from .dist_context import DistributedContext, get_default_distributed_context
 from .strategy import Strategy
 from .interface import CollectionNames, get_collection
-from ..utils.log_utils import get_logger
-from .utils import initialize_pg_in_full_mode
+from .utils import to_list, get_dist_attr, get_lr, validate_opt
+from .utils import initialize_pg_in_full_mode, get_input_split_info
 from .cost.estimate_cost import get_cost_from_engine
+
+from ..utils.log_utils import get_logger
 
 
 class Engine:
@@ -129,6 +130,12 @@ class Engine:
                 "'model must be sub classes of `paddle.nn.Layer` or any callable function."
             )
         self._model = model
+
+        if loss and not isinstance(
+                loss, (paddle.nn.Layer, Variable)) and not callable(loss):
+            raise TypeError(
+                "'loss' must be sub classes of `paddle.nn.Layer` or any callable function or a Variable."
+            )
         self._loss = loss
 
         if optimizer and not isinstance(
@@ -137,7 +144,7 @@ class Engine:
             raise TypeError(
                 "'optimizer' must be object of class `paddle.optimizer.Optimizer`"
                 " or `paddle.fluid.optimizer.Optimizer`.")
-        self._optimizer = self._validate_opt(optimizer)
+        self._optimizer = validate_opt(optimizer)
 
         metrics = metrics or []
         for metric in to_list(metrics):
@@ -158,9 +165,10 @@ class Engine:
             )
         self._strategy = strategy or Strategy()
 
+        self._logger = get_logger(logging.INFO)
         if os.getenv("POD_NAME"):
-            print("Distribute training by paddle.distributed.launch",
-                  flush=True)
+            self._logger.info(
+                "Distribute training by paddle.distributed.launch")
             fleet.init(is_collective=True)
 
         self._executor = None
@@ -168,12 +176,11 @@ class Engine:
         self._nranks = paddle.distributed.get_world_size()
         self._saver = DistributedSaver()
 
-        self._logger = get_logger(logging.INFO)
-
         self._orig_main_prog = static.default_main_program()
         self._orig_startup_prog = static.default_startup_program()
         self._orig_dist_context = get_default_distributed_context()
         self._dist_contexts = {}
+        self._fwd_main_progs = {}
         self._serial_main_progs = {}
         self._serial_startup_progs = {}
         self._dist_main_progs = defaultdict(dict)  # dist main programs
@@ -197,7 +204,6 @@ class Engine:
         self._planned_mode = None
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
-        self._losses = None
 
         self.history = None
 
@@ -264,38 +270,29 @@ class Engine:
         labels_spec = self._validate_spec(labels_spec)
         return inputs_spec, labels_spec
 
-    def _prepare_data_tensor(self,
-                             inputs_spec,
-                             labels_spec,
-                             inputs=None,
-                             labels=None):
+    def _prepare_data_tensor(self, inputs_spec, labels_spec, inputs, labels):
         if _non_static_mode() or self._dygraph_mode:
-            return None, None
-        inputs_spec = inputs_spec if inputs_spec else []
-        labels_spec = labels_spec if labels_spec else []
+            raise ValueError("Only support static graph mode.")
+
         if inputs_spec:
             assert isinstance(inputs_spec, list), \
                 "inputs should be list, but received {}".format(type(inputs_spec))
-            if inputs is None:
-                inputs = [s._create_feed_layer() for s in inputs_spec]
-            else:
-                assert isinstance(inputs, list), \
-                    "inputs should be list, but received {}".format(type(inputs))
-                for input_spec, input in zip(inputs_spec, inputs):
-                    if input_spec.shape != input.shape:
-                        input.desc.set_shape(input_spec.shape)
+            assert isinstance(inputs, list), \
+                "inputs should be list, but received {}".format(type(inputs))
+            assert len(inputs_spec) == len(inputs)
+            for input_spec, input in zip(inputs_spec, inputs):
+                if input_spec.shape != input.shape:
+                    input.desc.set_shape(input_spec.shape)
         if labels_spec:
             assert isinstance(labels_spec, list), \
                 "labels should be list, but received {}".format(type(labels_spec))
-            if labels is None:
-                labels = [s._create_feed_layer() for s in labels_spec]
-            else:
-                assert isinstance(labels, list), \
-                    "labels should be list, but received {}".format(type(labels))
-                for label_spec, label in zip(labels_spec, labels):
-                    if label_spec.shape != label.shape:
-                        label.desc.set_shape(label_spec.shape)
-        return inputs, labels
+            assert isinstance(labels, list), \
+                "labels should be list, but received {}".format(type(labels))
+            assert len(labels_spec) == len(labels)
+            for label_spec, label in zip(labels_spec, labels):
+                if label_spec.shape != label.shape:
+                    label.desc.set_shape(label_spec.shape)
+        return inputs or [], labels or []
 
     def _prepare_reader(self):
         dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
@@ -463,13 +460,13 @@ class Engine:
         self._has_prepared[mode] = True
 
     def _build(self, mode):
+        inputs_spec = self._inputs_spec
+        labels_spec = self._labels_spec if self._labels_spec else []
         if _non_static_mode() or self._dygraph_mode:
             paddle.disable_static()
             self._dygraph_mode = True
             self._logger.info("Building model with 'to_static' method.")
 
-            inputs_spec = self._inputs_spec
-            labels_spec = self._labels_spec if self._labels_spec else []
             self.program_helper = ProgramHelper(self._model, self._loss,
                                                 self._metrics, inputs_spec,
                                                 labels_spec)
@@ -480,15 +477,11 @@ class Engine:
             serial_main_prog = self.program_helper.main_program
             serial_startup_prog = self.program_helper.startup_program
 
-            inputs = self.program_helper.input_vars
+            self._inputs = self.program_helper.input_vars
+            self._labels = self.program_helper.label_vars
             outputs = self.program_helper.output_vars
-            labels = self.program_helper.label_vars
-            losses = self.program_helper.loss_vars
-            self._losses = losses
+            self._losses = self.program_helper.loss_vars
             metrics = self.program_helper.metric_vars
-
-            self._inputs = inputs
-            self._labels = labels
 
             paddle.enable_static()
         else:
@@ -498,27 +491,35 @@ class Engine:
                 return
 
             outputs = []
-            losses = []
             metrics = []
-            inputs = self._inputs if self._inputs else []
-            labels = self._labels if self._labels else []
+            self._losses = []
             serial_main_prog = self._orig_main_prog.clone()
             serial_startup_prog = self._orig_startup_prog.clone()
             if not self._skip_build:
                 with static.program_guard(serial_main_prog, serial_startup_prog), \
                     utils.unique_name.guard():
-                    outputs = to_list(self._model(*inputs))
-                    if mode != "predict" and self._loss:
-                        losses = to_list(self._loss(*(outputs + labels)))
-                        self._losses = losses
+                    self._inputs = [s._create_feed_layer() for s in inputs_spec]
+                    self._labels = [s._create_feed_layer() for s in labels_spec]
 
-                    if mode != "predict" and (outputs or labels):
+                    outputs = to_list(self._model(*self._inputs))
+
+                    if mode != "predict" and self._loss:
+                        assert isinstance(self._loss, paddle.nn.Layer) or callable(self._loss), \
+                            "the type of `loss` of the Engine arguments should be sub classes of `paddle.nn.Layer` or any callable function."
+                        self._losses = to_list(
+                            self._loss(*(outputs + self._labels)))
+
+                    if mode != "predict" and (outputs or self._labels):
                         for metric in self._metrics:
                             metrics.append(
-                                to_list(metric.compute(*(outputs + labels))))
+                                to_list(
+                                    metric.compute(*(outputs + self._labels))))
             else:
-                losses = to_list(self._loss)
-                self.losses = losses
+                assert isinstance(
+                    self._loss, Variable
+                ), "the type of `loss` of the Engine arguments should be Variable."
+                assert self._inputs or self._labels
+                self._losses = to_list(self._loss)
 
         default_ctx = get_default_distributed_context()
         if not default_ctx.has_annotation:
@@ -527,11 +528,11 @@ class Engine:
             new_process_group(list(range(self._nranks)))
             default_ctx.data_parallel = True
 
-        feed_vars = {"inputs": inputs, "labels": labels}
+        feed_vars = {"inputs": self._inputs, "labels": self._labels}
 
         fetch_vars = {
             "outputs": flatten(outputs),
-            "loss": losses,
+            "loss": self._losses,
             "metrics": metrics
         }
 
@@ -540,9 +541,10 @@ class Engine:
 
         self._set_recompute_ckpts()
         self._dist_contexts[mode] = DistributedContext(
-            serial_main_prog, serial_startup_prog, self._optimizer, losses,
-            feed_vars, fetch_vars, self._cluster, self._strategy)
+            serial_main_prog, serial_startup_prog, self._optimizer,
+            self._losses, feed_vars, fetch_vars, self._cluster, self._strategy)
         self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
+        self._fwd_main_progs[mode] = serial_main_prog.clone()
 
     def _optimization_tuning(self, mode, dataset, batch_size):
         if not self._tuning.enable:
@@ -595,8 +597,8 @@ class Engine:
         self._dp_world_sizes = []
         self._dp_ranks = []
         for feed_var in feed_list:
-            dp_world_size, dp_rank = self._get_input_split_info(
-                feed_var, self._dist_contexts[mode])
+            dp_world_size, dp_rank = get_input_split_info(
+                self._cur_rank, feed_var, self._dist_contexts[mode])
             self._dp_world_sizes.append(dp_world_size)
             self._dp_ranks.append(dp_rank)
 
@@ -641,7 +643,7 @@ class Engine:
             mode].dist_startup_programs
         self._feed_vars[mode] = self._dist_contexts[mode].serial_feed_vars
         self._fetch_vars[mode] = self._dist_contexts[mode].serial_fetch_vars
-        self._optimizer = self._dist_contexts[mode]._serial_optimizer
+        self._lr_optimizer = self._dist_contexts[mode]._lr_optimizer
 
         if self._nranks > 1:
             # Traverse different rank programs and traverse each op of them,
@@ -777,15 +779,10 @@ class Engine:
         self._mode = 'train'
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             train_data, train_sample_split, batch_size)
-        self._inputs, self._labels = self._prepare_data_tensor(
-            self._inputs_spec, self._labels_spec)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
-
-        assert self._mode in self._dist_main_progs, \
-            "train model is not ready, please call `engine._prepare_program('train')` first."
 
         train_dataloader = self._prepare_dataloader_from_generator(
             dataset=train_data,
@@ -826,7 +823,7 @@ class Engine:
                         return_numpy=self._strategy.return_numpy)
                 except core.EOFException:
                     break
-                lr = get_lr(self._optimizer)
+                lr = get_lr(self._lr_optimizer)
                 logs = self._prepare_logger(outs, epoch, step, lr, fetch_names,
                                             fetch_indices, self._mode)
                 cbks.on_batch_end('train', step, logs)
@@ -907,15 +904,11 @@ class Engine:
         self._mode = 'eval'
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             valid_data, valid_sample_split, batch_size)
-        self._inputs, self._labels = self._prepare_data_tensor(
-            self._inputs_spec, self._labels_spec)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
 
-        assert self._mode in self._dist_main_progs, \
-            "eval model is not ready, please call `engine._prepare_program('eval')` first."
         valid_dataloader = self._prepare_dataloader_from_generator(
             dataset=valid_data,
             capacity=70,
@@ -1012,15 +1005,10 @@ class Engine:
         self._mode = 'predict'
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             test_data, test_sample_split, batch_size)
-        self._inputs, self._labels = self._prepare_data_tensor(
-            self._inputs_spec, self._labels_spec)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
-
-        assert self._mode in self._dist_main_progs, \
-            "predict model is not ready, please call `engine._prepare_program('predict')` first."
 
         test_dataloader = self._prepare_dataloader_from_generator(
             dataset=test_data,
@@ -1073,12 +1061,11 @@ class Engine:
             self.to_mode(mode)
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             dataset, sample_split, batch_size)
-        self._inputs, self._labels = self._prepare_data_tensor(
-            self._inputs_spec, self._labels_spec)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
+
         dataloader = self._prepare_dataloader(
             dataset,
             return_list=False,
@@ -1112,12 +1099,11 @@ class Engine:
             self.to_mode(mode)
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             dataset, sample_split, batch_size)
-        self._inputs, self._labels = self._prepare_data_tensor(
-            self._inputs_spec, self._labels_spec)
         if not self._has_prepared[self._mode]:
             self._prepare_program(self._mode)
         else:
             self._switch_mode(self._mode)
+
         dataloader = self._prepare_dataloader_from_generator(
             dataset=dataset,
             capacity=capacity,
@@ -1142,41 +1128,36 @@ class Engine:
                 mode=None):
         if mode is not None:
             self.to_mode(mode)
+
+        if self._has_prepared[self._mode]:
+            return
+
+        self._orig_main_prog = main_program
+        self._orig_startup_prog = startup_program
         if inputs or labels:
             self._skip_build = True
-            self._inputs_spec = inputs_spec
-            self._labels_spec = labels_spec
-            self._inputs, self._labels = self._prepare_data_tensor(
-                self._inputs_spec, self._labels_spec, inputs, labels)
-            self._orig_main_prog = main_program
+            inputs, labels = self._prepare_data_tensor(inputs_spec, labels_spec,
+                                                       inputs, labels)
             if self._orig_main_prog is None:
                 self._orig_main_prog = static.default_main_program()
-            self._orig_startup_prog = startup_program
             if self._orig_startup_prog is None:
                 self._orig_startup_prog = static.default_startup_program()
-            if not self._has_prepared[self._mode]:
-                self._prepare_program(self._mode)
-            else:
-                self._switch_mode(self._mode)
         elif inputs_spec or labels_spec:
-            self._inputs_spec = inputs_spec
-            self._labels_spec = labels_spec
             self._outside_dataloader = True
-            self._inputs, self._labels = self._prepare_data_tensor(
-                self._inputs_spec, self._labels_spec)
-            self._orig_main_prog = main_program
             if self._orig_main_prog is None:
                 self._orig_main_prog = static.default_main_program()
-            self._orig_startup_prog = startup_program
             if self._orig_startup_prog is None:
                 self._orig_startup_prog = static.default_startup_program()
-            if not self._has_prepared[self._mode]:
-                self._prepare_program(self._mode)
-            else:
-                self._switch_mode(self._mode)
         else:
             assert self._inputs_spec and self._labels_spec, \
                 "Please call the dataloader(...) before calling prepare(...)"
+
+        self._inputs_spec, self._labels_spec = inputs_spec, labels_spec
+        self._inputs, self._labels = inputs, labels
+        if not self._has_prepared[self._mode]:
+            self._prepare_program(self._mode)
+        else:
+            self._switch_mode(self._mode)
 
     def run(self, data=None, feed=None, fetch_list=None, mode=None):
         if mode is not None:
@@ -1217,7 +1198,6 @@ class Engine:
 
         dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self._mode][self._cur_rank]
-        dist_context = self._dist_contexts[self._mode]
         dist_main_block = dist_main_prog.global_block()
 
         # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
@@ -1280,7 +1260,6 @@ class Engine:
 
         dist_main_prog = self._dist_main_progs[self._mode][self._cur_rank]
         dist_startup_prog = self._dist_startup_progs[self._mode][self._cur_rank]
-        dist_context = self._dist_contexts[self._mode]
         dist_main_block = dist_main_prog.global_block()
 
         # NOTE: Get feed_list, then insert dataloader op with sharded var shape.
@@ -1324,8 +1303,6 @@ class Engine:
         self._mode = 'train'
         self._inputs_spec, self._labels_spec = self._prepare_data_spec(
             tune_data, tune_sample_split, batch_size)
-        self._inputs, self._labels = self._prepare_data_tensor(
-            self._inputs_spec, self._labels_spec)
         self._optimization_tuning(self._mode, tune_data, batch_size)
 
     def _validate_spec(self, specs):
@@ -1344,34 +1321,11 @@ class Engine:
                         "Requires batch_size[{}] to be divisible by k_steps[{}].".format(spec.shape[0], self._k_steps)
                     shape[0] //= self._k_steps
                     spec.shape = shape
-        return specs
+        return specs or []
 
     def _is_local_var(self, var):
         var_name = _to_name_str(var)
         return var_name in self.main_program.global_block().vars
-
-    def _get_input_split_info(self, var, dist_context):
-        # deduce how the input data is split among the cluster
-        from .utils import _get_comm_group, _get_corresponding_rank
-
-        tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
-        process_mesh = tensor_dist_attr.process_mesh
-        dims_mapping = tensor_dist_attr.dims_mapping
-
-        if self._cur_rank not in process_mesh.processes:
-            rank_id = _get_corresponding_rank(dist_context, process_mesh,
-                                              self._cur_rank)
-        else:
-            rank_id = self._cur_rank
-
-        batch_size_axis = dims_mapping[0]
-        if batch_size_axis > -1 and process_mesh.topology[batch_size_axis] > 1:
-            group_ranks = _get_comm_group(process_mesh.processes,
-                                          process_mesh.topology,
-                                          batch_size_axis, rank_id)
-            return len(group_ranks), group_ranks.index(rank_id)
-
-        return 1, 0
 
     def _set_recompute_ckpts(self):
         # NOTE hack to enable recompute in engine api for GPT-3
@@ -1400,12 +1354,6 @@ class Engine:
             }
             self._logger.info(logs)
 
-    def _validate_opt(self, optimizer):
-        if optimizer is not None:
-            optimizer._parameter_list = None
-            optimizer._param_groups = None
-        return optimizer
-
     def _reset_metrics(self):
         for metric in self._metrics:
             metric.reset()
@@ -1417,8 +1365,10 @@ class Engine:
         return metrics_name
 
     def _switch_mode(self, mode):
+        assert mode in self._dist_main_progs, \
+            "{} model is not ready, please call `prepare()` first.".format(mode)
         self.to_mode(mode)
-        self._optimizer = self._dist_contexts[mode]._serial_optimizer
+        self._lr_optimizer = self._dist_contexts[mode]._lr_optimizer
 
     def to_mode(self, mode):
         assert mode in ["train", "eval", "predict"], \
@@ -1568,28 +1518,26 @@ class Engine:
         """
         # Check parallel mode
         if self._strategy.auto_mode == "full":
-            print(
+            self._logger.info(
                 "The cost will be calcudated in the search process when the auto mode is full."
             )
             return
 
         # Check mode
-        accepted_modes = ["train", "predict", "eval"]
-        if mode not in accepted_modes:
+        if mode not in self._has_prepared:
             raise ValueError("The mode {} is not in accepted modes {}".format(
-                mode, accepted_modes))
+                mode, list(self._has_prepared.keys())))
         self.to_mode(mode)
 
-        if inputs_spec is not None:
+        if inputs_spec is not None and not self._has_prepared[mode]:
             self._inputs_spec, self._labels_spec = inputs_spec, labels_spec
-            self._inputs, self._labels = self._prepare_data_tensor(
-                self._inputs_spec, self._labels_spec)
+            # self._prepare_program(mode)
             self._build(mode)
             self._plan(mode)
         else:
             if _non_static_mode() or self._dygraph_mode:
                 raise ValueError(
-                    "Please call `engine._prepare_program('mode')` firstly when in the static graph mode."
+                    "Please call `prepare()` or `fit()` before calling `cost()`."
                 )
 
         # Estimate the exec cost and max memory

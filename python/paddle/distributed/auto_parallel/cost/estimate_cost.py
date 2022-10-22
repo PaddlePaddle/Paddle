@@ -507,8 +507,8 @@ class CostEstimator:
 def get_cost_from_engine(engine, mode):
     from ..utils import to_list
     # Construct cost estimator by original main program
-    serial_main_prog = engine._serial_main_progs[mode].clone(
-    ) if mode in engine._serial_main_progs else engine._orig_main_prog.clone()
+    serial_main_prog = engine._fwd_main_progs[mode].clone(
+    ) if mode in engine._fwd_main_progs else engine._orig_main_prog.clone()
 
     serial_startup_prog = engine._serial_startup_progs[mode].clone(
     ) if mode in engine._serial_startup_progs else engine._orig_startup_prog.clone(
@@ -516,7 +516,7 @@ def get_cost_from_engine(engine, mode):
     losses = to_list(
         engine._loss) if (not isinstance(engine._loss, paddle.nn.Layer)
                           and not callable(engine._loss)) else engine._losses
-
+    serial_optimizer = engine._optimizer
     if mode in engine._dist_contexts:
         dist_context = engine._dist_contexts[mode]
         completer = engine._planners[mode].completer
@@ -524,7 +524,7 @@ def get_cost_from_engine(engine, mode):
         from ..completion import Completer
         from ..dist_context import DistributedContext
         dist_context = DistributedContext(serial_main_prog, serial_startup_prog,
-                                          engine._optimizer, losses, {},
+                                          serial_optimizer, losses, {},
                                           {"loss": losses}, engine._cluster,
                                           engine._strategy)
         completer = Completer(dist_context)
@@ -537,7 +537,6 @@ def get_cost_from_engine(engine, mode):
     elif mode == "train":
         from ..parallelizer_v2 import Parallelizer
         # Get serial main program with backward
-        serial_optimizer = engine._optimizer
         parallelizer = Parallelizer(mode, completer, dist_context)
         # Generate backward
         loss_name = dist_context.serial_loss.name

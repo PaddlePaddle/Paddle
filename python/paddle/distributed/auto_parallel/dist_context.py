@@ -71,9 +71,10 @@ class DistributedContext:
         self._serial_main_program = None
         self._serial_startup_program = None
         self._serial_loss = None
-        self._serial_optimizer = None
+        self._serial_optimizer = None  # record the optimzier before call apply_gradients
         self._serial_feed_vars = {}
         self._serial_fetch_vars = {}
+        self._lr_optimizer = None  # record the optimzier after call apply_gradients
 
         # Data members related to the program
         self._dist_tensors_for_program = {}
@@ -869,7 +870,7 @@ class DistributedContext:
                 "_serial_ordered_nodes", "_serial_ordered_tensor_nodes", \
                 "_serial_ordered_op_nodes", "_original_serial_loss", \
                 "_original_serial_feed_vars", "_original_serial_fetch_vars", \
-                "_serial_loss", "_serial_feed_vars", "_serial_fetch_vars", "_serial_optimizer", \
+                "_serial_loss", "_serial_feed_vars", "_serial_fetch_vars", "_lr_optimizer", \
                 "_backup_serial_main_program_stack", "_backup_serial_startup_program_stack", \
                 "_pass_context"]:
                 setattr(result, k, v)

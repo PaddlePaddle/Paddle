@@ -1664,3 +1664,31 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
                         break
         process_group.instantiate()
     server_socket.close()
+
+
+def get_input_split_info(cur_rank, var, dist_context):
+    # deduce how the input data is split among the cluster
+    tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(var)
+    process_mesh = tensor_dist_attr.process_mesh
+    dims_mapping = tensor_dist_attr.dims_mapping
+
+    if cur_rank not in process_mesh.processes:
+        rank_id = _get_corresponding_rank(dist_context, process_mesh, cur_rank)
+    else:
+        rank_id = cur_rank
+
+    batch_size_axis = dims_mapping[0]
+    if batch_size_axis > -1 and process_mesh.topology[batch_size_axis] > 1:
+        group_ranks = _get_comm_group(process_mesh.processes,
+                                      process_mesh.topology, batch_size_axis,
+                                      rank_id)
+        return len(group_ranks), group_ranks.index(rank_id)
+
+    return 1, 0
+
+
+def validate_opt(optimizer):
+    if optimizer is not None:
+        optimizer._parameter_list = None
+        optimizer._param_groups = None
+    return optimizer

@@ -146,7 +146,7 @@ class AutoParallelizer:
         with program_guard(main_program, startup_program):
             optimize_ops = optimizer.apply_gradients(params_grads)
 
-        self._dist_context._serial_optimizer = optimizer
+        self._dist_context._lr_optimizer = optimizer
         # update completion
         self._completer = Completer(self._dist_context)
         self._completer.complete_update_annotation(main_program)

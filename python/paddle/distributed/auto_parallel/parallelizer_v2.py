@@ -143,7 +143,7 @@ class Parallelizer:
         # NOTE: `apply_gradients` will add an Accumulator for a parameter only once,
         # but optimizer will be called repeatedly in re-launch, so optimizer need to be copied.
         optimizer = copy.deepcopy(optimizer)
-        self._dist_context._serial_optimizer = optimizer
+        self._dist_context._lr_optimizer = optimizer
         with program_guard(main_program, startup_program):
             with unique_name.guard("opt_"):
                 optimizer_ops = optimizer.apply_gradients(params_grads)

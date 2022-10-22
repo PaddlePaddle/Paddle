@@ -356,8 +356,8 @@ def train_non_builtin_data_vars():
 
 
 def get_cost():
-    main_program = static.default_main_program()
-    startup_program = static.default_startup_program()
+    main_program = static.Program()
+    startup_program = static.Program()
     with static.program_guard(main_program,
                               startup_program), utils.unique_name.guard():
         input = static.data(name="input",
@@ -392,6 +392,11 @@ def get_cost():
                          optimizer=optimizer,
                          metrics=metric,
                          strategy=strategy)
+    engine.prepare(inputs=[input],
+                   labels=[label],
+                   main_program=main_program,
+                   startup_program=startup_program,
+                   mode="train")
     engine.cost()
 
 
@@ -419,10 +424,10 @@ def get_cost_by_spec():
 
 
 if __name__ == "__main__":
-    train_high_level(fetch=True)
-    train_high_level(fetch=False)
-    train_low_level()
-    train_builtin_data_vars()
-    train_non_builtin_data_vars()
+    # train_high_level(fetch=True)
+    # train_high_level(fetch=False)
+    # train_low_level()
+    # train_builtin_data_vars()
+    # train_non_builtin_data_vars()
     get_cost()
-    get_cost_by_spec()
+    # get_cost_by_spec()
