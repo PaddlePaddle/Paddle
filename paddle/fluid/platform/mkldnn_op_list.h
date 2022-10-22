@@ -58,7 +58,6 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     // NOTE(jiahongyu): Below ops register kernel with customized_type_value, we
     // need to analysis and solve them one-by-one.
     "prior_box",
-    "fc",
     "mul",
     "mul_grad"};
 

@@ -330,22 +330,6 @@ def is_numpy_api(node):
         return False
 
 
-def is_control_flow_to_transform(node,
-                                 static_analysis_visitor=None,
-                                 var_name_to_type=None):
-    """
-    Determines whether the node is a PaddlePaddle control flow statement which needs to
-    be transformed into a static graph control flow statement.
-    """
-    assert isinstance(node, gast.AST), \
-        "The type of input node must be gast.AST, but received %s." % type(node)
-    visitor = IsControlFlowVisitor(node,
-                                   static_analysis_visitor,
-                                   node_var_type_map=var_name_to_type)
-    need_to_transform = visitor.transform()
-    return need_to_transform
-
-
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
@@ -999,31 +983,6 @@ def _compatible_non_tensor_spec(src_spec, desired_spec):
         return False
     else:
         return True
-
-
-def slice_is_num(slice_node):
-    # A slice_node.slice can be a:
-    # (1) ast.Index, which is a simple number such as [1], [-2]
-    # (2) ast.Slice, which is represented by bounds such as [2:-1]
-    # (3) ast.Tuple, which includes the above two cases such as [2:-1, 1]
-    # If slice node is case (1), return True, Otherwise, return False.
-    #
-    # NOTE: In (1) case, when gast>=0.4.0, gast.Index is not used, which is replaced
-    # other gast node such as gast.Constant, gast.Name, gast.UnaryOp and so on.
-    # Considering the compatibility of gast, here use ast note to check whether the
-    # node is a num. For more details, please visit https://github.com/serge-sans-paille/gast
-
-    assert isinstance(slice_node, gast.Subscript)
-    slice_node_str = ast_to_source_code(slice_node).strip()
-    ast_node = ast.parse(slice_node_str).body[0].value
-
-    if isinstance(ast_node.slice, (ast.Tuple, ast.Slice)):
-        return False
-
-    if isinstance(ast_node.slice, ast.Index):
-        return True
-
-    return False
 
 
 class NameScope:

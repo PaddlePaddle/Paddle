@@ -28,13 +28,13 @@ __all__ = []
 
 
 def bernoulli(x, name=None):
-    """
+    r"""
 
     For each element :math:`x_i` in input ``x``, take a sample from the Bernoulli distribution, also called two-point distribution, with success probability :math:`x_i`. The Bernoulli distribution with success probability :math:`x_i` is a discrete probability distribution with probability mass function
 
     .. math::
-        p(y)=\\begin{cases}
-            x_i,&y=1\\\\
+        p(y)=\begin{cases}
+            x_i,&y=1\\
             1-x_i,&y=0
         \end{cases}.
 
