@@ -13,18 +13,12 @@
 # limitations under the License.
 """This is the lib for gradient checker unittest."""
 
-from __future__ import print_function
-
-import unittest
-import six
-import collections
 import numpy as np
 from itertools import product
 import paddle
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 from paddle.fluid.framework import _test_eager_guard
 try:
@@ -144,7 +138,7 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
     np_type = dtype_to_np_dtype(x.dtype)
     jacobian = [make_jacobian(x, _product(yi.shape), np_type) for yi in y]
 
-    for i in six.moves.xrange(x_size):
+    for i in range(x_size):
         orig = _get_item(x_t, i, np_type)
         x_pos = orig + delta
         _set_item(x_t, i, x_pos, np_type)
@@ -156,7 +150,7 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
 
         _set_item(x_t, i, orig, np_type)
 
-        for j in six.moves.xrange(len(y)):
+        for j in range(len(y)):
             jacobian[j][i, :] = (y_pos[j] - y_neg[j]) / delta / 2.
 
     return jacobian
@@ -209,12 +203,12 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     filted = [(i, dxi) for i, dxi in enumerate(dx) if dxi is not None]
     filted_idx, filted_dx = zip(*filted)
 
-    for i in six.moves.xrange(y_size):
+    for i in range(y_size):
         _set_item(dy_t, i, 1, np_type)
 
         dx_res = exe.run(program, scope=scope, fetch_list=filted_dx)
 
-        for j in six.moves.xrange(len(filted_dx)):
+        for j in range(len(filted_dx)):
             dx_idx = filted_idx[j]
             if dx_res[j] is not None:
                 jacobian[dx_idx][:, i] = dx_res[j].flatten()
@@ -268,6 +262,9 @@ def grad_check(x,
     for v in x:
         v.stop_gradient = False
         v.persistable = True
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     if place is None:
         place = fluid.CPUPlace()
     if program is None:
@@ -364,6 +361,9 @@ def double_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
 
     if program is None:
         program = fluid.default_main_program()
@@ -445,6 +445,9 @@ def triple_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
 
     if program is None:
         program = fluid.default_main_program()
@@ -547,7 +550,7 @@ def get_static_double_grad(x,
         program = fluid.default_main_program()
     scope = fluid.executor.global_scope()
     y_grads = []
-    for i in six.moves.xrange(len(y)):
+    for i in range(len(y)):
         yi = y[i]
         dyi_name = _append_grad_suffix_(yi.name)
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -578,6 +581,9 @@ def get_static_double_grad(x,
     for v in x:
         v.stop_gradient = False
         v.persistable = True
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     if place is None:
         place = fluid.CPUPlace()
     if program is None:
@@ -642,10 +648,10 @@ def get_eager_double_grad(func,
         place (fluid.CPUPlace or fluid.CUDAPlace): the device.
         return_mid_result (bool): A flag that controls the return content.
     Returns:
-        If 'return_mid_result' set True. 
+        If 'return_mid_result' set True.
         the second order derivative and the inputs of second order derivative's calculation
         will be returned for higher order derivative's calculation.
-        If 'return_mid_result' set False. 
+        If 'return_mid_result' set False.
         A list of numpy array that stores second derivative result calulated by dygraph.
     """
     if isinstance(place, fluid.CPUPlace):
@@ -692,7 +698,8 @@ def get_eager_double_grad(func,
                             allow_unused=True)
 
     if return_mid_result:
-        return dd_inputs, inputs + ddys
+        return [dd_input for dd_input in dd_inputs
+                if dd_input is not None], inputs + ddys
     else:
         return [
             dd_input.numpy() for dd_input in dd_inputs if dd_input is not None
@@ -708,8 +715,8 @@ def double_grad_check_for_dygraph(func,
                                   rtol=1e-3,
                                   raise_exception=True):
     """
-    Check second order gradients of dygraph. This function will compare the 
-    second order gradients of dygraph and second order gradients of static graph 
+    Check second order gradients of dygraph. This function will compare the
+    second order gradients of dygraph and second order gradients of static graph
     to validate dygraph's correctness
 
     Args:
@@ -735,7 +742,9 @@ def double_grad_check_for_dygraph(func,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -758,7 +767,7 @@ def double_grad_check_for_dygraph(func,
             "please check the python api unit test used."
         raise RuntimeError(msg)
 
-    for i in six.moves.xrange(len(static_double_grad)):
+    for i in range(len(static_double_grad)):
         if not np.allclose(static_double_grad[i], eager_double_grad[i], rtol,
                            atol):
             msg = 'Check eager double result fail. Mismatch between static_graph double grad ' \
@@ -792,7 +801,7 @@ def get_static_triple_grad(x,
         program = fluid.default_main_program()
     scope = fluid.executor.global_scope()
     y_grads = []
-    for i in six.moves.xrange(len(y)):
+    for i in range(len(y)):
         yi = y[i]
         dyi_name = _append_grad_suffix_(yi.name)
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -840,7 +849,7 @@ def get_eager_triple_grad(func,
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         dy_init (numpy.array|list[numpy.array]|None): the init value for gradient of output.
         place (fluid.CPUPlace or fluid.CUDAPlace): the device.
-        return_mid_result (list[Tensor], list[Tensor]): If set True, the 
+        return_mid_result (list[Tensor], list[Tensor]): If set True, the
     Returns:
         A list of numpy array that stores second derivative result calulated by dygraph
     """
@@ -857,8 +866,13 @@ def get_eager_triple_grad(func,
         dddy = paddle.ones(shape=dd_yi.shape, dtype=dd_yi.dtype)
         dddy.stop_gradient = False
         dddys.append(dddy)
-    ddd_inputs = paddle.grad(outputs=dd_y, inputs=dd_x, grad_outputs=dddys)
-    return [ddd_input.numpy() for ddd_input in ddd_inputs]
+    ddd_inputs = paddle.grad(outputs=dd_y,
+                             inputs=dd_x,
+                             grad_outputs=dddys,
+                             allow_unused=True)
+    return [
+        ddd_input.numpy() for ddd_input in ddd_inputs if ddd_input is not None
+    ]
 
 
 def triple_grad_check_for_dygraph(func,
@@ -870,8 +884,8 @@ def triple_grad_check_for_dygraph(func,
                                   rtol=1e-3,
                                   raise_exception=True):
     """
-    Check third order gradients of dygraph. This function will compare the 
-    third order gradients of dygraph and third order gradients of static graph 
+    Check third order gradients of dygraph. This function will compare the
+    third order gradients of dygraph and third order gradients of static graph
     to validate dygraph's correctness
 
     Args:
@@ -897,7 +911,9 @@ def triple_grad_check_for_dygraph(func,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
-
+    for u in y:
+        u.stop_gradient = False
+        u.persistable = True
     y_grads_init = []
     for yi in y:
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -920,7 +936,7 @@ def triple_grad_check_for_dygraph(func,
             "please check the python api unit test used."
         raise RuntimeError(msg)
 
-    for i in six.moves.xrange(len(static_triple_grad)):
+    for i in range(len(static_triple_grad)):
         if not np.allclose(static_triple_grad[i], eager_triple_grad[i], rtol,
                            atol):
             msg = 'Check eager double result fail. Mismatch between static_graph double grad ' \

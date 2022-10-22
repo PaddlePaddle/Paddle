@@ -17,7 +17,7 @@ from paddle.incubate.nn import functional as F
 
 
 class FusedLinear(Layer):
-    """
+    r"""
     Linear layer takes only one multi-dimensional tensor as input with the
     shape :math:`[batch\_size, *, in\_features]` , where :math:`*` means any
     number of additional dimensions. It multiplies input tensor with the weight
@@ -34,7 +34,7 @@ class FusedLinear(Layer):
             initialized to zero. For detailed information, please refer to
             paddle.ParamAttr.
         transpose_weight (bool): Whether to transpose the `weight` Tensor before
-            multiplication. 
+            multiplication.
         bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
@@ -55,14 +55,14 @@ class FusedLinear(Layer):
 
     Examples:
         .. code-block:: python
-       
+
             # required: gpu
             import paddle
             from paddle.incubate.nn import FusedLinear
 
-            x = paddle.randn([3, 4]) 
+            x = paddle.randn([3, 4])
             linear = FusedLinear(4, 5)
-            y = linear(x)            
+            y = linear(x)
             print(y.shape) # [3, 5]
     """
 

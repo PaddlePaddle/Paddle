@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
 import numpy as np
-import six
-import sys
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid import Conv2D, Pool2D, Linear
+from paddle.fluid import Linear
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.framework import _test_eager_guard
@@ -230,13 +227,13 @@ class TestDygraphGAN(unittest.TestCase):
 
         self.assertEqual(dy_g_loss, static_g_loss)
         self.assertEqual(dy_d_loss, static_d_loss)
-        for k, v in six.iteritems(dy_params):
-            self.assertTrue(np.allclose(v, static_params[k]))
+        for k, v in dy_params.items():
+            np.testing.assert_allclose(v, static_params[k], rtol=1e-05)
 
         self.assertEqual(dy_g_loss2, static_g_loss)
         self.assertEqual(dy_d_loss2, static_d_loss)
-        for k, v in six.iteritems(dy_params2):
-            self.assertTrue(np.allclose(v, static_params[k]))
+        for k, v in dy_params2.items():
+            np.testing.assert_allclose(v, static_params[k], rtol=1e-05)
 
     def test_gan_float32(self):
         with _test_eager_guard():

@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.ps.utils.ps_program_builder import *
+from paddle.distributed.ps.utils.ps_program_builder import debug_program, logger, new_pass, ps_log_root_dir
 import paddle.distributed.fleet as fleet
 import argparse
-import time
 import sys
-import yaml, six, copy
+import yaml
+import copy
 import paddle
 import os
-import warnings
 import ast
 import numpy as np
 import struct
@@ -69,20 +67,12 @@ class YamlHelper(object):
                 use_full_loader = False
 
         if os.path.isfile(config):
-            if six.PY2:
-                with open(config, 'r') as rb:
-                    if use_full_loader:
-                        _config = yaml.load(rb.read(), Loader=yaml.FullLoader)
-                    else:
-                        _config = yaml.load(rb.read())
-                    return _config
-            else:
-                with open(config, 'r', encoding="utf-8") as rb:
-                    if use_full_loader:
-                        _config = yaml.load(rb.read(), Loader=yaml.FullLoader)
-                    else:
-                        _config = yaml.load(rb.read())
-                    return _config
+            with open(config, 'r', encoding="utf-8") as rb:
+                if use_full_loader:
+                    _config = yaml.load(rb.read(), Loader=yaml.FullLoader)
+                else:
+                    _config = yaml.load(rb.read())
+                return _config
         else:
             raise ValueError("config {} can not be supported".format(config))
 
@@ -486,11 +476,11 @@ class DnnTrainer(object):
 
         else:
             pass
-        '''          
+        '''
             print("entering run_the_one_ps -- old")
             fleet_obj = fleet.distributed_optimizer(
-                inner_optimizer, user_defined_strategy)  
-            fleet_obj.minimize(loss)  
+                inner_optimizer, user_defined_strategy)
+            fleet_obj.minimize(loss)
             if fleet.is_worker():
                 worker_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=False, is_sync=False)
                 server_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=True, is_sync=False)

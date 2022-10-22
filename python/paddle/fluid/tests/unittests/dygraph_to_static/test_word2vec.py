@@ -12,15 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
-import os
-import sys
-import requests
-from collections import OrderedDict
 import math
 import random
 import numpy as np
-import paddle
 import paddle.fluid as fluid
 import unittest
 
@@ -301,9 +295,7 @@ class TestWord2Vec(unittest.TestCase):
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
-        self.assertTrue(np.allclose(dygraph_loss, static_loss),
-                        msg="dygraph_loss: {} \nstatic_loss: {}".format(
-                            dygraph_loss, static_loss))
+        np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
 
 
 if __name__ == '__main__':

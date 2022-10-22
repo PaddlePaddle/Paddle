@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import default_main_program, switch_main_program
+from paddle.fluid.framework import switch_main_program
 from paddle.fluid.framework import Program, program_guard
 import numpy as np
 
@@ -81,9 +79,9 @@ class TestShrinkRNNMemoryReferLoD(TestShrinkRNNMemoryBase):
             },
             fetch_list=[self.mem1, self.mem2, self.mem3, self.x_grad],
             return_numpy=False)
-        self.assertTrue(np.allclose(tensor_np[0:6], outs[0]))
-        self.assertTrue(np.allclose(tensor_np[0:5], outs[1]))
-        self.assertTrue(np.allclose(tensor_np[0:2], outs[2]))
+        np.testing.assert_allclose(tensor_np[0:6], outs[0], rtol=1e-05)
+        np.testing.assert_allclose(tensor_np[0:5], outs[1], rtol=1e-05)
+        np.testing.assert_allclose(tensor_np[0:2], outs[2], rtol=1e-05)
         self.assertAlmostEqual(1.0, self.sum_lodtensor(outs[3]), delta=0.01)
 
 
@@ -108,9 +106,9 @@ class TestShrinkRNNMemoryNoLoD(TestShrinkRNNMemoryBase):
             },
             fetch_list=[self.mem1, self.mem2, self.mem3, self.x_grad],
             return_numpy=False)
-        self.assertTrue(np.allclose(tensor_np[0:3], outs[0]))
-        self.assertTrue(np.allclose(tensor_np[0:2], outs[1]))
-        self.assertTrue(np.allclose(tensor_np[0:1], outs[2]))
+        np.testing.assert_allclose(tensor_np[0:3], outs[0], rtol=1e-05)
+        np.testing.assert_allclose(tensor_np[0:2], outs[1], rtol=1e-05)
+        np.testing.assert_allclose(tensor_np[0:1], outs[2], rtol=1e-05)
         self.assertAlmostEqual(1.0, self.sum_lodtensor(outs[3]), delta=0.01)
 
 

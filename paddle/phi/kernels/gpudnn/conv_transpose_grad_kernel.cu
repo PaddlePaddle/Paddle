@@ -179,14 +179,18 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                                     strides,
                                     padding_common,
                                     dilations_,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    layout};
   paddle::operators::ConvArgs args2{&transformed_dout,
                                     &filter,
                                     &x_transpose,
                                     strides,
                                     padding_common,
                                     dilations_,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    layout};
 
 #ifdef PADDLE_WITH_HIP
   paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
@@ -226,7 +230,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 #else
     using search1 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-    fwd_result = search1::Find<T>(args1, false, deterministic, ctx);
+    fwd_result = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search1::GetWorkspaceSize(args1, fwd_result.algo));
 #endif
@@ -253,7 +257,7 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 #else
     using search2 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-    filter_result = search2::Find<T>(args2, false, deterministic, ctx);
+    filter_result = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search2::GetWorkspaceSize(args2, filter_result.algo));
 #endif
@@ -379,7 +383,7 @@ void Conv2dTransposeGradGPUDNNKernel(const Context& ctx,
                                      const std::vector<int>& strides,
                                      const std::vector<int>& paddings_,
                                      const std::vector<int>& output_padding,
-                                     const std::vector<int>& output_size,
+                                     const IntArray& output_size,
                                      const std::string& padding_algorithm,
                                      int groups,
                                      const std::vector<int>& dilations_,
@@ -418,7 +422,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
     const std::vector<int>& strides,
     const std::vector<int>& paddings,
     const std::vector<int>& output_padding,
-    const std::vector<int>& output_size,
+    const IntArray& output_size,
     const std::string& padding_algorithm,
     int groups,
     const std::vector<int>& dilations,
@@ -625,6 +629,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
   auto handle = ctx.cudnn_handle();
+  auto layout = paddle::platform::GetCudnnTensorFormat(GPUDNNDataLayout::kNCHW);
 
   paddle::operators::ConvArgs args1{&transformed_ddout_channel,
                                     &filter,
@@ -632,14 +637,18 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                                     strides,
                                     padding_common,
                                     dilations_,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    GPUDNNDataLayout::kNCHW};
   paddle::operators::ConvArgs args2{&transformed_ddout_channel,
                                     &ddfilter,
                                     &transformed_x,
                                     strides,
                                     padding_common,
                                     dilations_,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    GPUDNNDataLayout::kNCHW};
 
   paddle::operators::ConvArgs args3{&transformed_dout,
                                     dfilter,
@@ -647,14 +656,18 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                                     strides,
                                     padding_common,
                                     dilations_,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    GPUDNNDataLayout::kNCHW};
   paddle::operators::ConvArgs args4{&transformed_dout,
                                     &ddfilter,
                                     &transformed_dx_channel,
                                     strides,
                                     padding_common,
                                     dilations_,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    GPUDNNDataLayout::kNCHW};
 #ifdef PADDLE_WITH_HIP
   paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result1;
   paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result2;
@@ -668,8 +681,6 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
       filter_result;
   paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
 #endif
-
-  auto layout = paddle::platform::GetCudnnTensorFormat(GPUDNNDataLayout::kNCHW);
 
   // ddo = conv(ddI, filter) + conv(I, ddfilter)
   size_t workspace_size = 0;
@@ -699,7 +710,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 #else
     using search1 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-    bwd_result1 = search1::Find<T>(args1, false, deterministic, ctx);
+    bwd_result1 = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = search1::GetWorkspaceSize(args1, bwd_result1.algo);
 #endif
 
@@ -723,7 +734,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 #else
     using search2 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-    bwd_result2 = search2::Find<T>(args2, false, deterministic, ctx);
+    bwd_result2 = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search2::GetWorkspaceSize(args2, bwd_result2.algo));
 #endif
@@ -750,7 +761,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 #else
     using search3 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-    filter_result = search3::Find<T>(args3, false, deterministic, ctx);
+    filter_result = search3::Find<T>(ctx, args3, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search3::GetWorkspaceSize(args3, filter_result.algo));
 #endif
@@ -778,7 +789,7 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
 #else
     using search4 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-    fwd_result = search4::Find<T>(args4, false, deterministic, ctx);
+    fwd_result = search4::Find<T>(ctx, args4, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search4::GetWorkspaceSize(args4, fwd_result.algo));
 #endif

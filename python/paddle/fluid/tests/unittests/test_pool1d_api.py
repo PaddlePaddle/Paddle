@@ -18,8 +18,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as F
 import numpy as np
-from op_test import OpTest
-from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -128,7 +126,7 @@ class TestPool1D_API(unittest.TestCase):
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], result_np))
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_avg_dygraph_results(self, place):
         with fluid.dygraph.guard(place):
@@ -141,13 +139,13 @@ class TestPool1D_API(unittest.TestCase):
                                                  strides=[2],
                                                  paddings=[0])
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             avg_pool1d_dg = paddle.nn.layer.AvgPool1D(kernel_size=2,
                                                       stride=None,
                                                       padding=0)
             result = avg_pool1d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_avg_dygraph_padding_results(self, place):
         with fluid.dygraph.guard(place):
@@ -165,7 +163,7 @@ class TestPool1D_API(unittest.TestCase):
                                                  paddings=[1],
                                                  exclusive=False)
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             avg_pool1d_dg = paddle.nn.AvgPool1D(kernel_size=2,
                                                 stride=None,
@@ -173,7 +171,7 @@ class TestPool1D_API(unittest.TestCase):
                                                 exclusive=True)
 
             result = avg_pool1d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_static_results(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -190,7 +188,7 @@ class TestPool1D_API(unittest.TestCase):
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], result_np))
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_max_dygraph_results(self, place):
         with fluid.dygraph.guard(place):
@@ -203,13 +201,13 @@ class TestPool1D_API(unittest.TestCase):
                                                  strides=[2],
                                                  paddings=[0])
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             max_pool1d_dg = paddle.nn.layer.MaxPool1D(kernel_size=2,
                                                       stride=None,
                                                       padding=0)
             result = max_pool1d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_dygraph_return_index_results(self, place):
         with fluid.dygraph.guard(place):
@@ -226,13 +224,13 @@ class TestPool1D_API(unittest.TestCase):
                                                  strides=[2],
                                                  paddings=[0])
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             max_pool1d_dg = paddle.nn.layer.MaxPool1D(kernel_size=2,
                                                       stride=None,
                                                       padding=0)
             result = max_pool1d_dg(input)
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_dygraph_padding_same(self, place):
         with fluid.dygraph.guard(place):
@@ -248,7 +246,7 @@ class TestPool1D_API(unittest.TestCase):
                                                  strides=[2],
                                                  paddings=[0])
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_avg_dygraph_padding_same(self, place):
         with fluid.dygraph.guard(place):
@@ -264,7 +262,7 @@ class TestPool1D_API(unittest.TestCase):
                                                  strides=[2],
                                                  paddings=[0])
 
-            self.assertTrue(np.allclose(result.numpy(), result_np))
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def test_pool1d(self):
         for place in self.places:
@@ -277,7 +275,7 @@ class TestPool1D_API(unittest.TestCase):
             self.check_avg_dygraph_padding_same(place)
             self.check_max_dygraph_return_index_results(place)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_pool1d()
 
@@ -409,7 +407,7 @@ class TestPool2DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run_stride_out_of_range)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
             self.test_error_api()
 

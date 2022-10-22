@@ -16,21 +16,15 @@ from auto_scan_test import PassAutoScanTest, IgnoreReasons
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 import copy as cp
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
-import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestConvTransposeBnFusePass(PassAutoScanTest):
-    '''
+    r'''
     conv_input   conv_weight_var(persistable)
       \       /
-         conv_op     
+         conv_op
           |
       conv_out_var  (bn_scale_var, bn_bias_var, bn_mean_var,bn_variance_var)
                 |            /

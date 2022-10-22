@@ -16,12 +16,9 @@ test for sync bachnorm op.
 for both FP64 and FP16 input.
 """
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import os
-import six
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -163,15 +160,19 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                                   feed={'input': data},
                                   fetch_list=fetch_names)
 
-        for i in six.moves.xrange(1, len(sync_bn_fetches)):
+        for i in range(1, len(sync_bn_fetches)):
             bn_val = bn_fetches[i]
             sync_bn_val = sync_bn_fetches[i]
             if sync_bn_val.shape != bn_val.shape:
                 sync_bn_val = sync_bn_val[:bn_val.shape[0]]
-            self.assertTrue(
-                np.allclose(bn_val, sync_bn_val, atol=self.atol),
-                "Output (" + fetch_names[i] + ") has diff. \n" + "\nBN     " +
-                str(bn_val) + "\n" + "Sync BN " + str(sync_bn_val))
+            np.testing.assert_allclose(bn_val,
+                                       sync_bn_val,
+                                       rtol=1e-05,
+                                       atol=self.atol,
+                                       err_msg='Output (' + fetch_names[i] +
+                                       ') has diff. \n' + '\nBN     ' +
+                                       str(bn_val) + '\n' + 'Sync BN ' +
+                                       str(sync_bn_val))
 
     def test_train(self):
         """Test training."""
@@ -328,10 +329,12 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
             x = paddle.to_tensor(data)
             bn_out = bn_model(x)
             sybn_out = sybn_model(x)
-            self.assertTrue(
-                np.allclose(bn_out.numpy(), sybn_out.numpy()),
-                "Output has diff. \n" + "\nBN     " + str(bn_out.numpy()) +
-                "\n" + "Sync BN " + str(sybn_out.numpy()))
+            np.testing.assert_allclose(
+                bn_out.numpy(),
+                sybn_out.numpy(),
+                rtol=1e-05,
+                err_msg='Output has diff. \n' + '\nBN     ' +
+                str(bn_out.numpy()) + '\n' + 'Sync BN ' + str(sybn_out.numpy()))
 
 
 class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):

@@ -13,19 +13,11 @@
 # limitations under the License.
 
 import os
-import sys
-import subprocess
 import multiprocessing
-from datetime import datetime
 
 import re
-import copy
-import errno
 import time
-import logging
-import six
 import abc
-import paddle.fluid as fluid
 from paddle.fluid import core
 import functools
 
@@ -131,14 +123,14 @@ class LocalFS(FS):
     """
 
     def ls_dir(self, fs_path):
-        """	
+        """
         List directorys and files under `fs_path` .
 
         Args:
             fs_path(str): The local file path.
 
         Returns:
-            Tuple: Return a 2-tuple, the first is a list of all its subdirectories, 
+            Tuple: Return a 2-tuple, the first is a list of all its subdirectories,
             and the second is a list of all its subfiles, e.g. ([subdirname1, subdirname1, ...], [filename1, filename2, ...]).
 
         Examples:
@@ -290,7 +282,7 @@ class LocalFS(FS):
             fs_path(str): The local file path.
 
         Returns:
-            Bool: Wheter it's a file or directory, return true if the path exists, 
+            Bool: Wheter it's a file or directory, return true if the path exists,
             otherwise return false.
 
         Examples:
@@ -359,7 +351,7 @@ class LocalFS(FS):
         return self.rename(src_path, dst_path)
 
     def list_dirs(self, fs_path):
-        """	
+        """
         Only list directorys under `fs_path` .
 
         Args:
@@ -430,7 +422,7 @@ class HDFSClient(FS):
     A tool of HDFS.
 
     Args:
-        hadoop_home(str): Hadoop home. 
+        hadoop_home(str): Hadoop home.
         configs(dict): Hadoop config. It is a dictionary and needs to contain the
             keys: "fs.default.name" and "hadoop.job.ugi".
 
@@ -463,7 +455,7 @@ class HDFSClient(FS):
         self.pre_commands.append(dfs)
 
         if configs:
-            for k, v in six.iteritems(configs):
+            for k, v in configs.items():
                 config_command = '-D%s=%s' % (k, v)
                 self.pre_commands.append(config_command)
 
@@ -491,7 +483,7 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def list_dirs(self, fs_path):
-        """	
+        """
         Only list directorys under `fs_path` .
 
         Args:
@@ -523,14 +515,14 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def ls_dir(self, fs_path):
-        """	
+        """
         List directorys and files under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
 
         Returns:
-            Tuple: Return a 2-tuple, the first element is the list of all its subdirectories, 
+            Tuple: Return a 2-tuple, the first element is the list of all its subdirectories,
             and the second one is the list of all its subfiles, e.g. ([subdirname1, subdirname1, ...], [filename1, filename2, ...]).
 
         Examples:
@@ -923,7 +915,7 @@ class HDFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption. 
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
 
         Examples:
 
@@ -1174,7 +1166,7 @@ class AFSClient(FS):
         self._fs.init(fs_name, fs_user, fs_passwd, fs_conf)
 
     def list_dirs(self, fs_path):
-        """	
+        """
         Only list directorys under `fs_path` .
 
         Args:
@@ -1200,14 +1192,14 @@ class AFSClient(FS):
         return dirs
 
     def ls_dir(self, fs_path):
-        """	
+        """
         List directorys and files under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
 
         Returns:
-            Tuple: Return a 2-tuple, the first element is the list of all its subdirectories, 
+            Tuple: Return a 2-tuple, the first element is the list of all its subdirectories,
             and the second one is the list of all its subfiles, e.g. ([subdirname1, subdirname1, ...], [filename1, filename2, ...]).
 
         Examples:
@@ -1438,7 +1430,7 @@ class AFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption. 
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
 
         Examples:
 

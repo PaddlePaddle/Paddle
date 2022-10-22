@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import os
-import unittest
 
 import numpy as np
-import paddle
 import paddle.fluid as fluid
 
 from paddle.fluid.core import AnalysisConfig
@@ -40,7 +38,7 @@ class PredictorTools(object):
 
     def _load_model_and_set_config(self):
         '''
-        load model from file and set analysis config 
+        load model from file and set analysis config
         '''
         if os.path.exists(os.path.join(self.model_path, self.params_file)):
             config = AnalysisConfig(

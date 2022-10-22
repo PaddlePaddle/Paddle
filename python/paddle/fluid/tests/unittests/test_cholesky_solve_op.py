@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.w
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import scipy
@@ -188,7 +186,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
                                   "y": umat
                               },
                               fetch_list=[z])
-            self.assertTrue(np.allclose(fetches[0], z_np))
+            np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
     #test in static mode
     def test_static(self):
@@ -208,7 +206,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
             y = paddle.to_tensor(y_np)
             z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
 
-            self.assertTrue(np.allclose(z_np, z.numpy()))
+            np.testing.assert_allclose(z_np, z.numpy(), rtol=1e-05)
             self.assertEqual(z_np.shape, z.numpy().shape)
             paddle.enable_static()
 
@@ -230,7 +228,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
             y = paddle.to_tensor(y_np)
             z = paddle.linalg.cholesky_solve(x, y, upper=self.upper)
             self.assertEqual(z_sci.shape, z.numpy().shape)
-            self.assertTrue(np.allclose(z_sci, z.numpy()))
+            np.testing.assert_allclose(z_sci, z.numpy(), rtol=1e-05)
 
         for idx, place in enumerate(self.place):
             run(place)

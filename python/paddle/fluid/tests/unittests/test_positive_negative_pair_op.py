@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import itertools
 import numpy as np
-import six
 from op_test import OpTest
 
 
@@ -35,7 +32,7 @@ def py_pnpair_op(score, label, query, column=-1, weight=None):
 
     # accumulate statistics
     pos, neg, neu = 0, 0, 0
-    for _, ranks in six.iteritems(predictions):
+    for _, ranks in predictions.items():
         for e1, e2 in itertools.combinations(ranks, 2):
             s1, s2, l1, l2, w1, w2 = e1[0], e2[0], e1[1], e2[1], e1[2], e2[2]
             w = (w1 + w2) * 0.5

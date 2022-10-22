@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -182,11 +180,13 @@ class TestPixelShuffleAPI(unittest.TestCase):
                                                    data_format=data_format)
             result = pixel_shuffle(paddle.to_tensor(x))
 
-            self.assertTrue(np.allclose(result.numpy(), npresult))
+            np.testing.assert_allclose(result.numpy(), npresult, rtol=1e-05)
 
             result_functional = F.pixel_shuffle(paddle.to_tensor(x), 3,
                                                 data_format)
-            self.assertTrue(np.allclose(result_functional.numpy(), npresult))
+            np.testing.assert_allclose(result_functional.numpy(),
+                                       npresult,
+                                       rtol=1e-05)
 
     def test_dygraph1(self):
         self.run_dygraph(3, "NCHW")

@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import numpy as np
 import paddle.fluid as fluid
-import paddle.fluid.compiler as compiler
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import unittest
@@ -212,17 +209,20 @@ class EagerDeletionRecurrentOpTest1(unittest.TestCase):
 
         for idx, name in enumerate(self.data_field):
             self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
-            self.assertTrue(
-                np.isclose(num_grad[idx], ana_grad[idx], rtol=rtol).all(),
-                "num_grad (" + name + ") has diff at " + str(self.place) +
-                "\nExpect " + str(num_grad[idx]) + "\n" + "But Got" +
-                str(ana_grad[idx]) + " in class " + self.__class__.__name__)
+            np.testing.assert_allclose(
+                num_grad[idx],
+                ana_grad[idx],
+                rtol=rtol,
+                err_msg='num_grad (' + name + ') has diff at ' +
+                str(self.place) + '\nExpect ' + str(num_grad[idx]) + '\n' +
+                'But Got' + str(ana_grad[idx]) + ' in class ' +
+                self.__class__.__name__)
 
     def check_forward(self):
         pd_output = self.forward()
         py_output = self.py_rnn.forward()
         self.assertEqual(pd_output.shape, py_output.shape)
-        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.01).all())
+        np.testing.assert_allclose(pd_output, py_output, rtol=0.01)
 
     def get_numerical_gradient(self, delta=0.005):
         dloss_dout = 1.0
@@ -686,9 +686,48 @@ class EagerDeletionFarwardOnlyRnnAndBackwardRnnTest(
         py_output = self.py_rnn.forward()
         self.assertEqual(forward_only_output.shape, py_output.shape)
         self.assertEqual(pd_output.shape, py_output.shape)
-        self.assertTrue(
-            np.isclose(forward_only_output, py_output, rtol=0.01).all)
-        self.assertTrue(np.isclose(pd_output, py_output, rtol=0.01).all())
+        np.testing.assert_allclose(forward_only_output, py_output, rtol=0.01)
+        np.testing.assert_allclose(pd_output, py_output, rtol=0.01)
+
+
+class RecurrentNet(paddle.nn.Layer):
+
+    def __init__(self):
+        super(RecurrentNet, self).__init__()
+        self.cell = paddle.nn.SimpleRNNCell(16, 32)
+        self.rnn = paddle.nn.RNN(self.cell)
+
+    def forward(self, inputs, prev_h):
+        outputs, final_states = self.rnn(inputs, prev_h)
+        return outputs, final_states
+
+
+class TestDy2StRecurrentOpBackward(unittest.TestCase):
+
+    def setUp(self):
+        paddle.disable_static()
+        paddle.seed(100)
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_recurrent_backward(self):
+        net = RecurrentNet()
+        inputs = paddle.rand((4, 23, 16))
+        inputs.stop_gradient = False
+        prev_h = paddle.randn((4, 32))
+        prev_h.stop_gradient = False
+
+        outputs, final_states = net(inputs, prev_h)
+        outputs.backward()
+        dy_grad = inputs.gradient()
+        inputs.clear_gradient()
+
+        net = paddle.jit.to_static(net)
+        outputs, final_states = net(inputs, prev_h)
+        outputs.backward()
+        st_grad = inputs.gradient()
+        np.testing.assert_allclose(dy_grad, st_grad)
 
 
 if __name__ == '__main__':

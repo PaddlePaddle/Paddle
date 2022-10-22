@@ -31,14 +31,13 @@ void DepthwiseConv2dTransposeKernel(const Context& ctx,
                                     const std::vector<int>& strides,
                                     const std::vector<int>& paddings,
                                     const std::vector<int>& output_padding,
-                                    const std::vector<int>& output_size,
+                                    const IntArray& output_size,
                                     const std::string& padding_algorithm,
                                     int groups,
                                     const std::vector<int>& dilations,
                                     const std::string& data_format,
                                     DenseTensor* out) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format);
   DenseTensor filter_ = filter;
   ctx.template Alloc<T>(out);
 

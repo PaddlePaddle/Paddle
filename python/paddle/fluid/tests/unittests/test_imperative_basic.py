@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
 import numpy as np
 
@@ -24,7 +23,7 @@ from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 import paddle
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, _non_static_mode
+from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
 class MyLayer(fluid.Layer):
@@ -343,11 +342,11 @@ class TestImperative(unittest.TestCase):
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             loss2.backward()
 
-            self.assertTrue(np.allclose(ret.numpy(), x * 10))
-            self.assertTrue(np.allclose(inputs[0].gradient(), x))
-            self.assertTrue(np.allclose(ret2.numpy(), x * 10))
+            np.testing.assert_allclose(ret.numpy(), x * 10, rtol=1e-05)
+            np.testing.assert_allclose(inputs[0].gradient(), x, rtol=1e-05)
+            np.testing.assert_allclose(ret2.numpy(), x * 10, rtol=1e-05)
             a = inputs2[0].gradient()
-            self.assertTrue(np.allclose(inputs2[0].gradient(), x))
+            np.testing.assert_allclose(inputs2[0].gradient(), x, rtol=1e-05)
 
     def test_sum_op(self):
         with _test_eager_guard():
@@ -526,10 +525,10 @@ class TestImperative(unittest.TestCase):
                 feed={inp.name: np_inp},
                 fetch_list=[out.name, param_grads[1].name])
 
-        self.assertTrue(np.allclose(dy_out, static_out))
-        self.assertTrue(np.allclose(dy_grad, static_grad))
-        self.assertTrue(np.allclose(dy_out2, static_out))
-        self.assertTrue(np.allclose(dy_grad2, static_grad))
+        np.testing.assert_allclose(dy_out, static_out, rtol=1e-05)
+        np.testing.assert_allclose(dy_grad, static_grad, rtol=1e-05)
+        np.testing.assert_allclose(dy_out2, static_out, rtol=1e-05)
+        np.testing.assert_allclose(dy_grad2, static_grad, rtol=1e-05)
 
         params = mlp.parameters(True)
         self.assertEqual("linear_0.w_0", params[0].name)
@@ -642,18 +641,18 @@ class TestImperative(unittest.TestCase):
                 loss.backward()
 
                 np.testing.assert_array_equal(loss.grad.numpy(), [1])
-                self.assertTrue(
-                    np.allclose(mlp1._linear1.weight.grad.numpy(),
-                                expected_weight1_grad))
-                self.assertTrue(
-                    np.allclose(mlp1._linear1.bias.grad.numpy(),
-                                expected_bias1_grad))
-                self.assertTrue(
-                    np.allclose(mlp1._linear2.weight.grad.numpy(),
-                                expected_weight2_grad))
-                self.assertTrue(
-                    np.allclose(mlp1._linear2.bias.grad.numpy(),
-                                expected_bias2_grad))
+                np.testing.assert_allclose(mlp1._linear1.weight.grad.numpy(),
+                                           expected_weight1_grad,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(mlp1._linear1.bias.grad.numpy(),
+                                           expected_bias1_grad,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(mlp1._linear2.weight.grad.numpy(),
+                                           expected_weight2_grad,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(mlp1._linear2.bias.grad.numpy(),
+                                           expected_bias2_grad,
+                                           rtol=1e-05)
 
                 mlp2.clear_gradients()
                 np.testing.assert_array_equal(clear_loss.grad.numpy(), [1])
@@ -734,7 +733,7 @@ class TestImperative(unittest.TestCase):
                                         'inp2': np_inp2
                                     },
                                     fetch_list=out)[0]
-        self.assertTrue(np.allclose(dygraph_result, static_result))
+        np.testing.assert_allclose(dygraph_result, static_result, rtol=1e-05)
 
     def test_dygraph_vs_static(self):
         with _test_eager_guard():
@@ -860,7 +859,7 @@ class TestDygraphUtils(unittest.TestCase):
             a = paddle.to_tensor(a_np)
             res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
             res2 = fluid.layers.sigmoid(a)
-            self.assertTrue(np.allclose(res1.numpy(), res2.numpy()))
+            np.testing.assert_allclose(res1.numpy(), res2.numpy(), rtol=1e-05)
 
     def test_append_activation_in_dygraph2(self):
         with _test_eager_guard():

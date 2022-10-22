@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
-import warnings
-import sys
-
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
 from paddle.fluid.data_feeder import check_type
@@ -32,9 +26,9 @@ class ParamAttr(object):
     """
 
     Note:
-        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
-        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` , 
+        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` ,
         :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
 
     Create a object to represent the attribute of parameter. The attributes are:
@@ -50,10 +44,10 @@ class ParamAttr(object):
         learning_rate (float, optional): The parameter's learning rate. The learning rate when
                 optimize is the global learning rates times the parameter's learning rate times
                 the factor of learning rate scheduler. Default 1.0.
-        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
-                :ref:`api_paddle_regularizer_L1Decay` , :ref:`api_paddle_regularizer_L2Decay` . If 
-                regularizer is also set in ``optimizer`` (such as :ref:`api_paddle_optimizer_SGD` ), 
-                that regularizer setting in optimizer will be ignored. Default None, meaning there is 
+        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method:
+                :ref:`api_paddle_regularizer_L1Decay` , :ref:`api_paddle_regularizer_L2Decay` . If
+                regularizer is also set in ``optimizer`` (such as :ref:`api_paddle_optimizer_SGD` ),
+                that regularizer setting in optimizer will be ignored. Default None, meaning there is
                 no regularization.
         trainable (bool, optional): Whether this parameter is trainable. Default True.
         do_model_average (bool, optional): Whether this parameter should do model average
@@ -64,7 +58,7 @@ class ParamAttr(object):
        ParamAttr Object.
 
     Examples:
-    
+
         .. code-block:: python
 
             import paddle
@@ -86,10 +80,7 @@ class ParamAttr(object):
                  do_model_average=True,
                  need_clip=True):
 
-        if sys.version_info.major == 2:
-            check_type(name, "name", (str, type(None), unicode), "ParamAttr")
-        else:
-            check_type(name, "name", (str, type(None)), "ParamAttr")
+        check_type(name, "name", (str, type(None)), "ParamAttr")
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
@@ -177,7 +168,7 @@ class ParamAttr(object):
             return [ParamAttr._to_attr(a) for a in arg]
         elif isinstance(arg, ParamAttr):
             return arg
-        elif isinstance(arg, six.string_types):
+        elif isinstance(arg, str):
             return ParamAttr(name=arg)
         elif isinstance(arg, Initializer):
             return ParamAttr(initializer=arg)
@@ -218,13 +209,13 @@ class WeightNormParamAttr(ParamAttr):
 
     Note:
         Please use 'paddle.nn.utils.weight_norm' in dygraph mode.
-	
+
     Note:
-        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
-        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` , 
+        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` ,
         :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
-	
+
     Parameter of weight Norm. Weight Norm is a reparameterization of the weight vectors
     in a neural network that decouples the magnitude of those weight vectors from
     their direction. Weight Norm has been implemented as discussed in this
@@ -258,9 +249,9 @@ class WeightNormParamAttr(ParamAttr):
         need_clip (bool, optional): Whether the parameter gradient need to be cliped in optimizer. Default is True.
 
     Examples:
-    
+
         .. code-block:: python
-            
+
             import paddle
 
             paddle.enable_static()

@@ -76,6 +76,20 @@ void ConvTransposeGradInferMeta(const MetaTensor& x,
                                 MetaTensor* dx,
                                 MetaTensor* dfilter);
 
+void Conv2dTransposeGradInferMeta(const MetaTensor& x,
+                                  const MetaTensor& filter,
+                                  const MetaTensor& dout,
+                                  const std::vector<int>& strides,
+                                  const std::vector<int>& paddings,
+                                  const std::vector<int>& output_padding,
+                                  const IntArray& output_size,
+                                  const std::string& padding_algorithm,
+                                  int groups,
+                                  const std::vector<int>& dilations,
+                                  const std::string& data_format,
+                                  MetaTensor* dx,
+                                  MetaTensor* dfilter);
+
 void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         const MetaTensor& filter,
                                         const MetaTensor& dout,
@@ -84,7 +98,7 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
                                         const std::vector<int>& strides,
                                         const std::vector<int>& paddings,
                                         const std::vector<int>& output_padding,
-                                        const std::vector<int>& output_size,
+                                        const IntArray& output_size,
                                         const std::string& padding_algorithm,
                                         int groups,
                                         const std::vector<int>& dilations,
@@ -319,26 +333,18 @@ void PsroiPoolGradInferMeta(const MetaTensor& x,
                             float spatial_scale,
                             MetaTensor* dx);
 
-void PoolGradInferMeta(const MetaTensor& x,
-                       const MetaTensor& out,
-                       const MetaTensor& dout,
-                       const std::vector<int>& kernel_size,
-                       const std::vector<int>& strides,
-                       const std::vector<int>& paddings,
-                       bool ceil_mode,
-                       bool exclusive,
-                       const std::string& data_format,
-                       const std::string& pooling_type,
-                       bool global_pooling,
-                       bool adaptive,
-                       const std::string& padding_algorithm,
-                       MetaTensor* dx);
-
 void RealAndImagGradInferMeta(const MetaTensor& out_grad, MetaTensor* dx);
 
 void ReshapeDoubleGradInferMeta(const MetaTensor& out_grad,
                                 const MetaTensor& x_grad_grad,
                                 MetaTensor* out_grad_grad);
+
+void RnnGradInferMeta(const MetaTensor& x,
+                      const std::vector<const MetaTensor*>& pre_state,
+                      const std::vector<const MetaTensor*>& weight_list,
+                      MetaTensor* x_grad,
+                      std::vector<MetaTensor*> pre_state_grad,
+                      std::vector<MetaTensor*> weight_grad_list);
 
 void ScatterGradInferMeta(const MetaTensor& index,
                           const MetaTensor& updates,
@@ -397,5 +403,12 @@ void Yolov3LossGradInferMeta(const MetaTensor& x,
                              MetaTensor* gt_box_grad,
                              MetaTensor* gt_label_grad,
                              MetaTensor* gt_score_grad);
+
+void IndexAddGradInferMeta(const MetaTensor& index,
+                           const MetaTensor& add_value,
+                           const MetaTensor& out_grad,
+                           int axis,
+                           MetaTensor* x_grad,
+                           MetaTensor* add_tensor_grad);
 
 }  // namespace phi

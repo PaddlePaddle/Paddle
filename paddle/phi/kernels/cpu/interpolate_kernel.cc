@@ -514,8 +514,7 @@ static void Interpolate1DCPUFwd(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -614,8 +613,7 @@ static void Interpolate2DCPUFwd(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -782,8 +780,7 @@ static void Interpolate3DCPUFwd(
     bool align_corners,
     int align_mode,
     DenseTensor* output) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(x.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1187,7 +1184,7 @@ void BicubicInterpKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(bilinear_interp_v2,
+PD_REGISTER_KERNEL(bilinear_interp,
                    CPU,
                    ALL_LAYOUT,
                    phi::BilinearInterpKernel,
@@ -1197,7 +1194,7 @@ PD_REGISTER_KERNEL(bilinear_interp_v2,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(nearest_interp_v2,
+PD_REGISTER_KERNEL(nearest_interp,
                    CPU,
                    ALL_LAYOUT,
                    phi::NearestInterpKernel,
@@ -1209,7 +1206,7 @@ PD_REGISTER_KERNEL(nearest_interp_v2,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(trilinear_interp_v2,
+PD_REGISTER_KERNEL(trilinear_interp,
                    CPU,
                    ALL_LAYOUT,
                    phi::TrilinearInterpKernel,
@@ -1219,7 +1216,7 @@ PD_REGISTER_KERNEL(trilinear_interp_v2,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(linear_interp_v2,
+PD_REGISTER_KERNEL(linear_interp,
                    CPU,
                    ALL_LAYOUT,
                    phi::LinearInterpKernel,
@@ -1229,12 +1226,8 @@ PD_REGISTER_KERNEL(linear_interp_v2,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(bicubic_interp_v2,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::BicubicInterpKernel,
-                   float,
-                   double) {
+PD_REGISTER_KERNEL(
+    bicubic_interp, CPU, ALL_LAYOUT, phi::BicubicInterpKernel, float, double) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

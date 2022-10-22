@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -235,8 +233,9 @@ class TestUnpool3DOpAPI_dygraph(unittest.TestCase):
             expected_output_unpool = unpool3dmax_forward_naive(
                 output.numpy(), indices.numpy(), [2, 2, 2], [2, 2, 2],
                 [0, 0, 0], [4, 4, 6])
-            self.assertTrue(
-                np.allclose(output_unpool.numpy(), expected_output_unpool))
+            np.testing.assert_allclose(output_unpool.numpy(),
+                                       expected_output_unpool,
+                                       rtol=1e-05)
 
         paddle.enable_static()
 
@@ -262,8 +261,9 @@ class TestUnpool3DOpAPI_dygraph2(unittest.TestCase):
             expected_output_unpool = unpool3dmax_forward_naive(
                 output.numpy(), indices.numpy(), [2, 2, 2], [2, 2, 2],
                 [0, 0, 0], [4, 4, 6])
-            self.assertTrue(
-                np.allclose(output_unpool.numpy(), expected_output_unpool))
+            np.testing.assert_allclose(output_unpool.numpy(),
+                                       expected_output_unpool,
+                                       rtol=1e-05)
 
         paddle.enable_static()
 
@@ -288,8 +288,9 @@ class TestUnpool3DOpAPI_dygraph3(unittest.TestCase):
             expected_output_unpool = unpool3dmax_forward_naive(
                 output.numpy(), indices.numpy(), [2, 2, 2], [2, 2, 2],
                 [0, 0, 0], [4, 4, 6])
-            self.assertTrue(
-                np.allclose(output_unpool.numpy(), expected_output_unpool))
+            np.testing.assert_allclose(output_unpool.numpy(),
+                                       expected_output_unpool,
+                                       rtol=1e-05)
 
         paddle.enable_static()
 
@@ -331,7 +332,9 @@ class TestUnpool3DOpAPI_static(unittest.TestCase):
                 expected_output_unpool = unpool3dmax_forward_naive(
                     pool3d_out_np, indices_np, [2, 2, 2], [2, 2, 2], [0, 0, 0],
                     [2, 4, 4])
-                self.assertTrue(np.allclose(fetches[0], expected_output_unpool))
+                np.testing.assert_allclose(fetches[0],
+                                           expected_output_unpool,
+                                           rtol=1e-05)
 
 
 if __name__ == '__main__':

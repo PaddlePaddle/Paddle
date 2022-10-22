@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import copy
-import six
 from ..framework import Parameter, _non_static_mode, _global_flags
 from ..param_attr import ParamAttr
 from .. import core
-from six.moves import zip
+
 from ..layer_helper_base import LayerHelperBase
 from ..dygraph_utils import _append_activation_in_dygraph
 
@@ -80,7 +77,7 @@ class LayerObjectHelper(LayerHelperBase):
                 self.name))
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
-            for i in six.moves.range(length):
+            for i in range(length):
                 tmp[i] = copy.deepcopy(param_attr[0])
             param_attr = tmp
         return param_attr
@@ -152,7 +149,7 @@ class LayerObjectHelper(LayerHelperBase):
         act = act
         if act is None:
             return input_var
-        if isinstance(act, six.string_types):
+        if isinstance(act, str):
             act = {'type': act}
         else:
             raise TypeError(

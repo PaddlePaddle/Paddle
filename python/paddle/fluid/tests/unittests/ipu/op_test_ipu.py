@@ -204,6 +204,14 @@ class IPUOpTest(IPUTest):
             if self.is_fp16_mode(exec_mode):
                 ipu_strategy.set_precision_config(enable_fp16=True)
                 IPUOpTest.cast_model_to_fp16(self.main_prog)
+
+            # TODO(ipu) remove in the future version of popart
+            # keep the log clean, no side effects for tests without profiling
+            ipu_strategy.set_options(
+                {'engine_options': {
+                    'debug.retainDebugInformation': 'false'
+                }})
+
             program = paddle.static.IpuCompiledProgram(
                 self.main_prog,
                 ipu_strategy=ipu_strategy).compile(self.feed_list,
@@ -237,6 +245,9 @@ class IPUOpTest(IPUTest):
             raise ValueError("output_dict is empty")
         cpu_fp32 = output_dict[ExecutionMode.CPU_FP32]
         ipu_fp32 = output_dict[ExecutionMode.IPU_FP32]
+        # Convert 0-dim tensor
+        if isinstance(cpu_fp32, np.ndarray) and cpu_fp32.shape == ():
+            cpu_fp32 = cpu_fp32.reshape(1)
         if len(cpu_fp32) != len(ipu_fp32):
             raise ValueError("different outputs number between ipu and cpu.")
         for cpu_fp32_res, ipu_fp32_res in zip(cpu_fp32, ipu_fp32):

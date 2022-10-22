@@ -12,18 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
-import argparse
 import time
-import math
 import os
-import sys
-import six
-import argparse
-import ast
-import multiprocessing
+import functools
 import time
 from functools import partial
 from os.path import expanduser
@@ -31,15 +23,9 @@ import glob
 import random
 import tarfile
 
-import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid import core
 from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
-import paddle.compat as cpt
-from paddle.compat import long_type
-
-import hashlib
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -185,10 +171,10 @@ seq_len = ModelHyperParams.max_length
 input_descs = {
     # The actual data shape of src_word is:
     # [batch_size * max_src_len_in_batch, 1]
-    "src_word": [(batch_size, seq_len, long_type(1)), "int64", 2],
+    "src_word": [(batch_size, seq_len, 1), "int64", 2],
     # The actual data shape of src_pos is:
     # [batch_size * max_src_len_in_batch, 1]
-    "src_pos": [(batch_size, seq_len, long_type(1)), "int64"],
+    "src_pos": [(batch_size, seq_len, 1), "int64"],
     # This input is used to remove attention weights on paddings in the
     # encoder.
     # The actual data shape of src_slf_attn_bias is:
@@ -197,11 +183,11 @@ input_descs = {
     [(batch_size, ModelHyperParams.n_head, seq_len, seq_len), "float32"],
     # The actual data shape of trg_word is:
     # [batch_size * max_trg_len_in_batch, 1]
-    "trg_word": [(batch_size, seq_len, long_type(1)), "int64",
+    "trg_word": [(batch_size, seq_len, 1), "int64",
                  2],  # lod_level is only used in fast decoder.
     # The actual data shape of trg_pos is:
     # [batch_size * max_trg_len_in_batch, 1]
-    "trg_pos": [(batch_size, seq_len, long_type(1)), "int64"],
+    "trg_pos": [(batch_size, seq_len, 1), "int64"],
     # This input is used to remove attention weights on paddings and
     # subsequent words in the decoder.
     # The actual data shape of trg_slf_attn_bias is:
@@ -220,15 +206,15 @@ input_descs = {
     "enc_output": [(batch_size, seq_len, ModelHyperParams.d_model), "float32"],
     # The actual data shape of label_word is:
     # [batch_size * max_trg_len_in_batch, 1]
-    "lbl_word": [(batch_size * seq_len, long_type(1)), "int64"],
+    "lbl_word": [(batch_size * seq_len, 1), "int64"],
     # This input is used to mask out the loss of padding tokens.
     # The actual data shape of label_weight is:
     # [batch_size * max_trg_len_in_batch, 1]
-    "lbl_weight": [(batch_size * seq_len, long_type(1)), "float32"],
+    "lbl_weight": [(batch_size * seq_len, 1), "float32"],
     # These inputs are used to change the shape tensor in beam-search decoder.
-    "trg_slf_attn_pre_softmax_shape_delta": [(long_type(2), ), "int32"],
-    "trg_slf_attn_post_softmax_shape_delta": [(long_type(4), ), "int32"],
-    "init_score": [(batch_size, long_type(1)), "float32"],
+    "trg_slf_attn_pre_softmax_shape_delta": [(2, ), "int32"],
+    "trg_slf_attn_post_softmax_shape_delta": [(4, ), "int32"],
+    "init_score": [(batch_size, 1), "float32"],
 }
 
 # Names of word embedding table which might be reused for weight sharing.
@@ -320,7 +306,7 @@ def pad_batch_data(insts,
     """
     return_list = []
     max_len = max(len(inst) for inst in insts)
-    num_token = six.moves.reduce(lambda x, y: x + y,
+    num_token = functools.reduce(lambda x, y: x + y,
                                  [len(inst)
                                   for inst in insts]) if return_num_token else 0
     # Any token included in dict can be used to pad, since the paddings' loss
@@ -561,7 +547,7 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                         np.log(TrainTaskConfig.label_smooth_eps /
                                (ModelHyperParams.trg_vocab_size - 1) + 1e-20))
     init = False
-    for pass_id in six.moves.xrange(TrainTaskConfig.pass_num):
+    for pass_id in range(TrainTaskConfig.pass_num):
         pass_start_time = time.time()
         for batch_id, data in enumerate(train_data()):
             if batch_id >= RUN_STEP:
@@ -869,7 +855,7 @@ class DataReader(object):
 
             f = tarfile.open(fpaths[0], "r")
             for line in f.extractfile(tar_fname):
-                line = cpt.to_text(line)
+                line = line.decode()
                 fields = line.strip("\n").split(self._field_delimiter)
                 if (not self._only_src
                         and len(fields) == 2) or (self._only_src
@@ -882,7 +868,7 @@ class DataReader(object):
 
                 with open(fpath, "rb") as f:
                     for line in f:
-                        line = cpt.to_text(line)
+                        line = line.decode()
                         fields = line.strip("\n").split(self._field_delimiter)
                         if (not self._only_src
                                 and len(fields) == 2) or (self._only_src
@@ -894,7 +880,7 @@ class DataReader(object):
         word_dict = {}
         with open(dict_path, "rb") as fdict:
             for idx, line in enumerate(fdict):
-                line = cpt.to_text(line)
+                line = line.decode()
                 if reverse:
                     word_dict[idx] = line.strip("\n")
                 else:

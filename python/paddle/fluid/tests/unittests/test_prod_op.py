@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import unittest
 import numpy as np
+from test_sum_op import TestReduceOPTensorAxisBase
 
 
 class TestProdOp(unittest.TestCase):
@@ -28,34 +27,49 @@ class TestProdOp(unittest.TestCase):
         input = paddle.to_tensor(self.input)
         dy_result = paddle.prod(input)
         expected_result = np.prod(self.input)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=1)
         expected_result = np.prod(self.input, axis=1)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=-1)
         expected_result = np.prod(self.input, axis=-1)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=[0, 1])
         expected_result = np.prod(self.input, axis=(0, 1))
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05,
+                                   atol=1e-8)
 
         dy_result = paddle.prod(input, axis=1, keepdim=True)
         expected_result = np.prod(self.input, axis=1, keepdims=True)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=1, dtype='int64')
         expected_result = np.prod(self.input, axis=1, dtype=np.int64)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
         dy_result = paddle.prod(input, axis=1, keepdim=True, dtype='int64')
         expected_result = np.prod(self.input,
                                   axis=1,
                                   keepdims=True,
                                   dtype=np.int64)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected_result))
+        np.testing.assert_allclose(dy_result.numpy(),
+                                   expected_result,
+                                   rtol=1e-05)
 
     def run_static(self, use_gpu=False):
         input = paddle.fluid.data(name='input',
@@ -79,22 +93,37 @@ class TestProdOp(unittest.TestCase):
                                 ])
 
         expected_result = np.prod(self.input)
-        self.assertTrue(np.allclose(static_result[0], expected_result))
+        np.testing.assert_allclose(static_result[0],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input, axis=1)
-        self.assertTrue(np.allclose(static_result[1], expected_result))
+        np.testing.assert_allclose(static_result[1],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input, axis=-1)
-        self.assertTrue(np.allclose(static_result[2], expected_result))
+        np.testing.assert_allclose(static_result[2],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input, axis=(0, 1))
-        self.assertTrue(np.allclose(static_result[3], expected_result))
+        np.testing.assert_allclose(static_result[3],
+                                   expected_result,
+                                   rtol=1e-05,
+                                   atol=1e-8)
         expected_result = np.prod(self.input, axis=1, keepdims=True)
-        self.assertTrue(np.allclose(static_result[4], expected_result))
+        np.testing.assert_allclose(static_result[4],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input, axis=1, dtype=np.int64)
-        self.assertTrue(np.allclose(static_result[5], expected_result))
+        np.testing.assert_allclose(static_result[5],
+                                   expected_result,
+                                   rtol=1e-05)
         expected_result = np.prod(self.input,
                                   axis=1,
                                   keepdims=True,
                                   dtype=np.int64)
-        self.assertTrue(np.allclose(static_result[6], expected_result))
+        np.testing.assert_allclose(static_result[6],
+                                   expected_result,
+                                   rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())
@@ -136,6 +165,30 @@ class TestProdOpError(unittest.TestCase):
 
             # The argument dtype of prod_op should be float32, float64, int32 or int64.
             self.assertRaises(TypeError, paddle.prod, x, 'bool')
+
+
+class TestProdWithTensorAxis1(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.prod
+        self.np_api = np.prod
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
+        self.np_axis = np.array([1, 2], dtype='int64')
+        self.tensor_axis = paddle.to_tensor([1, 2], dtype='int64')
+
+
+class TestProdWithTensorAxis2(TestReduceOPTensorAxisBase):
+
+    def init_data(self):
+        self.pd_api = paddle.prod
+        self.np_api = np.prod
+        self.x = paddle.randn([10, 10, 9, 9], dtype='float64')
+        self.np_axis = np.array([0, 1, 2], dtype='int64')
+        self.tensor_axis = [
+            0,
+            paddle.to_tensor([1], 'int64'),
+            paddle.to_tensor([2], 'int64')
+        ]
 
 
 if __name__ == "__main__":

@@ -152,10 +152,10 @@ def set_diff_value(file, atol="1e-5", inplace_atol="1e-7"):
     """
     :param file: refer to op_test.py
     :param atol: refer to op_test.py
-    :param inplace_atol: 
+    :param inplace_atol:
     :return:
     """
-    os.system("sed -i 's/self.check_output(/self\.check_output\(atol=" + atol +
+    os.system(r"sed -i 's/self.check_output(/self\.check_output\(atol=" + atol +
               ",inplace_atol=" + inplace_atol + ",/g\' " + file)
 
 
@@ -179,8 +179,8 @@ def change_op_file(start=0, end=0, op_list_file='list_op.txt', path='.'):
         file_with_path = file_path[0]
         # pattern
         pattern_import = ".*import OpTest.*"
-        pattern_skip = "^class .*\(OpTest\):$"
-        pattern_return = "def test.*grad.*\):$"
+        pattern_skip = r"^class .*\(OpTest\):$"
+        pattern_return = r"def test.*grad.*\):$"
         # change file
         add_import_skip_return(file_with_path, pattern_import, pattern_skip,
                                pattern_return)

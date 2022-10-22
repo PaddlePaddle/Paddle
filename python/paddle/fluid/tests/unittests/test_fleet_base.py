@@ -18,7 +18,6 @@ import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import os
 import paddle.fluid as fluid
-import paddle.nn as nn
 import numpy as np
 
 

@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 /* --------------------------- */
-/*   From framework::Tensor    */
+/*   From phi::DenseTensor    */
 /* --------------------------- */
-/* The following members & interfaces were copied from framework::Tensor,
+/* The following members & interfaces were copied from phi::DenseTensor,
     so as to facilitate the unification of different Tensors
 
     Will be adjusted/removed/moved in the near future
@@ -38,15 +38,15 @@ T* mutable_data(const DDim& dims,
                 size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                    paddle::experimental::DataType type,
-                    size_t requested_size = 0);
+                   paddle::experimental::DataType type,
+                   size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                    size_t requested_size = 0);
+                   size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                    paddle::experimental::DataType type,
-                    const phi::Stream& stream);
+                   paddle::experimental::DataType type,
+                   const phi::Stream& stream);
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
 */
@@ -57,7 +57,7 @@ size_t memory_size() const;
 
 void check_memory_size() const;
 
-void set_layout(const paddle::framework::DataLayout layout);
+void set_layout(const DataLayout layout);
 
 void clear() {
   holder_.reset();
@@ -132,9 +132,9 @@ inline void set_format(const dnnl::memory::format_tag format) {
 #endif
 
 /* ------------------------------ */
-/*   From framework::LoDTensor    */
+/*   From phi::DenseTensor    */
 /* ------------------------------ */
-/* The following members & interfaces were copied from framework::Tensor,
+/* The following members & interfaces were copied from phi::DenseTensor,
     so as to facilitate the unification of different Tensors
 
     Will be adjusted/removed/moved in the near future

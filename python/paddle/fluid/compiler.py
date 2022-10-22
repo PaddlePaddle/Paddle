@@ -14,10 +14,8 @@
 
 import multiprocessing
 import os
-import six
 import sys
 import warnings
-from .. import compat as cpt
 from . import framework
 from .framework import _get_paddle_place, _get_paddle_place_list
 from .framework import cuda_places, cpu_places, xpu_places
@@ -102,7 +100,7 @@ def _should_broadcast_or_not_exists(program, var_name):
 class CompiledProgram(object):
     """
     :api_attr: Static Graph
-    
+
     The CompiledProgram is used to transform a program or graph for
     various optimizations according to the configuration of build_strategy,
     for example, the operators' fusion in the computation graph, memory
@@ -187,12 +185,12 @@ class CompiledProgram(object):
         exec_strategy to set some optimizations that can be applied during the construction
         and computation of the Graph, such as reducing the number of AllReduce operations,
         specifying the size of the thread pool used in the computation Graph running the model,
-        and so on. 
-        
+        and so on.
+
         .. note::
-            If build_strategy is specified when building CompiledProgram and calling 
-            with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore, 
-            if it is data parallel training, it is recommended to set build_strategy when calling 
+            If build_strategy is specified when building CompiledProgram and calling
+            with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore,
+            if it is data parallel training, it is recommended to set build_strategy when calling
             with_data_parallel interface.
 
         Args:
@@ -228,7 +226,7 @@ class CompiledProgram(object):
                 export CPU_NUM=4, if the environment variable is not set, the executor will
                 add the variable to the environment variable and set its value to 1.
                 The default is None. If ``places`` is the list of string, the string in the list
-                can be ``cpu``, ``gpu:x``, where ``x`` is the index of the GPUs. 
+                can be ``cpu``, ``gpu:x``, where ``x`` is the index of the GPUs.
 
         Returns:
             CompiledProgram
@@ -270,7 +268,7 @@ class CompiledProgram(object):
                     static.default_main_program()).with_data_parallel(
                             loss_name=loss.name, places=parallel_places)
                 # NOTE: if not set share_vars_from=compiled_train_prog,
-                # the parameters used in test process are different with 
+                # the parameters used in test process are different with
                 # the parameters used by train process
                 compiled_test_prog = static.CompiledProgram(
                     test_program).with_data_parallel(
@@ -418,10 +416,10 @@ class CompiledProgram(object):
         for node in self._graph.nodes():
             if node.is_var() and node.var() is not None and node.var().persistable() and \
                     node.var().type() != core.VarDesc.VarType.RAW:
-                name = cpt.to_text(node.name())
+                name = node.name()
                 if self._program is not None and _should_broadcast_or_not_exists(
                         self._program, name):
-                    self._persistable_vars.append(cpt.to_text(node.name()))
+                    self._persistable_vars.append(node.name())
 
         places = list(map(_place_obj, places))
 
@@ -431,11 +429,11 @@ class CompiledProgram(object):
         self._persistable_vars = list(set(self._persistable_vars))
         self._persistable_vars.sort()
 
-        return core.ParallelExecutor(
-            places, self._persistable_vars,
-            cpt.to_text(self._loss_name) if self._loss_name else six.u(''),
-            self._scope, self._local_scopes, self._exec_strategy,
-            self._build_strategy, self._graph)
+        return core.ParallelExecutor(places, self._persistable_vars,
+                                     self._loss_name if self._loss_name else '',
+                                     self._scope, self._local_scopes,
+                                     self._exec_strategy, self._build_strategy,
+                                     self._graph)
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
@@ -701,7 +699,7 @@ class IpuStrategy(object):
 
     Examples:
         .. code-block:: python
-	
+
             # required: ipu
 
             import paddle
@@ -744,7 +742,7 @@ class IpuStrategy(object):
 
         Examples:
             .. code-block:: python
-	
+
                 # required: ipu
 
                 import paddle
@@ -762,7 +760,7 @@ class IpuStrategy(object):
 
         Examples:
             .. code-block:: python
-	
+
                 # required: ipu
 
                 import paddle
@@ -780,13 +778,13 @@ class IpuStrategy(object):
 
           Args:
               optimizer (Optimizer): Optimizer to be used in training.
-              
+
           Returns:
               None.
 
           Examples:
               .. code-block:: python
-	
+
                   # required: ipu
 
                   import paddle
@@ -812,13 +810,13 @@ class IpuStrategy(object):
 
           Args:
               optimizer (Optimizer): Optimizer to be parsed.
-              
+
           Returns:
               Dict.
 
           Examples:
               .. code-block:: python
-	
+
                   # required: ipu
 
                   import paddle
@@ -857,15 +855,15 @@ class IpuStrategy(object):
             is_training (bool, optional): True is training graph, False is inference graph. Default True, which means is training mode.
             batch_size (int, optional): The batch-size in the graph. Used to make the graph batch-size fixed,
                 if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamice.
-            enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True. 
-                Default False, which means disabled.    
-            
+            enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True.
+                Default False, which means disabled.
+
         Returns:
             None.
 
         Examples:
             .. code-block:: python
-	
+
                 # required: ipu
 
                 import paddle
@@ -900,15 +898,15 @@ class IpuStrategy(object):
         Set pipelining configuration to the IpuStrategy instance. Used to optimize the throughput performance.
 
         Args:
-            enable_pipelining (bool, optional): Enable data pipelining between subgraphs. Only if enable_manual_shard=True, enable_pipelining is able to be set True. 
+            enable_pipelining (bool, optional): Enable data pipelining between subgraphs. Only if enable_manual_shard=True, enable_pipelining is able to be set True.
                 Default False, which means disabled.
             batches_per_step (int, optional): Set the batches per run in data pipelining mode. Only if enable_pipelining=True, batches_per_step is able to be set > 1.
                 Default 1, which means no data pipelining.
             enable_gradient_accumulation (bool, optional): Enable to accumulate gradients before updating the weights in training mode. Only if enable_pipelining=True,
-                enable_gradient_accumulation is able to be set True. Default False, which means no gradient accumulation. 
-            accumulation_factor (int, optional): Specify the number of micro-batches to accumulate 
+                enable_gradient_accumulation is able to be set True. Default False, which means no gradient accumulation.
+            accumulation_factor (int, optional): Specify the number of micro-batches to accumulate
                 before applying the varUpdate. Default 1, which means disable the accumulation.
-        
+
         Returns:
             None.
 
@@ -947,7 +945,7 @@ class IpuStrategy(object):
 
         Args:
             enable_fp16 (bool, optional): Enable FLOAT16 mode and transform FLOAT32 to FLOAT16. Default False, which means disable FLOAT16 mode.
-        
+
         Returns:
             None.
 
@@ -985,7 +983,7 @@ class IpuStrategy(object):
             domain(str): domain name of custom op in popart.
 
             version(int): version of custom op in popart.
-        
+
         Returns:
             None.
 
@@ -1021,7 +1019,7 @@ class IpuStrategy(object):
 
         Args:
             options(dict): dict of options.
-        
+
         Returns:
             None.
 
@@ -1051,7 +1049,7 @@ class IpuStrategy(object):
 
         Args:
             option(str): name of option.
-        
+
         Returns:
             option value.
 
@@ -1076,7 +1074,7 @@ class IpuStrategy(object):
 
         Args:
             pattern(string): the name of the pattern.
-        
+
         Returns:
             None.
 
@@ -1101,7 +1099,7 @@ class IpuStrategy(object):
 
         Args:
             pattern(string): the name of the pattern.
-        
+
         Returns:
             None.
 
@@ -1156,21 +1154,21 @@ class IpuCompiledProgram(object):
 
     Args:
         program(Program, optional): This parameter represents the :code:`Program`
-            to be executed. Default is None, which means the program will be set to 
+            to be executed. Default is None, which means the program will be set to
             the default program :code:`paddle.static.default_main_program()` .
         scope(Scope, optional): The scope used to run this program, you can switch
-            it to different scope. Default is None, which means use the global 
+            it to different scope. Default is None, which means use the global
             scope :code:`paddle.static.global_scope()` .
         ipu_strategy(IpuStrategy, optional): This argument is used to build the program with the
             specified options, such as half computation, training or inference session, the number of IPUs, etc.
-            Default is None, which means build the program based on the default `ipu_strategy`. 
+            Default is None, which means build the program based on the default `ipu_strategy`.
 
     Returns:
         IpuCompiledProgram
 
     Example:
         .. code-block:: python
-	
+
             # required: ipu
 
             import paddle
@@ -1181,12 +1179,12 @@ class IpuCompiledProgram(object):
             a = static.data(name='data', shape=[None, 1], dtype='int32')
             b = a + 1
             main_prog = static.default_main_program()
-            
+
             ipu_strategy = static.IpuStrategy()
             ipu_strategy.set_graph_config(num_ipus=1, is_training=True, micro_batch_size=1)
             ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, enable_gradient_accumulation=False, accumulation_factor=1)
             ipu_strategy.set_precision_config(enable_fp16=False)
-            
+
             ipu_compiled_program = static.IpuCompiledProgram(
                 main_prog,
                 ipu_strategy=ipu_strategy)
@@ -1232,7 +1230,7 @@ class IpuCompiledProgram(object):
         """
         This interface is used to compile the input Program to a program
         to run the model on the ipu.
-        
+
         Args:
             feed_list(list): This parameter represents the input Tensors of the model.
 
@@ -1244,14 +1242,14 @@ class IpuCompiledProgram(object):
 
         Example:
             .. code-block:: python
-    	
+
                 # required: ipu
-    
+
                 import paddle
                 import paddle.static as static
-    
+
                 paddle.enable_static()
-    
+
                 a = static.data(name='data', shape=[None, 1], dtype='int32')
                 b = a + 1
                 main_prog = static.default_main_program()
@@ -1260,7 +1258,7 @@ class IpuCompiledProgram(object):
                 ipu_strategy.set_graph_config(num_ipus=1, is_training=True, micro_batch_size=1)
                 ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, enable_gradient_accumulation=False, accumulation_factor=1)
                 ipu_strategy.set_precision_config(enable_fp16=False)
-                
+
                 program = static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile([a.name], [b.name])

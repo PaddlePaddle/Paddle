@@ -42,8 +42,6 @@ KernelSignature SyncBatchNormGradOpArgumentMapping(
                              "X",
                              "Scale",
                              "Bias",
-                             "Mean",
-                             "Variance",
                              "SavedMean",
                              "SavedVariance",
                              "ReserveSpace",

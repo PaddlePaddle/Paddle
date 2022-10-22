@@ -16,7 +16,6 @@ import paddle.fluid as fluid
 import paddle
 import numpy as np
 import unittest
-import six
 
 
 class TestClass(unittest.TestCase):
@@ -32,7 +31,7 @@ class TestClass(unittest.TestCase):
         batch_num = 10
 
         def fake_reader():
-            for _ in six.moves.range(batch_size * batch_num):
+            for _ in range(batch_size * batch_num):
                 img = np.random.random(size=img_shape).astype('float32')
                 label = np.random.random_integers(
                     low=0, high=9, size=label_shape).astype('int64')
@@ -80,7 +79,7 @@ class TestClass(unittest.TestCase):
                     ).set_sample_list_generator(batch_reader, places=p)
 
                 for break_beforehand in [True, False]:
-                    for epoch_id in six.moves.range(10):
+                    for epoch_id in range(10):
                         gen = batch_reader()
                         batch_id = 0
                         for d in py_reader():

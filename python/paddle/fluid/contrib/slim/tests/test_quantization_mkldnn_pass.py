@@ -17,7 +17,6 @@ import unittest
 import random
 import numpy as np
 import paddle.fluid as fluid
-import six
 import paddle
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
@@ -118,6 +117,11 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
             activation_quantize_type=activation_quant_type,
             weight_quantize_type=weight_quant_type)
         transform_pass.apply(main_graph)
+        transform_pass = QuantizationTransformPass(
+            scope=scope,
+            place=place,
+            activation_quantize_type=activation_quant_type,
+            weight_quantize_type=weight_quant_type)
         transform_pass.apply(test_graph)
 
         build_strategy = fluid.BuildStrategy()

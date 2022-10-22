@@ -102,7 +102,7 @@ class HTTPMaster(Master):
             print(" ".join(cmd))
             print("-" * 80)
 
-            if self.ctx.args.rank >= 0:
+            if int(self.ctx.args.rank) >= 0:
                 self.ctx.logger.warning(
                     "--rank set in the command may not compatible in auto mode")
 
@@ -204,7 +204,7 @@ class ETCDMaster(Master):
         self.ctx.logger.debug("sync path {} value {}".format(path, value))
 
         while not self.ctx.status.is_done():
-            self.client.put(path, six.b(value))
+            self.client.put(path, value.encode('latin-1'))
 
             result = [i for i in self.client.get_prefix(prefix)]
             result = copy.deepcopy(result)
@@ -244,7 +244,7 @@ class ETCDMaster(Master):
         #self.client.delete_prefix(self.job_prefix)
 
         beat_path = "{}/{}".format(self.heartbeat_prefix, pod_id)
-        self.client.put(beat_path, six.b(pod_id), lease=lease)
+        self.client.put(beat_path, pod_id.encode('latin-1'), lease=lease)
 
         def _beat_watch(event):
             self.ctx.status.restart()
@@ -257,7 +257,9 @@ class ETCDMaster(Master):
                 try:
                     lease.refresh()
                     if pod_id not in self.fetch_peer_alive():
-                        self.client.put(beat_path, six.b(pod_id), lease=lease)
+                        self.client.put(beat_path,
+                                        pod_id.encode('latin-1'),
+                                        lease=lease)
                         self.ctx.logger.debug("Heartbeat register again")
                 except Exception as e:
                     self.ctx.logger.error("Heartbeat error {}".format(e))
@@ -307,7 +309,8 @@ class ETCDMaster(Master):
 
     def set_status(self, status):
         assert self.client.put(
-            self.job_prefix, six.b(status),
+            self.job_prefix,
+            status.encode('latin-1'),
             lease=self.client.lease(600)), "set status failed {}".format(status)
 
     def get_status(self):

@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
-import six
 import random
 import os
 import re
@@ -237,7 +234,7 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
     graph = GraphPreviewGenerator("some graph")
     # collect parameters and args
     protostr = block.desc.serialize_to_string()
-    desc = framework_pb2.BlockDesc.FromString(six.binary_type(protostr))
+    desc = framework_pb2.BlockDesc.FromString(bytes(protostr))
 
     def need_highlight(name):
         if highlights is None: return False

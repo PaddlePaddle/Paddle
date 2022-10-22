@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import inspect
 import numpy as np
 import collections
@@ -83,7 +82,7 @@ class FunctionSpec(object):
 
         args = list(args)
 
-        for i in six.moves.range(len(args), len(self._arg_names)):
+        for i in range(len(args), len(self._arg_names)):
             arg_name = self._arg_names[i]
             if arg_name in kwargs:
                 args.append(kwargs[arg_name])
@@ -273,12 +272,12 @@ def get_buffers(layer_instance, include_sublayer=True):
 def convert_to_input_spec(inputs, input_spec):
     """
     Replaces tensor in structured `inputs` by InputSpec in `input_spec`.
-    
+
     Args:
         inputs(list|dict): nested structure list or dict.
-        input_spec(list|dict): same nested structure list or dict as inputs. 
+        input_spec(list|dict): same nested structure list or dict as inputs.
 
-    
+
     Return:
         Same structure with inputs by replacing the element with specified InputSpec.
     """
@@ -315,7 +314,7 @@ def convert_to_input_spec(inputs, input_spec):
     elif isinstance(input_spec, dict):
         input_with_spec = {}
         check_type_and_len(inputs, input_spec, True)
-        for name, input in six.iteritems(inputs):
+        for name, input in inputs.items():
             if name in input_spec:
                 input_with_spec[name] = convert_to_input_spec(
                     input, input_spec[name])
@@ -341,7 +340,7 @@ def replace_spec_empty_name(args_name, input_with_spec):
         4. If the arguments `input_dic` corresponds to a dict(InputSpec), using key as name.
 
     For example:
-        
+
         # case 1: foo(x, y)
         foo = to_static(foo, input_spec=[InputSpec([None, 10]), InputSpec([None])])
         print([in_var.name for in_var in foo.inputs])  # [x, y]
@@ -380,7 +379,7 @@ def _replace_spec_name(name, input_spec):
         return processed_specs
     elif isinstance(input_spec, dict):
         processed_specs = {}
-        for key, spec in six.iteritems(input_spec):
+        for key, spec in input_spec.items():
             processed_specs[key] = _replace_spec_name(key, spec)
         return processed_specs
     else:

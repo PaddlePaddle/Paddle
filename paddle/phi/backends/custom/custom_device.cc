@@ -53,11 +53,14 @@ class CustomDevice : public DeviceInterface {
   ~CustomDevice() override { Finalize(); }
 
   size_t GetDeviceCount() override {
-    size_t count;
-    if (pimpl_->get_device_count(&count) != C_SUCCESS) {
-      count = 0;
+    if (!device_init_flag_) {
+      if (pimpl_->get_device_count(&device_count_) != C_SUCCESS) {
+        device_count_ = 0;
+      } else {
+        device_init_flag_ = true;
+      }
     }
-    return count;
+    return device_count_;
   }
 
   std::vector<size_t> GetDeviceList() override {
@@ -705,6 +708,7 @@ class CustomDevice : public DeviceInterface {
                  size_t num,
                  ccl::CCLDataType data_type,
                  ccl::CCLReduceOp reduce_op,
+                 size_t root_id,
                  const ccl::CCLComm& comm,
                  const stream::Stream& stream) override {
     CHECK_PTR(pimpl_->xccl_reduce);
@@ -714,6 +718,7 @@ class CustomDevice : public DeviceInterface {
                             num,
                             ToXCCLDataType(data_type),
                             ToXCCLReduceOp(reduce_op),
+                            root_id,
                             reinterpret_cast<C_CCLComm>(comm),
                             reinterpret_cast<C_Stream>(stream.raw_stream())));
   }
@@ -815,6 +820,51 @@ class CustomDevice : public DeviceInterface {
                            y));
   }
 
+  // Profiler
+  void ProfilerInitialize(paddle::platform::TraceEventCollector* collector,
+                          void** user_data) override {
+    CHECK_PTR(pimpl_->profiler_initialize);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_initialize(
+        reinterpret_cast<C_Profiler>(collector), user_data));
+  }
+
+  void ProfilerFinalize(paddle::platform::TraceEventCollector* collector,
+                        void* user_data) override {
+    CHECK_PTR(pimpl_->profiler_finalize);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_finalize(
+        reinterpret_cast<C_Profiler>(collector), user_data));
+  }
+
+  void ProfilerPrepareTracing(paddle::platform::TraceEventCollector* collector,
+                              void* user_data) override {
+    CHECK_PTR(pimpl_->profiler_prepare_tracing);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_prepare_tracing(
+        reinterpret_cast<C_Profiler>(collector), user_data));
+  }
+
+  void ProfilerStartTracing(paddle::platform::TraceEventCollector* collector,
+                            void* user_data) override {
+    CHECK_PTR(pimpl_->profiler_start_tracing);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_start_tracing(
+        reinterpret_cast<C_Profiler>(collector), user_data));
+  }
+
+  void ProfilerStopTracing(paddle::platform::TraceEventCollector* collector,
+                           void* user_data) override {
+    CHECK_PTR(pimpl_->profiler_stop_tracing);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_stop_tracing(
+        reinterpret_cast<C_Profiler>(collector), user_data));
+  }
+
+  void ProfilerCollectTraceData(
+      paddle::platform::TraceEventCollector* collector,
+      uint64_t start_ns,
+      void* user_data) override {
+    CHECK_PTR(pimpl_->profiler_collect_trace_data);
+    PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_collect_trace_data(
+        reinterpret_cast<C_Profiler>(collector), start_ns, user_data));
+  }
+
  private:
   inline int PlaceToIdNoCheck(const Place& place) {
     int dev_id = place.GetDeviceId();
@@ -835,6 +885,8 @@ class CustomDevice : public DeviceInterface {
   std::unique_ptr<C_DeviceInterface> pimpl_;
   void* dso_handle_;
   std::unordered_map<size_t, C_Device_st> devices_pool;
+  bool device_init_flag_ = false;
+  size_t device_count_;
 };
 
 bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
@@ -923,6 +975,13 @@ bool ValidCustomCustomRuntimeParams(const CustomRuntimeParams* params) {
   CHECK_INTERFACE(xccl_recv, false);
 
   CHECK_INTERFACE(blas_axpby, false);
+
+  CHECK_INTERFACE(profiler_initialize, false);
+  CHECK_INTERFACE(profiler_finalize, false);
+  CHECK_INTERFACE(profiler_prepare_tracing, false);
+  CHECK_INTERFACE(profiler_start_tracing, false);
+  CHECK_INTERFACE(profiler_stop_tracing, false);
+  CHECK_INTERFACE(profiler_collect_trace_data, false);
   return true;
 #undef CHECK_INTERFACE
 }

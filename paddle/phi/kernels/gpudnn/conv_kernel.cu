@@ -25,7 +25,6 @@
 #endif
 
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -56,8 +55,7 @@ void ConvCudnnKernel(const Context& ctx,
 
   bool exhaustive_search = FLAGS_cudnn_exhaustive_search || exhaustive_search_t;
   bool deterministic = FLAGS_cudnn_deterministic;
-  auto exhaustive_deterministic = exhaustive_search && deterministic;
-  PADDLE_ENFORCE_EQ(exhaustive_deterministic,
+  PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
                     phi::errors::InvalidArgument(
                         "Cann't set exhaustive_search True and "
@@ -213,7 +211,9 @@ void ConvCudnnKernel(const Context& ctx,
                                    strides,
                                    padding_common,
                                    dilations,
-                                   dtype};
+                                   dtype,
+                                   groups,
+                                   compute_format};
 
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -313,8 +313,8 @@ void ConvCudnnKernel(const Context& ctx,
   paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
   using search =
       paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-  fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-  workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
+  fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
+  workspace_size = fwd_result.workspace_size;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)

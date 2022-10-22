@@ -38,14 +38,8 @@ enum AttrType {
   FLOAT64S = 12;
   VAR = 13;
   VARS = 14;
+  FLOAT64 = 15;
 }
-
-message ProcessMeshDesc {
-  required int32 id = 1;
-  required int32 parent_id = 2;
-  repeated int32 topology = 3;
-  repeated int32 process_group = 4;
-};
 
 // OpDesc describes an instance of a C++ framework::OperatorBase
 // derived class type.
@@ -69,6 +63,7 @@ message OpDesc {
     repeated double float64s = 16;
     optional string var_name = 17;
     repeated string vars_name = 18;
+    optional double float64 = 19;
   };
 
   message Var {
@@ -109,6 +104,7 @@ message OpProto {
     optional bool generated = 4 [ default = false ];
     optional bool extra = 5 [ default = false ];
     optional bool quant = 6 [ default = false ];
+    optional bool support_tensor = 7 [ default = false];
   }
 
   required string type = 1;
@@ -128,7 +124,7 @@ message VarType {
     FP16 = 4;
     FP32 = 5;
     FP64 = 6;
-    // Tensor<size_t> is used in C++.
+    // phi::DenseTensor<size_t> is used in C++.
     SIZE_T = 19;
     UINT8 = 20;
     INT8 = 21;
@@ -158,6 +154,10 @@ message VarType {
     FEED_LIST = 28;
     // The data type of phi::StringTensor
     PSTRING = 29;
+    // the data type of phi::SparseCooTensor
+    SPARSE_COO = 30;
+    // the data type of phi::SparseCsrTensor
+    SPARSE_CSR = 31;
   }
 
   required Type type = 1;
@@ -190,6 +190,8 @@ message VarType {
   optional TensorDesc string = 8;
   optional TensorDesc strings = 9;
   optional TensorDesc vocab = 10;
+  optional TensorDesc sparse_coo = 11;
+  optional TensorDesc sparse_csr = 12;
 }
 
 message VarDesc {

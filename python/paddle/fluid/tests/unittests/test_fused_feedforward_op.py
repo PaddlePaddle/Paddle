@@ -14,8 +14,6 @@
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 from paddle.nn.layer import transformer
 import paddle.nn.functional as F
 import paddle.incubate.nn.functional as incubate_f
@@ -286,8 +284,10 @@ class APITestStaticFusedFFN(unittest.TestCase):
             },
                             fetch_list=[res])
             real_res.append(fetch)
-        self.assertTrue(np.allclose(real_res[0], real_res[1], atol=1e-3),
-                        "two value is check diff")
+        np.testing.assert_allclose(real_res[0],
+                                   real_res[1],
+                                   rtol=1e-05,
+                                   atol=0.001)
 
 
 class TestFusedFFNOpError(unittest.TestCase):

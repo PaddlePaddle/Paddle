@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -80,7 +78,7 @@ class TestExponentialMovingAverage(unittest.TestCase):
                     manu_ema = self._ema_decay * manu_ema + (
                         1 - self._ema_decay) * param
                 manu_ema = manu_ema / (1.0 - self._ema_decay**len(params))
-            self.assertTrue(np.allclose(manu_ema, final_ema))
+            np.testing.assert_allclose(manu_ema, final_ema, rtol=1e-05)
 
 
 if __name__ == '__main__':

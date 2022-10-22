@@ -22,15 +22,15 @@ _image_backend = 'pil'
 
 def set_image_backend(backend):
     """
-    Specifies the backend used to load images in class ``paddle.vision.datasets.ImageFolder`` 
-    and ``paddle.vision.datasets.DatasetFolder`` . Now support backends are pillow and opencv. 
-    If backend not set, will use 'pil' as default. 
+    Specifies the backend used to load images in class ``paddle.vision.datasets.ImageFolder``
+    and ``paddle.vision.datasets.DatasetFolder`` . Now support backends are pillow and opencv.
+    If backend not set, will use 'pil' as default.
 
     Args:
         backend (str): Name of the image load backend, should be one of {'pil', 'cv2'}.
 
     Examples:
-    
+
         .. code-block:: python
 
             import os
@@ -95,7 +95,7 @@ def get_image_backend():
         str: backend of image load.
 
     Examples:
-    
+
         .. code-block:: python
 
             from paddle.vision import get_image_backend
@@ -113,14 +113,14 @@ def image_load(path, backend=None):
     Args:
         path (str): Path of the image.
         backend (str, optional): The image decoding backend type. Options are
-            `cv2`, `pil`, `None`. If backend is None, the global _imread_backend 
+            `cv2`, `pil`, `None`. If backend is None, the global _imread_backend
             specified by ``paddle.vision.set_image_backend`` will be used. Default: None.
 
     Returns:
         PIL.Image or np.array: Loaded image.
 
     Examples:
-    
+
         .. code-block:: python
 
             import numpy as np
@@ -133,7 +133,7 @@ def image_load(path, backend=None):
             fake_img.save(path)
 
             set_image_backend('pil')
-            
+
             pil_img = image_load(path).convert('RGB')
 
             # should be PIL.Image.Image
@@ -145,7 +145,7 @@ def image_load(path, backend=None):
             # np_img = image_load(path)
             # # should get numpy.ndarray
             # print(type(np_img))
-    
+
     """
 
     if backend is None:

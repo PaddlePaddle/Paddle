@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import time
 import unittest
 from multiprocessing import Process
 import signal
 
-import numpy
+import numpy as np
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -28,7 +26,7 @@ from paddle.fluid.layers.io import ListenAndServ
 from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
 import paddle.fluid.layers.ops as ops
-from dist_test_utils import *
+from dist_test_utils import remove_ps_flag
 
 from paddle.fluid import core
 
@@ -56,7 +54,7 @@ class TestSendOp(unittest.TestCase):
         self.init_client(place, selected_port)
 
         self.run_local(place)
-        self.assertTrue(numpy.allclose(self.local_out, self.dist_out))
+        np.testing.assert_allclose(self.local_out, self.dist_out, rtol=1e-05)
 
         os.kill(p.pid, signal.SIGINT)
         p.join()

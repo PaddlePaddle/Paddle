@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import contextlib
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -201,13 +197,18 @@ class TestDygraphMultiForward(unittest.TestCase):
 
                     static_out = out[0]
 
-        self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
+        np.testing.assert_allclose(dy_x_data.all(),
+                                   static_x_data.all(),
+                                   rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+        for key, value in static_param_init_value.items():
+            np.testing.assert_allclose(value,
+                                       dy_param_init_value[key],
+                                       rtol=1e-05)
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

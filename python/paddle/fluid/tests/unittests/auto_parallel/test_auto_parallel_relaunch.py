@@ -17,9 +17,7 @@ import unittest
 import os
 import sys
 import json
-import shutil
 import subprocess
-from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 cluster_json = """
 {
@@ -81,12 +79,12 @@ cluster_json = """
 mapping_josn = """
 [
   {
-    "hostname": "machine1", 
-    "addr": "127.0.0.1", 
-    "port": "768", 
-    "ranks": 
+    "hostname": "machine1",
+    "addr": "127.0.0.1",
+    "port": "768",
+    "ranks":
       {
-        "0": [1], 
+        "0": [1],
         "1": [0]
       }
   }

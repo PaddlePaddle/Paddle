@@ -123,13 +123,13 @@ class TestWeightQuantization(unittest.TestCase):
         res_fp16 = self.run_models(save_model_dir, model_filename,
                                    params_filename, input_data, True)
 
-        self.assertTrue(
-            np.allclose(res_fp32,
-                        res_fp16,
-                        rtol=1e-5,
-                        atol=1e-08,
-                        equal_nan=True),
-            msg='Failed to test the accuracy of the fp32 and fp16 model.')
+        np.testing.assert_allclose(
+            res_fp32,
+            res_fp16,
+            rtol=1e-05,
+            atol=1e-08,
+            equal_nan=True,
+            err_msg='Failed to test the accuracy of the fp32 and fp16 model.')
 
         try:
             os.system("rm -rf {}".format(save_model_dir))

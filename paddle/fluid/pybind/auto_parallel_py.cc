@@ -35,7 +35,11 @@ using paddle::distributed::auto_parallel::DistributedMapper;
 using paddle::distributed::auto_parallel::Link;
 using paddle::distributed::auto_parallel::LinkCapability;
 using paddle::distributed::auto_parallel::Machine;
+using paddle::distributed::auto_parallel::OperatorDistAttr;
 using paddle::distributed::auto_parallel::ProcessMesh;
+using paddle::distributed::auto_parallel::TensorDistAttr;
+using paddle::framework::OpDesc;
+using paddle::framework::VarDesc;
 
 void BindAutoParallel(py::module *m) {
   py::class_<ProcessMesh>(*m, "ProcessMesh")
@@ -162,6 +166,67 @@ void BindAutoParallel(py::module *m) {
       .def(py::self == py::self)
       .def(py::self != py::self)
       .def("__str__", &DeviceMesh::to_string);
+
+  py::class_<TensorDistAttr>(*m, "TensorDistAttr")
+      .def(py::init<const VarDesc &>())
+      .def_property_readonly("tensor", &TensorDistAttr::tensor)
+      .def_property("process_mesh",
+                    &TensorDistAttr::process_mesh,
+                    &TensorDistAttr::set_process_mesh)
+      .def_property("dims_mapping",
+                    &TensorDistAttr::dims_mapping,
+                    &TensorDistAttr::set_dims_mapping)
+      .def_property("batch_dim",
+                    &TensorDistAttr::batch_dim,
+                    &TensorDistAttr::set_batch_dim)
+      .def_property("dynamic_dims",
+                    &TensorDistAttr::dynamic_dims,
+                    &TensorDistAttr::set_dynamic_dims)
+      .def("is_annotated", &TensorDistAttr::is_annotated)
+      .def("annotate", &TensorDistAttr::annotate)
+      .def("verify", &TensorDistAttr::verify)
+      .def(py::self == py::self)
+      .def(py::self != py::self)
+      .def("__str__", &TensorDistAttr::to_string);
+
+  py::class_<OperatorDistAttr>(*m, "OperatorDistAttr")
+      .def(py::init<const OpDesc &>())
+      .def_property_readonly("op", &OperatorDistAttr::op)
+      .def_property("process_mesh",
+                    &OperatorDistAttr::process_mesh,
+                    &OperatorDistAttr::set_process_mesh)
+      .def_property("impl_type",
+                    &OperatorDistAttr::impl_type,
+                    &OperatorDistAttr::set_impl_type)
+      .def_property("impl_idx",
+                    &OperatorDistAttr::impl_idx,
+                    &OperatorDistAttr::set_impl_idx)
+      .def("input", &OperatorDistAttr::input)
+      .def("output", &OperatorDistAttr::output)
+      .def("input_dist_attrs",
+           &OperatorDistAttr::input_dist_attrs,
+           py::return_value_policy::reference)
+      .def("output_dist_attrs",
+           &OperatorDistAttr::output_dist_attrs,
+           py::return_value_policy::reference)
+      .def("input_dist_attr",
+           static_cast<TensorDistAttr &(
+               OperatorDistAttr::*)(const std::string &)>(
+               &OperatorDistAttr::input_dist_attr),
+           py::return_value_policy::reference)
+      .def("output_dist_attr",
+           static_cast<TensorDistAttr &(
+               OperatorDistAttr::*)(const std::string &)>(
+               &OperatorDistAttr::output_dist_attr),
+           py::return_value_policy::reference)
+      .def("set_input_dist_attr", &OperatorDistAttr::set_input_dist_attr)
+      .def("set_output_dist_attr", &OperatorDistAttr::set_output_dist_attr)
+      .def("is_annotated", &OperatorDistAttr::is_annotated)
+      .def("annotate", &OperatorDistAttr::annotate)
+      .def("verify", &OperatorDistAttr::verify)
+      .def(py::self == py::self)
+      .def(py::self != py::self)
+      .def("__str__", &OperatorDistAttr::to_string);
 }
 
 }  // namespace pybind

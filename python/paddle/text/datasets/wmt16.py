@@ -14,17 +14,13 @@
 """
 """
 
-from __future__ import print_function
-
 import os
-import six
 import tarfile
 import numpy as np
 from collections import defaultdict
 
 import paddle
 from paddle.io import Dataset
-import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = []
@@ -154,16 +150,16 @@ class WMT16(Dataset):
         with open(dict_path, "rb") as fdict:
             for idx, line in enumerate(fdict):
                 if reverse:
-                    word_dict[idx] = cpt.to_text(line.strip())
+                    word_dict[idx] = line.strip().decode()
                 else:
-                    word_dict[cpt.to_text(line.strip())] = idx
+                    word_dict[line.strip().decode()] = idx
         return word_dict
 
     def _build_dict(self, dict_path, dict_size, lang):
         word_dict = defaultdict(int)
         with tarfile.open(self.data_file, mode="r") as f:
             for line in f.extractfile("wmt16/train"):
-                line = cpt.to_text(line)
+                line = line.decode()
                 line_split = line.strip().split("\t")
                 if len(line_split) != 2: continue
                 sen = line_split[0] if self.lang == "en" else line_split[1]
@@ -172,14 +168,13 @@ class WMT16(Dataset):
 
         with open(dict_path, "wb") as fout:
             fout.write(
-                cpt.to_bytes("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)))
+                ("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)).encode())
             for idx, word in enumerate(
-                    sorted(six.iteritems(word_dict),
-                           key=lambda x: x[1],
+                    sorted(word_dict.items(), key=lambda x: x[1],
                            reverse=True)):
                 if idx + 3 == dict_size: break
-                fout.write(cpt.to_bytes(word[0]))
-                fout.write(cpt.to_bytes('\n'))
+                fout.write(word[0].encode())
+                fout.write(b'\n')
 
     def _load_data(self):
         # the index for start mark, end mark, and unk are the same in source
@@ -197,7 +192,7 @@ class WMT16(Dataset):
         self.trg_ids_next = []
         with tarfile.open(self.data_file, mode="r") as f:
             for line in f.extractfile("wmt16/{}".format(self.mode)):
-                line = cpt.to_text(line)
+                line = line.decode()
                 line_split = line.strip().split("\t")
                 if len(line_split) != 2:
                     continue
@@ -240,9 +235,9 @@ class WMT16(Dataset):
             dict: The word dictionary for the specific language.
 
         Examples:
-    
+
             .. code-block:: python
-    
+
                 from paddle.text.datasets import WMT16
                 wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50)
                 en_dict = wmt16.get_dict('en')

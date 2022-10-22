@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import unittest
 import time
 import argparse
 import os
-import six
 import sys
 
 sys.path.append("..")
@@ -30,7 +28,6 @@ from contextlib import closing
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
-from six import string_types
 import paddle
 
 from op_test import OpTest, _set_use_system_allocator
@@ -57,7 +54,7 @@ class TestSyncBatchNormRunnerBase(object):
             "get model should be implemented by child class.")
 
     def wait_server_ready(self, endpoints):
-        assert not isinstance(endpoints, string_types)
+        assert not isinstance(endpoints, str)
         while True:
             all_ok = True
             not_ready_endpoints = []
@@ -126,19 +123,19 @@ class TestSyncBatchNormRunnerBase(object):
             for layout in ["NCHW", "NHWC"]:
                 self._compare(args, place, layout, True)
 
-        # # Test FP16 - @TODO
-        # self.dtype = np.float16
-        # self.atol = 1e-2
+        # Test FP16 - @TODO
+        self.bn_dtype = np.float16
+        self.atol = 3e-3
 
-        # # Test training
-        # for place in places:
-        #     for layout in ["NCHW", "NHWC"]:
-        #         self._compare(args, place, layout, False)
+        # Test training
+        for place in places:
+            for layout in ["NCHW", "NHWC"]:
+                self._compare(args, place, layout, False)
 
-        # # Test inference
-        # for place in places:
-        #     for layout in ["NCHW", "NHWC"]:
-        #         self._compare(args, place, layout, True)
+        # Test inference
+        for place in places:
+            for layout in ["NCHW", "NHWC"]:
+                self._compare(args, place, layout, True)
 
         sys.stdout.buffer.write(
             pickle.dumps(
@@ -160,7 +157,7 @@ class TestSyncBatchNormRunnerBase(object):
 
         sys.stderr.write("len(sync_bn_fetches): " + str(len(sync_bn_fetches)) +
                          "\n")
-        for i in six.moves.xrange(0, len(sync_bn_fetches)):
+        for i in range(0, len(sync_bn_fetches)):
             sys.stderr.write("i: " + str(i) + "\n")
             sys.stderr.write("fetch_names[i]): " + fetch_names[i] + "\n")
 
@@ -333,8 +330,8 @@ class TestSyncBatchNormRunnerBase(object):
 
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
-        sys.stderr.write("after init, startup_prog: " +
-                         startup_prog.to_string(True) + "\n")
+        # sys.stderr.write("after init, startup_prog: " +
+        #                  startup_prog.to_string(True) + "\n")
         train_prog.global_seed(SEED)
         train_prog._sync_with_cpp()
         startup_prog.global_seed(SEED)
@@ -344,10 +341,10 @@ class TestSyncBatchNormRunnerBase(object):
         self.rank = rank
         outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
                               True, only_forward)
-        sys.stderr.write("after get_model, train_prog: " +
-                         train_prog.to_string(True) + "\n")
-        sys.stderr.write("after get_model, startup_prog: " +
-                         startup_prog.to_string(True) + "\n")
+        # sys.stderr.write("after get_model, train_prog: " +
+        #                  train_prog.to_string(True) + "\n")
+        # sys.stderr.write("after get_model, startup_prog: " +
+        #                  startup_prog.to_string(True) + "\n")
 
         ops = train_prog.blocks[0].ops
         for i, op in enumerate(ops):
@@ -360,8 +357,8 @@ class TestSyncBatchNormRunnerBase(object):
                 sys.stderr.write("op type: " + op.type + "\n")
                 op.desc.set_type('sync_batch_norm_grad')
 
-        sys.stderr.write("after update sync_batch_norm, train_prog: " +
-                         train_prog.to_string(True) + "\n")
+        # sys.stderr.write("after update sync_batch_norm, train_prog: " +
+        #                  train_prog.to_string(True) + "\n")
 
         exe = fluid.Executor(place)
         exe.run(startup_prog)

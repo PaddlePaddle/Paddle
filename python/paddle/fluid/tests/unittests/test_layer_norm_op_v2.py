@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from op_test import OpTest, _set_use_system_allocator
-from paddle.fluid.framework import grad_var_name, _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import paddle
@@ -49,7 +46,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_eager(self):
         places = [fluid.CPUPlace()]
@@ -80,8 +77,8 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1, g1 = compute_v1(x)
             y2, g2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
-            self.assertTrue(np.allclose(g1, g2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
+            np.testing.assert_allclose(g1, g2, rtol=1e-05)
 
     def test_static(self):
         paddle.enable_static()
@@ -113,7 +110,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
 
 class TestLayerNormFunction(unittest.TestCase):
@@ -159,11 +156,11 @@ class TestLayerNormFunction(unittest.TestCase):
             y0 = compute_v0(x)
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y0, y1))
-            self.assertTrue(np.allclose(y0, y2))
+            np.testing.assert_allclose(y0, y1, rtol=1e-05)
+            np.testing.assert_allclose(y0, y2, rtol=1e-05)
             y3 = compute_v3(x)
             y4 = compute_v4(x)
-            self.assertTrue(np.allclose(y3, y4))
+            np.testing.assert_allclose(y3, y4, rtol=1e-05)
 
             self.assertRaises(ValueError,
                               paddle.nn.functional.layer_norm,

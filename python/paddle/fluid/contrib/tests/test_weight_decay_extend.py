@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
 import unittest
 from functools import partial
 import numpy as np
@@ -34,7 +31,7 @@ def fake_imdb_reader(word_dict_size,
                      class_dim=2):
 
     def __reader__():
-        for _ in six.moves.range(sample_num):
+        for _ in range(sample_num):
             length = np.random.random_integers(low=lower_seq_len,
                                                high=upper_seq_len,
                                                size=[1])[0]
@@ -185,9 +182,12 @@ class TestWeightDecay(unittest.TestCase):
             param_sum2 = self.check_weight_decay2(place, model)
 
             for i in range(len(param_sum1)):
-                self.assertTrue(
-                    np.allclose(param_sum1[i], param_sum2[i]),
-                    "Current place: {}, i: {}, sum1: {}, sum2: {}".format(
+                np.testing.assert_allclose(
+                    param_sum1[i],
+                    param_sum2[i],
+                    rtol=1e-05,
+                    err_msg='Current place: {}, i: {}, sum1: {}, sum2: {}'.
+                    format(
                         place, i, param_sum1[i]
                         [~np.isclose(param_sum1[i], param_sum2[i])],
                         param_sum2[i]

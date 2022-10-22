@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -125,6 +123,25 @@ class TestGatherTreeOpError(unittest.TestCase):
                 fluid.layers.gather_tree(ids, bad_parents)
 
             self.assertRaises(TypeError, test_type_parents)
+
+            def test_ids_ndim():
+                bad_ids = fluid.layers.data(name='bad_test_ids',
+                                            shape=[5, 2],
+                                            dtype='int64',
+                                            append_batch_size=False)
+                paddle.nn.functional.gather_tree(bad_ids, parents)
+
+            self.assertRaises(ValueError, test_ids_ndim)
+
+            def test_parents_ndim():
+                bad_parents = fluid.layers.data(name='bad_test_parents',
+                                                shape=[5, 2],
+                                                dtype='int64',
+                                                append_batch_size=False)
+                paddle.nn.functional.gather_tree(ids, bad_parents)
+
+            self.assertRaises(ValueError, test_parents_ndim)
+
         paddle.disable_static()
 
 

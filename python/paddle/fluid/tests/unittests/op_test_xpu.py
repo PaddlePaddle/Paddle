@@ -12,32 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
-import unittest
-import warnings
 import numpy as np
-import random
-import six
-import struct
-import time
-import itertools
-import collections
-from collections import defaultdict
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
-from paddle.fluid.op import Operator
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder, Variable, convert_np_dtype_to_dtype_
-from testsuite import create_op, set_input, append_input_output, append_loss_ops
-from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
+from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
+from testsuite import append_loss_ops, create_op, set_input
 from white_list import op_threshold_white_list, no_grad_set_white_list
-from op_test import OpTest, _set_use_system_allocator, get_numeric_gradient
+from op_test import OpTest
 from xpu.get_test_cover_info import is_empty_grad_op_type, get_xpu_op_support_types, type_dict_str_to_numpy
 
 

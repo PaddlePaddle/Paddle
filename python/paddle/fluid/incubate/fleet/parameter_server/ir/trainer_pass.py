@@ -13,9 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import os
-import six
 import collections
 import warnings
 import math
@@ -24,7 +22,6 @@ from functools import reduce
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-import paddle.compat as cpt
 
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
@@ -594,7 +591,7 @@ def ps_gpu_pass(program):
             if op.type != "pull_box_sparse" and op.type != "pull_gpups_sparse":
                 continue
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, cpt.to_text(set()), [])
+                op.desc, set(), [])
             for op_desc in grad_op_desc:
                 new_op_desc = program.global_block().desc.append_op()
                 new_op_desc.copy_from(op_desc)
@@ -794,7 +791,7 @@ def find_heter_ops(program, default_device="cpu"):
                     if no_grad_var in var2idx:
                         """
                        insert sum op & remove sum op from var2idx and origin place
-  
+
                        """
                         op_list = list(block.ops)
                         sum_op = op_list[var2idx[no_grad_var]]
@@ -1442,7 +1439,7 @@ def union_forward_gradient_op(program_block_ops_list):
     block_length = len(program_block_ops_list)
     '''
     ## get the final part
-    final_part_idx = -1 
+    final_part_idx = -1
     for i in range(block_length):
         op_list = program_block_ops_list[i]
         for op in op_list:
@@ -1451,7 +1448,7 @@ def union_forward_gradient_op(program_block_ops_list):
               break
         if final_part_idx != -1:
             break
-    
+
     ## eliminate wrong partition because of sum op
     ## lookup_table_v2_grad
     ## every looup_table_v2_grad op block should follow a sum op
@@ -1470,9 +1467,9 @@ def union_forward_gradient_op(program_block_ops_list):
                 if forward_op_type in SPARSE_OP_TYPE_DICT.keys() \
                     and op.attr('remote_prefetch') is True:
                     param_name = op.input(SPARSE_OP_TYPE_DICT[forward_op_type])[0]
-                    
-                    var2idx[] = [i,j] ## 
-    
+
+                    var2idx[] = [i,j] ##
+
     '''
 
     union_program_block_ops_list = []
@@ -1836,7 +1833,7 @@ def block_append_op(program, origin_program, block, op):
     merge_ordereddict = origin_program.global_block().vars.copy()
     merge_ordereddict.update(block.vars)
     inputs = _get_input_map_from_op(merge_ordereddict, op)
-    for key, varlist in six.iteritems(inputs):
+    for key, varlist in inputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
@@ -1849,7 +1846,7 @@ def block_append_op(program, origin_program, block, op):
                     block._clone_variable(var, force_persistable=False)
 
     outputs = _get_output_map_from_op(origin_program.global_block().vars, op)
-    for key, varlist in six.iteritems(outputs):
+    for key, varlist in outputs.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for var in varlist:
@@ -1900,7 +1897,7 @@ def add_vars_by_var_list(var_name_list, origin_program, program, block):
 
 def get_varlist_from_op_map(var_map):
     var_list = []
-    for key, varlist in six.iteritems(var_map):
+    for key, varlist in var_map.items():
         if not isinstance(varlist, list):
             varlist = [varlist]
         for i in range(len(varlist)):

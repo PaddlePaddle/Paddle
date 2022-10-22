@@ -12,14 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import sys
 import math
-import six
-import paddle.fluid as fluid
 from op_test import OpTest
 '''
 # Equivalent code
@@ -82,7 +77,7 @@ def poly2mask(xy, k, h, w):
     x = np.zeros((k), np.int_)
     y = np.zeros((k), np.int_)
     m = 0
-    for j in six.moves.xrange(1, k):
+    for j in range(1, k):
         if u[j] != u[j - 1]:
             xd = float(u[j] if (u[j] < u[j - 1]) else (u[j] - 1))
             xd = (xd + .5) / scale - .5

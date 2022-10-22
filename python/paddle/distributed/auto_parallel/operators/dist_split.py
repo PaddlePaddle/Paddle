@@ -17,9 +17,6 @@ from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from ..utils import is_dim_shard
-from ..utils import is_valid_list_index
-from ..utils import compute_compatible_dim_mapping
-from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
 
@@ -101,8 +98,12 @@ class DistributedSplitImpl(DistributedOperatorImpl):
         return changed
 
     def is_auto_compatible(self, dist_op):
-        raise NotImplementedError(
-            "Auto Search is not supported by dist split yet.")
+        if (not self.is_input_compatible(dist_op)) or \
+            (not self.is_output_compatible(dist_op)) or \
+            (not self.is_compatible(dist_op)):
+            return False
+
+        return True
 
     @staticmethod
     def forward(ctx, *args, **kwargs):

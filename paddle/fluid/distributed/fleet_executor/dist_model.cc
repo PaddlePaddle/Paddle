@@ -43,7 +43,7 @@ bool IsPersistable(const framework::VarDesc *var) {
 }
 
 bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
-                                 framework::LoDTensor *input_tensor,
+                                 phi::DenseTensor *input_tensor,
                                  const platform::Place &place) {
   VLOG(3) << "Loading data from DistModelTensor for " << input_data.name;
   framework::DDim dims = phi::make_ddim(input_data.shape);
@@ -301,6 +301,29 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     comm_init_op->SetAttr("op_role",
                           static_cast<int>(framework::OpRole::kForward));
     comm_init_op->CheckAttrs();
+  } else if (config_.place == "XPU") {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
+    gen_bkcl_id_op->SetType("c_gen_bkcl_id");
+    gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_bkcl_id_op->SetAttr("rank", rank);
+    gen_bkcl_id_op->SetAttr("endpoint", config_.current_endpoint);
+    gen_bkcl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_bkcl_id_op->SetAttr("ring_id", ring_id);
+    gen_bkcl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_bkcl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
   } else {
     LOG(WARNING) << "DistModelInf doesn't init comm.";
     // TODO(fleet exe dev): comm init for more devices
@@ -492,7 +515,7 @@ bool DistModel::FeedData(const std::vector<DistModelTensor> &input_data,
   feed_tensors_.resize(feeds_.size());
   for (size_t i = 0; i < input_data.size(); ++i) {
     // feed each data separately
-    framework::LoDTensor *input_tensor = &(feed_tensors_[i]);
+    phi::DenseTensor *input_tensor = &(feed_tensors_[i]);
     if (!LoadDataFromDistModelTensor(input_data[i], input_tensor, place_)) {
       LOG(ERROR) << "Fail to load data from tensor " << input_data[i].name;
       return false;
@@ -533,7 +556,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto &fetch = PADDLE_GET(framework::LoDTensor, fetch_var);
+    auto &fetch = PADDLE_GET(phi::DenseTensor, fetch_var);
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(output_data->at(i));
     output->name = idx_to_fetches_[idx];
@@ -564,7 +587,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
 }
 
 template <typename T>
-bool DistModel::FetchResult(const framework::LoDTensor &fetch,
+bool DistModel::FetchResult(const phi::DenseTensor &fetch,
                             DistModelTensor *output_data) {
   auto shape = phi::vectorize(fetch.dims());
   output_data->shape.assign(shape.begin(), shape.end());

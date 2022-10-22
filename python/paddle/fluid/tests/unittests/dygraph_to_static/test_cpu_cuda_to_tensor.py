@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import paddle
-from paddle import fluid
 import numpy as np
 
 
@@ -46,9 +44,9 @@ class TestToTensor(unittest.TestCase):
 
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(func).code)
-        self.assertTrue(
-            np.allclose(
-                paddle.jit.to_static(func)(x).numpy(), np.array([1, 2, 3, 4])))
+        np.testing.assert_allclose(paddle.jit.to_static(func)(x).numpy(),
+                                   np.array([1, 2, 3, 4]),
+                                   rtol=1e-05)
 
 
 class TestToTensor1(unittest.TestCase):
@@ -66,9 +64,9 @@ class TestToTensor1(unittest.TestCase):
 
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(func).code)
-        self.assertTrue(
-            np.allclose(
-                paddle.jit.to_static(func)(x).numpy(), np.array([1, 2, 3, 4])))
+        np.testing.assert_allclose(paddle.jit.to_static(func)(x).numpy(),
+                                   np.array([1, 2, 3, 4]),
+                                   rtol=1e-05)
 
 
 class TestToTensor2(unittest.TestCase):
@@ -81,10 +79,9 @@ class TestToTensor2(unittest.TestCase):
 
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(func).code)
-        self.assertTrue(
-            np.allclose(
-                paddle.jit.to_static(func)(x).numpy(),
-                np.array([[1], [2], [3], [4]])))
+        np.testing.assert_allclose(paddle.jit.to_static(func)(x).numpy(),
+                                   np.array([[1], [2], [3], [4]]),
+                                   rtol=1e-05)
 
 
 if __name__ == '__main__':

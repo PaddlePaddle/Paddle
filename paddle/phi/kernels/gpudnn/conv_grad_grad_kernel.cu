@@ -254,6 +254,8 @@ void ConvCudnnGradGradKernel(
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
   auto handle = ctx.cudnn_handle();
+  auto layout = paddle::platform::GetCudnnTensorFormat(
+      paddle::platform::DataLayout::kNCHW);
 
   paddle::operators::ConvArgs args1{&transformed_ddX,
                                     W,
@@ -261,28 +263,36 @@ void ConvCudnnGradGradKernel(
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
   paddle::operators::ConvArgs args2{&transformed_X,
                                     ddW,
                                     &transformed_ddO_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
   paddle::operators::ConvArgs args3{&transformed_ddX,
                                     dW,
                                     &transformed_dO_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
   paddle::operators::ConvArgs args4{&transformed_dX,
                                     ddW,
                                     &transformed_dO_channel,
                                     strides,
                                     padding_common,
                                     dilations,
-                                    dtype};
+                                    dtype,
+                                    groups,
+                                    paddle::platform::DataLayout::kNCHW};
 
 #ifdef PADDLE_WITH_HIP
   paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result1;
@@ -297,9 +307,6 @@ void ConvCudnnGradGradKernel(
   paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
       filter_result;
 #endif
-
-  auto layout = paddle::platform::GetCudnnTensorFormat(
-      paddle::platform::DataLayout::kNCHW);
 
   // ddo = conv(ddI, W) + conv(I, ddW)
   size_t workspace_size = 0;
@@ -329,7 +336,7 @@ void ConvCudnnGradGradKernel(
 #else
       using search1 =
           paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      fwd_result1 = search1::Find<T>(args1, exhaustive_search, false, ctx);
+      fwd_result1 = search1::Find<T>(ctx, args1, exhaustive_search, false);
       workspace_size = search1::GetWorkspaceSize(args1, fwd_result1.algo);
 #endif
     }
@@ -357,7 +364,7 @@ void ConvCudnnGradGradKernel(
 #else
       using search2 =
           paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      fwd_result2 = search2::Find<T>(args2, exhaustive_search, false, ctx);
+      fwd_result2 = search2::Find<T>(ctx, args2, exhaustive_search, false);
       workspace_size = std::max(
           workspace_size, search2::GetWorkspaceSize(args2, fwd_result2.algo));
 #endif
@@ -387,7 +394,7 @@ void ConvCudnnGradGradKernel(
     using search3 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
     filter_result =
-        search3::Find<T>(args3, exhaustive_search, deterministic, ctx);
+        search3::Find<T>(ctx, args3, exhaustive_search, deterministic);
     workspace_size = std::max(
         workspace_size, search3::GetWorkspaceSize(args3, filter_result.algo));
 #endif
@@ -417,7 +424,7 @@ void ConvCudnnGradGradKernel(
     using search4 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     data_result =
-        search4::Find<T>(args4, exhaustive_search, deterministic, ctx);
+        search4::Find<T>(ctx, args4, exhaustive_search, deterministic);
     workspace_size = std::max(
         workspace_size, search4::GetWorkspaceSize(args4, data_result.algo));
 #endif

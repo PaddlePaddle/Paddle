@@ -21,17 +21,8 @@
 
 #include "paddle/phi/core/utils/rw_lock.h"
 
-// When in inference scenario, the scopes will not be written by two threads in
-// a mean time, but a scope may be read by multiple threads concurrently, and
-// the mutex will cause serious performance issue.
-// So the mutex is disabled when `ON_INFER`.
-#ifdef PADDLE_ON_INFERENCE
-#define SCOPE_VARS_READER_LOCK
-#define SCOPE_VARS_WRITER_LOCK
-#else
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
-#endif
 
 namespace paddle {
 namespace framework {
@@ -103,21 +94,16 @@ bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
   if (it == outs.end() || it->second.empty()) {
     return false;
   }
-  if (allow_null) {
-    for (auto& output : it->second) {
-      if (output != nullptr) return true;
-    }
-    return false;
-  } else {
+  if (!allow_null) {
     for (auto& output : it->second) {
       if (output == nullptr) return false;
     }
-    return true;
   }
+  return true;
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
-  return AttrReader(op_.Attrs());
+  return AttrReader(op_.Attrs(), op_.RuntimeAttrs());
 }
 
 std::vector<std::string> InterpretercoreInferShapeContext::Inputs(
@@ -203,9 +189,9 @@ void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
     out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
     out_sele_rows->set_rows(in_sele_rows.rows());
     out_sele_rows->set_height(in_sele_rows.height());
-  } else if (in_var->IsType<framework::LoDTensor>()) {
-    auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-    auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+  } else if (in_var->IsType<phi::DenseTensor>()) {
+    auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
+    auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_lod_tensor->Resize(in_lod_tensor.dims());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -308,7 +294,7 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
 // Need to call ShareLayout explicitly in sequence related ops.
-// Shall we have a better method to shared info between in/out Tensor?
+// Shall we have a better method to shared info between in/out phi::DenseTensor?
 #ifdef PADDLE_WITH_MKLDNN
   // Fix me: ugly workaround below
   // Correct solution:
@@ -351,7 +337,7 @@ bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
     auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
     return ((op_with_kernel.kernel_type()) &&
             (op_with_kernel.kernel_type()->data_layout_ ==
-             framework::DataLayout::kMKLDNN));
+             phi::DataLayout::kMKLDNN));
   } catch (std::bad_cast& exp) {
     return false;
   }
@@ -577,6 +563,8 @@ Scope* VariableScope::GetMutableScope() const { return scope_; }
 
 Scope* VariableScope::GetMutableLocalScope() const { return local_scope_; }
 
+void VariableScope::SetScope(Scope* scope) { scope_ = scope; }
+
 void VariableScope::SetLocalScope(Scope* local_scope) {
   VLOG(4) << "Set local scope: " << local_scope;
   local_scope_ = local_scope;
@@ -626,7 +614,11 @@ void VariableScope::AddVar(const std::string& name,
     auto id = VarSize();
     name2id_[name] = id;
     vec_meta_info_.emplace_back(0, var_desc);
-    var_list_.push_back(local_scope_->FindVar(name));
+    if (local_scope_ != nullptr) {
+      var_list_.push_back(local_scope_->FindVar(name));
+    } else {
+      var_list_.push_back(scope_->FindVar(name));
+    }
     PADDLE_ENFORCE_EQ(
         var_list_.size(),
         name2id_.size(),
@@ -723,16 +715,18 @@ OperatorBase* Instruction::OpBase() const {
   return op_base.get();
 }
 
-NextInstruction& Instruction::NextInstructions() { return next_instruction_; }
-
-const NextInstruction& Instruction::NextInstructions() const {
+NextInstructionList& Instruction::NextInstructions() {
   return next_instruction_;
 }
 
-void Instruction::AddGCCheckVar(size_t id) { gc_check_var_list_.push_back(id); }
+const NextInstructionList& Instruction::NextInstructions() const {
+  return next_instruction_;
+}
+
+void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }
 
 const std::vector<size_t>& Instruction::GCCheckVars() const {
-  return gc_check_var_list_;
+  return gc_check_vars_;
 }
 
 void Instruction::ResetContext(const VariableValueMap& in_vars,
@@ -782,6 +776,8 @@ const std::vector<std::pair<Variable*, Variable*>>& Instruction::InplaceInfo()
 void Instruction::AddInplace(Variable* in, Variable* out) {
   vec_inplace_in_to_out_.emplace_back(in, out);
 }
+
+void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 const std::vector<EventInter>& Instruction::InputEvents() const {
   return intput_events_;

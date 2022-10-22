@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import yaml
 import argparse
-import re
 
 from api_gen import ForwardAPI
 
@@ -71,7 +69,7 @@ class StringsAPI(ForwardAPI):
                     'names'][0] in self.inplace_map else ""
             output_create = f"""
   {return_type} api_output{inplace_assign};
-  {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(kernel_backend, &api_output, {kernel_tensor_out_type}));"""
+  {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(&api_output, {kernel_tensor_out_type}));"""
 
         elif len(out_dtype_list) > 1:
             output_create = f"""
@@ -351,7 +349,7 @@ def main():
         description='Generate PaddlePaddle C++ Strings API files')
     parser.add_argument('--api_yaml_path',
                         help='path to sparse api yaml file',
-                        default='paddle/phi/api/yaml/strings_api.yaml')
+                        default='paddle/phi/api/yaml/strings_ops.yaml')
 
     parser.add_argument('--api_header_path',
                         help='output of generated api header code file',

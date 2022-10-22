@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
-import sys
 from abc import ABC, abstractmethod
-from paddle.fluid.framework import program_guard, _apply_pass as _apply_cpp_pass
+from paddle.fluid.framework import _apply_pass as _apply_cpp_pass
 
 
 class PassContext:

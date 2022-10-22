@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -24,7 +22,6 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
-import six
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -204,9 +201,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                                     k - 1]] = out[k]
 
                 np.testing.assert_array_equal(static_loss_value, dy_loss_value)
-                for key, value in six.iteritems(static_param_init):
+                for key, value in static_param_init.items():
                     np.testing.assert_array_equal(value, dy_param_init[key])
-                for key, value in six.iteritems(static_param_updated):
+                for key, value in static_param_updated.items():
                     np.testing.assert_array_equal(value, dy_param_updated[key])
 
 

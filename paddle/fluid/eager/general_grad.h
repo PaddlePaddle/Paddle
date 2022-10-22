@@ -165,9 +165,6 @@ class GeneralGrad {
   void GetGraphInfoBetweenTargets(const std::deque<GradNodeBase*>& init_queue) {
     VLOG(6) << "Runing In GetGraphInfoBetweenTargets";
 
-    // Calculate in_degree for each node
-    std::unordered_map<GradNodeBase*, int> node_in_degree_map;
-
     // Copy nodes
     std::deque<GradNodeBase*> queue = init_queue;
     std::unordered_set<GradNodeBase*> visited;
@@ -195,12 +192,6 @@ class GeneralGrad {
           // AccumulationNode attached
           // Or it could also originated from dispensable inputs
           if (!next_node) continue;
-
-          // Update in_degree
-          if (!node_in_degree_map.count(next_node)) {
-            node_in_degree_map[next_node] = 0;
-          }
-          node_in_degree_map[next_node]++;
 
           // Record depending relationship
           (depending_nodes_)[next_node].emplace(node);
@@ -557,6 +548,9 @@ class GeneralGrad {
           } else {
             copied_next_node = orig_next_node->Copy();
             orig_to_copied_node_map_[orig_next_node.get()] = copied_next_node;
+            VLOG(3) << "Copied Node: " << orig_next_node->name()
+                    << " ptr: " << orig_next_node
+                    << " to ptr: " << copied_next_node;
             copied_grad_nodes_.push_back(copied_next_node);
           }
 

@@ -17,7 +17,7 @@
 import argparse
 import json
 import yaml
-from typing import List, Dict, Any
+from typing import Dict, List
 
 skipped_phi_api_list_file = "/tools/infrt/skipped_phi_api.json"
 api_yaml_file = "/paddle/phi/api/yaml/api.yaml"
@@ -39,7 +39,7 @@ def get_skipped_kernel_list():
     for api in infer_meta_data:
         if "kernel" not in api or "infer_meta" not in api:
             continue
-        if api["api"] in skiped_api_list["phi_apis"]:
+        if api["op"] in skiped_api_list["phi_apis"]:
             skiped_kernel_list.append(api["kernel"]["func"])
     skiped_kernel_list += skiped_api_list["phi_kernels"]
     return skiped_kernel_list
