@@ -478,12 +478,10 @@ EOF
 }
 
 function cmake_gen_and_build() {
-    # startTime_s=`date +%s`
-    startTime_s=100
+    startTime_s=`date +%s`
     cmake_gen $1
     build $2
-    # endTime_s=`date +%s`
-    endTime_s=200
+    endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
@@ -1152,8 +1150,7 @@ EOF
 function check_diff_file_for_coverage() {
     diff_h_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep '\.h$' | awk -F "/" '{printf "%s,",$NF}')
     diff_cc_file=$(git diff --name-status test develop | awk '$1 != "D" {print $2}' | grep -E '\.(cc|c)$' | awk -F "/" '{printf "%s,",$NF}')
-    # diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
-    diff_py_file='tools/test_sampcd_processor.py,tools/timeline.py'
+    diff_py_file=$(git diff --name-status test develop | grep '\.py$' | awk '$1 != "D" {printf "%s,",$2}')
     export PADDLE_GIT_DIFF_H_FILE=${diff_h_file%*,}
     export PADDLE_GIT_DIFF_CC_FILE=${diff_cc_file%*,}
     export PADDLE_GIT_DIFF_PY_FILE=${diff_py_file%*,}
