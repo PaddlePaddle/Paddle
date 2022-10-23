@@ -90,6 +90,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         // ONEDNN dedicated attributes
         {"Activation_scale", ExtraAttrProperty::ONEDNN},
         {"Bias", ExtraAttrProperty::ONEDNN},
+        {"Bias_scales", ExtraAttrProperty::ONEDNN},
         {"data_format", ExtraAttrProperty::ONEDNN},
         {"force_fp32_output", ExtraAttrProperty::ONEDNN},
         {"fuse_activation", ExtraAttrProperty::ONEDNN},
@@ -188,6 +189,15 @@ class ExtraInfoUtils {
     return empty_extra_attrs_map_;
   }
 
+  const paddle::framework::AttributeMap& GetExtraDynamicAttrsMap(
+      const std::string& op_type) const {
+    auto iter = g_extra_dynamic_attrs_map_.find(op_type);
+    if (iter != g_extra_dynamic_attrs_map_.end()) {
+      return iter->second;
+    }
+    return empty_extra_attrs_map_;
+  }
+
   const std::vector<std::function<void(framework::AttributeMap*, bool)>>&
   GetExtraAttrsChecker(const std::string& op_type) const {
     auto iter = g_extra_attrs_checker_.find(op_type);
@@ -211,6 +221,8 @@ class ExtraInfoUtils {
 
   std::unordered_map<std::string, paddle::framework::AttributeMap>
       g_extra_attrs_map_;
+  std::unordered_map<std::string, paddle::framework::AttributeMap>
+      g_extra_dynamic_attrs_map_;
   paddle::framework::AttributeMap empty_extra_attrs_map_{};
   std::unordered_map<
       std::string,

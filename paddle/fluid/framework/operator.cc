@@ -2261,7 +2261,8 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       std::unique_ptr<OpKernelType> new_expected_kernel_key = nullptr;
-      if (run_phi_kernel_ && in_def->backend != phi::Backend::ALL_BACKEND) {
+      if (run_phi_kernel_ && in_def != nullptr &&
+          in_def->backend != phi::Backend::ALL_BACKEND) {
         auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
         if ((in_def->backend != tensor_backend &&
              (in_def->backend != phi::Backend::GPUDNN ||
@@ -2370,7 +2371,10 @@ Scope* OperatorWithKernel::PrepareData(
   };
 
   if (run_phi_kernel_) {
-    const auto& input_names = kernel_signature_->input_names;
+    std::vector<std::string> input_names;
+    for (auto& input_name : kernel_signature_->input_names) {
+      input_names.emplace_back(input_name);
+    }
     const auto& input_defs = phi_kernel_->args_def().input_defs();
     PADDLE_ENFORCE_EQ(input_names.size(),
                       input_defs.size(),
@@ -2392,6 +2396,19 @@ Scope* OperatorWithKernel::PrepareData(
           no_buffer_ins && no_buffer_ins->count(input_name) > 0;
       prepare_input_data(input_name, &ins_vector, &in_def, should_skip_input);
     }
+    // For input that is Extra
+    for (auto& var_name_item : Inputs()) {
+      if (std::find(input_names.begin(),
+                    input_names.end(),
+                    var_name_item.first) == input_names.end()) {
+        bool should_skip_input =
+            no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
+        std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
+        prepare_input_data(
+            var_name_item.first, &input_vars, nullptr, should_skip_input);
+      }
+    }
+
   } else {
     for (auto& var_name_item : Inputs()) {
       bool should_skip_input =
@@ -2704,6 +2721,15 @@ void OperatorWithKernel::BuildPhiKernelContext(
   auto input_defs = phi_kernel_->args_def().input_defs();
   auto attr_defs = phi_kernel_->args_def().attribute_defs();
   auto output_defs = phi_kernel_->args_def().output_defs();
+
+#if defined(PADDLE_WITH_MKLDNN)
+  if (phi::OneDNNContext::classof(dev_ctx)) {
+    // Onednn holds this op's variable's name and init them here.
+    phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+    one_dnn_ctx->SetInputsName(Inputs());
+    one_dnn_ctx->SetOutputsName(Outputs());
+  }
+#endif
 
   PADDLE_ENFORCE_EQ(input_names.size(),
                     input_defs.size(),

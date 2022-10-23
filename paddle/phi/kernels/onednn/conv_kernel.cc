@@ -86,7 +86,8 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                  DenseTensor* output) {
   const auto& mkldnn_engine = dev_ctx.GetEngine();
   const bool is_conv3d = strides.size() == 3U;
-
+  const std::string& unique_name =
+      dev_ctx.GetInputsName("Input")[0] + dev_ctx.GetInputsName("Filter")[0];
   PD_VISIT_FLOAT_AND_INT8_TYPES(
       filter->dtype(), "ConvOneDNNHandlerT", ([&] {
         onednn::ConvOneDNNHandlerT<T, data_t, T_out> handler(dev_ctx,
@@ -106,13 +107,11 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
                                                              fuse_activation,
                                                              fuse_residual_conn,
                                                              force_fp32_output,
-                                                             output);
-
+                                                             output,
+                                                             unique_name);
         auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
-
         auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
             filter, groups, is_conv3d, is_test);
-
         std::shared_ptr<dnnl::memory> dst_memory_p;
         if (fuse_residual_conn) {
           dst_memory_p =
@@ -122,7 +121,6 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
         }
 
         auto conv_p = handler.AcquireForwardPrimitive();
-
         std::unordered_map<int, dnnl::memory> args = {
             {DNNL_ARG_SRC, *src_memory_p},
             {DNNL_ARG_WEIGHTS, *weights_memory_p},
@@ -137,7 +135,6 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
         auto& astream = OneDNNContext::tls().get_stream();
         conv_p->execute(astream, args);
         astream.wait();
-
         output->set_mem_desc(dst_memory_p->get_desc());
       }));
 }
@@ -177,7 +174,8 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
       false,
       phi::errors::Unimplemented(
           "residual fusion does not support force output with fp32"));
-
+  const std::string& unique_name =
+      dev_ctx.GetInputsName("Input")[0] + dev_ctx.GetInputsName("Filter")[0];
   PD_VISIT_FLOAT_AND_INT8_TYPES(
       filter->dtype(), "ConvMKLDNNHandlerT", ([&] {
         onednn::ConvOneDNNHandlerT<T, data_t, T_out> handler(dev_ctx,
@@ -197,7 +195,8 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
                                                              fuse_activation,
                                                              fuse_residual_conn,
                                                              force_fp32_output,
-                                                             output);
+                                                             output,
+                                                             unique_name);
 
         auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
@@ -295,24 +294,6 @@ void ConvKernel(const Context& dev_ctx,
   bool is_INT8 =
       std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
 
-  VLOG(1) << "Conv Has mkldnn_data_type： "
-          << dev_ctx.HasDnnAttr("mkldnn_data_type");
-  VLOG(1) << "Conv Has ResidualData "
-          << dev_ctx.HasDnnInput("mkldnn_data_type");
-  VLOG(1) << "Conv Has fuse_residual_connection "
-          << dev_ctx.HasDnnAttr("fuse_residual_connection");
-  VLOG(1) << "Conv Has fuse_activation "
-          << dev_ctx.HasDnnAttr("fuse_activation");
-  VLOG(1) << "Conv Has force_fp32_output "
-          << dev_ctx.HasDnnAttr("force_fp32_output");
-  VLOG(1) << "Conv Has Scale_weights " << dev_ctx.HasDnnAttr("Scale_weights");
-  VLOG(1) << "Conv Has Scale_in " << dev_ctx.HasDnnAttr("Scale_in");
-  VLOG(1) << "Conv Has Scale_in_eltwise "
-          << dev_ctx.HasDnnAttr("Scale_in_eltwise");
-  VLOG(1) << "Conv Has Scale_out " << dev_ctx.HasDnnAttr("Scale_out");
-  VLOG(1) << "Conv Has is_test " << dev_ctx.HasDnnAttr("is_test");
-  VLOG(1) << "Conv Has Bias_scales " << dev_ctx.HasDnnAttr("Bias_scales");
-
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                      : false;
@@ -340,14 +321,12 @@ void ConvKernel(const Context& dev_ctx,
       dev_ctx.HasDnnAttr("force_fp32_output")
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
           : false;
-
   auto dst_dt = GetDstType(is_INT8,
                            is_BFLOAT16,
                            force_fp32_output,
                            fuse_activation,
                            fuse_residual_conn,
                            residual_param);
-
   if (!is_INT8) {
     if (dst_dt == dnnl::memory::data_type::f32) {
       ComputeFP32<T, float>(dev_ctx,

@@ -45,10 +45,10 @@ class ConvOneDNNHandlerT
                      const phi::DenseTensor* input,
                      const phi::DenseTensor* filter,
                      const phi::DenseTensor* bias,
-                     const std::vector<int>& strides,
-                     const std::vector<int>& paddings,
+                     const std::vector<int>& strides_in,
+                     const std::vector<int>& paddings_in,
                      const std::string& padding_algorithm,
-                     const std::vector<int>& dilations,
+                     const std::vector<int>& dilations_in,
                      int groups,
                      const std::string& data_format,
                      bool is_test,
@@ -56,7 +56,8 @@ class ConvOneDNNHandlerT
                      const std::string& fuse_activation,
                      bool fuse_residual_conn,
                      bool force_fp32_output,
-                     phi::DenseTensor* output)
+                     phi::DenseTensor* output,
+                     const std::string& unique_name)
       : funcs::OneDNNHandlerT<T,
                               dnnl::convolution_forward,
                               dnnl::convolution_backward_data,
@@ -64,7 +65,8 @@ class ConvOneDNNHandlerT
             dev_ctx,
             mkldnn_engine,
             cpu_place,
-            funcs::CreateKey(dev_ctx, phi::vectorize(input->dims()))) {
+            funcs::CreateKey(
+                dev_ctx, phi::vectorize(input->dims()), unique_name)) {
     if (unlikely(!this->isCached())) {
       PADDLE_ENFORCE_EQ(
           input->layout(),
@@ -128,21 +130,17 @@ class ConvOneDNNHandlerT
                                          "i.e. X, but got dimension = %d .",
                                          bias->dims().size()));
       }
-
       const auto input_dims = input->dims();
       const auto data_dims = phi::slice_ddim(input_dims, 2, input_dims.size());
       const auto filter_dims = filter->dims();
       const auto filter_data_dims =
           phi::slice_ddim(filter_dims, 2, filter_dims.size());
-
       const auto ksize = phi::vectorize(filter_data_dims);
-      std::vector<int64_t> strides(begin(strides), end(strides));
-      std::vector<int64_t> paddings(begin(paddings), end(paddings));
-      std::vector<int64_t> dilations(begin(dilations), end(dilations));
-
+      std::vector<int64_t> strides(begin(strides_in), end(strides_in));
+      std::vector<int64_t> paddings(begin(paddings_in), end(paddings_in));
+      std::vector<int64_t> dilations(begin(dilations_in), end(dilations_in));
       UpdatePaddingAndDilation(
           &paddings, &dilations, padding_algorithm, data_dims, strides, ksize);
-
       std::transform(
           dilations.begin(), dilations.end(), dilations.begin(), [](int64_t i) {
             return i - 1;
@@ -158,7 +156,6 @@ class ConvOneDNNHandlerT
       const dnnl::memory::dims stride_dims = strides;
       const auto onednn_paddings = funcs::ToOnednnPadding(paddings);
       const dnnl::memory::dims dilations_dims = dilations;
-
       /* create memory descriptor for convolution without specified format
        * ('any') which lets a primitive (convolution in this case) choose
        * the memory format preferred for best performance
@@ -186,7 +183,6 @@ class ConvOneDNNHandlerT
           dst_tz, funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
       const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                          : dnnl::prop_kind::forward_training;
-
       const dnnl::primitive_attr conv_attr = CreateConvAttrs(filter,
                                                              groups,
                                                              force_fp32_output,
@@ -239,15 +235,16 @@ class ConvOneDNNHandlerT
                      const phi::DenseTensor* filter,
                      const phi::DenseTensor* bias,
                      const phi::DenseTensor* out_grad,
-                     const std::vector<int>& strides,
-                     const std::vector<int>& paddings,
+                     const std::vector<int>& strides_in,
+                     const std::vector<int>& paddings_in,
                      const std::string& padding_algorithm,
-                     const std::vector<int>& dilations,
+                     const std::vector<int>& dilations_in,
                      int groups,
                      const std::string& data_format,
                      bool is_test,
                      phi::DenseTensor* filter_grad,
-                     phi::DenseTensor* in_x_grad)
+                     phi::DenseTensor* in_x_grad,
+                     const std::string& unique_name)
       : funcs::OneDNNHandlerT<T,
                               dnnl::convolution_forward,
                               dnnl::convolution_backward_data,
@@ -255,7 +252,8 @@ class ConvOneDNNHandlerT
             dev_ctx,
             dev_ctx.GetEngine(),
             cpu_place,
-            funcs::CreateKey(dev_ctx, phi::vectorize(in->dims()))) {
+            funcs::CreateKey(
+                dev_ctx, phi::vectorize(in->dims()), unique_name)) {
     if (unlikely(!this->isBwdCached())) {
       PADDLE_ENFORCE_EQ(
           in->layout(),
@@ -287,9 +285,9 @@ class ConvOneDNNHandlerT
           phi::errors::InvalidArgument(
               "is_test attribute should be set to False in training phase."));
 
-      std::vector<int64_t> strides(begin(strides), end(strides));
-      std::vector<int64_t> paddings(begin(paddings), end(paddings));
-      std::vector<int64_t> dilations(begin(dilations), end(dilations));
+      std::vector<int64_t> strides(begin(strides_in), end(strides_in));
+      std::vector<int64_t> paddings(begin(paddings_in), end(paddings_in));
+      std::vector<int64_t> dilations(begin(dilations_in), end(dilations_in));
 
       auto input_dims = in->dims();
       auto data_dims = phi::slice_ddim(input_dims, 2, input_dims.size());
@@ -408,6 +406,7 @@ class ConvOneDNNHandlerT
 
     // Scales for int8 bias are to be cached to avoid
     // computing them each iteration
+    groups = std::max(groups, 1);
     auto bias_scale_tuple =
         std::static_pointer_cast<std::tuple<float, std::vector<float>>>(
             this->dev_ctx_.GetBlob(key_bs));
@@ -711,7 +710,6 @@ class ConvOneDNNHandlerT
         LOG(ERROR) << "Bias should be of type int32 but is " << bias->dtype();
       }
       const K_Bias* bias_data = bias->data<K_Bias>();
-
       return this->AcquireMemoryWithReorder(
           bias->mem_desc(),
           this->fwd_pd_->bias_desc(),

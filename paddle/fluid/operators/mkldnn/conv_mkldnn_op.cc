@@ -1184,20 +1184,6 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(conv2d,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::ConvMKLDNNOpKernel<float>,
-                   ops::ConvMKLDNNOpKernel<paddle::platform::bfloat16>,
-                   ops::ConvMKLDNNOpKernel<uint8_t>,
-                   ops::ConvMKLDNNOpKernel<int8_t>);
-
-REGISTER_OP_KERNEL(conv2d_grad,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::ConvMKLDNNGradOpKernel<float>,
-                   ops::ConvMKLDNNGradOpKernel<paddle::platform::bfloat16>);
-
 REGISTER_OP_KERNEL(depthwise_conv2d,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,

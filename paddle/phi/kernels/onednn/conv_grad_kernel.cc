@@ -56,7 +56,6 @@ void ConvGradKernel(const Context& dev_ctx,
                     phi::errors::PreconditionNotMet(
                         "Operator DNNL ConvGrad must use CPUPlace"));
   const auto& mkldnn_engine = dev_ctx.GetEngine();
-
   VLOG(1) << "ConvGrad Has is_test " << dev_ctx.HasDnnAttr("is_test");
 
   const auto* bias =
@@ -66,6 +65,9 @@ void ConvGradKernel(const Context& dev_ctx,
                      : false;
 
   if (!input_grad && !filter_grad) return;
+
+  const std::string& unique_name =
+      dev_ctx.GetInputsName("Input")[0] + dev_ctx.GetInputsName("Filter")[0];
 
   PD_VISIT_FLOAT_AND_BF16_TYPES(
       filter.dtype(), "ConvOneDNNHandlerT", ([&] {
@@ -84,7 +86,8 @@ void ConvGradKernel(const Context& dev_ctx,
                                                          data_format,
                                                          is_test,
                                                          filter_grad,
-                                                         input_grad);
+                                                         input_grad,
+                                                         unique_name);
 
         // create mkldnn memory from input tensors (data/weights)
         auto& astream = OneDNNContext::tls().get_stream();
