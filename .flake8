@@ -16,12 +16,10 @@ exclude =
     ./python/paddle/fluid/tests/unittests/mlu/**
 ignore =
     # E, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-    E121,E122,E123,E125,E126,E127,E128,E129,E131,
-    E201,E202,E203,E225,E226,E228,E231,E241,E251,E261,E262,E265,E266,E271,E272,
-    E301,E302,E303,E305,
+    E203,E231,E262,E265,E266,
     E401,E402,
-    E501,E502,
-    E701,E711,E712,E721,E722,E731,E741,
+    E501,
+    E711,E712,E721,E722,E731,E741,
 
     # F, see https://flake8.pycqa.org/en/latest/user/error-codes.html
     F405,
@@ -29,7 +27,7 @@ ignore =
     F811,F821,F841,
 
     # W, see https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-    W503,W504
+    W503
 per-file-ignores =
     # These files need tabs for testing.
     python/paddle/fluid/tests/unittests/dygraph_to_static/test_error.py:E101,W191
