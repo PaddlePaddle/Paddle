@@ -19,7 +19,6 @@ import test_collective_api_base as test_base
 
 
 class TestCollectiveScatterAPI(test_base.TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
@@ -32,9 +31,9 @@ class TestCollectiveScatterAPI(test_base.TestCollectiveAPIRunnerBase):
                 if rank == 0:
                     dist.scatter(subdata1, src=1)
                 else:
-                    dist.scatter(subdata1,
-                                 tensor_list=[subdata1, subdata2],
-                                 src=1)
+                    dist.scatter(
+                        subdata1, tensor_list=[subdata1, subdata2], src=1
+                    )
                 return [subdata1.cast("float32").numpy()]
             else:
                 tindata = paddle.to_tensor(indata)
@@ -42,9 +41,9 @@ class TestCollectiveScatterAPI(test_base.TestCollectiveAPIRunnerBase):
                 if rank == 0:
                     dist.scatter(subdata1, src=1)
                 else:
-                    dist.scatter(subdata1,
-                                 tensor_list=[subdata1, subdata2],
-                                 src=1)
+                    dist.scatter(
+                        subdata1, tensor_list=[subdata1, subdata2], src=1
+                    )
                 return [subdata1.numpy()]
 
 

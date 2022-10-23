@@ -22,12 +22,10 @@ import unittest
 
 
 class TrtConvertMatmulTest_static(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -47,48 +45,55 @@ class TrtConvertMatmulTest_static(TrtLayerAutoScanTest):
                         input1_shape = [batch, 32, 6]
                         input2_shape = [batch, 6, 11]
                     for alpha in [0.3, 1.0]:
-                        dics = [{
-                            "transpose_X": trans_x,
-                            "transpose_Y": trans_y,
-                            "alpha": alpha,
-                            "fused_reshape_X": [],
-                            "fused_reshape_Y": [],
-                            "fused_transpose_X": [],
-                            "fused_transpose_Y": [],
-                            "fused_reshape_Out": [],
-                            "fused_transpose_Out": []
-                        }]
-                        ops_config = [{
-                            "op_type": "matmul",
-                            "op_inputs": {
-                                "X": ["input1_data"],
-                                "Y": ["input2_data"]
-                            },
-                            "op_outputs": {
-                                "Out": ["output_data"]
-                            },
-                            "op_attrs": dics[0]
-                        }]
+                        dics = [
+                            {
+                                "transpose_X": trans_x,
+                                "transpose_Y": trans_y,
+                                "alpha": alpha,
+                                "fused_reshape_X": [],
+                                "fused_reshape_Y": [],
+                                "fused_transpose_X": [],
+                                "fused_transpose_Y": [],
+                                "fused_reshape_Out": [],
+                                "fused_transpose_Out": [],
+                            }
+                        ]
+                        ops_config = [
+                            {
+                                "op_type": "matmul",
+                                "op_inputs": {
+                                    "X": ["input1_data"],
+                                    "Y": ["input2_data"],
+                                },
+                                "op_outputs": {"Out": ["output_data"]},
+                                "op_attrs": dics[0],
+                            }
+                        ]
                         ops = self.generate_op_config(ops_config)
 
                         program_config = ProgramConfig(
                             ops=ops,
                             weights={},
                             inputs={
-                                "input1_data":
-                                TensorConfig(data_gen=partial(
-                                    generate_input, input1_shape)),
-                                "input2_data":
-                                TensorConfig(data_gen=partial(
-                                    generate_input, input2_shape))
+                                "input1_data": TensorConfig(
+                                    data_gen=partial(
+                                        generate_input, input1_shape
+                                    )
+                                ),
+                                "input2_data": TensorConfig(
+                                    data_gen=partial(
+                                        generate_input, input2_shape
+                                    )
+                                ),
                             },
-                            outputs=["output_data"])
+                            outputs=["output_data"],
+                        )
 
                         yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             pass
 
@@ -109,12 +114,10 @@ class TrtConvertMatmulTest_static(TrtLayerAutoScanTest):
 
 
 class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -133,60 +136,63 @@ class TrtConvertMatmulTest_dynamic(TrtLayerAutoScanTest):
                 #     input1_shape = [batch, 32, 6]
                 #     input2_shape = [batch, 6, 11]
                 for alpha in [0.3, 1.0]:
-                    dics = [{
-                        "transpose_X": trans_x,
-                        "transpose_Y": trans_y,
-                        "alpha": alpha,
-                        "fused_reshape_X": [],
-                        "fused_reshape_Y": [],
-                        "fused_transpose_X": [],
-                        "fused_transpose_Y": [],
-                        "fused_reshape_Out": [],
-                        "fused_transpose_Out": []
-                    }]
-                    ops_config = [{
-                        "op_type": "matmul",
-                        "op_inputs": {
-                            "X": ["input1_data"],
-                            "Y": ["input2_data"]
-                        },
-                        "op_outputs": {
-                            "Out": ["output_data"]
-                        },
-                        "op_attrs": dics[0]
-                    }]
+                    dics = [
+                        {
+                            "transpose_X": trans_x,
+                            "transpose_Y": trans_y,
+                            "alpha": alpha,
+                            "fused_reshape_X": [],
+                            "fused_reshape_Y": [],
+                            "fused_transpose_X": [],
+                            "fused_transpose_Y": [],
+                            "fused_reshape_Out": [],
+                            "fused_transpose_Out": [],
+                        }
+                    ]
+                    ops_config = [
+                        {
+                            "op_type": "matmul",
+                            "op_inputs": {
+                                "X": ["input1_data"],
+                                "Y": ["input2_data"],
+                            },
+                            "op_outputs": {"Out": ["output_data"]},
+                            "op_attrs": dics[0],
+                        }
+                    ]
                     ops = self.generate_op_config(ops_config)
 
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
-                            "input1_data":
-                            TensorConfig(
-                                data_gen=partial(generate_input, input1_shape)),
-                            "input2_data":
-                            TensorConfig(
-                                data_gen=partial(generate_input, input2_shape))
+                            "input1_data": TensorConfig(
+                                data_gen=partial(generate_input, input1_shape)
+                            ),
+                            "input2_data": TensorConfig(
+                                data_gen=partial(generate_input, input2_shape)
+                            ),
                         },
-                        outputs=["output_data"])
+                        outputs=["output_data"],
+                    )
 
                     yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input1_data": [1, 4, 4],
-                "input2_data": [1, 4, 4]
+                "input2_data": [1, 4, 4],
             }
             self.dynamic_shape.max_input_shape = {
                 "input1_data": [16, 4, 4],
-                "input2_data": [16, 4, 4]
+                "input2_data": [16, 4, 4],
             }
             self.dynamic_shape.opt_input_shape = {
                 "input1_data": [8, 4, 4],
-                "input2_data": [8, 4, 4]
+                "input2_data": [8, 4, 4],
             }
 
         attrs = [

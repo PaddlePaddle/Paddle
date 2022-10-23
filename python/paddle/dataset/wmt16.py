@@ -37,7 +37,7 @@ import paddle.utils.deprecated as deprecated
 
 __all__ = []
 
-DATA_URL = ("http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz")
+DATA_URL = "http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz"
 DATA_MD5 = "0c38be43600334966403524a40dcd81e"
 
 TOTAL_EN_WORDS = 11250
@@ -54,7 +54,8 @@ def __build_dict(tar_file, dict_size, save_path, lang):
         for line in f.extractfile("wmt16/train"):
             line = line.decode()
             line_split = line.strip().split("\t")
-            if len(line_split) != 2: continue
+            if len(line_split) != 2:
+                continue
             sen = line_split[0] if lang == "en" else line_split[1]
             for w in sen.split():
                 word_dict[w] += 1
@@ -62,17 +63,21 @@ def __build_dict(tar_file, dict_size, save_path, lang):
     with open(save_path, "wb") as fout:
         fout.write(("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)).encode())
         for idx, word in enumerate(
-                sorted(word_dict.items(), key=lambda x: x[1], reverse=True)):
-            if idx + 3 == dict_size: break
+            sorted(word_dict.items(), key=lambda x: x[1], reverse=True)
+        ):
+            if idx + 3 == dict_size:
+                break
             fout.write(word[0].encode())
             fout.write(b'\n')
 
 
 def __load_dict(tar_file, dict_size, lang, reverse=False):
-    dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
-                             "wmt16/%s_%d.dict" % (lang, dict_size))
-    if not os.path.exists(dict_path) or (len(open(dict_path, "rb").readlines())
-                                         != dict_size):
+    dict_path = os.path.join(
+        paddle.dataset.common.DATA_HOME, "wmt16/%s_%d.dict" % (lang, dict_size)
+    )
+    if not os.path.exists(dict_path) or (
+        len(open(dict_path, "rb").readlines()) != dict_size
+    ):
         __build_dict(tar_file, dict_size, dict_path, lang)
 
     word_dict = {}
@@ -87,18 +92,20 @@ def __load_dict(tar_file, dict_size, lang, reverse=False):
 
 def __get_dict_size(src_dict_size, trg_dict_size, src_lang):
     src_dict_size = min(
-        src_dict_size, (TOTAL_EN_WORDS if src_lang == "en" else TOTAL_DE_WORDS))
+        src_dict_size, (TOTAL_EN_WORDS if src_lang == "en" else TOTAL_DE_WORDS)
+    )
     trg_dict_size = min(
-        trg_dict_size, (TOTAL_DE_WORDS if src_lang == "en" else TOTAL_EN_WORDS))
+        trg_dict_size, (TOTAL_DE_WORDS if src_lang == "en" else TOTAL_EN_WORDS)
+    )
     return src_dict_size, trg_dict_size
 
 
 def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
-
     def reader():
         src_dict = __load_dict(tar_file, src_dict_size, src_lang)
-        trg_dict = __load_dict(tar_file, trg_dict_size,
-                               ("de" if src_lang == "en" else "en"))
+        trg_dict = __load_dict(
+            tar_file, trg_dict_size, ("de" if src_lang == "en" else "en")
+        )
 
         # the index for start mark, end mark, and unk are the same in source
         # language and target language. Here uses the source language
@@ -117,9 +124,11 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
                 if len(line_split) != 2:
                     continue
                 src_words = line_split[src_col].split()
-                src_ids = [start_id
-                           ] + [src_dict.get(w, unk_id)
-                                for w in src_words] + [end_id]
+                src_ids = (
+                    [start_id]
+                    + [src_dict.get(w, unk_id) for w in src_words]
+                    + [end_id]
+                )
 
                 trg_words = line_split[trg_col].split()
                 trg_ids = [trg_dict.get(w, unk_id) for w in trg_words]
@@ -136,7 +145,8 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
     since="2.0.0",
     update_to="paddle.text.datasets.WMT16",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def train(src_dict_size, trg_dict_size, src_lang="en"):
     """
     WMT16 train set reader.
@@ -172,24 +182,31 @@ def train(src_dict_size, trg_dict_size, src_lang="en"):
     """
 
     if src_lang not in ["en", "de"]:
-        raise ValueError("An error language type.  Only support: "
-                         "en (for English); de(for Germany).")
-    src_dict_size, trg_dict_size = __get_dict_size(src_dict_size, trg_dict_size,
-                                                   src_lang)
+        raise ValueError(
+            "An error language type.  Only support: "
+            "en (for English); de(for Germany)."
+        )
+    src_dict_size, trg_dict_size = __get_dict_size(
+        src_dict_size, trg_dict_size, src_lang
+    )
 
-    return reader_creator(tar_file=paddle.dataset.common.download(
-        DATA_URL, "wmt16", DATA_MD5, "wmt16.tar.gz"),
-                          file_name="wmt16/train",
-                          src_dict_size=src_dict_size,
-                          trg_dict_size=trg_dict_size,
-                          src_lang=src_lang)
+    return reader_creator(
+        tar_file=paddle.dataset.common.download(
+            DATA_URL, "wmt16", DATA_MD5, "wmt16.tar.gz"
+        ),
+        file_name="wmt16/train",
+        src_dict_size=src_dict_size,
+        trg_dict_size=trg_dict_size,
+        src_lang=src_lang,
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT16",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def test(src_dict_size, trg_dict_size, src_lang="en"):
     """
     WMT16 test set reader.
@@ -224,25 +241,32 @@ def test(src_dict_size, trg_dict_size, src_lang="en"):
     """
 
     if src_lang not in ["en", "de"]:
-        raise ValueError("An error language type. "
-                         "Only support: en (for English); de(for Germany).")
+        raise ValueError(
+            "An error language type. "
+            "Only support: en (for English); de(for Germany)."
+        )
 
-    src_dict_size, trg_dict_size = __get_dict_size(src_dict_size, trg_dict_size,
-                                                   src_lang)
+    src_dict_size, trg_dict_size = __get_dict_size(
+        src_dict_size, trg_dict_size, src_lang
+    )
 
-    return reader_creator(tar_file=paddle.dataset.common.download(
-        DATA_URL, "wmt16", DATA_MD5, "wmt16.tar.gz"),
-                          file_name="wmt16/test",
-                          src_dict_size=src_dict_size,
-                          trg_dict_size=trg_dict_size,
-                          src_lang=src_lang)
+    return reader_creator(
+        tar_file=paddle.dataset.common.download(
+            DATA_URL, "wmt16", DATA_MD5, "wmt16.tar.gz"
+        ),
+        file_name="wmt16/test",
+        src_dict_size=src_dict_size,
+        trg_dict_size=trg_dict_size,
+        src_lang=src_lang,
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT16",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def validation(src_dict_size, trg_dict_size, src_lang="en"):
     """
     WMT16 validation set reader.
@@ -276,24 +300,31 @@ def validation(src_dict_size, trg_dict_size, src_lang="en"):
         callable: The validation reader.
     """
     if src_lang not in ["en", "de"]:
-        raise ValueError("An error language type. "
-                         "Only support: en (for English); de(for Germany).")
-    src_dict_size, trg_dict_size = __get_dict_size(src_dict_size, trg_dict_size,
-                                                   src_lang)
+        raise ValueError(
+            "An error language type. "
+            "Only support: en (for English); de(for Germany)."
+        )
+    src_dict_size, trg_dict_size = __get_dict_size(
+        src_dict_size, trg_dict_size, src_lang
+    )
 
-    return reader_creator(tar_file=paddle.dataset.common.download(
-        DATA_URL, "wmt16", DATA_MD5, "wmt16.tar.gz"),
-                          file_name="wmt16/val",
-                          src_dict_size=src_dict_size,
-                          trg_dict_size=trg_dict_size,
-                          src_lang=src_lang)
+    return reader_creator(
+        tar_file=paddle.dataset.common.download(
+            DATA_URL, "wmt16", DATA_MD5, "wmt16.tar.gz"
+        ),
+        file_name="wmt16/val",
+        src_dict_size=src_dict_size,
+        trg_dict_size=trg_dict_size,
+        src_lang=src_lang,
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT16",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def get_dict(lang, dict_size, reverse=False):
     """
     return the word dictionary for the specified language.
@@ -312,11 +343,14 @@ def get_dict(lang, dict_size, reverse=False):
         dict: The word dictionary for the specific language.
     """
 
-    if lang == "en": dict_size = min(dict_size, TOTAL_EN_WORDS)
-    else: dict_size = min(dict_size, TOTAL_DE_WORDS)
+    if lang == "en":
+        dict_size = min(dict_size, TOTAL_EN_WORDS)
+    else:
+        dict_size = min(dict_size, TOTAL_DE_WORDS)
 
-    dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
-                             "wmt16/%s_%d.dict" % (lang, dict_size))
+    dict_path = os.path.join(
+        paddle.dataset.common.DATA_HOME, "wmt16/%s_%d.dict" % (lang, dict_size)
+    )
     assert os.path.exists(dict_path), "Word dictionary does not exist. "
     "Please invoke paddle.dataset.wmt16.train/test/validation first "
     "to build the dictionary."
@@ -328,9 +362,10 @@ def get_dict(lang, dict_size, reverse=False):
     since="2.0.0",
     update_to="paddle.text.datasets.WMT16",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def fetch():
-    """download the entire dataset.
-    """
-    paddle.v4.dataset.common.download(DATA_URL, "wmt16", DATA_MD5,
-                                      "wmt16.tar.gz")
+    """download the entire dataset."""
+    paddle.v4.dataset.common.download(
+        DATA_URL, "wmt16", DATA_MD5, "wmt16.tar.gz"
+    )

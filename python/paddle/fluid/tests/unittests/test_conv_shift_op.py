@@ -29,7 +29,6 @@ def conv_shift_forward(x, y):
 
 
 class TestConvShiftOp(OpTest):
-
     def setUp(self):
         self.op_type = "conv_shift"
 

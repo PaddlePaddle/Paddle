@@ -42,7 +42,6 @@ dim_feedforward = 4 * d_model
 
 
 class EmbeddingNet(Layer):
-
     def __init__(self):
         super(EmbeddingNet, self).__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
@@ -56,7 +55,6 @@ class EmbeddingNet(Layer):
 
 
 class TransformerNet(Layer):
-
     def __init__(self):
         super(TransformerNet, self).__init__()
         self.linear1 = nn.Linear(d_model, dim_feedforward)
@@ -72,7 +70,9 @@ class TransformerNet(Layer):
         q = self.q_proj(x)
         k = self.k_proj(x)
         v = self.v_proj(x)
-        product = layers.matmul(x=q, y=k, transpose_y=True, alpha=d_model**-0.5)
+        product = layers.matmul(
+            x=q, y=k, transpose_y=True, alpha=d_model**-0.5
+        )
         weights = F.softmax(product)
 
         weights = F.dropout(weights, 0.2)
@@ -86,20 +86,17 @@ class TransformerNet(Layer):
 
 
 class EmbeddingPipe(EmbeddingNet):
-
     def forward(self, x):
         return super().forward(x)
 
 
 class TransformerNetPipe(TransformerNet):
-
     def forward(self, x):
         output = super().forward(x)
         return output
 
 
 class CriterionPipe(Layer):
-
     def __init__(self):
         super(CriterionPipe, self).__init__()
 
@@ -109,7 +106,6 @@ class CriterionPipe(Layer):
 
 
 class ModelPipe(PipelineLayer):
-
     def __init__(self, hcg):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
@@ -118,20 +114,21 @@ class ModelPipe(PipelineLayer):
         for x in range(2):
             self.descs.append(LayerDesc(TransformerNetPipe))
 
-        super().__init__(layers=self.descs,
-                         loss_fn=CriterionPipe(),
-                         topology=self.hcg.topology(),
-                         seg_method="layer:TransformerNetPipe",
-                         recompute_interval=1,
-                         recompute_ctx={
-                             "mp_group": self.hcg.get_model_parallel_group(),
-                             "offload": False,
-                             "partition": False
-                         })
+        super().__init__(
+            layers=self.descs,
+            loss_fn=CriterionPipe(),
+            topology=self.hcg.topology(),
+            seg_method="layer:TransformerNetPipe",
+            recompute_interval=1,
+            recompute_ctx={
+                "mp_group": self.hcg.get_model_parallel_group(),
+                "offload": False,
+                "partition": False,
+            },
+        )
 
 
 class TestDistPPTraning(unittest.TestCase):
-
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -144,7 +141,7 @@ class TestDistPPTraning(unittest.TestCase):
         }
         strategy.pipeline_configs = {
             "accumulate_steps": batch_size // micro_batch_size,
-            "micro_batch_size": micro_batch_size
+            "micro_batch_size": micro_batch_size,
         }
         fleet.init(is_collective=True, strategy=strategy)
 
@@ -158,11 +155,12 @@ class TestDistPPTraning(unittest.TestCase):
         set_random_seed(1024, dp_id, rank_id)
 
         model = ModelPipe(hcg)
-        scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
-                                                       values=[0.001, 0.002],
-                                                       verbose=True)
-        optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
-                                         parameters=model.parameters())
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2], values=[0.001, 0.002], verbose=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=scheduler, parameters=model.parameters()
+        )
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)

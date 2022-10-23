@@ -19,12 +19,15 @@ from simple_nets import simple_fc_net, init_data
 
 
 class TestMNIST(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.save_dirname = "./"
-        cls.model_filename = "test_parallel_executor_run_load_infer_program_model"
-        cls.params_filename = "test_parallel_executor_run_load_infer_program_parameter"
+        cls.model_filename = (
+            "test_parallel_executor_run_load_infer_program_model"
+        )
+        cls.params_filename = (
+            "test_parallel_executor_run_load_infer_program_parameter"
+        )
         cls.place = fluid.CPUPlace()
         cls.exe = fluid.Executor(cls.place)
         img, label = init_data()
@@ -35,22 +38,30 @@ class TestMNIST(unittest.TestCase):
     def test_simple_fc(self):
         exe_loss = self.run_with_executor()
 
-        [inference_program, feed_target_names,
-         fetch_targets] = fluid.io.load_inference_model(self.save_dirname,
-                                                        self.exe,
-                                                        self.model_filename,
-                                                        self.params_filename)
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = fluid.io.load_inference_model(
+            self.save_dirname,
+            self.exe,
+            self.model_filename,
+            self.params_filename,
+        )
 
-        train_exe = fluid.ParallelExecutor(use_cuda=False,
-                                           main_program=inference_program)
+        train_exe = fluid.ParallelExecutor(
+            use_cuda=False, main_program=inference_program
+        )
         feed_vars = [
             inference_program.global_block().var(var_name)
             for var_name in ["image", "label"]
         ]
         feeder = fluid.DataFeeder(place=self.place, feed_list=feed_vars)
 
-        pe_loss = train_exe.run(feed=feeder.feed(self.batch_data),
-                                fetch_list=[fetch_targets[0].name])
+        pe_loss = train_exe.run(
+            feed=feeder.feed(self.batch_data),
+            fetch_list=[fetch_targets[0].name],
+        )
         assert exe_loss == pe_loss
 
     def run_with_executor(self):
@@ -60,23 +71,25 @@ class TestMNIST(unittest.TestCase):
             loss = simple_fc_net()
 
         feed_vars = [
-            main.global_block().var(var_name)
-            for var_name in ["image", "label"]
+            main.global_block().var(var_name) for var_name in ["image", "label"]
         ]
         feeder = fluid.DataFeeder(place=self.place, feed_list=feed_vars)
 
         self.exe.run(startup)
 
-        loss_data = self.exe.run(main,
-                                 feed=feeder.feed(self.batch_data),
-                                 fetch_list=[loss.name])
+        loss_data = self.exe.run(
+            main, feed=feeder.feed(self.batch_data), fetch_list=[loss.name]
+        )
 
-        fluid.io.save_inference_model(self.save_dirname, ["image", "label"],
-                                      [loss],
-                                      self.exe,
-                                      model_filename=self.model_filename,
-                                      params_filename=self.params_filename,
-                                      main_program=main)
+        fluid.io.save_inference_model(
+            self.save_dirname,
+            ["image", "label"],
+            [loss],
+            self.exe,
+            model_filename=self.model_filename,
+            params_filename=self.params_filename,
+            main_program=main,
+        )
 
         return loss_data
 
