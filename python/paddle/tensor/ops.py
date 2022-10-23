@@ -489,7 +489,8 @@ Examples:
 
 
 def exp(x, name=None):
-    r"""
+    """
+
     Computes exp of x element-wise with a natural number `e` as the base.
 
     .. math::
@@ -500,16 +501,17 @@ def exp(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Output of Exp operator, a Tensor with shape same as input.
+        Tensor. Output of Exp operator, a Tensor with shape same as input.
+
     Examples:
         .. code-block:: python
 
-        import paddle
+            import paddle
 
-        x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        out = paddle.exp(x)
-        print(out)
-        # [0.67032005 0.81873075 1.10517092 1.34985881]
+            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            out = paddle.exp(x)
+            print(out)
+            # [0.67032005 0.81873075 1.10517092 1.34985881]
 
     """
     if in_dygraph_mode():
