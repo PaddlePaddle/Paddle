@@ -29,8 +29,9 @@ class TestSparseLoadProgramAdagrad(TestSparseLoadProgram):
         with fluid.scope_guard(scope):
             with fluid.program_guard(train_program, startup_program):
                 optimizer = fluid.optimizer.Adam(1e-3)
-                optimizer = fleet.distributed_optimizer(optimizer,
-                                                        self.strategy)
+                optimizer = fleet.distributed_optimizer(
+                    optimizer, self.strategy
+                )
                 optimizer.minimize(loss)
                 fleet.init_server()
 

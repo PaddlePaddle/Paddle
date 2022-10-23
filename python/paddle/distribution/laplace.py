@@ -55,7 +55,8 @@ class Laplace(distribution.Distribution):
     def __init__(self, loc, scale):
         if not isinstance(loc, (numbers.Real, framework.Variable)):
             raise TypeError(
-                f"Expected type of loc is Real|Variable, but got {type(loc)}")
+                f"Expected type of loc is Real|Variable, but got {type(loc)}"
+            )
 
         if not isinstance(scale, (numbers.Real, framework.Variable)):
             raise TypeError(
@@ -68,8 +69,9 @@ class Laplace(distribution.Distribution):
         if isinstance(scale, numbers.Real):
             scale = paddle.full(shape=(), fill_value=scale)
 
-        if (len(scale.shape) > 0 or len(loc.shape) > 0) and (loc.dtype
-                                                             == scale.dtype):
+        if (len(scale.shape) > 0 or len(loc.shape) > 0) and (
+            loc.dtype == scale.dtype
+        ):
             self.loc, self.scale = paddle.broadcast_tensors([loc, scale])
         else:
             self.loc, self.scale = loc, scale
@@ -105,7 +107,7 @@ class Laplace(distribution.Distribution):
 
     @property
     def variance(self):
-        """Variance of distribution.
+        r"""Variance of distribution.
 
         The variance is
 
@@ -135,10 +137,14 @@ class Laplace(distribution.Distribution):
             value = paddle.full(shape=(), fill_value=value)
         if value.dtype != self.scale.dtype:
             value = paddle.cast(value, self.scale.dtype)
-        if len(self.scale.shape) > 0 or len(self.loc.shape) > 0 or len(
-                value.shape) > 0:
+        if (
+            len(self.scale.shape) > 0
+            or len(self.loc.shape) > 0
+            or len(value.shape) > 0
+        ):
             loc, scale, value = paddle.broadcast_tensors(
-                [self.loc, self.scale, value])
+                [self.loc, self.scale, value]
+            )
         else:
             loc, scale = self.loc, self.scale
 
@@ -178,7 +184,7 @@ class Laplace(distribution.Distribution):
         loc, scale, value = self._validate_value(value)
         log_scale = -paddle.log(2 * scale)
 
-        return (log_scale - paddle.abs(value - loc) / scale)
+        return log_scale - paddle.abs(value - loc) / scale
 
     def entropy(self):
         r"""Entropy of Laplace distribution.
@@ -238,8 +244,11 @@ class Laplace(distribution.Distribution):
                             # [0.54758132])
         """
         loc, scale, value = self._validate_value(value)
-        iterm = (0.5 * (value - loc).sign() *
-                 paddle.expm1(-(value - loc).abs() / scale))
+        iterm = (
+            0.5
+            * (value - loc).sign()
+            * paddle.expm1(-(value - loc).abs() / scale)
+        )
 
         return 0.5 - iterm
 
@@ -276,7 +285,7 @@ class Laplace(distribution.Distribution):
         loc, scale, value = self._validate_value(value)
         term = value - 0.5
 
-        return (loc - scale * (term).sign() * paddle.log1p(-2 * term.abs()))
+        return loc - scale * (term).sign() * paddle.log1p(-2 * term.abs())
 
     def sample(self, shape=()):
         r"""Generate samples of the specified shape.
@@ -299,7 +308,8 @@ class Laplace(distribution.Distribution):
         """
         if not isinstance(shape, tuple):
             raise TypeError(
-                f'Expected shape should be tuple[int], but got {type(shape)}')
+                f'Expected shape should be tuple[int], but got {type(shape)}'
+            )
 
         with paddle.no_grad():
             return self.rsample(shape)
@@ -325,19 +335,22 @@ class Laplace(distribution.Distribution):
         """
 
         eps = self._get_eps()
-        shape = self._extend_shape(shape) or (1, )
-        uniform = paddle.uniform(shape=shape,
-                                 min=float(np.nextafter(-1, 1)) + eps / 2,
-                                 max=1. - eps / 2,
-                                 dtype=self.loc.dtype)
+        shape = self._extend_shape(shape) or (1,)
+        uniform = paddle.uniform(
+            shape=shape,
+            min=float(np.nextafter(-1, 1)) + eps / 2,
+            max=1.0 - eps / 2,
+            dtype=self.loc.dtype,
+        )
 
         if len(self.scale.shape) == 0 and len(self.loc.shape) == 0:
             loc, scale, uniform = paddle.broadcast_tensors(
-                [self.loc, self.scale, uniform])
+                [self.loc, self.scale, uniform]
+            )
         else:
             loc, scale = self.loc, self.scale
 
-        return (loc - scale * uniform.sign() * paddle.log1p(-uniform.abs()))
+        return loc - scale * uniform.sign() * paddle.log1p(-uniform.abs())
 
     def _get_eps(self):
         """
@@ -351,8 +364,10 @@ class Laplace(distribution.Distribution):
             Float: An eps value by different data types.
         """
         eps = 1.19209e-07
-        if (self.loc.dtype == paddle.float64
-                or self.loc.dtype == paddle.complex128):
+        if (
+            self.loc.dtype == paddle.float64
+            or self.loc.dtype == paddle.complex128
+        ):
             eps = 2.22045e-16
 
         return eps
@@ -400,7 +415,7 @@ class Laplace(distribution.Distribution):
 
         var_ratio = other.scale / self.scale
         t = paddle.abs(self.loc - other.loc)
-        term1 = ((self.scale * paddle.exp(-t / self.scale) + t) / other.scale)
+        term1 = (self.scale * paddle.exp(-t / self.scale) + t) / other.scale
         term2 = paddle.log(var_ratio)
 
         return term1 + term2 - 1

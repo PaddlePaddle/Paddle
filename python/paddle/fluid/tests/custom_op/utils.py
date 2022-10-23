@@ -26,7 +26,7 @@ site_packages_path = get_python_lib()
 # PaddlePaddle whl. So here we specific `include_dirs` to avoid errors in CI.
 paddle_includes = [
     os.path.join(site_packages_path, 'paddle', 'include'),
-    os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
+    os.path.join(site_packages_path, 'paddle', 'include', 'third_party'),
 ]
 
 # Test for extra compile args

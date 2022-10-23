@@ -21,7 +21,6 @@ import hypothesis.strategies as st
 
 
 class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
-
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
         matmul_as_x = draw(st.booleans())
@@ -49,26 +48,24 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
                 shape_out = [batch_size, channel, input_dim_X, input_dim_Y]
                 return np.random.random(shape_out).astype(np.float32)
 
-        matmul_op = OpConfig(type='matmul_v2',
-                             inputs={
-                                 'X': ['matmul_X'],
-                                 'Y': ['matmul_Y']
-                             },
-                             outputs={'Out': ['matmul_output']},
-                             attrs={'use_mkldnn': True})
+        matmul_op = OpConfig(
+            type='matmul_v2',
+            inputs={'X': ['matmul_X'], 'Y': ['matmul_Y']},
+            outputs={'Out': ['matmul_output']},
+            attrs={'use_mkldnn': True},
+        )
 
         if matmul_as_x:
             inputs = {'X': ['matmul_output'], 'Y': ['elementwise_addend']}
         else:
             inputs = {'X': ['elementwise_addend'], 'Y': ['matmul_output']}
 
-        elt_add_op = OpConfig(type='elementwise_add',
-                              inputs=inputs,
-                              outputs={'Out': ['elementwise_add_output']},
-                              attrs={
-                                  'axis': axis,
-                                  'use_mkldnn': True
-                              })
+        elt_add_op = OpConfig(
+            type='elementwise_add',
+            inputs=inputs,
+            outputs={'Out': ['elementwise_add_output']},
+            attrs={'axis': axis, 'use_mkldnn': True},
+        )
 
         model_net = [matmul_op, elt_add_op]
 
@@ -76,14 +73,14 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
             ops=model_net,
             weights={},
             inputs={
-                'matmul_X':
-                TensorConfig(data_gen=partial(generate_input, 'X')),
-                'matmul_Y':
-                TensorConfig(data_gen=partial(generate_input, 'Y')),
-                'elementwise_addend':
-                TensorConfig(data_gen=partial(generate_input, 'ElAdd'))
+                'matmul_X': TensorConfig(data_gen=partial(generate_input, 'X')),
+                'matmul_Y': TensorConfig(data_gen=partial(generate_input, 'Y')),
+                'elementwise_addend': TensorConfig(
+                    data_gen=partial(generate_input, 'ElAdd')
+                ),
             },
-            outputs=['elementwise_add_output'])
+            outputs=['elementwise_add_output'],
+        )
 
         return program_config
 
@@ -92,9 +89,11 @@ class TestMatmulV2ElementwiseAddMkldnnFusePass(PassAutoScanTest):
         yield config, ['matmul_v2'], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            max_examples=30,
-                            passes=['matmul_elementwise_add_mkldnn_fuse_pass'])
+        self.run_and_statis(
+            quant=False,
+            max_examples=30,
+            passes=['matmul_elementwise_add_mkldnn_fuse_pass'],
+        )
 
 
 if __name__ == '__main__':

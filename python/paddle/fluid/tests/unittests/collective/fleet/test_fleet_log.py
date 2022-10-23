@@ -19,7 +19,6 @@ import unittest
 
 
 class TestFleetLog(unittest.TestCase):
-
     def setUp(self):
         fleet.init(log_level="DEBUG")
 

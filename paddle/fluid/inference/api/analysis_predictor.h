@@ -382,7 +382,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   void MkldnnPostReset();
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   ///
   /// \brief save calibration table
   ///

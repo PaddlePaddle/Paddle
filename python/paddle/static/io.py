@@ -17,7 +17,6 @@ import inspect
 import logging
 import os
 import warnings
-import six
 import numpy as np
 
 import paddle
@@ -38,9 +37,9 @@ from paddle.fluid.log_helper import get_logger
 
 __all__ = []
 
-_logger = get_logger(__name__,
-                     logging.INFO,
-                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
 
 
 def _check_args(caller, args, supported_args=None, deprecated_args=None):
@@ -49,12 +48,16 @@ def _check_args(caller, args, supported_args=None, deprecated_args=None):
     for arg in args:
         if arg in deprecated_args:
             raise ValueError(
-                "argument '{}' in function '{}' is deprecated, only {} are supported."
-                .format(arg, caller, supported_args))
+                "argument '{}' in function '{}' is deprecated, only {} are supported.".format(
+                    arg, caller, supported_args
+                )
+            )
         elif arg not in supported_args:
             raise ValueError(
-                "function '{}' doesn't support argument '{}',\n only {} are supported."
-                .format(caller, arg, supported_args))
+                "function '{}' doesn't support argument '{}',\n only {} are supported.".format(
+                    caller, arg, supported_args
+                )
+            )
 
 
 def _check_vars(name, var_list):
@@ -62,14 +65,15 @@ def _check_vars(name, var_list):
         var_list = [var_list]
     if not var_list or not all([isinstance(var, Variable) for var in var_list]):
         raise ValueError(
-            "'{}' should be a Variable or a list of Variable.".format(name))
+            "'{}' should be a Variable or a list of Variable.".format(name)
+        )
 
 
 def _normalize_path_prefix(path_prefix):
     """
     convert path_prefix to absolute path.
     """
-    if not isinstance(path_prefix, six.string_types):
+    if not isinstance(path_prefix, str):
         raise ValueError("'path_prefix' should be a string.")
     if path_prefix.endswith("/"):
         raise ValueError("'path_prefix' should not be a directory")
@@ -91,29 +95,35 @@ def _get_valid_program(program=None):
                 "The type of input program is invalid, expected tyep is Program, but received None"
             )
         warnings.warn(
-            "The input is a CompiledProgram, this is not recommended.")
+            "The input is a CompiledProgram, this is not recommended."
+        )
     if not isinstance(program, Program):
         raise TypeError(
             "The type of input program is invalid, expected type is fluid.Program, but received %s"
-            % type(program))
+            % type(program)
+        )
     return program
 
 
 def _clone_var_in_block(block, var):
     assert isinstance(var, Variable)
     if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
-        return block.create_var(name=var.name,
-                                shape=var.shape,
-                                dtype=var.dtype,
-                                type=var.type,
-                                lod_level=var.lod_level,
-                                persistable=True)
+        return block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            lod_level=var.lod_level,
+            persistable=True,
+        )
     else:
-        return block.create_var(name=var.name,
-                                shape=var.shape,
-                                dtype=var.dtype,
-                                type=var.type,
-                                persistable=True)
+        return block.create_var(
+            name=var.name,
+            shape=var.shape,
+            dtype=var.dtype,
+            type=var.type,
+            persistable=True,
+        )
 
 
 def normalize_program(program, feed_vars, fetch_vars):
@@ -156,18 +166,21 @@ def normalize_program(program, feed_vars, fetch_vars):
     """
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `fluid.Program`, but received `%s`" %
-            type(program))
+            "program type must be `fluid.Program`, but received `%s`"
+            % type(program)
+        )
     if not isinstance(feed_vars, list):
         feed_vars = [feed_vars]
     if not all(isinstance(v, Variable) for v in feed_vars):
         raise TypeError(
-            "feed_vars type must be a Variable or a list of Variable.")
+            "feed_vars type must be a Variable or a list of Variable."
+        )
     if not isinstance(fetch_vars, list):
         fetch_vars = [fetch_vars]
     if not all(isinstance(v, Variable) for v in fetch_vars):
         raise TypeError(
-            "fetch_vars type must be a Variable or a list of Variable.")
+            "fetch_vars type must be a Variable or a list of Variable."
+        )
 
     # remind users to set auc_states to 0 if auc op were found.
     for op in program.global_block().ops:
@@ -175,8 +188,10 @@ def normalize_program(program, feed_vars, fetch_vars):
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
         op._set_attr(device_attr_name, "")
         if op.type == 'auc':
-            warnings.warn("Be sure that you have set auc states to 0 "
-                          "before saving inference model.")
+            warnings.warn(
+                "Be sure that you have set auc states to 0 "
+                "before saving inference model."
+            )
             break
 
     # fix the bug that the activation op's output as target will be pruned.
@@ -186,9 +201,9 @@ def normalize_program(program, feed_vars, fetch_vars):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
             if var.dtype != paddle.bool:
-                var = layers.scale(var,
-                                   1.,
-                                   name="save_infer_model/scale_{}".format(i))
+                var = layers.scale(
+                    var, 1.0, name="save_infer_model/scale_{}".format(i)
+                )
             uniq_fetch_vars.append(var)
         fetch_vars = uniq_fetch_vars
 
@@ -206,7 +221,8 @@ def normalize_program(program, feed_vars, fetch_vars):
 
     feed_var_names = [var.name for var in feed_vars]
     copy_program = copy_program._prune_with_input(
-        feeded_var_names=feed_var_names, targets=fetch_vars)
+        feeded_var_names=feed_var_names, targets=fetch_vars
+    )
     copy_program = copy_program._inference_optimize(prune_read_op=True)
     fetch_var_names = [var.name for var in fetch_vars]
     prepend_feed_ops(copy_program, feed_var_names)
@@ -236,9 +252,11 @@ def is_persistable(var):
             param = fluid.default_main_program().global_block().var('fc.b')
             res = fluid.io.is_persistable(param)
     """
-    if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                    var.desc.type() == core.VarDesc.VarType.READER:
+    if (
+        var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH
+        or var.desc.type() == core.VarDesc.VarType.FETCH_LIST
+        or var.desc.type() == core.VarDesc.VarType.READER
+    ):
         return False
     return var.persistable
 
@@ -362,8 +380,10 @@ def _serialize_persistables(program, executor):
     vars_ = list(filter(is_persistable, program.list_vars()))
     # warn if no variable found in model
     if len(vars_) == 0:
-        warnings.warn("no variable in your model, please ensure there are any "
-                      "variables in your model to save")
+        warnings.warn(
+            "no variable in your model, please ensure there are any "
+            "variables in your model to save"
+        )
         return None
     # create a new program and clone persitable vars to it
     save_program = Program()
@@ -380,16 +400,16 @@ def _serialize_persistables(program, executor):
         in_vars.append(save_var_map[name])
 
     out_var_name = unique_name.generate("out_var")
-    out_var = save_block.create_var(type=core.VarDesc.VarType.RAW,
-                                    name=out_var_name)
+    out_var = save_block.create_var(
+        type=core.VarDesc.VarType.RAW, name=out_var_name
+    )
     out_var.desc.set_persistable(True)
-    save_block.append_op(type='save_combine',
-                         inputs={'X': in_vars},
-                         outputs={'Y': out_var},
-                         attrs={
-                             'file_path': '',
-                             'save_to_memory': True
-                         })
+    save_block.append_op(
+        type='save_combine',
+        inputs={'X': in_vars},
+        outputs={'Y': out_var},
+        attrs={'file_path': '', 'save_to_memory': True},
+    )
     # run save_program to save vars
     # NOTE(zhiqiu): save op will add variable kLookupTablePath to save_program.desc,
     # which leads to diff between save_program and its desc. Call _sync_with_cpp
@@ -436,8 +456,9 @@ def save_to_file(path, content):
 
 
 @static_only
-def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
-                         **kwargs):
+def save_inference_model(
+    path_prefix, feed_vars, fetch_vars, executor, **kwargs
+):
     """
     Save current model and its parameters to given path. i.e.
     Given path_prefix = "/path/to/modelname", after invoking
@@ -517,7 +538,8 @@ def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
     program = normalize_program(program, feed_vars, fetch_vars)
     # serialize and save program
     program_bytes = _serialize_program(
-        program._remove_training_info(clip_extra=clip_extra))
+        program._remove_training_info(clip_extra=clip_extra)
+    )
     save_to_file(model_path, program_bytes)
     # serialize and save params
     params_bytes = _serialize_persistables(program, executor)
@@ -567,8 +589,9 @@ def deserialize_program(data):
     """
     program = Program.parse_from_string(data)
     if not core._is_program_version_supported(program._version()):
-        raise ValueError("Unsupported program version: %d\n" %
-                         program._version())
+        raise ValueError(
+            "Unsupported program version: %d\n" % program._version()
+        )
     return program
 
 
@@ -617,8 +640,9 @@ def deserialize_persistables(program, data, executor):
     """
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `fluid.Program`, but received `%s`" %
-            type(program))
+            "program type must be `fluid.Program`, but received `%s`"
+            % type(program)
+        )
     # load params to a tmp program
     load_program = Program()
     load_block = load_program.global_block()
@@ -642,9 +666,9 @@ def deserialize_persistables(program, data, executor):
         load_var_map[var_copy.name] = var_copy
 
     if data is None:
-        assert len(
-            origin_shape_map
-        ) == 0, "Required 'data' shall be not None if program contains parameter, but received 'data' is None."
+        assert (
+            len(origin_shape_map) == 0
+        ), "Required 'data' shall be not None if program contains parameter, but received 'data' is None."
         return
 
     # append load_combine op to load parameters,
@@ -656,10 +680,8 @@ def deserialize_persistables(program, data, executor):
         inputs={},
         outputs={"Out": load_var_list},
         # if load from memory, file_path is data
-        attrs={
-            'file_path': data,
-            'model_from_memory': True
-        })
+        attrs={'file_path': data, 'model_from_memory': True},
+    )
     executor.run(load_program)
     # check var shape
     for var in check_vars:
@@ -674,7 +696,9 @@ def deserialize_persistables(program, data, executor):
             raise RuntimeError(
                 "Shape mismatch, program needs a parameter with shape ({}), "
                 "but the loaded parameter ('{}') has a shape of ({}).".format(
-                    origin_shape, var.name, new_shape))
+                    origin_shape, var.name, new_shape
+                )
+            )
 
 
 def load_from_file(path):
@@ -779,7 +803,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
     """
     # check kwargs
     supported_args = ('model_filename', 'params_filename')
-    deprecated_args = ('pserver_endpoints', )
+    deprecated_args = ('pserver_endpoints',)
     caller = inspect.currentframe().f_code.co_name
     _check_args(caller, kwargs, supported_args, deprecated_args)
 
@@ -790,7 +814,8 @@ def load_inference_model(path_prefix, executor, **kwargs):
         params_filename = kwargs.get('params_filename', None)
         if params_filename is None:
             raise ValueError(
-                "params_filename cannot be None when path_prefix is None.")
+                "params_filename cannot be None when path_prefix is None."
+            )
         load_dirname = ''
         program_bytes = model_filename
         params_bytes = params_filename
@@ -813,21 +838,26 @@ def load_inference_model(path_prefix, executor, **kwargs):
             if model_filename is None:
                 model_path = os.path.join(path_prefix, "__model__")
             else:
-                model_path = os.path.join(path_prefix,
-                                          model_filename + ".pdmodel")
+                model_path = os.path.join(
+                    path_prefix, model_filename + ".pdmodel"
+                )
                 if not os.path.exists(model_path):
                     model_path = os.path.join(path_prefix, model_filename)
             # set params_path
             if params_filename is None:
                 params_path = os.path.join(path_prefix, "")
             else:
-                params_path = os.path.join(path_prefix,
-                                           params_filename + ".pdiparams")
+                params_path = os.path.join(
+                    path_prefix, params_filename + ".pdiparams"
+                )
                 if not os.path.exists(params_path):
                     params_path = os.path.join(path_prefix, params_filename)
-            _logger.warning("The old way to load inference model is deprecated."
-                            " model path: {}, params path: {}".format(
-                                model_path, params_path))
+            _logger.warning(
+                "The old way to load inference model is deprecated."
+                " model path: {}, params path: {}".format(
+                    model_path, params_path
+                )
+            )
         program_bytes = load_from_file(model_path)
         load_dirname = os.path.dirname(params_path)
         params_filename = os.path.basename(params_path)

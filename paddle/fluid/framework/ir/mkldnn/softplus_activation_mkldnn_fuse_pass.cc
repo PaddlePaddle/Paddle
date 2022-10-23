@@ -94,7 +94,8 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
 
   gpd(graph, handler);
   AddStatis(found_softplus_activation_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      found_softplus_activation_count > 0)
     PrettyLogDetail("---    fused %d softplus with %s activation",
                     found_softplus_activation_count,
                     act_type);

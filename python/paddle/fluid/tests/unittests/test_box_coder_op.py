@@ -32,9 +32,11 @@ def box_decoder(t_box, p_box, pb_v, output_box, norm, axis=0):
     pb_y = pb_y.reshape(shape)
 
     if pb_v.ndim == 2:
-        var_shape = (1, pb_v.shape[0],
-                     pb_v.shape[1]) if axis == 0 else (pb_v.shape[0], 1,
-                                                       pb_v.shape[1])
+        var_shape = (
+            (1, pb_v.shape[0], pb_v.shape[1])
+            if axis == 0
+            else (pb_v.shape[0], 1, pb_v.shape[1])
+        )
         pb_v = pb_v.reshape(var_shape)
     if pb_v.ndim == 1:
         tb_x = pb_v[0] * t_box[:, :, 0] * pb_w + pb_x
@@ -90,18 +92,21 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
     output_box = np.zeros((n, m, 4), dtype=np.float32)
     cur_offset = 0
     for i in range(len(lod)):
-        if (code_type == "EncodeCenterSize"):
-            box_encoder(t_box[cur_offset:(cur_offset + lod[i]), :], p_box, pb_v,
-                        output_box[cur_offset:(cur_offset + lod[i]), :, :],
-                        norm)
-        elif (code_type == "DecodeCenterSize"):
+        if code_type == "EncodeCenterSize":
+            box_encoder(
+                t_box[cur_offset : (cur_offset + lod[i]), :],
+                p_box,
+                pb_v,
+                output_box[cur_offset : (cur_offset + lod[i]), :, :],
+                norm,
+            )
+        elif code_type == "DecodeCenterSize":
             box_decoder(t_box, p_box, pb_v, output_box, norm, axis)
         cur_offset += lod[i]
     return output_box
 
 
 class TestBoxCoderOp(OpTest):
-
     def test_check_output(self):
         self.check_output(check_eager=True)
 
@@ -114,8 +119,14 @@ class TestBoxCoderOp(OpTest):
         target_box = np.random.random((20, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
-        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
-                                     lod[0], code_type, box_normalized)
+        output_box = batch_box_coder(
+            prior_box,
+            prior_box_var,
+            target_box,
+            lod[0],
+            code_type,
+            box_normalized,
+        )
         self.inputs = {
             'PriorBox': prior_box,
             'PriorBoxVar': prior_box_var,
@@ -123,13 +134,12 @@ class TestBoxCoderOp(OpTest):
         }
         self.attrs = {
             'code_type': 'decode_center_size',
-            'box_normalized': False
+            'box_normalized': False,
         }
         self.outputs = {'OutputBox': output_box}
 
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
-
     def test_check_output(self):
         self.check_output(check_eager=True)
 
@@ -142,8 +152,14 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
         target_box = np.random.random((20, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
-        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
-                                     lod[0], code_type, box_normalized)
+        output_box = batch_box_coder(
+            prior_box,
+            prior_box_var,
+            target_box,
+            lod[0],
+            code_type,
+            box_normalized,
+        )
 
         self.inputs = {
             'PriorBox': prior_box,
@@ -152,13 +168,12 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
         }
         self.attrs = {
             'code_type': 'decode_center_size',
-            'box_normalized': False
+            'box_normalized': False,
         }
         self.outputs = {'OutputBox': output_box}
 
 
 class TestBoxCoderOpWithLoD(OpTest):
-
     def test_check_output(self):
         self.check_output(check_eager=True)
 
@@ -171,8 +186,14 @@ class TestBoxCoderOpWithLoD(OpTest):
         target_box = np.random.random((50, 4)).astype('float32')
         code_type = "EncodeCenterSize"
         box_normalized = True
-        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
-                                     lod[0], code_type, box_normalized)
+        output_box = batch_box_coder(
+            prior_box,
+            prior_box_var,
+            target_box,
+            lod[0],
+            code_type,
+            box_normalized,
+        )
 
         self.inputs = {
             'PriorBox': prior_box,
@@ -184,7 +205,6 @@ class TestBoxCoderOpWithLoD(OpTest):
 
 
 class TestBoxCoderOpWithAxis(OpTest):
-
     def test_check_output(self):
         self.check_output(check_eager=True)
 
@@ -198,8 +218,15 @@ class TestBoxCoderOpWithAxis(OpTest):
         code_type = "DecodeCenterSize"
         box_normalized = False
         axis = 1
-        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
-                                     lod[0], code_type, box_normalized, axis)
+        output_box = batch_box_coder(
+            prior_box,
+            prior_box_var,
+            target_box,
+            lod[0],
+            code_type,
+            box_normalized,
+            axis,
+        )
 
         self.inputs = {
             'PriorBox': prior_box,
@@ -209,13 +236,12 @@ class TestBoxCoderOpWithAxis(OpTest):
         self.attrs = {
             'code_type': 'decode_center_size',
             'box_normalized': False,
-            'axis': axis
+            'axis': axis,
         }
         self.outputs = {'OutputBox': output_box}
 
 
 class TestBoxCoderOpWithVariance(OpTest):
-
     def test_check_output(self):
         self.check_output()
 
@@ -228,8 +254,15 @@ class TestBoxCoderOpWithVariance(OpTest):
         code_type = "DecodeCenterSize"
         box_normalized = False
         axis = 1
-        output_box = batch_box_coder(prior_box, prior_box_var, target_box,
-                                     lod[0], code_type, box_normalized, axis)
+        output_box = batch_box_coder(
+            prior_box,
+            prior_box_var,
+            target_box,
+            lod[0],
+            code_type,
+            box_normalized,
+            axis,
+        )
 
         self.inputs = {
             'PriorBox': prior_box,
@@ -239,13 +272,12 @@ class TestBoxCoderOpWithVariance(OpTest):
             'code_type': 'decode_center_size',
             'box_normalized': False,
             'variance': prior_box_var.astype(np.float64).flatten(),
-            'axis': axis
+            'axis': axis,
         }
         self.outputs = {'OutputBox': output_box}
 
 
 class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
-
     def setUp(self):
         self.lod = [[1, 1, 1, 1, 1]]
         self.prior_box = np.random.random((30, 4)).astype('float32')
@@ -254,16 +286,20 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
         self.code_type = "DecodeCenterSize"
         self.box_normalized = False
         self.axis = 1
-        self.output_ref = batch_box_coder(self.prior_box, self.prior_box_var,
-                                          self.target_box, self.lod[0],
-                                          self.code_type, self.box_normalized,
-                                          self.axis)
+        self.output_ref = batch_box_coder(
+            self.prior_box,
+            self.prior_box_var,
+            self.target_box,
+            self.lod[0],
+            self.code_type,
+            self.box_normalized,
+            self.axis,
+        )
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
     def test_dygraph_api(self):
-
         def run(place):
             paddle.disable_static(place)
             output_box = paddle.fluid.layers.box_coder(
@@ -272,10 +308,11 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
                 paddle.to_tensor(self.target_box),
                 "decode_center_size",
                 self.box_normalized,
-                axis=self.axis)
-            np.testing.assert_allclose(np.sum(self.output_ref),
-                                       np.sum(output_box.numpy()),
-                                       rtol=1e-05)
+                axis=self.axis,
+            )
+            np.testing.assert_allclose(
+                np.sum(self.output_ref), np.sum(output_box.numpy()), rtol=1e-05
+            )
             paddle.enable_static()
 
         for place in self.place:

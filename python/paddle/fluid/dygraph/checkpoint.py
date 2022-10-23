@@ -15,14 +15,27 @@
 import os
 import collections
 import functools
-from ..framework import Variable, default_main_program, _non_static_mode, dygraph_only, Parameter, ParamBase, _varbase_creator, _dygraph_tracer, EagerParamBase
+from ..framework import (
+    Variable,
+    default_main_program,
+    _non_static_mode,
+    dygraph_only,
+    Parameter,
+    ParamBase,
+    _varbase_creator,
+    _dygraph_tracer,
+    EagerParamBase,
+)
 import pickle
 from . import learning_rate_scheduler
 import warnings
 from .. import core
 from .base import guard
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
-from paddle.fluid.dygraph.io import _construct_program_holders, _construct_params_and_buffers
+from paddle.fluid.dygraph.io import (
+    _construct_program_holders,
+    _construct_params_and_buffers,
+)
 
 __all__ = [
     'save_dygraph',
@@ -38,7 +51,8 @@ def _parse_load_config(configs):
         if key not in supported_configs:
             raise ValueError(
                 "The additional config (%s) of `paddle.fluid.load_dygraph` is not supported."
-                % (key))
+                % (key)
+            )
 
     # construct inner config
     inner_config = _SaveLoadConfig()
@@ -85,7 +99,9 @@ def save_dygraph(state_dict, model_path):
     '''
 
     base_name = os.path.basename(model_path)
-    assert base_name != "", "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received filename is empty string."
+    assert (
+        base_name != ""
+    ), "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received filename is empty string."
 
     suffix = ".pdparams"
     assert len(state_dict) > 0, "state_dict is empty, no need to save"
@@ -193,7 +209,10 @@ def load_dygraph(model_path, **configs):
             with open(params_file_path, 'rb') as f:
                 para_dict = pickle.load(f, encoding='latin1')
 
-        if not config.keep_name_table and "StructuredToParameterName@@" in para_dict:
+        if (
+            not config.keep_name_table
+            and "StructuredToParameterName@@" in para_dict
+        ):
             del para_dict["StructuredToParameterName@@"]
 
         if os.path.exists(opti_file_path):
@@ -202,8 +221,9 @@ def load_dygraph(model_path, **configs):
     else:
         # check model path
         if not os.path.isdir(model_prefix):
-            raise ValueError("Model saved directory '%s' is not exists." %
-                             model_prefix)
+            raise ValueError(
+                "Model saved directory '%s' is not exists." % model_prefix
+            )
 
         # check whether model file exists
         if config.model_filename is None:
@@ -222,8 +242,9 @@ def load_dygraph(model_path, **configs):
             # NOTE(chenweihang): `jit.save` doesn't save optimizer state
 
             # 1. load program desc & construct _ProgramHolder
-            programs = _construct_program_holders(model_path,
-                                                  config.model_filename)
+            programs = _construct_program_holders(
+                model_path, config.model_filename
+            )
 
             # 2. load layer parameters & buffers
             # NOTE: using fluid.dygraph.guard() here will cause import error in py2
@@ -232,7 +253,8 @@ def load_dygraph(model_path, **configs):
                     model_prefix,
                     programs,
                     config.params_filename,
-                    append_suffix=False)
+                    append_suffix=False,
+                )
 
                 # 3. construct state_dict
                 para_dict = dict()
@@ -248,10 +270,15 @@ def load_dygraph(model_path, **configs):
                     structured_para_dict = dict()
                     for var_name in para_dict:
                         structured_name = extra_var_info[var_name].get(
-                            'structured_name', None)
-                        assert structured_name is not None, "Cannot find saved variable (%s)'s structured name in saved model." % var_name
+                            'structured_name', None
+                        )
+                        assert structured_name is not None, (
+                            "Cannot find saved variable (%s)'s structured name in saved model."
+                            % var_name
+                        )
                         structured_para_dict[structured_name] = para_dict[
-                            var_name]
+                            var_name
+                        ]
                     para_dict = structured_para_dict
         else:
             # load state dict by `io.save_params/persistables` save format
@@ -282,7 +309,8 @@ def load_dygraph(model_path, **configs):
                         type='load',
                         inputs={},
                         outputs={'Out': new_var},
-                        attrs={'file_path': os.path.join(model_path, name)})
+                        attrs={'file_path': os.path.join(model_path, name)},
+                    )
                     load_var_list.append(new_var)
 
             # 3. construct state_dict

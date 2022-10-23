@@ -21,16 +21,18 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 paddle.enable_static()
 
 
-def fill_constant_batch_size_like(input,
-                                  shape,
-                                  value,
-                                  data_type,
-                                  input_dim_idx=0,
-                                  output_dim_idx=0,
-                                  force_cpu=False):
+def fill_constant_batch_size_like(
+    input,
+    shape,
+    value,
+    data_type,
+    input_dim_idx=0,
+    output_dim_idx=0,
+    force_cpu=False,
+):
     return paddle.fluid.layers.fill_constant_batch_size_like(
-        input, shape, data_type, value, input_dim_idx, output_dim_idx,
-        force_cpu)
+        input, shape, data_type, value, input_dim_idx, output_dim_idx, force_cpu
+    )
 
 
 class TestFillConstatnBatchSizeLike1(OpTest):
@@ -51,7 +53,7 @@ class TestFillConstatnBatchSizeLike1(OpTest):
             'value': self.value,
             'input_dim_idx': self.input_dim_idx,
             'output_dim_idx': self.output_dim_idx,
-            'force_cpu': self.force_cpu
+            'force_cpu': self.force_cpu,
         }
 
     def init_data(self):
