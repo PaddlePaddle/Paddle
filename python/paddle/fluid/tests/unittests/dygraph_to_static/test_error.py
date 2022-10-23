@@ -311,7 +311,7 @@ class TestErrorStaticLayerCallInCompiletime_3(
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 90, in forward'.format(self.filepath),
+            'File "{}", line 89, in forward'.format(self.filepath),
             '@paddle.jit.to_static',
             'def forward(self):',
             'self.test_func()',
@@ -352,7 +352,7 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 105, in func_error_in_runtime_with_empty_line'.format(
+            'File "{}", line 104, in func_error_in_runtime_with_empty_line'.format(
                 self.filepath
             ),
             'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
@@ -433,7 +433,7 @@ class TestSuggestionErrorInRuntime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 118, in forward'.format(self.filepath),
+            'File "{}", line 116, in forward'.format(self.filepath),
             'return self.inner_net.forward(x)',
             'File "{}", line 128, in forward'.format(self.filepath),
             'def forward(self, x):',
