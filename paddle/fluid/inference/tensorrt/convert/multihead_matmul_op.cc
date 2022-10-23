@@ -397,14 +397,43 @@ class MultiheadMatMulOpConverter : public OpConverter {
                   .c_str());
 
           // add fc layer
+          if (op_desc.HasAttr("Input_scale")) {
+            engine_->SetTensorDynamicRange(
+                reshape_before_fc_layer->getOutput(0), in_scale);
+          }
           nvinfer1::ILayer* fc_layer = nullptr;
-          fc_layer =
-              TRT_ENGINE_ADD_LAYER(engine_,
-                                   FullyConnected,
-                                   *reshape_before_fc_layer->getOutput(0),
-                                   n,
-                                   weight,
-                                   bias);
+          if (op_desc.HasAttr("Input_scale")) {
+            nvinfer1::DimsHW nv_ksize(1, 1);
+            fc_layer =
+                TRT_ENGINE_ADD_LAYER(engine_,
+                                     Convolution,
+                                     *reshape_before_fc_layer->getOutput(0),
+                                     n,
+                                     nv_ksize,
+                                     weight,
+                                     bias);
+          } else {
+            fc_layer =
+                TRT_ENGINE_ADD_LAYER(engine_,
+                                     FullyConnected,
+                                     *reshape_before_fc_layer->getOutput(0),
+                                     n,
+                                     weight,
+                                     bias);
+          }
+
+          if (op_desc.HasAttr("fc_out_threshold")) {
+            PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
+                              true,
+                              platform::errors::InvalidArgument(
+                                  "must have out threshold in multihead layers "
+                                  "in int8 mode"));
+            float out_scale =
+                PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+            engine_->SetTensorDynamicRange(fc_layer->getOutput(0), out_scale);
+          }
+          fc_layer->setName(
+              ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
 
           // add shuffle for CustomQKVToContextPluginDynamic layer
           auto* reshape_after_fc_layer =
