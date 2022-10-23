@@ -76,6 +76,7 @@ def reindex_graph(x,
                             nodes in the back.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
@@ -194,6 +195,7 @@ def reindex_heter_graph(x,
                             nodes in the back.
 
     Examples:
+
         .. code-block:: python
 
             import paddle

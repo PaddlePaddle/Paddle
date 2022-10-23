@@ -38,7 +38,7 @@ def segment_sum(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+        output (Tensor): The reduced result.
 
     Examples:
 

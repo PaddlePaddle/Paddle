@@ -82,6 +82,7 @@ def send_u_recv(x,
                       the 0th dimension.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
@@ -229,6 +230,7 @@ def send_ue_recv(x,
                       the 0th dimension.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
@@ -381,6 +383,7 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
         out (Tensor): The output tensor.
 
     Examples:
+
         .. code-block:: python
 
             import paddle
