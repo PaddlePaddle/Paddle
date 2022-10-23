@@ -25,7 +25,6 @@ import tempfile
 
 
 class TestPassBuilder(unittest.TestCase):
-
     def check_network_convergence(self, use_cuda, build_strategy=None):
         os.environ['CPU_NUM'] = str(4)
         main = fluid.Program()
@@ -47,20 +46,22 @@ class TestPassBuilder(unittest.TestCase):
             feed_dict = {'image': image, 'label': label}
 
             train_cp = compiler.CompiledProgram(main).with_data_parallel(
-                loss_name=loss.name, build_strategy=build_strategy)
+                loss_name=loss.name, build_strategy=build_strategy
+            )
             test_cp = compiler.CompiledProgram(test_program).with_data_parallel(
                 loss_name=loss.name,
                 build_strategy=build_strategy,
-                share_vars_from=train_cp)
+                share_vars_from=train_cp,
+            )
 
             for i in range(5):
                 _ = exe.run(train_cp, fetch_list=[loss.name], feed=feed_dict)
-                test_loss, = exe.run(test_cp,
-                                     fetch_list=[loss.name],
-                                     feed=feed_dict)
-                train_loss, = exe.run(train_cp,
-                                      fetch_list=[loss.name],
-                                      feed=feed_dict)
+                (test_loss,) = exe.run(
+                    test_cp, fetch_list=[loss.name], feed=feed_dict
+                )
+                (train_loss,) = exe.run(
+                    train_cp, fetch_list=[loss.name], feed=feed_dict
+                )
 
                 avg_test_loss_val = np.array(test_loss).mean()
                 if math.isnan(float(avg_test_loss_val)):
@@ -70,32 +71,38 @@ class TestPassBuilder(unittest.TestCase):
                 if math.isnan(float(avg_train_loss_val)):
                     sys.exit("got NaN loss, training failed.")
 
-                np.testing.assert_allclose(train_loss,
-                                           test_loss,
-                                           rtol=1e-05,
-                                           atol=1e-08,
-                                           err_msg='Train loss: ' +
-                                           str(train_loss) + '\n Test loss:' +
-                                           str(test_loss))
+                np.testing.assert_allclose(
+                    train_loss,
+                    test_loss,
+                    rtol=1e-05,
+                    atol=1e-08,
+                    err_msg='Train loss: '
+                    + str(train_loss)
+                    + '\n Test loss:'
+                    + str(test_loss),
+                )
 
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
         self.assertFalse(build_strategy.fuse_elewise_add_act_ops)
         build_strategy.fuse_elewise_add_act_ops = True
-        #FIXME: currently fuse_elewise_add_act_ops not compatible with below options
+        # FIXME: currently fuse_elewise_add_act_ops not compatible with below options
         build_strategy.enable_inplace = False
         build_strategy.memory_optimize = False
         pass_builder = build_strategy._finalize_strategy_and_create_passes()
-        self.assertTrue("fuse_elewise_add_act_pass" in
-                        [p.type() for p in pass_builder.all_passes()])
+        self.assertTrue(
+            "fuse_elewise_add_act_pass"
+            in [p.type() for p in pass_builder.all_passes()]
+        )
 
         origin_len = len(pass_builder.all_passes())
 
         viz_pass = pass_builder.append_pass("graph_viz_pass")
         self.assertEqual(origin_len + 1, len(pass_builder.all_passes()))
 
-        pass_builder.insert_pass(len(pass_builder.all_passes()),
-                                 "graph_viz_pass")
+        pass_builder.insert_pass(
+            len(pass_builder.all_passes()), "graph_viz_pass"
+        )
         self.assertEqual(origin_len + 2, len(pass_builder.all_passes()))
 
         pass_builder.remove_pass(len(pass_builder.all_passes()) - 1)
@@ -106,7 +113,8 @@ class TestPassBuilder(unittest.TestCase):
 
             self.check_network_convergence(
                 use_cuda=core.is_compiled_with_cuda(),
-                build_strategy=build_strategy)
+                build_strategy=build_strategy,
+            )
             try:
                 os.stat(graph_viz_path)
             except os.error:
