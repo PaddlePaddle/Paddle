@@ -26,6 +26,6 @@ from .lamb import Lamb  # noqa: F401
 from . import lr  # noqa: F401
 
 __all__ = [  #noqa
-    'Optimizer', 'Adagrad', 'Adam', 'MultiTensorAdam', 'AdamW', 'Adamax', 'RMSProp', 'Adadelta',
-    'SGD', 'Momentum', 'Lamb'
+    'Optimizer', 'Adagrad', 'Adam', 'MultiTensorAdam', 'AdamW', 'Adamax',
+    'RMSProp', 'Adadelta', 'SGD', 'Momentum', 'Lamb'
 ]

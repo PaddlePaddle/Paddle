@@ -44,21 +44,16 @@ class MultiTensorAdamOp : public framework::OperatorWithKernel {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
-  }  
+  }
 };
 
 class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-
   void Make() override {
-    AddInput("Params", "(Tensor) Input parameters")
-        .AsDuplicable();
-    AddInput("Grads", "(Tensor) Input gradients")
-        .AsDuplicable();
-    AddInput("Moments1", "(Tensor) Input first moments")
-        .AsDuplicable();
-    AddInput("Moments2", "(Tensor) Input second moments")
-        .AsDuplicable();
+    AddInput("Params", "(Tensor) Input parameters").AsDuplicable();
+    AddInput("Grads", "(Tensor) Input gradients").AsDuplicable();
+    AddInput("Moments1", "(Tensor) Input first moments").AsDuplicable();
+    AddInput("Moments2", "(Tensor) Input second moments").AsDuplicable();
     AddInput("MasterParam", "FP32 master weight for AMP.")
         .AsDispensable()
         .AsDuplicable();
@@ -70,12 +65,9 @@ class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("SkipUpdate", "(Tensor<bool>, optional), Skip the update or not.")
         .AsDispensable();
 
-    AddOutput("ParamsOut", "(Tensor) Output parameters")
-        .AsDuplicable();
-    AddOutput("Moments1Out", "(Tensor) Output first moments")
-        .AsDuplicable();
-    AddOutput("Moments2Out", "(Tensor) Output second moments")
-        .AsDuplicable();
+    AddOutput("ParamsOut", "(Tensor) Output parameters").AsDuplicable();
+    AddOutput("Moments1Out", "(Tensor) Output first moments").AsDuplicable();
+    AddOutput("Moments2Out", "(Tensor) Output second moments").AsDuplicable();
     AddOutput("MasterParamOut",
               "The updated FP32 master weight for AMP. "
               "It shared memory with Input(MasterParam).")
@@ -99,18 +91,16 @@ class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Constant for numerical stability")
         .SetDefault(1.0e-8f);
 
-     AddAttr<int>("chunk_size",
-                   "ChunkSize for blocks computing");
+    AddAttr<int>("compute_group_size", "ComputeGroupSize for blocks computing");
 
     AddAttr<float>("weight_decay",
                    "(float, default 0) "
                    "weight decay (L2 penalty)")
         .SetDefault(0);
-    AddAttr<bool>(
-        "mode",
-        "(bool, default False) "
-        "Apply Adam or weight AdamW"
-        "True for decoupled weight decay")
+    AddAttr<bool>("mode",
+                  "(bool, default False) "
+                  "Apply Adam or weight AdamW"
+                  "True for decoupled weight decay")
         .SetDefault(false);
     AddAttr<bool>("multi_precision",
                   "(bool, default false) "
@@ -150,7 +140,8 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(multi_tensor_adam, MultiTensorAdamInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(multi_tensor_adam,
+                            MultiTensorAdamInferShapeFunctor,
                             PD_INFER_META(phi::MultiTensorAdamInferMeta));
 REGISTER_OPERATOR(
     multi_tensor_adam,

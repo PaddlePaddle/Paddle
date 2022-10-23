@@ -707,9 +707,10 @@ class MultiTensorAdam(Optimizer):
                             self._moment1_dict[key], self._moment2_dict[key],
                             self._master_weight_dict[key], self.beta1_pow_acc,
                             self.beta2_pow_acc, 'epsilon', self._epsilon,
-                            'beta1', _beta1, 'beta2', _beta2, 'chunk_size',
-                            2048 * 32, 'weight_decay', self._weight_decay,
-                            'mode', self.mode, 'multi_precision', find_master)
+                            'beta1', _beta1, 'beta2', _beta2,
+                            'compute_group_size', 2048 * 32, 'weight_decay',
+                            self._weight_decay, 'mode', self.mode,
+                            'multi_precision', find_master)
 
                         return None
 

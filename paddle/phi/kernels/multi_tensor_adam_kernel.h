@@ -34,7 +34,7 @@ void MultiTensorAdamKernel(
     const Scalar &beta1,
     const Scalar &beta2,
     const Scalar &epsilon,
-    int chunk_size,
+    int compute_group_size,
     float weight_decay,
     bool mode,
     bool multi_precision,
