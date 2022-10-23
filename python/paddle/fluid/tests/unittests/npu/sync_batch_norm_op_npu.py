@@ -21,7 +21,6 @@ sys.path.append("..")
 import signal
 import time
 from contextlib import closing
-from six import string_types
 import math
 import paddle
 import paddle.fluid as fluid
@@ -32,17 +31,24 @@ import unittest
 from multiprocessing import Process
 import paddle.fluid.layers as layers
 from functools import reduce
-from test_sync_batch_norm_base_npu import TestSyncBatchNormRunnerBase, runtime_main
-from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
+from test_sync_batch_norm_base_npu import (
+    TestSyncBatchNormRunnerBase,
+    runtime_main,
+)
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    _set_use_system_allocator,
+)
 
-from paddle.fluid.tests.unittests.test_sync_batch_norm_op import create_or_get_tensor
+from paddle.fluid.tests.unittests.test_sync_batch_norm_op import (
+    create_or_get_tensor,
+)
 
 _set_use_system_allocator(False)
 paddle.enable_static()
 
 
 class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
@@ -54,29 +60,34 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-3
 
-    def get_model(self,
-                  main,
-                  startup,
-                  place,
-                  layout,
-                  seed,
-                  sync_bn=False,
-                  only_forward=False):
+    def get_model(
+        self,
+        main,
+        startup,
+        place,
+        layout,
+        seed,
+        sync_bn=False,
+        only_forward=False,
+    ):
         """Build program."""
         use_cudnn = False
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                data = fluid.layers.data(name='input',
-                                         shape=self.dshape,
-                                         dtype=self.dtype,
-                                         append_batch_size=False)
+                data = fluid.layers.data(
+                    name='input',
+                    shape=self.dshape,
+                    dtype=self.dtype,
+                    append_batch_size=False,
+                )
                 conv = fluid.layers.conv2d(
                     input=data,
                     num_filters=32,
                     filter_size=1,
                     param_attr=fluid.ParamAttr(name='conv2d_weight'),
                     bias_attr=False,
-                    use_cudnn=use_cudnn)
+                    use_cudnn=use_cudnn,
+                )
                 bn = fluid.layers.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
@@ -84,7 +95,8 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                     moving_mean_name='bn_moving_mean',
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
-                    is_test=only_forward)
+                    is_test=only_forward,
+                )
                 # if self.dtype == np.float16:
                 #     bn = fluid.layers.cast(bn, 'float32')
                 sigmoid = fluid.layers.sigmoid(bn)

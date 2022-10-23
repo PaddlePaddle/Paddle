@@ -25,7 +25,6 @@ paddle.enable_static()
 
 
 class TestNPUAbs(OpTest):
-
     def setUp(self):
         self.op_type = "abs"
         self.set_npu()

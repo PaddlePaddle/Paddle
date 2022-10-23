@@ -32,7 +32,6 @@ class ControleMode:
 
 
 class ControllerBase(object):
-
     def __init__(self, ctx):
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)
@@ -43,9 +42,11 @@ class ControllerBase(object):
 
         self.watcher = Watcher(self.ctx)
 
-        self.job = Job(nnodes=self.ctx.args.nnodes,
-                       mode=self.ctx.args.run_mode,
-                       jid=self.ctx.args.job_id)
+        self.job = Job(
+            nnodes=self.ctx.args.nnodes,
+            mode=self.ctx.args.run_mode,
+            jid=self.ctx.args.job_id,
+        )
         self.pod = Pod()
 
         self.ctx.set_envs({"POD_NAME": self.pod.name})
@@ -74,14 +75,14 @@ class ControllerBase(object):
         '''
         watch self and peer status, return true to exit
         '''
-        #TODO(kuizhiqing) unify ctx.status and master status
+        # TODO(kuizhiqing) unify ctx.status and master status
 
         self.ctx.logger.info("Watching {}".format(self.pod))
 
         while not self.ctx.status.is_done():
             status = self.pod.watch(timeout=2)
 
-            #if self.ctx.continous_log():
+            # if self.ctx.continous_log():
             # default to print log
             self.pod.logs()
 
@@ -120,8 +121,10 @@ class ControllerBase(object):
                     return False
 
             # peer failure
-            if self.ctx.status.is_restarting(
-            ) and self.master.get_status() != self.ctx.status.COMPLETED:
+            if (
+                self.ctx.status.is_restarting()
+                and self.master.get_status() != self.ctx.status.COMPLETED
+            ):
                 self.pod.stop(timeout=30)
                 return False
 
@@ -190,12 +193,9 @@ class Controller(ControllerBase):
             err = os.path.join(self.ctx.args.log_dir, err)
         return out, (err or out)
 
-    def new_container(self,
-                      entrypoint=None,
-                      envs={},
-                      use_ctx_env=True,
-                      out=None,
-                      err=None):
+    def new_container(
+        self, entrypoint=None, envs={}, use_ctx_env=True, out=None, err=None
+    ):
         c = Container(
             entrypoint=(entrypoint or self._get_entrypoint()),
             env=(self.ctx.get_envs() if use_ctx_env else {}),
@@ -204,18 +204,19 @@ class Controller(ControllerBase):
         c.update_env(envs)
         return c
 
-    def add_container(self,
-                      container=None,
-                      entrypoint=None,
-                      envs={},
-                      log_file=None,
-                      is_init=False):
+    def add_container(
+        self,
+        container=None,
+        entrypoint=None,
+        envs={},
+        log_file=None,
+        is_init=False,
+    ):
 
         if not container:
-            container = self.new_container(entrypoint=entrypoint,
-                                           envs=envs,
-                                           out=log_file,
-                                           err=log_file)
+            container = self.new_container(
+                entrypoint=entrypoint, envs=envs, out=log_file, err=log_file
+            )
 
         if is_init:
             self.pod.add_init_container(container)
@@ -241,8 +242,10 @@ class Controller(ControllerBase):
         if not self.ctx.args.log_dir:
             return
 
-        f = os.path.join(self.ctx.args.log_dir,
-                         '{}.{}.log'.format(self.job.id, self.pod.name))
+        f = os.path.join(
+            self.ctx.args.log_dir,
+            '{}.{}.log'.format(self.job.id, self.pod.name),
+        )
         try:
             os.makedirs(os.path.dirname(f), exist_ok=True)
             with open(f, 'a+') as fd:

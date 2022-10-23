@@ -25,19 +25,21 @@ from paddle.fluid import Program, program_guard
 np.random.seed(10)
 
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestMeanOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'mean'
         self.use_dynamic_create_class = False
 
     class TestMeanOp(XPUOpTest):
-
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -65,41 +67,36 @@ class XPUTestMeanOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestMeanOp1(TestMeanOp):
-
         def set_shape(self):
-            self.shape = (5)
+            self.shape = 5
 
     class TestMeanOp2(TestMeanOp):
-
         def set_shape(self):
             self.shape = (5, 7, 8)
 
     class TestMeanOp3(TestMeanOp):
-
         def set_shape(self):
             self.shape = (10, 5, 7, 8)
 
     class TestMeanOp4(TestMeanOp):
-
         def set_shape(self):
             self.shape = (2, 2, 3, 3, 3)
 
 
 class TestMeanOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
             # The input dtype of mean_op must be float16, float32, float64.
-            input2 = fluid.layers.data(name='input2',
-                                       shape=[12, 10],
-                                       dtype="int32")
+            input2 = fluid.layers.data(
+                name='input2', shape=[12, 10], dtype="int32"
+            )
             self.assertRaises(TypeError, paddle.mean, input2)
-            input3 = fluid.layers.data(name='input3',
-                                       shape=[4],
-                                       dtype="float16")
+            input3 = fluid.layers.data(
+                name='input3', shape=[4], dtype="float16"
+            )
             fluid.layers.softmax(input3)
 
 

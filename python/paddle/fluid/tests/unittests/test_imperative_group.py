@@ -17,11 +17,14 @@ import unittest
 
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph, in_dygraph_mode
+from paddle.fluid.framework import (
+    _test_eager_guard,
+    _in_legacy_dygraph,
+    in_dygraph_mode,
+)
 
 
 class TestDataParallelGroup(unittest.TestCase):
-
     def create_varbase(self, dtype, shape):
         return paddle.rand(shape=shape, dtype=dtype)
 
@@ -38,8 +41,9 @@ class TestDataParallelGroup(unittest.TestCase):
         var_list.append(self.create_varbase("float32", [2, 100]))
         var_list.append(self.create_varbase("float32", [2, 50]))
         var_list.append(self.create_varbase("float32", [2, 25]))
-        res = self.assign_group_by_size(var_list, [False, False, False, False],
-                                        [400])
+        res = self.assign_group_by_size(
+            var_list, [False, False, False, False], [400]
+        )
         self.assertEqual([[0], [1], [2], [3]], res)
 
     def test_construct_group1(self):
@@ -52,7 +56,8 @@ class TestDataParallelGroup(unittest.TestCase):
         var_list.append(self.create_varbase("float32", [1, 50]))
         var_list.append(self.create_varbase("float64", [1, 25]))
         res = self.assign_group_by_size(
-            var_list, [False, False, False, False, False, False], [400])
+            var_list, [False, False, False, False, False, False], [400]
+        )
         self.assertEqual([[0, 2], [1, 3], [4], [5]], res)
 
     def test_construct_group2(self):
@@ -62,8 +67,9 @@ class TestDataParallelGroup(unittest.TestCase):
         var_list.append(self.create_varbase("float32", [2, 50]))
         var_list.append(self.create_varbase("float32", [2, 50]))
         var_list.append(self.create_varbase("float32", [2, 50]))
-        res = self.assign_group_by_size(var_list, [False, False, False, False],
-                                        [400, 800])
+        res = self.assign_group_by_size(
+            var_list, [False, False, False, False], [400, 800]
+        )
         self.assertEqual([[0], [1, 2], [3]], res)
 
     def test_construct_group3(self):
@@ -76,7 +82,8 @@ class TestDataParallelGroup(unittest.TestCase):
         var_list.append(self.create_varbase("float32", [1, 50]))
         var_list.append(self.create_varbase("float64", [1, 25]))
         res = self.assign_group_by_size(
-            var_list, [False, False, False, False, False, False], [200, 400])
+            var_list, [False, False, False, False, False, False], [200, 400]
+        )
         self.assertEqual([[0], [1], [2, 4], [3, 5]], res)
 
     def test_construct_group4(self):
@@ -89,7 +96,8 @@ class TestDataParallelGroup(unittest.TestCase):
         var_list.append(self.create_varbase("float32", [1, 50]))
         var_list.append(self.create_varbase("float64", [1, 25]))
         res = self.assign_group_by_size(
-            var_list, [False, False, False, False, False, False], [0])
+            var_list, [False, False, False, False, False, False], [0]
+        )
         self.assertEqual([[0], [1], [2], [3], [4], [5]], res)
 
     def test_construct_group5(self):
@@ -102,23 +110,27 @@ class TestDataParallelGroup(unittest.TestCase):
         var_list.append(self.create_varbase("float32", [1, 50]))
         var_list.append(self.create_varbase("float64", [1, 25]))
         res = self.assign_group_by_size(
-            var_list, [False, False, False, False, False, False], [10000])
+            var_list, [False, False, False, False, False, False], [10000]
+        )
         self.assertEqual([[0, 2, 4], [1, 3, 5]], res)
 
     def test_construct_group6(self):
         # multi dtype & limit capability & multi tensor type
         var_list = []
-        var_list.append(self.create_varbase(
-            "float32",
-            [1, 50],
-        ))
+        var_list.append(
+            self.create_varbase(
+                "float32",
+                [1, 50],
+            )
+        )
         var_list.append(self.create_varbase("float64", [1, 25]))
         var_list.append(self.create_varbase("float32", [1, 50]))
         var_list.append(self.create_varbase("float64", [1, 25]))
         var_list.append(self.create_varbase("float32", [1, 50]))
         var_list.append(self.create_varbase("float64", [1, 25]))
         res = self.assign_group_by_size(
-            var_list, [True, False, False, False, False, True], [400])
+            var_list, [True, False, False, False, False, True], [400]
+        )
         self.assertEqual([[0], [1, 3], [2, 4], [5]], res)
 
     def test_construct_group7(self):
@@ -131,7 +143,8 @@ class TestDataParallelGroup(unittest.TestCase):
         var_list.append(self.create_varbase("float32", [1, 50]))
         var_list.append(self.create_varbase("float64", [1, 25]))
         res = self.assign_group_by_size(
-            var_list, [True, False, False, False, False, True], [200, 400])
+            var_list, [True, False, False, False, False, True], [200, 400]
+        )
         self.assertEqual([[0], [1], [2], [3], [4], [5]], res)
 
     def test_construct_group8(self):
@@ -141,8 +154,9 @@ class TestDataParallelGroup(unittest.TestCase):
         var_list.append(self.create_varbase("float32", [2, 100]))
         var_list.append(self.create_varbase("float32", [2, 50]))
         var_list.append(self.create_varbase("float32", [2, 25]))
-        res = self.assign_group_by_size(var_list, [False, False, False, False],
-                                        [400], [3, 0, 1, 2])
+        res = self.assign_group_by_size(
+            var_list, [False, False, False, False], [400], [3, 0, 1, 2]
+        )
         self.assertEqual([[3, 0], [1], [2]], res)
 
     def test_construct_group9(self):
@@ -152,8 +166,9 @@ class TestDataParallelGroup(unittest.TestCase):
         var_list.append(self.create_varbase("float32", [2, 25]))
         var_list.append(self.create_varbase("float32", [2, 25]))
         var_list.append(self.create_varbase("float32", [2, 1000]))
-        res = self.assign_group_by_size(var_list, [False, False, False, True],
-                                        [300], [1, 0, 2, 3])
+        res = self.assign_group_by_size(
+            var_list, [False, False, False, True], [300], [1, 0, 2, 3]
+        )
         self.assertEqual([[1, 0], [3], [2]], res)
 
     def test_construct_group_in_legacy_mode(self):

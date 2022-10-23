@@ -15,7 +15,9 @@
 import paddle.fluid as fluid
 from utils import gen_data
 from nets import mlp
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+    fleet,
+)
 from paddle.fluid.incubate.fleet.base import role_maker
 
 input_x = fluid.layers.data(name="x", shape=[32], dtype='float32')
@@ -43,8 +45,10 @@ elif fleet.is_worker():
     exe.run(fleet.startup_program)
     step = 1001
     for i in range(step):
-        cost_val = exe.run(program=fleet.main_program,
-                           feed=gen_data(),
-                           fetch_list=[cost.name])
-        print("worker_index: %d, step%d cost = %f" %
-              (fleet.worker_index(), i, cost_val[0]))
+        cost_val = exe.run(
+            program=fleet.main_program, feed=gen_data(), fetch_list=[cost.name]
+        )
+        print(
+            "worker_index: %d, step%d cost = %f"
+            % (fleet.worker_index(), i, cost_val[0])
+        )

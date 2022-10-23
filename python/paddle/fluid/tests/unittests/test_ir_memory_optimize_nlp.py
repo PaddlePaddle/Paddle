@@ -20,23 +20,26 @@ import unittest
 from ir_memory_optimize_net_base import TestIrMemOptBase
 
 
-def lstm_net(data,
-             label,
-             dict_dim,
-             emb_dim=128,
-             hid_dim=128,
-             hid_dim2=96,
-             class_dim=2,
-             emb_lr=30.0):
+def lstm_net(
+    data,
+    label,
+    dict_dim,
+    emb_dim=128,
+    hid_dim=128,
+    hid_dim2=96,
+    class_dim=2,
+    emb_lr=30.0,
+):
     emb = fluid.layers.embedding(
         input=data,
         size=[dict_dim, emb_dim],
-        param_attr=fluid.ParamAttr(learning_rate=emb_lr))
+        param_attr=fluid.ParamAttr(learning_rate=emb_lr),
+    )
     fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
 
-    lstm_h, c = fluid.layers.dynamic_lstm(input=fc0,
-                                          size=hid_dim * 4,
-                                          is_reverse=False)
+    lstm_h, c = fluid.layers.dynamic_lstm(
+        input=fc0, size=hid_dim * 4, is_reverse=False
+    )
     lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
     lstm_max_tanh = fluid.layers.tanh(lstm_max)
     fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
@@ -47,7 +50,6 @@ def lstm_net(data,
 
 
 class TestIrMemOptRNN(TestIrMemOptBase):
-
     def setUp(self):
         self.network = lstm_net
 

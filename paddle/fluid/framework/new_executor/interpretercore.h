@@ -20,11 +20,11 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/exception_holder.h"
-#include "paddle/fluid/framework/new_executor/event_manager.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
+#include "paddle/fluid/framework/new_executor/interpreter/event_manager.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/new_executor/stream_analyzer.h"

@@ -25,9 +25,11 @@ paddle.enable_static()
 
 def get_param_attr(weight, bias):
     weight_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(weight))
+        initializer=fluid.initializer.NumpyArrayInitializer(weight)
+    )
     bias_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(bias))
+        initializer=fluid.initializer.NumpyArrayInitializer(bias)
+    )
     return weight_attr, bias_attr
 
 
@@ -41,28 +43,30 @@ dim_ffn = 4 * hidden
 
 def create_model(data, rank):
     np.random.seed(2021)
-    ln_w = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
-    ln_b = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
-    qkv_w = np.random.uniform(-1, 1, size=(3, num_head, dim_head,
-                                           hidden)).astype(DTYPE)
+    ln_w = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
+    ln_b = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
+    qkv_w = np.random.uniform(
+        -1, 1, size=(3, num_head, dim_head, hidden)
+    ).astype(DTYPE)
     qkv_b = np.random.uniform(-1, 1, size=(3, num_head, dim_head)).astype(DTYPE)
-    linear_w = np.random.uniform(-1, 1, size=(num_head * dim_head,
-                                              hidden)).astype(DTYPE)
-    linear_b = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
+    linear_w = np.random.uniform(
+        -1, 1, size=(num_head * dim_head, hidden)
+    ).astype(DTYPE)
+    linear_b = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
 
-    ffn_ln_w = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
-    ffn_ln_b = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
+    ffn_ln_w = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
+    ffn_ln_b = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
     ffn1_w = np.random.uniform(-1, 1, size=(hidden, dim_ffn)).astype(DTYPE)
-    ffn1_b = np.random.uniform(-1, 1, size=(dim_ffn, )).astype(DTYPE)
+    ffn1_b = np.random.uniform(-1, 1, size=(dim_ffn,)).astype(DTYPE)
     ffn2_w = np.random.uniform(-1, 1, size=(dim_ffn, hidden)).astype(DTYPE)
-    ffn2_b = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
+    ffn2_b = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
 
     if rank is not None:
         start = 0 if rank == 0 else (num_head // MODEL_PARALLEL_SIZE)
         end = start + (num_head // MODEL_PARALLEL_SIZE)
         col_qkv_w = qkv_w[:, start:end, :, :]
         col_qkv_b = qkv_b[:, start:end, :]
-        row_linear_w = linear_w[(start * dim_head):(end * dim_head), :]
+        row_linear_w = linear_w[(start * dim_head) : (end * dim_head), :]
 
         ln_w_attr, ln_b_attr = get_param_attr(ln_w, ln_b)
         qkv_w_attr, qkv_b_attr = get_param_attr(col_qkv_w, col_qkv_b)
@@ -98,7 +102,8 @@ def create_model(data, rank):
             ffn2_weight_attrs=[ffn2_w_attr],
             ffn2_bias_attrs=[ffn2_b_attr],
             nranks=MODEL_PARALLEL_SIZE,
-            ring_id=0)
+            ring_id=0,
+        )
         result = multi_transformer(data)
     else:
         ln_w_attr, ln_b_attr = get_param_attr(ln_w, ln_b)
@@ -127,7 +132,8 @@ def create_model(data, rank):
             ffn1_weight_attrs=[ffn1_w_attr],
             ffn1_bias_attrs=[ffn1_b_attr],
             ffn2_weight_attrs=[ffn2_w_attr],
-            ffn2_bias_attrs=[ffn2_b_attr])
+            ffn2_bias_attrs=[ffn2_b_attr],
+        )
         result = multi_transformer(data)
 
     # fused_multi_transformer have no backward
@@ -137,20 +143,20 @@ def create_model(data, rank):
 
 
 class TestModelParallel(TestDistRunnerBase):
-
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         seq_len = 2
-        data_in = fluid.data(name='data_in',
-                             shape=[batch_size, seq_len, hidden],
-                             dtype=DTYPE)
+        data_in = fluid.data(
+            name='data_in', shape=[batch_size, seq_len, hidden], dtype=DTYPE
+        )
 
         if dist_strategy:
             data_loader = fluid.io.DataLoader.from_generator(
                 feed_list=[data_in],
                 capacity=64,
                 use_double_buffer=False,
-                iterable=False)
+                iterable=False,
+            )
 
         if dist_strategy:
             fleet.init(is_collective=True)
@@ -163,8 +169,9 @@ class TestModelParallel(TestDistRunnerBase):
         opt = fluid.optimizer.SGD(0.1)
 
         if dist_strategy:
-            dist_opt = fleet.distributed_optimizer(optimizer=opt,
-                                                   strategy=strategy)
+            dist_opt = fleet.distributed_optimizer(
+                optimizer=opt, strategy=strategy
+            )
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)

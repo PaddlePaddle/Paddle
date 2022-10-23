@@ -14,12 +14,14 @@
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
-    from paddle.cuda_env import *
+    from paddle.cuda_env import *  # noqa: F403
 except ImportError:
     import sys
-    sys.stderr.write('''Warning with import paddle: you should not
+
+    sys.stderr.write(
+        '''Warning with import paddle: you should not
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
-                     )
+    )
 
 from .batch import batch  # noqa: F401
 from .framework import monkey_patch_variable
@@ -35,7 +37,7 @@ from .framework import set_flags  # noqa: F401
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
 from .framework import in_dynamic_mode  # noqa: F401
-from .fluid.dataset import *  # noqa: F401
+from .fluid.dataset import *  # noqa: F401, F403
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
@@ -52,6 +54,7 @@ from .framework.dtype import bfloat16  # noqa: F401
 from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
+
 if fluid.framework._in_eager_mode_:
     Tensor = framework.core.eager.Tensor
 else:
@@ -82,6 +85,7 @@ import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
 import paddle.audio  # noqa: F401
 import paddle.geometric  # noqa: F401
+import paddle.sparse  # noqa: F401
 
 from .tensor.attribute import is_complex  # noqa: F401
 from .tensor.attribute import is_integer  # noqa: F401
@@ -111,8 +115,8 @@ from .tensor.creation import empty_like  # noqa: F401
 from .tensor.creation import assign  # noqa: F401
 from .tensor.creation import complex  # noqa: F401
 from .tensor.creation import clone  # noqa: F401
-from .tensor.creation import tril_indices  #noqa: F401
-from .tensor.creation import triu_indices  #noqa: F401
+from .tensor.creation import tril_indices  # noqa: F401
+from .tensor.creation import triu_indices  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -381,6 +385,7 @@ from .tensor.random import check_shape  # noqa: F401
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
     import os
+
     package_dir = os.path.dirname(os.path.abspath(__file__))
     runtime_include_dir = os.path.join(package_dir, "libs")
     cuh_file = os.path.join(runtime_include_dir, "cinn_cuda_runtime_source.cuh")

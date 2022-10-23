@@ -16,7 +16,10 @@ import numpy as np
 from .. import core
 
 __all__ = [
-    "Sampler", "SequenceSampler", "RandomSampler", "WeightedRandomSampler"
+    "Sampler",
+    "SequenceSampler",
+    "RandomSampler",
+    "WeightedRandomSampler",
 ]
 
 
@@ -185,19 +188,19 @@ class RandomSampler(Sampler):
     see `paddle.io.Sampler`
     """
 
-    def __init__(self,
-                 data_source,
-                 replacement=False,
-                 num_samples=None,
-                 generator=None):
+    def __init__(
+        self, data_source, replacement=False, num_samples=None, generator=None
+    ):
         self.data_source = data_source
         self.replacement = replacement
         self._num_samples = num_samples
         self.generator = generator
 
         if not isinstance(self.replacement, bool):
-            raise TypeError("expect boolean value for replacement, but got "
-                            "replacement={}".format(self.replacement))
+            raise TypeError(
+                "expect boolean value for replacement, but got "
+                "replacement={}".format(self.replacement)
+            )
 
         if self._num_samples is not None and not replacement:
             raise ValueError(
@@ -205,8 +208,10 @@ class RandomSampler(Sampler):
             )
 
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
-            raise ValueError("num_samples should be a positive integer, "
-                             "but got num_samples={}".format(self.num_samples))
+            raise ValueError(
+                "num_samples should be a positive integer, "
+                "but got num_samples={}".format(self.num_samples)
+            )
 
     @property
     def num_samples(self):
@@ -225,13 +230,14 @@ class RandomSampler(Sampler):
                 yield index
         else:
             if self.replacement:
-                for index in np.random.choice(np.arange(n),
-                                              self.num_samples,
-                                              replace=True).tolist():
+                for index in np.random.choice(
+                    np.arange(n), self.num_samples, replace=True
+                ).tolist():
                     yield index
             else:
-                for index in np.random.choice(np.arange(n), n,
-                                              replace=False).tolist():
+                for index in np.random.choice(
+                    np.arange(n), n, replace=False
+                ).tolist():
                     yield index
 
     def __len__(self):
@@ -243,31 +249,29 @@ def _weighted_sample(weights, num_samples, replacement=True):
         weights = weights.numpy()
     if isinstance(weights, (list, tuple)):
         weights = np.array(weights)
-    assert isinstance(weights, np.ndarray), \
-            "weights should be paddle.Tensor, numpy.ndarray, list or tuple"
-    assert len(weights.shape) <= 2, \
-            "weights should be a 1-D or 2-D array"
+    assert isinstance(
+        weights, np.ndarray
+    ), "weights should be paddle.Tensor, numpy.ndarray, list or tuple"
+    assert len(weights.shape) <= 2, "weights should be a 1-D or 2-D array"
     weights = weights.reshape((-1, weights.shape[-1]))
-    assert np.all(weights >= 0.), \
-            "weights should be positive value"
-    assert not np.any(weights == np.inf), \
-            "weights shoule not be INF"
-    assert not np.any(weights == np.nan), \
-            "weights shoule not be NaN"
+    assert np.all(weights >= 0.0), "weights should be positive value"
+    assert not np.any(weights == np.inf), "weights shoule not be INF"
+    assert not np.any(weights == np.nan), "weights shoule not be NaN"
 
-    non_zeros = np.sum(weights > 0., axis=1)
-    assert np.all(non_zeros > 0), \
-            "weights should have positive values"
+    non_zeros = np.sum(weights > 0.0, axis=1)
+    assert np.all(non_zeros > 0), "weights should have positive values"
     if not replacement:
-        assert np.all(non_zeros >= num_samples), \
-            "weights positive value number should not " \
+        assert np.all(non_zeros >= num_samples), (
+            "weights positive value number should not "
             "less than num_samples when replacement=False"
+        )
 
     weights = weights / weights.sum(axis=1)
     rets = []
     for i in range(weights.shape[0]):
-        ret = np.random.choice(weights.shape[1], num_samples, replacement,
-                               weights[i])
+        ret = np.random.choice(
+            weights.shape[1], num_samples, replacement, weights[i]
+        )
         rets.append(ret)
     return np.array(rets)
 
@@ -311,8 +315,9 @@ class WeightedRandomSampler(Sampler):
         self.replacement = replacement
 
     def __iter__(self):
-        idxs = _weighted_sample(self.weights, self.num_samples,
-                                self.replacement)
+        idxs = _weighted_sample(
+            self.weights, self.num_samples, self.replacement
+        )
         return iter(idxs.reshape((-1)).tolist())
 
     def __len__(self):

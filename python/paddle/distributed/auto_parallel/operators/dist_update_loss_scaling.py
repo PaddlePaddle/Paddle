@@ -20,17 +20,16 @@ from ..utils import set_dist_op_desc_original_id
 
 
 class DistributedUpdateLossScaling(DistributedOperatorImplContainer):
-
     def __init__(self, op_type):
         super(DistributedUpdateLossScaling, self).__init__(op_type)
 
 
 register_distributed_operator_impl_container(
-    DistributedUpdateLossScaling("update_loss_scaling"))
+    DistributedUpdateLossScaling("update_loss_scaling")
+)
 
 
 class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
-
     def __init__(self, name):
         super(DistributedUpdateLossScalingImpl, self).__init__(name)
         self._name = name
@@ -60,7 +59,8 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
     @staticmethod
     def forward(ctx, *args, **kwargs):
         raise RuntimeError(
-            "DistributedUpdateLossScalingImpl's forward should not be called !")
+            "DistributedUpdateLossScalingImpl's forward should not be called !"
+        )
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -71,59 +71,89 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
         backward_op = dist_op_context.cur_src_op
         rank_id = dist_op_context.rank_id
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
-        assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
-            str(backward_op))
+        assert (
+            dist_attr is not None
+        ), "backward op [{}] don't have dist attribute !".format(
+            str(backward_op)
+        )
 
         assert rank_id in dist_attr.process_mesh.processes
 
         assert 'X' in kwargs, "input [{}] is not given".format('X')
         assert 'FoundInfinite' in kwargs, "input [{}] is not given".format(
-            'FoundInfinite')
+            'FoundInfinite'
+        )
         assert 'PrevLossScaling' in kwargs, "input [{}] is not given".format(
-            'PrevLossScaling')
+            'PrevLossScaling'
+        )
         assert 'InGoodSteps' in kwargs, "input [{}] is not given".format(
-            'InGoodSteps')
+            'InGoodSteps'
+        )
         assert 'InBadSteps' in kwargs, "input [{}] is not given".format(
-            'InBadSteps')
+            'InBadSteps'
+        )
 
         assert 'Out' in kwargs, "output [{}] is not given".format('Out')
         assert 'LossScaling' in kwargs, "output [{}] is not given".format(
-            'LossScaling')
+            'LossScaling'
+        )
         assert 'OutGoodSteps' in kwargs, "output [{}] is not given".format(
-            'OutGoodSteps')
+            'OutGoodSteps'
+        )
         assert 'OutBadSteps' in kwargs, "output [{}] is not given".format(
-            'OutBadSteps')
+            'OutBadSteps'
+        )
 
-        assert len(kwargs['FoundInfinite']) == 1, \
-            "update_loss_scaling input FoundInfinite take 1 variable but got {}".format(
-            kwargs['FoundInfinite'])
-        assert len(kwargs['PrevLossScaling']) == 1, \
-            "update_loss_scaling input PrevLossScaling take 1 variable but got {}".format(
-            kwargs['PrevLossScaling'])
-        assert len(kwargs['InGoodSteps']) == 1, \
-            "update_loss_scaling input InGoodSteps take 1 variable but got {}".format(
-            kwargs['InGoodSteps'])
-        assert len(kwargs['InBadSteps']) == 1, \
-            "update_loss_scaling input InBadSteps take 1 variable but got {}".format(
-            kwargs['InBadSteps'])
-        assert len(kwargs['LossScaling']) == 1, \
-            "update_loss_scaling output LossScaling take 1 variable but got {}".format(
-            kwargs['LossScaling'])
-        assert len(kwargs['OutGoodSteps']) == 1, \
-            "update_loss_scaling output OutGoodSteps take 1 variable but got {}".format(
-            kwargs['OutGoodSteps'])
-        assert len(kwargs['OutBadSteps']) == 1, \
-            "update_loss_scaling output OutBadSteps take 1 variable but got {}".format(
-            kwargs['OutBadSteps'])
+        assert (
+            len(kwargs['FoundInfinite']) == 1
+        ), "update_loss_scaling input FoundInfinite take 1 variable but got {}".format(
+            kwargs['FoundInfinite']
+        )
+        assert (
+            len(kwargs['PrevLossScaling']) == 1
+        ), "update_loss_scaling input PrevLossScaling take 1 variable but got {}".format(
+            kwargs['PrevLossScaling']
+        )
+        assert (
+            len(kwargs['InGoodSteps']) == 1
+        ), "update_loss_scaling input InGoodSteps take 1 variable but got {}".format(
+            kwargs['InGoodSteps']
+        )
+        assert (
+            len(kwargs['InBadSteps']) == 1
+        ), "update_loss_scaling input InBadSteps take 1 variable but got {}".format(
+            kwargs['InBadSteps']
+        )
+        assert (
+            len(kwargs['LossScaling']) == 1
+        ), "update_loss_scaling output LossScaling take 1 variable but got {}".format(
+            kwargs['LossScaling']
+        )
+        assert (
+            len(kwargs['OutGoodSteps']) == 1
+        ), "update_loss_scaling output OutGoodSteps take 1 variable but got {}".format(
+            kwargs['OutGoodSteps']
+        )
+        assert (
+            len(kwargs['OutBadSteps']) == 1
+        ), "update_loss_scaling output OutBadSteps take 1 variable but got {}".format(
+            kwargs['OutBadSteps']
+        )
 
-        assert len(kwargs['X']) == len(kwargs['Out']), \
-            "update_loss_scaling got [{}] X and [{}] Out, which are supposed to be equal".format(
-            len(kwargs['X']), len(kwargs['Out']))
+        assert len(kwargs['X']) == len(
+            kwargs['Out']
+        ), "update_loss_scaling got [{}] X and [{}] Out, which are supposed to be equal".format(
+            len(kwargs['X']), len(kwargs['Out'])
+        )
 
         filter_vars = []
         for varname in kwargs['X']:
-            if rank_id in ctx.get_tensor_dist_attr_for_program(
-                    main_block.var(varname)).process_mesh.processes:
+            if (
+                rank_id
+                in ctx.get_tensor_dist_attr_for_program(
+                    main_block.var(varname)
+                ).process_mesh.processes
+            ):
                 filter_vars.append(varname)
 
         # replicate op in dist program
@@ -136,4 +166,5 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
 
 register_distributed_operator_impl(
     "update_loss_scaling",
-    DistributedUpdateLossScalingImpl("update_loss_scaling"))
+    DistributedUpdateLossScalingImpl("update_loss_scaling"),
+)
