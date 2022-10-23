@@ -6856,8 +6856,11 @@ class RecomputeOptimizer(Optimizer):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
+
+            paddle.enable_static()
             def gen_data():
                 return {"x": np.random.random(size=(32, 32)).astype('float32'),
                 "y": np.random.randint(2, size=(32, 1)).astype('int64')}
