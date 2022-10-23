@@ -82,7 +82,6 @@ def send_u_recv(x,
                       the 0th dimension.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
@@ -230,7 +229,6 @@ def send_ue_recv(x,
                       the 0th dimension.
 
     Examples:
-
         .. code-block:: python
 
             import paddle

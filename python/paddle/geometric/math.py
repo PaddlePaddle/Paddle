@@ -41,7 +41,6 @@ def segment_sum(data, segment_ids, name=None):
         output (Tensor): The reduced result.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
@@ -84,7 +83,7 @@ def segment_mean(data, segment_ids, name=None):
     r"""
     Segment mean Operator.
 
-    Ihis operator calculate the mean value of input `data` which
+    This operator calculate the mean value of input `data` which
     with the same index in `segment_ids`.
     It computes a tensor such that $out_i = \\frac{1}{n_i}  \\sum_{j} data[j]$
     where sum is over j such that 'segment_ids[j] == i' and $n_i$ is the number
@@ -102,7 +101,6 @@ def segment_mean(data, segment_ids, name=None):
        output (Tensor): the reduced result.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
@@ -163,7 +161,6 @@ def segment_min(data, segment_ids, name=None):
        output (Tensor): the reduced result.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
@@ -224,7 +221,6 @@ def segment_max(data, segment_ids, name=None):
        output (Tensor): the reduced result.
 
     Examples:
-
         .. code-block:: python
 
             import paddle

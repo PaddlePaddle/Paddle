@@ -72,7 +72,6 @@ def sample_neighbors(row,
                            sample edges.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
