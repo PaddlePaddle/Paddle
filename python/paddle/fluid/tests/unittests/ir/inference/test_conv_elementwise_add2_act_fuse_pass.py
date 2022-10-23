@@ -23,7 +23,7 @@ os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
 
 class TestConvElementwiseAdd2ActPass(PassAutoScanTest):
-    """
+    r"""
         x_var   f_var(persistable)
             \       /
                 conv2d

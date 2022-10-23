@@ -59,7 +59,7 @@ class TestCsrMv(unittest.TestCase):
             sp_x.stop_gradient = False
             sp_vec = origin_vec.detach()
             sp_vec.stop_gradient = False
-            sp_out = paddle.incubate.sparse.mv(sp_x, sp_vec)
+            sp_out = paddle.sparse.mv(sp_x, sp_vec)
             sp_out.backward()
 
             np.testing.assert_allclose(sp_out.numpy(),
@@ -97,7 +97,7 @@ class TestCooMv(unittest.TestCase):
             sp_x.stop_gradient = False
             sp_vec = origin_vec.detach()
             sp_vec.stop_gradient = False
-            sp_out = paddle.incubate.sparse.mv(sp_x, sp_vec)
+            sp_out = paddle.sparse.mv(sp_x, sp_vec)
             sp_out.backward()
 
             np.testing.assert_allclose(sp_out.numpy(),

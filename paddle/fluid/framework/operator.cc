@@ -998,7 +998,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
       return ((op_with_kernel.kernel_type()) &&
               (op_with_kernel.kernel_type()->data_layout_ ==
-               framework::DataLayout::kMKLDNN));
+               phi::DataLayout::kMKLDNN));
     } catch (const std::bad_cast& exp) {
       return false;
     }
@@ -1389,14 +1389,12 @@ bool OperatorWithKernel::SupportsKernelType(
 #endif
 
 // NOTE(jiahongyu): If MKLDNN can be used, the function SupportsKernelType needs
-// to check whether current op supports MKLDNN kernel. There are three
-// statements in if condition: The first statement checks whether library_type_
-// are changed by other high priority backends; the second checks whether this
-// op has specific implementation; the third checks whether mkldnn kernel can be
-// used.
+// to check whether current op supports MKLDNN kernel. There are two statements
+// in if condition:
+// 1. Whether this op has specific implementation;
+// 2. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-  if (kernel_type.library_type_ == framework::LibraryType::kPlain &&
-      !paddle::platform::in_mkldnn_white_list(type_) &&
+  if (!paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
@@ -1572,13 +1570,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
 // LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
-// here. There are three statements in if condition: The first statement checks
-// whether library_type_ are changed by other high priority backends; the second
-// checks whether this op has specific implementation; the third checks whether
-// mkldnn kernel can be used.
+// here. There are two statements in if condition:
+// 1. Whether this op has specific implementation;
+// 2. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-      if (kernel_type_->library_type_ == framework::LibraryType::kPlain &&
-          !paddle::platform::in_mkldnn_white_list(type_) &&
+      if (!paddle::platform::in_mkldnn_white_list(type_) &&
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
@@ -1815,14 +1811,12 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
 // NOTE(jiahongyu): PADDLE_WITH_MKLDNN codes are moved outside function
 // GetExpectedKernelType, so that if MKLDNN can be used, the library_type_ and
-// data_layout_ of expected_kernel_key need to be adjusted. There are three
-// statements in if condition: The first statement checks whether library_type_
-// are changed by other high priority backends; the second checks whether this
-// op has specific implementation; the third checks whether mkldnn kernel can be
-// used.
+// data_layout_ of expected_kernel_key need to be adjusted. There are two
+// statements in if condition:
+// 1. Whether this op has specific implementation;
+// 2. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-  if (expected_kernel_key.library_type_ == framework::LibraryType::kPlain &&
-      !paddle::platform::in_mkldnn_white_list(type_) &&
+  if (!paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
@@ -2297,9 +2291,9 @@ Scope* OperatorWithKernel::PrepareData(
               << (new_expected_kernel_key ? *new_expected_kernel_key
                                           : expected_kernel_key);
 
-      // In the inference scenerio, the scopes will be reused across the
-      // batches, so the `new_scope` here will result in GPU memroy explosion
-      // over the  running of operators.
+      // In the inference scenario, the scopes will be reused across the
+      // batches, so the `new_scope` here will result in GPU memory explosion
+      // over the running of operators.
       // We use a thread_local cache to fix that issue, the key in the cache is
       // the combination of the `scope` argument, from_kernel_type,
       // target_kernel_type.
@@ -2661,6 +2655,19 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
     const OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  // When the op is first oneDNN op (there was some non oneDNN op
+  // previously)
+  // then we also need to rotate shape NHWC -> NCWH
+  if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+      (tensor.layout() != phi::DataLayout::kMKLDNN) &&
+      paddle::platform::MKLDNNDeviceContext::tls()
+              .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(),
+                                   phi::DataLayout::kNHWC);
+  }
+#endif
   return OpKernelType(
       expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }

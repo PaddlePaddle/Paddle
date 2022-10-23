@@ -20,8 +20,21 @@ import unittest
 import hypothesis.strategies as st
 
 
+class FcElementLayernormFusePassDataGen:
+
+    def __init__(self, min_v, max_v, shape, dtype):
+        self.min_v = min_v
+        self.max_v = max_v
+        self.shape = shape
+        self.dtype = dtype
+
+    def __call__(self):
+        return np.random.normal(self.min_v, self.max_v,
+                                self.shape).astype(self.dtype)
+
+
 class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
-    """
+    r"""
     x_var   w(persistable) bias_var(persistable)
       \     |              /
           fc
@@ -116,11 +129,18 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=ops,
             weights={
-                "fc_w": TensorConfig(shape=w_shape),
-                "fc_bias": TensorConfig(shape=fc_bias_shape),
-                "add_bias": TensorConfig(shape=add_bias_shape),
-                "scale": TensorConfig(shape=layer_norm_shape),
-                "layer_norm_bias": TensorConfig(shape=layer_norm_shape),
+                "fc_w":
+                TensorConfig(shape=w_shape),
+                "fc_bias":
+                TensorConfig(shape=fc_bias_shape),
+                "add_bias":
+                TensorConfig(shape=add_bias_shape),
+                "scale":
+                TensorConfig(shape=layer_norm_shape,
+                             data_gen=FcElementLayernormFusePassDataGen(
+                                 0.0, 0.5, layer_norm_shape, np.float32)),
+                "layer_norm_bias":
+                TensorConfig(shape=layer_norm_shape),
             },
             inputs={
                 "fc_x": TensorConfig(shape=x_shape),

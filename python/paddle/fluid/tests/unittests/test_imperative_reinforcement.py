@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -175,21 +174,21 @@ class TestImperativeMnist(unittest.TestCase):
 
         # np.testing.assert_allclose(dy_x_data.all(), static_x_data.all(), rtol=1e-5)
 
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             self.assertTrue(np.equal(value, dy_param_init_value[key]).all())
 
         self.assertTrue(np.equal(static_out, dy_out).all())
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             self.assertTrue(np.equal(value, dy_param_value[key]).all())
 
         # check eager
-        for key, value in six.iteritems(static_param_init_value):
+        for key, value in static_param_init_value.items():
             self.assertTrue(np.equal(value, eager_param_init_value[key]).all())
 
         self.assertTrue(np.equal(static_out, eager_out).all())
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             self.assertTrue(np.equal(value, eager_param_value[key]).all())
 
 

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import six
 import unittest
 import numpy as np
 
@@ -120,7 +119,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         return static_param_dict
 
     def check_load_state_dict(self, orig_dict, load_dict):
-        for var_name, value in six.iteritems(orig_dict):
+        for var_name, value in orig_dict.items():
             np.testing.assert_array_equal(value, load_dict[var_name])
 
     def test_load_default(self):

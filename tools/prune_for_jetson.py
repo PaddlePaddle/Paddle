@@ -77,7 +77,7 @@ def prune_phi_kernels():
         all_matches = []
         with open(op_file, 'r', encoding='utf-8') as f:
             content = ''.join(f.readlines())
-            op_pattern = 'PD_REGISTER_KERNEL\(.*?\).*?\{.*?\}'
+            op_pattern = r'PD_REGISTER_KERNEL\(.*?\).*?\{.*?\}'
             op, op_count = find_kernel(content, op_pattern)
             register_op_count += op_count
             all_matches.extend(op)
@@ -143,11 +143,12 @@ def append_fluid_kernels():
 
         for op in op_white_list:
             patterns = {
-                "REGISTER_OPERATOR": "REGISTER_OPERATOR\(\s*%s\s*," % op,
+                "REGISTER_OPERATOR":
+                r"REGISTER_OPERATOR\(\s*%s\s*," % op,
                 "REGISTER_OP_CPU_KERNEL":
-                "REGISTER_OP_CPU_KERNEL\(\s*%s\s*," % op,
+                r"REGISTER_OP_CPU_KERNEL\(\s*%s\s*," % op,
                 "REGISTER_OP_CUDA_KERNEL":
-                "REGISTER_OP_CUDA_KERNEL\(\s*%s\s*," % op
+                r"REGISTER_OP_CUDA_KERNEL\(\s*%s\s*," % op
             }
             for k, p in patterns.items():
                 matches = re.findall(p, content, flags=re.DOTALL)

@@ -599,10 +599,9 @@ void ConvTransposeInferMeta(const MetaTensor& x,
   std::vector<int> paddings_ = paddings;
   std::vector<int> dilations_ = dilations;
 
-  const DataLayout data_layout =
-      config.is_run_mkldnn_kernel
-          ? DataLayout::kNCHW
-          : paddle::framework::StringToDataLayout(data_format);
+  const DataLayout data_layout = config.is_run_mkldnn_kernel
+                                     ? DataLayout::kNCHW
+                                     : phi::StringToDataLayout(data_format);
 
   PADDLE_ENFORCE_EQ(
       x_dims.size() == 4 || x_dims.size() == 5,

@@ -21,7 +21,7 @@ import hypothesis.strategies as st
 
 
 class TestConvTransposeEltwiseaddBnFusePass(PassAutoScanTest):
-    '''
+    r'''
     conv_input   conv_weight_var(persistable)
       \       /
          conv_op

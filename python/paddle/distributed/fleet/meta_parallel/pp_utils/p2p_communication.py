@@ -22,12 +22,14 @@ from .utils import paddle_2_number, paddle_2_number, number_2_dtype
 
 _hcg = None
 _use_cache = False
+_enable_partial_send_recv = True
 
 
-def initialize_p2p_groups(hcg, use_cache=True):
-    global _hcg, _use_cache
+def initialize_p2p_groups(hcg, use_cache=True, enable_partial_send_recv=True):
+    global _hcg, _use_cache, _enable_partial_send_recv
     _hcg = hcg
     _use_cache = use_cache
+    _enable_partial_send_recv = enable_partial_send_recv
     send_next_group, send_prev_group, recv_next_group, recv_prev_group = _hcg.get_p2p_groups(
     )
 
@@ -157,7 +159,8 @@ _send_recv_meta = SendRecvMeta()
 
 
 def _is_valid_send_recv_partial(tensor, mp_degree):
-
+    if not _enable_partial_send_recv:
+        return False
     tensor_numel = np.prod(tensor.shape)
     assert tensor_numel != 0, "can't send/recv zero element"
     return mp_degree > 1 and tensor_numel % mp_degree == 0
@@ -165,17 +168,18 @@ def _is_valid_send_recv_partial(tensor, mp_degree):
 
 def _partial_send_op(tensor, group, use_calc_stream, ring_id, dst, nranks,
                      rank_id):
+    dst_rank_in_group = dst if group is None else group.get_group_rank(dst)
     if _in_legacy_dygraph():
         return _legacy_C_ops.partial_send(tensor.detach(), 'use_calc_stream',
                                           use_calc_stream, 'ring_id', ring_id,
-                                          'peer', dst, 'num', nranks, 'id',
-                                          rank_id)
+                                          'peer', dst_rank_in_group, 'num',
+                                          nranks, 'id', rank_id)
     elif in_dygraph_mode():
         group = paddle.distributed.collective._get_default_group(
         ) if group is None else group
         comm_op = group.process_group.send_partial_on_calc_stream \
             if use_calc_stream else group.process_group.send_partial
-        return comm_op(tensor, dst, nranks, rank_id)
+        return comm_op(tensor, dst_rank_in_group, nranks, rank_id)
 
 
 def send_partial(tensor,
@@ -189,14 +193,16 @@ def send_partial(tensor,
         return
     ring_id = 0 if group is None else group.id
 
+    dst_rank = _hcg._get_p2p_next_rank(
+    ) if dst == 1 else _hcg._get_p2p_prev_rank()
+
     if _is_valid_send_recv_partial(tensor, nranks):
-        return _partial_send_op(tensor, group, use_calc_stream, ring_id, dst,
-                                nranks, rank_id)
+        return _partial_send_op(tensor, group, use_calc_stream, ring_id,
+                                dst_rank, nranks, rank_id)
     else:
-        dst_rank = _hcg._get_p2p_next_rank(
-        ) if dst == 1 else _hcg._get_p2p_prev_rank()
         if _in_legacy_dygraph():
-            send_op = paddle.distributed.send
+            send_op = lambda x, dst, group: \
+                    paddle.distributed.send(x, dst, group, use_calc_stream)
         elif in_dygraph_mode():
             send_op = paddle.distributed.isend
         return send_op(tensor.detach(), dst=dst_rank, group=group)
@@ -204,19 +210,21 @@ def send_partial(tensor,
 
 def _partial_recv_op(tensor, group, use_calc_stream, ring_id, src, nranks,
                      rank_id):
+    src_rank_in_group = src if group is None else group.get_group_rank(src)
     if _in_legacy_dygraph():
         assert use_calc_stream
         return _legacy_C_ops.partial_recv(tensor.detach(), 'use_calc_stream',
                                           use_calc_stream, 'ring_id', ring_id,
-                                          'peer', src, 'num', nranks, 'id',
-                                          rank_id, 'dtype', tensor.dtype,
-                                          'out_shape', tensor.shape)
+                                          'peer', src_rank_in_group, 'num',
+                                          nranks, 'id', rank_id, 'dtype',
+                                          tensor.dtype, 'out_shape',
+                                          tensor.shape)
     elif in_dygraph_mode():
         group = paddle.distributed.collective._get_default_group(
         ) if group is None else group
         comm_op = group.process_group.recv_partial_on_calc_stream \
             if use_calc_stream else group.process_group.recv_partial
-        return comm_op(tensor, src, nranks, rank_id)
+        return comm_op(tensor, src_rank_in_group, nranks, rank_id)
 
 
 def recv_partial(tensor,
@@ -230,12 +238,13 @@ def recv_partial(tensor,
         return
     ring_id = 0 if group is None else group.id
 
+    src_rank = _hcg._get_p2p_prev_rank(
+    ) if src == 0 else _hcg._get_p2p_next_rank()
+
     if _is_valid_send_recv_partial(tensor, nranks):
-        return _partial_recv_op(tensor, group, use_calc_stream, ring_id, src,
-                                nranks, rank_id)
+        return _partial_recv_op(tensor, group, use_calc_stream, ring_id,
+                                src_rank, nranks, rank_id)
     else:
-        src_rank = _hcg._get_p2p_prev_rank(
-        ) if src == 0 else _hcg._get_p2p_next_rank()
         if _in_legacy_dygraph() or use_calc_stream:
             recv_op = paddle.distributed.recv
         elif in_dygraph_mode():

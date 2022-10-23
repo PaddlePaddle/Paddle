@@ -55,6 +55,7 @@ namespace phi {
 class DenseTensor;
 class SelectedRows;
 class SparseCooTensor;
+class SparseCsrTensor;
 }  // namespace phi
 
 // Users should add forward declarations here
@@ -182,6 +183,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     phi::DenseTensor,
     phi::SelectedRows,
     phi::SparseCooTensor,
+    phi::SparseCsrTensor,
     std::vector<Scope *>,
     LoDRankTable,
     Strings,

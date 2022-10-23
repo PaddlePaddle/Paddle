@@ -96,18 +96,18 @@ class ConvMKLDNNHandlerT
     if (unlikely(!this->isCached())) {
       PADDLE_ENFORCE_EQ(
           input->layout(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The input tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN,
+              phi::DataLayout::kMKLDNN,
               input->layout()));
 
       PADDLE_ENFORCE_EQ(
           filter->layout(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The Filter tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN,
+              phi::DataLayout::kMKLDNN,
               filter->layout()));
 
       PADDLE_ENFORCE_GE(
@@ -143,10 +143,10 @@ class ConvMKLDNNHandlerT
       if (bias) {
         PADDLE_ENFORCE_EQ(
             bias->layout(),
-            framework::DataLayout::kMKLDNN,
+            phi::DataLayout::kMKLDNN,
             platform::errors::InvalidArgument(
                 "The Bias tensor's layout should be %d, but got %d.",
-                framework::DataLayout::kMKLDNN,
+                phi::DataLayout::kMKLDNN,
                 bias->layout()));
 
         PADDLE_ENFORCE_EQ(bias->dims().size(),
@@ -293,26 +293,26 @@ class ConvMKLDNNHandlerT
     if (unlikely(!this->isBwdCached())) {
       PADDLE_ENFORCE_EQ(
           in->layout(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The input tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN,
+              phi::DataLayout::kMKLDNN,
               in->layout()));
 
       PADDLE_ENFORCE_EQ(
           filter->layout(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The filter tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN,
+              phi::DataLayout::kMKLDNN,
               filter->layout()));
 
       PADDLE_ENFORCE_EQ(
           out_grad->layout(),
-          framework::DataLayout::kMKLDNN,
+          phi::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The output_grad tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN,
+              phi::DataLayout::kMKLDNN,
               out_grad->layout()));
 
       PADDLE_ENFORCE_EQ(
@@ -835,9 +835,11 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    const bool is_test = ctx.Attr<bool>("is_test");
-    const bool is_conv3d = ctx.Attr<std::vector<int>>("strides").size() == 3U;
-    const bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
+    bool is_test = ctx.Attr<bool>("is_test");
+    const auto& strides = ctx.Attr<std::vector<int>>("strides");
+    bool is_conv3d = strides.size() == 3UL;
+    bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
+    int groups = ctx.Attr<int>("groups");
 
     const auto* input = ctx.Input<phi::DenseTensor>("Input");
     const auto* filter = ctx.Input<phi::DenseTensor>("Filter");
@@ -861,7 +863,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
           auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
           auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-              filter, ctx.Attr<int>("groups"), is_conv3d, is_test);
+              filter, groups, is_conv3d, is_test);
 
           std::shared_ptr<dnnl::memory> dst_memory_p;
           if (fuse_residual_conn) {

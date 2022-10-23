@@ -14,7 +14,6 @@
 
 import numpy as np
 import time
-import six
 
 from paddle.fluid.op import Operator
 from op_test import OpTest
@@ -38,8 +37,7 @@ class BenchmarkSuite(OpTest):
             expect_t = np.array(item_cpu_out)
             actual = item_gpu_out
             actual_t = np.array(item_gpu_out)
-            var_name = variable if isinstance(
-                variable, six.string_types) else variable.name
+            var_name = variable if isinstance(variable, str) else variable.name
             np.testing.assert_allclose(actual_t,
                                        expect_t,
                                        rtol=1e-05,
@@ -49,7 +47,7 @@ class BenchmarkSuite(OpTest):
 
     def _get_input_names(self):
         inputs = []
-        for name, value in six.iteritems(self.inputs):
+        for name, value in self.inputs.items():
             if isinstance(value, list):
                 inputs.extend([sub_name for sub_name, _ in value])
             inputs.append(name)
@@ -57,7 +55,7 @@ class BenchmarkSuite(OpTest):
 
     def _get_output_names(self):
         outputs = []
-        for var_name, var in six.iteritems(self.outputs):
+        for var_name, var in self.outputs.items():
             if isinstance(var, list):
                 for sub_var_name, sub_var in var:
                     outputs.append(sub_var_name)

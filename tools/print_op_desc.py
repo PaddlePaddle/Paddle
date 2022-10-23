@@ -45,7 +45,6 @@ Usage:
 import paddle.fluid.framework as framework
 from paddle.fluid import core
 import json
-from paddle import compat as cpt
 
 INPUTS = "Inputs"
 OUTPUTS = "Outputs"
@@ -64,7 +63,7 @@ QUANT = "quant"
 
 
 def get_attr_default_value(op_name):
-    return core.get_op_attrs_default_value(cpt.to_bytes(op_name))
+    return core.get_op_attrs_default_value(op_name.encode())
 
 
 def get_vars_info(op_vars_proto):

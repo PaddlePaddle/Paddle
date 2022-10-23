@@ -72,7 +72,7 @@ def get_default_dtype():
     Args:
         None.
     Returns:
-        The default dtype.
+        String, this global dtype only supports float16, float32, float64.
 
     Examples:
         .. code-block:: python

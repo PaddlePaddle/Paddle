@@ -384,7 +384,7 @@ void ConvCudnnGradKernel(const Context& ctx,
 #else
     using search1 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-    bwd_result = search1::Find<T>(args1, exhaustive_search, deterministic, ctx);
+    bwd_result = search1::Find<T>(ctx, args1, exhaustive_search, deterministic);
     workspace_size_d = std::max(workspace_size_d, bwd_result.workspace_size);
 #endif
   }
@@ -413,7 +413,7 @@ void ConvCudnnGradKernel(const Context& ctx,
     using search2 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
     filter_result =
-        search2::Find<T>(args2, exhaustive_search, deterministic, ctx);
+        search2::Find<T>(ctx, args2, exhaustive_search, deterministic);
     VLOG(3) << "filter algo: " << filter_result.algo << ", time "
             << filter_result.time;
     workspace_size_w = std::max(workspace_size_w, filter_result.workspace_size);
@@ -969,7 +969,7 @@ void ConvCudnnGradGradKernel(
 #else
       using search1 =
           paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      fwd_result1 = search1::Find<T>(args1, exhaustive_search, false, ctx);
+      fwd_result1 = search1::Find<T>(ctx, args1, exhaustive_search, false);
       workspace_size = search1::GetWorkspaceSize(args1, fwd_result1.algo);
 #endif
     }
@@ -997,7 +997,7 @@ void ConvCudnnGradGradKernel(
 #else
       using search2 =
           paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-      fwd_result2 = search2::Find<T>(args2, exhaustive_search, false, ctx);
+      fwd_result2 = search2::Find<T>(ctx, args2, exhaustive_search, false);
       workspace_size = std::max(
           workspace_size, search2::GetWorkspaceSize(args2, fwd_result2.algo));
 #endif
@@ -1027,7 +1027,7 @@ void ConvCudnnGradGradKernel(
     using search3 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
     filter_result =
-        search3::Find<T>(args3, exhaustive_search, deterministic, ctx);
+        search3::Find<T>(ctx, args3, exhaustive_search, deterministic);
     workspace_size = std::max(
         workspace_size, search3::GetWorkspaceSize(args3, filter_result.algo));
 #endif
@@ -1057,7 +1057,7 @@ void ConvCudnnGradGradKernel(
     using search4 =
         paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     data_result =
-        search4::Find<T>(args4, exhaustive_search, deterministic, ctx);
+        search4::Find<T>(ctx, args4, exhaustive_search, deterministic);
     workspace_size = std::max(
         workspace_size, search4::GetWorkspaceSize(args4, data_result.algo));
 #endif

@@ -728,5 +728,29 @@ class TestRsqrtPrim2Orig(TestAddPPrim2Orig):
         self.out_map = {self.output['Y']: 0}
 
 
+class TestUniformRandomPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'uniform_random_p'
+
+        self.input = {}
+        self.output = {
+            'Out':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.float64)
+        }
+        self.attrs = {
+            'shape': [1, 2, 3],
+            'min': -1.0,
+            'max': 1.0,
+            'seed': 0,
+            'dtype': paddle.float64
+        }
+
+        self.prim2orig_args = ()
+        self.all_ops = ['uniform_random_p', 'uniform_random']
+        self.out_map = {self.output['Out']: 0}
+
+
 if __name__ == '__main__':
     unittest.main()
