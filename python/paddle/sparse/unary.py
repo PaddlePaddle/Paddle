@@ -15,7 +15,11 @@
 import numpy as np
 
 from paddle import _C_ops
-from paddle.fluid.framework import dygraph_only, core, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import (
+    dygraph_only,
+    core,
+    convert_np_dtype_to_dtype_,
+)
 
 __all__ = []
 

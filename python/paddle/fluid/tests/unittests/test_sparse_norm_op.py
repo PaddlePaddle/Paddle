@@ -22,13 +22,12 @@ import copy
 
 
 class TestSparseBatchNorm(unittest.TestCase):
-
     def test(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         paddle.seed(0)
         channels = 4
         shape = [2, 3, 6, 6, channels]
-        #there is no zero in dense_x
+        # there is no zero in dense_x
         dense_x = paddle.randn(shape)
         dense_x.stop_gradient = False
 
@@ -48,17 +47,21 @@ class TestSparseBatchNorm(unittest.TestCase):
 
         sparse_y = sparse_batch_norm(sparse_x)
         # compare the result with dense batch_norm
-        assert np.allclose(dense_y.flatten().numpy(),
-                           sparse_y.values().flatten().numpy(),
-                           atol=1e-5,
-                           rtol=1e-5)
+        assert np.allclose(
+            dense_y.flatten().numpy(),
+            sparse_y.values().flatten().numpy(),
+            atol=1e-5,
+            rtol=1e-5,
+        )
 
         # test backward
         sparse_y.backward(sparse_y)
-        assert np.allclose(dense_x.grad.flatten().numpy(),
-                           sparse_x.grad.values().flatten().numpy(),
-                           atol=1e-5,
-                           rtol=1e-5)
+        assert np.allclose(
+            dense_x.grad.flatten().numpy(),
+            sparse_x.grad.values().flatten().numpy(),
+            atol=1e-5,
+            rtol=1e-5,
+        )
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_error_layout(self):
@@ -66,8 +69,9 @@ class TestSparseBatchNorm(unittest.TestCase):
             shape = [2, 3, 6, 6, 3]
             x = paddle.randn(shape)
             sparse_x = x.to_sparse_coo(4)
-            sparse_batch_norm = paddle.sparse.nn.BatchNorm(3,
-                                                           data_format='NCDHW')
+            sparse_batch_norm = paddle.sparse.nn.BatchNorm(
+                3, data_format='NCDHW'
+            )
             sparse_batch_norm(sparse_x)
 
     def test2(self):
@@ -86,10 +90,10 @@ class TestSparseBatchNorm(unittest.TestCase):
 
 
 class TestSyncBatchNorm(unittest.TestCase):
-
     def test_sync_batch_norm(self):
-        x = np.array([[[[0.3, 0.4], [0.3, 0.07]],
-                       [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
+        x = np.array(
+            [[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]
+        ).astype('float32')
         x = paddle.to_tensor(x)
         sparse_x = x.to_sparse_coo(len(x.shape) - 1)
 
@@ -100,18 +104,24 @@ class TestSyncBatchNorm(unittest.TestCase):
             dense_sync_bn = paddle.nn.SyncBatchNorm(2)
             x = x.reshape((-1, x.shape[-1]))
             dense_hidden = dense_sync_bn(x)
-            assert np.allclose(sparse_hidden.values().numpy(),
-                               dense_hidden.numpy())
+            assert np.allclose(
+                sparse_hidden.values().numpy(), dense_hidden.numpy()
+            )
 
     def test_convert(self):
-        base_model = paddle.nn.Sequential(nn.Conv3D(3, 5, 3), nn.BatchNorm(5),
-                                          nn.BatchNorm(5))
+        base_model = paddle.nn.Sequential(
+            nn.Conv3D(3, 5, 3), nn.BatchNorm(5), nn.BatchNorm(5)
+        )
 
         model = paddle.nn.Sequential(
-            nn.Conv3D(3, 5, 3), nn.BatchNorm(5),
-            nn.BatchNorm(5,
-                         weight_attr=fluid.ParamAttr(name='bn.scale'),
-                         bias_attr=fluid.ParamAttr(name='bn.bias')))
+            nn.Conv3D(3, 5, 3),
+            nn.BatchNorm(5),
+            nn.BatchNorm(
+                5,
+                weight_attr=fluid.ParamAttr(name='bn.scale'),
+                bias_attr=fluid.ParamAttr(name='bn.bias'),
+            ),
+        )
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
         for idx, sublayer in enumerate(base_model.sublayers()):
             if isinstance(sublayer, nn.BatchNorm):
@@ -119,15 +129,14 @@ class TestSyncBatchNorm(unittest.TestCase):
 
 
 class TestStatic(unittest.TestCase):
-
     def test(self):
         paddle.enable_static()
-        indices = paddle.static.data(name='indices',
-                                     shape=[4, 4],
-                                     dtype='int32')
-        values = paddle.static.data(name='values',
-                                    shape=[4, 1],
-                                    dtype='float32')
+        indices = paddle.static.data(
+            name='indices', shape=[4, 4], dtype='int32'
+        )
+        values = paddle.static.data(
+            name='values', shape=[4, 1], dtype='float32'
+        )
         channels = 1
         dense_shape = [1, 1, 3, 4, channels]
         sp_x = sparse.sparse_coo_tensor(indices, values, dense_shape)
@@ -144,20 +153,29 @@ class TestStatic(unittest.TestCase):
         mean_data = np.array([1.0]).astype('float32')
         variance_data = np.array([2.0]).astype('float32')
 
-        fetch = exe.run(feed={
-            'indices': indices_data,
-            'values': values_data,
-            'batch_norm_0.b_0': bias_data,
-            'batch_norm_0.w_0': weight_data,
-            'batch_norm_0.w_1': mean_data,
-            'batch_norm_0.w_2': variance_data
-        },
-                        fetch_list=[out],
-                        return_numpy=True)
-        correct_out = np.array([[[[[0.0], [-1.6832708], [0.0], [0.1055764]],
-                                  [[0.0], [0.0], [1.8944236], [0.0]],
-                                  [[0.0], [0.0], [0.0],
-                                   [3.683271]]]]]).astype('float32')
+        fetch = exe.run(
+            feed={
+                'indices': indices_data,
+                'values': values_data,
+                'batch_norm_0.b_0': bias_data,
+                'batch_norm_0.w_0': weight_data,
+                'batch_norm_0.w_1': mean_data,
+                'batch_norm_0.w_2': variance_data,
+            },
+            fetch_list=[out],
+            return_numpy=True,
+        )
+        correct_out = np.array(
+            [
+                [
+                    [
+                        [[0.0], [-1.6832708], [0.0], [0.1055764]],
+                        [[0.0], [0.0], [1.8944236], [0.0]],
+                        [[0.0], [0.0], [0.0], [3.683271]],
+                    ]
+                ]
+            ]
+        ).astype('float32')
         np.testing.assert_allclose(correct_out, fetch[0], rtol=1e-5)
         paddle.disable_static()
 

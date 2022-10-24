@@ -21,7 +21,6 @@ from simple_nets import simple_fc_net_with_inputs, simple_fc_net
 
 
 class TestFetchLoDTensorArray(unittest.TestCase):
-
     def build_program(self, main_program, startup_program):
         with fluid.unique_name.guard():
             with fluid.program_guard(main_program, startup_program):
@@ -59,27 +58,34 @@ class TestFetchLoDTensorArray(unittest.TestCase):
 
         build_strategy = fluid.BuildStrategy()
         binary = fluid.CompiledProgram(main_program).with_data_parallel(
-            loss_name=loss.name, build_strategy=build_strategy)
+            loss_name=loss.name, build_strategy=build_strategy
+        )
 
         device_num = fluid.core.get_cuda_device_count() if use_cuda else 2
         for _ in range(3):
-            loss_v, array_v = exe.run(binary,
-                                      feed=feed_dict,
-                                      fetch_list=[loss, array],
-                                      return_merged=False)
+            loss_v, array_v = exe.run(
+                binary,
+                feed=feed_dict,
+                fetch_list=[loss, array],
+                return_merged=False,
+            )
             self.assertEqual(np.array(loss_v).shape, (device_num, 1))
             self.assertEqual(
-                np.array(array_v[0][0]).shape, (batch_size / device_num, 784))
+                np.array(array_v[0][0]).shape, (batch_size / device_num, 784)
+            )
             self.assertEqual(
-                np.array(array_v[0][1]).shape, (batch_size / device_num, 1))
-            self.assertEqual(np.array(array_v[0][2]).shape, (1, ))
+                np.array(array_v[0][1]).shape, (batch_size / device_num, 1)
+            )
+            self.assertEqual(np.array(array_v[0][2]).shape, (1,))
 
         for _ in range(3):
-            loss_v, array_v = exe.run(binary,
-                                      feed=feed_dict,
-                                      fetch_list=[loss, array],
-                                      return_merged=True)
-            self.assertEqual(np.array(loss_v).shape, (device_num, ))
+            loss_v, array_v = exe.run(
+                binary,
+                feed=feed_dict,
+                fetch_list=[loss, array],
+                return_merged=True,
+            )
+            self.assertEqual(np.array(loss_v).shape, (device_num,))
             self.assertEqual(np.array(array_v[0]).shape, (batch_size, 784))
             self.assertEqual(np.array(array_v[1]).shape, (batch_size, 1))
             np.testing.assert_allclose(loss_v, array_v[2], rtol=1e-05)

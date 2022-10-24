@@ -17,13 +17,13 @@ import os
 
 
 class Test_Preprocess(unittest.TestCase):
-
     def test_local_convert(self):
         os.system("python full_pascalvoc_test_preprocess.py --choice=local")
 
     def test_online_convert(self):
         os.system(
-            "python full_pascalvoc_test_preprocess.py --choice=VOC_test_2007")
+            "python full_pascalvoc_test_preprocess.py --choice=VOC_test_2007"
+        )
 
 
 if __name__ == '__main__':

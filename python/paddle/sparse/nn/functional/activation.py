@@ -52,10 +52,9 @@ def relu(x, name=None):
         op_type = 'sparse_relu'
         helper = LayerHelper(op_type)
         out = helper.create_sparse_variable_for_type_inference(x.dtype)
-        helper.append_op(type=op_type,
-                         inputs={'x': x},
-                         outputs={'out': out},
-                         attrs={})
+        helper.append_op(
+            type=op_type, inputs={'x': x}, outputs={'out': out}, attrs={}
+        )
         return out
 
 

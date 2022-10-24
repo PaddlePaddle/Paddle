@@ -19,13 +19,15 @@ from paddle.nn.functional.pooling import _update_padding_nd
 __all__ = []
 
 
-def max_pool3d(x,
-               kernel_size,
-               stride=None,
-               padding=0,
-               ceil_mode=False,
-               data_format="NDHWC",
-               name=None):
+def max_pool3d(
+    x,
+    kernel_size,
+    stride=None,
+    padding=0,
+    ceil_mode=False,
+    data_format="NDHWC",
+    name=None,
+):
     """
     Implements sparse max pooling 3d operation.
     See more details in :ref:`api_sparse_pooling_MaxPool3d` .
@@ -75,9 +77,12 @@ def max_pool3d(x,
     """
 
     assert in_dynamic_mode(), "Currently, Sparse API only support dynamic mode"
-    assert x.is_sparse_coo(
+    assert (
+        x.is_sparse_coo()
     ), "Currently, sparse.relu only support the input of SparseCooTensor"
-    assert data_format == 'NDHWC', "Currently, sparse.max_pool3d only support data format of 'NDHWC'"
+    assert (
+        data_format == 'NDHWC'
+    ), "Currently, sparse.max_pool3d only support data format of 'NDHWC'"
 
     kernel_size = utils.convert_to_list(kernel_size, 3, 'pool_size')
     if stride is None:
@@ -87,12 +92,11 @@ def max_pool3d(x,
 
     channel_last = True
 
-    padding, padding_algorithm = _update_padding_nd(padding,
-                                                    3,
-                                                    channel_last=channel_last,
-                                                    ceil_mode=ceil_mode)
+    padding, padding_algorithm = _update_padding_nd(
+        padding, 3, channel_last=channel_last, ceil_mode=ceil_mode
+    )
 
-    #TODO(zkh2016): remove the dependency on dilation from the backend
+    # TODO(zkh2016): remove the dependency on dilation from the backend
     dilation = [1, 1, 1]
 
     return _C_ops.sparse_maxpool(x, kernel_size, padding, dilation, stride)

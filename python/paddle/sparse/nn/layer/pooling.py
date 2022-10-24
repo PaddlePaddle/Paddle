@@ -73,14 +73,16 @@ class MaxPool3D(Layer):
 
     """
 
-    def __init__(self,
-                 kernel_size,
-                 stride=None,
-                 padding=0,
-                 return_mask=False,
-                 ceil_mode=False,
-                 data_format="NDHWC",
-                 name=None):
+    def __init__(
+        self,
+        kernel_size,
+        stride=None,
+        padding=0,
+        return_mask=False,
+        ceil_mode=False,
+        data_format="NDHWC",
+        name=None,
+    ):
         super(MaxPool3D, self).__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -91,14 +93,17 @@ class MaxPool3D(Layer):
         self.name = name
 
     def forward(self, x):
-        return F.max_pool3d(x,
-                            kernel_size=self.ksize,
-                            stride=self.stride,
-                            padding=self.padding,
-                            ceil_mode=self.ceil_mode,
-                            data_format=self.data_format,
-                            name=self.name)
+        return F.max_pool3d(
+            x,
+            kernel_size=self.ksize,
+            stride=self.stride,
+            padding=self.padding,
+            ceil_mode=self.ceil_mode,
+            data_format=self.data_format,
+            name=self.name,
+        )
 
     def extra_repr(self):
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
-            **self.__dict__)
+            **self.__dict__
+        )

@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.distributed.fleet.meta_optimizers.common import is_optimizer_op, OP_ROLE_KEY, OpRole
+from paddle.distributed.fleet.meta_optimizers.common import (
+    is_optimizer_op,
+    OP_ROLE_KEY,
+    OpRole,
+)
 
 from paddle.fluid import core
 
@@ -20,7 +24,6 @@ __all__ = []
 
 
 class FP16Utils(object):
-
     def __init__(self):
         pass
 
@@ -30,16 +33,20 @@ class FP16Utils(object):
             return False
         if is_optimizer_op(op):
             return False
-        assert (len(op.desc.input_arg_names()) == 1)
-        assert (len(op.desc.output_arg_names()) == 1)
-        input_name, output_name = op.desc.input_arg_names(
-        )[0], op.desc.output_arg_names()[0]
+        assert len(op.desc.input_arg_names()) == 1
+        assert len(op.desc.output_arg_names()) == 1
+        input_name, output_name = (
+            op.desc.input_arg_names()[0],
+            op.desc.output_arg_names()[0],
+        )
         if input_name not in params:
             return False
         input_var = block.var(input_name)
         output_var = block.var(output_name)
-        if input_var.dtype != core.VarDesc.VarType.FP32 or \
-            output_var.dtype != core.VarDesc.VarType.FP16:
+        if (
+            input_var.dtype != core.VarDesc.VarType.FP32
+            or output_var.dtype != core.VarDesc.VarType.FP16
+        ):
             return False
         return True
 
@@ -49,14 +56,18 @@ class FP16Utils(object):
             return False
         if not is_optimizer_op(op):
             return False
-        assert (len(op.desc.input_arg_names()) == 1)
-        assert (len(op.desc.output_arg_names()) == 1)
-        input_name, output_name = op.desc.input_arg_names(
-        )[0], op.desc.output_arg_names()[0]
+        assert len(op.desc.input_arg_names()) == 1
+        assert len(op.desc.output_arg_names()) == 1
+        input_name, output_name = (
+            op.desc.input_arg_names()[0],
+            op.desc.output_arg_names()[0],
+        )
         input_var = block.var(input_name)
         output_var = block.var(output_name)
-        if input_var.dtype != core.VarDesc.VarType.FP16 or \
-            output_var.dtype != core.VarDesc.VarType.FP32:
+        if (
+            input_var.dtype != core.VarDesc.VarType.FP16
+            or output_var.dtype != core.VarDesc.VarType.FP32
+        ):
             return False
         return True
 
@@ -64,7 +75,8 @@ class FP16Utils(object):
     def remove_cast_op(block, params, segment, offset):
         inserted_op_num = 0
         for op_idx in reversed(
-                range(offset + segment._start_idx, offset + segment._end_idx)):
+            range(offset + segment._start_idx, offset + segment._end_idx)
+        ):
             op = block.ops[op_idx]
             if FP16Utils.is_fp16_cast_op(block, op, params):
                 block._remove_op(op_idx, sync=False)
@@ -84,13 +96,16 @@ class FP16Utils(object):
                 continue
             output_name = op.desc.output_arg_names()[0]
             # TODO (JZ-LIANG) revise this for uniform mixed parallelism
-            param_name = output_name.strip(
-                "@GRAD@MERGED"
-            ) if "@MERGED" in output_name else output_name.strip("@GRAD")
+            param_name = (
+                output_name.strip("@GRAD@MERGED")
+                if "@MERGED" in output_name
+                else output_name.strip("@GRAD")
+            )
             if param_name not in shard.global_params:
                 raise ValueError(
                     "Output 'X' of cast_op must be a grad of"
-                    "model param, but {} is not a grad".format(output_name))
+                    "model param, but {} is not a grad".format(output_name)
+                )
             if output_name in reduced_grads_to_param:
                 continue
             if shard.has_param(param_name):
@@ -117,7 +132,8 @@ class FP16Utils(object):
                     if param_name not in shard.global_params:
                         raise ValueError(
                             "Input 'X' of check_finite_and_unscale must"
-                            "be grads, but {} is not a grad".format(input_name))
+                            "be grads, but {} is not a grad".format(input_name)
+                        )
                     if shard.has_param(param_name):
                         reversed_x.append(input_name)
                         reversed_x_paramname.append(param_name)
@@ -127,55 +143,73 @@ class FP16Utils(object):
                 # the grad checking should take the all and only param in the current shard
                 to_check_param = set(reversed_x_paramname)
                 should_check_param = set(shard.global_params).intersection(
-                    set([param for param, worker_idx in shard.global_param2device.items() \
-                        if worker_idx == shard.worker_idx]))
-                assert to_check_param == should_check_param, "amp \
+                    set(
+                        [
+                            param
+                            for param, worker_idx in shard.global_param2device.items()
+                            if worker_idx == shard.worker_idx
+                        ]
+                    )
+                )
+                assert (
+                    to_check_param == should_check_param
+                ), "amp \
                     check_finite_and_unscale checking miss [{}] and got unexpected [{}]".format(
                     should_check_param - to_check_param,
-                    to_check_param - should_check_param)
+                    to_check_param - should_check_param,
+                )
 
         if update_loss_scaling_op_idx == -1:
             return
         inf_var = block.var(inf_var_name)
-        inf_var_int32 = block.create_var(name=inf_var_name + "@cast_int32",
-                                         shape=inf_var.shape,
-                                         dtype=core.VarDesc.VarType.INT32)
+        inf_var_int32 = block.create_var(
+            name=inf_var_name + "@cast_int32",
+            shape=inf_var.shape,
+            dtype=core.VarDesc.VarType.INT32,
+        )
 
-        block._insert_op_without_sync(update_loss_scaling_op_idx,
-                                      type='cast',
-                                      inputs={'X': inf_var},
-                                      outputs={'Out': inf_var_int32},
-                                      attrs={
-                                          "in_dtype": inf_var.dtype,
-                                          "out_dtype": inf_var_int32.dtype,
-                                          OP_ROLE_KEY: OpRole.Optimize
-                                      })
+        block._insert_op_without_sync(
+            update_loss_scaling_op_idx,
+            type='cast',
+            inputs={'X': inf_var},
+            outputs={'Out': inf_var_int32},
+            attrs={
+                "in_dtype": inf_var.dtype,
+                "out_dtype": inf_var_int32.dtype,
+                OP_ROLE_KEY: OpRole.Optimize,
+            },
+        )
         update_loss_scaling_op_idx += 1
 
         # allreduce(mp)->allreduce(sharding)->allreduce(pp)
         for ring_id in ring_ids:
-            if ring_id == -1: continue
+            if ring_id == -1:
+                continue
             # this allreduce communication should not overlap with calc
-            block._insert_op_without_sync(update_loss_scaling_op_idx,
-                                          type='c_allreduce_max',
-                                          inputs={'X': inf_var_int32},
-                                          outputs={'Out': inf_var_int32},
-                                          attrs={
-                                              'ring_id': ring_id,
-                                              'use_calc_stream': True,
-                                              OP_ROLE_KEY: OpRole.Optimize
-                                          })
+            block._insert_op_without_sync(
+                update_loss_scaling_op_idx,
+                type='c_allreduce_max',
+                inputs={'X': inf_var_int32},
+                outputs={'Out': inf_var_int32},
+                attrs={
+                    'ring_id': ring_id,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Optimize,
+                },
+            )
             update_loss_scaling_op_idx += 1
 
-        block._insert_op_without_sync(update_loss_scaling_op_idx,
-                                      type='cast',
-                                      inputs={'X': inf_var_int32},
-                                      outputs={'Out': inf_var},
-                                      attrs={
-                                          "in_dtype": inf_var_int32.dtype,
-                                          "out_dtype": inf_var.dtype,
-                                          OP_ROLE_KEY: OpRole.Optimize
-                                      })
+        block._insert_op_without_sync(
+            update_loss_scaling_op_idx,
+            type='cast',
+            inputs={'X': inf_var_int32},
+            outputs={'Out': inf_var},
+            attrs={
+                "in_dtype": inf_var_int32.dtype,
+                "out_dtype": inf_var.dtype,
+                OP_ROLE_KEY: OpRole.Optimize,
+            },
+        )
         update_loss_scaling_op_idx += 1
         block._sync_with_cpp()
 
@@ -197,42 +231,51 @@ class FP16Utils(object):
         # 1. inf_var_int32 = allreduce_max(inf_var_int32)
         # 3. inf_var = cast(inf_var_int32)
         inf_var = block.var(inf_var_name)
-        inf_var_int32 = block.create_var(name=inf_var_name + "@cast_int32",
-                                         shape=inf_var.shape,
-                                         dtype=core.VarDesc.VarType.INT32)
-        block._insert_op_without_sync(update_loss_scaling_op_idx,
-                                      type='cast',
-                                      inputs={'X': inf_var},
-                                      outputs={'Out': inf_var_int32},
-                                      attrs={
-                                          "in_dtype": inf_var.dtype,
-                                          "out_dtype": inf_var_int32.dtype,
-                                          OP_ROLE_KEY: OpRole.Optimize
-                                      })
+        inf_var_int32 = block.create_var(
+            name=inf_var_name + "@cast_int32",
+            shape=inf_var.shape,
+            dtype=core.VarDesc.VarType.INT32,
+        )
+        block._insert_op_without_sync(
+            update_loss_scaling_op_idx,
+            type='cast',
+            inputs={'X': inf_var},
+            outputs={'Out': inf_var_int32},
+            attrs={
+                "in_dtype": inf_var.dtype,
+                "out_dtype": inf_var_int32.dtype,
+                OP_ROLE_KEY: OpRole.Optimize,
+            },
+        )
         update_loss_scaling_op_idx += 1
 
         # allreduce(mp)->allreduce(pp)
         for ring_id in ring_ids:
-            if ring_id == -1: continue
-            block._insert_op_without_sync(update_loss_scaling_op_idx,
-                                          type='c_allreduce_max',
-                                          inputs={'X': inf_var_int32},
-                                          outputs={'Out': inf_var_int32},
-                                          attrs={
-                                              'ring_id': ring_id,
-                                              'use_calc_stream': True,
-                                              OP_ROLE_KEY: OpRole.Optimize
-                                          })
+            if ring_id == -1:
+                continue
+            block._insert_op_without_sync(
+                update_loss_scaling_op_idx,
+                type='c_allreduce_max',
+                inputs={'X': inf_var_int32},
+                outputs={'Out': inf_var_int32},
+                attrs={
+                    'ring_id': ring_id,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Optimize,
+                },
+            )
             update_loss_scaling_op_idx += 1
 
-        block._insert_op_without_sync(update_loss_scaling_op_idx,
-                                      type='cast',
-                                      inputs={'X': inf_var_int32},
-                                      outputs={'Out': inf_var},
-                                      attrs={
-                                          "in_dtype": inf_var_int32.dtype,
-                                          "out_dtype": inf_var.dtype,
-                                          OP_ROLE_KEY: OpRole.Optimize
-                                      })
+        block._insert_op_without_sync(
+            update_loss_scaling_op_idx,
+            type='cast',
+            inputs={'X': inf_var_int32},
+            outputs={'Out': inf_var},
+            attrs={
+                "in_dtype": inf_var_int32.dtype,
+                "out_dtype": inf_var.dtype,
+                OP_ROLE_KEY: OpRole.Optimize,
+            },
+        )
         update_loss_scaling_op_idx += 1
         block._sync_with_cpp()

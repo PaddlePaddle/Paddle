@@ -27,21 +27,18 @@ def test_static_layer(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.static.data(name='input',
-                                   shape=input_np.shape,
-                                   dtype=input_np.dtype)
-        label = paddle.static.data(name='label',
-                                   shape=label_np.shape,
-                                   dtype=label_np.dtype)
+        input = paddle.static.data(
+            name='input', shape=input_np.shape, dtype=input_np.dtype
+        )
+        label = paddle.static.data(
+            name='label', shape=label_np.shape, dtype=label_np.dtype
+        )
         sm_loss = paddle.nn.loss.SoftMarginLoss(reduction=reduction)
         res = sm_loss(input, label)
         exe = paddle.static.Executor(place)
-        static_result, = exe.run(prog,
-                                 feed={
-                                     "input": input_np,
-                                     "label": label_np
-                                 },
-                                 fetch_list=[res])
+        (static_result,) = exe.run(
+            prog, feed={"input": input_np, "label": label_np}, fetch_list=[res]
+        )
     return static_result
 
 
@@ -55,23 +52,20 @@ def test_static_functional(
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
-        input = paddle.static.data(name='input',
-                                   shape=input_np.shape,
-                                   dtype=input_np.dtype)
-        label = paddle.static.data(name='label',
-                                   shape=label_np.shape,
-                                   dtype=label_np.dtype)
+        input = paddle.static.data(
+            name='input', shape=input_np.shape, dtype=input_np.dtype
+        )
+        label = paddle.static.data(
+            name='label', shape=label_np.shape, dtype=label_np.dtype
+        )
 
-        res = paddle.nn.functional.soft_margin_loss(input,
-                                                    label,
-                                                    reduction=reduction)
+        res = paddle.nn.functional.soft_margin_loss(
+            input, label, reduction=reduction
+        )
         exe = paddle.static.Executor(place)
-        static_result, = exe.run(prog,
-                                 feed={
-                                     "input": input_np,
-                                     "label": label_np
-                                 },
-                                 fetch_list=[res])
+        (static_result,) = exe.run(
+            prog, feed={"input": input_np, "label": label_np}, fetch_list=[res]
+        )
     return static_result
 
 
@@ -99,9 +93,9 @@ def test_dygraph_functional(
     input = paddle.to_tensor(input_np)
     label = paddle.to_tensor(label_np)
 
-    dy_res = paddle.nn.functional.soft_margin_loss(input,
-                                                   label,
-                                                   reduction=reduction)
+    dy_res = paddle.nn.functional.soft_margin_loss(
+        input, label, reduction=reduction
+    )
     dy_result = dy_res.numpy()
     paddle.enable_static()
     return dy_result
@@ -126,7 +120,6 @@ def calc_softmarginloss(
 
 
 class TestSoftMarginLoss(unittest.TestCase):
-
     def test_SoftMarginLoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
         types = [np.int32, np.int64, np.float32, np.float64]
@@ -137,48 +130,58 @@ class TestSoftMarginLoss(unittest.TestCase):
         for place in places:
             for reduction in reductions:
                 for _type in types:
-                    label_np = np.random.randint(0, 2,
-                                                 size=(5, 5)).astype(_type)
+                    label_np = np.random.randint(0, 2, size=(5, 5)).astype(
+                        _type
+                    )
                     label_np[label_np == 0] = -1
-                    static_result = test_static_layer(place, input_np, label_np,
-                                                      reduction)
-                    dy_result = test_dygraph_layer(place, input_np, label_np,
-                                                   reduction)
-                    expected = calc_softmarginloss(input_np, label_np,
-                                                   reduction)
-                    np.testing.assert_allclose(static_result,
-                                               expected,
-                                               rtol=1e-05)
-                    np.testing.assert_allclose(static_result,
-                                               dy_result,
-                                               rtol=1e-05)
+                    static_result = test_static_layer(
+                        place, input_np, label_np, reduction
+                    )
+                    dy_result = test_dygraph_layer(
+                        place, input_np, label_np, reduction
+                    )
+                    expected = calc_softmarginloss(
+                        input_np, label_np, reduction
+                    )
+                    np.testing.assert_allclose(
+                        static_result, expected, rtol=1e-05
+                    )
+                    np.testing.assert_allclose(
+                        static_result, dy_result, rtol=1e-05
+                    )
                     np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
                     static_functional = test_static_functional(
-                        place, input_np, label_np, reduction)
+                        place, input_np, label_np, reduction
+                    )
                     dy_functional = test_dygraph_functional(
-                        place, input_np, label_np, reduction)
-                    np.testing.assert_allclose(static_functional,
-                                               expected,
-                                               rtol=1e-05)
-                    np.testing.assert_allclose(static_functional,
-                                               dy_functional,
-                                               rtol=1e-05)
-                    np.testing.assert_allclose(dy_functional,
-                                               expected,
-                                               rtol=1e-05)
+                        place, input_np, label_np, reduction
+                    )
+                    np.testing.assert_allclose(
+                        static_functional, expected, rtol=1e-05
+                    )
+                    np.testing.assert_allclose(
+                        static_functional, dy_functional, rtol=1e-05
+                    )
+                    np.testing.assert_allclose(
+                        dy_functional, expected, rtol=1e-05
+                    )
 
     def test_SoftMarginLoss_error(self):
         paddle.disable_static()
-        self.assertRaises(ValueError,
-                          paddle.nn.loss.SoftMarginLoss,
-                          reduction="unsupport reduction")
+        self.assertRaises(
+            ValueError,
+            paddle.nn.loss.SoftMarginLoss,
+            reduction="unsupport reduction",
+        )
         input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
         label = paddle.to_tensor([[-1.0, 1.0]], dtype='float32')
-        self.assertRaises(ValueError,
-                          paddle.nn.functional.soft_margin_loss,
-                          input=input,
-                          label=label,
-                          reduction="unsupport reduction")
+        self.assertRaises(
+            ValueError,
+            paddle.nn.functional.soft_margin_loss,
+            input=input,
+            label=label,
+            reduction="unsupport reduction",
+        )
         paddle.enable_static()
 
 
