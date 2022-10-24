@@ -46,12 +46,12 @@ enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
   CHECK_CASE(2, flags, kernel_name, __VA_ARGS__)  \
   CHECK_CASE(3, flags, kernel_name, __VA_ARGS__)
 
-template <typename T>
-__device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
-  typedef cub::WarpReduce<T> WarpReduce;
+template <typename T,typename AccT>
+__device__ __inline__ void CudaAtomicAddWithWarp(T* sum, AccT value) {
+  typedef cub::WarpReduce<AccT> WarpReduce;
   typename WarpReduce::TempStorage temp_storage;
   value = WarpReduce(temp_storage).Sum(value);
-  if (cub::LaneId() == 0) paddle::platform::CudaAtomicAdd(sum, value);
+  if (cub::LaneId() == 0) paddle::platform::CudaAtomicAdd(sum, static_cast<T>(value));
 }
 
 template <typename T, typename AccT, int VecSize, int Num>
@@ -75,11 +75,11 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
     size += offset;
     if (tid >= offset) {
       if (Num == 1) {
-        *out_mean += x[tid];
-        *out_var += x[tid] * x[tid];
+        *out_mean += static_cast<AccT>(x[tid]);
+        *out_var += static_cast<AccT>(x[tid] * x[tid]);
       } else if (Num == 2) {
-        *out_mean += y[tid];
-        *out_var += y[tid] * x[tid];
+        *out_mean += static_cast<AccT>(y[tid]);
+        *out_var += static_cast<AccT>(y[tid] * x[tid]);
       }
     }
     size -= blockDim.x;
@@ -105,11 +105,11 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
       if (Num == 1) {
-        *out_mean += ins_x[i];
-        *out_var += ins_x[i] * ins_x[i];
+        *out_mean += static_cast<AccT>(ins_x[i]);
+        *out_var += static_cast<AccT>(ins_x[i] * ins_x[i]);
       } else if (Num == 2) {
-        *out_mean += ins_y[i];
-        *out_var += ins_y[i] * ins_x[i];
+        *out_mean += static_cast<AccT>(ins_y[i]);
+        *out_var += static_cast<AccT>(ins_y[i] * ins_x[i]);
       }
     }
   }
@@ -118,23 +118,23 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
   tid = size - remain + threadIdx.x;
   for (; tid < size; tid += blockDim.x) {
     if (Num == 1) {
-      *out_mean += x[tid];
-      *out_var += x[tid] * x[tid];
+      *out_mean += static_cast<AccT>(x[tid]);
+      *out_var += static_cast<AccT>(x[tid] * x[tid]);
     } else if (Num == 2) {
-      *out_mean += y[tid];
-      *out_var += y[tid] * x[tid];
+      *out_mean += static_cast<AccT>(y[tid]);
+      *out_var += static_cast<AccT>(y[tid] * x[tid]);
     }
   }
 }
 
-template <typename T>
+template <typename T, typename U>
 __device__ __forceinline__ void ReduceMeanAndVar(
-    T* mean, T* var, T x_mean, T x_var, int size) {
+    T* mean, T* var, U x_mean, U x_var, int size) {
   const int nc = blockIdx.x;
-  x_mean = kps::details::BlockXReduce<T, kps::AddFunctor<T>>(
-      x_mean, kps::AddFunctor<T>());
-  x_var = kps::details::BlockXReduce<T, kps::AddFunctor<T>>(
-      x_var, kps::AddFunctor<T>());
+  x_mean = kps::details::BlockXReduce<U, kps::AddFunctor<U>>(
+      x_mean, kps::AddFunctor<U>());
+  x_var = kps::details::BlockXReduce<U, kps::AddFunctor<U>>(
+      x_var, kps::AddFunctor<U>());
   __syncthreads();
   if (threadIdx.x == 0) {
     mean[nc] = static_cast<T>(x_mean / size);
@@ -142,17 +142,18 @@ __device__ __forceinline__ void ReduceMeanAndVar(
   }
 }
 
-template <typename T>
+template <typename T, typename U>
 __global__ void ScalarGetMeanAndVarNCHW(const T* x, T* mean, T* var, int size) {
   int i = blockIdx.x;
-  T x_mean = 0, x_var = 0;
+  U x_mean = static_cast<U>(0);
+  U x_var = static_cast<U>(0);
   for (int j = threadIdx.x; j < size; j += blockDim.x) {
-    T val;
-    val = x[i * size + j];
+    U val;
+    val = static_cast<U>(x[i * size + j]);
     x_mean += val;
     x_var += val * val;
   }
-  ReduceMeanAndVar<T>(mean, var, x_mean, x_var, size);
+  ReduceMeanAndVar<T, U>(mean, var, x_mean, x_var, size);
 }
 
 template <typename T, typename AccT, int VecSize>
@@ -168,7 +169,7 @@ __global__ void VectorizedGetMeanAndVarNCHW(const T* x,
   phi::Array<const T*, 1> ins;
   ins[0] = x;
   ThreadReduce<T, AccT, VecSize, 1>(ins, size, input_offset, &x_mean, &x_var);
-  ReduceMeanAndVar<AccT>(mean, var, x_mean, x_var, size);
+  ReduceMeanAndVar<T, AccT>(mean, var, x_mean, x_var, size);
 }
 
 }  // namespace phi
