@@ -28,6 +28,14 @@ DECLARE_int32(inner_op_parallelism);
 
 namespace phi {
 
+paddle::optional<DenseTensor> TensorPtrToOptionalTensor(const DenseTensor* t) {
+  if (t != nullptr) {
+    return *t;
+  } else {
+    return paddle::none;
+  }
+}
+
 template <typename T, typename Context>
 void MultiTensorAdamKernel(
     const Context& dev_ctx,
@@ -81,57 +89,63 @@ void MultiTensorAdamKernel(
                         params_num));
 
   for (size_t idx = 0; idx < params_num; idx++) {
+    paddle::optional<DenseTensor> master_param_tmp = paddle::none;
+    if (master_param) {
+      master_param_tmp = TensorPtrToOptionalTensor(master_param.get()[idx]);
+    }
     if (!mode) {
-      AdamDenseKernel<T, Context>(dev_ctx,
-                                  *params[idx],
-                                  *grads[idx],
-                                  learning_rate,
-                                  *moments1[idx],
-                                  *moments2[idx],
-                                  beta1_pow,
-                                  beta2_pow,
-                                  *master_param[idx],
-                                  skip_update,
-                                  beta1,
-                                  beta2,
-                                  epsilon,
-                                  false,
-                                  1000,
-                                  multi_precision,
-                                  true,
-                                  params_out[idx],
-                                  moments1_out[idx],
-                                  moments2_out[idx],
-                                  beta1_pow_out,
-                                  beta2_pow_out,
-                                  master_param_out[idx]);
+      AdamDenseKernel<T, Context>(
+          dev_ctx,
+          *params[idx],
+          *grads[idx],
+          learning_rate,
+          *moments1[idx],
+          *moments2[idx],
+          beta1_pow,
+          beta2_pow,
+          master_param_tmp,
+          skip_update,
+          beta1,
+          beta2,
+          epsilon,
+          false,
+          1000,
+          multi_precision,
+          true,
+          params_out[idx],
+          moments1_out[idx],
+          moments2_out[idx],
+          beta1_pow_out,
+          beta2_pow_out,
+          master_param_out.empty() ? nullptr : master_param_out[idx]);
     } else {
-      AdamwDenseKernel<T, Context>(dev_ctx,
-                                   *params[idx],
-                                   *grads[idx],
-                                   learning_rate,
-                                   *moments1[idx],
-                                   *moments2[idx],
-                                   beta1_pow,
-                                   beta2_pow,
-                                   *master_param[idx],
-                                   skip_update,
-                                   beta1,
-                                   beta2,
-                                   epsilon,
-                                   1.0,
-                                   weight_decay,
-                                   mode,
-                                   false,
-                                   1000,
-                                   multi_precision,
-                                   true,
-                                   params_out[idx],
-                                   moments1_out[idx],
-                                   moments2_out[idx],
-                                   beta1_pow_out,
-                                   beta2_pow_out,
-                                   master_param_out[idx]);
+      AdamwDenseKernel<T, Context>(
+          dev_ctx,
+          *params[idx],
+          *grads[idx],
+          learning_rate,
+          *moments1[idx],
+          *moments2[idx],
+          beta1_pow,
+          beta2_pow,
+          master_param_tmp,
+          skip_update,
+          beta1,
+          beta2,
+          epsilon,
+          1.0,
+          weight_decay,
+          mode,
+          false,
+          1000,
+          multi_precision,
+          true,
+          params_out[idx],
+          moments1_out[idx],
+          moments2_out[idx],
+          beta1_pow_out,
+          beta2_pow_out,
+          master_param_out.empty() ? nullptr : master_param_out[idx]);
     }
   }
 
