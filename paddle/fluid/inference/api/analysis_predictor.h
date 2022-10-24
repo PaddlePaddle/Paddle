@@ -143,13 +143,13 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return input names
   ///
-  std::vector<std::string> GetInputNames();
+  std::vector<std::string> GetInputNames() override;
   ///
   /// \brief Get the output names
   ///
   /// \return output names
   ///
-  std::vector<std::string> GetOutputNames();
+  std::vector<std::string> GetOutputNames() override;
 
   ///
   /// \brief Get the Input Tensor object
@@ -227,7 +227,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Clear the intermediate tensors of the predictor
   ///
   ///
-  void ClearIntermediateTensor();
+  void ClearIntermediateTensor() override;
 
   ///
   /// \brief Release all tmp tensor to compress the size of the memory pool.
