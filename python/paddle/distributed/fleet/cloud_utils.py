@@ -18,14 +18,13 @@ from paddle.distributed.fleet.launch_utils import get_cluster, logger
 __all__ = []
 
 
-def get_cloud_cluster(args_node_ips,
-                      device_mode,
-                      devices_per_proc,
-                      args_port=6170):
+def get_cloud_cluster(
+    args_node_ips, device_mode, devices_per_proc, args_port=6170
+):
     """
     args_node_ips:string, device_mode:DeviceMode(Int), device_per_proc:list, args_port: int
     """
-    #you can automatically get ip info while using paddlecloud multi nodes mode.
+    # you can automatically get ip info while using paddlecloud multi nodes mode.
     node_ips = os.getenv("PADDLE_TRAINERS")
     assert node_ips is not None, "PADDLE_TRAINERS should not be None"
 
@@ -47,7 +46,10 @@ def get_cloud_cluster(args_node_ips,
             "Please NOTE: When using paddlecloud, cluster_node_ips is \
 automatically got from PADDLE_TRAINERS(multi nodes) or POD_IP(single node).\
 Your input cluster_node_ips: {} doesn't equals to IPs: {} from \
-paddlecloud environment.".format(args_node_ips, node_ips))
+paddlecloud environment.".format(
+                args_node_ips, node_ips
+            )
+        )
 
     # DISTRIBUTED_TRAINER_ENDPOINTS: new environment since paddlecloud 1.8.4
     # e.g: DISTRIBUTED_TRAINER_ENDPOINTS="ip1:port1,ip1:port2,ip1:port3,ip1:port4,ip2:port5,ip2:port6,ip2:port7,ip2:port8"
@@ -58,10 +60,13 @@ paddlecloud environment.".format(args_node_ips, node_ips))
             try:
                 paddle_port = int(os.getenv("PADDLE_PORT", ""))
 
-                if paddle_ports_num >= len(
-                        devices_per_proc) and paddle_port != args_port:
+                if (
+                    paddle_ports_num >= len(devices_per_proc)
+                    and paddle_port != args_port
+                ):
                     logger.warning(
-                        "Use Cloud specified port:{}.".format(paddle_port))
+                        "Use Cloud specified port:{}.".format(paddle_port)
+                    )
                     started_port = paddle_port
 
             except Exception as e:
@@ -81,15 +86,21 @@ paddlecloud environment.".format(args_node_ips, node_ips))
         assert num_nodes * paddle_ports_num == len(trainer_endpoints_ori)
         for i in range(num_nodes):
             trainer_endpoints.append(
-                trainer_endpoints_ori[i * paddle_ports_num:(i + 1) *
-                                      paddle_ports_num])
+                trainer_endpoints_ori[
+                    i * paddle_ports_num : (i + 1) * paddle_ports_num
+                ]
+            )
 
-    logger.debug("parsed from args: node_ips:{} \
+    logger.debug(
+        "parsed from args: node_ips:{} \
         node_ip:{} node_rank:{} trainer_endpoints:{}".format(
-        node_ips, node_ip, node_rank, trainer_endpoints))
+            node_ips, node_ip, node_rank, trainer_endpoints
+        )
+    )
 
-    cluster, pod = get_cluster(node_ips, node_ip, trainer_endpoints,
-                               device_mode, devices_per_proc)
+    cluster, pod = get_cluster(
+        node_ips, node_ip, trainer_endpoints, device_mode, devices_per_proc
+    )
     return cluster, cluster.pods[node_rank]
 
 
@@ -98,7 +109,12 @@ def use_paddlecloud():
     node_ip = os.getenv("POD_IP")
     node_rank = os.getenv("PADDLE_TRAINER_ID")
     paddle_ports_num = os.getenv("TRAINER_PORTS_NUM")
-    if node_ips is None or node_ip is None or node_rank is None or paddle_ports_num is None:
+    if (
+        node_ips is None
+        or node_ip is None
+        or node_rank is None
+        or paddle_ports_num is None
+    ):
         return False
     else:
         return True

@@ -25,7 +25,6 @@ paddle.enable_static()
 
 
 class UnittestBase(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.init_info()
@@ -41,8 +40,9 @@ class UnittestBase(unittest.TestCase):
         return type(self).__name__
 
     def infer_prog(self):
-        config = paddle_infer.Config(self.save_path + '.pdmodel',
-                                     self.save_path + '.pdiparams')
+        config = paddle_infer.Config(
+            self.save_path + '.pdmodel', self.save_path + '.pdiparams'
+        )
         predictor = paddle_infer.create_predictor(config)
         input_names = predictor.get_input_names()
         for i, shape in enumerate(self.shapes):
@@ -65,7 +65,6 @@ class UnittestBase(unittest.TestCase):
 
 
 class TestDropout(UnittestBase):
-
     def init_info(self):
         self.shapes = [[10, 10]]
         self.save_path = os.path.join(self.temp_dir.name, 'dropout')
@@ -98,11 +97,11 @@ class TestDropout(UnittestBase):
 
             self.assertEqual(
                 main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
-                p.name)
+                p.name,
+            )
 
 
 class TestTileTensorList(UnittestBase):
-
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'tile_tensors')
@@ -136,7 +135,6 @@ class TestTileTensorList(UnittestBase):
 
 
 class TestTileTensor(UnittestBase):
-
     def init_info(self):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'tile_tensor')
@@ -169,13 +167,12 @@ class TestTileTensor(UnittestBase):
 
 
 class TestRegiterSupportTensorInOpMaker(unittest.TestCase):
-
     def setUp(self):
         self.all_protos = OpProtoHolder.instance()
         self.support_tensor_attrs = {
             'dropout': ['dropout_prob'],
             'tile': ['repeat_times'],
-            'concat': ['axis']
+            'concat': ['axis'],
         }
         # Just add a op example to test not support tensor
         self.not_support_tensor_attrs = {'svd': ['full_matrices']}
@@ -189,8 +186,9 @@ class TestRegiterSupportTensorInOpMaker(unittest.TestCase):
         # All Attribute not tagged with .SupportTensor() in OpMaker will return False
         for op_type, attr_names in self.not_support_tensor_attrs.items():
             for attr_name in attr_names:
-                self.assertFalse(self.is_support_tensor_attr(
-                    op_type, attr_name))
+                self.assertFalse(
+                    self.is_support_tensor_attr(op_type, attr_name)
+                )
 
     def is_support_tensor_attr(self, op_type, attr_name):
         proto = self.all_protos.get_op_proto(op_type)

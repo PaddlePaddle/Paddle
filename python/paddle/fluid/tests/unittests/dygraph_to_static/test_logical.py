@@ -23,7 +23,9 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import cmpop_node_to_str
+from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import (
+    cmpop_node_to_str,
+)
 
 program_translator = ProgramTranslator()
 
@@ -171,16 +173,19 @@ def test_shape_not_equal(x):
 
 
 class TestLogicalBase(unittest.TestCase):
-
     def setUp(self):
         self.input = np.array([3]).astype('int32')
-        self.place = paddle.CUDAPlace(
-            0) if fluid.is_compiled_with_cuda() else paddle.CPUPlace()
+        self.place = (
+            paddle.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         self._set_test_func()
 
     def _set_test_func(self):
         raise NotImplementedError(
-            "Method 'set_test_func' should be implemented.")
+            "Method 'set_test_func' should be implemented."
+        )
 
     def _run(self, to_static):
         program_translator.enable(to_static)
@@ -196,7 +201,6 @@ class TestLogicalBase(unittest.TestCase):
 
 
 class TestLogicalNot(TestLogicalBase):
-
     def _set_test_func(self):
         self.dygraph_func = test_logical_not
 
@@ -208,11 +212,12 @@ class TestLogicalNot(TestLogicalBase):
             static_res,
             rtol=1e-05,
             err_msg='dygraph result is {}\nstatic_result is {}'.format(
-                dygraph_res, static_res))
+                dygraph_res, static_res
+            ),
+        )
 
 
 class TestLogicalNot2(TestLogicalBase):
-
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_2
 
@@ -224,55 +229,49 @@ class TestLogicalNot2(TestLogicalBase):
             static_res,
             rtol=1e-05,
             err_msg='dygraph result is {}\nstatic_result is {}'.format(
-                dygraph_res, static_res))
+                dygraph_res, static_res
+            ),
+        )
 
 
 class TestLogicalAnd(TestLogicalNot):
-
     def _set_test_func(self):
         self.dygraph_func = test_logical_and
 
 
 class TestLogicalAnd2(TestLogicalNot):
-
     def _set_test_func(self):
         self.dygraph_func = test_logical_and_2
 
 
 class TestLogicalOr(TestLogicalNot):
-
     def _set_test_func(self):
         self.dygraph_func = test_logical_or
 
 
 class TestLogicalOr2(TestLogicalNot):
-
     def _set_test_func(self):
         self.dygraph_func = test_logical_or_2
 
 
 class TestLogicalNotAndOr(TestLogicalNot):
-
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_and_or
 
 
 class TestShapeEqual(TestLogicalNot):
-
     def _set_test_func(self):
         self.input = np.ones([1, 2, 3]).astype('float32')
         self.dygraph_func = test_shape_equal
 
 
 class TestShapeNotEqual(TestLogicalNot):
-
     def _set_test_func(self):
         self.input = np.ones([1, 2, 3]).astype('float32')
         self.dygraph_func = test_shape_not_equal
 
 
 class TestCmpopNodeToStr(unittest.TestCase):
-
     def test_exception(self):
         with self.assertRaises(KeyError):
             cmpop_node_to_str(gast.Or())

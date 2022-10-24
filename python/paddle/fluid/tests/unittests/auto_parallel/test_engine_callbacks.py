@@ -31,7 +31,6 @@ paddle.enable_static()
 
 
 class TestCallbacks(unittest.TestCase):
-
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
 
@@ -51,14 +50,16 @@ class TestCallbacks(unittest.TestCase):
         engine = auto.Engine(LeNet(), strategy=strategy)
         engine.prepare(inputs_spec, mode="predict")
 
-        cbks = config_callbacks(engine=engine,
-                                batch_size=128,
-                                epochs=epochs,
-                                steps=steps,
-                                log_freq=freq,
-                                verbose=self.verbose,
-                                metrics=['loss', 'acc'],
-                                save_dir=self.save_dir)
+        cbks = config_callbacks(
+            engine=engine,
+            batch_size=128,
+            epochs=epochs,
+            steps=steps,
+            log_freq=freq,
+            verbose=self.verbose,
+            metrics=['loss', 'acc'],
+            save_dir=self.save_dir,
+        )
         cbks.on_begin('train')
 
         logs = {'loss': 50.341673, 'acc': 0.00256}
@@ -119,7 +120,6 @@ class TestCallbacks(unittest.TestCase):
 
 
 class TestCallbacksEngine(unittest.TestCase):
-
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
         transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
@@ -136,37 +136,39 @@ class TestCallbacksEngine(unittest.TestCase):
         base_lr = 1e-3
         boundaries = [5, 8]
         values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
-        lr = paddle.optimizer.lr.PiecewiseDecay(boundaries=boundaries,
-                                                values=values,
-                                                verbose=False)
-        optimizer = paddle.optimizer.Adam(learning_rate=lr,
-                                          parameters=model.parameters())
+        lr = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=boundaries, values=values, verbose=False
+        )
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=lr, parameters=model.parameters()
+        )
         auto.fetch(model.parameters()[0], "param0", logging=True)
         metrics = paddle.metric.Accuracy(topk=(1, 2))
         self.engine = auto.Engine(model, loss, optimizer, metrics)
 
     def test_fit_eval(self):
-        history = self.engine.fit(train_data=self.train_dataset,
-                                  valid_data=self.test_dataset,
-                                  batch_size=128,
-                                  steps_per_epoch=60,
-                                  valid_steps=40,
-                                  log_freq=20,
-                                  save_dir=self.save_dir,
-                                  save_freq=1)
+        history = self.engine.fit(
+            train_data=self.train_dataset,
+            valid_data=self.test_dataset,
+            batch_size=128,
+            steps_per_epoch=60,
+            valid_steps=40,
+            log_freq=20,
+            save_dir=self.save_dir,
+            save_freq=1,
+        )
         print(history.history)
 
     def test_eval(self):
-        self.engine.evaluate(valid_data=self.test_dataset,
-                             batch_size=128,
-                             steps=40,
-                             log_freq=10)
+        self.engine.evaluate(
+            valid_data=self.test_dataset, batch_size=128, steps=40, log_freq=10
+        )
 
     def test_predict(self):
         logger_cbks = paddle.callbacks.ProgBarLogger()
-        self.engine.predict(test_data=self.test_dataset,
-                            batch_size=128,
-                            callbacks=[logger_cbks])
+        self.engine.predict(
+            test_data=self.test_dataset, batch_size=128, callbacks=[logger_cbks]
+        )
 
 
 if __name__ == '__main__':

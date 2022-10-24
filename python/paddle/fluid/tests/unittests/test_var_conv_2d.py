@@ -18,7 +18,6 @@ from op_test import OpTest, skip_check_grad_ci
 
 
 class TestVarConv2DOp(OpTest):
-
     def setUp(self):
         self.init_op_type()
         self.set_data()
@@ -34,11 +33,13 @@ class TestVarConv2DOp(OpTest):
         stride = [1, 1]
         row = [2, 4]
         col = [3, 2]
-        self.init_data(input_channel, output_channel, filter_size, stride, row,
-                       col)
+        self.init_data(
+            input_channel, output_channel, filter_size, stride, row, col
+        )
 
-    def init_data(self, input_channel, output_channel, filter_size, stride, row,
-                  col):
+    def init_data(
+        self, input_channel, output_channel, filter_size, stride, row, col
+    ):
 
         feature = [row[i] * col[i] for i in range(len(row))]
         numel = sum(feature) * input_channel
@@ -46,14 +47,16 @@ class TestVarConv2DOp(OpTest):
         x_lod = [[x * input_channel for x in feature]]
         row_data = np.random.random((sum(row), 10)).astype('float32')
         col_data = np.random.random((sum(col), 10)).astype('float32')
-        w_shape = (output_channel,
-                   input_channel * filter_size[0] * filter_size[1])
+        w_shape = (
+            output_channel,
+            input_channel * filter_size[0] * filter_size[1],
+        )
         w_data = np.random.random(w_shape).astype('float32')
         self.inputs = {
             'X': (x_data, x_lod),
             'ROW': (row_data, [row]),
             'COLUMN': (col_data, [col]),
-            'W': w_data
+            'W': w_data,
         }
         self.attrs = {
             'InputChannel': input_channel,
@@ -95,8 +98,9 @@ class TestVarConv2DOp(OpTest):
             if top_im_size == 0:
                 out_tmp = np.zeros((out_ch * top_im_size, 1)).astype('float32')
             else:
-                col_batch_data = col_res_data[col_data_offset:col_data_offset +
-                                              col_res_lod[0][idx]]
+                col_batch_data = col_res_data[
+                    col_data_offset : col_data_offset + col_res_lod[0][idx]
+                ]
                 gemm_shape = (in_ch * kernel_h * kernel_w, top_im_size)
                 col_batch_data = col_batch_data.reshape(gemm_shape)
                 out_tmp = np.dot(w_data, col_batch_data).reshape(-1, 1)
@@ -106,7 +110,7 @@ class TestVarConv2DOp(OpTest):
 
         self.outputs = {
             'Out': (out_data.astype('float32'), out_lod),
-            'Col': (col_res_data, col_res_lod)
+            'Col': (col_res_data, col_res_lod),
         }
 
     def Im2Col(self):
@@ -159,11 +163,23 @@ class TestVarConv2DOp(OpTest):
                             for kx in range(kernel_w):
                                 im_y = y + ky - half_kernel_h
                                 im_x = x + kx - half_kernel_w
-                                if im_x >= 0 and im_x < width and im_y >= 0 and im_y < height:
-                                    col_res[t_offset +
-                                        (row_offset + ky * kernel_w + kx) * top_x +
-                                        col_offset] = \
-                                    x_data[b_offset + im_offset + im_y * width + im_x]
+                                if (
+                                    im_x >= 0
+                                    and im_x < width
+                                    and im_y >= 0
+                                    and im_y < height
+                                ):
+                                    col_res[
+                                        t_offset
+                                        + (row_offset + ky * kernel_w + kx)
+                                        * top_x
+                                        + col_offset
+                                    ] = x_data[
+                                        b_offset
+                                        + im_offset
+                                        + im_y * width
+                                        + im_x
+                                    ]
 
             t_offset += col_res_lod[0][idx]
             b_offset += x_lod[0][idx]
@@ -174,14 +190,12 @@ class TestVarConv2DOp(OpTest):
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        max_relative_error=0.005,
-                        check_dygraph=False)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.005, check_dygraph=False
+        )
 
 
 class TestVarConv2DOpCase1(TestVarConv2DOp):
-
     def set_data(self):
         # set in_ch 1
         input_channel = 1
@@ -190,12 +204,12 @@ class TestVarConv2DOpCase1(TestVarConv2DOp):
         stride = [1, 1]
         row = [1, 10]
         col = [40, 6]
-        self.init_data(input_channel, output_channel, filter_size, stride, row,
-                       col)
+        self.init_data(
+            input_channel, output_channel, filter_size, stride, row, col
+        )
 
 
 class TestVarConv2DOpCase2(TestVarConv2DOp):
-
     def set_data(self):
         # set out_ch 1
         input_channel = 2
@@ -204,12 +218,12 @@ class TestVarConv2DOpCase2(TestVarConv2DOp):
         stride = [2, 2]
         row = [6, 7]
         col = [8, 2]
-        self.init_data(input_channel, output_channel, filter_size, stride, row,
-                       col)
+        self.init_data(
+            input_channel, output_channel, filter_size, stride, row, col
+        )
 
 
 class TestVarConv2DOpCase3(TestVarConv2DOp):
-
     def set_data(self):
         # set batch 1
         input_channel = 2
@@ -218,12 +232,12 @@ class TestVarConv2DOpCase3(TestVarConv2DOp):
         stride = [2, 2]
         row = [14]
         col = [4]
-        self.init_data(input_channel, output_channel, filter_size, stride, row,
-                       col)
+        self.init_data(
+            input_channel, output_channel, filter_size, stride, row, col
+        )
 
 
 class TestVarConv2DOpCase4(TestVarConv2DOp):
-
     def set_data(self):
         # set filter size very large
         input_channel = 3
@@ -232,12 +246,12 @@ class TestVarConv2DOpCase4(TestVarConv2DOp):
         stride = [2, 2]
         row = [4, 7]
         col = [5, 2]
-        self.init_data(input_channel, output_channel, filter_size, stride, row,
-                       col)
+        self.init_data(
+            input_channel, output_channel, filter_size, stride, row, col
+        )
 
 
 class TestVarConv2DOpCase5(TestVarConv2DOp):
-
     def set_data(self):
         # set input very small
         input_channel = 50
@@ -246,16 +260,15 @@ class TestVarConv2DOpCase5(TestVarConv2DOp):
         stride = [1, 1]
         row = [1, 1]
         col = [1, 1]
-        self.init_data(input_channel, output_channel, filter_size, stride, row,
-                       col)
+        self.init_data(
+            input_channel, output_channel, filter_size, stride, row, col
+        )
 
 
 @skip_check_grad_ci(
-    reason=
-    "[skip shape check] Use shape of input_channel, row and col all is 1 to test special LoDTensor."
+    reason="[skip shape check] Use shape of input_channel, row and col all is 1 to test special LoDTensor."
 )
 class TestVarConv2DOpCase6(TestVarConv2DOp):
-
     def set_data(self):
         input_channel = 1
         output_channel = 3
@@ -263,12 +276,12 @@ class TestVarConv2DOpCase6(TestVarConv2DOp):
         stride = [1, 1]
         row = [1, 1]
         col = [1, 1]
-        self.init_data(input_channel, output_channel, filter_size, stride, row,
-                       col)
+        self.init_data(
+            input_channel, output_channel, filter_size, stride, row, col
+        )
 
 
 class TestVarConv2DOpCase7(TestVarConv2DOp):
-
     def set_data(self):
         input_channel = 2
         output_channel = 3
@@ -276,43 +289,46 @@ class TestVarConv2DOpCase7(TestVarConv2DOp):
         stride = [1, 1]
         row = [5, 4]
         col = [6, 7]
-        self.init_data(input_channel, output_channel, filter_size, stride, row,
-                       col)
+        self.init_data(
+            input_channel, output_channel, filter_size, stride, row, col
+        )
 
 
 class TestVarConv2DApi(unittest.TestCase):
-
     def test_api(self):
         import paddle.fluid as fluid
 
         x = fluid.layers.data(name='x', shape=[1], lod_level=1)
         row = fluid.layers.data(name='row', shape=[6], lod_level=1)
         col = fluid.layers.data(name='col', shape=[6], lod_level=1)
-        out = fluid.contrib.var_conv_2d(input=x,
-                                        row=row,
-                                        col=col,
-                                        input_channel=3,
-                                        output_channel=5,
-                                        filter_size=[3, 3],
-                                        stride=1)
+        out = fluid.contrib.var_conv_2d(
+            input=x,
+            row=row,
+            col=col,
+            input_channel=3,
+            output_channel=5,
+            filter_size=[3, 3],
+            stride=1,
+        )
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
-            np.random.rand(116, 1).astype('float32'), [[60, 56]], place)
+            np.random.rand(116, 1).astype('float32'), [[60, 56]], place
+        )
         row_tensor = fluid.create_lod_tensor(
-            np.random.rand(9, 6).astype('float32'), [[5, 4]], place)
+            np.random.rand(9, 6).astype('float32'), [[5, 4]], place
+        )
         col_tensor = fluid.create_lod_tensor(
-            np.random.rand(13, 6).astype('float32'), [[6, 7]], place)
+            np.random.rand(13, 6).astype('float32'), [[6, 7]], place
+        )
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={
-            'x': x_tensor,
-            'row': row_tensor,
-            'col': col_tensor
-        },
-                      fetch_list=[out],
-                      return_numpy=False)
+        ret = exe.run(
+            feed={'x': x_tensor, 'row': row_tensor, 'col': col_tensor},
+            fetch_list=[out],
+            return_numpy=False,
+        )
 
 
 if __name__ == '__main__':

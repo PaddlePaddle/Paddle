@@ -14,12 +14,14 @@
 
 import paddle
 import paddle.nn as nn
-from paddle.incubate.nn.layer.fused_transformer import FusedMultiHeadAttention, FusedFeedForward
+from paddle.incubate.nn.layer.fused_transformer import (
+    FusedMultiHeadAttention,
+    FusedFeedForward,
+)
 import unittest
 
 
 class PreModel(nn.Layer):
-
     def __init__(self):
         super(PreModel, self).__init__()
         self.attn = FusedMultiHeadAttention(
@@ -27,9 +29,9 @@ class PreModel(nn.Layer):
             num_heads=16,
             normalize_before=False,
         )
-        self.ffn = FusedFeedForward(d_model=1024,
-                                    dim_feedforward=4096,
-                                    normalize_before=False)
+        self.ffn = FusedFeedForward(
+            d_model=1024, dim_feedforward=4096, normalize_before=False
+        )
 
     def forward(self, x):
         x = self.attn(x)
@@ -37,7 +39,6 @@ class PreModel(nn.Layer):
 
 
 class PostModel(nn.Layer):
-
     def __init__(self):
         super(PostModel, self).__init__()
         self.attn = FusedMultiHeadAttention(
@@ -45,9 +46,9 @@ class PostModel(nn.Layer):
             num_heads=16,
             normalize_before=True,
         )
-        self.ffn = FusedFeedForward(d_model=1024,
-                                    dim_feedforward=4096,
-                                    normalize_before=True)
+        self.ffn = FusedFeedForward(
+            d_model=1024, dim_feedforward=4096, normalize_before=True
+        )
 
     def forward(self, x):
         x = self.attn(x)
@@ -55,19 +56,18 @@ class PostModel(nn.Layer):
 
 
 class TestFusedTransformerWithAmpDecorator(unittest.TestCase):
-
     def get_model(self):
         self.pre_model = PreModel()
         self.post_model = PostModel()
 
     def test_run(self):
         self.get_model()
-        pre_model = paddle.amp.decorate(models=self.pre_model,
-                                        level='O2',
-                                        save_dtype='float32')
-        post_model = paddle.amp.decorate(models=self.post_model,
-                                         level='O2',
-                                         save_dtype='float32')
+        pre_model = paddle.amp.decorate(
+            models=self.pre_model, level='O2', save_dtype='float32'
+        )
+        post_model = paddle.amp.decorate(
+            models=self.post_model, level='O2', save_dtype='float32'
+        )
 
 
 if __name__ == "__main__":

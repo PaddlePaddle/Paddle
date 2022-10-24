@@ -20,16 +20,23 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import ORIGI_INFO
 from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_INDEX_PREFIX
 from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_TUPLE_PREFIX
-from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_TUPLE_INDEX_PREFIX
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    FOR_ITER_TUPLE_INDEX_PREFIX,
+)
 from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_VAR_LEN_PREFIX
-from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_VAR_NAME_PREFIX
-from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_ZIP_TO_LIST_PREFIX
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    FOR_ITER_VAR_NAME_PREFIX,
+)
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    FOR_ITER_ZIP_TO_LIST_PREFIX,
+)
 from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_TARGET_PREFIX
-from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_ITERATOR_PREFIX
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    FOR_ITER_ITERATOR_PREFIX,
+)
 
 
 class BaseTransformer(gast.NodeTransformer):
-
     def visit(self, node):
         if not isinstance(node, gast.AST):
             msg = ('Expected "gast.AST", but got "{}".').format(type(node))
@@ -41,7 +48,7 @@ class BaseTransformer(gast.NodeTransformer):
         iter_result = result
         if iter_result is not node and iter_result is not None:
             if not isinstance(iter_result, (list, tuple)):
-                iter_result = (iter_result, )
+                iter_result = (iter_result,)
             if origin_info is not None:
                 for n in iter_result:
                     setattr(n, ORIGI_INFO, origin_info)
@@ -50,10 +57,10 @@ class BaseTransformer(gast.NodeTransformer):
 
 
 class RenameTransformer(BaseTransformer):
-
     def __init__(self, node):
         assert isinstance(
-            node, gast.AST), "RenameTransformer only accepts gast.AST as input"
+            node, gast.AST
+        ), "RenameTransformer only accepts gast.AST as input"
         self.root = node
         self.old_name = ""
         self.new_name = ""
@@ -113,7 +120,8 @@ class NameNodeReplaceTransformer(BaseTransformer):
         names = node.names
 
         def replace(s):
-            if s == self.target_name: return self.replace_node.id
+            if s == self.target_name:
+                return self.replace_node.id
             return s
 
         node.names = list(map(replace, names))
@@ -121,7 +129,7 @@ class NameNodeReplaceTransformer(BaseTransformer):
 
 
 class ForLoopTuplePreTransformer(BaseTransformer):
-    """ pre-process of for loop.
+    """pre-process of for loop.
     >>> for A in B:
     >>>    C
 
@@ -152,24 +160,28 @@ class ForLoopTuplePreTransformer(BaseTransformer):
         assign_iterator_node = gast.parse(
             f"{tuple_iterator} = _jst.Indexable({ast_to_source_code(node.iter).strip()})"
         ).body[0]
-        node.target = gast.Name(id=tuple_target,
-                                ctx=gast.Store(),
-                                annotation=None,
-                                type_comment=None)
-        node.iter = gast.Name(id=tuple_iterator,
-                              ctx=gast.Load(),
-                              annotation=None,
-                              type_comment=None)
+        node.target = gast.Name(
+            id=tuple_target,
+            ctx=gast.Store(),
+            annotation=None,
+            type_comment=None,
+        )
+        node.iter = gast.Name(
+            id=tuple_iterator,
+            ctx=gast.Load(),
+            annotation=None,
+            type_comment=None,
+        )
         node.body[0:0] = self.tuple_to_stmts(origin_tuple_node, tuple_target)
         # return a list will insert a list of node replace the original for node.
         return [assign_iterator_node, node]
 
     def tuple_node_to_unpack_structure(self, node):
-        """ Create a sequence to represents the structure of nest.
-            For example: `a, (b,c), [d,e,f]` is represented by
-            `[1, [1,1], [1,1,1]]`. the `1` is just a notation.
+        """Create a sequence to represents the structure of nest.
+        For example: `a, (b,c), [d,e,f]` is represented by
+        `[1, [1,1], [1,1,1]]`. the `1` is just a notation.
 
-            Specially, `a` is represented by `1`.
+        Specially, `a` is represented by `1`.
         """
         ret = []
         if not isinstance(node, (gast.Tuple, gast.List)):
@@ -181,7 +193,9 @@ class ForLoopTuplePreTransformer(BaseTransformer):
     def tuple_to_stmts(self, node, tuple_name):
         structure_str = str(self.tuple_node_to_unpack_structure(node))
         node_str = ast_to_source_code(node).strip()
-        assign_node_str = f"{node_str} = _jst.Unpack({tuple_name}, {structure_str})"
+        assign_node_str = (
+            f"{node_str} = _jst.Unpack({tuple_name}, {structure_str})"
+        )
         assign_node = gast.parse(assign_node_str).body[0]
         return [assign_node]
 
@@ -213,8 +227,9 @@ class ForNodeVisitor(object):
         # 2. gast.For node main parts
         self.target = for_node.target
         # NOTE: type may be Node or list[Node]
-        self.iter_args = for_node.iter if self.is_for_iter(
-        ) else for_node.iter.args
+        self.iter_args = (
+            for_node.iter if self.is_for_iter() else for_node.iter.args
+        )
         self.body = for_node.body
 
         # 3. key shared node or names
@@ -236,7 +251,8 @@ class ForNodeVisitor(object):
         self.iter_var_len_name = unique_name.generate(FOR_ITER_VAR_LEN_PREFIX)
         # - created zip to list var : __for_loop_iter_zip_0
         self.iter_zip_to_list_name = unique_name.generate(
-            FOR_ITER_ZIP_TO_LIST_PREFIX)
+            FOR_ITER_ZIP_TO_LIST_PREFIX
+        )
 
         # - var.numpy()/var
         #   - for x in var|var.numpy()
@@ -262,17 +278,22 @@ class ForNodeVisitor(object):
             return None
 
     def is_for_range_iter(self):
-        return isinstance(self.node.iter, gast.Call) and isinstance(
-            self.node.iter.func,
-            gast.Name) and self.node.iter.func.id == "range"
+        return (
+            isinstance(self.node.iter, gast.Call)
+            and isinstance(self.node.iter.func, gast.Name)
+            and self.node.iter.func.id == "range"
+        )
 
     def is_for_iter(self):
-        if isinstance(self.node.iter,
-                      (gast.Name, gast.Attribute, gast.List, gast.Tuple)):
+        if isinstance(
+            self.node.iter, (gast.Name, gast.Attribute, gast.List, gast.Tuple)
+        ):
             return True
-        elif isinstance(self.node.iter, gast.Call) and isinstance(
-                self.node.iter.func,
-                gast.Attribute) and self.node.iter.func.attr == 'numpy':
+        elif (
+            isinstance(self.node.iter, gast.Call)
+            and isinstance(self.node.iter.func, gast.Attribute)
+            and self.node.iter.func.attr == 'numpy'
+        ):
             return True
         elif isinstance(self.node.iter, gast.Subscript):
             return True
@@ -280,17 +301,23 @@ class ForNodeVisitor(object):
             return False
 
     def is_for_enumerate_iter(self):
-        return isinstance(self.node.iter, gast.Call) and isinstance(
-            self.node.iter.func,
-            gast.Name) and self.node.iter.func.id == "enumerate"
+        return (
+            isinstance(self.node.iter, gast.Call)
+            and isinstance(self.node.iter.func, gast.Name)
+            and self.node.iter.func.id == "enumerate"
+        )
 
     def _args_check(self):
         if self.is_for_range_iter():
             self.args_length = len(self.iter_args)
-            assert self.args_length >= 1 and self.args_length <= 3, "range() function takes 1 to 3 arguments"
+            assert (
+                self.args_length >= 1 and self.args_length <= 3
+            ), "range() function takes 1 to 3 arguments"
         elif self.is_for_enumerate_iter():
             self.args_length = len(self.iter_args)
-            assert self.args_length >= 1 and self.args_length <= 2, "enumerate() function takes 1 to 2 arguments"
+            assert (
+                self.args_length >= 1 and self.args_length <= 2
+            ), "enumerate() function takes 1 to 2 arguments"
         else:
             self.args_length = None
 
@@ -324,8 +351,9 @@ class ForNodeVisitor(object):
         target_node, assign_node = self._build_assign_var_slice_node()
         body_stmts[0:0] = [assign_node]
         for body_node in body_stmts:
-            NameNodeReplaceTransformer(body_node, self.iter_var_name,
-                                       target_node)
+            NameNodeReplaceTransformer(
+                body_node, self.iter_var_name, target_node
+            )
         body_stmts.append(self._build_index_increase_node(step_node))
 
         return init_stmts, cond_stmt, body_stmts
@@ -346,8 +374,9 @@ class ForNodeVisitor(object):
         target_node, assign_node = self._build_assign_var_slice_node()
         body_stmts[0:0] = [assign_node]
         for body_node in body_stmts:
-            NameNodeReplaceTransformer(body_node, self.iter_var_name,
-                                       target_node)
+            NameNodeReplaceTransformer(
+                body_node, self.iter_var_name, target_node
+            )
 
         body_stmts.append(self._build_index_increase_node(step_node))
         body_stmts.append(self._build_enum_increase_node())
@@ -360,7 +389,8 @@ class ForNodeVisitor(object):
                 index_init_value_str = '0'
             else:
                 index_init_value_str = ast_to_source_code(
-                    self.iter_args[0]).strip()
+                    self.iter_args[0]
+                ).strip()
 
             index_init_var_name = self.iter_var_name
         else:
@@ -368,7 +398,8 @@ class ForNodeVisitor(object):
             index_init_var_name = self.iter_idx_name
 
         index_init_node_source_str = "{target} = {value}".format(
-            target=index_init_var_name, value=index_init_value_str)
+            target=index_init_var_name, value=index_init_value_str
+        )
 
         index_init_node = gast.parse(index_init_node_source_str).body[0]
 
@@ -376,16 +407,20 @@ class ForNodeVisitor(object):
 
     def _build_var_len_assign_node(self):
         # get the length of iterable variable
-        if isinstance(self.iter_node, gast.Call) and isinstance(
-                self.iter_node.func,
-                gast.Attribute) and self.iter_node.func.attr == 'numpy':
+        if (
+            isinstance(self.iter_node, gast.Call)
+            and isinstance(self.iter_node.func, gast.Attribute)
+            and self.iter_node.func.attr == 'numpy'
+        ):
             iter_var_name = ast_to_source_code(
-                self.iter_node.func.value).strip()
+                self.iter_node.func.value
+            ).strip()
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
         convert_len_node_source_str = '{} = _jst.Len({})'.format(
-            self.iter_var_len_name, iter_var_name)
+            self.iter_var_len_name, iter_var_name
+        )
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]
 
@@ -403,18 +438,22 @@ class ForNodeVisitor(object):
         """
         new_nodes = []
         if isinstance(self.iter_node, gast.Call) and isinstance(
-                self.iter_node.func, gast.Name):
+            self.iter_node.func, gast.Name
+        ):
             if self.iter_node.func.id == 'zip':
                 iter_var_name = ast_to_source_code(self.iter_node).strip()
                 zip_to_list_str = "{target} = list({value})".format(
-                    target=self.iter_zip_to_list_name, value=iter_var_name)
+                    target=self.iter_zip_to_list_name, value=iter_var_name
+                )
                 zip_to_list_node = gast.parse(zip_to_list_str).body[0]
                 new_nodes.append(zip_to_list_node)
 
-                self.iter_node = gast.Name(id=self.iter_zip_to_list_name,
-                                           ctx=gast.Load(),
-                                           annotation=None,
-                                           type_comment=None)
+                self.iter_node = gast.Name(
+                    id=self.iter_zip_to_list_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None,
+                )
 
         return new_nodes
 
@@ -424,27 +463,35 @@ class ForNodeVisitor(object):
         else:
             init_value_str = '0'
 
-        enum_init_node_source_str = "{} = {}".format(self.enum_idx_name,
-                                                     init_value_str)
+        enum_init_node_source_str = "{} = {}".format(
+            self.enum_idx_name, init_value_str
+        )
         enum_init_node = gast.parse(enum_init_node_source_str).body[0]
         return enum_init_node
 
     def _build_compare_node(self):
         if self.is_for_range_iter():
-            compare_node = self.iter_args[
-                0] if self.args_length == 1 else self.iter_args[1]
+            compare_node = (
+                self.iter_args[0]
+                if self.args_length == 1
+                else self.iter_args[1]
+            )
         else:
-            compare_node = gast.Name(id=self.iter_var_len_name,
-                                     ctx=gast.Load(),
-                                     annotation=None,
-                                     type_comment=None)
+            compare_node = gast.Name(
+                id=self.iter_var_len_name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None,
+            )
         return compare_node
 
     def _build_step_node(self):
         if self.is_for_range_iter():
-            step_node = self.iter_args[
-                2] if self.args_length == 3 else gast.Constant(value=1,
-                                                               kind=None)
+            step_node = (
+                self.iter_args[2]
+                if self.args_length == 3
+                else gast.Constant(value=1, kind=None)
+            )
         else:
             step_node = gast.Constant(value=1, kind=None)
         return step_node
@@ -453,62 +500,82 @@ class ForNodeVisitor(object):
         if not isinstance(step_node, (gast.Constant, gast.UnaryOp)):
             raise NotImplementedError(
                 "Dynamic-to-Static only supports the step value is a constant or negative constant in 'for-range' statements, "
-                "such as '2', '-3'. But received: '{}'. Please fix code to be compatible with Dynamic-to-Static."
-                .format(ast_to_source_code(step_node).strip()))
+                "such as '2', '-3'. But received: '{}'. Please fix code to be compatible with Dynamic-to-Static.".format(
+                    ast_to_source_code(step_node).strip()
+                )
+            )
 
         if isinstance(step_node, gast.UnaryOp) or step_node.value < 0:
             # eg:
             # range(max, min, -2)
             # ->
             # i > min
-            return gast.Compare(left=gast.Name(
-                id=self.iter_var_name
-                if self.is_for_range_iter() else self.iter_idx_name,
-                ctx=gast.Load(),
-                annotation=None,
-                type_comment=None),
-                                ops=[gast.Gt()],
-                                comparators=[compare_node])
+            return gast.Compare(
+                left=gast.Name(
+                    id=self.iter_var_name
+                    if self.is_for_range_iter()
+                    else self.iter_idx_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None,
+                ),
+                ops=[gast.Gt()],
+                comparators=[compare_node],
+            )
         else:
             # eg:
             # range(min, max, 2)
             # ->
             # i < max
-            return gast.Compare(left=gast.Name(
-                id=self.iter_var_name
-                if self.is_for_range_iter() else self.iter_idx_name,
-                ctx=gast.Load(),
-                annotation=None,
-                type_comment=None),
-                                ops=[gast.Lt()],
-                                comparators=[compare_node])
+            return gast.Compare(
+                left=gast.Name(
+                    id=self.iter_var_name
+                    if self.is_for_range_iter()
+                    else self.iter_idx_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None,
+                ),
+                ops=[gast.Lt()],
+                comparators=[compare_node],
+            )
 
     def _build_index_increase_node(self, step_node):
-        return gast.AugAssign(target=gast.Name(
-            id=self.iter_var_name
-            if self.is_for_range_iter() else self.iter_idx_name,
-            ctx=gast.Store(),
-            annotation=None,
-            type_comment=None),
-                              op=gast.Add(),
-                              value=step_node)
+        return gast.AugAssign(
+            target=gast.Name(
+                id=self.iter_var_name
+                if self.is_for_range_iter()
+                else self.iter_idx_name,
+                ctx=gast.Store(),
+                annotation=None,
+                type_comment=None,
+            ),
+            op=gast.Add(),
+            value=step_node,
+        )
 
     def _build_assign_var_slice_node(self):
         var_slice_str = "{}[{}]".format(
-            ast_to_source_code(self.iter_node).strip(), self.iter_idx_name)
+            ast_to_source_code(self.iter_node).strip(), self.iter_idx_name
+        )
         var_slice_node = gast.parse(var_slice_str).body[0].value
         new_iter_var_name = unique_name.generate(FOR_ITER_VAR_NAME_PREFIX)
-        target_node, assign_node = create_assign_node(new_iter_var_name,
-                                                      var_slice_node)
+        target_node, assign_node = create_assign_node(
+            new_iter_var_name, var_slice_node
+        )
         return target_node, assign_node
 
     def _build_enum_increase_node(self):
-        return gast.AugAssign(target=gast.Name(id=self.enum_idx_name,
-                                               ctx=gast.Store(),
-                                               annotation=None,
-                                               type_comment=None),
-                              op=gast.Add(),
-                              value=gast.Constant(value=1, kind=None))
+        return gast.AugAssign(
+            target=gast.Name(
+                id=self.enum_idx_name,
+                ctx=gast.Store(),
+                annotation=None,
+                type_comment=None,
+            ),
+            op=gast.Add(),
+            value=gast.Constant(value=1, kind=None),
+        )
 
     def _get_iter_var_name(self):
         if self.is_for_range_iter():

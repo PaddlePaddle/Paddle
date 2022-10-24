@@ -104,29 +104,24 @@ class TunableSpace(object):
         return self._retrieve(tv)
 
     def int_range(self, name, start, stop, step=1, default=None):
-        tv = IntRange(name=name,
-                      start=start,
-                      stop=stop,
-                      step=step,
-                      default=default)
+        tv = IntRange(
+            name=name, start=start, stop=stop, step=step, default=default
+        )
         return self._retrieve(tv)
 
     def float_range(self, name, start, stop, step=None, default=None):
-        tv = FloatRange(name=name,
-                        start=start,
-                        stop=stop,
-                        step=step,
-                        default=default)
+        tv = FloatRange(
+            name=name, start=start, stop=stop, step=step, default=default
+        )
         return self._retrieve(tv)
 
     def get_state(self):
         return {
-            "variables": [{
-                "class_name": v.__class__.__name__,
-                "state": v.get_state()
-            } for v in self._variables.values()],
-            "values":
-            dict((k, v) for (k, v) in self.values.items())
+            "variables": [
+                {"class_name": v.__class__.__name__, "state": v.get_state()}
+                for v in self._variables.values()
+            ],
+            "values": dict((k, v) for (k, v) in self.values.items()),
         }
 
     @classmethod
@@ -146,11 +141,16 @@ def _deserialize_tunable_variable(state):
     if isinstance(state, classes):
         return state
 
-    if (not isinstance(state, dict) or "class_name" not in state
-            or "state" not in state):
+    if (
+        not isinstance(state, dict)
+        or "class_name" not in state
+        or "state" not in state
+    ):
         raise ValueError(
-            "Expect state to be a python dict containing class_name and state as keys, but found {}"
-            .format(state))
+            "Expect state to be a python dict containing class_name and state as keys, but found {}".format(
+                state
+            )
+        )
 
     cls_name = state["class_name"]
     cls = cls_name_to_cls[cls_name]

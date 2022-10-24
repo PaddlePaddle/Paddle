@@ -19,6 +19,7 @@ from paddle.static import InputSpec
 import sys
 
 model = resnet50(True)
-net = to_static(model,
-                input_spec=[InputSpec(shape=[None, 3, 256, 256], name='x')])
+net = to_static(
+    model, input_spec=[InputSpec(shape=[None, 3, 256, 256], name='x')]
+)
 paddle.jit.save(net, sys.argv[1])

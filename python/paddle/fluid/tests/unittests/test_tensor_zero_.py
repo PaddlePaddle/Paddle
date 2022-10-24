@@ -20,7 +20,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TensorFill_Test(unittest.TestCase):
-
     def setUp(self):
         self.shape = [32, 32]
 
@@ -32,8 +31,9 @@ class TensorFill_Test(unittest.TestCase):
             places.append(fluid.CUDAPinnedPlace())
 
         for p in places:
-            np_arr = np.reshape(np.array(range(np.prod(self.shape))),
-                                self.shape)
+            np_arr = np.reshape(
+                np.array(range(np.prod(self.shape))), self.shape
+            )
             for dtype in typelist:
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
                 target = tensor.numpy()

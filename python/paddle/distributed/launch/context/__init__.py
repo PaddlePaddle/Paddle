@@ -22,7 +22,6 @@ import logging
 
 
 class Context(object):
-
     def __init__(self, enable_plugin=True):
         self.args, self.unknown_args = parse_args()
         self.envs = fetch_envs()
@@ -54,8 +53,9 @@ class Context(object):
             return False
 
         if len(self.unknown_args) > 0:
-            self.logger.warning("Compatible mode enable with args {}".format(
-                self.unknown_args))
+            self.logger.warning(
+                "Compatible mode enable with args {}".format(self.unknown_args)
+            )
             return True
 
         return False
@@ -75,7 +75,8 @@ class Context(object):
         logger = logging.getLogger("LAUNCH")
         logger.setLevel(self.args.log_level.upper() or level)
         formatter = logging.Formatter(
-            fmt='%(name)s %(levelname)s %(asctime)s %(message)s')
+            fmt='%(name)s %(levelname)s %(asctime)s %(message)s'
+        )
         ch = logging.StreamHandler()
         ch.setFormatter(formatter)
         logger.addHandler(ch)

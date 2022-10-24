@@ -20,7 +20,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -50,26 +49,27 @@ class TestBase(IPUOpTest):
         self.attrs = {
             "optimizer": 'lamb',
             "weight_decay": 0.0,
-            "scaled_optimizer_state": True
+            "scaled_optimizer_state": True,
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
-        image = paddle.static.data(name='image',
-                                   shape=[1, 3, 10, 10],
-                                   dtype='float32')
-        conv1 = paddle.static.nn.conv2d(image,
-                                        num_filters=3,
-                                        filter_size=3,
-                                        bias_attr=False)
+        image = paddle.static.data(
+            name='image', shape=[1, 3, 10, 10], dtype='float32'
+        )
+        conv1 = paddle.static.nn.conv2d(
+            image, num_filters=3, filter_size=3, bias_attr=False
+        )
         loss = paddle.mean(conv1)
 
         weight_decay = self.attrs['weight_decay']
-        opt = paddle.optimizer.Adam(learning_rate=1e-1,
-                                    weight_decay=weight_decay)
+        opt = paddle.optimizer.Adam(
+            learning_rate=1e-1, weight_decay=weight_decay
+        )
         if self.attrs['optimizer'] == 'lamb':
-            opt = paddle.optimizer.Lamb(learning_rate=1e-1,
-                                        lamb_weight_decay=weight_decay)
+            opt = paddle.optimizer.Lamb(
+                learning_rate=1e-1, lamb_weight_decay=weight_decay
+            )
         opt.minimize(loss)
         self.feed_list = [image.name]
         self.fetch_list = [loss.name]
@@ -79,15 +79,21 @@ class TestBase(IPUOpTest):
         ipu_strategy.set_graph_config(is_training=self.is_training)
         if self.is_ipu_mode(exec_mode):
             if "use_no_bias_optimizer" in self.attrs.keys():
-                ipu_strategy.set_options({
-                    "use_no_bias_optimizer":
-                    self.attrs["use_no_bias_optimizer"]
-                })
+                ipu_strategy.set_options(
+                    {
+                        "use_no_bias_optimizer": self.attrs[
+                            "use_no_bias_optimizer"
+                        ]
+                    }
+                )
             if "scaled_optimizer_state" in self.attrs.keys():
-                ipu_strategy.set_options({
-                    "scaled_optimizer_state":
-                    self.attrs["scaled_optimizer_state"]
-                })
+                ipu_strategy.set_options(
+                    {
+                        "scaled_optimizer_state": self.attrs[
+                            "scaled_optimizer_state"
+                        ]
+                    }
+                )
         self.run_op_test(exec_mode, ipu_strategy=ipu_strategy)
 
     def test(self):
@@ -99,12 +105,11 @@ class TestBase(IPUOpTest):
 
 
 class TestScaledAdam(TestBase):
-
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'adam',
             "weight_decay": 0.0,
-            "scaled_optimizer_state": True
+            "scaled_optimizer_state": True,
         }
 
     def set_atol(self):
@@ -115,25 +120,23 @@ class TestScaledAdam(TestBase):
 
 @unittest.skip('cpu do not support AdamNoBias')
 class TestScaledAdamNoBias(TestBase):
-
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'adam',
             "weight_decay": 0.0,
             "use_no_bias_optimizer": True,
-            "scaled_optimizer_state": True
+            "scaled_optimizer_state": True,
         }
 
 
 @unittest.skip('cpu do not support LambNoBias')
 class TestScaledLambNoBias(TestBase):
-
     def set_attrs(self):
         self.attrs = {
             "optimizer": 'lamb',
             "weight_decay": 0.0,
             "use_no_bias_optimizer": True,
-            "scaled_optimizer_state": True
+            "scaled_optimizer_state": True,
         }
 
 

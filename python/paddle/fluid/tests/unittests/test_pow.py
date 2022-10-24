@@ -71,7 +71,7 @@ class TestPowerAPI(unittest.TestCase):
         """test_power."""
         np.random.seed(7)
         # test 1-d float tensor ** float scalar
-        dims = (np.random.randint(200, 300), )
+        dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = np.random.rand() * 10
         res = _run_power(DYNAMIC, x, y)
@@ -80,7 +80,7 @@ class TestPowerAPI(unittest.TestCase):
         np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 1-d float tensor ** int scalar
-        dims = (np.random.randint(200, 300), )
+        dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = int(np.random.rand() * 10)
         res = _run_power(DYNAMIC, x, y)
@@ -96,7 +96,7 @@ class TestPowerAPI(unittest.TestCase):
         np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 1-d float tensor ** 1-d float tensor
-        dims = (np.random.randint(200, 300), )
+        dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.rand(*dims) * 10).astype(np.float64)
         res = _run_power(DYNAMIC, x, y)
@@ -105,7 +105,7 @@ class TestPowerAPI(unittest.TestCase):
         np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 1-d int tensor ** 1-d int tensor
-        dims = (np.random.randint(200, 300), )
+        dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.int64)
         y = (np.random.rand(*dims) * 10).astype(np.int64)
         res = _run_power(DYNAMIC, x, y)
@@ -114,7 +114,7 @@ class TestPowerAPI(unittest.TestCase):
         np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 1-d int tensor ** 1-d int tensor
-        dims = (np.random.randint(200, 300), )
+        dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.int32)
         y = (np.random.rand(*dims) * 10).astype(np.int32)
         res = _run_power(DYNAMIC, x, y)
@@ -123,7 +123,7 @@ class TestPowerAPI(unittest.TestCase):
         np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 1-d int tensor ** 1-d int tensor
-        dims = (np.random.randint(200, 300), )
+        dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.float32)
         y = (np.random.rand(*dims) * 10).astype(np.float32)
         res = _run_power(DYNAMIC, x, y)
@@ -132,8 +132,11 @@ class TestPowerAPI(unittest.TestCase):
         np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test broadcast
-        dims = (np.random.randint(1, 10), np.random.randint(5, 10),
-                np.random.randint(5, 10))
+        dims = (
+            np.random.randint(1, 10),
+            np.random.randint(5, 10),
+            np.random.randint(5, 10),
+        )
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.rand(dims[-1]) * 10).astype(np.float64)
         res = _run_power(DYNAMIC, x, y)
@@ -150,22 +153,28 @@ class TestPowerError(unittest.TestCase):
         np.random.seed(7)
 
         # test dynamic computation graph: inputs must be broadcastable
-        dims = (np.random.randint(1, 10), np.random.randint(5, 10),
-                np.random.randint(5, 10))
+        dims = (
+            np.random.randint(1, 10),
+            np.random.randint(5, 10),
+            np.random.randint(5, 10),
+        )
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.rand(dims[-1] + 1) * 10).astype(np.float64)
         self.assertRaises(ValueError, _run_power, DYNAMIC, x, y)
         self.assertRaises(ValueError, _run_power, STATIC, x, y)
 
         # test dynamic computation graph: inputs must be broadcastable
-        dims = (np.random.randint(1, 10), np.random.randint(5, 10),
-                np.random.randint(5, 10))
+        dims = (
+            np.random.randint(1, 10),
+            np.random.randint(5, 10),
+            np.random.randint(5, 10),
+        )
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = (np.random.rand(dims[-1] + 1) * 10).astype(np.int8)
         self.assertRaises(TypeError, paddle.pow, x, y)
 
         # test 1-d float tensor ** int string
-        dims = (np.random.randint(200, 300), )
+        dims = (np.random.randint(200, 300),)
         x = (np.random.rand(*dims) * 10).astype(np.float64)
         y = int(np.random.rand() * 10)
         self.assertRaises(TypeError, paddle.pow, x, str(y))

@@ -23,7 +23,6 @@ import paddle
 
 
 class TestSamplingIdShape(unittest.TestCase):
-
     def test_shape(self):
         paddle.enable_static()
         x = fluid.layers.data(name='x', shape=[3], dtype='float32')

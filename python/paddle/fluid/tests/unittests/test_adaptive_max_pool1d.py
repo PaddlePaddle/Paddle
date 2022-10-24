@@ -29,24 +29,28 @@ def adaptive_end_index(index, input_size, output_size):
     return int(np.ceil((index + 1) * input_size / output_size))
 
 
-def max_pool1D_forward_naive(x,
-                             ksize,
-                             strides,
-                             paddings,
-                             global_pool=0,
-                             ceil_mode=False,
-                             exclusive=False,
-                             adaptive=False,
-                             data_type=np.float64):
+def max_pool1D_forward_naive(
+    x,
+    ksize,
+    strides,
+    paddings,
+    global_pool=0,
+    ceil_mode=False,
+    exclusive=False,
+    adaptive=False,
+    data_type=np.float64,
+):
     N, C, L = x.shape
     if global_pool == 1:
         ksize = [L]
     if adaptive:
         L_out = ksize[0]
     else:
-        L_out = (L - ksize[0] + 2 * paddings[0] + strides[0] -
-                 1) // strides[0] + 1 if ceil_mode else (
-                     L - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+        L_out = (
+            (L - ksize[0] + 2 * paddings[0] + strides[0] - 1) // strides[0] + 1
+            if ceil_mode
+            else (L - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+        )
 
     out = np.zeros((N, C, L_out))
     for i in range(L_out):
@@ -63,7 +67,6 @@ def max_pool1D_forward_naive(x,
 
 
 class TestPool1D_API(unittest.TestCase):
-
     def setUp(self):
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
@@ -76,15 +79,14 @@ class TestPool1D_API(unittest.TestCase):
             input = fluid.dygraph.to_variable(input_np)
             result = F.adaptive_max_pool1d(input, output_size=16)
 
-            result_np = max_pool1D_forward_naive(input_np,
-                                                 ksize=[16],
-                                                 strides=[0],
-                                                 paddings=[0],
-                                                 adaptive=True)
+            result_np = max_pool1D_forward_naive(
+                input_np, ksize=[16], strides=[0], paddings=[0], adaptive=True
+            )
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             ada_max_pool1d_dg = paddle.nn.layer.AdaptiveMaxPool1D(
-                output_size=16)
+                output_size=16
+            )
             result = ada_max_pool1d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
@@ -94,16 +96,16 @@ class TestPool1D_API(unittest.TestCase):
             result = F.adaptive_max_pool1d(input, output_size=16)
 
             input_np = np.random.random([2, 3, 32]).astype("float32")
-            result_np = max_pool1D_forward_naive(input_np,
-                                                 ksize=[16],
-                                                 strides=[2],
-                                                 paddings=[0],
-                                                 adaptive=True)
+            result_np = max_pool1D_forward_naive(
+                input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True
+            )
 
             exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"input": input_np},
-                              fetch_list=[result])
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def test_adaptive_max_pool1d(self):
@@ -113,14 +115,15 @@ class TestPool1D_API(unittest.TestCase):
 
 
 class TestOutDtype(unittest.TestCase):
-
     def test_max_pool(self):
         api_fn = F.adaptive_max_pool1d
         shape = [1, 3, 32]
-        check_out_dtype(api_fn,
-                        in_specs=[(shape, )],
-                        expect_dtypes=['float32', 'float64'],
-                        output_size=16)
+        check_out_dtype(
+            api_fn,
+            in_specs=[(shape,)],
+            expect_dtypes=['float32', 'float64'],
+            output_size=16,
+        )
 
 
 if __name__ == '__main__':

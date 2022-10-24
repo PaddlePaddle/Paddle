@@ -257,7 +257,8 @@ def mae(abserr, total_ins_num, scope=None, util=None):
         abserr = np.array(scope.find_var(abserr).get_tensor())
     if isinstance(total_ins_num, Variable):
         total_ins_num = np.array(
-            scope.find_var(total_ins_num.name).get_tensor())
+            scope.find_var(total_ins_num.name).get_tensor()
+        )
     elif isinstance(total_ins_num, str):
         total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
 
@@ -306,7 +307,8 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
     if isinstance(total_ins_num, Variable):
         total_ins_num = np.array(
-            scope.find_var(total_ins_num.name).get_tensor())
+            scope.find_var(total_ins_num.name).get_tensor()
+        )
     elif isinstance(total_ins_num, str):
         total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)
@@ -355,7 +357,8 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
         sqrerr = np.array(scope.find_var(sqrerr).get_tensor())
     if isinstance(total_ins_num, Variable):
         total_ins_num = np.array(
-            scope.find_var(total_ins_num.name).get_tensor())
+            scope.find_var(total_ins_num.name).get_tensor()
+        )
     elif isinstance(total_ins_num, str):
         total_ins_num = np.array(scope.find_var(total_ins_num).get_tensor())
     old_metric_shape = np.array(sqrerr.shape)

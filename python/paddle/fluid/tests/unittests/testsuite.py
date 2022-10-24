@@ -70,7 +70,6 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
 
 
 def set_input(scope, op, inputs, place):
-
     def __set_input__(var_name, var):
         if isinstance(var, tuple) or isinstance(var, np.ndarray):
             tensor = scope.find_var(var_name).get_tensor()
@@ -119,10 +118,9 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
                 if is_input:
                     shape = list(np_value.shape)
                     lod_level = 0
-        return block.create_var(dtype=dtype,
-                                shape=shape,
-                                lod_level=lod_level,
-                                name=name)
+        return block.create_var(
+            dtype=dtype, shape=shape, lod_level=lod_level, name=name
+        )
 
     var_dict = {}
     for var_proto in proto_list:
@@ -130,15 +128,18 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
         if (var_name not in np_list) and var_proto.dispensable:
             continue
         if is_input:
-            assert (var_name in np_list) or (var_proto.dispensable), \
-                "Missing {} as input".format(var_name)
+            assert (var_name in np_list) or (
+                var_proto.dispensable
+            ), "Missing {} as input".format(var_name)
         if var_proto.duplicable:
-            assert isinstance(np_list[var_name], list), \
-                "Duplicable {} should be set as list".format(var_name)
+            assert isinstance(
+                np_list[var_name], list
+            ), "Duplicable {} should be set as list".format(var_name)
             var_list = []
             for (name, np_value) in np_list[var_name]:
                 var_list.append(
-                    create_var(block, name, {name: np_value}, var_proto))
+                    create_var(block, name, {name: np_value}, var_proto)
+                )
             var_dict[var_name] = var_list
         else:
             var_dict[var_name] = create_var(block, var_name, np_list, var_proto)
@@ -151,34 +152,38 @@ def append_loss_ops(block, output_names):
 
     if len(mean_inputs) == 1:
         loss = block.create_var(dtype=mean_inputs[0].dtype, shape=[1])
-        op = block.append_op(inputs={"X": mean_inputs},
-                             outputs={"Out": loss},
-                             type='mean')
+        op = block.append_op(
+            inputs={"X": mean_inputs}, outputs={"Out": loss}, type='mean'
+        )
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
     else:
         avg_sum = []
         for cur_loss in mean_inputs:
             cur_avg_loss = block.create_var(dtype=cur_loss.dtype, shape=[1])
-            op = block.append_op(inputs={"X": [cur_loss]},
-                                 outputs={"Out": [cur_avg_loss]},
-                                 type="mean")
+            op = block.append_op(
+                inputs={"X": [cur_loss]},
+                outputs={"Out": [cur_avg_loss]},
+                type="mean",
+            )
             op.desc.infer_var_type(block.desc)
             op.desc.infer_shape(block.desc)
             avg_sum.append(cur_avg_loss)
 
         loss_sum = block.create_var(dtype=avg_sum[0].dtype, shape=[1])
-        op_sum = block.append_op(inputs={"X": avg_sum},
-                                 outputs={"Out": loss_sum},
-                                 type='sum')
+        op_sum = block.append_op(
+            inputs={"X": avg_sum}, outputs={"Out": loss_sum}, type='sum'
+        )
         op_sum.desc.infer_var_type(block.desc)
         op_sum.desc.infer_shape(block.desc)
 
         loss = block.create_var(dtype=loss_sum.dtype, shape=[1])
-        op_loss = block.append_op(inputs={"X": loss_sum},
-                                  outputs={"Out": loss},
-                                  type='scale',
-                                  attrs={'scale': 1.0 / float(len(avg_sum))})
+        op_loss = block.append_op(
+            inputs={"X": loss_sum},
+            outputs={"Out": loss},
+            type='scale',
+            attrs={'scale': 1.0 / float(len(avg_sum))},
+        )
         op_loss.desc.infer_var_type(block.desc)
         op_loss.desc.infer_shape(block.desc)
     return loss

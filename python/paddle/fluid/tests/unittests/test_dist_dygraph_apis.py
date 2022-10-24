@@ -17,7 +17,6 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestDygraphFleetApi(TestMultipleGpus):
-
     def test_dygraph_fleet_api(self):
         self.run_mnist_2gpu('dygraph_fleet_api.py')
 

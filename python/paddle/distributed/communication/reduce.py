@@ -46,6 +46,7 @@ class ReduceOp:
             print(data)
             # [[5, 7, 9], [5, 7, 9]] (2 GPUs)
     """
+
     SUM = 0
     MAX = 1
     MIN = 2

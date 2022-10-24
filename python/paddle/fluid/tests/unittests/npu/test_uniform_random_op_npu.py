@@ -25,7 +25,10 @@ import paddle
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from test_uniform_random_op import TestUniformRandomOp, TestUniformRandomOpSelectedRows
+from test_uniform_random_op import (
+    TestUniformRandomOp,
+    TestUniformRandomOpSelectedRows,
+)
 
 paddle.enable_static()
 
@@ -39,7 +42,6 @@ def output_hist(out):
 
 
 class TestNPUUniformRandomOp(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "uniform_random"
@@ -53,7 +55,7 @@ class TestNPUUniformRandomOp(OpTest):
             "shape": [1000, 784],
             "min": -5.0,
             "max": 10.0,
-            "seed": 10
+            "seed": 10,
         }
         self.output_hist = output_hist
 
@@ -73,7 +75,6 @@ class TestNPUUniformRandomOp(OpTest):
 
 
 class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
-
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_npu():
@@ -88,12 +89,14 @@ class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         paddle.seed(10)
-        op = Operator("uniform_random",
-                      Out="X",
-                      shape=[1000, 784],
-                      min=-5.0,
-                      max=10.0,
-                      seed=10)
+        op = Operator(
+            "uniform_random",
+            Out="X",
+            shape=[1000, 784],
+            min=-5.0,
+            max=10.0,
+            seed=10,
+        )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
 
 namespace paddle {
 namespace operators {
@@ -206,7 +206,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
       int best_algo_idx = 0;
       size_t tmp_size = 0;
       std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
-          new cudnnConvolutionFwdAlgoPerf_t[kNUM_CUDNN_FWD_ALGS]);
+          new cudnnConvolutionFwdAlgoPerf_t[phi::kNUM_CUDNN_FWD_ALGS]);
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
               handle,
@@ -214,7 +214,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
               filter_desc[i],
               conv_desc[i],
               out_desc[i],
-              kNUM_CUDNN_FWD_ALGS,
+              phi::kNUM_CUDNN_FWD_ALGS,
               &perf_count,
               perf_results.get()));
       algo[i] = (perf_results.get())[best_algo_idx].algo;

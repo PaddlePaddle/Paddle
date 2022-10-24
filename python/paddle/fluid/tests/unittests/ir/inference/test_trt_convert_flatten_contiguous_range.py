@@ -22,12 +22,10 @@ from typing import List
 
 
 class TrtConvertFlattenContiguousRangeTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input(batch):
             return np.random.random([2, batch, 4, 8, 3]).astype(np.float32)
 
@@ -37,35 +35,36 @@ class TrtConvertFlattenContiguousRangeTest(TrtLayerAutoScanTest):
                     type = "flatten_contiguous_range"
                     op_outputs = {
                         "Out": ["output_data"],
-                        "XShape": ["xshape_data"]
+                        "XShape": ["xshape_data"],
                     }
-                    ops_config = [{
-                        "op_type": type,
-                        "op_inputs": {
-                            "X": ["input_data"]
-                        },
-                        "op_outputs": op_outputs,
-                        "op_attrs": {
-                            "start_axis": start_axis,
-                            "stop_axis": stop_axis,
+                    ops_config = [
+                        {
+                            "op_type": type,
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": op_outputs,
+                            "op_attrs": {
+                                "start_axis": start_axis,
+                                "stop_axis": stop_axis,
+                            },
                         }
-                    }]
+                    ]
                     ops = self.generate_op_config(ops_config)
 
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
-                            "input_data":
-                            TensorConfig(
-                                data_gen=partial(generate_input, batch))
+                            "input_data": TensorConfig(
+                                data_gen=partial(generate_input, batch)
+                            )
                         },
-                        outputs=["output_data"])
+                        outputs=["output_data"],
+                    )
                     yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [2, 1, 4, 8, 3]}
             self.dynamic_shape.max_input_shape = {"input_data": [2, 4, 4, 8, 3]}
@@ -97,19 +96,23 @@ class TrtConvertFlattenContiguousRangeTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-3, 1e-3)
+            attrs, False
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-3, 1e-3)
+            attrs, True
+        ), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()
