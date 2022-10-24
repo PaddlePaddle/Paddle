@@ -601,11 +601,12 @@ class PipelineLayer(Layer):
         return run_function
 
     def forward_function(self, start, end):
+        run_function = self.run_function
 
         def execute_func(*x):
             if len(x) == 1:
                 x = x[0]
-            for idx, layer in enumerate(self.run_function[start:end]):
+            for idx, layer in enumerate(run_function[start:end]):
                 x = layer(x)
             return x
 
