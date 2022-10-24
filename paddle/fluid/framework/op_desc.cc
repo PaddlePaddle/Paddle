@@ -495,17 +495,11 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
         attr_type != proto::AttrType::BLOCKS &&
         attr_type != proto::AttrType::VAR &&
         attr_type != proto::AttrType::VARS) {
-      auto default_attr_iter = runtime_attrs_.find(attr_name);
-      const auto &extra_dynamic_attr_map =
-          operators::ExtraInfoUtils::Instance().GetExtraDynamicAttrsMap(Type());
-      auto dynamic_attr_iter = extra_dynamic_attr_map.find(attr_name);
-
-      if (default_attr_iter != runtime_attrs_.end()) {
-        default_attr_iter->second = GetAttrValue(attr);
-      } else if (dynamic_attr_iter != extra_dynamic_attr_map.end()) {
-        runtime_attrs_[attr_name] = GetAttrValue(attr);
-      } else {
+      auto iter = runtime_attrs_.find(attr_name);
+      if (iter == runtime_attrs_.end()) {
         attrs_[attr_name] = GetAttrValue(attr);
+      } else {
+        iter->second = GetAttrValue(attr);
       }
     }
   }
@@ -671,13 +665,8 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
 
   const auto &extra_attr_map =
       operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(Type());
-  const auto &extra_dynamic_attr_map =
-      operators::ExtraInfoUtils::Instance().GetExtraDynamicAttrsMap(Type());
   auto extra_attr_iter = extra_attr_map.find(name);
-  auto extra_dynamic_attr_iter = extra_dynamic_attr_map.find(name);
-  // auto pass_attr_iter = operators::extra_attr_properties.find(name);
-  if (extra_attr_iter != extra_attr_map.end() ||
-      extra_dynamic_attr_iter != extra_dynamic_attr_map.end()) {
+  if (extra_attr_iter != extra_attr_map.end()) {
     is_runtime_attr = true;
     attrs_ptr = &(this->runtime_attrs_);
   }

@@ -710,6 +710,7 @@ class ConvOneDNNHandlerT
         LOG(ERROR) << "Bias should be of type int32 but is " << bias->dtype();
       }
       const K_Bias* bias_data = bias->data<K_Bias>();
+
       return this->AcquireMemoryWithReorder(
           bias->mem_desc(),
           this->fwd_pd_->bias_desc(),

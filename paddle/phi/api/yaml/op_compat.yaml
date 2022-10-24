@@ -112,7 +112,6 @@
              bool fuse_residual_connection = false, float Scale_in = 1.0f, float Scale_out = 1.0f,
              float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}', bool force_fp32_output = false,
              int workspace_size_MB = platform::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
-    dynamic_attrs : ['float[] Bias_scales = {1.0f}', float Sum_scale = 1.0f, 'float[] Output_shift_scale = {1.0f}', float Activation_scale = 1.0f]
 
 - op : conv2d_fusion
   extra :

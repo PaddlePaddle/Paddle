@@ -2708,6 +2708,62 @@ phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
   return (*arg_map_fn_)(arg_mapping_ctx);
 }
 
+static void SetDnnAttrIntoDeviceContext(
+    phi::DeviceContext* dev_ctx,
+    const Attribute& attr,
+    const std::string& attr_name,
+    const operators::ExtraAttrPropertySet& attr_propertys) {
+#ifdef PADDLE_WITH_MKLDNN
+  if (phi::OneDNNContext::classof(dev_ctx) &&
+      attr_propertys.Support(operators::ExtraAttrProperty::ONEDNN)) {
+    VLOG(4) << "Runtime attr `" << attr_name << "` is passed to OneDNNContext.";
+    phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+    switch (AttrTypeID(attr)) {
+      case proto::AttrType::FLOAT:
+        one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(float, attr));
+        break;
+      case proto::AttrType::STRING:
+        one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(std::string, attr));
+        break;
+      case proto::AttrType::INTS:
+        one_dnn_ctx->SetDnnAttr(attr_name,
+                                PADDLE_GET_CONST(std::vector<int>, attr));
+        break;
+      case proto::AttrType::FLOATS:
+        one_dnn_ctx->SetDnnAttr(attr_name,
+                                PADDLE_GET_CONST(std::vector<float>, attr));
+        break;
+      case proto::AttrType::BOOLEAN:
+        one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
+        break;
+      default:
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported Attribute value type `%s` for phi.",
+            platform::demangle(attr.type().name())));
+    }
+  }
+#endif
+#ifdef PADDLE_WITH_CUDA
+  if (phi::GPUContext::classof(dev_ctx) &&
+      attr_propertys.Support(operators::ExtraAttrProperty::GPUDNN)) {
+    VLOG(4) << "Runtime attr `" << attr_name << "` is passed to GPUDNNContext.";
+    phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
+    switch (AttrTypeID(attr)) {
+      case proto::AttrType::INT:
+        gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
+        break;
+      case proto::AttrType::BOOLEAN:
+        gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
+        break;
+      default:
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported Attribute value type `%s` for phi.",
+            platform::demangle(attr.type().name())));
+    }
+  }
+#endif
+}
+
 void OperatorWithKernel::BuildPhiKernelContext(
     const RuntimeContext& ctx,
     platform::DeviceContext* dev_ctx,
@@ -3102,59 +3158,22 @@ void OperatorWithKernel::BuildPhiKernelContext(
     auto& attr_name = attr_iter.first;
     auto& attr = attr_iter.second;
     auto attr_propertys = paddle::operators::GetExtraAttrPropertys(attr_name);
-#ifdef PADDLE_WITH_MKLDNN
-    if (phi::OneDNNContext::classof(dev_ctx) &&
-        attr_propertys.Support(operators::ExtraAttrProperty::ONEDNN)) {
-      VLOG(4) << "Runtime attr `" << attr_name
-              << "` is passed to OneDNNContext.";
-      phi::OneDNNContext* one_dnn_ctx =
-          static_cast<phi::OneDNNContext*>(dev_ctx);
-      switch (AttrTypeID(attr)) {
-        case proto::AttrType::FLOAT:
-          one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(float, attr));
-          break;
-        case proto::AttrType::STRING:
-          one_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::string, attr));
-          break;
-        case proto::AttrType::INTS:
-          one_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::vector<int>, attr));
-          break;
-        case proto::AttrType::FLOATS:
-          one_dnn_ctx->SetDnnAttr(attr_name,
-                                  PADDLE_GET_CONST(std::vector<float>, attr));
-          break;
-        case proto::AttrType::BOOLEAN:
-          one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
-          break;
-        default:
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported Attribute value type `%s` for phi.",
-              platform::demangle(attr.type().name())));
-      }
-    }
-#endif
-#ifdef PADDLE_WITH_CUDA
-    if (phi::GPUContext::classof(dev_ctx) &&
-        attr_propertys.Support(operators::ExtraAttrProperty::GPUDNN)) {
-      VLOG(4) << "Runtime attr `" << attr_name
-              << "` is passed to GPUDNNContext.";
-      phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
-      switch (AttrTypeID(attr)) {
-        case proto::AttrType::INT:
-          gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
-          break;
-        case proto::AttrType::BOOLEAN:
-          gpu_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
-          break;
-        default:
-          PADDLE_THROW(platform::errors::Unimplemented(
-              "Unsupported Attribute value type `%s` for phi.",
-              platform::demangle(attr.type().name())));
-      }
-    }
-#endif
+    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_propertys);
+  }
+  // TODO(chenweihang): Since the pass will still `SetAttr` in the OpDesc,
+  // we try to add these Attrs to the RuntimeAttrs, but these OpDesc will lose
+  // the RuntimeAttrs information in the process of converting the Graph to
+  // the Program, so additional record configuration will be introduced,
+  // which increases the The cost of development and understanding, so we
+  // still use Attrs to get and the attributes set by these passes from Attrs
+  // for the time being. In the future, it is necessary to clarify the
+  // positioning of RuntimeAttrs and expand related functions.
+  auto& attrs = Attrs();
+  for (const auto& attr_iter : attrs) {
+    auto& attr_name = attr_iter.first;
+    auto& attr = attr_iter.second;
+    auto attr_propertys = paddle::operators::GetExtraAttrPropertys(attr_name);
+    SetDnnAttrIntoDeviceContext(dev_ctx, attr, attr_name, attr_propertys);
   }
   VLOG(4) << "Done runtime attributes";
 #endif
