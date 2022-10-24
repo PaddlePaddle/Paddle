@@ -102,16 +102,12 @@ elseif(WITH_ROCM)
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS allocator memcpy)
 else()
-  cc_test(
-    best_fit_allocator_test
-    SRCS best_fit_allocator_test.cc
-    DEPS allocator)
+  cc_test_old(best_fit_allocator_test SRCS best_fit_allocator_test.cc DEPS
+              allocator)
 endif()
 
-cc_test(
-  test_aligned_allocator
-  SRCS test_aligned_allocator.cc
-  DEPS allocator)
+cc_test_old(test_aligned_allocator SRCS test_aligned_allocator.cc DEPS
+            allocator)
 
 cc_test_old(retry_allocator_test SRCS retry_allocator_test.cc DEPS allocator)
 if(TEST retry_allocator_test)
@@ -133,10 +129,8 @@ cc_test(
   auto_growth_best_fit_allocator_facade_test
   SRCS auto_growth_best_fit_allocator_facade_test.cc
   DEPS allocator)
-cc_test(
-  auto_growth_best_fit_allocator_test
-  SRCS auto_growth_best_fit_allocator_test.cc
-  DEPS allocator)
+cc_test_old(auto_growth_best_fit_allocator_test SRCS
+            auto_growth_best_fit_allocator_test.cc DEPS allocator)
 
 if(NOT WIN32)
   cc_test(

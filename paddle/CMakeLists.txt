@@ -42,6 +42,11 @@ get_property(test_names GLOBAL PROPERTY TEST_NAMES)
 
 get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
 
+set(POSTFIX ".so")
+if(WIN32)
+  set(POSTFIX ".dll")
+endif()
+
 list(LENGTH test_names len)
 if(${len} GREATER_EQUAL 1)
   message("Total tests: ${len}")
@@ -54,22 +59,23 @@ if(${len} GREATER_EQUAL 1)
       message("add test ${test_name}")
       add_executable(${test_name} ${test_src})
       target_link_libraries(
-        ${test_name} ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/libpaddle.so)
-      target_link_libraries(${test_name} paddle_gtest_main)
-      add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main)
+        ${test_name}
+        ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/libpaddle${POSTFIX})
+      target_link_libraries(${test_name} paddle_gtest_main_new)
+      add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main_new)
       if(WITH_GPU)
         target_link_libraries(${test_name} ${CUDA_CUDART_LIBRARY}
                               "-Wl,--as-needed")
       endif()
       if(NOT
-         ("${test_names}" STREQUAL "c_broadcast_op_npu_test"
-          OR "${test_names}" STREQUAL "c_allreduce_sum_op_npu_test"
-          OR "${test_names}" STREQUAL "c_allreduce_max_op_npu_test"
-          OR "${test_names}" STREQUAL "c_reducescatter_op_npu_test"
-          OR "${test_names}" STREQUAL "c_allgather_op_npu_test"
-          OR "${test_names}" STREQUAL "send_v2_op_npu_test"
-          OR "${test_names}" STREQUAL "c_reduce_sum_op_npu_test"
-          OR "${test_names}" STREQUAL "recv_v2_op_npu_test"))
+         ("${test_name}" STREQUAL "c_broadcast_op_npu_test"
+          OR "${test_name}" STREQUAL "c_allreduce_sum_op_npu_test"
+          OR "${test_name}" STREQUAL "c_allreduce_max_op_npu_test"
+          OR "${test_name}" STREQUAL "c_reducescatter_op_npu_test"
+          OR "${test_name}" STREQUAL "c_allgather_op_npu_test"
+          OR "${test_name}" STREQUAL "send_v2_op_npu_test"
+          OR "${test_name}" STREQUAL "c_reduce_sum_op_npu_test"
+          OR "${test_name}" STREQUAL "recv_v2_op_npu_test"))
         cc_test_run(
           ${test_name}
           COMMAND
@@ -79,9 +85,9 @@ if(${len} GREATER_EQUAL 1)
           DIR
           ${CC_TESTS_DIR})
       endif()
-    elseif(WITH_TESTING AND NOT TEST ${test_names})
-      add_test(NAME ${test_names} COMMAND ${CMAKE_COMMAND} -E echo CI skip
-                                          ${test_names}.)
+    elseif(WITH_TESTING AND NOT TEST ${test_name})
+      add_test(NAME ${test_name} COMMAND ${CMAKE_COMMAND} -E echo CI skip
+                                         ${test_name}.)
     endif()
     set_target_properties(${test_name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                   "${CC_TESTS_DIR}")
@@ -91,7 +97,9 @@ endif()
 # set properties for some tests, it should be set after the tests defined.
 if(TARGET standalone_executor_test)
   set_tests_properties(standalone_executor_test PROPERTIES TIMEOUT 100)
-  add_dependencies(standalone_executor_test download_program)
+  if(NOT WIN32)
+    add_dependencies(standalone_executor_test download_program)
+  endif()
 endif()
 
 if(TARGET layer_test)
@@ -102,11 +110,15 @@ if(TARGET layer_test)
 endif()
 
 if(TEST buddy_allocator_test)
-  add_dependencies(buddy_allocator_test download_data)
+  if(NOT WIN32)
+    add_dependencies(buddy_allocator_test download_data)
+  endif()
   set_tests_properties(buddy_allocator_test PROPERTIES LABELS
                                                        "RUN_TYPE=EXCLUSIVE")
 endif()
 
-# add target to build all cpp tests
 add_custom_target(build_tests)
-add_dependencies(build_tests ${test_names})
+# add target to build all cpp tests
+if(${len} GREATER_EQUAL 1)
+  add_dependencies(build_tests ${test_names})
+endif()
