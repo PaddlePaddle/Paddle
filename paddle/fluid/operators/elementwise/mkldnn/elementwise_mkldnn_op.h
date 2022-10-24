@@ -363,6 +363,8 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                  {DNNL_ARG_DST, *dst_memory},
                              });
         astream.wait();
+      } else {
+        dy->set_mem_desc(dst_memory->get_desc());
       }
     }
   }
