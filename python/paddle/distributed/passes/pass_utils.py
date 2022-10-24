@@ -108,8 +108,9 @@ def split_program(program, op_indices):
         op_indices.append(op_num)
 
     for idx in range(len(op_indices) - 1):
-        assert op_indices[idx] < op_indices[
-            idx + 1], "op_indices must be strictly sorted"
+        assert (
+            op_indices[idx] < op_indices[idx + 1]
+        ), "op_indices must be strictly sorted"
 
     splitted_programs = []
     for idx in range(len(op_indices) - 1):

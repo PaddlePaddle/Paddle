@@ -36,21 +36,25 @@ def conv_net(use_feed):
     img = fluid.layers.data(name='image', shape=img_shape, dtype='float16')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
-                                                  filter_size=5,
-                                                  num_filters=20,
-                                                  pool_size=2,
-                                                  pool_stride=2,
-                                                  act="relu")
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+        input=img,
+        filter_size=5,
+        num_filters=20,
+        pool_size=2,
+        pool_stride=2,
+        act="relu",
+    )
     conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
 
     conv_pool_1 = fluid.layers.cast(conv_pool_1, np.float32)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
-                                                  filter_size=5,
-                                                  num_filters=50,
-                                                  pool_size=2,
-                                                  pool_stride=2,
-                                                  act="relu")
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+        input=conv_pool_1,
+        filter_size=5,
+        num_filters=50,
+        pool_size=2,
+        pool_stride=2,
+        act="relu",
+    )
     hidden = fluid.layers.cast(conv_pool_2, np.float32)
     return loss_net(hidden, label)
 
@@ -61,11 +65,10 @@ def _optimizer(learning_rate=1e-6):
 
 
 class TestResnet(TestParallelExecutorBase):
-
     def check_model(self, use_device):
-        img, label = init_data(batch_size=batch_size,
-                               img_shape=img_shape,
-                               label_range=9)
+        img, label = init_data(
+            batch_size=batch_size, img_shape=img_shape, label_range=9
+        )
         img = np.float16(img)
         feed_dict = {"image": img, "label": label}
 
@@ -75,7 +78,8 @@ class TestResnet(TestParallelExecutorBase):
             iter=10,
             use_device=use_device,
             fuse_all_reduce_ops=True,
-            optimizer=_optimizer)
+            optimizer=_optimizer,
+        )
 
     def test_model(self):
         if core.is_compiled_with_cuda():

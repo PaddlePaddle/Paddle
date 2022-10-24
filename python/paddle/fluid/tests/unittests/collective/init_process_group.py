@@ -19,7 +19,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestProcessGroupFp32(unittest.TestCase):
-
     def setUp(self):
         self.config()
 

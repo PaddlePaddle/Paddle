@@ -14,11 +14,13 @@
 
 import unittest
 from paddle.distributed.auto_parallel.process_mesh_v2 import (
-    ProcessMesh, compute_compatible_process_mesh, merge_process_mesh)
+    ProcessMesh,
+    compute_compatible_process_mesh,
+    merge_process_mesh,
+)
 
 
 class TestProcessMesh(unittest.TestCase):
-
     def test_process_mesh(self):
         mesh = [[0, 1, 2], [3, 4, 5]]
         mesh2 = [[0, 1], [2, 3]]
@@ -41,34 +43,41 @@ class TestProcessMesh(unittest.TestCase):
         self.assertEqual(str(process_mesh), str(process_mesh))
 
     def test_compute_compatible_process_mesh(self):
-        process_mesh1 = ProcessMesh([[0, 1, 2], [3, 4, 5]],
-                                    dim_names=["x", "y"])
+        process_mesh1 = ProcessMesh(
+            [[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"]
+        )
         compatible_process_mesh = compute_compatible_process_mesh(
-            [process_mesh1, None])
+            [process_mesh1, None]
+        )
         self.assertEqual(compatible_process_mesh, process_mesh1)
         compatible_process_mesh = compute_compatible_process_mesh(
-            [None, process_mesh1])
+            [None, process_mesh1]
+        )
         self.assertEqual(compatible_process_mesh, process_mesh1)
 
         process_mesh2 = ProcessMesh([[0, 1, 2], [3, 4, 5]])
         compatible_process_mesh = compute_compatible_process_mesh(
-            [process_mesh1, process_mesh2])
+            [process_mesh1, process_mesh2]
+        )
         self.assertEqual(compatible_process_mesh, process_mesh1)
         self.assertEqual(compatible_process_mesh, process_mesh2)
 
         process_mesh2 = ProcessMesh([[0, 1, 2, 3, 4, 5]])
         compatible_process_mesh = compute_compatible_process_mesh(
-            [process_mesh1, process_mesh2])
+            [process_mesh1, process_mesh2]
+        )
         self.assertEqual(compatible_process_mesh, process_mesh1)
 
         process_mesh2 = ProcessMesh([[0, 1, 2]])
         compatible_process_mesh = compute_compatible_process_mesh(
-            [process_mesh1, process_mesh2])
+            [process_mesh1, process_mesh2]
+        )
         self.assertEqual(compatible_process_mesh, process_mesh1)
 
     def test_merge_process_mesh(self):
-        process_mesh1 = ProcessMesh([[0, 1, 2], [3, 4, 5]],
-                                    dim_names=["x", "y"])
+        process_mesh1 = ProcessMesh(
+            [[0, 1, 2], [3, 4, 5]], dim_names=["x", "y"]
+        )
         merged_process_mesh = merge_process_mesh([process_mesh1, None])
         print(merged_process_mesh)
         self.assertEqual(merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5]))
@@ -85,8 +94,9 @@ class TestProcessMesh(unittest.TestCase):
 
         process_mesh2 = ProcessMesh([[6, 7]])
         merged_process_mesh = merge_process_mesh([process_mesh1, process_mesh2])
-        self.assertEqual(merged_process_mesh,
-                         ProcessMesh([0, 1, 2, 3, 4, 5, 6, 7]))
+        self.assertEqual(
+            merged_process_mesh, ProcessMesh([0, 1, 2, 3, 4, 5, 6, 7])
+        )
 
 
 if __name__ == "__main__":

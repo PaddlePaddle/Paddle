@@ -133,22 +133,24 @@ class ESC50(AudioClassificationDataset):
     meta = os.path.join('ESC-50-master', 'meta', 'esc50.csv')
     meta_info = collections.namedtuple(
         'META_INFO',
-        ('filename', 'fold', 'target', 'category', 'esc10', 'src_file', 'take'))
+        ('filename', 'fold', 'target', 'category', 'esc10', 'src_file', 'take'),
+    )
     audio_path = os.path.join('ESC-50-master', 'audio')
 
-    def __init__(self,
-                 mode: str = 'train',
-                 split: int = 1,
-                 feat_type: str = 'raw',
-                 archive=None,
-                 **kwargs):
+    def __init__(
+        self,
+        mode: str = 'train',
+        split: int = 1,
+        feat_type: str = 'raw',
+        archive=None,
+        **kwargs
+    ):
         if archive is not None:
             self.archive = archive
         files, labels = self._get_data(mode, split)
-        super(ESC50, self).__init__(files=files,
-                                    labels=labels,
-                                    feat_type=feat_type,
-                                    **kwargs)
+        super(ESC50, self).__init__(
+            files=files, labels=labels, feat_type=feat_type, **kwargs
+        )
 
     def _get_meta_info(self) -> List[collections.namedtuple]:
         ret = []
@@ -158,12 +160,15 @@ class ESC50(AudioClassificationDataset):
         return ret
 
     def _get_data(self, mode: str, split: int) -> Tuple[List[str], List[int]]:
-        if not os.path.isdir(os.path.join(DATA_HOME, self.audio_path)) or \
-            not os.path.isfile(os.path.join(DATA_HOME, self.meta)):
-            download.get_path_from_url(self.archive['url'],
-                                       DATA_HOME,
-                                       self.archive['md5'],
-                                       decompress=True)
+        if not os.path.isdir(
+            os.path.join(DATA_HOME, self.audio_path)
+        ) or not os.path.isfile(os.path.join(DATA_HOME, self.meta)):
+            download.get_path_from_url(
+                self.archive['url'],
+                DATA_HOME,
+                self.archive['md5'],
+                decompress=True,
+            )
 
         meta_info = self._get_meta_info()
 

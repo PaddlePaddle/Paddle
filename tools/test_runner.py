@@ -28,7 +28,7 @@ import static_mode_white_list
 def main():
     sys.path.append(os.getcwd())
     if core.is_compiled_with_cuda() or core.is_compiled_with_rocm():
-        if (os.getenv('FLAGS_enable_gpu_memory_usage_log') == None):
+        if os.getenv('FLAGS_enable_gpu_memory_usage_log') == None:
             os.environ['FLAGS_enable_gpu_memory_usage_log'] = 'true'
             os.environ['FLAGS_enable_gpu_memory_usage_log_mb'] = 'false'
 
@@ -52,10 +52,12 @@ def main():
 
                     if not res.wasSuccessful():
                         some_test_failed = True
-                        print(module_name,
-                              'failed\n',
-                              buffer.getvalue(),
-                              file=sys.stderr)
+                        print(
+                            module_name,
+                            'failed\n',
+                            buffer.getvalue(),
+                            file=sys.stderr,
+                        )
         if flag_need_static_mode:
             paddle.disable_static()
 

@@ -19,20 +19,21 @@ from paddle import fluid
 
 
 class TestMarginRankLossOp(OpTest):
-
     def setUp(self):
         self.op_type = "margin_rank_loss"
         batch_size = 5
         margin = 0.5
         # labels_{i} = {-1, 1}
-        label = 2 * np.random.randint(
-            0, 2, size=(batch_size, 1)).astype("float32") - 1
+        label = (
+            2 * np.random.randint(0, 2, size=(batch_size, 1)).astype("float32")
+            - 1
+        )
         x1 = np.random.random((batch_size, 1)).astype("float32")
         x2 = np.random.random((batch_size, 1)).astype("float32")
         # loss = max(0, -label * (x1 - x2) + margin)
         loss = -label * (x1 - x2) + margin
         loss = np.where(loss > 0, loss, 0)
-        act = np.where(loss > 0, 1., 0.)
+        act = np.where(loss > 0, 1.0, 0.0)
 
         self.attrs = {'margin': margin}
         self.inputs = {'Label': label, 'X1': x1, 'X2': x2}
@@ -52,13 +53,17 @@ class TestMarginRankLossOp(OpTest):
 
 
 class TestMarginRankLossLayer(unittest.TestCase):
-
     def setUp(self):
         self.batch_size = 5
         self.margin = 0.5
         # labels_{i} = {-1, 1}
-        self.label = 2 * np.random.randint(
-            0, 2, size=(self.batch_size, 1)).astype("float32") - 1
+        self.label = (
+            2
+            * np.random.randint(0, 2, size=(self.batch_size, 1)).astype(
+                "float32"
+            )
+            - 1
+        )
         self.x1 = np.random.random((self.batch_size, 1)).astype("float32")
         self.x2 = np.random.random((self.batch_size, 1)).astype("float32")
         # loss = max(0, -label * (x1 - x2) + margin)
@@ -86,13 +91,11 @@ class TestMarginRankLossLayer(unittest.TestCase):
 
         exe = fluid.Executor(place)
         exe.run(start)
-        out_np, = exe.run(main,
-                          feed={
-                              "label": self.label,
-                              "x1": self.x1,
-                              "x2": self.x2
-                          },
-                          fetch_list=[out])
+        (out_np,) = exe.run(
+            main,
+            feed={"label": self.label, "x1": self.x1, "x2": self.x2},
+            fetch_list=[out],
+        )
         np.testing.assert_allclose(out_np, self.loss)
 
 

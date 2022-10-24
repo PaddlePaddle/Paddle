@@ -19,19 +19,33 @@ from pathlib import Path
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-from filters import to_op_attr_type, to_opmaker_name, to_opmaker_name_cstr, to_pascal_case
-from tests import is_base_api, is_vec, is_scalar, is_initializer_list, supports_inplace, supports_no_need_buffer
+from filters import (
+    to_op_attr_type,
+    to_opmaker_name,
+    to_opmaker_name_cstr,
+    to_pascal_case,
+)
+from tests import (
+    is_base_api,
+    is_vec,
+    is_scalar,
+    is_initializer_list,
+    supports_inplace,
+    supports_no_need_buffer,
+)
 from filters import to_input_name, cartesian_prod_mapping
 from parse_utils import to_named_dict
 from generate_op import process_invoke_op
 
 file_loader = FileSystemLoader(Path(__file__).parent / "templates")
-env = Environment(loader=file_loader,
-                  keep_trailing_newline=True,
-                  trim_blocks=True,
-                  lstrip_blocks=True,
-                  undefined=StrictUndefined,
-                  extensions=['jinja2.ext.do'])
+env = Environment(
+    loader=file_loader,
+    keep_trailing_newline=True,
+    trim_blocks=True,
+    lstrip_blocks=True,
+    undefined=StrictUndefined,
+    extensions=['jinja2.ext.do'],
+)
 env.filters["to_op_attr_type"] = to_op_attr_type
 env.filters["to_opmaker_name"] = to_opmaker_name
 env.filters["to_pascal_case"] = to_pascal_case
@@ -56,8 +70,9 @@ def restruct_io(api):
 SPARSE_OP_PREFIX = 'sparse_'
 
 
-def main(api_yaml_path, backward_yaml_path, output_op_path,
-         output_arg_map_path):
+def main(
+    api_yaml_path, backward_yaml_path, output_op_path, output_arg_map_path
+):
     with open(api_yaml_path, "rt") as f:
         apis = yaml.safe_load(f)
         apis = [restruct_io(api) for api in apis]
@@ -86,8 +101,9 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
     for bw_api in backward_apis:
         if 'invoke' in bw_api:
             if bw_api['invoke']['func'] in forward_api_dict:
-                bw_api['invoke'][
-                    'func'] = SPARSE_OP_PREFIX + bw_api['invoke']['func']
+                bw_api['invoke']['func'] = (
+                    SPARSE_OP_PREFIX + bw_api['invoke']['func']
+                )
 
     # fill backward field for an api if another api claims it as forward
     for name, backward_api in backward_api_dict.items():
@@ -111,9 +127,9 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
 
     op_template = env.get_template('sparse_op.c.j2')
     with open(output_op_path, "wt") as f:
-        msg = op_template.render(apis=apis,
-                                 backward_apis=backward_apis,
-                                 api_dict=api_dict)
+        msg = op_template.render(
+            apis=apis, backward_apis=backward_apis, api_dict=api_dict
+        )
         f.write(msg)
 
     ks_template = env.get_template('sparse_ks.c.j2')
@@ -124,21 +140,29 @@ def main(api_yaml_path, backward_yaml_path, output_op_path,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Generate operator file from api yaml.")
-    parser.add_argument('--ops_yaml_path',
-                        type=str,
-                        help="parsed sparse ops yaml file.")
-    parser.add_argument('--backward_ops_yaml_path',
-                        type=str,
-                        help="parsed backward sparse ops yaml file.")
-    parser.add_argument("--output_op_path",
-                        type=str,
-                        help="path to save generated operators.")
+        description="Generate operator file from api yaml."
+    )
+    parser.add_argument(
+        '--ops_yaml_path', type=str, help="parsed sparse ops yaml file."
+    )
+    parser.add_argument(
+        '--backward_ops_yaml_path',
+        type=str,
+        help="parsed backward sparse ops yaml file.",
+    )
+    parser.add_argument(
+        "--output_op_path", type=str, help="path to save generated operators."
+    )
     parser.add_argument(
         "--output_arg_map_path",
         type=str,
-        help="path to save generated argument mapping functions.")
+        help="path to save generated argument mapping functions.",
+    )
 
     args = parser.parse_args()
-    main(args.ops_yaml_path, args.backward_ops_yaml_path, args.output_op_path,
-         args.output_arg_map_path)
+    main(
+        args.ops_yaml_path,
+        args.backward_ops_yaml_path,
+        args.output_op_path,
+        args.output_arg_map_path,
+    )

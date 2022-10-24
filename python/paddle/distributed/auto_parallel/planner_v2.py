@@ -18,7 +18,6 @@ from .tuner.parallel_tuner import ParallelTuner
 
 
 class Planner:
-
     def __init__(self, mode, dist_context):
         self._mode = mode
         self._dist_context = dist_context
@@ -39,8 +38,9 @@ class Planner:
         self._strategy = dist_context.strategy
         # set parallel tuner for auto search
         if self._strategy.auto_mode == "full":
-            self._parallel_tuner = ParallelTuner(self._dist_context,
-                                                 mode=self._mode)
+            self._parallel_tuner = ParallelTuner(
+                self._dist_context, mode=self._mode
+            )
 
     @property
     def completer(self):
@@ -53,4 +53,5 @@ class Planner:
             self._completer.complete_forward_annotation()
         # parse forward sub block
         self._dist_context.block_state.parse_forward_blocks(
-            self._dist_context.serial_main_program)
+            self._dist_context.serial_main_program
+        )

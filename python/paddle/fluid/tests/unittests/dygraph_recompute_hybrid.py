@@ -24,34 +24,40 @@ from paddle.distributed import fleet
 def get_fc_block(block_idx, input_size, is_last=False):
     block_name = "block_" + str(block_idx)
     block = paddle.nn.Sequential(
-        (block_name + "_fc_0",
-         paddle.nn.Linear(input_size, input_size, bias_attr=False)),
+        (
+            block_name + "_fc_0",
+            paddle.nn.Linear(input_size, input_size, bias_attr=False),
+        ),
         (block_name + "_dropout", paddle.nn.Dropout(p=0.5)),
         (block_name + "_relu_1", paddle.nn.ReLU()),
-        (block_name + "_fc_1",
-         paddle.nn.Linear(input_size, input_size, bias_attr=False)),
+        (
+            block_name + "_fc_1",
+            paddle.nn.Linear(input_size, input_size, bias_attr=False),
+        ),
         (block_name + "_relu_2", paddle.nn.ReLU()),
     )
     if is_last:
-        block.add_sublayer(block_name + "_fc_2",
-                           paddle.nn.Linear(input_size, 1,
-                                            bias_attr=False))  # add sublayer
+        block.add_sublayer(
+            block_name + "_fc_2",
+            paddle.nn.Linear(input_size, 1, bias_attr=False),
+        )  # add sublayer
     else:
-        block.add_sublayer(block_name + "_fc_2",
-                           paddle.nn.Linear(input_size,
-                                            input_size,
-                                            bias_attr=False))  # add sublayer
+        block.add_sublayer(
+            block_name + "_fc_2",
+            paddle.nn.Linear(input_size, input_size, bias_attr=False),
+        )  # add sublayer
     return block
 
 
 class Naive_fc_net(paddle.nn.Layer):
-
-    def __init__(self,
-                 input_size=10,
-                 recompute_blocks=[1, 3],
-                 offload=False,
-                 partition=False,
-                 recompute_kwargs={}):
+    def __init__(
+        self,
+        input_size=10,
+        recompute_blocks=[1, 3],
+        offload=False,
+        partition=False,
+        recompute_kwargs={},
+    ):
         super(Naive_fc_net, self).__init__()
         self.recompute_blocks = recompute_blocks
         self.recompute_kwargs = recompute_kwargs
@@ -65,8 +71,11 @@ class Naive_fc_net(paddle.nn.Layer):
         self.runfunc4 = get_fc_block(4, input_size, is_last=True)
 
         self.layers = [
-            self.runfunc0, self.runfunc1, self.runfunc2, self.runfunc3,
-            self.runfunc4
+            self.runfunc0,
+            self.runfunc1,
+            self.runfunc2,
+            self.runfunc3,
+            self.runfunc4,
         ]
 
     def forward(self, inputs):
@@ -76,34 +85,43 @@ class Naive_fc_net(paddle.nn.Layer):
                     {
                         "mp_group": fleet.fleet._hcg.get_model_parallel_group(),
                         "offload": self.offload,
-                        "partition": self.partition
-                    }, self.layers[i], inputs, **self.recompute_kwargs)
+                        "partition": self.partition,
+                    },
+                    self.layers[i],
+                    inputs,
+                    **self.recompute_kwargs
+                )
             else:
                 inputs = self.layers[i](inputs)
 
         return inputs
 
 
-def run_model(recompute_block=[],
-              recompute_kwargs={},
-              offload=False,
-              partition=False,
-              enable_autocast=False,
-              pure_fp16=False):
+def run_model(
+    recompute_block=[],
+    recompute_kwargs={},
+    offload=False,
+    partition=False,
+    enable_autocast=False,
+    pure_fp16=False,
+):
     gen = paddle.seed(10)
     gen.manual_seed(10)
     np.random.seed(10)
     random.seed(10)
 
     batch_size, input_size = 1, 10
-    model = Naive_fc_net(input_size,
-                         recompute_blocks=recompute_block,
-                         offload=offload,
-                         partition=partition,
-                         recompute_kwargs=recompute_kwargs)
+    model = Naive_fc_net(
+        input_size,
+        recompute_blocks=recompute_block,
+        offload=offload,
+        partition=partition,
+        recompute_kwargs=recompute_kwargs,
+    )
     loss_fn = paddle.nn.MSELoss(reduction='mean')
-    optimizer = paddle.optimizer.SGD(learning_rate=0.01,
-                                     parameters=model.parameters())
+    optimizer = paddle.optimizer.SGD(
+        learning_rate=0.01, parameters=model.parameters()
+    )
 
     model = fleet.distributed_model(model)
     optimizer = fleet.distributed_optimizer(optimizer)
@@ -140,7 +158,6 @@ def run_model(recompute_block=[],
 
 
 class TestPyLayer(unittest.TestCase):
-
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
@@ -154,7 +171,6 @@ class TestPyLayer(unittest.TestCase):
         fleet.init(is_collective=True, strategy=strategy)
 
     def test_base_case(self, enable_autocast=False, pure_fp16=False):
-
         def check_identical(loss_ref, param_ref, grad_ref, loss, param, grad):
             self.assertEqual(loss_ref, loss)
             self.assertEqual(param_ref, param)
@@ -164,34 +180,43 @@ class TestPyLayer(unittest.TestCase):
         loss_ref, param_ref, grad_ref = run_model(
             recompute_block=[],
             enable_autocast=enable_autocast,
-            pure_fp16=pure_fp16)
+            pure_fp16=pure_fp16,
+        )
 
         # with recompute, offload=False, partition=False
-        loss, param, grad = run_model(recompute_block=[1, 3],
-                                      enable_autocast=enable_autocast,
-                                      pure_fp16=pure_fp16)
+        loss, param, grad = run_model(
+            recompute_block=[1, 3],
+            enable_autocast=enable_autocast,
+            pure_fp16=pure_fp16,
+        )
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
         # with recompute, offload=True, partition=False
-        loss, param, grad = run_model(recompute_block=[1, 2, 3],
-                                      offload=True,
-                                      enable_autocast=enable_autocast,
-                                      pure_fp16=pure_fp16)
+        loss, param, grad = run_model(
+            recompute_block=[1, 2, 3],
+            offload=True,
+            enable_autocast=enable_autocast,
+            pure_fp16=pure_fp16,
+        )
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
         # with recompute, offload=False, partition=True
-        loss, param, grad = run_model(recompute_block=[1],
-                                      partition=True,
-                                      enable_autocast=enable_autocast,
-                                      pure_fp16=pure_fp16)
+        loss, param, grad = run_model(
+            recompute_block=[1],
+            partition=True,
+            enable_autocast=enable_autocast,
+            pure_fp16=pure_fp16,
+        )
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
         # with recompute, offload=True, partition=True
-        loss, param, grad = run_model(recompute_block=[1, 3, 4],
-                                      offload=True,
-                                      partition=True,
-                                      enable_autocast=enable_autocast,
-                                      pure_fp16=pure_fp16)
+        loss, param, grad = run_model(
+            recompute_block=[1, 3, 4],
+            offload=True,
+            partition=True,
+            enable_autocast=enable_autocast,
+            pure_fp16=pure_fp16,
+        )
         check_identical(loss_ref, param_ref, grad_ref, loss, param, grad)
 
     def test_fc_net_with_dropout(self):
@@ -207,8 +232,9 @@ class TestPyLayer(unittest.TestCase):
         paddle.set_device("gpu")
         kwargs = {"is_test": False}
         with self.assertRaises(TypeError):
-            loss_ref, param_ref, grad_ref = run_model(recompute_block=[2],
-                                                      recompute_kwargs=kwargs)
+            loss_ref, param_ref, grad_ref = run_model(
+                recompute_block=[2], recompute_kwargs=kwargs
+            )
 
 
 if __name__ == '__main__':

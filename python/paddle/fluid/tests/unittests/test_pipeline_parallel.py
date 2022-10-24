@@ -18,13 +18,11 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestPipelineParallel(TestMultipleGpus):
-
     def test_pipeline_parallel(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_alexnet.py')
 
 
 class TestModelParallelWithRecompute(TestMultipleGpus):
-
     def test_model_parallel_with_recompute(self):
         self.run_mnist_2gpu("dygraph_recompute_hybrid.py")
 

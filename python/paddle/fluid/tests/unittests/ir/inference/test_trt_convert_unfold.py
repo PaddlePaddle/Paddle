@@ -22,46 +22,46 @@ import unittest
 
 
 class TrtConvertUnfold(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input1():
             return np.random.random([1, 3, 24, 24]).astype(np.float32)
 
-        ops_config = [{
-            "op_type": "unfold",
-            "op_inputs": {
-                "X": ["input_data"],
-            },
-            "op_outputs": {
-                "Y": ["output_data"]
-            },
-            "op_attrs": {
-                "dilations": [1, 1],
-                "kernel_sizes": [4, 4],
-                "paddings": [0, 0, 0, 0],
-                "strides": [1, 1],
+        ops_config = [
+            {
+                "op_type": "unfold",
+                "op_inputs": {
+                    "X": ["input_data"],
+                },
+                "op_outputs": {"Y": ["output_data"]},
+                "op_attrs": {
+                    "dilations": [1, 1],
+                    "kernel_sizes": [4, 4],
+                    "paddings": [0, 0, 0, 0],
+                    "strides": [1, 1],
+                },
             }
-        }]
+        ]
         ops = self.generate_op_config(ops_config)
         for i in range(10):
             program_config = ProgramConfig(
                 ops=ops,
                 weights={},
                 inputs={
-                    "input_data":
-                    TensorConfig(data_gen=partial(generate_input1)),
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1)
+                    ),
                 },
-                outputs=["output_data"])
+                outputs=["output_data"],
+            )
 
             yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 3, 4, 4],

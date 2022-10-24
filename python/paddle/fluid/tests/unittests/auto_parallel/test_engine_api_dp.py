@@ -20,7 +20,6 @@ import subprocess
 
 
 class TestEngineAPI(unittest.TestCase):
-
     def test_engine_api(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "engine_api_dp.py")
@@ -31,10 +30,19 @@ class TestEngineAPI(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
-        cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
-            tmp_dir.name, launch_model_path
-        ]
+        cmd = (
+            [sys.executable, "-u"]
+            + coverage_args
+            + [
+                "-m",
+                "paddle.distributed.launch",
+                "--devices",
+                "0,1",
+                "--log_dir",
+                tmp_dir.name,
+                launch_model_path,
+            ]
+        )
 
         process = subprocess.Popen(cmd)
         process.wait()
