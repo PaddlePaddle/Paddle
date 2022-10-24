@@ -300,7 +300,6 @@ class TestScaleTripleGradCheck(unittest.TestCase):
 
 
 class TestScaleOpZeroNumelVariable(unittest.TestCase):
-
     def test_check_zero_numel(self):
         data = paddle.ones([0, 1])
         out = paddle.scale(data, 2)
