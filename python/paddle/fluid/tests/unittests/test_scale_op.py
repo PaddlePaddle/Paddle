@@ -319,5 +319,13 @@ class TestScaleTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestScaleOpZeroNumelVariable(unittest.TestCase):
+
+    def test_check_zero_numel(self):
+        data = paddle.ones([0, 1])
+        out = paddle.scale(data, 2)
+        self.assertEqual(out, data)
+
+
 if __name__ == "__main__":
     unittest.main()
