@@ -32,14 +32,14 @@ def reindex_graph(
     is to reindex the ids information of the input nodes, and return the
     corresponding graph edges after reindex.
 
-    Note:
-        The number in x should be unique, otherwise it would cause potential errors. We will reindex all the nodes from 0.
-
     Take input nodes x = [0, 1, 2] as an example. If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
     then we know that the neighbors of 0 is [8, 9], the neighbors of 1 is [0, 4, 7], and the neighbors of 2 is [6, 7].
     Then after graph_reindex, we will have 3 different outputs: reindex_src: [3, 4, 0, 5, 6, 7, 6], reindex_dst: [0, 0, 1, 1, 1, 2, 2]
     and out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]. We can see that the numbers in `reindex_src` and `reindex_dst` is the corresponding index
     of nodes in `out_nodes`.
+
+    Note:
+        The number in x should be unique, otherwise it would cause potential errors. We will reindex all the nodes from 0.
 
     Args:
         x (Tensor): The input nodes which we sample neighbors for. The available
@@ -144,14 +144,14 @@ def reindex_heter_graph(
     is to reindex the ids information of the input nodes, and return the
     corresponding graph edges after reindex.
 
-    Note:
-        The number in x should be unique, otherwise it would cause potential errors. We support multi-edge-types neighbors reindexing in reindex_heter_graph api. We will reindex all the nodes from 0.
-
     Take input nodes x = [0, 1, 2] as an example. For graph A, suppose we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
-    then we know that the neighbors of 0 is [8, 9], the neighbors of 1 is [0, 4, 7], and the neighbors of 2 is [6, 7]. For graph B, 
+    then we know that the neighbors of 0 is [8, 9], the neighbors of 1 is [0, 4, 7], and the neighbors of 2 is [6, 7]. For graph B,
     suppose we have neighbors = [0, 2, 3, 5, 1], and count = [1, 3, 1], then we know that the neighbors of 0 is [0], the neighbors of 1 is [2, 3, 5],
     and the neighbors of 3 is [1]. We will get following outputs: reindex_src: [3, 4, 0, 5, 6, 7, 6, 0, 2, 8, 9, 1], reindex_dst: [0, 0, 1, 1, 1, 2, 2, 0, 1, 1, 1, 2]
-    and out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
+    and out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5].
+
+    Note:
+        The number in x should be unique, otherwise it would cause potential errors. We support multi-edge-types neighbors reindexing in reindex_heter_graph api. We will reindex all the nodes from 0.
 
     Args:
         x (Tensor): The input nodes which we sample neighbors for. The available
