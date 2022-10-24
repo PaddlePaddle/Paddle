@@ -229,6 +229,7 @@ def send_ue_recv(
            out = [[1, 3, 4],
                   [4, 10, 12],
                   [2, 5, 6]]
+
     Args:
         x (Tensor): The input node feature tensor, and the available data type is float32, float64, int32, int64.
                     And we support float16 in gpu version.
