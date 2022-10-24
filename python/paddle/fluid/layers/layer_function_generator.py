@@ -17,17 +17,28 @@ import functools
 import warnings
 import string
 
-from six.moves import cStringIO
+from io import StringIO
 from ..proto import framework_pb2
-from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
+from ..framework import (
+    OpProtoHolder,
+    Variable,
+    core,
+    convert_np_dtype_to_dtype_,
+    _non_static_mode,
+    in_dygraph_mode,
+    _in_legacy_dygraph,
+)
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
-    'generate_layer_fn', 'generate_activation_fn', 'generate_inplace_fn',
-    'autodoc', 'templatedoc'
+    'generate_layer_fn',
+    'generate_activation_fn',
+    'generate_inplace_fn',
+    'autodoc',
+    'templatedoc',
 ]
 
 
@@ -57,16 +68,16 @@ _two_bang_pattern_ = re.compile(r"!!([^!]+)!!")
 
 
 def escape_math(text):
-    #return _two_bang_pattern_.sub(
+    # return _two_bang_pattern_.sub(
     #    r'$$\1$$',
     #    _single_dollar_pattern_.sub(r':math:\n`\1`',
     #                                _two_dollar_pattern_.sub(r"!!\1!!", text)))
     return _two_dollar_pattern_.sub(r':math:`\1`', text)
 
 
-def _generate_doc_string_(op_proto,
-                          additional_args_lines=None,
-                          skip_attrs_set=None):
+def _generate_doc_string_(
+    op_proto, additional_args_lines=None, skip_attrs_set=None
+):
     """
     Generate docstring by OpProto
 
@@ -80,7 +91,7 @@ def _generate_doc_string_(op_proto,
     if not isinstance(op_proto, framework_pb2.OpProto):
         raise TypeError("OpProto should be `framework_pb2.OpProto`")
 
-    buf = cStringIO()
+    buf = StringIO()
     buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:
@@ -146,23 +157,30 @@ def generate_layer_fn(op_type):
 
     """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
-    not_intermediate_outputs = \
-        [output for output in op_proto.outputs if not output.intermediate]
-    intermediate_outputs = \
-        [output for output in op_proto.outputs if output.intermediate]
+    not_intermediate_outputs = [
+        output for output in op_proto.outputs if not output.intermediate
+    ]
+    intermediate_outputs = [
+        output for output in op_proto.outputs if output.intermediate
+    ]
 
     if len(not_intermediate_outputs) != 1:
-        raise ValueError("Only one non intermediate output operator can be",
-                         "automatically generated. {0}".format(op_type))
+        raise ValueError(
+            "Only one non intermediate output operator can be",
+            "automatically generated. {0}".format(op_type),
+        )
 
     if not_intermediate_outputs[0].duplicable:
         raise ValueError(
-            "Only non duplicable op can be automatically generated.")
+            "Only non duplicable op can be automatically generated."
+        )
 
     for output in intermediate_outputs:
         if output.duplicable:
-            raise ValueError("The op can be automatically generated only when ",
-                             "all intermediate ops are not duplicable.")
+            raise ValueError(
+                "The op can be automatically generated only when ",
+                "all intermediate ops are not duplicable.",
+            )
 
     o_name = not_intermediate_outputs[0].name
     intermediate_output_names = [output.name for output in intermediate_outputs]
@@ -187,14 +205,17 @@ def generate_layer_fn(op_type):
             for each in val:
                 if not isinstance(each, Variable):
                     raise ValueError(
-                        "input of {0} must be variable".format(op_type))
+                        "input of {0} must be variable".format(op_type)
+                    )
 
                 if dtype is None:
                     dtype = each.dtype
                 elif dtype != each.dtype:
                     raise ValueError(
                         "operator {0} must input same dtype. {1} vs {2}".format(
-                            op_type, dtype, each.dtype))
+                            op_type, dtype, each.dtype
+                        )
+                    )
 
         if dtype is None:
             arg_dtype = kwargs.get("dtype")
@@ -226,8 +247,11 @@ def generate_layer_fn(op_type):
         outputs = dict()
         out = kwargs.pop(_convert_(o_name), [])
         if out:
-            out_var = out[0] if (isinstance(out, list)
-                                 or isinstance(out, tuple)) else out
+            out_var = (
+                out[0]
+                if (isinstance(out, list) or isinstance(out, tuple))
+                else out
+            )
         else:
             out_var = helper.create_variable_for_type_inference(dtype=dtype)
         outputs[o_name] = [out_var]
@@ -235,10 +259,9 @@ def generate_layer_fn(op_type):
             outputs[name] = [
                 helper.create_variable_for_type_inference(dtype=dtype)
             ]
-        helper.append_op(type=op_type,
-                         inputs=inputs,
-                         outputs=outputs,
-                         attrs=kwargs)
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs
+        )
         return helper.append_activation(out_var)
 
     func.__name__ = op_type
@@ -269,14 +292,25 @@ def generate_activation_fn(op_type):
             return op(x)
 
         if op_type not in ["abs", "exp", "square"]:
-            check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                     op_type)
+            check_variable_and_dtype(
+                x, 'x', ['float16', 'float32', 'float64'], op_type
+            )
         else:
             # abs exp square ops support dtype(int32, int64, float16, float32, float64)
-            check_variable_and_dtype(x, 'x', [
-                'int32', 'int64', 'float16', 'float32', 'float64', 'complex64',
-                'complex128'
-            ], op_type)
+            check_variable_and_dtype(
+                x,
+                'x',
+                [
+                    'int32',
+                    'int64',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'complex64',
+                    'complex128',
+                ],
+                op_type,
+            )
 
         helper = LayerHelper(op_type, **locals())
 
@@ -289,7 +323,8 @@ def generate_activation_fn(op_type):
         op_proto,
         additional_args_lines=[
             "name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`."
-        ])
+        ],
+    )
     return func
 
 
@@ -309,24 +344,31 @@ def generate_inplace_fn(inplace_op_type):
             op = getattr(_legacy_C_ops, inplace_op_type)
             return op(x)
         warnings.warn(
-            "In static mode, {}() is the same as {}() and does not perform inplace operation."
-            .format(inplace_op_type, origin_op_type))
+            "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
+                inplace_op_type, origin_op_type
+            )
+        )
         return generate_activation_fn(origin_op_type)(x, name)
 
     func.__name__ = inplace_op_type
     func.__doc__ = """
 Inplace version of ``{0}`` API, the output Tensor will be inplaced with input ``x``.
 Please refer to :ref:`api_fluid_layers_{1}`.
-""".format(origin_op_type, origin_op_type)
+""".format(
+        origin_op_type, origin_op_type
+    )
 
     return func
 
 
 def autodoc(comment=""):
-
     def __impl__(func):
-        func.__doc__ = _generate_doc_string_(
-            OpProtoHolder.instance().get_op_proto(func.__name__)) + comment
+        func.__doc__ = (
+            _generate_doc_string_(
+                OpProtoHolder.instance().get_op_proto(func.__name__)
+            )
+            + comment
+        )
         return func
 
     return __impl__
@@ -371,18 +413,21 @@ def templatedoc(op_type=None):
         for each_input in op_proto.inputs:
             input_name = _convert_(each_input.name)
             args["{0}_comment".format(input_name)] = trim_ending_dot(
-                each_input.comment)
+                each_input.comment
+            )
             args["{0}_type".format(input_name)] = "Variable"
         for each_attr in op_proto.attrs:
             input_name = _convert_(each_attr.name)
             args["{0}_comment".format(input_name)] = trim_ending_dot(
-                each_attr.comment)
+                each_attr.comment
+            )
             args["{0}_type".format(input_name)] = _type_to_str_(each_attr.type)
 
         for each_opt in op_proto.outputs:
             output_name = _convert_(each_opt.name)
             args["{0}_comment".format(output_name)] = trim_ending_dot(
-                each_opt.comment)
+                each_opt.comment
+            )
             args["{0}_type".format(output_name)] = "Variable"
         func.__doc__ = tmpl.substitute(args)
         return func

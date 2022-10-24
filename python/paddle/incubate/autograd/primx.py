@@ -15,21 +15,28 @@
 from collections import OrderedDict
 
 import paddle
-from paddle import compat as cpt
 from paddle.fluid import framework as framework
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
 
 from .primops import add, fill_const
-from .primreg import (lookup_orig2prim, lookup_prim2orig, op_position_inputs,
-                      op_position_output)
+from .primreg import (
+    lookup_orig2prim,
+    lookup_prim2orig,
+    op_position_inputs,
+    op_position_output,
+)
 from .primrules import _jvp, _orig2prim, _prim2orig, _transpose
-from .utils import (flatten, flatten_and_remove_none, get_input_var_list,
-                    get_output_var_list)
+from .utils import (
+    flatten,
+    flatten_and_remove_none,
+    get_input_var_list,
+    get_output_var_list,
+)
 
 
 def topo_path(xs, ys, block=None):
-    """ Returns the list of ops on the path from `xs` to `ys` in topological
+    """Returns the list of ops on the path from `xs` to `ys` in topological
     order.
 
     TODO(Tongxin): supporting control flow and nested blocks.
@@ -51,13 +58,16 @@ def topo_path(xs, ys, block=None):
 
     # Initialize reached vars
     for x in xs:
-        assert x is None or x.block == block, 'x is not None and x.block != block'
+        assert (
+            x is None or x.block == block
+        ), 'x is not None and x.block != block'
         reached_vars[id(x)] = x
 
     # Reaching test, returning whether an op is reached from the given input
     reaching = lambda op: any(
         id(v) in reached_vars
-        for v in flatten_and_remove_none(get_input_var_list(op)))
+        for v in flatten_and_remove_none(get_input_var_list(op))
+    )
 
     # block.ops are supposedly in the order that preserves correct data
     # dependence.
@@ -71,7 +81,8 @@ def topo_path(xs, ys, block=None):
     used_vars = OrderedDict((id(y), y) for y in ys if id(y) in reached_vars)
     back_reaching = lambda op: any(
         id(out) in used_vars
-        for out in flatten_and_remove_none(get_output_var_list(op)))
+        for out in flatten_and_remove_none(get_output_var_list(op))
+    )
 
     # Backward pass to find all used variables
     for op in reversed(path):
@@ -87,7 +98,7 @@ def topo_path(xs, ys, block=None):
 
 
 def output_vars_on_path(path):
-    """ Returns the output variables of all the ops on the path from `xs`
+    """Returns the output variables of all the ops on the path from `xs`
     to `ys`.
 
     Args:
@@ -105,7 +116,7 @@ def output_vars_on_path(path):
 
 
 class VarMap(object):
-    """ A general map data structure for linking variables to variables.
+    """A general map data structure for linking variables to variables.
 
     An example is linking variables to their gradients.
     """
@@ -126,7 +137,8 @@ class VarMap(object):
         if isinstance(key_vars, paddle.fluid.framework.Variable):
             if not isinstance(value_vars, paddle.fluid.framework.Variable):
                 raise TypeError(
-                    f'value_vars must be Variable, but got {type(value_vars)}')
+                    f'value_vars must be Variable, but got {type(value_vars)}'
+                )
             self.tab[id(key_vars)] = id(value_vars)
         else:
             assert len(key_vars) == len(value_vars), (
@@ -169,11 +181,12 @@ class VarMap(object):
 
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
 class Transform(object):
-    """ An object that maintains the state of transformations applied to a
-    primitve program. """
+    """An object that maintains the state of transformations applied to a
+    primitve program."""
 
     def __init__(self, block):
-        assert block == default_main_program().current_block(
+        assert (
+            block == default_main_program().current_block()
         ), 'only support transform on current block of main program.'
         self.block = block
         self.vars = self.init_vars(block)
@@ -220,12 +233,12 @@ class Transform(object):
         block = self.block
         for var in vars_to_erase:
             name = var.name
-            block.desc._remove_var(cpt.to_bytes(name))
+            block.desc._remove_var(name.encode())
             del block.vars[name]
         block._sync_with_cpp()
 
     def var2dot_rec(self, vars):
-        """ Lookup var2dot recursively."""
+        """Lookup var2dot recursively."""
         if isinstance(vars, paddle.fluid.framework.Variable):
             dot = self.var2dot.lookup(vars)
             return dot
@@ -244,7 +257,7 @@ class Transform(object):
         return bars
 
     def linearize(self, xs, ys, xs_dot=None):
-        """ Performs the linearization transform, a.k.a, forward mode AD
+        """Performs the linearization transform, a.k.a, forward mode AD
         transform, on a primitive lowered program.
 
         Args:
@@ -266,15 +279,18 @@ class Transform(object):
         else:
             assert len(xs) == len(xs_dot), (
                 f'len(xs) should be equal to len(xs_dot), '
-                f'but len(xs)={len(xs)} and len(xs_dot)={len(xs_dot)}')
+                f'but len(xs)={len(xs)} and len(xs_dot)={len(xs_dot)}'
+            )
 
         for x, dot in zip(xs, xs_dot):
             assert x.dtype == dot.dtype, (
                 f'x.dtype should be equal to dot.dtype, '
-                f'but x.dtype={x.dtype} and dot.dtype={dot.dtype}')
+                f'but x.dtype={x.dtype} and dot.dtype={dot.dtype}'
+            )
             assert x.shape == dot.shape, (
                 f'x.shape should be equal to dot.shape, '
-                f'but x.shape={x.shape} and dot.shape={dot.shape}')
+                f'but x.shape={x.shape} and dot.shape={dot.shape}'
+            )
             self.var2dot.add(x, dot)
 
         path, unused_xs, _ = topo_path(xs, ys, self.block)
@@ -300,7 +316,7 @@ class Transform(object):
         return xs_dot, ys_dot
 
     def transpose(self, ys_dot, xs_dot, ys_bar=None, retain_fwd=False):
-        """ Performs the transpose transform, a.k.a, reverse mode AD
+        """Performs the transpose transform, a.k.a, reverse mode AD
         transform, on a linearized primitive program.
 
         Note, `transpose` is supposed to be used in couple with `linearize`.
@@ -329,7 +345,8 @@ class Transform(object):
         else:
             assert len(ys_dot) == len(ys_bar), (
                 f'len(ys_dot) should be equal to len(ys_bar), '
-                f'but len(ys_dot)={len(ys_dot)} and len(ys_bar)={len(ys_bar)}')
+                f'but len(ys_dot)={len(ys_dot)} and len(ys_bar)={len(ys_bar)}'
+            )
             for y_dot, y_bar in zip(ys_dot, ys_bar):
                 assert y_dot.shape == y_bar.shape, (
                     f'y_dot.shape should be equal to y_bar.shape, '
@@ -373,7 +390,8 @@ class Transform(object):
             ins = flatten(op_position_inputs(op))
             assert len(ins) == len(ins_bar), (
                 f'len(ins) should be equal to len(ins_bar), '
-                f'but len(ins)={len(ins)} and len(ins_bar)={len(ins_bar)}')
+                f'but len(ins)={len(ins)} and len(ins_bar)={len(ins_bar)}'
+            )
 
             for dot, bar in zip(ins, ins_bar):
                 if bar is not None:
@@ -392,7 +410,8 @@ class Transform(object):
             vars_to_remove = set()
             for op in path:
                 vars_to_remove.update(
-                    flatten_and_remove_none(get_output_var_list(op)))
+                    flatten_and_remove_none(get_output_var_list(op))
+                )
 
             op_indexes = []
 
@@ -460,10 +479,12 @@ def _lower(block, reverse, blacklist):
             bind(input_args, to_bind, value_table)
 
             for orig_out, new_out in zip(
-                    expand_nested_list(get_output_var_list(op)),
-                    expand_nested_list(as_tensors(lower_fn(op, *input_args)))):
+                expand_nested_list(get_output_var_list(op)),
+                expand_nested_list(as_tensors(lower_fn(op, *input_args))),
+            ):
                 assert not (orig_out is None) ^ (
-                    new_out is None), "orig_out and new_out should match."
+                    new_out is None
+                ), "orig_out and new_out should match."
                 vars_to_remove.add(new_out.name)
                 value_table[new_out.name] = new_out
                 to_bind[orig_out.name] = new_out.name
@@ -472,7 +493,8 @@ def _lower(block, reverse, blacklist):
             inputs = {}
             for i in range(len(op.input_names)):
                 inputs[op.input_names[i]] = bind_name(
-                    op.input(op.input_names[i]), to_bind)
+                    op.input(op.input_names[i]), to_bind
+                )
 
             outputs = {}
             for i in range(len(op.output_names)):
@@ -482,14 +504,17 @@ def _lower(block, reverse, blacklist):
             for name in sorted(op.attr_names):
                 attrs[name] = op.attr(name)
             from paddle.fluid.dygraph.base import param_guard
+
             new_op_desc = block.desc.append_op()
             with param_guard(inputs), param_guard(outputs):
-                op = Operator(block=block,
-                              desc=new_op_desc,
-                              type=op.type,
-                              inputs=inputs,
-                              outputs=outputs,
-                              attrs=attrs)
+                op = Operator(
+                    block=block,
+                    desc=new_op_desc,
+                    type=op.type,
+                    inputs=inputs,
+                    outputs=outputs,
+                    attrs=attrs,
+                )
             block.ops.append(op)
 
     # Step3: Do some post-processing work
@@ -509,10 +534,11 @@ def _lower(block, reverse, blacklist):
                 op._rename_output(out_name, to_bind_rev[out_name])
 
     for var_name in sorted(vars_to_remove):
-        assert var_name in to_bind_rev, 'var_name "{}" is not in to_bind_rev.'.format(
-            var_name)
+        assert (
+            var_name in to_bind_rev
+        ), 'var_name "{}" is not in to_bind_rev.'.format(var_name)
         if var_name != to_bind_rev[var_name]:
-            block.desc._remove_var(cpt.to_bytes(var_name))
+            block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
     block._sync_with_cpp()
 
@@ -536,7 +562,8 @@ def orig2prim(block=None):
     """
 
     block = default_main_program().current_block() if block is None else block
-    assert block == default_main_program().current_block(
+    assert (
+        block == default_main_program().current_block()
     ), 'block is neither None nor current block of main program'
     _lower(block, reverse=False, blacklist=[])
 
@@ -581,7 +608,8 @@ def prim2orig(block=None, blacklist=None):
     """
 
     block = default_main_program().current_block() if block is None else block
-    assert block == default_main_program().current_block(
+    assert (
+        block == default_main_program().current_block()
     ), 'block is neither None nor current block of main program'
     blacklist = [] if blacklist is None else blacklist
     _lower(block, reverse=True, blacklist=blacklist)

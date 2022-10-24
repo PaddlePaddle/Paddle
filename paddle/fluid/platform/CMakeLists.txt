@@ -61,7 +61,7 @@ cc_library(monitor SRCS monitor.cc)
 cc_test(
   enforce_test
   SRCS enforce_test.cc
-  DEPS stringpiece enforce)
+  DEPS enforce)
 
 set(CPU_INFO_DEPS gflags glog enforce)
 if(WITH_XBYAK)
@@ -205,7 +205,6 @@ cc_library(
        place
        phi_place
        eigen3
-       stringpiece
        cpu_helper
        cpu_info
        framework_proto

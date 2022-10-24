@@ -43,7 +43,7 @@ class L1Decay(fluid.regularizer.L1Decay):
             # Example1: set Regularizer in optimizer
             import paddle
             from paddle.regularizer import L1Decay
-            import numpy as np
+
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)

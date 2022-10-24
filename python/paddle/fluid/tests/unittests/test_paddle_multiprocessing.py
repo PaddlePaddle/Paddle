@@ -43,14 +43,14 @@ def send_parambase(queue, event, device, dtype):
     tensor = paddle.nn.Layer().create_parameter(
         [5, 5],
         dtype=dtype,
-        default_initializer=paddle.nn.initializer.Constant(value=1.0))
+        default_initializer=paddle.nn.initializer.Constant(value=1.0),
+    )
     queue.put(tensor)
     queue.put(tensor)
     event.wait()
 
 
 class leak_checker(object):
-
     def __init__(self, test_case):
         self.checked_pids = [os.getpid()]
         self.test_case = test_case
@@ -94,7 +94,6 @@ class leak_checker(object):
 
 
 class TestMultiprocessingBase(unittest.TestCase):
-
     def get_tensor(self, device="cpu"):
         self.device = device.lower()
         place = None
@@ -104,7 +103,8 @@ class TestMultiprocessingBase(unittest.TestCase):
     def get_parameter(self):
         w = paddle.nn.Layer().create_parameter(
             [10, 10],
-            default_initializer=paddle.nn.initializer.Constant(value=0.0))
+            default_initializer=paddle.nn.initializer.Constant(value=0.0),
+        )
         return w
 
     def _test_empty(self, dtype="float32"):
@@ -114,13 +114,9 @@ class TestMultiprocessingBase(unittest.TestCase):
         out = q.get(timeout=1)
         self.assertEqual(str(out), str(empty))
 
-    def _test_sharing(self,
-                      ctx=mp,
-                      device='cpu',
-                      dtype="float32",
-                      repeat=1,
-                      param=False):
-
+    def _test_sharing(
+        self, ctx=mp, device='cpu', dtype="float32", repeat=1, param=False
+    ):
         def test_fill():
             if param:
                 x = self.get_parameter()
@@ -155,7 +151,8 @@ class TestMultiprocessingBase(unittest.TestCase):
 
             process = ctx.Process(
                 target=send_parambase if param else send_tensor,
-                args=(queue, event, device, dtype))
+                args=(queue, event, device, dtype),
+            )
             process.daemon = True
             lc.check_pid(process.pid)
             process.start()
@@ -176,7 +173,6 @@ class TestMultiprocessingBase(unittest.TestCase):
 
 
 class TestMultiprocessingCpu(TestMultiprocessingBase):
-
     def func_test_pass_tensor(self):
         paddle.set_device("cpu")
         self._test_sharing(repeat=REPEAT)
@@ -200,9 +196,10 @@ class TestMultiprocessingCpu(TestMultiprocessingBase):
 
 
 class TestMultiprocessingGpu(TestMultiprocessingBase):
-
-    @unittest.skipIf(not paddle.fluid.core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
+    @unittest.skipIf(
+        not paddle.fluid.core.is_compiled_with_cuda(),
+        "core is not compiled with CUDA",
+    )
     def func_test_pass_tensor(self):
         paddle.set_device("gpu")
         self._test_sharing(mp.get_context("spawn"), "gpu")

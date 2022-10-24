@@ -61,7 +61,6 @@ def reset_prog():
 
 
 class TestGradientClipByGlobalNorm(unittest.TestCase):
-
     def setUp(self):
         self.batch_size = 2
         self.batch_num = 1
@@ -94,9 +93,10 @@ class TestGradientClipByGlobalNorm(unittest.TestCase):
                 sharding_p,
                 rtol=1e-05,
                 atol=1e-08,
-                err_msg=
-                'gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}'
-                .format(dp_p, sharding_p, dp_p - sharding_p))
+                err_msg='gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}'.format(
+                    dp_p, sharding_p, dp_p - sharding_p
+                ),
+            )
 
     def test_grad_clip(self):
         # dp2 training
@@ -108,7 +108,8 @@ class TestGradientClipByGlobalNorm(unittest.TestCase):
         sharding_engine = self.get_engine(True)
         sharding_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         sharding_param_values = get_parameter_value(
-            sharding_engine.main_program)
+            sharding_engine.main_program
+        )
 
         self.check_result(dp_param_values, sharding_param_values)
 

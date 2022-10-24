@@ -70,16 +70,22 @@ def dyfunc_bool_to_tensor(x):
 
 
 class TestDygraphBasicApi_ToVariable(unittest.TestCase):
-
     def setUp(self):
         self.input = np.ones(5).astype("int32")
         self.test_funcs = [
-            dyfunc_to_tensor, dyfunc_bool_to_tensor, dyfunc_int_to_tensor,
-            dyfunc_float_to_tensor, dyfunc_to_variable, dyfunc_to_variable_2,
-            dyfunc_to_variable_3
+            dyfunc_to_tensor,
+            dyfunc_bool_to_tensor,
+            dyfunc_int_to_tensor,
+            dyfunc_float_to_tensor,
+            dyfunc_to_variable,
+            dyfunc_to_variable_2,
+            dyfunc_to_variable_3,
         ]
-        self.place = fluid.CUDAPlace(
-            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
 
     def get_dygraph_output(self):
         with fluid.dygraph.guard():
@@ -111,13 +117,18 @@ def dyfunc_BilinearTensorProduct(layer1, layer2):
         input1_dim=5,
         input2_dim=4,
         output_dim=1000,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)))
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)
+        ),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)
+        ),
+    )
 
-    res = bilinearTensorProduct(fluid.dygraph.base.to_variable(layer1),
-                                fluid.dygraph.base.to_variable(layer2))
+    res = bilinearTensorProduct(
+        fluid.dygraph.base.to_variable(layer1),
+        fluid.dygraph.base.to_variable(layer2),
+    )
     return res
 
 
@@ -126,10 +137,12 @@ def dyfunc_Conv2D(input):
         num_channels=3,
         num_filters=2,
         filter_size=3,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)),
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)
+        ),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)
+        ),
     )
     res = conv2d(input)
     return res
@@ -140,10 +153,12 @@ def dyfunc_Conv3D(input):
         num_channels=3,
         num_filters=2,
         filter_size=3,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)),
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)
+        ),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)
+        ),
     )
     res = conv3d(input)
     return res
@@ -155,10 +170,12 @@ def dyfunc_Conv2DTranspose(input):
         num_filters=12,
         filter_size=12,
         use_cudnn=False,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)),
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)
+        ),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)
+        ),
     )
     ret = conv2dTranspose(input)
     return ret
@@ -170,10 +187,12 @@ def dyfunc_Conv3DTranspose(input):
         num_filters=12,
         filter_size=12,
         use_cudnn=False,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)),
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)
+        ),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)
+        ),
     )
     ret = conv3dTranspose(input)
     return ret
@@ -184,24 +203,24 @@ def dyfunc_Linear(input):
         input_dim=10,
         output_dim=5,
         act='relu',
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)),
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)
+        ),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)
+        ),
     )
     res = fc(input)
     return res
 
 
 def dyfunc_Pool2D(input):
-    fluid.dygraph.Pool2D(pool_size=2,
-                         pool_type='avg',
-                         pool_stride=1,
-                         global_pooling=False)
-    pool2d = fluid.dygraph.Pool2D(pool_size=2,
-                                  pool_type='avg',
-                                  pool_stride=1,
-                                  global_pooling=False)
+    fluid.dygraph.Pool2D(
+        pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False
+    )
+    pool2d = fluid.dygraph.Pool2D(
+        pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False
+    )
     res = pool2d(input)
     return res
 
@@ -209,7 +228,8 @@ def dyfunc_Pool2D(input):
 def dyfunc_Prelu(input):
     prelu0 = fluid.PRelu(
         mode='all',
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
+        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)),
+    )
     res = prelu0(input=input)
     return res
 
@@ -252,7 +272,6 @@ class TestDygraphBasicApi(unittest.TestCase):
 
 
 class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
-
     def setUp(self):
         self.input1 = np.random.random((5, 5)).astype('float32')
         self.input2 = np.random.random((5, 4)).astype('float32')
@@ -271,8 +290,9 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
         main_program = fluid.Program()
         main_program.random_seed = SEED
         with fluid.program_guard(main_program, startup_program):
-            static_out = dygraph_to_static_func(self.dygraph_func)(self.input1,
-                                                                   self.input2)
+            static_out = dygraph_to_static_func(self.dygraph_func)(
+                self.input1, self.input2
+            )
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
@@ -281,42 +301,36 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
 
 
 class TestDygraphBasicApi_Conv2D(TestDygraphBasicApi):
-
     def setUp(self):
         self.input = np.random.random((1, 3, 3, 5)).astype('float32')
         self.dygraph_func = dyfunc_Conv2D
 
 
 class TestDygraphBasicApi_Conv3D(TestDygraphBasicApi):
-
     def setUp(self):
         self.input = np.random.random((1, 3, 3, 3, 5)).astype('float32')
         self.dygraph_func = dyfunc_Conv3D
 
 
 class TestDygraphBasicApi_Conv2DTranspose(TestDygraphBasicApi):
-
     def setUp(self):
         self.input = np.random.random((5, 3, 32, 32)).astype('float32')
         self.dygraph_func = dyfunc_Conv2DTranspose
 
 
 class TestDygraphBasicApi_Conv3DTranspose(TestDygraphBasicApi):
-
     def setUp(self):
         self.input = np.random.random((5, 3, 12, 32, 32)).astype('float32')
         self.dygraph_func = dyfunc_Conv3DTranspose
 
 
 class TestDygraphBasicApi_Linear(TestDygraphBasicApi):
-
     def setUp(self):
         self.input = np.random.random((4, 3, 10)).astype('float32')
         self.dygraph_func = dyfunc_Linear
 
 
 class TestDygraphBasicApi_Prelu(TestDygraphBasicApi):
-
     def setUp(self):
         self.input = np.ones([5, 20, 10, 10]).astype('float32')
         self.dygraph_func = dyfunc_Prelu
@@ -325,39 +339,36 @@ class TestDygraphBasicApi_Prelu(TestDygraphBasicApi):
 # 2. test Apis that inherit from LearningRateDecay
 def dyfunc_CosineDecay():
     base_lr = 0.1
-    CosineDecay = fluid.dygraph.CosineDecay(learning_rate=base_lr,
-                                            step_each_epoch=10000,
-                                            epochs=120)
+    CosineDecay = fluid.dygraph.CosineDecay(
+        learning_rate=base_lr, step_each_epoch=10000, epochs=120
+    )
     lr = CosineDecay()
     return lr
 
 
 def dyfunc_ExponentialDecay():
     base_lr = 0.1
-    exponential_decay = fluid.dygraph.ExponentialDecay(learning_rate=base_lr,
-                                                       decay_steps=10000,
-                                                       decay_rate=0.5,
-                                                       staircase=True)
+    exponential_decay = fluid.dygraph.ExponentialDecay(
+        learning_rate=base_lr, decay_steps=10000, decay_rate=0.5, staircase=True
+    )
     lr = exponential_decay()
     return lr
 
 
 def dyfunc_InverseTimeDecay():
     base_lr = 0.1
-    inverse_time_decay = fluid.dygraph.InverseTimeDecay(learning_rate=base_lr,
-                                                        decay_steps=10000,
-                                                        decay_rate=0.5,
-                                                        staircase=True)
+    inverse_time_decay = fluid.dygraph.InverseTimeDecay(
+        learning_rate=base_lr, decay_steps=10000, decay_rate=0.5, staircase=True
+    )
     lr = inverse_time_decay()
     return lr
 
 
 def dyfunc_NaturalExpDecay():
     base_lr = 0.1
-    natural_exp_decay = fluid.dygraph.NaturalExpDecay(learning_rate=base_lr,
-                                                      decay_steps=10000,
-                                                      decay_rate=0.5,
-                                                      staircase=True)
+    natural_exp_decay = fluid.dygraph.NaturalExpDecay(
+        learning_rate=base_lr, decay_steps=10000, decay_rate=0.5, staircase=True
+    )
     lr = natural_exp_decay()
     return lr
 
@@ -386,7 +397,6 @@ def dyfunc_PolynomialDecay():
 
 
 class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
-
     def setUp(self):
         self.dygraph_func = dyfunc_CosineDecay
 
@@ -417,43 +427,38 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
 
 
 class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
-
     def setUp(self):
         self.dygraph_func = dyfunc_ExponentialDecay
 
 
 class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
-
     def setUp(self):
         self.dygraph_func = dyfunc_InverseTimeDecay
 
 
 class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
-
     def setUp(self):
         self.dygraph_func = dyfunc_NaturalExpDecay
 
 
 class TestDygraphBasicApi_NoamDecay(TestDygraphBasicApi_CosineDecay):
-
     def setUp(self):
         self.dygraph_func = dyfunc_NoamDecay
 
 
 class TestDygraphBasicApi_PiecewiseDecay(TestDygraphBasicApi_CosineDecay):
-
     def setUp(self):
         self.dygraph_func = dyfunc_PiecewiseDecay
 
 
 class TestDygraphBasicApi_PolynomialDecay(TestDygraphBasicApi_CosineDecay):
-
     def setUp(self):
         self.dygraph_func = dyfunc_PolynomialDecay
 
 
 def _dygraph_fn():
     import paddle.fluid as fluid
+
     x = np.random.random((1, 3)).astype('float32')
     with fluid.dygraph.guard():
         fluid.dygraph.to_variable(x)
@@ -461,7 +466,6 @@ def _dygraph_fn():
 
 
 class TestDygraphApiRecognition(unittest.TestCase):
-
     def setUp(self):
         self.src = inspect.getsource(_dygraph_fn)
         self.root = gast.parse(self.src)

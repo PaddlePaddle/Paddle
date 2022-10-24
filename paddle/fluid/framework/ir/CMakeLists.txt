@@ -105,6 +105,8 @@ pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
 pass_library(multihead_matmul_fuse_pass inference)
+pass_library(fused_multi_transformer_encoder_pass inference)
+pass_library(fused_multi_transformer_decoder_pass inference)
 pass_library(adaptive_pool2d_convert_global_pass inference)
 pass_library(unsqueeze2_eltwise_fuse_pass inference)
 pass_library(yolo_box_fuse_pass inference)
@@ -115,13 +117,13 @@ pass_library(gpu_cpu_map_matmul_to_mul_pass inference)
 pass_library(dense_fc_to_sparse_pass inference)
 pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
-pass_library(common_subexpression_elimination_pass inference)
 target_link_libraries(generate_pass pass_desc_proto)
 
 if(WITH_TENSORRT)
   pass_library(trt_map_matmul_to_mul_pass inference)
   pass_library(trt_multihead_matmul_fuse_pass inference)
   pass_library(trt_skip_layernorm_fuse_pass inference)
+  pass_library(merge_layernorm_fuse_pass inference)
   pass_library(preln_skip_layernorm_fuse_pass inference)
   pass_library(set_transformer_input_convert_pass inference)
   pass_library(remove_padding_recover_padding_pass inference)
@@ -312,6 +314,14 @@ cc_test(
   SRCS multihead_matmul_fuse_pass_tester.cc
   DEPS multihead_matmul_fuse_pass)
 cc_test(
+  test_fused_multi_transformer_encoder_pass
+  SRCS fused_multi_transformer_encoder_pass_tester.cc
+  DEPS fused_multi_transformer_encoder_pass)
+cc_test(
+  test_fused_multi_transformer_decoder_pass
+  SRCS fused_multi_transformer_decoder_pass_tester.cc
+  DEPS fused_multi_transformer_decoder_pass)
+cc_test(
   test_conv_bn_fuse_pass_cc
   SRCS conv_bn_fuse_pass_tester.cc
   DEPS conv_bn_fuse_pass)
@@ -327,10 +337,6 @@ cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
-cc_test(
-  test_common_subexpression_elimination_pass_cc
-  SRCS common_subexpression_elimination_pass_tester.cc
-  DEPS common_subexpression_elimination_pass)
 cc_test(
   test_delete_dropout_pass_cc
   SRCS delete_dropout_op_pass_test.cc

@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using Tensor = phi::DenseTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 inline static void CheckArgument(const framework::ExecutionContext& ctx) {
   const std::string interp_method = ctx.Attr<std::string>("interp_method");
@@ -129,8 +129,7 @@ class InterpolateNPUKernel : public framework::OpKernel<T> {
 
     const std::string data_layout_str =
         ctx.Attr<std::string>("data_layout");  // kNCHW or kNHWC
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     int32_t n, c, h, w, out_h, out_w;
     ExtractNCHW(input_dims, data_layout, &n, &c, &h, &w);
@@ -180,8 +179,7 @@ class InterpolateGradNPUKernel : public framework::OpKernel<T> {
 
     const std::string data_layout_str =
         ctx.Attr<std::string>("data_layout");  // kNCHW or kNHWC
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     int32_t n, c, h, w, out_h, out_w;
     ExtractNCHW(input_dims, data_layout, &n, &c, &h, &w);

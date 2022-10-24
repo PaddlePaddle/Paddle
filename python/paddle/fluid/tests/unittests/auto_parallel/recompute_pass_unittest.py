@@ -38,7 +38,6 @@ def reset_prog():
 
 
 class TestRecomputePass(unittest.TestCase):
-
     def setUp(self):
         self.rtol = 1e-6
         self.atol = 1e-8
@@ -73,18 +72,20 @@ class TestRecomputePass(unittest.TestCase):
             rtol=self.rtol,
             atol=self.atol,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses))
+                __class__, ref_losses, check_losses, ref_losses - check_losses
+            ),
+        )
 
     def test_recompute_pass(self):
         # mp2 training
         mp_engine = self.get_engine()
-        outs = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        mp_losses = np.array(outs["loss"])
+        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        mp_losses = np.array(history.history["loss"])
 
         # mp2 recompute training
         rc_engine = self.get_engine(True)
-        outs = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
-        rc_losses = np.array(outs["loss"])
+        history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
+        rc_losses = np.array(history.history["loss"])
         self.check_results(mp_losses, rc_losses)
 
 
