@@ -139,8 +139,10 @@ const T* DenseTensor::data() const {
       dtype(),
       paddle::experimental::CppTypeToDataType<T>::Type(),
       phi::errors::InvalidArgument(
-          "The type of data we are trying to retrieve does not match the "
-          "type of data currently contained in the container."));
+          "The type of data we are trying to retrieve (%s) does not match the "
+          "type of data (%s) currently contained in the container.",
+          paddle::experimental::CppTypeToDataType<T>::Type(),
+          dtype()));
   return static_cast<const T*>(data());
 }
 
@@ -150,8 +152,10 @@ T* DenseTensor::data() {
   PADDLE_ENFORCE(
       (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
       phi::errors::InvalidArgument(
-          "The type of data we are trying to retrieve does not match the "
-          "type of data currently contained in the container."));
+          "The type of data we are trying to retrieve (%s) does not match the "
+          "type of data (%s) currently contained in the container.",
+          paddle::experimental::CppTypeToDataType<T>::Type(),
+          dtype()));
   return ret;
 }
 
