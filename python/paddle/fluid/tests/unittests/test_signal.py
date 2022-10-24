@@ -57,7 +57,8 @@ def tiny(x):
 
     # Only floating types generate a tiny
     if np.issubdtype(x.dtype, np.floating) or np.issubdtype(
-            x.dtype, np.complexfloating):
+        x.dtype, np.complexfloating
+    ):
         dtype = x.dtype
     else:
         dtype = np.float32
@@ -71,8 +72,9 @@ def normalize(S, norm=np.inf, axis=0, threshold=None, fill=None):
         threshold = tiny(S)
 
     elif threshold <= 0:
-        raise Exception("threshold={} must be strictly "
-                        "positive".format(threshold))
+        raise Exception(
+            "threshold={} must be strictly " "positive".format(threshold)
+        )
 
     if fill not in [None, False, True]:
         raise Exception("fill={} must be None or boolean".format(fill))
@@ -99,12 +101,12 @@ def normalize(S, norm=np.inf, axis=0, threshold=None, fill=None):
         length = np.sum(mag > 0, axis=axis, keepdims=True, dtype=mag.dtype)
 
     elif np.issubdtype(type(norm), np.number) and norm > 0:
-        length = np.sum(mag**norm, axis=axis, keepdims=True)**(1.0 / norm)
+        length = np.sum(mag**norm, axis=axis, keepdims=True) ** (1.0 / norm)
 
         if axis is None:
-            fill_norm = mag.size**(-1.0 / norm)
+            fill_norm = mag.size ** (-1.0 / norm)
         else:
-            fill_norm = mag.shape[axis]**(-1.0 / norm)
+            fill_norm = mag.shape[axis] ** (-1.0 / norm)
 
     elif norm is None:
         return S
@@ -144,8 +146,9 @@ def __window_ss_fill(x, win_sq, n_frames, hop_length):  # pragma: no cover
     n_fft = len(win_sq)
     for i in range(n_frames):
         sample = i * hop_length
-        x[sample:min(n, sample +
-                     n_fft)] += win_sq[:max(0, min(n_fft, n - sample))]
+        x[sample : min(n, sample + n_fft)] += win_sq[
+            : max(0, min(n_fft, n - sample))
+        ]
 
 
 def window_sumsquare(
@@ -165,7 +168,7 @@ def window_sumsquare(
 
     # Compute the squared window at the desired length
     win_sq = get_window(window, win_length)
-    win_sq = normalize(win_sq, norm=norm)**2
+    win_sq = normalize(win_sq, norm=norm) ** 2
     win_sq = pad_center(win_sq, n_fft)
 
     # Fill the envelope
@@ -208,26 +211,35 @@ def dtype_r2c(d, default=np.complex64):
 
 def frame(x, frame_length, hop_length, axis=-1):
     if not isinstance(x, np.ndarray):
-        raise Exception("Input must be of type numpy.ndarray, "
-                        "given type(x)={}".format(type(x)))
+        raise Exception(
+            "Input must be of type numpy.ndarray, "
+            "given type(x)={}".format(type(x))
+        )
 
     if x.shape[axis] < frame_length:
-        raise Exception("Input is too short (n={:d})"
-                        " for frame_length={:d}".format(x.shape[axis],
-                                                        frame_length))
+        raise Exception(
+            "Input is too short (n={:d})"
+            " for frame_length={:d}".format(x.shape[axis], frame_length)
+        )
 
     if hop_length < 1:
         raise Exception("Invalid hop_length: {:d}".format(hop_length))
 
     if axis == -1 and not x.flags["F_CONTIGUOUS"]:
-        print("librosa.util.frame called with axis={} "
-              "on a non-contiguous input. This will result in a copy.".format(
-                  axis))
+        print(
+            "librosa.util.frame called with axis={} "
+            "on a non-contiguous input. This will result in a copy.".format(
+                axis
+            )
+        )
         x = np.asfortranarray(x)
     elif axis == 0 and not x.flags["C_CONTIGUOUS"]:
-        print("librosa.util.frame called with axis={} "
-              "on a non-contiguous input. This will result in a copy.".format(
-                  axis))
+        print(
+            "librosa.util.frame called with axis={} "
+            "on a non-contiguous input. This will result in a copy.".format(
+                axis
+            )
+        )
         x = np.ascontiguousarray(x)
 
     n_frames = 1 + (x.shape[axis] - frame_length) // hop_length
@@ -260,8 +272,11 @@ def pad_center(data, size, axis=-1, **kwargs):
     lengths[axis] = (lpad, int(size - n - lpad))
 
     if lpad < 0:
-        raise Exception(("Target size ({:d}) must be "
-                         "at least input size ({:d})").format(size, n))
+        raise Exception(
+            ("Target size ({:d}) must be " "at least input size ({:d})").format(
+                size, n
+            )
+        )
 
     return np.pad(data, lengths, **kwargs)
 
@@ -279,8 +294,9 @@ def get_window(window, Nx, fftbins=True):
         if len(window) == Nx:
             return np.asarray(window)
 
-        raise Exception("Window size mismatch: "
-                        "{:d} != {:d}".format(len(window), Nx))
+        raise Exception(
+            "Window size mismatch: " "{:d} != {:d}".format(len(window), Nx)
+        )
     else:
         raise Exception("Invalid window specification: {}".format(window))
 
@@ -294,16 +310,18 @@ def __overlap_add(y, ytmp, hop_length):
     n_fft = ytmp.shape[0]
     for frame in range(ytmp.shape[1]):
         sample = frame * hop_length
-        y[sample:(sample + n_fft)] += ytmp[:, frame]
+        y[sample : (sample + n_fft)] += ytmp[:, frame]
 
 
-def stft(x,
-         n_fft=2048,
-         hop_length=None,
-         win_length=None,
-         window="hann",
-         center=True,
-         pad_mode="reflect"):
+def stft(
+    x,
+    n_fft=2048,
+    hop_length=None,
+    win_length=None,
+    window="hann",
+    center=True,
+    pad_mode="reflect",
+):
     y = x
     input_rank = len(y.shape)
     if input_rank == 2:
@@ -330,15 +348,20 @@ def stft(x,
     # Pad the time series so that frames are centered
     if center:
         if n_fft > y.shape[-1]:
-            print("n_fft={} is too small for input signal of length={}".format(
-                n_fft, y.shape[-1]))
+            print(
+                "n_fft={} is too small for input signal of length={}".format(
+                    n_fft, y.shape[-1]
+                )
+            )
 
         y = np.pad(y, int(n_fft // 2), mode=pad_mode)
 
     elif n_fft > y.shape[-1]:
         raise Exception(
             "n_fft={} is too large for input signal of length={}".format(
-                n_fft, y.shape[-1]))
+                n_fft, y.shape[-1]
+            )
+        )
 
     # Window the time series.
     y_frames = frame(y, frame_length=n_fft, hop_length=hop_length)
@@ -347,9 +370,9 @@ def stft(x,
         dtype = dtype_r2c(y.dtype)
 
     # Pre-allocate the STFT matrix
-    stft_matrix = np.empty((int(1 + n_fft // 2), y_frames.shape[1]),
-                           dtype=dtype,
-                           order="F")
+    stft_matrix = np.empty(
+        (int(1 + n_fft // 2), y_frames.shape[1]), dtype=dtype, order="F"
+    )
 
     # how many columns can we fit within MAX_MEM_BLOCK?
     n_columns = MAX_MEM_BLOCK // (stft_matrix.shape[0] * stft_matrix.itemsize)
@@ -358,9 +381,9 @@ def stft(x,
     for bl_s in range(0, stft_matrix.shape[1], n_columns):
         bl_t = min(bl_s + n_columns, stft_matrix.shape[1])
 
-        stft_matrix[:,
-                    bl_s:bl_t] = fft.rfft(fft_window * y_frames[:, bl_s:bl_t],
-                                          axis=0)
+        stft_matrix[:, bl_s:bl_t] = fft.rfft(
+            fft_window * y_frames[:, bl_s:bl_t], axis=0
+        )
 
     if input_rank == 2:
         stft_matrix = np.expand_dims(stft_matrix, 0)
@@ -405,8 +428,9 @@ def istft(
             padded_length = length + int(n_fft)
         else:
             padded_length = length
-        n_frames = min(stft_matrix.shape[1],
-                       int(np.ceil(padded_length / hop_length)))
+        n_frames = min(
+            stft_matrix.shape[1], int(np.ceil(padded_length / hop_length))
+        )
     else:
         n_frames = stft_matrix.shape[1]
 
@@ -428,7 +452,7 @@ def istft(
         ytmp = ifft_window * fft.irfft(stft_matrix[:, bl_s:bl_t], axis=0)
 
         # Overlap-add the istft block starting at the i'th frame
-        __overlap_add(y[frame * hop_length:], ytmp, hop_length)
+        __overlap_add(y[frame * hop_length :], ytmp, hop_length)
 
         frame += bl_t - bl_s
 
@@ -449,7 +473,7 @@ def istft(
         # If we don't need to control length, just do the usual center trimming
         # to eliminate padded data
         if center:
-            y = y[int(n_fft // 2):-int(n_fft // 2)]
+            y = y[int(n_fft // 2) : -int(n_fft // 2)]
     else:
         if center:
             # If we're centering, crop off the first n_fft//2 samples
@@ -506,8 +530,9 @@ def overlap_add_for_api_test(x, hop_length, axis=-1):
     frame_length = x.shape[1] if axis == 0 else x.shape[-2]
 
     # Assure no gaps between frames.
-    assert 0 < hop_length <= frame_length, \
-        f'hop_length should be in (0, frame_length({frame_length})], but got {hop_length}.'
+    assert (
+        0 < hop_length <= frame_length
+    ), f'hop_length should be in (0, frame_length({frame_length})], but got {hop_length}.'
 
     seq_length = (n_frames - 1) * hop_length + frame_length
 
@@ -528,7 +553,7 @@ def overlap_add_for_api_test(x, hop_length, axis=-1):
     for i in range(x.shape[0]):
         for frame in range(x.shape[-1]):
             sample = frame * hop_length
-            y[i, sample:sample + frame_length] += x[i, :, frame]
+            y[i, sample : sample + frame_length] += x[i, :, frame]
 
     if axis == 0:
         y = y.transpose((1, 0))
@@ -543,12 +568,10 @@ def overlap_add_for_api_test(x, hop_length, axis=-1):
 
 
 def place(devices, key='place'):
-
     def decorate(cls):
         module = sys.modules[cls.__module__].__dict__
         raw_classes = {
-            k: v
-            for k, v in module.items() if k.startswith(cls.__name__)
+            k: v for k, v in module.items() if k.startswith(cls.__name__)
         }
 
         for raw_name, raw_cls in raw_classes.items():
@@ -556,7 +579,7 @@ def place(devices, key='place'):
                 test_cls = dict(raw_cls.__dict__)
                 test_cls.update({key: d})
                 new_name = raw_name + '.' + d.__class__.__name__
-                module[new_name] = type(new_name, (raw_cls, ), test_cls)
+                module[new_name] = type(new_name, (raw_cls,), test_cls)
             del module[raw_name]
         return cls
 
@@ -586,20 +609,23 @@ def tearDownModule():
     pass
 
 
-def rand_x(dims=1,
-           dtype='float64',
-           min_dim_len=1,
-           max_dim_len=10,
-           shape=None,
-           complex=False):
+def rand_x(
+    dims=1,
+    dtype='float64',
+    min_dim_len=1,
+    max_dim_len=10,
+    shape=None,
+    complex=False,
+):
 
     if shape is None:
         shape = [
             np.random.randint(min_dim_len, max_dim_len) for i in range(dims)
         ]
     if complex:
-        return np.random.randn(
-            *shape).astype(dtype) + 1.j * np.random.randn(*shape).astype(dtype)
+        return np.random.randn(*shape).astype(dtype) + 1.0j * np.random.randn(
+            *shape
+        ).astype(dtype)
     else:
         return np.random.randn(*shape).astype(dtype)
 
@@ -608,8 +634,11 @@ def parameterize(attrs, input_values=None):
 
     if isinstance(attrs, str):
         attrs = [attrs]
-    input_dicts = (attrs if input_values is None else
-                   [dict(zip(attrs, vals)) for vals in input_values])
+    input_dicts = (
+        attrs
+        if input_values is None
+        else [dict(zip(attrs, vals)) for vals in input_values]
+    )
 
     def decorator(base_class):
         test_class_module = sys.modules[base_class.__module__].__dict__
@@ -619,8 +648,7 @@ def parameterize(attrs, input_values=None):
 
             name = class_name(base_class, idx, input_dict)
 
-            test_class_module[name] = type(name, (base_class, ),
-                                           test_class_dict)
+            test_class_module[name] = type(name, (base_class,), test_class_dict)
 
         for method_name in list(base_class.__dict__):
             if method_name.startswith("test"):
@@ -632,7 +660,8 @@ def parameterize(attrs, input_values=None):
 
 def class_name(cls, num, params_dict):
     suffix = to_safe_name(
-        next((v for v in params_dict.values() if isinstance(v, str)), ""))
+        next((v for v in params_dict.values() if isinstance(v, str)), "")
+    )
     if TEST_CASE_NAME in params_dict:
         suffix = to_safe_name(params_dict["test_case"])
     return "{}_{}{}".format(cls.__name__, num, suffix and "_" + suffix)
@@ -652,19 +681,22 @@ def to_safe_name(s):
         ('test_2d_input2', rand_x(2, np.float64, shape=[8, 150]), 50, 15, -1),
         ('test_3d_input1', rand_x(3, np.float64, shape=[150, 4, 2]), 50, 15, 0),
         ('test_3d_input2', rand_x(3, np.float64, shape=[4, 2, 150]), 50, 15, -1),
-    ]) # yapf: disable
+    ])  # fmt: skip
 class TestFrame(unittest.TestCase):
-
     def test_frame(self):
-        np.testing.assert_allclose(frame_for_api_test(self.x, self.frame_length,
-                                                      self.hop_length,
-                                                      self.axis),
-                                   paddle.signal.frame(paddle.to_tensor(self.x),
-                                                       self.frame_length,
-                                                       self.hop_length,
-                                                       self.axis),
-                                   rtol=rtol.get(str(self.x.dtype)),
-                                   atol=atol.get(str(self.x.dtype)))
+        np.testing.assert_allclose(
+            frame_for_api_test(
+                self.x, self.frame_length, self.hop_length, self.axis
+            ),
+            paddle.signal.frame(
+                paddle.to_tensor(self.x),
+                self.frame_length,
+                self.hop_length,
+                self.axis,
+            ),
+            rtol=rtol.get(str(self.x.dtype)),
+            atol=atol.get(str(self.x.dtype)),
+        )
 
 
 @place(DEVICES)
@@ -677,29 +709,33 @@ class TestFrame(unittest.TestCase):
         ('test_2d_input2', rand_x(2, np.float64, shape=[8, 150]), 50, 15, -1),
         ('test_3d_input1', rand_x(3, np.float64, shape=[150, 4, 2]), 50, 15, 0),
         ('test_3d_input2', rand_x(3, np.float64, shape=[4, 2, 150]), 50, 15, -1),
-    ]) # yapf: disable
+    ])  # fmt: skip
 class TestFrameStatic(unittest.TestCase):
-
     def test_frame_static(self):
         paddle.enable_static()
         mp, sp = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
-            input = paddle.static.data('input',
-                                       self.x.shape,
-                                       dtype=self.x.dtype)
-            output = paddle.signal.frame(input, self.frame_length,
-                                         self.hop_length, self.axis),
+            input = paddle.static.data(
+                'input', self.x.shape, dtype=self.x.dtype
+            )
+            output = (
+                paddle.signal.frame(
+                    input, self.frame_length, self.hop_length, self.axis
+                ),
+            )
         exe = paddle.static.Executor(self.place)
         exe.run(sp)
         [output] = exe.run(mp, feed={'input': self.x}, fetch_list=[output])
         paddle.disable_static()
 
-        np.testing.assert_allclose(frame_for_api_test(self.x, self.frame_length,
-                                                      self.hop_length,
-                                                      self.axis),
-                                   output,
-                                   rtol=rtol.get(str(self.x.dtype)),
-                                   atol=atol.get(str(self.x.dtype)))
+        np.testing.assert_allclose(
+            frame_for_api_test(
+                self.x, self.frame_length, self.hop_length, self.axis
+            ),
+            output,
+            rtol=rtol.get(str(self.x.dtype)),
+            atol=atol.get(str(self.x.dtype)),
+        )
 
 
 @place(DEVICES)
@@ -710,13 +746,16 @@ class TestFrameStatic(unittest.TestCase):
         ('test_hop_length', rand_x(1, np.float64, shape=[150]), 50, 0, -1, ValueError),
         ('test_frame_length1', rand_x(2, np.float64, shape=[150, 8]), 0, 15, 0, ValueError),
         ('test_frame_length2', rand_x(2, np.float64, shape=[150, 8]), 151, 15, 0, ValueError),
-    ]) # yapf: disable
+    ])  # fmt: skip
 class TestFrameException(unittest.TestCase):
-
     def test_frame(self):
         with self.assertRaises(self.expect_exception):
-            paddle.signal.frame(paddle.to_tensor(self.x), self.frame_length,
-                                self.hop_length, self.axis)
+            paddle.signal.frame(
+                paddle.to_tensor(self.x),
+                self.frame_length,
+                self.hop_length,
+                self.axis,
+            )
 
 
 @place(DEVICES)
@@ -729,16 +768,17 @@ class TestFrameException(unittest.TestCase):
         ('test_3d_input2', rand_x(3, np.float64, shape=[2, 40, 5]), 10, -1),
         ('test_4d_input1', rand_x(4, np.float64, shape=[8, 12, 5, 3]), 5, 0),
         ('test_4d_input2', rand_x(4, np.float64, shape=[3, 5, 12, 8]), 5, -1),
-    ]) # yapf: disable
+    ])  # fmt: skip
 class TestOverlapAdd(unittest.TestCase):
-
     def test_overlap_add(self):
         np.testing.assert_allclose(
             overlap_add_for_api_test(self.x, self.hop_length, self.axis),
-            paddle.signal.overlap_add(paddle.to_tensor(self.x), self.hop_length,
-                                      self.axis),
+            paddle.signal.overlap_add(
+                paddle.to_tensor(self.x), self.hop_length, self.axis
+            ),
             rtol=rtol.get(str(self.x.dtype)),
-            atol=atol.get(str(self.x.dtype)))
+            atol=atol.get(str(self.x.dtype)),
+        )
 
 
 @place(DEVICES)
@@ -751,28 +791,29 @@ class TestOverlapAdd(unittest.TestCase):
         ('test_3d_input2', rand_x(3, np.float64, shape=[2, 40, 5]), 10, -1),
         ('test_4d_input1', rand_x(4, np.float64, shape=[8, 12, 5, 3]), 5, 0),
         ('test_4d_input2', rand_x(4, np.float64, shape=[3, 5, 12, 8]), 5, -1),
-    ]) # yapf: disable
+    ])  # fmt: skip
 class TestOverlapAddStatic(unittest.TestCase):
-
     def test_overlap_add_static(self):
         paddle.enable_static()
         mp, sp = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
-            input = paddle.static.data('input',
-                                       self.x.shape,
-                                       dtype=self.x.dtype)
-            output = paddle.signal.overlap_add(input, self.hop_length,
-                                               self.axis),
+            input = paddle.static.data(
+                'input', self.x.shape, dtype=self.x.dtype
+            )
+            output = (
+                paddle.signal.overlap_add(input, self.hop_length, self.axis),
+            )
         exe = paddle.static.Executor(self.place)
         exe.run(sp)
         [output] = exe.run(mp, feed={'input': self.x}, fetch_list=[output])
         paddle.disable_static()
 
-        np.testing.assert_allclose(overlap_add_for_api_test(
-            self.x, self.hop_length, self.axis),
-                                   output,
-                                   rtol=rtol.get(str(self.x.dtype)),
-                                   atol=atol.get(str(self.x.dtype)))
+        np.testing.assert_allclose(
+            overlap_add_for_api_test(self.x, self.hop_length, self.axis),
+            output,
+            rtol=rtol.get(str(self.x.dtype)),
+            atol=atol.get(str(self.x.dtype)),
+        )
 
 
 @place(DEVICES)
@@ -781,13 +822,13 @@ class TestOverlapAddStatic(unittest.TestCase):
     [
         ('test_axis', rand_x(2, np.float64, shape=[3, 50]), 4, 2, ValueError),
         ('test_hop_length', rand_x(2, np.float64, shape=[50, 3]), -1, -1, ValueError),
-    ]) # yapf: disable
+    ])  # fmt: skip
 class TestOverlapAddException(unittest.TestCase):
-
     def test_overlap_add(self):
         with self.assertRaises(self.expect_exception):
-            paddle.signal.overlap_add(paddle.to_tensor(self.x), self.hop_length,
-                                      self.axis)
+            paddle.signal.overlap_add(
+                paddle.to_tensor(self.x), self.hop_length, self.axis
+            )
 
 
 # ================= STFT
@@ -836,9 +877,8 @@ class TestOverlapAddException(unittest.TestCase):
         512, None, None, None, True, 'reflect', False, True),
         ('test_center', rand_x(2, np.float64, shape=[1, 160000]),
         512, None, None, None, False, 'reflect', False, True),
-    ])# yapf: disable
+    ])  # fmt: skip
 class TestStft(unittest.TestCase):
-
     def test_stft(self):
         if self.window is None:
             win_p = None
@@ -848,14 +888,29 @@ class TestStft(unittest.TestCase):
             win_l = self.window
 
         np.testing.assert_allclose(
-            stft(self.x, self.n_fft, self.hop_length, self.win_length, win_l,
-                 self.center, self.pad_mode),
-            paddle.signal.stft(paddle.to_tensor(self.x), self.n_fft,
-                               self.hop_length, self.win_length, win_p,
-                               self.center, self.pad_mode, self.normalized,
-                               self.onesided),
+            stft(
+                self.x,
+                self.n_fft,
+                self.hop_length,
+                self.win_length,
+                win_l,
+                self.center,
+                self.pad_mode,
+            ),
+            paddle.signal.stft(
+                paddle.to_tensor(self.x),
+                self.n_fft,
+                self.hop_length,
+                self.win_length,
+                win_p,
+                self.center,
+                self.pad_mode,
+                self.normalized,
+                self.onesided,
+            ),
             rtol=rtol.get(str(self.x.dtype)),
-            atol=atol.get(str(self.x.dtype)))
+            atol=atol.get(str(self.x.dtype)),
+        )
 
 
 @place(DEVICES)
@@ -878,9 +933,8 @@ class TestStft(unittest.TestCase):
         512, None, None, None, True, 'nonsense', False, True, AssertionError),
         ('test_complex_onesided', rand_x(1, np.float64, shape=[16000], complex=True),
         512, None, None, None, False, 'reflect', False, True, AssertionError),
-    ]) # yapf: disable
+    ])  # fmt: skip
 class TestStftException(unittest.TestCase):
-
     def test_stft(self):
         if self.window is None:
             win_p = None
@@ -888,10 +942,17 @@ class TestStftException(unittest.TestCase):
             win_p = paddle.to_tensor(self.window)
 
         with self.assertRaises(self.expect_exception):
-            paddle.signal.stft(paddle.to_tensor(self.x), self.n_fft,
-                               self.hop_length, self.win_length, win_p,
-                               self.center, self.pad_mode, self.normalized,
-                               self.onesided),
+            paddle.signal.stft(
+                paddle.to_tensor(self.x),
+                self.n_fft,
+                self.hop_length,
+                self.win_length,
+                win_p,
+                self.center,
+                self.pad_mode,
+                self.normalized,
+                self.onesided,
+            ),
 
 
 @place(DEVICES)
@@ -912,9 +973,8 @@ class TestStftException(unittest.TestCase):
         512, None, None, None, False, False, True, None, False),
         ('test_length', rand_x(3, np.float64, shape=[1, 257, 471], complex=True),
         512, None, None, None, False, False, True, 1888, False),
-    ]) # yapf: disable
+    ])  # fmt: skip
 class TestIstft(unittest.TestCase):
-
     def test_istft(self):
         if self.window is None:
             win_p = None
@@ -924,14 +984,29 @@ class TestIstft(unittest.TestCase):
             win_l = self.window
 
         np.testing.assert_allclose(
-            istft(self.x, self.hop_length, self.win_length, win_l, self.center,
-                  self.length),
-            paddle.signal.istft(paddle.to_tensor(self.x), self.n_fft,
-                                self.hop_length, self.win_length, win_p,
-                                self.center, self.normalized, self.onesided,
-                                self.length, self.return_complex),
+            istft(
+                self.x,
+                self.hop_length,
+                self.win_length,
+                win_l,
+                self.center,
+                self.length,
+            ),
+            paddle.signal.istft(
+                paddle.to_tensor(self.x),
+                self.n_fft,
+                self.hop_length,
+                self.win_length,
+                win_p,
+                self.center,
+                self.normalized,
+                self.onesided,
+                self.length,
+                self.return_complex,
+            ),
             rtol=rtol.get(str(self.x.dtype)),
-            atol=atol.get(str(self.x.dtype)))
+            atol=atol.get(str(self.x.dtype)),
+        )
 
 
 @place(DEVICES)
@@ -962,9 +1037,8 @@ class TestIstft(unittest.TestCase):
         512, None, None, rand_x(1, np.float64, shape=[512], complex=True), True, False, True, None, False, AssertionError),
         ('test_NOLA', rand_x(3, np.float64, shape=[1, 257, 471], complex=True),
         512, 512, None, get_window('hann', 512), True, False, True, None, False, ValueError),
-    ]) # yapf: disable
+    ])  # fmt: skip
 class TestIstftException(unittest.TestCase):
-
     def test_istft(self):
         if self.window is None:
             win_p = None
@@ -972,10 +1046,18 @@ class TestIstftException(unittest.TestCase):
             win_p = paddle.to_tensor(self.window)
 
         with self.assertRaises(self.expect_exception):
-            paddle.signal.istft(paddle.to_tensor(self.x), self.n_fft,
-                                self.hop_length, self.win_length, win_p,
-                                self.center, self.normalized, self.onesided,
-                                self.length, self.return_complex),
+            paddle.signal.istft(
+                paddle.to_tensor(self.x),
+                self.n_fft,
+                self.hop_length,
+                self.win_length,
+                win_p,
+                self.center,
+                self.normalized,
+                self.onesided,
+                self.length,
+                self.return_complex,
+            ),
 
 
 if __name__ == '__main__':

@@ -46,56 +46,56 @@ class ApiFMinTest(unittest.TestCase):
     def test_static_api(self):
         """test_static_api"""
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
             data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
             result_fmin = paddle.fmin(data_x, data_y)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={
-                "x": self.input_x,
-                "y": self.input_y
-            },
-                           fetch_list=[result_fmin])
+            (res,) = exe.run(
+                feed={"x": self.input_x, "y": self.input_y},
+                fetch_list=[result_fmin],
+            )
         np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
 
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
             data_z = paddle.static.data("z", shape=[15], dtype="float32")
             result_fmin = paddle.fmin(data_x, data_z)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={
-                "x": self.input_x,
-                "z": self.input_z
-            },
-                           fetch_list=[result_fmin])
+            (res,) = exe.run(
+                feed={"x": self.input_x, "z": self.input_z},
+                fetch_list=[result_fmin],
+            )
         np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
 
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data_a = paddle.static.data("a", shape=[3], dtype="int64")
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_fmin = paddle.fmin(data_a, data_c)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={
-                "a": self.input_a,
-                "c": self.input_c
-            },
-                           fetch_list=[result_fmin])
+            (res,) = exe.run(
+                feed={"a": self.input_a, "c": self.input_c},
+                fetch_list=[result_fmin],
+            )
         np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
 
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data_b = paddle.static.data("b", shape=[3], dtype="int64")
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_fmin = paddle.fmin(data_b, data_c)
             exe = paddle.static.Executor(self.place)
-            res, = exe.run(feed={
-                "b": self.input_b,
-                "c": self.input_c
-            },
-                           fetch_list=[result_fmin])
+            (res,) = exe.run(
+                feed={"b": self.input_b, "c": self.input_c},
+                fetch_list=[result_fmin],
+            )
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
     def test_dynamic_api(self):
@@ -153,19 +153,23 @@ class TestElementwiseFminOp(OpTest):
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
-        self.check_grad(['Y'],
-                        'Out',
-                        max_relative_error=0.005,
-                        no_grad_set=set("X"),
-                        check_eager=True)
+        self.check_grad(
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+            check_eager=True,
+        )
 
     def test_check_grad_ingore_y(self):
         """test_check_grad_ingore_y"""
-        self.check_grad(['X'],
-                        'Out',
-                        max_relative_error=0.005,
-                        no_grad_set=set('Y'),
-                        check_eager=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+            check_eager=True,
+        )
 
 
 class TestElementwiseFmin2Op(OpTest):
@@ -196,19 +200,23 @@ class TestElementwiseFmin2Op(OpTest):
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
-        self.check_grad(['Y'],
-                        'Out',
-                        max_relative_error=0.005,
-                        no_grad_set=set("X"),
-                        check_eager=True)
+        self.check_grad(
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+            check_eager=True,
+        )
 
     def test_check_grad_ingore_y(self):
         """test_check_grad_ingore_y"""
-        self.check_grad(['X'],
-                        'Out',
-                        max_relative_error=0.005,
-                        no_grad_set=set('Y'),
-                        check_eager=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+            check_eager=True,
+        )
 
 
 class TestElementwiseFmin3Op(OpTest):

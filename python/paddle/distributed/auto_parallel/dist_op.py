@@ -23,7 +23,6 @@ from .utils import convert_to_shard_spec, verify_shard_spec
 
 
 class DistributedOperator:
-
     def __init__(self, serial_op, dist_attr=None):
         self._serial_op = serial_op
         self._serial_inputs = {}
@@ -74,28 +73,34 @@ class DistributedOperator:
             if tensor is None:
                 tensor_shape = []
             else:
-                if tensor.type == core.VarDesc.VarType.READER \
-                    or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+                if (
+                    tensor.type == core.VarDesc.VarType.READER
+                    or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                ):
                     tensor_shape = []
                 else:
                     tensor_shape = tensor.shape
             if self._dist_attr.get_input_dims_mapping(tensor_name) is None:
                 tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
-                self._dist_attr.set_input_dims_mapping(tensor_name,
-                                                       tensor_dims_mapping)
+                self._dist_attr.set_input_dims_mapping(
+                    tensor_name, tensor_dims_mapping
+                )
         for tensor_name in self._serial_op.output_arg_names:
             tensor = self._serial_op.block._var_recursive(tensor_name)
-            if tensor.type == core.VarDesc.VarType.READER \
-                or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
-                or tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+            if (
+                tensor.type == core.VarDesc.VarType.READER
+                or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                or tensor.type == core.VarDesc.VarType.STEP_SCOPES
+            ):
                 tensor_shape = []
             else:
                 tensor_shape = tensor.shape
             self._serial_outputs[tensor_name] = tensor
             if self._dist_attr.get_output_dims_mapping(tensor_name) is None:
                 tensor_dims_mapping = [-1 for _ in range(len(tensor_shape))]
-                self._dist_attr.set_output_dims_mapping(tensor_name,
-                                                        tensor_dims_mapping)
+                self._dist_attr.set_output_dims_mapping(
+                    tensor_name, tensor_dims_mapping
+                )
         if self._dist_attr.op_type is None:
             self._dist_attr.op_type = self.serial_op.type
         if self._dist_attr.impl_type is None:
@@ -113,8 +118,10 @@ class DistributedOperator:
             new_dist_attr = {}
             for key, value in dist_attr.items():
                 if isinstance(key, Variable):
-                    if key.name in self._serial_op.input_arg_names \
-                        or key.name in self._serial_op.output_arg_names:
+                    if (
+                        key.name in self._serial_op.input_arg_names
+                        or key.name in self._serial_op.output_arg_names
+                    ):
                         new_dist_attr[key] = value
                 else:
                     new_dist_attr[key] = value
@@ -125,13 +132,15 @@ class DistributedOperator:
             for tensor_name in self._serial_op.input_arg_names:
                 tensor_dist_attr = dist_attr.get_input_dist_attr(tensor_name)
                 if tensor_dist_attr:
-                    new_dist_attr.set_input_dist_attr(tensor_name,
-                                                      tensor_dist_attr)
+                    new_dist_attr.set_input_dist_attr(
+                        tensor_name, tensor_dist_attr
+                    )
             for tensor_name in self._serial_op.output_arg_names:
                 tensor_dist_attr = dist_attr.get_output_dist_attr(tensor_name)
                 if tensor_dist_attr:
-                    new_dist_attr.set_output_dist_attr(tensor_name,
-                                                       tensor_dist_attr)
+                    new_dist_attr.set_output_dist_attr(
+                        tensor_name, tensor_dist_attr
+                    )
         else:
             assert False, "Cannot recognize the {} parameter.".format(dist_attr)
         return new_dist_attr
@@ -142,8 +151,10 @@ class DistributedOperator:
         for name in self.serial_op.input_arg_names:
             input_dist_attr = self.dist_attr.get_input_dist_attr(name)
             dims_mapping = input_dist_attr.dims_mapping
-            if self.get_serial_input(
-                    name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            if (
+                self.get_serial_input(name).type
+                == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+            ):
                 shape = []
             else:
                 shape = self.get_serial_input(name).shape
@@ -151,7 +162,8 @@ class DistributedOperator:
                 return False
             for i in range(len(dims_mapping)):
                 if dims_mapping[i] < -1 or dims_mapping[i] >= len(
-                        self.dist_attr.process_mesh.topology):
+                    self.dist_attr.process_mesh.topology
+                ):
                     return False
             for i in range(len(self.dist_attr.process_mesh.topology)):
                 if dims_mapping.count(i) > 1:
@@ -162,8 +174,12 @@ class DistributedOperator:
         for name in self.serial_op.output_arg_names:
             output_dist_attr = self.dist_attr.get_output_dist_attr(name)
             dims_mapping = output_dist_attr.dims_mapping
-            if self.get_serial_output(name).type == core.VarDesc.VarType.LOD_TENSOR_ARRAY\
-                or self.get_serial_output(name).type == core.VarDesc.VarType.STEP_SCOPES:
+            if (
+                self.get_serial_output(name).type
+                == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                or self.get_serial_output(name).type
+                == core.VarDesc.VarType.STEP_SCOPES
+            ):
                 shape = []
             else:
                 shape = self.get_serial_output(name).shape
@@ -171,7 +187,8 @@ class DistributedOperator:
                 return False
             for i in range(len(dims_mapping)):
                 if dims_mapping[i] < -1 or dims_mapping[i] >= len(
-                        self.dist_attr.process_mesh.topology):
+                    self.dist_attr.process_mesh.topology
+                ):
                     return False
             for i in range(len(self.dist_attr.process_mesh.topology)):
                 if dims_mapping.count(i) > 1:
@@ -181,8 +198,9 @@ class DistributedOperator:
         return True
 
     def __str__(self):
-        str = "{{op type: {}, op id: {}".format(self.serial_op.desc.type(),
-                                                self.serial_op.desc.id())
+        str = "{{op type: {}, op id: {}".format(
+            self.serial_op.desc.type(), self.serial_op.desc.id()
+        )
 
         # str += ", {}".format(self.dist_attr)
         # return str
@@ -191,8 +209,9 @@ class DistributedOperator:
             annotated_str = "annotated"
         else:
             annotated_str = "non-annotated"
-        str += ", process_mesh ({}): {}".format(annotated_str,
-                                                self.dist_attr.process_mesh)
+        str += ", process_mesh ({}): {}".format(
+            annotated_str, self.dist_attr.process_mesh
+        )
 
         for arg_name in self.serial_op.desc.input_arg_names():
             dims_mapping = self.dist_attr.get_input_dims_mapping(arg_name)
@@ -208,7 +227,8 @@ class DistributedOperator:
             else:
                 is_parameter_str = "non-parameter"
             str += ", {}'s dims_mapping (input, {}, {}): {}".format(
-                arg_name, annotated_str, is_parameter_str, dims_mapping)
+                arg_name, annotated_str, is_parameter_str, dims_mapping
+            )
 
         for arg_name in self.serial_op.desc.output_arg_names():
             dims_mapping = self.dist_attr.get_output_dims_mapping(arg_name)
@@ -224,12 +244,14 @@ class DistributedOperator:
             else:
                 is_parameter_str = "non-parameter"
             str += ", {}'s dims_mapping (output, {}, {}): {}".format(
-                arg_name, annotated_str, is_parameter_str, dims_mapping)
+                arg_name, annotated_str, is_parameter_str, dims_mapping
+            )
 
         str += ", pipeline stage: {}".format(None)
 
         str += ", dist_impl idx: {} , dist_impl type {} }}".format(
-            self.dist_attr._impl_idx, self.dist_attr._impl_type)
+            self.dist_attr._impl_idx, self.dist_attr._impl_type
+        )
 
         return str
 
@@ -238,7 +260,11 @@ class DistributedOperator:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == "_serial_op" or k == "_serial_inputs" or k == "_serial_outputs":
+            if (
+                k == "_serial_op"
+                or k == "_serial_inputs"
+                or k == "_serial_outputs"
+            ):
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
@@ -246,9 +272,9 @@ class DistributedOperator:
 
 
 class DistributedOperatorHelper:
-
-    def __init__(self, serial_op, process_mesh, in_dims_mappings,
-                 out_dims_mappings):
+    def __init__(
+        self, serial_op, process_mesh, in_dims_mappings, out_dims_mappings
+    ):
         self._serial_op = serial_op
         self._process_mesh = process_mesh
         self._in_dims_mappings = in_dims_mappings
@@ -258,8 +284,11 @@ class DistributedOperatorHelper:
         tensor_to_dims_mapping = {}
         index = 0
         if self._in_dims_mappings:
-            assert len(args) + len(kwargs) == len(self._in_dims_mappings), \
-                "The length of dims_mapping {} does not matching the length output {}.".format(len(self._in_dims_mappings), len(args) + len(kwargs))
+            assert len(args) + len(kwargs) == len(
+                self._in_dims_mappings
+            ), "The length of dims_mapping {} does not matching the length output {}.".format(
+                len(self._in_dims_mappings), len(args) + len(kwargs)
+            )
         for arg in args:
             if isinstance(arg, Variable) and self._in_dims_mappings:
                 tensor_to_dims_mapping[arg.name] = self._in_dims_mappings[index]
@@ -283,13 +312,17 @@ class DistributedOperatorHelper:
             raise ValueError("Unrecognized outpout.")
 
         if self._out_dims_mappings:
-            assert len(new_output) == len(self._out_dims_mappings), \
-                "The length of dims_mapping {} does not matching the length output {}.".format(len(self._out_dims_mappings), len(new_output))
+            assert len(new_output) == len(
+                self._out_dims_mappings
+            ), "The length of dims_mapping {} does not matching the length output {}.".format(
+                len(self._out_dims_mappings), len(new_output)
+            )
         for i, item in enumerate(new_output):
             if isinstance(item, Variable) and self._out_dims_mappings:
                 tensor_to_dims_mapping[item.name] = self._out_dims_mappings[i]
 
         from .dist_context import get_default_distributed_context
+
         default_dist_ctx = get_default_distributed_context()
         for idx in range(op_size, new_op_size):
             op = cur_block.ops[idx]
@@ -298,48 +331,62 @@ class DistributedOperatorHelper:
                 if name in tensor_to_dims_mapping.keys():
                     tensor = dist_op.get_serial_input(name)
                     tensor_dist_attr = dist_op.dist_attr.get_input_dist_attr(
-                        name)
+                        name
+                    )
                     dims_mapping = tensor_to_dims_mapping[name]
                     if tensor is None:
                         tensor_shape = []
                     else:
-                        if tensor.type == core.VarDesc.VarType.READER \
-                            or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
-                            or tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+                        if (
+                            tensor.type == core.VarDesc.VarType.READER
+                            or tensor.type
+                            == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                            or tensor.type == core.VarDesc.VarType.STEP_SCOPES
+                        ):
                             tensor_shape = []
                         else:
                             tensor_shape = tensor.shape
                     if dims_mapping is not None:
                         dims_mapping = tensor_to_dims_mapping[name]
                         shard_spec = convert_to_shard_spec(
-                            dims_mapping, self._process_mesh)
-                        assert verify_shard_spec(shard_spec, tensor_shape, self._process_mesh), \
-                            "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
-                                name, shard_spec, tensor_shape, self._process_mesh)
+                            dims_mapping, self._process_mesh
+                        )
+                        assert verify_shard_spec(
+                            shard_spec, tensor_shape, self._process_mesh
+                        ), "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+                            name, shard_spec, tensor_shape, self._process_mesh
+                        )
                         tensor_dist_attr.dims_mapping = dims_mapping
                         tensor_dist_attr.mark_annotated("dims_mapping")
             for name in dist_op.serial_op.output_arg_names:
                 if name in tensor_to_dims_mapping.keys():
                     tensor = dist_op.get_serial_output(name)
                     tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(
-                        name)
+                        name
+                    )
                     dims_mapping = tensor_to_dims_mapping[name]
                     if tensor is None:
                         tensor_shape = []
                     else:
-                        if tensor.type == core.VarDesc.VarType.READER \
-                            or tensor.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY \
-                            or tensor.type == core.VarDesc.VarType.STEP_SCOPES:
+                        if (
+                            tensor.type == core.VarDesc.VarType.READER
+                            or tensor.type
+                            == core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                            or tensor.type == core.VarDesc.VarType.STEP_SCOPES
+                        ):
                             tensor_shape = []
                         else:
                             tensor_shape = tensor.shape
                     if dims_mapping is not None:
                         dims_mapping = tensor_to_dims_mapping[name]
                         shard_spec = convert_to_shard_spec(
-                            dims_mapping, self._process_mesh)
-                        assert verify_shard_spec(shard_spec, tensor_shape, self._process_mesh), \
-                            "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
-                                name, shard_spec, tensor_shape, self._process_mesh)
+                            dims_mapping, self._process_mesh
+                        )
+                        assert verify_shard_spec(
+                            shard_spec, tensor_shape, self._process_mesh
+                        ), "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+                            name, shard_spec, tensor_shape, self._process_mesh
+                        )
                         tensor_dist_attr.dims_mapping = dims_mapping
                         tensor_dist_attr.mark_annotated("dims_mapping")
             dist_op.dist_attr.process_mesh = self._process_mesh

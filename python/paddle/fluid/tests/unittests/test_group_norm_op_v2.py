@@ -33,18 +33,23 @@ def group_norm_naive_for_general_dimension(x, scale, bias, epsilon, groups):
     var = np.var(x, axis=1, keepdims=True)
     output = (x - mean) / np.sqrt(var + epsilon)
     output = output.reshape(input_shape) * scale.reshape(
-        (-1, 1, 1)) + bias.reshape((-1, 1, 1))
+        (-1, 1, 1)
+    ) + bias.reshape((-1, 1, 1))
     return output
 
 
 class TestDygraphGroupNormv2(unittest.TestCase):
-
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
             places.append(fluid.CUDAPlace(0))
-        shapes = [[2, 2, 2, 2], [2, 2, 4], [4, 2], [4, 2, 6, 6, 2],
-                  [2, 2, 2, 2, 2, 2]]
+        shapes = [
+            [2, 2, 2, 2],
+            [2, 2, 4],
+            [4, 2],
+            [4, 2, 6, 6, 2],
+            [2, 2, 2, 2, 2, 2],
+        ]
         for p in places:
 
             def compute_v1(x):
@@ -61,18 +66,20 @@ class TestDygraphGroupNormv2(unittest.TestCase):
 
             def test_weight_bias_false():
                 with fluid.dygraph.guard(p):
-                    gn = paddle.nn.GroupNorm(num_channels=2,
-                                             num_groups=2,
-                                             weight_attr=False,
-                                             bias_attr=False)
+                    gn = paddle.nn.GroupNorm(
+                        num_channels=2,
+                        num_groups=2,
+                        weight_attr=False,
+                        bias_attr=False,
+                    )
 
             def test_nn_exception():
                 with fluid.dygraph.guard(p):
 
                     def attr_data_format():
-                        out = paddle.nn.GroupNorm(num_groups=2,
-                                                  num_channels=2,
-                                                  data_format="NHWC")
+                        out = paddle.nn.GroupNorm(
+                            num_groups=2, num_channels=2, data_format="NHWC"
+                        )
 
                     self.assertRaises(ValueError, attr_data_format)
 
@@ -92,8 +99,13 @@ class TestDygraphGroupNormv2(unittest.TestCase):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
             places.append(fluid.CUDAPlace(0))
-        shapes = [[2, 6, 2, 2], [2, 6, 4], [4, 6], [4, 6, 6, 6, 2],
-                  [4, 6, 2, 2, 2, 2]]
+        shapes = [
+            [2, 6, 2, 2],
+            [2, 6, 4],
+            [4, 6],
+            [4, 6, 6, 6, 2],
+            [4, 6, 2, 2, 2, 2],
+        ]
         for p in places:
             exe = fluid.Executor(p)
 
@@ -127,11 +139,15 @@ class TestDygraphGroupNormv2(unittest.TestCase):
 
 
 class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
-
     def test_numerical_accuracy(self):
         paddle.disable_static()
-        shapes = [(2, 6), (2, 6, 4), (2, 6, 4, 4), (2, 6, 6, 6, 2),
-                  (2, 6, 6, 6, 2, 3)]
+        shapes = [
+            (2, 6),
+            (2, 6, 4),
+            (2, 6, 4, 4),
+            (2, 6, 6, 6, 2),
+            (2, 6, 6, 6, 2, 3),
+        ]
         np.random.seed(10)
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
@@ -143,9 +159,11 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 bias = np.array([0]).astype("float32")
                 data = np.random.random(shape).astype("float32")
                 expect_res1 = group_norm_naive_for_general_dimension(
-                    data, scale, bias, epsilon=1e-5, groups=6)
+                    data, scale, bias, epsilon=1e-5, groups=6
+                )
                 expect_res2 = group_norm_naive_for_general_dimension(
-                    data, scale, bias, epsilon=1e-5, groups=2)
+                    data, scale, bias, epsilon=1e-5, groups=2
+                )
 
                 gn1 = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
                 gn2 = paddle.nn.GroupNorm(num_channels=6, num_groups=2)
@@ -161,9 +179,7 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
 
 
 class TestGroupNormDimException(unittest.TestCase):
-
     def test_exception(self):
-
         def test_empty_input_static_API():
             x = paddle.to_tensor([], dtype='float32')
             paddle.static.nn.group_norm(x, 3)
@@ -171,7 +187,7 @@ class TestGroupNormDimException(unittest.TestCase):
         self.assertRaises(ValueError, test_empty_input_static_API)
 
         def test_one_dim_input_static_API():
-            x = paddle.randn((3, ), dtype='float32')
+            x = paddle.randn((3,), dtype='float32')
             paddle.static.nn.group_norm(x, 3)
 
         self.assertRaises(ValueError, test_one_dim_input_static_API)

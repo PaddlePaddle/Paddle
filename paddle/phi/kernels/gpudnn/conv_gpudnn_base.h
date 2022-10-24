@@ -20,21 +20,19 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/conv_search_cache.h"
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/autotune/cache.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
-using Tensor = phi::DenseTensor;
-using DataLayout = platform::DataLayout;
-using framework::AlgorithmsCache;
-using framework::ConvSearchCache;
+using GPUDNNDataLayout = paddle::platform::DataLayout;
 
 template <typename T>
-using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
+using ScalingParamType =
+    typename paddle::platform::CudnnDataType<T>::ScalingParamType;
 
 // As the container of searchAlgorithm::Find() result.
 template <typename AlgoT>
@@ -71,9 +69,9 @@ static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
 template <typename HandleT, typename DataT>
 struct ConvArgsBase {
   HandleT handle;
-  platform::TensorDescriptor idesc, odesc;
-  platform::FilterDescriptor wdesc;
-  platform::ConvolutionDescriptor cdesc;
+  paddle::platform::TensorDescriptor idesc, odesc;
+  paddle::platform::FilterDescriptor wdesc;
+  paddle::platform::ConvolutionDescriptor cdesc;
   const phi::DenseTensor *x, *w, *o;
   DataT cudnn_dtype;
 
@@ -88,7 +86,7 @@ struct ConvArgsBase {
   int group;
 
   // data foramt
-  DataLayout data_layout;
+  GPUDNNDataLayout data_layout;
 
   ConvArgsBase(const phi::DenseTensor* x,
                const phi::DenseTensor* w,
@@ -98,7 +96,7 @@ struct ConvArgsBase {
                const std::vector<int> d,
                DataT dtype,
                int g,
-               DataLayout layout)
+               GPUDNNDataLayout layout)
       : x(x),
         w(w),
         o(o),
@@ -131,16 +129,16 @@ struct ConvArgsBase {
   }
 };
 
-static inline void GetNCDHW(const framework::DDim& dims,
-                            const DataLayout& layout,
+static inline void GetNCDHW(const phi::DDim& dims,
+                            const GPUDNNDataLayout& layout,
                             int* N,
                             int* C,
                             int* D,
                             int* H,
                             int* W) {
   *N = dims[0];
-  *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int i = layout == DataLayout::kNCHW ? 0 : 1;
+  *C = layout == GPUDNNDataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+  int i = layout == GPUDNNDataLayout::kNCHW ? 0 : 1;
   if (dims.size() == 5) {
     *D = dims[2 - i];
     *H = dims[3 - i];
@@ -152,5 +150,38 @@ static inline void GetNCDHW(const framework::DDim& dims,
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+template <typename DeviceContext, typename T, size_t D>
+static void RemovePaddingSlice(const phi::GPUContext& context,
+                               const phi::DenseTensor* input,
+                               phi::DenseTensor* out,
+                               const std::vector<int>& starts,
+                               const std::vector<int>& axes) {
+  auto& place = *context.eigen_device();
+  auto in_dims = input->dims();
+  auto new_out_dims = out->dims();
+  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
+  for (size_t i = 0; i < D; ++i) {
+    offsets[i] = 0;
+    extents[i] = new_out_dims[i];
+  }
+
+  for (size_t i = 0; i < axes.size(); ++i) {
+    int start = starts[i];
+    if (start < 0) {
+      start = (start + in_dims[axes[i]]);
+    }
+    start = std::max(start, 0);
+    offsets[axes[i]] = start;
+  }
+
+  auto in_t =
+      phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(*input);
+  auto out_t = phi::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+      *out, new_out_dims);
+
+  phi::funcs::EigenSlice<std::decay_t<decltype(place)>, T, D>::Eval(
+      place, out_t, in_t, offsets, extents);
+}
+
+}  // namespace phi

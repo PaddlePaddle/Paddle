@@ -18,10 +18,9 @@ from paddle import _C_ops, _legacy_C_ops
 
 
 @dygraph_only
-def _append_activation_in_dygraph(input,
-                                  act=None,
-                                  use_cudnn=None,
-                                  use_mkldnn=None):
+def _append_activation_in_dygraph(
+    input, act=None, use_cudnn=None, use_mkldnn=None
+):
     """Append activation in dygraph mode.
 
         Args:
@@ -60,5 +59,6 @@ def _append_bias_in_dygraph(input, bias=None, axis=1, use_mkldnn=False):
     if bias is None:
         return input
 
-    return _legacy_C_ops.elementwise_add(input, bias, 'axis', axis,
-                                         'use_mkldnn', use_mkldnn)
+    return _legacy_C_ops.elementwise_add(
+        input, bias, 'axis', axis, 'use_mkldnn', use_mkldnn
+    )

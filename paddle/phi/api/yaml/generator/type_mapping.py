@@ -15,7 +15,7 @@
 # type mapping: types in yaml -> types in c++ API
 input_types_map = {
     'Tensor': 'const Tensor&',
-    'Tensor[]': 'const std::vector<Tensor>&'
+    'Tensor[]': 'const std::vector<Tensor>&',
 }
 
 optional_input_types_map = {
@@ -81,15 +81,17 @@ opmaker_attr_types_map = {
 
 output_type_map = {'Tensor': 'Tensor', 'Tensor[]': 'std::vector<Tensor>'}
 
-#------------------------------ phi attr ------------------------------
+# ------------------------------ phi attr ------------------------------
 phi_attr_types_map = attr_types_map.copy()
-phi_attr_types_map.update({
-    'IntArray': 'const phi::IntArray&',
-    'Scalar': 'const phi::Scalar&',
-    'Scalar[]': 'std::vector<phi::Scalar>&'
-})
+phi_attr_types_map.update(
+    {
+        'IntArray': 'const phi::IntArray&',
+        'Scalar': 'const phi::Scalar&',
+        'Scalar[]': 'std::vector<phi::Scalar>&',
+    }
+)
 
-#--------------------------- phi dense tensor ---------------------------
+# --------------------------- phi dense tensor ---------------------------
 # type mapping to phi, used in implementation
 dense_input_types_map = {
     'Tensor': 'const phi::DenseTensor&',
@@ -98,15 +100,15 @@ dense_input_types_map = {
 
 dense_optional_input_types_map = {
     'Tensor': 'paddle::optional<const phi::DenseTensor&>',
-    'Tensor[]': 'paddle::optional<const std::vector<phi::DenseTensor>&>'
+    'Tensor[]': 'paddle::optional<const std::vector<phi::DenseTensor>&>',
 }
 
 dense_output_types_map = {
     'Tensor': 'phi::DenseTensor*',
-    'Tensor[]': 'std::vector<phi::DenseTensor*>'
+    'Tensor[]': 'std::vector<phi::DenseTensor*>',
 }
 
-#---------------------- phi selected rows------------------------------
+# ---------------------- phi selected rows------------------------------
 # type mapping to phi, used in implementation
 sr_input_types_map = {
     'Tensor': 'const phi::SelectedRows&',

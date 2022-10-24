@@ -18,7 +18,6 @@ from op_test import OpTest
 
 
 class TestProximalAdagradOp(OpTest):
-
     def setUp(self):
         self.op_type = "proximal_adagrad"
         w = np.random.random((102, 105)).astype("float32")

@@ -18,14 +18,18 @@ paddle.enable_static()
 
 import unittest
 import paddle.fluid as fluid
-from paddle.distributed import ProbabilityEntry, CountFilterEntry, ShowClickEntry
+from paddle.distributed import (
+    ProbabilityEntry,
+    CountFilterEntry,
+    ShowClickEntry,
+)
 
 
 class EntryAttrChecks(unittest.TestCase):
-
     def base(self):
         with self.assertRaises(NotImplementedError):
             from paddle.distributed.entry_attr import EntryAttr
+
             base = EntryAttr()
             base._to_attr()
 
@@ -62,18 +66,21 @@ class EntryAttrChecks(unittest.TestCase):
 
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog):
-                input = fluid.layers.data(name="dnn_data",
-                                          shape=[-1, 1],
-                                          dtype="int64",
-                                          lod_level=1,
-                                          append_batch_size=False)
+                input = fluid.layers.data(
+                    name="dnn_data",
+                    shape=[-1, 1],
+                    dtype="int64",
+                    lod_level=1,
+                    append_batch_size=False,
+                )
                 prob = ProbabilityEntry(0.5)
                 emb = paddle.static.nn.sparse_embedding(
                     input=input,
                     size=[100, 10],
                     is_test=False,
                     entry=prob,
-                    param_attr=fluid.ParamAttr(name="deep_embedding"))
+                    param_attr=fluid.ParamAttr(name="deep_embedding"),
+                )
                 pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
                 predict = fluid.layers.fc(input=pool, size=2, act='softmax')
 
@@ -92,7 +99,6 @@ class EntryAttrChecks(unittest.TestCase):
 
 
 class TestEntryAttrs(EntryAttrChecks):
-
     def test_base(self):
         self.base()
 

@@ -17,29 +17,32 @@ import test_communication_api_base as test_base
 
 
 class TestCommunicationStreamAllToAllAPI(test_base.CommunicationTestDistBase):
-
     def setUp(self):
-        super(TestCommunicationStreamAllToAllAPI, self).setUp(num_of_devices=2,
-                                                              timeout=120)
+        super(TestCommunicationStreamAllToAllAPI, self).setUp(
+            num_of_devices=2, timeout=120
+        )
         self._default_envs = {
             "backend": "nccl",
             "shape": "(100, 200)",
             "dtype": "float32",
-            "seeds": str(self._seeds)
+            "seeds": str(self._seeds),
         }
         self._changeable_envs = {
             "sync_op": ["True", "False"],
-            "use_calc_stream": ["True", "False"]
+            "use_calc_stream": ["True", "False"],
         }
 
     def test_alltoall_stream(self):
-        envs_list = test_base.gen_product_envs_list(self._default_envs,
-                                                    self._changeable_envs)
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
         for envs in envs_list:
             if eval(envs["use_calc_stream"]) and not eval(envs["sync_op"]):
                 continue
-            self.run_test_case("communication_stream_alltoall_api_dygraph.py",
-                               user_defined_envs=envs)
+            self.run_test_case(
+                "communication_stream_alltoall_api_dygraph.py",
+                user_defined_envs=envs,
+            )
 
     def tearDown(self):
         super(TestCommunicationStreamAllToAllAPI, self).tearDown()

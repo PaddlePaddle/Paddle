@@ -214,7 +214,8 @@ if(APPLE)
         CACHE STRING "Build architectures for OSX" FORCE)
   endif()
   # On Mac OS X register class specifier is deprecated and will cause warning error on latest clang 10.0
-  set(COMMON_FLAGS -Wno-deprecated-register)
+  set(COMMON_FLAGS -Wno-deprecated-register -Werror=format
+                   -Werror=inconsistent-missing-override)
 endif()
 
 if(WITH_HETERPS AND WITH_PSLIB)

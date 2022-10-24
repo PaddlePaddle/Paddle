@@ -22,7 +22,6 @@ from .base_cost import Cost
 
 
 class TensorCost:
-
     def __init__(self, tensor=None, dist_tensor=None, shape=None, dtype=None):
         self._check_args(tensor, dist_tensor, shape, dtype)
         self._tensor = tensor
@@ -49,31 +48,35 @@ class TensorCost:
 
     def _check_args(self, tensor, dist_tensor, shape, dtype):
         if tensor is not None:
-            assert (shape is None and dist_tensor is None and dtype is None)
+            assert shape is None and dist_tensor is None and dtype is None
 
             if not isinstance(tensor, Variable):
                 raise TypeError(
                     "Please check tensor type is Variable, but got {}".format(
-                        type(tensor)))
+                        type(tensor)
+                    )
+                )
 
         elif dist_tensor is not None:
-            assert (tensor is None and shape is None)
+            assert tensor is None and shape is None
             if not isinstance(dist_tensor, DistributedTensor):
                 raise TypeError(
-                    "Please check dist_tensor type is DistributedTensor, but got {}"
-                    .format(type(dist_tensor)))
+                    "Please check dist_tensor type is DistributedTensor, but got {}".format(
+                        type(dist_tensor)
+                    )
+                )
 
         elif shape is not None:
-            assert (tensor is None and dist_tensor is None
-                    and dtype is not None)
+            assert tensor is None and dist_tensor is None and dtype is not None
             if not isinstance(shape, (list, set)):
                 raise TypeError(
                     "Please check shape type is list or set, but got {}".format(
-                        type(shape)))
+                        type(shape)
+                    )
+                )
 
         elif dtype is not None:
-            assert (tensor is None and dist_tensor is None
-                    and shape is not None)
+            assert tensor is None and dist_tensor is None and shape is not None
 
     @property
     def cost(self):

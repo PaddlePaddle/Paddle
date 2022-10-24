@@ -20,7 +20,6 @@ import unittest
 
 
 class TestCheckFetchList(unittest.TestCase):
-
     def setUp(self):
         paddle.enable_static()
         self.feed = {"x": np.array([[0], [0], [1], [0]], dtype='float32')}
@@ -32,10 +31,9 @@ class TestCheckFetchList(unittest.TestCase):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             x = paddle.static.data(name='x', shape=[4, 1], dtype='float32')
-            output = paddle.unique_consecutive(x,
-                                               return_inverse=True,
-                                               return_counts=True,
-                                               axis=0)
+            output = paddle.unique_consecutive(
+                x, return_inverse=True, return_counts=True, axis=0
+            )
 
         self.main_program = main_program
         self.fetch_list = output
@@ -46,22 +44,23 @@ class TestCheckFetchList(unittest.TestCase):
             self.main_program,
             feed=self.feed,
             fetch_list=[self.fetch_list],  # support single list/tuple
-            return_numpy=True)
+            return_numpy=True,
+        )
 
         np.testing.assert_array_equal(res[0], self.expected)
 
     def test_with_error(self):
         with self.assertRaises(TypeError):
             fetch_list = [23]
-            res = self.exe.run(self.main_program,
-                               feed=self.feed,
-                               fetch_list=fetch_list)
+            res = self.exe.run(
+                self.main_program, feed=self.feed, fetch_list=fetch_list
+            )
 
         with self.assertRaises(TypeError):
             fetch_list = [(self.fetch_list[0], 32)]
-            res = self.exe.run(self.main_program,
-                               feed=self.feed,
-                               fetch_list=fetch_list)
+            res = self.exe.run(
+                self.main_program, feed=self.feed, fetch_list=fetch_list
+            )
 
 
 if __name__ == '__main__':

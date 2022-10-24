@@ -51,7 +51,6 @@ def collect_node_patch(og, max_depth):
 
 
 class TestTreeConvOp(OpTest):
-
     def setUp(self):
         self.n = 17
         self.fea_size = 3
@@ -60,22 +59,51 @@ class TestTreeConvOp(OpTest):
         self.batch_size = 2
         self.num_filters = 1
         adj_array = [
-            1, 2, 1, 3, 1, 4, 1, 5, 2, 6, 2, 7, 2, 8, 4, 9, 4, 10, 5, 11, 6, 12,
-            6, 13, 9, 14, 9, 15, 9, 16, 9, 17
+            1,
+            2,
+            1,
+            3,
+            1,
+            4,
+            1,
+            5,
+            2,
+            6,
+            2,
+            7,
+            2,
+            8,
+            4,
+            9,
+            4,
+            10,
+            5,
+            11,
+            6,
+            12,
+            6,
+            13,
+            9,
+            14,
+            9,
+            15,
+            9,
+            16,
+            9,
+            17,
         ]
         adj = np.array(adj_array).reshape((1, self.n - 1, 2)).astype('int32')
         adj = np.tile(adj, (self.batch_size, 1, 1))
         self.op_type = 'tree_conv'
         vectors = np.random.random(
-            (self.batch_size, self.n, self.fea_size)).astype('float64')
+            (self.batch_size, self.n, self.fea_size)
+        ).astype('float64')
         self.inputs = {
-            'EdgeSet':
-            adj,
-            'NodesVector':
-            vectors,
-            'Filter':
-            np.random.random((self.fea_size, 3, self.output_size,
-                              self.num_filters)).astype('float64')
+            'EdgeSet': adj,
+            'NodesVector': vectors,
+            'Filter': np.random.random(
+                (self.fea_size, 3, self.output_size, self.num_filters)
+            ).astype('float64'),
         }
         self.attrs = {'max_depth': self.max_depth}
         vectors = []
@@ -90,9 +118,9 @@ class TestTreeConvOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['NodesVector', 'Filter'],
-                        'Out',
-                        max_relative_error=0.5)
+        self.check_grad(
+            ['NodesVector', 'Filter'], 'Out', max_relative_error=0.5
+        )
 
     def get_output_naive(self, batch_id):
         og = [[] for i in range(1, self.n + 2)]
@@ -107,71 +135,88 @@ class TestTreeConvOp(OpTest):
             result = np.zeros((1, W.shape[2], W.shape[3]))
             for v in patch:
                 eta_t = float(v[4] - v[3]) / float(v[4])
-                eta_l = (1.0 - eta_t) * (0.5 if v[2] == 1 else
-                                         float(v[1] - 1.0) / float(v[2] - 1.0))
+                eta_l = (1.0 - eta_t) * (
+                    0.5 if v[2] == 1 else float(v[1] - 1.0) / float(v[2] - 1.0)
+                )
                 eta_r = (1.0 - eta_t) * (1.0 - eta_l)
                 x = self.inputs['NodesVector'][batch_id][v[0] - 1]
-                eta = np.array([eta_l, eta_r, eta_t]).reshape(
-                    (3, 1)).astype('float64')
+                eta = (
+                    np.array([eta_l, eta_r, eta_t])
+                    .reshape((3, 1))
+                    .astype('float64')
+                )
                 Wconvi = np.tensordot(eta, W, axes=([0], [0]))
                 x = np.array(x).reshape((1, 1, self.fea_size))
                 res = np.tensordot(x, Wconvi, axes=2)
                 result = result + res
             vec.append(result)
         vec = np.concatenate(vec, axis=0)
-        vec = np.concatenate([
-            vec,
-            np.zeros((self.n - vec.shape[0], W.shape[2], W.shape[3]),
-                     dtype='float64')
-        ],
-                             axis=0)
+        vec = np.concatenate(
+            [
+                vec,
+                np.zeros(
+                    (self.n - vec.shape[0], W.shape[2], W.shape[3]),
+                    dtype='float64',
+                ),
+            ],
+            axis=0,
+        )
         return vec
 
 
 class TestTreeConv_OpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             nodes_vector_1 = np.random.random((10, 5)).astype("float32")
-            edge_set_1 = fluid.layers.data(name='edge_set_1',
-                                           shape=[10, 2],
-                                           dtype='float32')
+            edge_set_1 = fluid.layers.data(
+                name='edge_set_1', shape=[10, 2], dtype='float32'
+            )
             # the nodes_vector of tree_conv must be Variable.
-            self.assertRaises(TypeError, fluid.contrib.layers.tree_conv,
-                              nodes_vector_1, edge_set_1, 3)
+            self.assertRaises(
+                TypeError,
+                fluid.contrib.layers.tree_conv,
+                nodes_vector_1,
+                edge_set_1,
+                3,
+            )
 
-            nodes_vector_2 = fluid.layers.data(name='vectors2',
-                                               shape=[10, 5],
-                                               dtype='float32')
+            nodes_vector_2 = fluid.layers.data(
+                name='vectors2', shape=[10, 5], dtype='float32'
+            )
             edge_set_2 = np.random.random((10, 2)).astype("float32")
             # the edge_set of tree_conv must be Variable.
-            self.assertRaises(TypeError, fluid.contrib.layers.tree_conv,
-                              nodes_vector_2, edge_set_2, 3)
+            self.assertRaises(
+                TypeError,
+                fluid.contrib.layers.tree_conv,
+                nodes_vector_2,
+                edge_set_2,
+                3,
+            )
 
 
 class TestDygraphTreeConv_OpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
-            TreeConv = fluid.dygraph.nn.TreeConv(feature_size=5,
-                                                 output_size=6,
-                                                 num_filters=1,
-                                                 max_depth=2)
+            TreeConv = fluid.dygraph.nn.TreeConv(
+                feature_size=5, output_size=6, num_filters=1, max_depth=2
+            )
             nodes_vector_1 = np.random.random((10, 5)).astype("float32")
-            edge_set_1 = fluid.layers.data(name='edge_set_1',
-                                           shape=[10, 2],
-                                           dtype='float32')
+            edge_set_1 = fluid.layers.data(
+                name='edge_set_1', shape=[10, 2], dtype='float32'
+            )
             # the nodes_vector of TreeConv must be Variable.
-            self.assertRaises(TypeError, TreeConv, nodes_vector_1, edge_set_1,
-                              3)
+            self.assertRaises(
+                TypeError, TreeConv, nodes_vector_1, edge_set_1, 3
+            )
 
-            nodes_vector_2 = fluid.layers.data(name='vectors2',
-                                               shape=[10, 5],
-                                               dtype='float32')
+            nodes_vector_2 = fluid.layers.data(
+                name='vectors2', shape=[10, 5], dtype='float32'
+            )
             edge_set_2 = np.random.random((10, 2)).astype("float32")
             # the edge_set of TreeConv must be Variable.
-            self.assertRaises(TypeError, TreeConv, nodes_vector_2, edge_set_2,
-                              3)
+            self.assertRaises(
+                TypeError, TreeConv, nodes_vector_2, edge_set_2, 3
+            )
 
 
 if __name__ == "__main__":

@@ -28,20 +28,24 @@ SEED = 2021
 
 
 class TestTopk(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
         self.op_type = "top_k"
         self.init_dtype()
 
-        x = np.array([[0.78104149, 0.88745828, 0.32362268],
-                      [0.82196718, 0.48763277, 0.42826136],
-                      [0.96527182, 0.34851612, 0.12959783]]).astype(self.dtype)
+        x = np.array(
+            [
+                [0.78104149, 0.88745828, 0.32362268],
+                [0.82196718, 0.48763277, 0.42826136],
+                [0.96527182, 0.34851612, 0.12959783],
+            ]
+        ).astype(self.dtype)
 
         self.inputs = {'X': x}
-        np_out = np.array([[0.88745828], [0.82196718],
-                           [0.96527182]]).astype(self.dtype)
+        np_out = np.array([[0.88745828], [0.82196718], [0.96527182]]).astype(
+            self.dtype
+        )
         np_indices = np.array([[1], [0], [0]])
 
         self.attrs = {'k': 1, "axis": -1}
@@ -59,20 +63,28 @@ class TestTopk(OpTest):
 
 
 class TestTopkV2(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
         self.op_type = "top_k"
         self.init_dtype()
 
-        x = np.array([[0.78104149, 0.88745828, 0.32362268],
-                      [0.82196718, 0.48763277, 0.42826136],
-                      [0.96527182, 0.34851612, 0.12959783]]).astype(self.dtype)
+        x = np.array(
+            [
+                [0.78104149, 0.88745828, 0.32362268],
+                [0.82196718, 0.48763277, 0.42826136],
+                [0.96527182, 0.34851612, 0.12959783],
+            ]
+        ).astype(self.dtype)
 
         self.inputs = {'X': x}
-        np_out = np.array([[0.88745828, 0.78104149], [0.82196718, 0.48763277],
-                           [0.96527182, 0.34851612]]).astype(self.dtype)
+        np_out = np.array(
+            [
+                [0.88745828, 0.78104149],
+                [0.82196718, 0.48763277],
+                [0.96527182, 0.34851612],
+            ]
+        ).astype(self.dtype)
         np_indices = np.array([[1, 0], [0, 1], [0, 1]])
 
         self.attrs = {'k': 2, "axis": -1}
@@ -90,7 +102,6 @@ class TestTopkV2(OpTest):
 
 
 class TestTopkV3(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -99,10 +110,9 @@ class TestTopkV3(OpTest):
         self.init_dtype()
         self.set_input_data()
         self.set_attrs()
-        output, indices = numpy_topk(self.input_data,
-                                     axis=self.axis,
-                                     k=self.k,
-                                     largest=True)
+        output, indices = numpy_topk(
+            self.input_data, axis=self.axis, k=self.k, largest=True
+        )
 
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis}
@@ -123,8 +133,9 @@ class TestTopkV3(OpTest):
         self.axis = 1
 
     def set_input_data(self):
-        self.input_data = np.random.choice(10000, size=(10, 20),
-                                           replace=False).astype(self.dtype)
+        self.input_data = np.random.choice(
+            10000, size=(10, 20), replace=False
+        ).astype(self.dtype)
 
 
 if __name__ == '__main__':

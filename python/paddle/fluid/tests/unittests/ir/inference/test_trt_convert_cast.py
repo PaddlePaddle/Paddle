@@ -22,7 +22,6 @@ from typing import List
 
 
 class TrtConvertCastTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -31,14 +30,13 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             return False
         if attrs[0]['in_dtype'] in [4, 5] and attrs[0]['out_dtype'] == 4:
             return False
-        if attrs[0]['in_dtype'] not in [
-                2, 4, 5
-        ] or attrs[0]['out_dtype'] not in [2, 4, 5]:
+        if attrs[0]['in_dtype'] not in [2, 4, 5] or attrs[0][
+            'out_dtype'
+        ] not in [2, 4, 5]:
             return False
         return True
 
     def sample_program_configs(self):
-
         def generate_input(type):
             if type == 0:
                 return np.ones([1, 3, 64, 64]).astype(np.bool)
@@ -53,32 +51,32 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             for out_dtype in [0, 2, 4, 5, 6]:
                 dics = [{"in_dtype": in_dtype, "out_dtype": out_dtype}]
 
-                ops_config = [{
-                    "op_type": "cast",
-                    "op_inputs": {
-                        "X": ["input_data"]
-                    },
-                    "op_outputs": {
-                        "Out": ["cast_output_data"]
-                    },
-                    "op_attrs": dics[0]
-                }]
+                ops_config = [
+                    {
+                        "op_type": "cast",
+                        "op_inputs": {"X": ["input_data"]},
+                        "op_outputs": {"Out": ["cast_output_data"]},
+                        "op_attrs": dics[0],
+                    }
+                ]
                 ops = self.generate_op_config(ops_config)
 
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={},
                     inputs={
-                        "input_data":
-                        TensorConfig(data_gen=partial(generate_input, in_dtype))
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input, in_dtype)
+                        )
                     },
-                    outputs=["cast_output_data"])
+                    outputs=["cast_output_data"],
+                )
 
                 yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64, 64]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -100,19 +98,23 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-2
+            attrs, False
+        ), 1e-2
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-2
+            attrs, True
+        ), 1e-2
 
     def test(self):
         self.run_test()
