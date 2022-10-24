@@ -376,7 +376,6 @@ class TransformerDecoder(nn.Layer):
 
         for i, mod in enumerate(self.layers):
             if self.use_recompute and self.recompute_granularity == "full":
-                print("recompute mod ================")
                 mod = auto.recompute(mod)
 
             if cache is None:
