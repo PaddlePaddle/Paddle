@@ -2839,7 +2839,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     # Merge ture and false output if they are not None
     if return_names is None:
         is_dy2staic = False
-        return_names = ["no name"] * len(to_sequence(true_output))
+        return_names = ["no name"] * len(flatten(true_output))
     else:
         """
         dy2static will set the return_names and expand the return values to UndefinedVar.
@@ -2855,16 +2855,16 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             true_output, false_output, return_names
         )
 
-    if len(to_sequence(true_output)) != len(to_sequence(false_output)):
+    if len(flatten(true_output)) != len(flatten(false_output)):
         raise ValueError(
             "true fn returns {} vars, but false fn returns {} vars, which is not equals".format(
                 len(to_sequence(true_output)), len(to_sequence(false_output))
             )
         )
     for true_out, false_out, return_name in zip(
-        to_sequence(true_output),
-        to_sequence(false_output),
-        to_sequence(return_names),
+        flatten(true_output),
+        flatten(false_output),
+        flatten(return_names),
     ):
         try:
             assert_same_structure(true_out, false_out, check_types=False)
@@ -2876,10 +2876,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             )
 
     def check_ret_none(seq_true, seq_false, seq_names):
-        length = len(seq_true)
-        for i in range(length):
-            f_true = flatten(seq_true[i])
-            f_false = flatten(seq_false[i])
+        for f_true, f_false, f_name in zip(seq_true, seq_false, seq_names):
+            f_true = flatten(f_true)
+            f_false = flatten(f_false)
             for idx in range(len(f_true)):
                 if (
                     f_true[idx] is None
@@ -2891,7 +2890,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                         "In cond : Var '{}' or part of it is set differently in ifelse branchs, "
                         "<{}, {}> in true branch and <{}, {}> in false branch. Set var to "
                         "'None' in ifelse block might lead to error.".format(
-                            seq_names[i],
+                            f_name,
                             type(f_true[idx]),
                             f_true[idx],
                             type(f_false[idx]),
@@ -2923,9 +2922,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     merged_output = list(
         map(
             merge_every_var_list,
-            to_sequence(false_output),
-            to_sequence(true_output),
-            to_sequence(return_names),
+            flatten(false_output),
+            flatten(true_output),
+            flatten(return_names),
         )
     )
     merged_output = pack_sequence_as(false_output, flatten(merged_output))
@@ -2988,19 +2987,19 @@ def expand_undefined_var(nest1, nest2, names):
     nest1_out = list(
         map(
             map_fn,
-            to_sequence(nest1),
-            to_sequence(nest2),
-            to_sequence(names),
-            [0 for i in to_sequence(names)],
+            flatten(nest1),
+            flatten(nest2),
+            flatten(names),
+            [0 for i in flatten(names)],
         )
     )
     nest2_out = list(
         map(
             map_fn,
-            to_sequence(nest2),
-            to_sequence(nest1),
-            to_sequence(names),
-            [1 for i in to_sequence(names)],
+            flatten(nest2),
+            flatten(nest1),
+            flatten(names),
+            [1 for i in flatten(names)],
         )
     )
     if not is_sequence(nest1):
