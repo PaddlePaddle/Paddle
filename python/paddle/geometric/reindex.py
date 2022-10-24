@@ -32,9 +32,8 @@ def reindex_graph(
     is to reindex the ids information of the input nodes, and return the
     corresponding graph edges after reindex.
 
-    **Notes**:
-        The number in x should be unique, otherwise it would cause potential errors.
-    We will reindex all the nodes from 0.
+    Note:
+        The number in x should be unique, otherwise it would cause potential errors. We will reindex all the nodes from 0.
 
     Take input nodes x = [0, 1, 2] as an example.
     If we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
@@ -152,10 +151,8 @@ def reindex_heter_graph(
     is to reindex the ids information of the input nodes, and return the
     corresponding graph edges after reindex.
 
-    **Notes**:
-        The number in x should be unique, otherwise it would cause potential errors.
-    We support multi-edge-types neighbors reindexing in reindex_heter_graph api.
-    We will reindex all the nodes from 0.
+    Note:
+        The number in x should be unique, otherwise it would cause potential errors. We support multi-edge-types neighbors reindexing in reindex_heter_graph api. We will reindex all the nodes from 0.
 
     Take input nodes x = [0, 1, 2] as an example.
     For graph A, suppose we have neighbors = [8, 9, 0, 4, 7, 6, 7], and count = [2, 3, 2],
