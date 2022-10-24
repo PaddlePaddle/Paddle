@@ -276,10 +276,12 @@ class FusedFeedForwardOpGrad : public framework::OperatorWithKernel {
                    "Input",
                    "Dropout1Out",
                    "FusedFeedForwardGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Dropout2Out"),
-                   "Input",
-                   "Dropout2Out",
-                   "FusedFeedForwardGrad");
+    if (!pre_layer_norm) {
+      OP_INOUT_CHECK(ctx->HasInput("Dropout2Out"),
+                     "Input",
+                     "Dropout2Out",
+                     "FusedFeedForwardGrad");
+    }
     OP_INOUT_CHECK(ctx->HasInput("Linear1Weight"),
                    "Input",
                    "Linear1Weight",
