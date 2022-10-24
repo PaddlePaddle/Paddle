@@ -206,7 +206,7 @@ void TensorRTEngine::FreezeNetwork() {
 
   for (int i = 0; i < network()->getNbInputs(); ++i) {
     auto *input = network()->getInput(i);
-    swith(input->getType()) {
+    switch(input->getType()) {
       case nvinfer1::DataType::kInt32:
       case nvinfer1::DataType::kBOOL:
       case nvinfer1::DataType::kHALF:
