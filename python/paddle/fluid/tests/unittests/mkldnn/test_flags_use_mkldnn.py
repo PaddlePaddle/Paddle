@@ -20,7 +20,6 @@ import re
 
 
 class TestFlagsUseMkldnn(unittest.TestCase):
-
     def setUp(self):
         self._python_interp = sys.executable
         self._python_interp += " check_flags_use_mkldnn.py"
@@ -45,10 +44,12 @@ class TestFlagsUseMkldnn(unittest.TestCase):
     def test_flags_use_mkl_dnn(self):
         cmd = self._python_interp
 
-        proc = subprocess.Popen(cmd.split(" "),
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                env=self.env)
+        proc = subprocess.Popen(
+            cmd.split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=self.env,
+        )
 
         out, err = proc.communicate()
         returncode = proc.returncode

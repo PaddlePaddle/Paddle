@@ -29,26 +29,43 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
 
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.transpiler.distribute_transpiler import (
+    DistributeTranspilerConfig,
+)
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 from paddle.fluid.incubate.fleet.parameter_server import version
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+    get_sparse_tablenames,
+)
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_lr_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _has_global_step
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
-    SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import (
+    _has_global_step,
+)
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+    TrainerRuntimeConfig,
+    DistributedStrategy,
+    SyncStrategy,
+    AsyncStrategy,
+    HalfAsyncStrategy,
+    GeoStrategy,
+    StrategyFactory,
+)
 
 from paddle.fluid.transpiler.details.checkport import wait_server_ready
 
 from paddle.fluid.incubate.fleet.parameter_server.mode import PSMode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
-from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
-from paddle.fluid.incubate.fleet.parameter_server.ir import pserver_pass as server
+from paddle.fluid.incubate.fleet.parameter_server.ir import (
+    trainer_pass as worker,
+)
+from paddle.fluid.incubate.fleet.parameter_server.ir import (
+    pserver_pass as server,
+)
 from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
 
 
@@ -105,25 +122,29 @@ class FleetTranspiler(Fleet):
         def sync_strategy_envs():
             kwargs = {}
             kwargs[
-                "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
+                "pserver_endpoints"
+            ] = self._role_maker.get_pserver_endpoints()
             kwargs["trainer_id"] = self._role_maker.worker_index()
             return kwargs
 
         def geo_strategy_envs():
-
             def get_sparse_attrs():
                 opt_init_map = {}
                 opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
                 opt_init_map["fill_constant"] = ["value"]
                 opt_init_map["uniform_random"] = ["seed", "min", "max"]
                 opt_init_map["truncated_gaussian_random"] = [
-                    "seed", "mean", "std"
+                    "seed",
+                    "mean",
+                    "std",
                 ]
 
-                dist_varnames = get_sparse_tablenames(self._origin_main_program,
-                                                      True)
+                dist_varnames = get_sparse_tablenames(
+                    self._origin_main_program, True
+                )
                 sparse_varnames = get_sparse_tablenames(
-                    self._origin_main_program, False)
+                    self._origin_main_program, False
+                )
 
                 if len(dist_varnames) != 0:
                     raise ValueError(
@@ -132,15 +153,18 @@ class FleetTranspiler(Fleet):
 
                 init_attrs = []
                 for value_name in sparse_varnames:
-                    value_var = self._origin_main_program.global_block(
-                    ).vars[value_name]
+                    value_var = self._origin_main_program.global_block().vars[
+                        value_name
+                    ]
                     value_attr = [
                         value_name,
-                        ",".join([str(dim) for dim in value_var.shape])
+                        ",".join([str(dim) for dim in value_var.shape]),
                     ]
                     for op in self._origin_startup_program.global_block().ops:
-                        if op.type in opt_init_map.keys(
-                        ) and value_name == op.output("Out")[0]:
+                        if (
+                            op.type in opt_init_map.keys()
+                            and value_name == op.output("Out")[0]
+                        ):
                             init_attr = [op.type]
                             for attr in opt_init_map[op.type]:
                                 init_attr.append(str(op.attr(attr)))
@@ -185,15 +209,18 @@ class FleetTranspiler(Fleet):
 
         if self.compiled_config.is_geo_mode():
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
-                recv_type=4)
+                recv_type=4
+            )
         else:
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
-                recv_type=1)
+                recv_type=1
+            )
 
         from paddle.fluid.communicator import Communicator
+
         self._communicator = Communicator(
-            trainer_config.mode, kwargs,
-            trainer_config.get_communicator_flags())
+            trainer_config.mode, kwargs, trainer_config.get_communicator_flags()
+        )
 
         self._communicator.init_with_ctx(send_ctx, recv_ctx)
 
@@ -201,7 +228,8 @@ class FleetTranspiler(Fleet):
             self._communicator.start()
         else:
             raise ValueError(
-                "Communicator can only be inited once, please check")
+                "Communicator can only be inited once, please check"
+            )
 
     def init_worker(self):
         """
@@ -231,23 +259,31 @@ class FleetTranspiler(Fleet):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
             sparse_varnames = self.compiled_config.get_sparse_varname_on_ps(
-                True)
-            distribtued_varnames = self.compiled_config.get_sparse_varname_on_ps(
-                False)
+                True
+            )
+            distribtued_varnames = (
+                self.compiled_config.get_sparse_varname_on_ps(False)
+            )
 
             remaining_vars = list(
                 filter(
-                    FleetTranspiler.__exclude_vars(sparse_varnames +
-                                                   distribtued_varnames),
-                    self.main_program.list_vars()))
+                    FleetTranspiler.__exclude_vars(
+                        sparse_varnames + distribtued_varnames
+                    ),
+                    self.main_program.list_vars(),
+                )
+            )
 
-            fluid.io.load_vars(self._executor,
-                               main_program=self.main_program,
-                               dirname=model_dir,
-                               vars=remaining_vars)
+            fluid.io.load_vars(
+                self._executor,
+                main_program=self.main_program,
+                dirname=model_dir,
+                vars=remaining_vars,
+            )
 
-            self._load_sparse_params(dirname=model_dir,
-                                     varnames=sparse_varnames)
+            self._load_sparse_params(
+                dirname=model_dir, varnames=sparse_varnames
+            )
 
             # todo(tangwei12) load distributed vars
             # self._load_sparse_params(dirname=model_dir, varnames=distribtued_varnames)
@@ -366,13 +402,15 @@ class FleetTranspiler(Fleet):
         self._optimizer = ParameterServerOptimizer(optimizer, _strategy)
         return self._optimizer
 
-    def save_inference_model(self,
-                             executor,
-                             dirname,
-                             feeded_var_names,
-                             target_vars,
-                             main_program=None,
-                             export_for_deployment=True):
+    def save_inference_model(
+        self,
+        executor,
+        dirname,
+        feeded_var_names,
+        target_vars,
+        main_program=None,
+        export_for_deployment=True,
+    ):
         """
         Prune the given `main_program` to build a new program especially for inference,
         and then save it and all related parameters to given `dirname` by the `executor`.
@@ -402,14 +440,28 @@ class FleetTranspiler(Fleet):
                 raise TypeError(
                     "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
                 )
-            fluid.io.save_inference_model(dirname, feeded_var_names,
-                                          target_vars, executor, main_program,
-                                          None, None, export_for_deployment)
+            fluid.io.save_inference_model(
+                dirname,
+                feeded_var_names,
+                target_vars,
+                executor,
+                main_program,
+                None,
+                None,
+                export_for_deployment,
+            )
         else:
-            fluid.io.save_inference_model(dirname, feeded_var_names,
-                                          target_vars, executor,
-                                          self._origin_main_program, None, None,
-                                          export_for_deployment, True)
+            fluid.io.save_inference_model(
+                dirname,
+                feeded_var_names,
+                target_vars,
+                executor,
+                self._origin_main_program,
+                None,
+                None,
+                export_for_deployment,
+                True,
+            )
 
             model_basename = "__model__"
             model_filename = os.path.join(dirname, model_basename)
@@ -423,6 +475,7 @@ class FleetTranspiler(Fleet):
 
     def _load_sparse_params(self, dirname, varnames):
         from paddle.fluid.communicator import LargeScaleKV
+
         scale_kv = LargeScaleKV()
         for varname in varnames:
             origin_varname, _, _ = public._get_varname_parts(varname)
@@ -431,8 +484,15 @@ class FleetTranspiler(Fleet):
 
     def _get_optimizer_status(self, op, param_name):
         supported_opts = [
-            "sgd", "adam", "adagrad", "adamax", "momentum", "lars_momentum",
-            "rmsprop", "decayed_adagrad", "ftrl"
+            "sgd",
+            "adam",
+            "adagrad",
+            "adamax",
+            "momentum",
+            "lars_momentum",
+            "rmsprop",
+            "decayed_adagrad",
+            "ftrl",
         ]
 
         reshaped_val_map = {}
@@ -443,7 +503,9 @@ class FleetTranspiler(Fleet):
         reshaped_val_map["momentum"] = ["velocity_0"]
         reshaped_val_map["lars_momentum"] = ["velocity_0"]
         reshaped_val_map["rmsprop"] = [
-            "momentum_0", "mean_square_0", "mean_grad_0"
+            "momentum_0",
+            "mean_square_0",
+            "mean_grad_0",
         ]
         reshaped_val_map["decayed_adagrad"] = ["moment_0"]
         reshaped_val_map["ftrl"] = ["squared_0", "linear_0"]
@@ -454,8 +516,10 @@ class FleetTranspiler(Fleet):
 
         if op not in supported_opts:
             raise ValueError(
-                "fleet can not support optimizer: {}, only this can be supported: {}"
-                .format(op, supported_opts))
+                "fleet can not support optimizer: {}, only this can be supported: {}".format(
+                    op, supported_opts
+                )
+            )
 
         reshaped_names = [
             param_name + "_" + val for val in reshaped_val_map[op]
@@ -472,8 +536,11 @@ class FleetTranspiler(Fleet):
     def _get_optimizer_op(self, param_name):
         opts = public._get_optimize_ops(self._origin_main_program)
         for op in opts:
-            if "Param" in op.input_names and \
-                    "LearningRate" in op.input_names and op.input("Param")[0] == param_name:
+            if (
+                "Param" in op.input_names
+                and "LearningRate" in op.input_names
+                and op.input("Param")[0] == param_name
+            ):
                 return op
 
     def _save_dense_params(self, executor, dirname, context, main_program):
@@ -492,27 +559,24 @@ class FleetTranspiler(Fleet):
 
             optimizer = self._get_optimizer_op(varname)
             reshaped_varnames, origin_varnames = self._get_optimizer_status(
-                optimizer.type, varname)
+                optimizer.type, varname
+            )
 
             for var_name in [varname] + reshaped_varnames + origin_varnames:
                 var = self._origin_main_program.global_block().vars[var_name]
-                block.append_op(type='recv_save',
-                                attrs={
-                                    "trainer_id":
-                                    self._role_maker.worker_index(),
-                                    "shape":
-                                    var.shape,
-                                    "slice_shapes":
-                                    [",".join([str(i) for i in var.shape])],
-                                    "slice_varnames": [var.name],
-                                    "remote_varnames": [var.name],
-                                    "is_sparse":
-                                    False,
-                                    "endpoints":
-                                    var_ctx.split_endpoints(),
-                                    "file_path":
-                                    os.path.join(dirname, var.name)
-                                })
+                block.append_op(
+                    type='recv_save',
+                    attrs={
+                        "trainer_id": self._role_maker.worker_index(),
+                        "shape": var.shape,
+                        "slice_shapes": [",".join([str(i) for i in var.shape])],
+                        "slice_varnames": [var.name],
+                        "remote_varnames": [var.name],
+                        "is_sparse": False,
+                        "endpoints": var_ctx.split_endpoints(),
+                        "file_path": os.path.join(dirname, var.name),
+                    },
+                )
 
         executor.run(prog)
         return local_vars
@@ -531,7 +595,8 @@ class FleetTranspiler(Fleet):
 
             optimizer = self._get_optimizer_op(varname)
             reshaped_varnames, origin_varnames = self._get_optimizer_status(
-                optimizer.type, varname)
+                optimizer.type, varname
+            )
 
             var = self._origin_main_program.global_block().vars[varname]
             slice_shapes = []
@@ -540,37 +605,34 @@ class FleetTranspiler(Fleet):
             for section in var_ctx.sections():
                 slice_shapes.append(str(section) + dims1)
 
-            block.append_op(type='recv_save',
-                            attrs={
-                                "trainer_id":
-                                self._role_maker.worker_index(),
-                                "shape":
-                                var.shape,
-                                "slice_shapes":
-                                slice_shapes,
-                                "slice_varnames":
-                                var_ctx.split_varnames(),
-                                "remote_varnames":
-                                var_ctx.split_varnames(),
-                                "is_sparse":
-                                True,
-                                "endpoints":
-                                var_ctx.split_endpoints(),
-                                "pserver_num":
-                                len(self._role_maker.get_pserver_endpoints()),
-                                "file_path":
-                                os.path.join(dirname, var.name)
-                            })
+            block.append_op(
+                type='recv_save',
+                attrs={
+                    "trainer_id": self._role_maker.worker_index(),
+                    "shape": var.shape,
+                    "slice_shapes": slice_shapes,
+                    "slice_varnames": var_ctx.split_varnames(),
+                    "remote_varnames": var_ctx.split_varnames(),
+                    "is_sparse": True,
+                    "endpoints": var_ctx.split_endpoints(),
+                    "pserver_num": len(
+                        self._role_maker.get_pserver_endpoints()
+                    ),
+                    "file_path": os.path.join(dirname, var.name),
+                },
+            )
 
             for reshaped_varname in reshaped_varnames:
-                var = self._origin_main_program.global_block(
-                ).vars[reshaped_varname]
+                var = self._origin_main_program.global_block().vars[
+                    reshaped_varname
+                ]
 
                 slice_varnames = []
                 remote_varnames = []
                 for i in range(len(var_ctx.split_varnames())):
-                    slice_varnames.append("{}.block{}".format(
-                        reshaped_varname, i))
+                    slice_varnames.append(
+                        "{}.block{}".format(reshaped_varname, i)
+                    )
                     remote_varnames.append(reshaped_varname)
 
                 block.append_op(
@@ -583,97 +645,112 @@ class FleetTranspiler(Fleet):
                         "remote_varnames": remote_varnames,
                         "is_sparse": True,
                         "endpoints": var_ctx.split_endpoints(),
-                        "pserver_num":
-                        len(self._role_maker.get_pserver_endpoints()),
-                        "file_path": os.path.join(dirname, var.name)
-                    })
+                        "pserver_num": len(
+                            self._role_maker.get_pserver_endpoints()
+                        ),
+                        "file_path": os.path.join(dirname, var.name),
+                    },
+                )
 
             for origin_varname in origin_varnames:
-                var = self._origin_main_program.global_block(
-                ).vars[origin_varname]
+                var = self._origin_main_program.global_block().vars[
+                    origin_varname
+                ]
 
-                block.append_op(type='recv_save',
-                                attrs={
-                                    "trainer_id":
-                                    self._role_maker.worker_index(),
-                                    "shape":
-                                    var.shape,
-                                    "slice_shapes":
-                                    [",".join([str(i) for i in var.shape])],
-                                    "slice_varnames": [origin_varname],
-                                    "remote_varnames": [origin_varname],
-                                    "is_sparse":
-                                    False,
-                                    "endpoints":
-                                    var_ctx.split_endpoints()[:1],
-                                    "file_path":
-                                    os.path.join(dirname, var.name)
-                                })
+                block.append_op(
+                    type='recv_save',
+                    attrs={
+                        "trainer_id": self._role_maker.worker_index(),
+                        "shape": var.shape,
+                        "slice_shapes": [",".join([str(i) for i in var.shape])],
+                        "slice_varnames": [origin_varname],
+                        "remote_varnames": [origin_varname],
+                        "is_sparse": False,
+                        "endpoints": var_ctx.split_endpoints()[:1],
+                        "file_path": os.path.join(dirname, var.name),
+                    },
+                )
         executor.run(prog)
         return context.keys()
 
-    def _save_distributed_params(self, executor, dirname, context,
-                                 main_program):
+    def _save_distributed_params(
+        self, executor, dirname, context, main_program
+    ):
         prog = Program()
         block = prog.global_block()
 
         for name, var_ctx in context.items():
-            block.append_op(type='checkpoint_notify',
-                            attrs={
-                                "varname": name,
-                                "is_slice": True,
-                                "slice_varnames": var_ctx.split_varnames(),
-                                "remote_varnames": var_ctx.split_varnames(),
-                                "endpoints": var_ctx.split_endpoints(),
-                                "dirname": dirname
-                            })
+            block.append_op(
+                type='checkpoint_notify',
+                attrs={
+                    "varname": name,
+                    "is_slice": True,
+                    "slice_varnames": var_ctx.split_varnames(),
+                    "remote_varnames": var_ctx.split_varnames(),
+                    "endpoints": var_ctx.split_endpoints(),
+                    "dirname": dirname,
+                },
+            )
 
         executor.run(prog)
         return context.keys()
 
     def _save_distributed_persistables(self, executor, dirname, main_program):
         dense_ctx = fleet.compiled_config.get_communicator_recv_context(
-            recv_type=1)
+            recv_type=1
+        )
 
         sparse_ctx = fleet.compiled_config.get_communicator_recv_context(
-            recv_type=2)
+            recv_type=2
+        )
 
         distributed_ctx = fleet.compiled_config.get_communicator_recv_context(
-            recv_type=3)
+            recv_type=3
+        )
 
-        recv_dense_varnames = self._save_dense_params(executor, dirname,
-                                                      dense_ctx, main_program)
+        recv_dense_varnames = self._save_dense_params(
+            executor, dirname, dense_ctx, main_program
+        )
 
-        recv_sparse_varnames = self._save_sparse_params(executor, dirname,
-                                                        sparse_ctx,
-                                                        main_program)
+        recv_sparse_varnames = self._save_sparse_params(
+            executor, dirname, sparse_ctx, main_program
+        )
 
         recv_distributed_varnames = self._save_distributed_params(
-            executor, dirname, distributed_ctx, main_program)
+            executor, dirname, distributed_ctx, main_program
+        )
 
-        saved_varnames = recv_dense_varnames + list(
-            recv_sparse_varnames) + list(recv_distributed_varnames)
+        saved_varnames = (
+            recv_dense_varnames
+            + list(recv_sparse_varnames)
+            + list(recv_distributed_varnames)
+        )
 
         remaining_vars = list(
-            filter(FleetTranspiler.__exclude_vars(saved_varnames),
-                   main_program.list_vars()))
+            filter(
+                FleetTranspiler.__exclude_vars(saved_varnames),
+                main_program.list_vars(),
+            )
+        )
 
-        fluid.io.save_vars(executor,
-                           main_program=main_program,
-                           dirname=dirname,
-                           vars=remaining_vars)
+        fluid.io.save_vars(
+            executor,
+            main_program=main_program,
+            dirname=dirname,
+            vars=remaining_vars,
+        )
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
-        This function filters out all variables with `persistable==True` from the
-        give `main_program` and then saves these variables to the folder `dirname`
-        or file `filename`.
+                This function filters out all variables with `persistable==True` from the
+                give `main_program` and then saves these variables to the folder `dirname`
+                or file `filename`.
 
-        The `dirname` is used to specify the folder where persistable variables
-        are going to be saved. If you would like to save variables in separate
-        files, set `filename` None;
-if you would like to save all variables in a
-        single file, use `filename` to specify the file name.
+                The `dirname` is used to specify the folder where persistable variables
+                are going to be saved. If you would like to save variables in separate
+                files, set `filename` None;
+        if you would like to save all variables in a
+                single file, use `filename` to specify the file name.
         """
 
         if self._inner_mode == PSMode.PSLIB:
@@ -702,12 +779,12 @@ if you would like to save all variables in a
                 "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        self._save_distributed_persistables(save_executor, dirname,
-                                            main_program)
+        self._save_distributed_persistables(
+            save_executor, dirname, main_program
+        )
 
     @staticmethod
     def __exclude_vars(exclude_var_names=[]):
-
         def is_valid(var):
             if var.name in exclude_var_names:
                 return False
@@ -719,9 +796,11 @@ if you would like to save all variables in a
             if origin_varname == "learning_rate_0":
                 return False
 
-            if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                    var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                    var.desc.type() == core.VarDesc.VarType.READER:
+            if (
+                var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH
+                or var.desc.type() == core.VarDesc.VarType.FETCH_LIST
+                or var.desc.type() == core.VarDesc.VarType.READER
+            ):
                 return False
             return var.persistable
 
@@ -760,7 +839,8 @@ class ParameterServerOptimizer(DistributedOptimizer):
                     "Currently, distributed optimizer only support Adam"
                     "Will config built-in adam for you."
                     "We will support more functions in DistributedOptimizer",
-                    sys.stderr)
+                    sys.stderr,
+                )
                 self._optimizer_name = "DistributedAdam"
 
             self._optimizer = globals()[self._optimizer_name](optimizer)
@@ -770,16 +850,22 @@ class ParameterServerOptimizer(DistributedOptimizer):
         self._window = 1
         self.type = "downpour"
         self.data_norm_name = [
-            ".batch_size", ".batch_square_sum", ".batch_sum",
-            ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
+            ".batch_size",
+            ".batch_square_sum",
+            ".batch_sum",
+            ".batch_size@GRAD",
+            ".batch_square_sum@GRAD",
+            ".batch_sum@GRAD",
         ]
 
-    def backward(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None,
-                 callbacks=None):
+    def backward(
+        self,
+        loss,
+        startup_program=None,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None,
+    ):
         raise NotImplementedError()
 
     def apply_gradients(self, params_grads):
@@ -799,7 +885,8 @@ class ParameterServerOptimizer(DistributedOptimizer):
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
             _startup = worker.init_from_server_pass(_startup, compiled_config)
             _startup = worker.delet_extra_optimizes_pass(
-                _startup, compiled_config)
+                _startup, compiled_config
+            )
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
@@ -814,57 +901,76 @@ class ParameterServerOptimizer(DistributedOptimizer):
             _main = server.add_listen_and_serv_pass(_main, compiled_config)
             _main = server.add_rpc_global_flags_pass(_main, compiled_config)
             _main = server.add_optimizer_pass(_main, compiled_config)
-            _main = server.large_scale_sparse_pass(_main, _main,
-                                                   compiled_config, False)
+            _main = server.large_scale_sparse_pass(
+                _main, _main, compiled_config, False
+            )
             _startup = server.build_pserver_startup_program_pass(
-                _startup, _main, compiled_config)
-            _startup = server.large_scale_sparse_pass(_startup, _main,
-                                                      compiled_config, True)
+                _startup, _main, compiled_config
+            )
+            _startup = server.large_scale_sparse_pass(
+                _startup, _main, compiled_config, True
+            )
 
             if not compiled_config.is_sync_mode():
                 _main = server.delete_unused_in_main_pass(
-                    _main, compiled_config)
+                    _main, compiled_config
+                )
 
             _startup = server.delete_unused_in_startup_pass(
-                _startup, _main, compiled_config)
+                _startup, _main, compiled_config
+            )
         else:
             _main = server.add_listen_and_serv_pass(_main, compiled_config)
             _main = server.add_rpc_global_flags_pass(_main, compiled_config)
             _main = server.add_geo_optimizer_pass(_main, compiled_config)
-            _main = server.large_scale_sparse_pass(_main, _main,
-                                                   compiled_config, False)
+            _main = server.large_scale_sparse_pass(
+                _main, _main, compiled_config, False
+            )
             _startup = server.build_pserver_startup_program_pass(
-                _startup, _main, compiled_config)
-            _startup = server.large_scale_sparse_pass(_startup, _main,
-                                                      compiled_config, True)
+                _startup, _main, compiled_config
+            )
+            _startup = server.large_scale_sparse_pass(
+                _startup, _main, compiled_config, True
+            )
             _startup = server.delete_unused_in_startup_pass(
-                _startup, _main, compiled_config)
+                _startup, _main, compiled_config
+            )
 
         return _main, _startup
 
-    def minimize(self,
-                 losses,
-                 scopes=None,
-                 startup_programs=None,
-                 parameter_list=None,
-                 no_grad_set=None):
+    def minimize(
+        self,
+        losses,
+        scopes=None,
+        startup_programs=None,
+        parameter_list=None,
+        no_grad_set=None,
+    ):
 
         if isinstance(losses, list):
             raise ValueError("need implement later")
 
-        self._optimizer.minimize(losses, startup_programs, parameter_list,
-                                 no_grad_set)
+        self._optimizer.minimize(
+            losses, startup_programs, parameter_list, no_grad_set
+        )
 
         fleet._origin_main_program = default_main_program().clone(
-            for_test=False)
+            for_test=False
+        )
         fleet._origin_startup_program = default_startup_program().clone(
-            for_test=False)
+            for_test=False
+        )
 
         compiled_config = public.CompileTimeStrategy(
-            fleet._origin_main_program, fleet._origin_startup_program,
-            self._strategy, fleet._role_maker)
+            fleet._origin_main_program,
+            fleet._origin_startup_program,
+            self._strategy,
+            fleet._role_maker,
+        )
 
         fleet.compiled_config = compiled_config
-        fleet.main_program, fleet.startup_program = \
-            self._build_trainer_programs(compiled_config) if fleet.is_worker() \
+        fleet.main_program, fleet.startup_program = (
+            self._build_trainer_programs(compiled_config)
+            if fleet.is_worker()
             else self._build_pserver_programs(compiled_config)
+        )

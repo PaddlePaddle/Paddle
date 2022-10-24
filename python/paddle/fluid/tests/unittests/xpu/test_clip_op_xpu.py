@@ -23,17 +23,19 @@ import paddle
 from paddle.fluid import Program, program_guard
 
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 
 class XPUTestClipOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'clip'
         self.use_dynamic_create_class = False
 
     class TestClipOp(XPUOpTest):
-
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -90,28 +92,24 @@ class XPUTestClipOp(XPUOpTestWrapper):
             paddle.disable_static()
 
     class TestClipOp1(TestClipOp):
-
         def init_data(self):
             self.shape = (8, 16, 8)
             self.max = 0.7
             self.min = 0.0
 
     class TestClipOp2(TestClipOp):
-
         def init_data(self):
             self.shape = (8, 16)
             self.max = 1.0
             self.min = 0.0
 
     class TestClipOp3(TestClipOp):
-
         def init_data(self):
             self.shape = (4, 8, 16)
             self.max = 0.7
             self.min = 0.2
 
     class TestClipOp4(TestClipOp):
-
         def init_data(self):
             self.shape = (4, 8, 8)
             self.max = 0.7
@@ -120,7 +118,6 @@ class XPUTestClipOp(XPUOpTestWrapper):
             self.inputs['Min'] = np.array([0.3]).astype('float32')
 
     class TestClipOp5(TestClipOp):
-
         def init_data(self):
             self.shape = (4, 8, 16)
             self.max = 0.5
@@ -128,7 +125,6 @@ class XPUTestClipOp(XPUOpTestWrapper):
 
 
 class TestClipOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -148,7 +144,6 @@ class TestClipOpError(unittest.TestCase):
 
 
 class TestClipAPI(unittest.TestCase):
-
     def _executed_api(self, x, min=None, max=None):
         return paddle.clip(x, min, max)
 
@@ -160,8 +155,11 @@ class TestClipAPI(unittest.TestCase):
         min = fluid.data(name='min', shape=[1], dtype='float32')
         max = fluid.data(name='max', shape=[1], dtype='float32')
 
-        place = fluid.XPUPlace(
-            0) if fluid.core.is_compiled_with_xpu() else fluid.CPUPlace()
+        place = (
+            fluid.XPUPlace(0)
+            if fluid.core.is_compiled_with_xpu()
+            else fluid.CPUPlace()
+        )
         exe = fluid.Executor(place)
 
         out_1 = self._executed_api(images, min=min, max=max)
@@ -170,7 +168,7 @@ class TestClipAPI(unittest.TestCase):
         out_4 = self._executed_api(images, max=0.7)
         out_5 = self._executed_api(images, min=min)
         out_6 = self._executed_api(images, max=max)
-        out_7 = self._executed_api(images, max=-1.)
+        out_7 = self._executed_api(images, max=-1.0)
         out_8 = self._executed_api(images)
 
         res1, res2, res3, res4, res5, res6, res7, res8 = exe.run(
@@ -178,9 +176,10 @@ class TestClipAPI(unittest.TestCase):
             feed={
                 "image": data,
                 "min": np.array([0.2]).astype('float32'),
-                "max": np.array([0.8]).astype('float32')
+                "max": np.array([0.8]).astype('float32'),
             },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8])
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8],
+        )
 
         np.testing.assert_allclose(res1, data.clip(0.2, 0.8))
         np.testing.assert_allclose(res2, data.clip(0.2, 0.9))
@@ -194,8 +193,11 @@ class TestClipAPI(unittest.TestCase):
 
     def test_clip_dygraph(self):
         paddle.disable_static()
-        place = fluid.XPUPlace(
-            0) if fluid.core.is_compiled_with_xpu() else fluid.CPUPlace()
+        place = (
+            fluid.XPUPlace(0)
+            if fluid.core.is_compiled_with_xpu()
+            else fluid.CPUPlace()
+        )
         paddle.disable_static(place)
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
@@ -223,7 +225,6 @@ class TestClipAPI(unittest.TestCase):
 
 
 class TestInplaceClipAPI(TestClipAPI):
-
     def _executed_api(self, x, min=None, max=None):
         return x.clip_(min, max)
 

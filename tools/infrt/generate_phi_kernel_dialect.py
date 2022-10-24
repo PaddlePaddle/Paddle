@@ -17,21 +17,21 @@ import yaml
 import os
 from get_compat_kernel_signature import get_compat_kernels_info
 
-#TODO @DannyIsFunny: more attr types need to be supported.
+# TODO @DannyIsFunny: more attr types need to be supported.
 attr_type_converter = {
     "int": 'SI32Attr',
     "bool": 'BoolAttr',
     "int64_t": 'SI64Attr',
     "float": 'F32Attr',
     "string": 'StrAttr',
-    "vector<int>": 'I32ArrayAttr'
+    "vector<int>": 'I32ArrayAttr',
 }
 
 target_type_converter = {"CPU": "CPU", "GPU": "GPU", "Undefined": "UNK"}
 layout_type_converter = {
     "NCHW": "NCHW",
     "NHWC": "NHWC",
-    "Undefined(AnyLayout)": "ANY"
+    "Undefined(AnyLayout)": "ANY",
 }
 precision_type_converter = {
     "uint8": "UINT8",
@@ -46,7 +46,7 @@ precision_type_converter = {
     "complex64": "COMPLEX64",
     "complex128": "COMPLEX128",
     "bool": "BOOL",
-    "Undefined": "UNK"
+    "Undefined": "UNK",
 }
 
 kernel_types_info_file = "./kernels.json"
@@ -88,16 +88,19 @@ def generate_kernel_name(op_name, place_str):
     layout_ = layout_type_converter[layout_.strip()]
     precision_ = precision_type_converter[precision_.strip()]
     class_name_ = "{}{}".format(
-        op_name.replace("_", "").title(), "".join([
-            target_.strip().title(),
-            precision_.strip(),
-            layout_.strip().title().title()
-        ]))
+        op_name.replace("_", "").title(),
+        "".join(
+            [
+                target_.strip().title(),
+                precision_.strip(),
+                layout_.strip().title().title(),
+            ]
+        ),
+    )
     alias_ = "{}.{}".format(
         op_name,
-        ".".join([target_.strip(),
-                  precision_.strip(),
-                  layout_.strip()]))
+        ".".join([target_.strip(), precision_.strip(), layout_.strip()]),
+    )
     return alias_, class_name_
 
 
@@ -111,8 +114,9 @@ def generate_attrs_info(op_name, attrs_info):
         for index in range(len(attrs_info)):
             attr_name = kernel_attrs_names[op_name]["attrs"][index]
             attr_type = attr_type_converter[attrs_info[index]]
-            attrs_args_ += '{type_}:${name_},'.format(type_=attr_type,
-                                                      name_=attr_name)
+            attrs_args_ += '{type_}:${name_},'.format(
+                type_=attr_type, name_=attr_name
+            )
     return attrs_args_[:-1]
 
 
@@ -125,7 +129,8 @@ def generate_inputs_info(input_info):
         layout_ = layout_type_converter[layout_.strip()]
         precision_ = precision_type_converter[precision_.strip()]
         input_args_ += " DenseTensor<\"{}\",\"{}\",\"{}\">:$in{},".format(
-            target_.strip(), precision_.strip(), layout_.strip(), str(index))
+            target_.strip(), precision_.strip(), layout_.strip(), str(index)
+        )
     input_args_ = input_args_[:-1]
     return input_args_
 
@@ -134,12 +139,13 @@ def generate_arguments_info(op_name, input_info, attr_info):
     input_args = generate_inputs_info(input_info)
     attr_args = generate_attrs_info(op_name, attr_info)
     context_args = "Context:$dev_ctx"
-    argument_list = [context_args
-                     ] + input_args.split(",") + attr_args.split(",")
-    while ("" in argument_list):
+    argument_list = (
+        [context_args] + input_args.split(",") + attr_args.split(",")
+    )
+    while "" in argument_list:
         argument_list.remove("")
     argument_ = ",".join(argument_list)
-    return (("let arguments = (ins {});".format(argument_.strip(","))))
+    return "let arguments = (ins {});".format(argument_.strip(","))
 
 
 def generate_results_info(output_info):
@@ -151,8 +157,9 @@ def generate_results_info(output_info):
         layout_ = layout_type_converter[layout_.strip()]
         precision_ = precision_type_converter[precision_.strip()]
         output_args_ += " DenseTensor<\"{}\",\"{}\",\"{}\">:$out{},".format(
-            target_.strip(), precision_.strip(), layout_.strip(), str(index))
-    return ("{});".format(output_args_[:-1]))
+            target_.strip(), precision_.strip(), layout_.strip(), str(index)
+        )
+    return "{});".format(output_args_[:-1])
 
 
 def generate_supported_kernel_list(load_dict):
@@ -205,11 +212,13 @@ def generate_cpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
     alias, class_name = generate_kernel_name(op_name, kernel_alias_)
     summary = 'let summary = "{name}";'.format(name=alias)
     dialect_name = alias.split(".")
-    dialect_name = dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[
-        3]
+    dialect_name = (
+        dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[3]
+    )
 
     header = 'def {kernel_name} : PDTCPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
-        kernel_name=class_name, name=dialect_name.lower(), left_brace="{")
+        kernel_name=class_name, name=dialect_name.lower(), left_brace="{"
+    )
 
     inputs_ = kernel_info["input"]
     attributes = kernel_info["attribute"]
@@ -223,7 +232,8 @@ def generate_cpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
         summary_=summary,
         arguments_=arguments,
         results_=results,
-        right_brace="}")
+        right_brace="}",
+    )
     return kernel_dialect
 
 
@@ -232,11 +242,13 @@ def generate_gpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
     alias, class_name = generate_kernel_name(op_name, kernel_alias_)
     summary = 'let summary = "{name}";'.format(name=alias)
     dialect_name = alias.split(".")
-    dialect_name = dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[
-        3]
+    dialect_name = (
+        dialect_name[0] + "." + dialect_name[2] + "." + dialect_name[3]
+    )
 
     header = 'def {kernel_name} : PDTGPU_Kernel<"{name}",[NoSideEffect]> {left_brace}'.format(
-        kernel_name=class_name, name=dialect_name.lower(), left_brace="{")
+        kernel_name=class_name, name=dialect_name.lower(), left_brace="{"
+    )
     inputs_ = kernel_info["input"]
     attributes = kernel_info["attribute"]
     arguments = generate_arguments_info(op_name, inputs_, attributes)
@@ -249,7 +261,8 @@ def generate_gpu_kernel_dialect(op_name, kernel_alias_, kernel_info):
         summary_=summary,
         arguments_=arguments,
         results_=results,
-        right_brace="}")
+        right_brace="}",
+    )
     return kernel_dialect
 
 
@@ -270,7 +283,7 @@ include \"mlir/Interfaces/LoopLikeInterface.td\"\n\
 include \"mlir/IR/OpBase.td\"\n\
 include \"paddle/infrt/dialect/phi/ir/infrt_phi_kernel.td\""
 
-    return (comment_ + includes_)
+    return comment_ + includes_
 
 
 def get_kernel_target(kernel_alias_):
@@ -298,33 +311,52 @@ def main():
                 for kernel_alias_ in kernel_info:
                     if get_kernel_target(kernel_alias_) == "CPU":
                         kernel_registry = generate_cpu_kernel_dialect(
-                            op_name, kernel_alias_, kernel_info[kernel_alias_])
+                            op_name, kernel_alias_, kernel_info[kernel_alias_]
+                        )
                         cpu_registry_ += kernel_registry
                     elif get_kernel_target(kernel_alias_) == "GPU":
                         kernel_registry = generate_gpu_kernel_dialect(
-                            op_name, kernel_alias_, kernel_info[kernel_alias_])
+                            op_name, kernel_alias_, kernel_info[kernel_alias_]
+                        )
                         gpu_registry_ += kernel_registry
                     else:
-                        print("Unsupported backend:" +
-                              get_kernel_target(kernel_alias_))
+                        print(
+                            "Unsupported backend:"
+                            + get_kernel_target(kernel_alias_)
+                        )
         end = "#endif  // PTEN_KERNELS"
-        with open("../../paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td",
-                  "w") as dst:
-            dst.write('{start_}\n{dialect_}\n{end_}'.format(
-                start_=head, dialect_=cpu_registry_, end_=end))
-        with open("../../paddle/infrt/dialect/phi/ir/phi_gpu_kernels.td",
-                  "w") as dst:
-            dst.write('{start_}\n{dialect_}\n{end_}'.format(
-                start_=head, dialect_=gpu_registry_, end_=end))
+        with open(
+            "../../paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td", "w"
+        ) as dst:
+            dst.write(
+                '{start_}\n{dialect_}\n{end_}'.format(
+                    start_=head, dialect_=cpu_registry_, end_=end
+                )
+            )
+        with open(
+            "../../paddle/infrt/dialect/phi/ir/phi_gpu_kernels.td", "w"
+        ) as dst:
+            dst.write(
+                '{start_}\n{dialect_}\n{end_}'.format(
+                    start_=head, dialect_=gpu_registry_, end_=end
+                )
+            )
 
 
 if __name__ == '__main__':
     if not os.path.exists(kernel_types_info_file):
-        print("Error: '{file_name}' not exist!".format(
-            file_name=kernel_types_info_file))
+        print(
+            "Error: '{file_name}' not exist!".format(
+                file_name=kernel_types_info_file
+            )
+        )
     if not os.path.exists(kernel_signature_info_file):
-        print("Error: '{file_name}' not exist!".format(
-            file_name=kernel_signature_info_file))
+        print(
+            "Error: '{file_name}' not exist!".format(
+                file_name=kernel_signature_info_file
+            )
+        )
     if os.path.exists(kernel_types_info_file) and os.path.exists(
-            kernel_signature_info_file):
+        kernel_signature_info_file
+    ):
         main()

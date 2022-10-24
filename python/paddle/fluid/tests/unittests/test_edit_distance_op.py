@@ -18,23 +18,26 @@ from op_test import OpTest
 import paddle
 
 
-def python_edit_distance(input,
-                         label,
-                         input_length=None,
-                         label_length=None,
-                         normalized=True,
-                         ignored_tokens=None):
+def python_edit_distance(
+    input,
+    label,
+    input_length=None,
+    label_length=None,
+    normalized=True,
+    ignored_tokens=None,
+):
     return paddle.nn.functional.loss.edit_distance(
         input,
         label,
         normalized=normalized,
         ignored_tokens=ignored_tokens,
         input_length=input_length,
-        label_length=label_length)
+        label_length=label_length,
+    )
 
 
 def Levenshtein(hyp, ref):
-    """ Compute the Levenshtein distance between two strings.
+    """Compute the Levenshtein distance between two strings.
 
     :param hyp: hypothesis string in index
     :type hyp: list
@@ -65,7 +68,6 @@ def Levenshtein(hyp, ref):
 
 
 class TestEditDistanceOp(OpTest):
-
     def setUp(self):
         self.op_type = "edit_distance"
         self.python_api = python_edit_distance
@@ -85,8 +87,9 @@ class TestEditDistanceOp(OpTest):
         x2_offset = 0
         for i in range(0, num_strs):
             distance[i] = Levenshtein(
-                hyp=x1[x1_offset:(x1_offset + self.x1_lod[i])],
-                ref=x2[x2_offset:(x2_offset + self.x2_lod[i])])
+                hyp=x1[x1_offset : (x1_offset + self.x1_lod[i])],
+                ref=x2[x2_offset : (x2_offset + self.x2_lod[i])],
+            )
             x1_offset += self.x1_lod[i]
             x2_offset += self.x2_lod[i]
             if normalized is True:
@@ -102,7 +105,6 @@ class TestEditDistanceOp(OpTest):
 
 
 class TestEditDistanceOpNormalizedCase0(OpTest):
-
     def reset_config(self):
         pass
 
@@ -130,8 +132,9 @@ class TestEditDistanceOpNormalizedCase0(OpTest):
         x2_offset = 0
         for i in range(0, num_strs):
             distance[i] = Levenshtein(
-                hyp=self.x1[x1_offset:(x1_offset + self.x1_lod[i])],
-                ref=self.x2[x2_offset:(x2_offset + self.x2_lod[i])])
+                hyp=self.x1[x1_offset : (x1_offset + self.x1_lod[i])],
+                ref=self.x2[x2_offset : (x2_offset + self.x2_lod[i])],
+            )
             x1_offset += self.x1_lod[i]
             x2_offset += self.x2_lod[i]
             if normalized is True:
@@ -141,7 +144,7 @@ class TestEditDistanceOpNormalizedCase0(OpTest):
         self.attrs = {'normalized': normalized}
         self.inputs = {
             'Hyps': (self.x1, [self.x1_lod]),
-            'Refs': (self.x2, [self.x2_lod])
+            'Refs': (self.x2, [self.x2_lod]),
         }
         self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
 
@@ -152,21 +155,18 @@ class TestEditDistanceOpNormalizedCase0(OpTest):
 
 
 class TestEditDistanceOpNormalizedCase1(TestEditDistanceOpNormalizedCase0):
-
     def reset_config(self):
         self.x1_lod = [0, 6, 0]
         self.x2_lod = [2, 1, 2]
 
 
 class TestEditDistanceOpNormalizedCase2(TestEditDistanceOpNormalizedCase0):
-
     def reset_config(self):
         self.x1_lod = [0, 0, 6]
         self.x2_lod = [2, 2, 1]
 
 
 class TestEditDistanceOpNormalizedTensor(OpTest):
-
     def reset_config(self):
         self.x1 = np.array([[10, 3, 0, 0], [6, 5, 8, 2]], dtype=np.int64)
         self.x2 = np.array([[10, 4, 0], [6, 7, 8]], dtype=np.int64)
@@ -185,8 +185,10 @@ class TestEditDistanceOpNormalizedTensor(OpTest):
         sequence_num = np.array(num_strs).astype("int64")
 
         for i in range(0, num_strs):
-            distance[i] = Levenshtein(hyp=self.x1[i][0:self.x1_lod[i]],
-                                      ref=self.x2[i][0:self.x2_lod[i]])
+            distance[i] = Levenshtein(
+                hyp=self.x1[i][0 : self.x1_lod[i]],
+                ref=self.x2[i][0 : self.x2_lod[i]],
+            )
             if normalized is True:
                 len_ref = self.x2_lod[i]
                 distance[i] = distance[i] / len_ref
@@ -196,7 +198,7 @@ class TestEditDistanceOpNormalizedTensor(OpTest):
             'Hyps': self.x1,
             'Refs': self.x2,
             'HypsLength': self.x1_lod,
-            'RefsLength': self.x2_lod
+            'RefsLength': self.x2_lod,
         }
         self.outputs = {'Out': distance, 'SequenceNum': sequence_num}
 

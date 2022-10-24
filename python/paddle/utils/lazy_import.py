@@ -35,6 +35,6 @@ def try_import(module_name):
         err_msg = (
             "Failed importing {}. This likely means that some paddle modules "
             "require additional dependencies that have to be "
-            "manually installed (usually with `pip install {}`). ").format(
-                module_name, install_name)
+            "manually installed (usually with `pip install {}`). "
+        ).format(module_name, install_name)
         raise ImportError(err_msg)

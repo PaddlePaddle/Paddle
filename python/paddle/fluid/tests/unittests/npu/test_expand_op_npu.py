@@ -26,7 +26,6 @@ SEED = 2021
 
 
 class TestExpand(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"
@@ -55,7 +54,6 @@ class TestExpand(OpTest):
 
 
 class TestExpandV2(TestExpand):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"
@@ -69,7 +67,7 @@ class TestExpandV2(TestExpand):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'ExpandTimes': OpTest.np_dtype_to_fluid_dtype(expand_times)
+            'ExpandTimes': OpTest.np_dtype_to_fluid_dtype(expand_times),
         }
         self.attrs = {}
         self.outputs = {'Out': out}
@@ -83,7 +81,6 @@ class TestExpandFp16(TestExpand):
 
 
 class TestExpandNet(unittest.TestCase):
-
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -96,9 +93,9 @@ class TestExpandNet(unittest.TestCase):
 
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 1], dtype='float32')
-            label = paddle.static.data(name="label",
-                                       shape=[32, 1],
-                                       dtype='int64')
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             res = paddle.fluid.layers.expand(a, [1, 32])
             loss = res.sum()
@@ -115,12 +112,11 @@ class TestExpandNet(unittest.TestCase):
 
         for epoch in range(100):
 
-            loss_res = exe.run(main_prog,
-                               feed={
-                                   "a": a_np,
-                                   "label": label_np
-                               },
-                               fetch_list=[loss])
+            loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "label": label_np},
+                fetch_list=[loss],
+            )
             if epoch % 10 == 0:
                 print("Epoch {} | Loss: {}".format(epoch, loss))
 
@@ -139,7 +135,6 @@ class TestExpandNet(unittest.TestCase):
 
 
 class TestExpand_expand_times_all_one(TestExpand):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "expand"

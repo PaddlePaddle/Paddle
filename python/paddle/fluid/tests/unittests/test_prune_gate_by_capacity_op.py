@@ -21,7 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 def count(x, upper_num):
-    res = np.zeros((upper_num, )).astype(int)
+    res = np.zeros((upper_num,)).astype(int)
     for i in x.reshape(-1):
         if i >= 0 and i < len(res):
             res[i] += 1
@@ -64,20 +64,22 @@ def assert_allclose(output, expected, n_expert):
     assert np.allclose(c1, c2)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestPruneGateByCapacityAPI1(unittest.TestCase):
-
     def init_test_case(self):
-        self.gate_idx = np.random.randint(0, self.n_expert,
-                                          size=(200, )).astype(self.dtype)
+        self.gate_idx = np.random.randint(0, self.n_expert, size=(200,)).astype(
+            self.dtype
+        )
         expert_count = count(self.gate_idx, self.n_expert * self.n_worker)
-        capacity = np.random.randint(10, 200, size=(self.n_expert, ))
-        self.expert_count = limit_by_capacity(expert_count, capacity,
-                                              self.n_worker).astype(self.dtype)
-        self.out = prune_gate_by_capacity(self.gate_idx, self.expert_count,
-                                          self.n_expert,
-                                          self.n_worker).astype(self.dtype)
+        capacity = np.random.randint(10, 200, size=(self.n_expert,))
+        self.expert_count = limit_by_capacity(
+            expert_count, capacity, self.n_worker
+        ).astype(self.dtype)
+        self.out = prune_gate_by_capacity(
+            self.gate_idx, self.expert_count, self.n_expert, self.n_worker
+        ).astype(self.dtype)
         self.place = paddle.CUDAPlace(0)
 
     def setUp(self):
@@ -89,29 +91,35 @@ class TestPruneGateByCapacityAPI1(unittest.TestCase):
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            gate_idx_tensor = paddle.static.data('GateIdx',
-                                                 shape=self.gate_idx.shape,
-                                                 dtype="int64")
+            gate_idx_tensor = paddle.static.data(
+                'GateIdx', shape=self.gate_idx.shape, dtype="int64"
+            )
             expert_count_tensor = paddle.static.data(
-                'ExpertCount', shape=self.expert_count.shape, dtype="int64")
-            out = utils._prune_gate_by_capacity(gate_idx_tensor,
-                                                expert_count_tensor,
-                                                self.n_expert, self.n_worker)
+                'ExpertCount', shape=self.expert_count.shape, dtype="int64"
+            )
+            out = utils._prune_gate_by_capacity(
+                gate_idx_tensor,
+                expert_count_tensor,
+                self.n_expert,
+                self.n_worker,
+            )
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={
-                'GateIdx': self.gate_idx,
-                'ExpertCount': self.expert_count,
-            },
-                          fetch_list=out)
+            res = exe.run(
+                feed={
+                    'GateIdx': self.gate_idx,
+                    'ExpertCount': self.expert_count,
+                },
+                fetch_list=out,
+            )
         assert_allclose(res[0], self.out, self.n_expert)
 
     def func_dygraph_api(self):
         paddle.disable_static(self.place)
         gate_idx_tensor = paddle.to_tensor(self.gate_idx)
         expert_count_tensor = paddle.to_tensor(self.expert_count)
-        out = utils._prune_gate_by_capacity(gate_idx_tensor,
-                                            expert_count_tensor, self.n_expert,
-                                            self.n_worker)
+        out = utils._prune_gate_by_capacity(
+            gate_idx_tensor, expert_count_tensor, self.n_expert, self.n_worker
+        )
         assert_allclose(out.numpy(), self.out, self.n_expert)
 
     def test_dygraph_api(self):
@@ -120,10 +128,10 @@ class TestPruneGateByCapacityAPI1(unittest.TestCase):
         self.func_dygraph_api()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestPruneGateByCapacityAPI2(TestPruneGateByCapacityAPI1):
-
     def setUp(self):
         self.n_expert = 12
         self.n_worker = 1

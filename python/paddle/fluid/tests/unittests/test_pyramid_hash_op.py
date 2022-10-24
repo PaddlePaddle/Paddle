@@ -18,7 +18,6 @@ import paddle.fluid as fluid
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
-
     def test_api(self):
         num_voc = 128
         embed_dim = 64
@@ -52,14 +51,14 @@ class TestPyramidHashOpApi(unittest.TestCase):
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
-            np.random.randint(0, num_voc, x_shape).astype('int32'), x_lod,
-            place)
+            np.random.randint(0, num_voc, x_shape).astype('int32'), x_lod, place
+        )
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={'x': x_tensor},
-                      fetch_list=[hash_embd],
-                      return_numpy=False)
+        ret = exe.run(
+            feed={'x': x_tensor}, fetch_list=[hash_embd], return_numpy=False
+        )
 
 
 if __name__ == "__main__":

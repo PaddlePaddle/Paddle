@@ -19,10 +19,16 @@ from typing import Optional, Tuple, Union
 
 
 class AudioInfo:
-    """ Audio info, return type of backend info function """
+    """Audio info, return type of backend info function"""
 
-    def __init__(self, sample_rate: int, num_samples: int, num_channels: int,
-                 bits_per_sample: int, encoding: str):
+    def __init__(
+        self,
+        sample_rate: int,
+        num_samples: int,
+        num_channels: int,
+        bits_per_sample: int,
+        encoding: str,
+    ):
         self.sample_rate = sample_rate
         self.num_samples = num_samples
         self.num_channels = num_channels
@@ -61,11 +67,13 @@ def info(filepath: str) -> AudioInfo:
     raise NotImplementedError("please set audio backend")
 
 
-def load(filepath: Union[str, Path],
-         frame_offset: int = 0,
-         num_frames: int = -1,
-         normalize: bool = True,
-         channels_first: bool = True) -> Tuple[paddle.Tensor, int]:
+def load(
+    filepath: Union[str, Path],
+    frame_offset: int = 0,
+    num_frames: int = -1,
+    normalize: bool = True,
+    channels_first: bool = True,
+) -> Tuple[paddle.Tensor, int]:
     """Load audio data from file.Load the audio content start form frame_offset, and get num_frames.
 
     Args:

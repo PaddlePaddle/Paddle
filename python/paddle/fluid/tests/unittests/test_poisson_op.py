@@ -38,7 +38,6 @@ def output_hist(out, lam, a, b):
 
 
 class TestPoissonOp1(OpTest):
-
     def setUp(self):
         self.op_type = "poisson"
         self.config()
@@ -67,11 +66,11 @@ class TestPoissonOp1(OpTest):
             user_defined_grads=[np.zeros([2048, 1024], dtype=self.dtype)],
             user_defined_grad_outputs=[
                 np.random.rand(2048, 1024).astype(self.dtype)
-            ])
+            ],
+        )
 
 
 class TestPoissonOp2(TestPoissonOp1):
-
     def config(self):
         self.lam = 5
         self.a = 1
@@ -80,18 +79,20 @@ class TestPoissonOp2(TestPoissonOp1):
 
 
 class TestPoissonAPI(unittest.TestCase):
-
     def test_static(self):
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x_np = np.random.rand(10, 10)
             x = paddle.static.data(name="x", shape=[10, 10], dtype='float64')
             y = paddle.poisson(x)
 
             exe = paddle.static.Executor()
-            y_np = exe.run(paddle.static.default_main_program(),
-                           feed={"x": x_np},
-                           fetch_list=[y])
+            y_np = exe.run(
+                paddle.static.default_main_program(),
+                feed={"x": x_np},
+                fetch_list=[y],
+            )
             self.assertTrue(np.min(y_np) >= 0)
 
     def test_dygraph(self):
@@ -117,70 +118,250 @@ class TestPoissonAPI(unittest.TestCase):
         paddle.disable_static()
         paddle.set_device('gpu')
         paddle.seed(2021)
-        x = paddle.full([32, 3, 1024, 768], 10., dtype="float32")
+        x = paddle.full([32, 3, 1024, 768], 10.0, dtype="float32")
         y = paddle.poisson(x)
         y_np = y.numpy()
 
         expect = [
-            13., 13., 11., 8., 12., 6., 9., 15., 16., 6., 13., 12., 9., 15.,
-            17., 8., 11., 16., 11., 10.
+            13.0,
+            13.0,
+            11.0,
+            8.0,
+            12.0,
+            6.0,
+            9.0,
+            15.0,
+            16.0,
+            6.0,
+            13.0,
+            12.0,
+            9.0,
+            15.0,
+            17.0,
+            8.0,
+            11.0,
+            16.0,
+            11.0,
+            10.0,
         ]
         np.testing.assert_array_equal(y_np[0, 0, 0, 0:20], expect)
 
         expect = [
-            15., 7., 12., 8., 14., 10., 10., 11., 11., 11., 21., 6., 9., 13.,
-            13., 11., 6., 9., 12., 12.
+            15.0,
+            7.0,
+            12.0,
+            8.0,
+            14.0,
+            10.0,
+            10.0,
+            11.0,
+            11.0,
+            11.0,
+            21.0,
+            6.0,
+            9.0,
+            13.0,
+            13.0,
+            11.0,
+            6.0,
+            9.0,
+            12.0,
+            12.0,
         ]
         np.testing.assert_array_equal(y_np[8, 1, 300, 200:220], expect)
 
         expect = [
-            10., 15., 9., 6., 4., 13., 10., 10., 13., 12., 9., 7., 10., 14., 7.,
-            10., 8., 5., 10., 14.
+            10.0,
+            15.0,
+            9.0,
+            6.0,
+            4.0,
+            13.0,
+            10.0,
+            10.0,
+            13.0,
+            12.0,
+            9.0,
+            7.0,
+            10.0,
+            14.0,
+            7.0,
+            10.0,
+            8.0,
+            5.0,
+            10.0,
+            14.0,
         ]
         np.testing.assert_array_equal(y_np[16, 1, 600, 400:420], expect)
 
         expect = [
-            10., 9., 14., 12., 8., 9., 7., 8., 11., 10., 13., 8., 12., 9., 7.,
-            8., 11., 11., 12., 5.
+            10.0,
+            9.0,
+            14.0,
+            12.0,
+            8.0,
+            9.0,
+            7.0,
+            8.0,
+            11.0,
+            10.0,
+            13.0,
+            8.0,
+            12.0,
+            9.0,
+            7.0,
+            8.0,
+            11.0,
+            11.0,
+            12.0,
+            5.0,
         ]
         np.testing.assert_array_equal(y_np[24, 2, 900, 600:620], expect)
 
         expect = [
-            15., 5., 11., 13., 12., 12., 13., 16., 9., 9., 7., 9., 13., 11.,
-            15., 6., 11., 9., 10., 10.
+            15.0,
+            5.0,
+            11.0,
+            13.0,
+            12.0,
+            12.0,
+            13.0,
+            16.0,
+            9.0,
+            9.0,
+            7.0,
+            9.0,
+            13.0,
+            11.0,
+            15.0,
+            6.0,
+            11.0,
+            9.0,
+            10.0,
+            10.0,
         ]
         np.testing.assert_array_equal(y_np[31, 2, 1023, 748:768], expect)
 
-        x = paddle.full([16, 1024, 1024], 5., dtype="float32")
+        x = paddle.full([16, 1024, 1024], 5.0, dtype="float32")
         y = paddle.poisson(x)
         y_np = y.numpy()
         expect = [
-            4., 5., 2., 9., 8., 7., 4., 7., 4., 7., 6., 3., 10., 7., 5., 7., 2.,
-            5., 5., 6.
+            4.0,
+            5.0,
+            2.0,
+            9.0,
+            8.0,
+            7.0,
+            4.0,
+            7.0,
+            4.0,
+            7.0,
+            6.0,
+            3.0,
+            10.0,
+            7.0,
+            5.0,
+            7.0,
+            2.0,
+            5.0,
+            5.0,
+            6.0,
         ]
         np.testing.assert_array_equal(y_np[0, 0, 100:120], expect)
 
         expect = [
-            1., 4., 8., 11., 6., 5., 4., 4., 7., 4., 4., 7., 11., 6., 5., 3.,
-            4., 6., 3., 3.
+            1.0,
+            4.0,
+            8.0,
+            11.0,
+            6.0,
+            5.0,
+            4.0,
+            4.0,
+            7.0,
+            4.0,
+            4.0,
+            7.0,
+            11.0,
+            6.0,
+            5.0,
+            3.0,
+            4.0,
+            6.0,
+            3.0,
+            3.0,
         ]
         np.testing.assert_array_equal(y_np[4, 300, 300:320], expect)
 
         expect = [
-            7., 5., 4., 6., 8., 5., 6., 7., 7., 7., 3., 10., 5., 10., 4., 5.,
-            8., 7., 5., 7.
+            7.0,
+            5.0,
+            4.0,
+            6.0,
+            8.0,
+            5.0,
+            6.0,
+            7.0,
+            7.0,
+            7.0,
+            3.0,
+            10.0,
+            5.0,
+            10.0,
+            4.0,
+            5.0,
+            8.0,
+            7.0,
+            5.0,
+            7.0,
         ]
         np.testing.assert_array_equal(y_np[8, 600, 600:620], expect)
 
         expect = [
-            8., 6., 7., 4., 3., 0., 4., 6., 6., 4., 3., 10., 5., 1., 3., 8., 8.,
-            2., 1., 4.
+            8.0,
+            6.0,
+            7.0,
+            4.0,
+            3.0,
+            0.0,
+            4.0,
+            6.0,
+            6.0,
+            4.0,
+            3.0,
+            10.0,
+            5.0,
+            1.0,
+            3.0,
+            8.0,
+            8.0,
+            2.0,
+            1.0,
+            4.0,
         ]
         np.testing.assert_array_equal(y_np[12, 900, 900:920], expect)
 
         expect = [
-            2., 1., 14., 3., 6., 5., 2., 2., 6., 5., 7., 4., 8., 4., 8., 4., 5.,
-            7., 1., 7.
+            2.0,
+            1.0,
+            14.0,
+            3.0,
+            6.0,
+            5.0,
+            2.0,
+            2.0,
+            6.0,
+            5.0,
+            7.0,
+            4.0,
+            8.0,
+            4.0,
+            8.0,
+            4.0,
+            5.0,
+            7.0,
+            1.0,
+            7.0,
         ]
         np.testing.assert_array_equal(y_np[15, 1023, 1000:1020], expect)
         paddle.enable_static()
