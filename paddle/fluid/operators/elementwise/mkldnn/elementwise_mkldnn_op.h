@@ -126,6 +126,14 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     binary_prim->execute(astream, args);
     astream.wait();
 
+    if (handler.use_broadcasting_hack == false) {
+      z->set_mem_desc(dst_memory->get_desc());
+    } else {
+      auto dims = dst_memory->get_desc().dims();
+      dims.insert(dims.begin(), 1);
+      z->set_mem_desc(dst_memory->get_desc().reshape(dims));
+    }
+
     z->set_mem_desc(dst_memory->get_desc());
   }
 };

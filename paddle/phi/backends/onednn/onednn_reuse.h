@@ -825,6 +825,7 @@ class ReorderOneDNNHandler {
 template <typename T>
 class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
+  bool use_broadcasting_hack;
   BinaryOneDNNHandler(const dnnl::algorithm algo,
                       const int axis,
                       const dnnl::engine engine,
@@ -837,12 +838,13 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
                       float scale_out,
                       const dnnl::post_ops& post_ops = dnnl::post_ops{})
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
+    use_broadcasting_hack = false;
     const auto src_x_tz = vectorize(x->dims());
     const auto src_y_tz = vectorize(y->dims());
     // if output tensor(z) is nullptr then we are computing into oneDNN
     // managed buffer
     auto rankdiff = x->dims().size() - y->dims().size();
-    const auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
+    auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
                                          : vectorize(out->dims());
 
     auto src0_md = x->mem_desc();
@@ -870,11 +872,25 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       }
       src0_md = src0_md.reshape(dims0_ex);
     }
-    const auto dst_md =
-        memory::desc(dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
 
     auto attributes =
         CreateAttributes(algo, scale_x, scale_y, scale_out, post_ops);
+
+    // Workaround for U2++ model which deletes first tensor dimensions to enable
+    // optimized oneDNNs broadcasting. Output tensor is reshaped back afterwards
+    // at the end of the kernel, after the computation
+    if (dst_tz.size() == 4 && dst_tz[0] == 1 &&
+        src0_md.dims()[2] != src1_md.dims()[2]) {
+      auto src0_dims = src0_md.dims();
+      auto src1_dims = src1_md.dims();
+      dst_tz.erase(dst_tz.begin());
+      src0_md = src0_md.reshape({src0_dims.begin() + 1, src0_dims.end()});
+      src1_md = src1_md.reshape({src1_dims.begin() + 1, src1_dims.end()});
+      use_broadcasting_hack = true;
+    }
+
+    auto dst_md =
+        memory::desc(dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
 
     if (x->numel() < y->numel()) {
       if (algo == dnnl::algorithm::binary_sub) {

@@ -147,10 +147,11 @@ class PredictorEngine : public BaseEngine {
     } else if (platform::is_cpu_place(place_)) {
       config.DisableGpu();
     }
+    config.EnableMemoryOptim();
     config.EnableMKLDNN();
-    config.EnableMkldnnInt8();
+    // config.EnableMkldnnInt8();
     config.SwitchIrOptim(true);
-    config.EnableProfile();
+    // config.EnableProfile();
     // config.SwitchIrDebug(true);
 
     predictor_.reset(new AnalysisPredictor(config));
