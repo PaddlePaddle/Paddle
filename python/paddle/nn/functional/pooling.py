@@ -18,7 +18,6 @@ from ...tensor.manipulation import unsqueeze, squeeze
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
-from paddle.fluid import core
 from paddle.fluid.framework import _in_legacy_dygraph, Variable
 from paddle.fluid.framework import in_dygraph_mode, _non_static_mode
 
@@ -1382,7 +1381,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
 
 
 def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
-    """
+    r"""
     Applies 2D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
 
@@ -1503,7 +1502,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
 
 
 def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
-    """
+    r"""
     This operation applies 3D adaptive avg pooling on input tensor. The h and w dimensions
     of the output tensor are determined by the parameter output_size.
 

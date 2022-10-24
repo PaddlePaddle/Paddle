@@ -140,7 +140,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto lrn_p = handler.AcquireForwardPrimitive();
 
     auto workspace_memory = handler.AcquireWorkspaceMemory(mid);
-    mid->set_layout(framework::DataLayout::kMKLDNN);
+    mid->set_layout(phi::DataLayout::kMKLDNN);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     if (!workspace_memory->get_desc().is_zero()) {

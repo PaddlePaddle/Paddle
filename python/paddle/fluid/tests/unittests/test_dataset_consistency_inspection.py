@@ -17,13 +17,8 @@ TestCases for Dataset consistency insepection of use_var_list and data_generator
 
 import paddle
 import paddle.fluid as fluid
-import paddle.compat as cpt
-import paddle.fluid.core as core
-import numpy as np
-import random
 import math
 import os
-import shutil
 import tempfile
 import unittest
 import paddle.fluid.incubate.data_generator as dg

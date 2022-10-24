@@ -21,7 +21,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 using framework::Variable;
 
@@ -124,7 +124,7 @@ class SplitOp : public framework::OperatorWithKernel {
       if (x_md.data.format_desc.blocking.inner_nblks == 0)
         return framework::OpKernelType(input_data_type,
                                        ctx.GetPlace(),
-                                       framework::DataLayout::kMKLDNN,
+                                       phi::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
     }
 #endif

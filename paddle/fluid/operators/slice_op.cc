@@ -138,8 +138,8 @@ class SliceOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto *in_var = ctx.InputVar("Input");
-    if (in_var->IsType<framework::LoDTensor>()) {
-      auto &in_tensor = in_var->Get<framework::LoDTensor>();
+    if (in_var->IsType<phi::DenseTensor>()) {
+      auto &in_tensor = in_var->Get<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
           in_tensor.IsInitialized(),
           true,
@@ -155,8 +155,10 @@ class SliceOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-
-      if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      auto vec_dims = phi::vectorize(in_tensor.dims());
+      bool all_zero_dims = std::all_of(
+          vec_dims.cbegin(), vec_dims.cend(), [](int64_t i) { return i == 0; });
+      if (!all_zero_dims && this->CanMKLDNNBeUsed(ctx, input_data_type)) {
         // OneDNN uses blocking format, which cannot be always supported with
         // reorders, because if blocked dimension is not divisible by 8 or
         // 16(depending on which blocking format is used) submemory cannot be
@@ -168,7 +170,7 @@ class SliceOp : public framework::OperatorWithKernel {
         if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
           return framework::OpKernelType(input_data_type,
                                          ctx.GetPlace(),
-                                         framework::DataLayout::kMKLDNN,
+                                         phi::DataLayout::kMKLDNN,
                                          framework::LibraryType::kMKLDNN);
       }
 #endif
@@ -345,7 +347,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
         return framework::OpKernelType(input_data_type,
                                        ctx.GetPlace(),
-                                       framework::DataLayout::kMKLDNN,
+                                       phi::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -458,6 +460,7 @@ REGISTER_OPERATOR(slice_grad,
 REGISTER_OP_CPU_KERNEL(
     slice,
     ops::SliceKernel<phi::CPUContext, bool>,
+    ops::SliceKernel<phi::CPUContext, uint8_t>,
     ops::SliceKernel<phi::CPUContext, int>,
     ops::SliceKernel<phi::CPUContext, int64_t>,
     ops::SliceKernel<phi::CPUContext, float>,
@@ -469,6 +472,7 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     slice_grad,
     ops::SliceGradKernel<phi::CPUContext, bool>,
+    ops::SliceGradKernel<phi::CPUContext, uint8_t>,
     ops::SliceGradKernel<phi::CPUContext, int>,
     ops::SliceGradKernel<phi::CPUContext, int64_t>,
     ops::SliceGradKernel<phi::CPUContext, float>,
@@ -480,6 +484,7 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CUDA_KERNEL(
     slice,
     ops::SliceKernel<phi::GPUContext, bool>,
+    ops::SliceKernel<phi::GPUContext, uint8_t>,
     ops::SliceKernel<phi::GPUContext, float>,
     ops::SliceKernel<phi::GPUContext, double>,
     ops::SliceKernel<phi::GPUContext, int>,
@@ -492,6 +497,7 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(
     slice_grad,
     ops::SliceGradKernel<phi::GPUContext, bool>,
+    ops::SliceGradKernel<phi::GPUContext, uint8_t>,
     ops::SliceGradKernel<phi::GPUContext, float>,
     ops::SliceGradKernel<phi::GPUContext, double>,
     ops::SliceGradKernel<phi::GPUContext, int>,

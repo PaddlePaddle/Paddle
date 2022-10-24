@@ -44,7 +44,7 @@ class GridSampleOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.GetPlace(),
-        framework::DataLayout::kAnyLayout,
+        phi::DataLayout::kAnyLayout,
         library_);
   }
 };
@@ -155,7 +155,7 @@ class GridSampleOpGrad : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.GetPlace(),
-        framework::DataLayout::kAnyLayout,
+        phi::DataLayout::kAnyLayout,
         library_);
   }
 };

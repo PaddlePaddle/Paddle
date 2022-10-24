@@ -324,6 +324,12 @@
   inputs: {x: X}
   outputs: {out: Out}
 
+- op : flip
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : floor
   backward : floor_grad
   extra :
@@ -768,7 +774,7 @@
 
 - op : trunc
   inputs :
-    x : X
+    input : X
   outputs :
     out : Out
 

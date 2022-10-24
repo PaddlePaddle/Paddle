@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from .public import *
+from .public import *  # noqa: F403
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
-from paddle.distributed.passes import new_pass, PassContext
+from paddle.distributed.passes import new_pass
 
 
 class PsProgramBuilder(object):

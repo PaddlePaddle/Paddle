@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-import sys
-import time
 import numpy as np
 
 os.environ[str("FLAGS_check_nan_inf")] = str("1")
@@ -23,7 +21,6 @@ os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
-import paddle.compat as cpt
 
 paddle.enable_static()
 

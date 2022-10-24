@@ -13,16 +13,12 @@
 # limitations under the License.
 """This is the lib for gradient checker unittest."""
 
-import unittest
-import six
-import collections
 import numpy as np
 from itertools import product
 import paddle
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
 from paddle.fluid.backward import _append_grad_suffix_, _as_list
 from paddle.fluid.framework import _test_eager_guard
 try:
@@ -142,7 +138,7 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
     np_type = dtype_to_np_dtype(x.dtype)
     jacobian = [make_jacobian(x, _product(yi.shape), np_type) for yi in y]
 
-    for i in six.moves.xrange(x_size):
+    for i in range(x_size):
         orig = _get_item(x_t, i, np_type)
         x_pos = orig + delta
         _set_item(x_t, i, x_pos, np_type)
@@ -154,7 +150,7 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
 
         _set_item(x_t, i, orig, np_type)
 
-        for j in six.moves.xrange(len(y)):
+        for j in range(len(y)):
             jacobian[j][i, :] = (y_pos[j] - y_neg[j]) / delta / 2.
 
     return jacobian
@@ -207,12 +203,12 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     filted = [(i, dxi) for i, dxi in enumerate(dx) if dxi is not None]
     filted_idx, filted_dx = zip(*filted)
 
-    for i in six.moves.xrange(y_size):
+    for i in range(y_size):
         _set_item(dy_t, i, 1, np_type)
 
         dx_res = exe.run(program, scope=scope, fetch_list=filted_dx)
 
-        for j in six.moves.xrange(len(filted_dx)):
+        for j in range(len(filted_dx)):
             dx_idx = filted_idx[j]
             if dx_res[j] is not None:
                 jacobian[dx_idx][:, i] = dx_res[j].flatten()
@@ -554,7 +550,7 @@ def get_static_double_grad(x,
         program = fluid.default_main_program()
     scope = fluid.executor.global_scope()
     y_grads = []
-    for i in six.moves.xrange(len(y)):
+    for i in range(len(y)):
         yi = y[i]
         dyi_name = _append_grad_suffix_(yi.name)
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -771,7 +767,7 @@ def double_grad_check_for_dygraph(func,
             "please check the python api unit test used."
         raise RuntimeError(msg)
 
-    for i in six.moves.xrange(len(static_double_grad)):
+    for i in range(len(static_double_grad)):
         if not np.allclose(static_double_grad[i], eager_double_grad[i], rtol,
                            atol):
             msg = 'Check eager double result fail. Mismatch between static_graph double grad ' \
@@ -805,7 +801,7 @@ def get_static_triple_grad(x,
         program = fluid.default_main_program()
     scope = fluid.executor.global_scope()
     y_grads = []
-    for i in six.moves.xrange(len(y)):
+    for i in range(len(y)):
         yi = y[i]
         dyi_name = _append_grad_suffix_(yi.name)
         np_type = dtype_to_np_dtype(yi.dtype)
@@ -940,7 +936,7 @@ def triple_grad_check_for_dygraph(func,
             "please check the python api unit test used."
         raise RuntimeError(msg)
 
-    for i in six.moves.xrange(len(static_triple_grad)):
+    for i in range(len(static_triple_grad)):
         if not np.allclose(static_triple_grad[i], eager_triple_grad[i], rtol,
                            atol):
             msg = 'Check eager double result fail. Mismatch between static_graph double grad ' \

@@ -18,7 +18,7 @@ import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
 import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import default_main_program, switch_main_program
+from paddle.fluid.framework import switch_main_program
 from paddle.fluid.framework import Program, program_guard
 import numpy as np
 

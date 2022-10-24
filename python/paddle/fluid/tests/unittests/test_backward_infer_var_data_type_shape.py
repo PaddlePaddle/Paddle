@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from decorator_helper import prog_scope
 import unittest
 import paddle.fluid as fluid
 import numpy as np

@@ -13,19 +13,11 @@
 # limitations under the License.
 
 import os
-import sys
-import subprocess
 import multiprocessing
-from datetime import datetime
 
 import re
-import copy
-import errno
 import time
-import logging
-import six
 import abc
-import paddle.fluid as fluid
 from paddle.fluid import core
 import functools
 
@@ -463,7 +455,7 @@ class HDFSClient(FS):
         self.pre_commands.append(dfs)
 
         if configs:
-            for k, v in six.iteritems(configs):
+            for k, v in configs.items():
                 config_command = '-D%s=%s' % (k, v)
                 self.pre_commands.append(config_command)
 

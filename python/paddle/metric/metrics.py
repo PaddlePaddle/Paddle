@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import abc
 import numpy as np
 
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import core, _varbase_creator, _non_static_mode, _in_legacy_dygraph
+from ..fluid.framework import _non_static_mode, _varbase_creator
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 __all__ = []
 
@@ -29,8 +28,7 @@ def _is_numpy_(var):
     return isinstance(var, (np.ndarray, np.generic))
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Metric(object):
+class Metric(metaclass=abc.ABCMeta):
     r"""
     Base class for metric, encapsulates metric logic and APIs
     Usage:

@@ -16,14 +16,12 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from test_imperative_ptb_rnn import PtbModel
 import numpy as np
-import six
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -167,9 +165,9 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                                       dy_last_cell_value)
         np.testing.assert_array_equal(static_last_hidden_value,
                                       dy_last_hidden_value)
-        for key, value in six.iteritems(static_param_init):
+        for key, value in static_param_init.items():
             np.testing.assert_array_equal(value, dy_param_init[key])
-        for key, value in six.iteritems(static_param_updated):
+        for key, value in static_param_updated.items():
             np.testing.assert_array_equal(value, dy_param_updated[key])
 
     def test_ptb_rnn_sort_gradient(self):

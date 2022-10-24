@@ -24,12 +24,9 @@ import shutil
 from contextlib import closing
 import multiprocessing
 import socket
-import warnings
-import six
 import struct
 import json
 
-import paddle
 import paddle.fluid as fluid
 from distutils.util import strtobool
 import paddle.utils.cpp_extension.extension_utils as utils
@@ -837,9 +834,7 @@ def get_device_proc_info(args):
                 "gpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(gpus), args.nproc_per_node)
 
             n = int(len(gpus) / int(args.nproc_per_node))
-            devices_per_proc = [
-                gpus[i:i + n] for i in six.moves.range(0, len(gpus), n)
-            ]
+            devices_per_proc = [gpus[i:i + n] for i in range(0, len(gpus), n)]
         else:
             devices_per_proc = gpus
     elif device_mode == DeviceMode.ASCEND_NPU:
@@ -849,9 +844,7 @@ def get_device_proc_info(args):
                 "npus' number:{} mod args.nproc_per_node:{} must == 0".format(len(npus), args.nproc_per_node)
 
             n = int(len(npus) / int(args.nproc_per_node))
-            devices_per_proc = [
-                npus[i:i + n] for i in six.moves.range(0, len(npus), n)
-            ]
+            devices_per_proc = [npus[i:i + n] for i in range(0, len(npus), n)]
         else:
             devices_per_proc = npus
     elif device_mode == DeviceMode.XPU:
@@ -861,9 +854,7 @@ def get_device_proc_info(args):
                 "xpus' number:{} mod args.nproc_per_node:{} must == 0".format(len(xpus), args.nproc_per_node)
 
             n = int(len(xpus) / int(args.nproc_per_node))
-            devices_per_proc = [
-                xpus[i:i + n] for i in six.moves.range(0, len(xpus), n)
-            ]
+            devices_per_proc = [xpus[i:i + n] for i in range(0, len(xpus), n)]
         else:
             devices_per_proc = xpus
     elif device_mode == DeviceMode.MLU:
@@ -873,9 +864,7 @@ def get_device_proc_info(args):
                 "mlus' number:{} mod args.nproc_per_node:{} must == 0".format(len(mlus), args.nproc_per_node)
 
             n = int(len(mlus) / int(args.nproc_per_node))
-            devices_per_proc = [
-                mlus[i:i + n] for i in six.moves.range(0, len(mlus), n)
-            ]
+            devices_per_proc = [mlus[i:i + n] for i in range(0, len(mlus), n)]
         else:
             devices_per_proc = mlus
     elif device_mode == DeviceMode.CPU:
@@ -1481,7 +1470,7 @@ class ParameterServerLauncher(object):
                 format(self.node_ips, self.current_node_ip, self.node_rank))
 
     def start_ps(self):
-        if not self.current_node_ip in self.node_ips:
+        if self.current_node_ip not in self.node_ips:
             return
         cluster = Cluster(hdfs=None)
         server_rank = 0

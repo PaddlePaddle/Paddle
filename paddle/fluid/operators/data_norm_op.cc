@@ -18,17 +18,14 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/data_layout.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 #include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using LoDTensor = phi::DenseTensor;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 using EigenArrayMap =
@@ -71,8 +68,8 @@ class DataNormOp : public framework::OperatorWithKernel {
     }
 
     const auto x_dims = ctx->GetInputDim("X");
-    const DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
+    const DataLayout data_layout =
+        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
     PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5,
                       true,
@@ -199,15 +196,6 @@ class DataNormOp : public framework::OperatorWithKernel {
                         platform::errors::InvalidArgument(
                             "bias input should be of float type"));
     }
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -286,8 +274,7 @@ class DataNormKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     // const bool is_test = ctx.Attr<bool>("is_test");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     const auto *x = ctx.Input<phi::DenseTensor>("X");
     const auto &x_dims = x->dims();
@@ -457,8 +444,8 @@ class DataNormGradOp : public framework::OperatorWithKernel {
                    "DataNormGrad");
 
     const auto x_dims = ctx->GetInputDim("X");
-    const DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
+    const DataLayout data_layout =
+        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
@@ -508,18 +495,7 @@ class DataNormGradOp : public framework::OperatorWithKernel {
           "Y@GRAD can not be found for computation"));
     }
 
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-      return framework::OpKernelType(data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-
     return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 };
@@ -534,8 +510,7 @@ class DataNormGradKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
     const auto *means = ctx.Input<phi::DenseTensor>("Means");
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]

@@ -135,7 +135,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
       distributed::ProcessGroup *pg = map->get(rid);
       std::vector<phi::DenseTensor> out_tensor;
       auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
-      auto out = ctx.Output<framework::LoDTensor>("Out");
+      auto out = ctx.Output<phi::DenseTensor>("Out");
       auto out_dims = out->dims();
 
       if (dynamic_shape) {
@@ -198,7 +198,7 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
     }
 
     auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     auto out_dims = out->dims();
     auto numel = out->numel();
 
