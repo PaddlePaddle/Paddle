@@ -213,7 +213,7 @@ void TensorRTEngine::FreezeNetwork() {
         break;
       case nvinfer1::DataType::kFLOAT:
       case nvinfer1::DataType::kINT8:
-        input->setType(nvinfer1::DATATYPE_FLOAT);
+        input->setType(nvinfer1::DATATYPE::FLOAT);
         break;
     }
     input->setAllowedFormats(
