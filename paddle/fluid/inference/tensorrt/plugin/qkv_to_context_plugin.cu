@@ -63,7 +63,7 @@ template <typename T>
 __global__ void reset_qk_bias(T *input, int real_seq_len, int seq_len) {
   if (threadIdx.x < seq_len) {
     int id = threadIdx.x + blockIdx.x * seq_len;
-    input[id] = threadIdx.x >= real_seq_len ? (T)-1e20f : (T)0.0f;
+    input[id] = threadIdx.x >= real_seq_len ? (T)0.0f : (T)1.0f;
   }
 }
 
@@ -292,8 +292,9 @@ void QkvToContextPluginDynamic::configurePlugin(
     const phi::GPUContext &dev_ctx = *device_ctx;
     auto stream = dev_ctx.stream();
     tensor_.Resize({batch, seq_len, seq_len, head_number_});
-    int blocks = batch * head_number_ * seq_len;
     if (in[0].desc.type == nvinfer1::DataType::kHALF) {
+      tensor_.Resize({batch, seq_len, seq_len, 1});
+      int blocks = batch * 1 * seq_len;
       mask_half_ = reinterpret_cast<half *>(
           tensor_.mutable_data<int16_t>(platform::CUDAPlace(device_id)));
       reset_qk_bias<<<blocks, 1024, 0, stream>>>(
@@ -462,6 +463,7 @@ int QkvToContextPluginDynamic::enqueue(
                            head_size_,
                            qkptr,
                            input1_data,
+                           false,
                            tptr,
                            scale_,
                            static_cast<float>(0.0));
@@ -510,10 +512,12 @@ int QkvToContextPluginDynamic::enqueue(
           head_number_);
       qk_bias = temp_qk_bias;
     }
-    // padding:    mask_half_ = [0,0,...-1e20f,-1e20f]
-    // no_padding: mask_half_ = [0,.....0,.........,0]
+    // padding:    mask_half_ = [1.0,....1.0...1.0....,0.0f]
+    // no_padding: mask_half_ = [1.0,....1.0,.........,1.0f]
+    bool bias_is_mask = false;
     if (ProductDim(input_desc[1].dims) == ProductDim(input_desc[0].dims)) {
       qk_bias = mask_half_;
+      bias_is_mask = true;
     }
     const half *input1_data = static_cast<const half *>(qk_bias);
     // BxSx3xNxH => tptr: 3xBxNxSxH.
@@ -552,6 +556,7 @@ int QkvToContextPluginDynamic::enqueue(
                            head_size_,
                            qkptr,
                            input1_data,
+                           bias_is_mask,
                            tptr,
                            half(1.),
                            half(0.0));
