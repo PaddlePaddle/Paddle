@@ -129,46 +129,20 @@ def generate_extra_info(op_compat_yaml_path, ops_extra_info_path):
     for op_compat_args in compat_apis:
         if 'extra' in op_compat_args:
             # TODO(chenweihang): add inputs and outputs
-            if 'attrs' in extra_args_map:
-                attr_map_list = []
-                attr_checker_func_list = []
-                for attr in extra_args_map['attrs']:
-                    attr_type, attr_name, default_val = parse_attr(attr)
-                    attr_checker_func_list.append(
-                        f"[](framework::AttributeMap* attr_map, bool only_check_exist_value)-> void {{ ExtraAttrChecker<{attr_type}>(\"{attr_name}\", {default_val})(attr_map, only_check_exist_value);}}"
-                    )
-                    if attr_type.startswith("std::vector"):
-                        attr_map_list.append(
-                            f"{{\"{attr_name}\", {attr_type}{default_val}}}"
-                        )
-                    else:
-                        attr_map_list.append(
-                            f"{{\"{attr_name}\", {attr_type}{{{default_val}}}}}"
-                        )
-                api_extra_attr_map = ", ".join(attr_map_list)
-                api_extra_attr_checkers = ",\n      ".join(
-                    attr_checker_func_list
-                )
-                extra_map_str_list.append(
-                    f"{{\"{get_op_name(op_compat_args['op'])}\", {{ {api_extra_attr_map} }}}}"
-                )
-                extra_checker_str_list.append(
-                    f"{{\"{get_op_name(op_compat_args['op'])}\", {{ {api_extra_attr_checkers} }}}}"
-                )
-                if 'backward' in op_compat_args:
-                    for bw_item in op_compat_args['backward'].split(','):
-                        bw_op_name = get_op_name(bw_item)
-                        extra_map_str_list.append(
-                            f"{{\"{bw_op_name}\", {{ {api_extra_attr_map} }}}}"
-                        )
-                        extra_checker_str_list.append(
-                            f"{{\"{bw_op_name}\", {{ {api_extra_attr_checkers} }}}}"
-                        )
-
+            default_attr_map_str, default_attr_checker_str = generate_attr_info(
+                'attrs', op_compat_args
+            )
+            dynamic_attr_map_str, _ = generate_attr_info(
+                'dynamic_attrs', op_compat_args
+            )
+            extra_default_attr_str_list.extend(default_attr_map_str)
+            extra_dynamic_attr_str_list.extend(dynamic_attr_map_str)
+            extra_checker_str_list.extend(default_attr_checker_str)
     ops_extra_info_file = open(ops_extra_info_path, 'w')
     ops_extra_info_file.write(
         map_code_template(
-            ",\n    ".join(extra_map_str_list),
+            ",\n    ".join(extra_default_attr_str_list),
+            ",\n    ".join(extra_dynamic_attr_str_list),
             ",\n    ".join(extra_checker_str_list),
         )
     )
