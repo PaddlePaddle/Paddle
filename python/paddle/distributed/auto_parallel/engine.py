@@ -20,6 +20,7 @@ from collections import defaultdict
 
 import paddle
 import paddle.utils as utils
+import paddle.distributed.auto_parallel.utils as auto_utils
 
 from paddle import fluid, static
 from paddle.metric import Metric
@@ -45,14 +46,13 @@ from .dist_loader import (
     DistributedDataLoaderFromGenerator,
     DistributedDataLoader,
 )
-from .utils import to_list, get_dist_attr, get_lr
+from .strategy import Strategy
 from .process_group import new_process_group, get_all_process_groups
 from .dist_context import DistributedContext, get_default_distributed_context
-from .strategy import Strategy
-from .interface import CollectionNames, get_collection, _g_recompute_idx
-from ..utils.log_utils import get_logger
-from .utils import initialize_pg_in_full_mode
+from .interface import CollectionNames, get_collection
 from .cost.estimate_cost import get_cost_from_engine
+
+from ..utils.log_utils import get_logger
 
 
 class Engine:
@@ -150,11 +150,11 @@ class Engine:
         self._optimizer = self._validate_opt(optimizer)
 
         metrics = metrics or []
-        for metric in to_list(metrics):
+        for metric in auto_utils.to_list(metrics):
             assert isinstance(
                 metric, Metric
             ), "{} is not sub class of Metric".format(metric.__class__.__name__)
-        self._metrics = to_list(metrics)
+        self._metrics = auto_utils.to_list(metrics)
 
         if cluster and not isinstance(cluster, Cluster):
             raise TypeError(
@@ -235,8 +235,8 @@ class Engine:
                     type(data).__name__
                 )
             )
-        inputs = to_list(inputs)
-        labels = to_list(labels)
+        inputs = auto_utils.to_list(inputs)
+        labels = auto_utils.to_list(labels)
 
         num_shards = self._strategy.dataset.num_shards
 
@@ -537,18 +537,22 @@ class Engine:
                 with static.program_guard(
                     serial_main_prog, serial_startup_prog
                 ), utils.unique_name.guard():
-                    outputs = to_list(self._model(*inputs))
+                    outputs = auto_utils.to_list(self._model(*inputs))
                     if mode != "predict" and self._loss:
-                        losses = to_list(self._loss(*(outputs + labels)))
+                        losses = auto_utils.to_list(
+                            self._loss(*(outputs + labels))
+                        )
                         self._losses = losses
 
                     if mode != "predict" and (outputs or labels):
                         for metric in self._metrics:
                             metrics.append(
-                                to_list(metric.compute(*(outputs + labels)))
+                                auto_utils.to_list(
+                                    metric.compute(*(outputs + labels))
+                                )
                             )
             else:
-                losses = to_list(self._loss)
+                losses = auto_utils.to_list(self._loss)
                 self.losses = losses
 
         default_ctx = get_default_distributed_context()
@@ -569,7 +573,7 @@ class Engine:
         if mode != "train":
             serial_main_prog = serial_main_prog.clone(for_test=True)
 
-        self._set_recompute_ckpts()
+        auto_utils.set_recompute_ckpts(self._model, self._strategy)
         self._dist_contexts[mode] = DistributedContext(
             serial_main_prog,
             serial_startup_prog,
@@ -702,7 +706,9 @@ class Engine:
             cur_rank = self._cur_rank
             # NOTE: After the implementation of the unified dynamic and static communication group initialization mode in the future, the initialization logic of full mode will be removed because port occupation error may occur.
             if self._strategy.auto_mode == "full":
-                initialize_pg_in_full_mode(all_process_groups, cur_rank)
+                auto_utils.initialize_pg_in_full_mode(
+                    all_process_groups, cur_rank
+                )
             else:
                 for process_group in all_process_groups:
                     if cur_rank not in process_group.ranks:
@@ -887,7 +893,7 @@ class Engine:
                     )
                 except core.EOFException:
                     break
-                lr = get_lr(self._optimizer)
+                lr = auto_utils.get_lr(self._optimizer)
                 logs = self._prepare_logger(
                     outs,
                     epoch,
@@ -1452,7 +1458,7 @@ class Engine:
         self._optimization_tuning(self._mode, tune_data, batch_size)
 
     def _validate_spec(self, specs):
-        specs = to_list(specs)
+        specs = auto_utils.to_list(specs)
         self._k_steps = self._strategy.gradient_merge.k_steps
         if specs is not None:
             for i, spec in enumerate(specs):
@@ -1505,39 +1511,6 @@ class Engine:
 
         return 1, 0
 
-    def _set_recompute_ckpts(self):
-        # NOTE hack to enable recompute in engine api for GPT-3
-        # TODO support more PaddleNLP/CV models here
-
-        if _g_recompute_idx > -1:
-            return
-
-        recompute = self._strategy.recompute
-        if not recompute.enable:
-            return
-
-        # extract ckpts by specific model
-        if isinstance(self._model, paddle.nn.Layer):
-            if hasattr(
-                self._model, "gpt"
-            ) and self._model.__class__.__name__ in [
-                'GPTForPretraining',
-                'GPTForPretrainingAuto',
-            ]:
-                exact_ckpts = self._model.gpt.checkpoints
-            else:
-                exact_ckpts = recompute.checkpoints
-        else:
-            exact_ckpts = recompute.checkpoints
-
-        # modify strategy
-        recompute.checkpoints = exact_ckpts[:]
-        logs = {
-            'Model Class': self._model.__class__.__name__,
-            'Applied Recompute ckpts': exact_ckpts,
-        }
-        self._logger.info(logs)
-
     def _validate_opt(self, optimizer):
         if optimizer is not None:
             optimizer._parameter_list = None
@@ -1551,7 +1524,7 @@ class Engine:
     def _metrics_name(self):
         metrics_name = ['loss'] if self._loss else []
         for m in self._metrics:
-            metrics_name.extend(to_list(m.name()))
+            metrics_name.extend(auto_utils.to_list(m.name()))
         return metrics_name
 
     def _switch_mode(self, mode):
@@ -1569,7 +1542,7 @@ class Engine:
     def _set_state_dict(self, mode, strict, state_dict, dist_attr):
         program = self._dist_main_progs[mode][self._cur_rank]
         dist_context = self._dist_contexts[mode]
-        cur_dist_attr = get_dist_attr(program, dist_context)
+        cur_dist_attr = auto_utils.get_dist_attr(program, dist_context)
         converter = Converter(state_dict, dist_attr, cur_dist_attr)
         state_dict = converter.convert(strict=strict)
         program.set_state_dict(state_dict)

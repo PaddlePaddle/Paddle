@@ -57,6 +57,8 @@ class MultiHeadAttention(nn.Layer):
         bias_attr=None,
         fuse=False,
         mesh_idx=None,
+        use_recompute=False,
+        recompute_granularity="full",
     ):
         super(MultiHeadAttention, self).__init__()
         self.embed_dim = embed_dim
@@ -67,6 +69,9 @@ class MultiHeadAttention(nn.Layer):
         self.need_weights = need_weights
         self.fuse = fuse
         self.mesh_idx = mesh_idx
+        self.use_recompute = use_recompute
+        self.recompute_granularity = recompute_granularity
+
         self.head_dim = embed_dim // num_heads
         assert (
             self.head_dim * num_heads == self.embed_dim
@@ -225,6 +230,27 @@ class MultiHeadAttention(nn.Layer):
             # incremental_state with initial value, mainly for usage like UniLM
             return self.Cache(key, value)
 
+    def core_attn(self, q, k, v, attn_mask):
+        product = layers.matmul(
+            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+        )
+        if attn_mask is not None:
+            product = product + attn_mask
+        weights = F.softmax(product)
+        if self.dropout:
+            weights = F.dropout(
+                weights,
+                self.dropout,
+                training=self.training,
+                mode="upscale_in_train",
+            )
+        out = tensor.matmul(weights, v)
+        # combine heads
+        out = tensor.transpose(out, perm=[0, 2, 1, 3])
+        out = tensor.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+
+        return out, weights
+
     def forward(
         self, query, key, value, attn_mask=None, use_cache=False, cache=None
     ):
@@ -244,23 +270,12 @@ class MultiHeadAttention(nn.Layer):
             q, k, v, cache = self._prepare_qkv(
                 query, key, value, use_cache, cache
             )
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
-        )
-        if attn_mask is not None:
-            product = product + attn_mask
-        weights = F.softmax(product)
-        if self.dropout:
-            weights = F.dropout(
-                weights,
-                self.dropout,
-                training=self.training,
-                mode="upscale_in_train",
-            )
-        out = tensor.matmul(weights, v)
-        # combine heads
-        out = tensor.transpose(out, perm=[0, 2, 1, 3])
-        out = tensor.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+
+        if self.use_recompute and self.recompute_granularity == "core_attn":
+            out, weights = auto.recompute(self.core_attn)(q, k, v, attn_mask)
+        else:
+            out, weights = self.core_attn(q, k, v, attn_mask)
+
         # project to output
         out = self.out_proj(out)
         if _global_parallel_strategy == "mp":
@@ -295,12 +310,22 @@ class TransformerDecoder(nn.Layer):
     TransformerDecoder is a stack of N decoder layers.
     """
 
-    def __init__(self, decoder_layers, num_layers, norm=None, hidden_size=None):
+    def __init__(
+        self,
+        decoder_layers,
+        num_layers,
+        norm=None,
+        hidden_size=None,
+        use_recompute=False,
+        recompute_granularity="full",
+    ):
         super(TransformerDecoder, self).__init__()
 
         self.num_layers = num_layers
         self.layers = decoder_layers
         self.norm = norm
+        self.use_recompute = use_recompute
+        self.recompute_granularity = recompute_granularity
         if norm == "LayerNorm":
             self.norm = nn.LayerNorm(hidden_size)
         elif norm is not None:
@@ -348,149 +373,37 @@ class TransformerDecoder(nn.Layer):
                 DPMPPP_MESH_LIST[0],
                 ["x"] + [None for i in range(len(output.shape) - 1)],
             )
+
         for i, mod in enumerate(self.layers):
+            if self.use_recompute and self.recompute_granularity == "full":
+                print("recompute mod ================")
+                mod = auto.recompute(mod)
+
             if cache is None:
                 if use_cache:
-                    if _global_parallel_strategy == "pp":
-                        output, new_cache = auto.shard_op(
-                            mod, PP_MESH_LIST[mod.mesh_idx]
-                        )(output, memory, tgt_mask, use_cache, cache)
-                        auto.shard_tensor(
-                            output,
-                            PP_MESH_LIST[mod.mesh_idx],
-                            [None for i in range(len(output.shape))],
-                        )
-                    elif _global_parallel_strategy == "dp_pp":
-                        output, new_cache = auto.shard_op(
-                            mod, DPPP_MESH_LIST[mod.mesh_idx]
-                        )(output, memory, tgt_mask, use_cache, cache)
-                        auto.shard_tensor(
-                            output,
-                            DPPP_MESH_LIST[mod.mesh_idx],
-                            ["x"]
-                            + [None for i in range(len(output.shape) - 1)],
-                        )
-                    elif _global_parallel_strategy == "mp_pp":
-                        output, new_cache = auto.shard_op(
-                            mod, MPPP_MESH_LIST[mod.mesh_idx]
-                        )(output, memory, tgt_mask, use_cache, cache)
-                        auto.shard_tensor(
-                            output,
-                            MPPP_MESH_LIST[mod.mesh_idx],
-                            [None for i in range(len(output.shape))],
-                        )
-                    elif _global_parallel_strategy == "dp_mp_pp":
-                        output, new_cache = auto.shard_op(
-                            mod, DPMPPP_MESH_LIST[mod.mesh_idx]
-                        )(output, memory, tgt_mask, use_cache, cache)
-                        auto.shard_tensor(
-                            output,
-                            DPMPPP_MESH_LIST[mod.mesh_idx],
-                            [None for i in range(len(output.shape))],
-                        )
-                    else:
-                        output, new_cache = mod(
-                            output,
-                            memory,
-                            tgt_mask=tgt_mask,
-                            use_cache=use_cache,
-                            cache=cache,
-                        )
-                    new_caches.append(new_cache)
-                else:
-                    if _global_parallel_strategy == "pp":
-                        output = auto.shard_op(mod, PP_MESH_LIST[mod.mesh_idx])(
-                            output, memory, tgt_mask, use_cache, cache
-                        )
-                        auto.shard_tensor(
-                            output,
-                            PP_MESH_LIST[mod.mesh_idx],
-                            [None for i in range(len(output.shape))],
-                        )
-                    elif _global_parallel_strategy == "dp_pp":
-                        output = auto.shard_op(
-                            mod, DPPP_MESH_LIST[mod.mesh_idx]
-                        )(output, memory, tgt_mask, use_cache, cache)
-                        auto.shard_tensor(
-                            output,
-                            DPPP_MESH_LIST[mod.mesh_idx],
-                            ["x"]
-                            + [None for i in range(len(output.shape) - 1)],
-                        )
-                    elif _global_parallel_strategy == "mp_pp":
-                        output = auto.shard_op(
-                            mod, MPPP_MESH_LIST[mod.mesh_idx]
-                        )(output, memory, tgt_mask, use_cache, cache)
-                        auto.shard_tensor(
-                            output,
-                            MPPP_MESH_LIST[mod.mesh_idx],
-                            [None for i in range(len(output.shape))],
-                        )
-                    elif _global_parallel_strategy == "dp_mp_pp":
-                        output = auto.shard_op(
-                            mod, DPMPPP_MESH_LIST[mod.mesh_idx]
-                        )(output, memory, tgt_mask, use_cache, cache)
-                        auto.shard_tensor(
-                            output,
-                            DPMPPP_MESH_LIST[mod.mesh_idx],
-                            ["x"]
-                            + [None for i in range(len(output.shape) - 1)],
-                        )
-                    else:
-                        output = mod(
-                            output,
-                            memory,
-                            tgt_mask=tgt_mask,
-                            use_cache=use_cache,
-                            cache=cache,
-                        )
-            else:
-                if _global_parallel_strategy == "pp":
-                    output, new_cache = auto.shard_op(
-                        mod, PP_MESH_LIST[mod.mesh_idx]
-                    )(output, memory, tgt_mask, use_cache, cache)
-                    auto.shard_tensor(
-                        output,
-                        PP_MESH_LIST[mod.mesh_idx],
-                        [None for i in range(len(output.shape))],
-                    )
-                elif _global_parallel_strategy == "dp_pp":
-                    output, new_cache = auto.shard_op(
-                        mod, DPPP_MESH_LIST[mod.mesh_idx]
-                    )(output, memory, tgt_mask, use_cache, cache)
-                    auto.shard_tensor(
-                        output,
-                        DPPP_MESH_LIST[mod.mesh_idx],
-                        ["x"] + [None for i in range(len(output.shape) - 1)],
-                    )
-                elif _global_parallel_strategy == "mp_pp":
-                    output, new_cache = auto.shard_op(
-                        mod, MPPP_MESH_LIST[mod.mesh_idx]
-                    )(output, memory, tgt_mask, use_cache, cache)
-                    auto.shard_tensor(
-                        output,
-                        MPPP_MESH_LIST[mod.mesh_idx],
-                        [None for i in range(len(output.shape))],
-                    )
-                elif _global_parallel_strategy == "dp_mp_pp":
-                    output, new_cache = auto.shard_op(
-                        mod, DPMPPP_MESH_LIST[mod.mesh_idx]
-                    )(output, memory, tgt_mask, use_cache, cache)
-                    auto.shard_tensor(
-                        output,
-                        DPMPPP_MESH_LIST[mod.mesh_idx],
-                        ["x"] + [None for i in range(len(output.shape) - 1)],
-                    )
-                else:
                     output, new_cache = mod(
                         output,
                         memory,
                         tgt_mask=tgt_mask,
                         use_cache=use_cache,
-                        cache=cache[i],
+                        cache=cache,
                     )
+                    new_caches.append(new_cache)
+                else:
+                    output = mod(output, memory, tgt_mask, use_cache, cache)
+            else:
+                output, new_cache = mod(
+                    output,
+                    memory,
+                    tgt_mask=tgt_mask,
+                    use_cache=use_cache,
+                    cache=cache[i],
+                )
                 new_caches.append(new_cache)
-            self.checkpoints.append(output.name)
+
+            if not self.use_recompute:
+                self.checkpoints.append(output.name)
+
         if self.norm is not None:
             output = self.norm(output)
         return output if use_cache is False else (output, new_caches)
@@ -528,6 +441,8 @@ class TransformerDecoderLayer(nn.Layer):
         weight_attr=None,
         bias_attr=None,
         mesh_idx=None,
+        use_recompute=False,
+        recompute_granularity="full",
     ):
         self._config = locals()
         self._config.pop("self")
@@ -537,8 +452,12 @@ class TransformerDecoderLayer(nn.Layer):
         attn_dropout = dropout if attn_dropout is None else attn_dropout
         act_dropout = dropout if act_dropout is None else act_dropout
         self.normalize_before = normalize_before
+        self.use_recompute = use_recompute
+        self.recompute_granularity = recompute_granularity
+
         weight_attrs = _convert_param_attr_to_list(weight_attr, 3)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 3)
+
         self.self_attn = MultiHeadAttention(
             d_model,
             nhead,
@@ -546,6 +465,8 @@ class TransformerDecoderLayer(nn.Layer):
             weight_attr=weight_attrs[0],
             bias_attr=bias_attrs[0],
             mesh_idx=self.mesh_idx,
+            use_recompute=self.use_recompute,
+            recompute_granularity=self.recompute_granularity,
         )
         self.linear1 = nn.Linear(
             d_model, dim_feedforward, weight_attrs[2], bias_attr=bias_attrs[2]
@@ -563,12 +484,19 @@ class TransformerDecoderLayer(nn.Layer):
         residual = tgt
         if self.normalize_before:
             tgt = self.norm1(tgt)
-        if use_cache is False:
-            tgt = self.self_attn(tgt, tgt, tgt, tgt_mask, use_cache, cache)
+
+        if self.use_recompute and self.recompute_granularity == "full_attn":
+            self_attn = auto.recompute(self.self_attn)
         else:
-            tgt, incremental_cache = self.self_attn(
+            self_attn = self.self_attn
+
+        if use_cache is False:
+            tgt = self_attn(tgt, tgt, tgt, tgt_mask, use_cache, cache)
+        else:
+            tgt, incremental_cache = self_attn(
                 tgt, tgt, tgt, tgt_mask, use_cache, cache
             )
+
         tgt = residual + self.dropout1(tgt)
         if not self.normalize_before:
             tgt = self.norm1(tgt)
@@ -716,12 +644,17 @@ class GPTModel(nn.Layer):
         bos_token_id=0,
         eol_token_id=3,
         pp_degree=None,
+        use_recompute=False,
+        recompute_granularity="full",
     ):
         super(GPTModel, self).__init__()
         self.pad_token_id = pad_token_id
         self.initializer_range = initializer_range
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
+        self.use_recompute = use_recompute
+        self.recompute_granularity = recompute_granularity
+
         self.layer_per_stage = None
         self.pipline_mode = pp_degree is not None and pp_degree > 1
         if self.pipline_mode:
@@ -734,6 +667,7 @@ class GPTModel(nn.Layer):
             type_vocab_size,
             self.initializer_range,
         )
+
         decoder_layers = nn.LayerList()
         for i in range(num_hidden_layers):
             mesh_index = None
@@ -756,14 +690,19 @@ class GPTModel(nn.Layer):
                     ),
                     bias_attr=None,
                     mesh_idx=mesh_index,
+                    use_recompute=self.use_recompute,
+                    recompute_granularity=self.recompute_granularity,
                 )
             )
+
         Decoder = TransformerDecoder
         self.decoder = Decoder(
             decoder_layers,
             num_hidden_layers,
             norm="LayerNorm",
             hidden_size=hidden_size,
+            use_recompute=self.use_recompute,
+            recompute_granularity=self.recompute_granularity,
         )
         self.checkpoints = []
 
@@ -817,7 +756,8 @@ class GPTModel(nn.Layer):
             use_cache=use_cache,
             cache=cache,
         )
-        self.checkpoints.extend(self.decoder.checkpoints)
+        if not self.use_recompute:
+            self.checkpoints.extend(self.decoder.checkpoints)
         return encoder_outputs
 
 
