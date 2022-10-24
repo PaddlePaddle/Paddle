@@ -37,19 +37,33 @@ class CastOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
 
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    auto out_dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("out_dtype"));
+    auto out_dtype = static_cast<framework::proto::VarType::Type>(
+        PADDLE_GET_CONST(int, op_desc.GetAttr("out_dtype")));
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
 
     switch (out_dtype) {
-      case 2:  // INT32 = 2
+      case framework::proto::VarType::BOOL:  // BOOL = 0
+        layer->setOutputType(0, nvinfer1::DataType::kBOOL);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kBOOL);
+        break;
+      case framework::proto::VarType::INT32:  // INT32 = 2
+      case framework::proto::VarType::INT64:  // INT64 = 3
+        layer->setOutputType(0, nvinfer1::DataType::kINT32);
         layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
         break;
-      case 4:  // FP16 = 4
+      case framework::proto::VarType::FP16:  // FP16 = 4
+        layer->setOutputType(0, nvinfer1::DataType::kHALF);
         layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
         break;
-      case 5:  // FP32 = 5
+      case framework::proto::VarType::FP32:  // FP32 = 5
+      case framework::proto::VarType::FP64:  // FP64 = 6
+        layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
         layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
+        break;
+      case framework::proto::VarType::INT8:  // INT8 = 21
+        layer->setOutputType(0, nvinfer1::DataType::kINT8);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kINT8);
         break;
       default:
         LOG(ERROR) << "Unable to convert a fluid data type(" << out_dtype

@@ -2012,28 +2012,45 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if !IS_TRT_VERSION_GE(7000)
       return false;
 #endif
-      if (!(desc.HasAttr("in_dtype") && desc.HasAttr("out_dtype"))) {
-        VLOG(3) << "the " << op_type
-                << " does not have attr (in_dtype or "
-                   "out_dtype)";
+      if (!(desc.HasAttr("out_dtype"))) {
+        VLOG(3) << "the " << op_type << " does not have attr (out_dtype)";
         return false;
       }
-      int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
-      int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
-      if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
-        VLOG(3) << "unsupport data type conversion";
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
         return false;
       }
-      if (in_dtype == 0) {
-        VLOG(3) << "do not support input data type as bool now";
+
+      auto in_dtype = static_cast<framework::proto::VarType::Type>(
+          PADDLE_GET_CONST(int, desc.GetAttr("in_dtype")));
+      auto out_dtype = static_cast<framework::proto::VarType::Type>(
+          PADDLE_GET_CONST(int, desc.GetAttr("out_dtype")));
+
+      auto convertable = [&](framework::proto::VarType::Type in,
+                             framework::proto::VarType::Type out) {
+        if ((in == framework::proto::VarType::FP64 ||
+             in == framework::proto::VarType::FP32) &&
+            (out == framework::proto::VarType::FP32))
+          return true;
+        if ((in == framework::proto::VarType::INT32 ||
+             in == framework::proto::VarType::INT64) &&
+            (out == framework::proto::VarType::INT32))
+          return true;
+        if ((in == framework::proto::VarType::BOOL) &&
+            (out == framework::proto::VarType::BOOL ||
+             out == framework::proto::VarType::INT8 ||
+             out == framework::proto::VarType::INT32 ||
+             out == framework::proto::VarType::FP16 ||
+             out == framework::proto::VarType::FP32))
+          return true;
+        VLOG(3) << "Invalid conversions from: (" << in << ") -> (" << out
+                << ")";
         return false;
-      }
-      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2) &&
-            (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
-        VLOG(3) << "only valid conversions are: "
-                   "(kFLOAT | kHALF | kINT32) -> (kFLOAT | kHALF | kINT32)";
-        return false;
-      }
+      };
+      return convertable(in_dtype, out_dtype);
     }
 
     if (op_type == "top_k_v2" || op_type == "top_k") {
