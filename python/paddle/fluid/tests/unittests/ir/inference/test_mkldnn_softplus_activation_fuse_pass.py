@@ -28,17 +28,18 @@ class SoftplusActivationReluOneDNNFusePassTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 3, 100, 100],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 3, 100, 100], dtype="float32"
+            )
             softplus_out = fluid.layers.softplus(data)
             if self.fuse_beta is not None:
-                activation_out = self.fuse_activation(softplus_out,
-                                                      self.fuse_alpha,
-                                                      self.fuse_beta)
+                activation_out = self.fuse_activation(
+                    softplus_out, self.fuse_alpha, self.fuse_beta
+                )
             elif self.fuse_alpha is not None:
-                activation_out = self.fuse_activation(softplus_out,
-                                                      self.fuse_alpha)
+                activation_out = self.fuse_activation(
+                    softplus_out, self.fuse_alpha
+                )
             else:
                 activation_out = self.fuse_activation(softplus_out)
 
@@ -60,52 +61,52 @@ class SoftplusActivationReluOneDNNFusePassTest(InferencePassTest):
 
 
 class SoftplusActivationTanhOneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.tanh
 
 
 class SoftplusActivationLeakyReluOneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.leaky_relu
         self.fuse_alpha = 0.3
 
 
 class SoftplusActivationSwishOneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.swish
         self.fuse_alpha = 3
 
 
 class SoftplusActivationHardSwishOneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.hard_swish
 
 
 class SoftplusActivationSqrtOneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.hard_swish
 
 
 class SoftplusActivationAbsOneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.abs
 
 
 class SoftplusActivationClipOneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.clip
         self.fuse_alpha = 1.1
@@ -113,30 +114,30 @@ class SoftplusActivationClipOneDNNFusePassTest(
 
 
 class SoftplusActivationGeluErfOneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.gelu
 
 
 class SoftplusActivationGeluTanhOneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.gelu
         self.fuse_alpha = True  # simulated "Approximate" attr
 
 
 class SoftplusActivationRelu6OneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.relu6
 
 
 class SoftplusActivationSigmoidOneDNNFusePassTest(
-        SoftplusActivationReluOneDNNFusePassTest):
-
+    SoftplusActivationReluOneDNNFusePassTest
+):
     def set_params(self):
         self.fuse_activation = fluid.layers.sigmoid
 

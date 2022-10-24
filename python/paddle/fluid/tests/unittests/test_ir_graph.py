@@ -24,8 +24,9 @@ class TestIRGraph(unittest.TestCase):
     def test_nodes(self):
         graph = build_graph()
         self.assertTrue(
-            {node.name()
-             for node in graph.nodes()} == {"x1", "x2", "out", "sum"})
+            {node.name() for node in graph.nodes()}
+            == {"x1", "x2", "out", "sum"}
+        )
 
     def test_has_set_get(self):
         graph = build_graph()
@@ -85,8 +86,9 @@ class TestIRGraph(unittest.TestCase):
         graph = build_graph()
         nodes = graph.release_nodes()
         self.assertTrue(len(graph.nodes()) == 0)
-        self.assertTrue({node.name()
-                         for node in nodes} == {"x1", "x2", "out", "sum"})
+        self.assertTrue(
+            {node.name() for node in nodes} == {"x1", "x2", "out", "sum"}
+        )
 
     def test_remove_node(self):
         graph = build_graph()
@@ -94,8 +96,9 @@ class TestIRGraph(unittest.TestCase):
         for node in nodes:
             if node.name() == "sum":
                 break
-        self.assertTrue({node.name()
-                         for node in nodes} == {"x1", "x2", "out", "sum"})
+        self.assertTrue(
+            {node.name() for node in nodes} == {"x1", "x2", "out", "sum"}
+        )
         nodes.remove(node)
         self.assertTrue({node.name() for node in nodes} == {"x1", "x2", "out"})
 

@@ -18,7 +18,6 @@ from simple_nets import simple_fc_net
 
 
 class DeprecatedMemoryOptimizationInterfaceTest(unittest.TestCase):
-
     def setUp(self):
         self.method = fluid.memory_optimize
 
@@ -61,7 +60,6 @@ class DeprecatedMemoryOptimizationInterfaceTest(unittest.TestCase):
 
 
 class ReleaseMemoryTest(DeprecatedMemoryOptimizationInterfaceTest):
-
     def setUp(self):
         self.method = fluid.release_memory
 

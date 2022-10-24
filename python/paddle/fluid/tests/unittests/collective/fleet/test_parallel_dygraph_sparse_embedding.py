@@ -25,7 +25,6 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestParallelDygraphSparseEmdedding(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -37,11 +36,11 @@ class TestParallelDygraphSparseEmdedding(TestDistBase):
                 os.path.abspath("../../parallel_dygraph_sparse_embedding.py"),
                 delta=1e-5,
                 check_error_log=True,
-                log_name=flag_name)
+                log_name=flag_name,
+            )
 
 
 class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = False
         self._nccl2_mode = True
@@ -49,19 +48,22 @@ class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
 
     def test_sparse_embedding_fp64(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(os.path.abspath(
-                "../../parallel_dygraph_sparse_embedding_fp64.py"),
-                                  delta=1e-5,
-                                  check_error_log=True,
-                                  log_name=flag_name)
+            self.check_with_place(
+                os.path.abspath(
+                    "../../parallel_dygraph_sparse_embedding_fp64.py"
+                ),
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name,
+            )
 
 
 class TestParallelDygraphSparseEmdeddingSpawn(TestDistSpawnRunner):
-
     def test_sparse_embedding_with_spawn(self):
         if fluid.core.is_compiled_with_cuda() and sys.version_info >= (3, 4):
-            self.check_dist_result_with_spawn(test_class=TestSparseEmbedding,
-                                              delta=1e-5)
+            self.check_dist_result_with_spawn(
+                test_class=TestSparseEmbedding, delta=1e-5
+            )
 
 
 if __name__ == "__main__":

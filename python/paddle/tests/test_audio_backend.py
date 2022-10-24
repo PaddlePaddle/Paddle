@@ -20,12 +20,10 @@ import paddle.audio
 
 
 class TestAudioBackends(unittest.TestCase):
-
     def setUp(self):
         self.initParmas()
 
     def initParmas(self):
-
         def get_wav_data(dtype: str, num_channels: int, num_frames: int):
             dtype_ = getattr(paddle, dtype)
             base = paddle.linspace(-1.0, 1.0, num_frames, dtype=dtype_) * 0.1
@@ -37,19 +35,21 @@ class TestAudioBackends(unittest.TestCase):
         self.sr = 16000
         self.dtype = "float32"
         self.window_size = 1024
-        waveform_tensor = get_wav_data(self.dtype,
-                                       self.num_channels,
-                                       num_frames=self.duration * self.sr)
+        waveform_tensor = get_wav_data(
+            self.dtype, self.num_channels, num_frames=self.duration * self.sr
+        )
         # shape (1, 8000)
         self.waveform = waveform_tensor.numpy()
 
     def test_backend(self):
         base_dir = os.getcwd()
         wave_wav_path = os.path.join(base_dir, "wave_test.wav")
-        paddle.audio.save(wave_wav_path,
-                          paddle.to_tensor(self.waveform),
-                          self.sr,
-                          channels_first=True)
+        paddle.audio.save(
+            wave_wav_path,
+            paddle.to_tensor(self.waveform),
+            self.sr,
+            channels_first=True,
+        )
 
         # test backends(wave)(wave_backend) info
         wav_info = paddle.audio.info(wave_wav_path)
@@ -74,9 +74,9 @@ class TestAudioBackends(unittest.TestCase):
             np.testing.assert_array_almost_equal(wav_data, waveform)
 
         with open(wave_wav_path, 'rb') as file_:
-            wav_data, sr = paddle.audio.load(file_,
-                                             normalize=False,
-                                             num_frames=10000)
+            wav_data, sr = paddle.audio.load(
+                file_, normalize=False, num_frames=10000
+            )
         with soundfile.SoundFile(wave_wav_path, "r") as file_:
             dtype = "int16"
             frames = file_._prepare_read(0, None, -1)
@@ -101,6 +101,7 @@ class TestAudioBackends(unittest.TestCase):
 
         try:
             import paddleaudio
+
             backends = paddle.audio.backends.list_available_backends()
             for backend in backends:
                 self.assertTrue(backend in ["wave_backend", "soundfile"])
@@ -119,18 +120,22 @@ class TestAudioBackends(unittest.TestCase):
             pass
 
         try:
-            paddle.audio.save(wave_wav_path,
-                              paddle.to_tensor(self.waveform),
-                              self.sr,
-                              bits_per_sample=24,
-                              channels_first=True)
+            paddle.audio.save(
+                wave_wav_path,
+                paddle.to_tensor(self.waveform),
+                self.sr,
+                bits_per_sample=24,
+                channels_first=True,
+            )
         except ValueError:
             pass
 
         try:
-            paddle.audio.save(wave_wav_path,
-                              paddle.to_tensor(self.waveform).unsqueeze(0),
-                              self.sr)
+            paddle.audio.save(
+                wave_wav_path,
+                paddle.to_tensor(self.waveform).unsqueeze(0),
+                self.sr,
+            )
         except AssertionError:
             pass
 

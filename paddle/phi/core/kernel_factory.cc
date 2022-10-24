@@ -145,10 +145,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_key,
           kernel_name));
 
-  if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
-      || paddle::platform::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
-
+  VLOG(6) << "fluid_op_name: " << TransToFluidOpName(kernel_name);
+  if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) ||
+      paddle::platform::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
+#else
+  if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #endif
   ) {
     // Fallback CPU backend

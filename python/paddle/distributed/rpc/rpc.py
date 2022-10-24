@@ -26,7 +26,7 @@ from paddle.distributed.launch.context import Node
 WorkerInfo = namedtuple("WorkerInfo", ["name", "rank", "ip", "port"])
 
 _DEFAULT_RPC_TIMEOUT = -1
-_MAX_RPC_TIMEOUT_MS = 0x7fffffff
+_MAX_RPC_TIMEOUT_MS = 0x7FFFFFFF
 _BARRIER_TIMEOUT_MAX_DAYS = 99999999
 # tcp store for `_barrier_never_timeout`
 _barrier_store = None
@@ -55,8 +55,9 @@ def _exchange_all_service_infos(world_size):
     s = set()
     for rank in range(world_size):
         info = pickle.loads(_barrier_store.get(str(rank)))
-        assert (info.name not in s
-                ), "The Worker name must be unique, but name `{}` is repeated."
+        assert (
+            info.name not in s
+        ), "The Worker name must be unique, but name `{}` is repeated."
         s.add(info.name)
         all_infos.append(info)
     return all_infos
@@ -94,22 +95,30 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
 
     """
     rank = int(os.environ["PADDLE_TRAINER_ID"]) if rank is None else rank
-    world_size = int(
-        os.environ["PADDLE_TRAINERS_NUM"]) if world_size is None else world_size
+    world_size = (
+        int(os.environ["PADDLE_TRAINERS_NUM"])
+        if world_size is None
+        else world_size
+    )
     worker_endpoint = os.getenv("PADDLE_WORKER_ENDPOINT", None)
     if worker_endpoint is None:
         worker_endpoint = _gen_endpoint()
     logger.info("Trainer {}: worker endpoint: {}".format(rank, worker_endpoint))
-    master_endpoint = (master_endpoint if master_endpoint != None else
-                       os.environ["PADDLE_MASTER_ENDPOINT"])
+    master_endpoint = (
+        master_endpoint
+        if master_endpoint != None
+        else os.environ["PADDLE_MASTER_ENDPOINT"]
+    )
     master_addr, master_port = master_endpoint.split(":")
     master_port = int(master_port)
     stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
-    store = core.TCPStore(master_addr,
-                          master_port,
-                          rank == 0,
-                          world_size,
-                          timeout=stop_check_timeout)
+    store = core.TCPStore(
+        master_addr,
+        master_port,
+        rank == 0,
+        world_size,
+        timeout=stop_check_timeout,
+    )
     _set_barrier_store(store)
     ip, port = worker_endpoint.split(":")
     port = int(port)
@@ -117,8 +126,9 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     all_infos = _exchange_all_service_infos(world_size)
     c_infos = []
     for node_info in all_infos:
-        info = core.WorkerInfo(node_info.name, node_info.rank, node_info.ip,
-                               node_info.port)
+        info = core.WorkerInfo(
+            node_info.name, node_info.rank, node_info.ip, node_info.port
+        )
         c_infos.append(info)
     core.init_and_set_agent_instance(name, c_infos)
     core.rpc_start_worker()
@@ -226,7 +236,7 @@ def _barrier_never_timeout(global_rank, global_world_size):
     global _barrier_count
     barrier_prefix = "Barrier/" + str(_barrier_count) + "/"
     _barrier_count += 1
-    is_master = (global_rank == 0)
+    is_master = global_rank == 0
 
     def _check_keys_ready(wait_keys):
         start_time = time.time()
@@ -235,11 +245,13 @@ def _barrier_never_timeout(global_rank, global_world_size):
             elapse_time = time.time() - start_time
             if datetime.timedelta(seconds=elapse_time) > timeout:
                 raise RuntimeError(
-                    "Keys {} are not ready sinck rank {} is waiting them.".
-                    format(wait_keys, global_rank))
+                    "Keys {} are not ready sinck rank {} is waiting them.".format(
+                        wait_keys, global_rank
+                    )
+                )
             wait_keys = list(
-                filter(lambda key: int(_barrier_store.get(key)) != 1,
-                       wait_keys))
+                filter(lambda key: int(_barrier_store.get(key)) != 1, wait_keys)
+            )
 
     if is_master:
         # the master will add key, wait for all workers'exiting key and exit in the end.

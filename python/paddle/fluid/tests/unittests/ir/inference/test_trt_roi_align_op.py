@@ -22,7 +22,6 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTRoiAlignTest(InferencePassTest):
-
     def setUp(self):
         self.bs = 2
         self.num_rois = 4
@@ -35,21 +34,27 @@ class TRTRoiAlignTest(InferencePassTest):
 
     def build(self):
         self.trt_parameters = TRTRoiAlignTest.TensorRTParam(
-            1 << 30, self.bs * self.num_rois, 1, self.precision, self.serialize,
-            False)
+            1 << 30,
+            self.bs * self.num_rois,
+            1,
+            self.precision,
+            self.serialize,
+            False,
+        )
         with fluid.program_guard(self.main_program, self.startup_program):
             data_shape = [-1, self.channel, self.height, self.width]
             data = fluid.data(name='data', shape=data_shape, dtype='float32')
-            rois = fluid.data(name='rois',
-                              shape=[-1, 4],
-                              dtype='float32',
-                              lod_level=1)
+            rois = fluid.data(
+                name='rois', shape=[-1, 4], dtype='float32', lod_level=1
+            )
             roi_align_out = fluid.layers.roi_align(data, rois)
             out = fluid.layers.batch_norm(roi_align_out, is_test=True)
 
         rois_lod = fluid.create_lod_tensor(
             np.random.random([self.bs * self.num_rois, 4]).astype('float32'),
-            [[self.num_rois, self.num_rois]], fluid.CPUPlace())
+            [[self.num_rois, self.num_rois]],
+            fluid.CPUPlace(),
+        )
 
         data_shape[0] = self.bs
         self.feeds = {
@@ -66,27 +71,38 @@ class TRTRoiAlignTest(InferencePassTest):
                 atol = 1e-3
             self.check_output_with_option(use_gpu, atol, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
     def set_dynamic(self):
         min_shape_spec = dict()
         max_shape_spec = dict()
         opt_shape_spec = dict()
         min_shape_spec['data'] = [
-            self.bs, self.channel, self.height // 2, self.width // 2
+            self.bs,
+            self.channel,
+            self.height // 2,
+            self.width // 2,
         ]
         min_shape_spec['rois'] = [1, 4]
         max_shape_spec['data'] = [
-            self.bs, self.channel, self.height * 2, self.width * 2
+            self.bs,
+            self.channel,
+            self.height * 2,
+            self.width * 2,
         ]
         max_shape_spec['rois'] = [self.bs * self.num_rois, 4]
         opt_shape_spec['data'] = [
-            self.bs, self.channel, self.height, self.width
+            self.bs,
+            self.channel,
+            self.height,
+            self.width,
         ]
         opt_shape_spec['rois'] = [self.bs * self.num_rois, 4]
 
         self.dynamic_shape_params = InferencePassTest.DynamicShapeParam(
-            min_shape_spec, max_shape_spec, opt_shape_spec, False)
+            min_shape_spec, max_shape_spec, opt_shape_spec, False
+        )
 
     def run_test(self):
         self.build()

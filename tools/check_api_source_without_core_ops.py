@@ -27,8 +27,10 @@ with open(sys.argv[2], 'r') as f:
 differ = difflib.Differ()
 result = differ.compare(origin, new)
 
-api_with_ops, api_without_ops = count_api_without_core_ops.get_apis_with_and_without_core_ops(
-    ['paddle'])
+(
+    api_with_ops,
+    api_without_ops,
+) = count_api_without_core_ops.get_apis_with_and_without_core_ops(['paddle'])
 
 error = False
 # get all diff apis

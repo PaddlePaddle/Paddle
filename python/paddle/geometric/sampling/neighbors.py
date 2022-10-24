@@ -20,14 +20,16 @@ from paddle import _legacy_C_ops
 __all__ = []
 
 
-def sample_neighbors(row,
-                     colptr,
-                     input_nodes,
-                     sample_size=-1,
-                     eids=None,
-                     return_eids=False,
-                     perm_buffer=None,
-                     name=None):
+def sample_neighbors(
+    row,
+    colptr,
+    input_nodes,
+    sample_size=-1,
+    eids=None,
+    return_eids=False,
+    perm_buffer=None,
+    name=None,
+):
     """
     Graph Sample Neighbors API.
 
@@ -90,54 +92,78 @@ def sample_neighbors(row,
     if return_eids:
         if eids is None:
             raise ValueError(
-                "`eids` should not be None if `return_eids` is True.")
+                "`eids` should not be None if `return_eids` is True."
+            )
 
     use_perm_buffer = True if perm_buffer is not None else False
 
     if _non_static_mode():
-        out_neighbors, out_count, out_eids = _legacy_C_ops.graph_sample_neighbors(
-            row, colptr, input_nodes, eids, perm_buffer, "sample_size",
-            sample_size, "return_eids", return_eids, "flag_perm_buffer",
-            use_perm_buffer)
+        (
+            out_neighbors,
+            out_count,
+            out_eids,
+        ) = _legacy_C_ops.graph_sample_neighbors(
+            row,
+            colptr,
+            input_nodes,
+            eids,
+            perm_buffer,
+            "sample_size",
+            sample_size,
+            "return_eids",
+            return_eids,
+            "flag_perm_buffer",
+            use_perm_buffer,
+        )
         if return_eids:
             return out_neighbors, out_count, out_eids
         return out_neighbors, out_count
 
-    check_variable_and_dtype(row, "Row", ("int32", "int64"),
-                             "graph_sample_neighbors")
-    check_variable_and_dtype(colptr, "Col_Ptr", ("int32", "int64"),
-                             "graph_sample_neighbors")
-    check_variable_and_dtype(input_nodes, "X", ("int32", "int64"),
-                             "graph_sample_neighbors")
+    check_variable_and_dtype(
+        row, "Row", ("int32", "int64"), "graph_sample_neighbors"
+    )
+    check_variable_and_dtype(
+        colptr, "Col_Ptr", ("int32", "int64"), "graph_sample_neighbors"
+    )
+    check_variable_and_dtype(
+        input_nodes, "X", ("int32", "int64"), "graph_sample_neighbors"
+    )
     if return_eids:
-        check_variable_and_dtype(eids, "Eids", ("int32", "int64"),
-                                 "graph_sample_neighbors")
+        check_variable_and_dtype(
+            eids, "Eids", ("int32", "int64"), "graph_sample_neighbors"
+        )
     if use_perm_buffer:
-        check_variable_and_dtype(perm_buffer, "Perm_Buffer", ("int32", "int64"),
-                                 "graph_sample_neighbors")
+        check_variable_and_dtype(
+            perm_buffer,
+            "Perm_Buffer",
+            ("int32", "int64"),
+            "graph_sample_neighbors",
+        )
 
     helper = LayerHelper("sample_neighbors", **locals())
     out_neighbors = helper.create_variable_for_type_inference(dtype=row.dtype)
     out_count = helper.create_variable_for_type_inference(dtype=row.dtype)
     out_eids = helper.create_variable_for_type_inference(dtype=row.dtype)
-    helper.append_op(type="graph_sample_neighbors",
-                     inputs={
-                         "Row": row,
-                         "Col_Ptr": colptr,
-                         "X": input_nodes,
-                         "Eids": eids if return_eids else None,
-                         "Perm_Buffer": perm_buffer if use_perm_buffer else None
-                     },
-                     outputs={
-                         "Out": out_neighbors,
-                         "Out_Count": out_count,
-                         "Out_Eids": out_eids
-                     },
-                     attrs={
-                         "sample_size": sample_size,
-                         "return_eids": return_eids,
-                         "flag_perm_buffer": use_perm_buffer
-                     })
+    helper.append_op(
+        type="graph_sample_neighbors",
+        inputs={
+            "Row": row,
+            "Col_Ptr": colptr,
+            "X": input_nodes,
+            "Eids": eids if return_eids else None,
+            "Perm_Buffer": perm_buffer if use_perm_buffer else None,
+        },
+        outputs={
+            "Out": out_neighbors,
+            "Out_Count": out_count,
+            "Out_Eids": out_eids,
+        },
+        attrs={
+            "sample_size": sample_size,
+            "return_eids": return_eids,
+            "flag_perm_buffer": use_perm_buffer,
+        },
+    )
     if return_eids:
         return out_neighbors, out_count, out_eids
     return out_neighbors, out_count

@@ -21,13 +21,12 @@ import numpy as np
 
 
 class ApiOnesTest(unittest.TestCase):
-
     def test_paddle_ones(self):
         with paddle.static.program_guard(paddle.static.Program()):
             ones = paddle.ones(shape=[10])
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[ones])
+            (result,) = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="float32")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -35,7 +34,7 @@ class ApiOnesTest(unittest.TestCase):
             ones = paddle.ones(shape=[10], dtype="float64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[ones])
+            (result,) = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="float64")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -43,7 +42,7 @@ class ApiOnesTest(unittest.TestCase):
             ones = paddle.ones(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[ones])
+            (result,) = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -52,15 +51,13 @@ class ApiOnesTest(unittest.TestCase):
             ones = fluid.layers.ones(shape=[10], dtype="int64")
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[ones])
+            (result,) = exe.run(fetch_list=[ones])
             expected_result = np.ones(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
 
 class ApiOnesZerosError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_error1():
             with paddle.static.program_guard(paddle.static.Program()):
                 ones = paddle.ones(shape=10, dtype="int64")

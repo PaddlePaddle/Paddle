@@ -37,7 +37,8 @@ def get_cuda_version():
 
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
-    "paddle is not compiled with CUDA and cuda version need to >= 11.0")
+    "paddle is not compiled with CUDA and cuda version need to >= 11.0",
+)
 class TestCsrMv(unittest.TestCase):
     # x: csr-matrix, y: dense-vec, out: dense-vec
     def test_mv(self):
@@ -62,20 +63,23 @@ class TestCsrMv(unittest.TestCase):
             sp_out = paddle.sparse.mv(sp_x, sp_vec)
             sp_out.backward()
 
-            np.testing.assert_allclose(sp_out.numpy(),
-                                       dense_out.numpy(),
-                                       rtol=1e-05)
-            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
-                                       (dense_x.grad * mask).numpy(),
-                                       rtol=1e-05)
-            np.testing.assert_allclose(sp_vec.grad.numpy(),
-                                       dense_vec.grad.numpy(),
-                                       rtol=1e-05)
+            np.testing.assert_allclose(
+                sp_out.numpy(), dense_out.numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                sp_x.grad.to_dense().numpy(),
+                (dense_x.grad * mask).numpy(),
+                rtol=1e-05,
+            )
+            np.testing.assert_allclose(
+                sp_vec.grad.numpy(), dense_vec.grad.numpy(), rtol=1e-05
+            )
 
 
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
-    "paddle is not compiled with CUDA and cuda version need to >= 11.0")
+    "paddle is not compiled with CUDA and cuda version need to >= 11.0",
+)
 class TestCooMv(unittest.TestCase):
     # x: csr-matrix, y: dense-vec, out: dense-vec
     def test_mv(self):
@@ -100,15 +104,17 @@ class TestCooMv(unittest.TestCase):
             sp_out = paddle.sparse.mv(sp_x, sp_vec)
             sp_out.backward()
 
-            np.testing.assert_allclose(sp_out.numpy(),
-                                       dense_out.numpy(),
-                                       rtol=1e-05)
-            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
-                                       (dense_x.grad * mask).numpy(),
-                                       rtol=1e-05)
-            np.testing.assert_allclose(sp_vec.grad.numpy(),
-                                       dense_vec.grad.numpy(),
-                                       rtol=1e-05)
+            np.testing.assert_allclose(
+                sp_out.numpy(), dense_out.numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                sp_x.grad.to_dense().numpy(),
+                (dense_x.grad * mask).numpy(),
+                rtol=1e-05,
+            )
+            np.testing.assert_allclose(
+                sp_vec.grad.numpy(), dense_vec.grad.numpy(), rtol=1e-05
+            )
 
 
 if __name__ == "__main__":

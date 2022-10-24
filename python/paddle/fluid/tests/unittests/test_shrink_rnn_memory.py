@@ -27,16 +27,14 @@ from paddle.fluid.layers.control_flow import lod_rank_table
 
 
 class TestShrinkRNNMemoryBase(unittest.TestCase):
-
     def setUp(self):
         self.main_program = Program()
         switch_main_program(self.main_program)
         x = layers.data('x', shape=[100], dtype='float32')
         x.stop_gradient = False
-        rank_table_tensor = layers.data('rank_table_tensor',
-                                        shape=[1],
-                                        dtype='float32',
-                                        lod_level=1)
+        rank_table_tensor = layers.data(
+            'rank_table_tensor', shape=[1], dtype='float32', lod_level=1
+        )
         table = lod_rank_table(x=rank_table_tensor)
         i = layers.zeros(dtype='int64', shape=[1])
         self.mem1 = shrink_memory(x=x, i=i, table=table)
@@ -58,7 +56,6 @@ class TestShrinkRNNMemoryBase(unittest.TestCase):
 
 
 class TestShrinkRNNMemoryReferLoD(TestShrinkRNNMemoryBase):
-
     def test_refer_lod(self):
         cpu = core.CPUPlace()
         x_tensor = core.LoDTensor()
@@ -69,16 +66,15 @@ class TestShrinkRNNMemoryReferLoD(TestShrinkRNNMemoryBase):
         rank_table_tensor = core.LoDTensor()
         rank_table_tensor.set_recursive_sequence_lengths([[1, 2, 3]])
         rank_table_tensor.set(
-            np.random.random(size=(6, 1)).astype('float32'), cpu)
+            np.random.random(size=(6, 1)).astype('float32'), cpu
+        )
 
         exe = Executor(cpu)
         outs = exe.run(
-            feed={
-                'x': x_tensor,
-                'rank_table_tensor': rank_table_tensor
-            },
+            feed={'x': x_tensor, 'rank_table_tensor': rank_table_tensor},
             fetch_list=[self.mem1, self.mem2, self.mem3, self.x_grad],
-            return_numpy=False)
+            return_numpy=False,
+        )
         np.testing.assert_allclose(tensor_np[0:6], outs[0], rtol=1e-05)
         np.testing.assert_allclose(tensor_np[0:5], outs[1], rtol=1e-05)
         np.testing.assert_allclose(tensor_np[0:2], outs[2], rtol=1e-05)
@@ -86,7 +82,6 @@ class TestShrinkRNNMemoryReferLoD(TestShrinkRNNMemoryBase):
 
 
 class TestShrinkRNNMemoryNoLoD(TestShrinkRNNMemoryBase):
-
     def test_no_lod(self):
         cpu = core.CPUPlace()
         x_tensor = core.LoDTensor()
@@ -96,16 +91,15 @@ class TestShrinkRNNMemoryNoLoD(TestShrinkRNNMemoryBase):
         rank_table_tensor = core.LoDTensor()
         rank_table_tensor.set_recursive_sequence_lengths([[1, 2, 3]])
         rank_table_tensor.set(
-            np.random.random(size=(6, 1)).astype('float32'), cpu)
+            np.random.random(size=(6, 1)).astype('float32'), cpu
+        )
 
         exe = Executor(cpu)
         outs = exe.run(
-            feed={
-                'x': x_tensor,
-                'rank_table_tensor': rank_table_tensor
-            },
+            feed={'x': x_tensor, 'rank_table_tensor': rank_table_tensor},
             fetch_list=[self.mem1, self.mem2, self.mem3, self.x_grad],
-            return_numpy=False)
+            return_numpy=False,
+        )
         np.testing.assert_allclose(tensor_np[0:3], outs[0], rtol=1e-05)
         np.testing.assert_allclose(tensor_np[0:2], outs[1], rtol=1e-05)
         np.testing.assert_allclose(tensor_np[0:1], outs[2], rtol=1e-05)
@@ -113,7 +107,6 @@ class TestShrinkRNNMemoryNoLoD(TestShrinkRNNMemoryBase):
 
 
 class TestShrinkRNNMemoryOpError(unittest.TestCase):
-
     def test_erroes(self):
         with program_guard(Program(), Program()):
             x = layers.zeros(dtype='int64', shape=[3, 100])
@@ -121,8 +114,8 @@ class TestShrinkRNNMemoryOpError(unittest.TestCase):
             rank_table_tensor = core.LoDTensor()
             rank_table_tensor.set_recursive_sequence_lengths([[1, 2, 3]])
             rank_table_tensor.set(
-                np.random.random(size=(6, 1)).astype('float32'),
-                core.CPUPlace())
+                np.random.random(size=(6, 1)).astype('float32'), core.CPUPlace()
+            )
             rank_table = np.random.random(size=(6, 1)).astype('float32')
 
             # The type of x in shrink_rnn_memory must be Variable.
