@@ -204,14 +204,35 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
+  for (int i = 0; i < network()->getNbInputs(); ++i) {
+    auto *input = network()->getInput(i);
+    swith(input->getType()) {
+      case nvinfer1::DataType::kInt32:
+      case nvinfer1::DataType::kBOOL:
+      case nvinfer1::DataType::kHALF:
+        break;
+      case nvinfer1::DataType::kFLOAT:
+      case nvinfer1::DataType::kINT8:
+        input->setType(nvinfer1::DATATYPE_FLOAT);
+        break;
+    }
+    input->setAllowedFormats(
+        1U << static_cast<int>(nvinfer1::TensorFormat::kLINEAR));
+  }
+
+  for (int i = 0; i < network()->getNbOutputs(); ++i) {
+    auto *output = network()->getOutput(i);
+    output->setAllowedFormats(
+        1U << static_cast<int>(nvinfer1::TensorFormat::kLINEAR));
+  }
+
   // If model is mixed precision, then we should cast all float output to
   // float32 precision. Otherwise, we can not confirm the output precision of
   // the trt engine.
   if (model_precision_ != phi::DataType::FLOAT32) {
     for (int i = 0; i < network()->getNbOutputs(); ++i) {
       network()->getOutput(i)->setAllowedFormats(
-          static_cast<nvinfer1::TensorFormats>(
-              1 << static_cast<int>(nvinfer1::TensorFormat::kLINEAR)));
+          1U << static_cast<int>(nvinfer1::TensorFormat::kLINEAR));
       network()->getOutput(i)->setType(nvinfer1::DataType::kFLOAT);
     }
   }
