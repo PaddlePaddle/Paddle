@@ -45,7 +45,6 @@ from .dist_loader import (
     DistributedDataLoaderFromGenerator,
     DistributedDataLoader,
 )
-from .utils import to_list, get_dist_attr, get_lr
 from .process_group import new_process_group, get_all_process_groups
 from .dist_context import DistributedContext, get_default_distributed_context
 from .strategy import Strategy
