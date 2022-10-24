@@ -98,6 +98,7 @@ class FMHARef {
     // transpose with perm [2, 0, 3, 1, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
     std::vector<int> perm_1 = {2, 0, 3, 1, 4};
+    // VLOG(5)<<"wbj@@@@ qkv_input_tensor"<<qkv_input_tensor;
     TransposeGPUKernelDriver<T>(
         dev_ctx_, qkv_input_tensor, perm_1, transpose_2_out_tensor);
     T* qkv_data = transpose_2_out_tensor->data<T>();
@@ -136,6 +137,7 @@ class FMHARef {
       // NOTE(wangxi): We scale Q with 1/sqrt(Dh) before QK^T, because for
       // float16 calculation, INF may appear in QK^T if we do not scale before.
       float alpha = 1.0 / sqrt(head_dim_);
+      // VLOG(5)<<"wbj@@@@ in cpp fmha, alpha:"<<alpha;
       auto q_tensor = transpose_2_out_tensor->Slice(0, 1);
       auto functor = phi::funcs::ScaleFunctor<T>(alpha);
       std::vector<const phi::DenseTensor*> ins = {&q_tensor};
@@ -168,6 +170,10 @@ class FMHARef {
                      gemm_batch_size,
                      stride_a,
                      stride_b);
+    // cudaDeviceSynchronize();
+    // VLOG(5)<<"wbj@@@ qk^t*scale"<<*qk_out_tensor;
+    // cudaDeviceSynchronize();
+
     int softmax_axis = -1;
     if (src_mask_tensor != nullptr) {
       if (src_mask_out_tensor == nullptr && seq_len_ == out_seq_len) {
@@ -200,6 +206,10 @@ class FMHARef {
           dev_ctx_, *qk_out_tensor, softmax_axis, softmax_out_tensor);
     }
 
+    // cudaDeviceSynchronize();
+    // VLOG(5)<<"wbj@@@ softmax(qk)"<<*softmax_out_tensor;
+    // cudaDeviceSynchronize();
+    transA = softmax_axis == -1 ? CblasNoTrans:CblasTrans;
     transB = CblasNoTrans;
     gemm_m = seq_len_;
     gemm_n = head_dim_;
@@ -251,6 +261,10 @@ class FMHARef {
                        stride_a,
                        stride_b);
     }
+    // cudaDeviceSynchronize();
+    // VLOG(5)<<"wbj@@@ softmax(qk)*q"<<*qktv_out_tensor;
+    // cudaDeviceSynchronize();
+
     // transpose: [0, 2, 1, 3]
     // output shape: [batch_size, seq_len, num_heads, head_dim]
     std::vector<int> perm_3 = {0, 2, 1, 3};
@@ -301,7 +315,7 @@ class FMHARef {
 
     // recall batchedgemm(nn) fw: softmax_out_data(x) * v_ptr(y) =
     // qktv_out_data(out)
-    CBLAS_TRANSPOSE transA = CblasTrans;
+    CBLAS_TRANSPOSE transA = softmax_axis==-1 ? CblasTrans:CblasNoTrans;
     CBLAS_TRANSPOSE transB = CblasNoTrans;
     int gemm_batch_size = batch_size_ * num_head_;
     int gemm_m = seq_len_;

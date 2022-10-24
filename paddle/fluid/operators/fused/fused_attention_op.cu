@@ -315,8 +315,16 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     // fmha_out: [batch_size, seq_len, num_head, head_dim]
     // weight:   [embed_dim, embed_dim]
     // out_linear_out: [batch_size, seq_len, embed_dim]
+
+    // cudaDeviceSynchronize();
+    // VLOG(5)<<"wbj@@@ fmha_out"<<*fmha_out;
+    // cudaDeviceSynchronize();
+
     out_linear_compute.ComputeForward(
         out_linear_weight, fmha_out, nullptr, out_linear_out, nullptr);
+
+
+
     // tensor model parallel
     AllReduce<T>(*out_linear_out, ring_id, ctx.cuda_device_context());
 
@@ -338,29 +346,13 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "Attribute add_residual is expected to be true "
                             "when pre_layer_norm is false."));
-
-      const U *ln_scale_2_ptr = ln_scale_2 ? ln_scale_2->data<U>() : nullptr;
-      const U *ln_bias_2_ptr = ln_bias_2 ? ln_bias_2->data<U>() : nullptr;
-      T *bias_dropout_residual_out_ptr = dev_ctx.template Alloc<T>(
-          bias_dropout_residual_out,
-          bias_dropout_residual_out->numel() * sizeof(T));
-      U *ln_mean_2_ptr =
-          dev_ctx.template Alloc<U>(ln_mean_2, ln_mean_2->numel() * sizeof(U));
-      U *ln_var_2_ptr =
-          dev_ctx.template Alloc<U>(ln_var_2, ln_var_2->numel() * sizeof(U));
-      // output = layernorm(residual + dropout(input + bias))
-      fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
+      fused_dropout_layernorm_helper.ResidualDropoutBias(
           ctx.cuda_device_context(),
           out_linear_out_data,
           residual_ptr,
           out_linear_bias_data,
-          ln_scale_2_ptr,
-          ln_bias_2_ptr,
-          bias_dropout_residual_out_ptr,
-          dropout_mask_out_data,
           final_out_data,
-          ln_mean_2_ptr,
-          ln_var_2_ptr);
+          dropout_mask_out_data);
     }
   }
 };
@@ -600,38 +592,47 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
           d_residual_data,
           d_out_linear_bias_data);
     } else {
-      auto *ln_2_mean_data = ln_2_mean->data<U>();
-      auto *ln_2_var_data = ln_2_var->data<U>();
-      auto *bias_dropout_residual_out_data =
-          bias_dropout_residual_out->data<T>();
-      auto *d_ln_2_scale_data =
-          (d_ln_2_scale == nullptr
-               ? nullptr
-               : dev_ctx.template Alloc<U>(d_ln_2_scale,
-                                           d_ln_2_scale->numel() * sizeof(U)));
-      auto *d_ln_2_bias_data =
-          (d_ln_2_bias == nullptr
-               ? nullptr
-               : dev_ctx.template Alloc<U>(d_ln_2_bias,
-                                           d_ln_2_bias->numel() * sizeof(U)));
-      auto *d_bias_dropout_residual_out_data = dev_ctx.template Alloc<T>(
-          d_bias_dropout_residual_out,
-          d_bias_dropout_residual_out->numel() * sizeof(T));
-
-      fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
+        
+      // no post layernorm for kg
+      fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
           ctx.cuda_device_context(),
           d_y_data,
-          bias_dropout_residual_out_data,
           dropout_mask_out_data,
-          ln_2_scale_data,
-          ln_2_mean_data,
-          ln_2_var_data,
-          d_bias_dropout_residual_out_data,
-          d_ln_2_scale_data,
-          d_ln_2_bias_data,
           d_out_linear_out_data,
-          d_out_linear_bias_data,
-          d_residual_data);
+          d_residual_data,
+          d_out_linear_bias_data);
+    //   auto *ln_2_mean_data = ln_2_mean->data<U>();
+    //   auto *ln_2_var_data = ln_2_var->data<U>();
+    //   auto *bias_dropout_residual_out_data =
+    //       bias_dropout_residual_out->data<T>();
+    //   auto *d_ln_2_scale_data =
+    //       (d_ln_2_scale == nullptr
+    //            ? nullptr
+    //            : dev_ctx.template Alloc<U>(d_ln_2_scale,
+    //                                        d_ln_2_scale->numel() * sizeof(U)));
+    //   auto *d_ln_2_bias_data =
+    //       (d_ln_2_bias == nullptr
+    //            ? nullptr
+    //            : dev_ctx.template Alloc<U>(d_ln_2_bias,
+    //                                        d_ln_2_bias->numel() * sizeof(U)));
+    //   auto *d_bias_dropout_residual_out_data = dev_ctx.template Alloc<T>(
+    //       d_bias_dropout_residual_out,
+    //       d_bias_dropout_residual_out->numel() * sizeof(T));
+
+    //   fused_dropout_layernorm_helper.LayernormResidualDropoutBiasGrad(
+    //       ctx.cuda_device_context(),
+    //       d_y_data,
+    //       bias_dropout_residual_out_data,
+    //       dropout_mask_out_data,
+    //       ln_2_scale_data,
+    //       ln_2_mean_data,
+    //       ln_2_var_data,
+    //       d_bias_dropout_residual_out_data,
+    //       d_ln_2_scale_data,
+    //       d_ln_2_bias_data,
+    //       d_out_linear_out_data,
+    //       d_out_linear_bias_data,
+    //       d_residual_data);
     }
 
     out_linear_compute.ComputeBackward(fmha_out,
