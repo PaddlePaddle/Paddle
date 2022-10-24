@@ -106,9 +106,7 @@ class ImperativePTQ(object):
 
         return model
 
-    def save_quantized_model(
-        self, model, path, input_spec=None, postprocess=True, **config
-    ):
+    def save_quantized_model(self, model, path, input_spec=None, **config):
         """
         1. Convert the quantized model
         2. Call jit.save to save the inference model
