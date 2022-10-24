@@ -162,6 +162,12 @@ class TestEinsum(unittest.TestCase):
             "I": np.random.rand(2, 2),
             "J": np.random.rand(1, 3, 5),
             "K": np.random.rand(1, 2, 3, 4),
+            "X": np.random.rand(5, 5),
+            "L": np.random.rand(5, 10, 5),
+            "M": np.random.rand(5, 3, 2, 1, 4, 5),
+            "N": np.random.rand(5, 5, 5),
+            "O": np.random.rand(3, 5, 7, 3),
+            "P": np.random.rand(5, 7, 5, 7),
         }
 
     def _get_place(self, force_to_use_cpu=False):
@@ -215,6 +221,46 @@ class TestEinsumVectorDot(TestEinsum):
 class TestEinsumVectorMul(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "i,i->i", "data": ["x", "x"]}
+
+
+class TestEinsumTraceDiag1(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ii->", "data": ["X"]}
+
+
+class TestEinsumTraceDiag2(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "iji->j", "data": ["L"]}
+
+
+class TestEinsumTraceDiag3(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "a...a->...", "data": ["M"]}
+
+
+class TestEinsumTraceDiag4(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "a...a->a...", "data": ["M"]}
+
+
+class TestEinsumTraceDiag5(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "aaa->a", "data": ["N"]}
+
+
+class TestEinsumTraceDiag2Ops(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ijki,jkjk->ik", "data": ["O", "P"]}
+
+
+class TestEinsumIdentity(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "...->...", "data": ["N"]}
+
+
+class TestEinsumElementwiseProduct(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "...,...->...", "data": ["N", "N"]}
 
 
 class TestEinsumVectorOuter(TestEinsum):
