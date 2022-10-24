@@ -9,6 +9,9 @@ file(
 )
 file(APPEND ${kernel_declare_file}
      "#include \"paddle/phi/core/kernel_registry.h\"\n\n")
+set(kernel_declare_file_prune
+    ${PADDLE_BINARY_DIR}/paddle/phi/kernels/declarations.h.prune
+    CACHE INTERNAL "declarations.h file")
 
 # phi functors and functions called by kernels
 add_subdirectory(funcs)
@@ -171,3 +174,7 @@ if(WITH_XPU)
 endif()
 
 set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})
+
+if(NOT "${KERNEL_LIST}" STREQUAL "")
+  prune_declaration_h()
+endif()

@@ -33,8 +33,9 @@ def tensor_copy_from_cpu(self, data):
     '''
     Support input type check based on tensor.copy_from_cpu.
     '''
-    if isinstance(data, np.ndarray) or (isinstance(data, list) and len(data) > 0
-                                        and isinstance(data[0], str)):
+    if isinstance(data, np.ndarray) or (
+        isinstance(data, list) and len(data) > 0 and isinstance(data[0], str)
+    ):
         self.copy_from_cpu_bind(data)
     else:
         raise TypeError(
@@ -50,17 +51,20 @@ def tensor_share_external_data(self, data):
         self.share_external_data_bind(data)
     else:
         raise TypeError(
-            "In share_external_data, we only support LoDTensor data type.")
+            "In share_external_data, we only support LoDTensor data type."
+        )
 
 
-def convert_to_mixed_precision(model_file: str,
-                               params_file: str,
-                               mixed_model_file: str,
-                               mixed_params_file: str,
-                               mixed_precision: PrecisionType,
-                               backend: PlaceType,
-                               keep_io_types: bool = True,
-                               black_list: Set = set()):
+def convert_to_mixed_precision(
+    model_file: str,
+    params_file: str,
+    mixed_model_file: str,
+    mixed_params_file: str,
+    mixed_precision: PrecisionType,
+    backend: PlaceType,
+    keep_io_types: bool = True,
+    black_list: Set = set(),
+):
     '''
     Convert a fp32 model to mixed precision model.
 
@@ -80,9 +84,16 @@ def convert_to_mixed_precision(model_file: str,
         os.makedirs(mixed_model_dirname)
     if not os.path.exists(mixed_params_dirname):
         os.makedirs(mixed_params_dirname)
-    convert_to_mixed_precision_bind(model_file, params_file, mixed_model_file,
-                                    mixed_params_file, mixed_precision, backend,
-                                    keep_io_types, black_list)
+    convert_to_mixed_precision_bind(
+        model_file,
+        params_file,
+        mixed_model_file,
+        mixed_params_file,
+        mixed_precision,
+        backend,
+        keep_io_types,
+        black_list,
+    )
 
 
 Tensor.copy_from_cpu = tensor_copy_from_cpu

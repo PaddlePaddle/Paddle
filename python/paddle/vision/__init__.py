@@ -112,6 +112,4 @@ from .transforms import adjust_contrast  # noqa: F401
 from .transforms import adjust_hue  # noqa: F401
 from .transforms import normalize  # noqa: F401
 
-__all__ = [  #noqa
-    'set_image_backend', 'get_image_backend', 'image_load'
-]
+__all__ = ['set_image_backend', 'get_image_backend', 'image_load']  # noqa

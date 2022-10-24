@@ -60,7 +60,7 @@ class SGDOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
       const phi::DenseTensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
+      const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "LearningRate") {
       return framework::OpKernelType(
           framework::TransToProtoVarType(tensor.dtype()),

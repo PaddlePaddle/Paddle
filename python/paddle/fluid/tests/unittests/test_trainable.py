@@ -22,21 +22,18 @@ from simple_nets import init_data
 def test_trainable():
     x = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    feature = fluid.layers.fc(input=x,
-                              size=10,
-                              param_attr=fluid.ParamAttr(trainable=False))
+    feature = fluid.layers.fc(
+        input=x, size=10, param_attr=fluid.ParamAttr(trainable=False)
+    )
     loss = fluid.layers.cross_entropy(input=feature, label=label)
     loss = paddle.mean(loss)
     return loss
 
 
 class TestTrainable(unittest.TestCase):
-
-    def check_trainable(self,
-                        model,
-                        feed_dict,
-                        op_count,
-                        optimizer=fluid.optimizer.Adam()):
+    def check_trainable(
+        self, model, feed_dict, op_count, optimizer=fluid.optimizer.Adam()
+    ):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
 
@@ -64,22 +61,17 @@ class TestTrainable(unittest.TestCase):
         feed_dict = {'image': img, 'label': label}
         # Note that, because the Weight of FC is not trainable and the x is stop_gradient,
         # so the 'mul_grad' should not be appended.
-        self.check_trainable(test_trainable,
-                             feed_dict,
-                             op_count={
-                                 'adam': 1,
-                                 'scale': 0,
-                                 'mul_grad': 0
-                             })
         self.check_trainable(
             test_trainable,
             feed_dict,
-            op_count={
-                'adamax': 1,
-                'scale': 1,
-                'mul_grad': 0
-            },
-            optimizer=fluid.optimizer.Adamax(learning_rate=0.2))
+            op_count={'adam': 1, 'scale': 0, 'mul_grad': 0},
+        )
+        self.check_trainable(
+            test_trainable,
+            feed_dict,
+            op_count={'adamax': 1, 'scale': 1, 'mul_grad': 0},
+            optimizer=fluid.optimizer.Adamax(learning_rate=0.2),
+        )
 
 
 if __name__ == '__main__':

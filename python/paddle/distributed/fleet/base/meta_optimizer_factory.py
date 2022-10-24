@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..meta_optimizers import *  # noqa: F401
+from ..meta_optimizers import *  # noqa: F401, F403
 
 __all__ = []
 
 meta_optimizer_names = list(
-    filter(lambda name: name.endswith("Optimizer"), dir()))
+    filter(lambda name: name.endswith("Optimizer"), dir())
+)
 
 # Because HybridParallelOptimizer is dygraph optimizer, it
 # should be removed
@@ -26,7 +27,6 @@ meta_optimizer_names.remove("HeterParallelOptimizer")
 
 
 class MetaOptimizerFactory(object):
-
     def __init__(self):
         pass
 

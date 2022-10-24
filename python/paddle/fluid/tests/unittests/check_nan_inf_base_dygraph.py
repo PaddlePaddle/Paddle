@@ -28,8 +28,9 @@ np.random.seed(0)
 def generator():
     batch_size = 5
     for i in range(5):
-        curr_train_x = np.random.randint(batch_size,
-                                         size=(batch_size, 3)).astype("float32")
+        curr_train_x = np.random.randint(
+            batch_size, size=(batch_size, 3)
+        ).astype("float32")
         if i >= 2:
             curr_train_x[0, :] = np.nan
             curr_train_x[-1, :] = np.inf
@@ -42,7 +43,6 @@ def generator():
 
 
 class TestLayer(nn.Layer):
-
     def __init__(self):
         super(TestLayer, self).__init__()
         self.linear1 = nn.Linear(3, 400)
@@ -82,8 +82,11 @@ def check(use_cuda):
 
         acc_top1 = paddle.metric.accuracy(input=y_pred, label=y, k=1)
 
-        print('iter={:.0f}, cost={}, acc1={}'.format(step, avg_cost.numpy(),
-                                                     acc_top1.numpy()))
+        print(
+            'iter={:.0f}, cost={}, acc1={}'.format(
+                step, avg_cost.numpy(), acc_top1.numpy()
+            )
+        )
 
         sgd.step()
         sgd.clear_grad()

@@ -19,7 +19,6 @@ from paddle.fluid.tests.unittests.op_test import OpTest
 
 
 class TestSplitSectionsOneDNNOp(OpTest):
-
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("float32")
         self.axis = 1
@@ -46,8 +45,9 @@ class TestSplitSectionsOneDNNOp(OpTest):
         if self.sections_tensor_list is not None:
             self.inputs['SectionsTensorList'] = self.sections_tensor_list
 
-        self.outputs = {'Out': [('out%d' % i, self.out[i]) \
-            for i in range(len(self.out))]}
+        self.outputs = {
+            'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
+        }
 
     def test_check_output(self):
         self.check_output()
@@ -58,13 +58,12 @@ class TestSplitSectionsOneDNNOp(OpTest):
 
 # test with attr(num)
 class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
-
     def init_data(self):
         self.x = np.random.random((4, 8, 5, 3)).astype("float32")
         self.axis = 1
         self.sections = []
         self.num = 4
-        indices_or_sections = 4  #indices
+        indices_or_sections = 4  # indices
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
     def test_check_grad(self):
@@ -72,40 +71,38 @@ class TestSplitNumOneDNNOp(TestSplitSectionsOneDNNOp):
 
 
 class TestSplitNumAxisTensorOneDNNOp(TestSplitSectionsOneDNNOp):
-
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("float32")
         self.axis = None
         self.sections = []
         self.num = 3
-        indices_or_sections = 3  #indices
+        indices_or_sections = 3  # indices
         self.axis_tensor = np.array([2]).astype("int32")
         self.out = np.split(self.x, indices_or_sections, 2)
 
 
 # attr(sections) is list containing Tensor
 class TestSplitSectionsTensorOneDNNOp(TestSplitSectionsOneDNNOp):
-
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("float32")
         self.axis = 1
         self.sections = [2, 1, 2]
         self.sections_tensor_list = []
         for index, ele in enumerate(self.sections):
-            self.sections_tensor_list.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            self.sections_tensor_list.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
         self.sections = [-1, -1, -1]
-        indices_or_sections = [2, 3]  #sections
+        indices_or_sections = [2, 3]  # sections
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
 
 class TestSplitOpUnknownSectionOneDNNOp(TestSplitSectionsOneDNNOp):
-
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("float32")
         self.axis = 2
         self.sections = [2, 2, -1]
-        indices_or_sections = [2, 4]  #sections
+        indices_or_sections = [2, 4]  # sections
         self.out = np.split(self.x, indices_or_sections, self.axis)
 
 

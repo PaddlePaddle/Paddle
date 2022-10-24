@@ -20,7 +20,6 @@ paddle.enable_static()
 
 
 class TestCollectiveBarrierAPI(TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 

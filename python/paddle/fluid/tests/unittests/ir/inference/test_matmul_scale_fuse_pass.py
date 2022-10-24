@@ -20,12 +20,12 @@ import hypothesis.strategies as st
 
 
 class TestMatmulScaleFusePass(PassAutoScanTest):
-    """
-     x_var    y_var(persistable)
-       \       /
-        matmul
-          |
-        scale
+    r"""
+    x_var    y_var(persistable)
+      \       /
+       matmul
+         |
+       scale
     """
 
     def sample_predictor_configs(self, program_config):
@@ -50,14 +50,18 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of matmul
         x_shape = draw(
-            st.lists(st.integers(min_value=1, max_value=8),
-                     min_size=2,
-                     max_size=5))
+            st.lists(
+                st.integers(min_value=1, max_value=8), min_size=2, max_size=5
+            )
+        )
         x_shape_rank = len(x_shape)
         y_shape = draw(
-            st.lists(st.integers(min_value=1, max_value=8),
-                     min_size=x_shape_rank,
-                     max_size=x_shape_rank))
+            st.lists(
+                st.integers(min_value=1, max_value=8),
+                min_size=x_shape_rank,
+                max_size=x_shape_rank,
+            )
+        )
         y_shape_rank = len(y_shape)
         y_shape[-2] = x_shape[-1]
         for i in range(y_shape_rank - 3, -1, -1):
@@ -75,10 +79,7 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
 
         matmul_op = OpConfig(
             "matmul",
-            inputs={
-                "X": ["matmul_x"],
-                "Y": ["matmul_y"]
-            },
+            inputs={"X": ["matmul_x"], "Y": ["matmul_y"]},
             outputs={"Out": ["matmul_out"]},
             transpose_X=transpose_X,
             transpose_Y=transpose_Y,
@@ -95,10 +96,7 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
         if is_scale_tensor:
             scale_op = OpConfig(
                 "scale",
-                inputs={
-                    "X": ["matmul_out"],
-                    "ScaleTensor": ["scale_tensor"]
-                },
+                inputs={"X": ["matmul_out"], "ScaleTensor": ["scale_tensor"]},
                 outputs={"Out": ["scale_out"]},
                 scale=scale_value,
                 bias=0.0,
@@ -122,7 +120,7 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
         if is_scale_tensor:
             weights = {
                 "matmul_y": TensorConfig(shape=y_shape),
-                "scale_tensor": TensorConfig(shape=scale_shape)
+                "scale_tensor": TensorConfig(shape=scale_shape),
             }
             inputs = {
                 "matmul_x": TensorConfig(shape=x_shape),

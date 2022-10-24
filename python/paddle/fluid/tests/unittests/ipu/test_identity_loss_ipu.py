@@ -20,14 +20,15 @@ import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 import paddle.optimizer
 import paddle.static
-from paddle.fluid.tests.unittests.ipu.op_test_ipu import (IPUOpTest,
-                                                          np_dtype_to_fluid_str)
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import (
+    IPUOpTest,
+    np_dtype_to_fluid_str,
+)
 
 paddle.enable_static()
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -41,8 +42,9 @@ class TestBase(IPUOpTest):
 
     def set_feed(self):
         self.feed = {
-            "x": np.random.uniform(low=-2, high=2, size=[3,
-                                                         5]).astype('float32'),
+            "x": np.random.uniform(low=-2, high=2, size=[3, 5]).astype(
+                'float32'
+            ),
         }
 
     def set_feed_attr(self):
@@ -62,9 +64,11 @@ class TestBase(IPUOpTest):
 
         with fluid.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                x = paddle.static.data(name=self.feed_list[0],
-                                       shape=self.feed_shape[0],
-                                       dtype=self.feed_dtype[0])
+                x = paddle.static.data(
+                    name=self.feed_list[0],
+                    shape=self.feed_shape[0],
+                    dtype=self.feed_dtype[0],
+                )
 
                 out = self.op(x, reduction)
                 fetch_list = [out.name]
@@ -77,7 +81,8 @@ class TestBase(IPUOpTest):
             ipu_strategy = paddle.static.IpuStrategy()
             ipu_strategy.set_graph_config(num_ipus=1, is_training=False)
             ipu_compiler = compiler.IpuCompiledProgram(
-                main_prog, ipu_strategy=ipu_strategy)
+                main_prog, ipu_strategy=ipu_strategy
+            )
             program = ipu_compiler.compile(feed_list, fetch_list)
 
             ipu_res = exe.run(program, self.feed, fetch_list)
@@ -92,10 +97,9 @@ class TestBase(IPUOpTest):
                 # none
                 cpu_res = self.feed['x']
 
-            np.testing.assert_allclose(ipu_res[0],
-                                       cpu_res,
-                                       rtol=1e-05,
-                                       atol=self.atol)
+            np.testing.assert_allclose(
+                ipu_res[0], cpu_res, rtol=1e-05, atol=self.atol
+            )
 
     def test_base(self):
         # TODO: use string instead of int for reduction

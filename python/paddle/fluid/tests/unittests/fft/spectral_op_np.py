@@ -34,8 +34,9 @@ def _get_norm_mode(norm, forward):
 
 
 def _get_inv_norm(n, norm_mode):
-    assert isinstance(norm_mode,
-                      NormMode), "invalid norm_type {}".format(norm_mode)
+    assert isinstance(norm_mode, NormMode), "invalid norm_type {}".format(
+        norm_mode
+    )
     if norm_mode == NormMode.none:
         return 1.0
     if norm_mode == NormMode.by_sqrt_n:
@@ -69,8 +70,9 @@ def _fftc2r(a, n=None, axis=-1, norm=None, forward=None):
     if n is None:
         n = (a.shape[axis] - 1) * 2
     inv_norm = _get_inv_norm(n, norm)
-    output = _raw_fft(a.conj() if forward else a, n, axis, True, False,
-                      inv_norm)
+    output = _raw_fft(
+        a.conj() if forward else a, n, axis, True, False, inv_norm
+    )
     return output
 
 
@@ -145,8 +147,10 @@ def _fft_fill_conj_grad(x, axes, length_to_double):
     last_fft_axis = axes[-1]
     shape = x.shape
     for multi_index in np.ndindex(*shape):
-        if 0 < multi_index[last_fft_axis] and multi_index[
-                last_fft_axis] <= length_to_double:
+        if (
+            0 < multi_index[last_fft_axis]
+            and multi_index[last_fft_axis] <= length_to_double
+        ):
             x[multi_index] *= 2
     return x
 
