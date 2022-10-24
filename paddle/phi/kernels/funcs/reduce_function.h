@@ -1063,6 +1063,12 @@ void ReduceKernel(const KPDevice& dev_ctx,
   dev_ctx.Alloc<Ty>(y);
 
   auto x_dim = phi::vectorize<int>(x.dims());
+  if (x_dim.size() == 0) {
+    std::vector<const DenseTensor*> inputs = {&x};
+    std::vector<DenseTensor*> outputs = {y};
+    funcs::ElementwiseKernel<Ty>(dev_ctx, inputs, &outputs, transform);
+    return;
+  }
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run(dev_ctx);
   int numel = x.numel();

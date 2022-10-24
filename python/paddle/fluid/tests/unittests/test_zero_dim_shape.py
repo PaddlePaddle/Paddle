@@ -159,5 +159,57 @@ class TestUnaryAPI(unittest.TestCase):
         paddle.disable_static()
 
 
+reduce_api_list = [
+    paddle.sum,
+    paddle.mean,
+    paddle.nansum,
+    paddle.nanmean,
+    paddle.fluid.layers.reduce_sum,
+    paddle.fluid.layers.reduce_mean,
+]
+
+
+class TestReduceAPI(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        for api in reduce_api_list:
+            x = paddle.rand([])
+            x.stop_gradient = False
+            out = api(x, None)
+            out.backward()
+
+            self.assertEqual(x.shape, [])
+            self.assertEqual(x.grad.shape, [])
+            self.assertEqual(out.shape, [])
+            self.assertEqual(out.grad.shape, [])
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+        for api in reduce_api_list:
+            main_prog = fluid.Program()
+            with fluid.program_guard(main_prog, fluid.Program()):
+                x = paddle.rand([])
+
+                x.stop_gradient = False
+                out = api(x, None)
+                fluid.backward.append_backward(out)
+
+                # Test compile shape, grad is always [1]
+                self.assertEqual(x.shape, ())
+                self.assertEqual(out.shape, ())
+
+                exe = fluid.Executor()
+                result = exe.run(main_prog, fetch_list=[x, out])
+
+                # Test runtime shape
+                self.assertEqual(result[0].shape, ())
+                self.assertEqual(result[1].shape, ())
+
+        paddle.disable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

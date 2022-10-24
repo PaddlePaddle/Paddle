@@ -58,6 +58,22 @@ class TestMeanOp(OpTest):
         self.check_grad(['X'], 'Out', check_eager=True)
 
 
+class TestMeanOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.op_type = "mean"
+        self.python_api = paddle.mean
+        self.dtype = np.float64
+        self.init_dtype_type()
+        self.inputs = {'X': np.random.random([]).astype(self.dtype)}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
+
+    def test_check_output(self):
+        self.check_output(check_eager=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_eager=True)
+
+
 class TestMeanOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
