@@ -21,50 +21,66 @@ from paddle.nn.functional.conv import _update_padding_nd
 from paddle.fluid.layer_helper import LayerHelper
 
 
-def _conv3d(x,
-            weight,
-            bias=None,
-            stride=1,
-            padding=0,
-            dilation=1,
-            groups=1,
-            subm=False,
-            key=None,
-            data_format="NDHWC",
-            name=None):
+def _conv3d(
+    x,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups=1,
+    subm=False,
+    key=None,
+    data_format="NDHWC",
+    name=None,
+):
     assert groups == 1, "Currently, only support groups=1"
 
     dims = 3
 
     # Currently, only support 'NDHWC'
     if data_format not in ["NDHWC"]:
-        raise ValueError("Attr(data_format) should be 'NDHWC'. Received "
-                         "Attr(data_format): {}.".format(data_format))
+        raise ValueError(
+            "Attr(data_format) should be 'NDHWC'. Received "
+            "Attr(data_format): {}.".format(data_format)
+        )
     if len(x.shape) != 5:
         raise ValueError(
-            "Input x should be 5D tensor, but received x with the shape of {}".
-            format(x.shape))
+            "Input x should be 5D tensor, but received x with the shape of {}".format(
+                x.shape
+            )
+        )
 
-    channel_last = (data_format == "NDHWC")
+    channel_last = data_format == "NDHWC"
     channel_dim = -1 if channel_last else 1
     if len(x.shape) != 5:
         raise ValueError(
-            "Input x should be 5D tensor, but received x with the shape of {}".
-            format(x.shape))
+            "Input x should be 5D tensor, but received x with the shape of {}".format(
+                x.shape
+            )
+        )
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError(
             "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(x.shape, num_channels))
+            "Received: {}.".format(x.shape, num_channels)
+        )
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)
     stride = convert_to_list(stride, dims, 'stride')
     dilation = convert_to_list(dilation, dims, 'dilation')
 
     if in_dynamic_mode():
-        pre_bias = _C_ops.sparse_conv3d(x, weight, padding, dilation, stride,
-                                        groups, subm,
-                                        key if key is not None else "")
+        pre_bias = _C_ops.sparse_conv3d(
+            x,
+            weight,
+            padding,
+            dilation,
+            stride,
+            groups,
+            subm,
+            key if key is not None else "",
+        )
         if bias is not None:
             return add(pre_bias, bias)
         else:
@@ -77,35 +93,38 @@ def _conv3d(x,
             'strides': stride,
             'groups': groups,
             'subm': subm,
-            'key': key
+            'key': key,
         }
         op_type = 'sparse_conv3d'
         helper = LayerHelper(op_type, **locals())
-        rulebook = helper.create_variable_for_type_inference(dtype='int32',
-                                                             stop_gradient=True)
-        counter = helper.create_variable_for_type_inference(dtype='int32',
-                                                            stop_gradient=True)
+        rulebook = helper.create_variable_for_type_inference(
+            dtype='int32', stop_gradient=True
+        )
+        counter = helper.create_variable_for_type_inference(
+            dtype='int32', stop_gradient=True
+        )
         pre_bias = helper.create_sparse_variable_for_type_inference(x.dtype)
         outputs = {"out": pre_bias, "rulebook": rulebook, "counter": counter}
-        helper.append_op(type=op_type,
-                         inputs=inputs,
-                         outputs=outputs,
-                         attrs=attrs)
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
+        )
         if bias is not None:
             return add(pre_bias, bias)
         else:
             return pre_bias
 
 
-def conv3d(x,
-           weight,
-           bias=None,
-           stride=1,
-           padding=0,
-           dilation=1,
-           groups=1,
-           data_format="NDHWC",
-           name=None):
+def conv3d(
+    x,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups=1,
+    data_format="NDHWC",
+    name=None,
+):
     r"""
 
     The sparse convolution3d functional calculates the output based on the input, filter
@@ -201,26 +220,39 @@ def conv3d(x,
               indices = paddle.to_tensor(indices, dtype='int32')
               values = paddle.to_tensor(values, dtype='float32')
               dense_shape = [1, 1, 3, 4, 1]
-              sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+              sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
               weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-              y = paddle.incubate.sparse.nn.functional.conv3d(sparse_x, weight)
+              y = paddle.sparse.nn.functional.conv3d(sparse_x, weight)
               print(y.shape)
               # (1, 1, 1, 2, 1)
     """
-    return _conv3d(x, weight, bias, stride, padding, dilation, groups, False,
-                   None, data_format, name)
+    return _conv3d(
+        x,
+        weight,
+        bias,
+        stride,
+        padding,
+        dilation,
+        groups,
+        False,
+        None,
+        data_format,
+        name,
+    )
 
 
-def subm_conv3d(x,
-                weight,
-                bias=None,
-                stride=1,
-                padding=0,
-                dilation=1,
-                groups=1,
-                data_format="NDHWC",
-                key=None,
-                name=None):
+def subm_conv3d(
+    x,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups=1,
+    data_format="NDHWC",
+    key=None,
+    name=None,
+):
     r"""
 
     The sparse submanifold convolution3d functional calculates the output based on the input, filter
@@ -321,11 +353,22 @@ def subm_conv3d(x,
               indices = paddle.to_tensor(indices, dtype='int32')
               values = paddle.to_tensor(values, dtype='float32')
               dense_shape = [1, 1, 3, 4, 1]
-              sparse_x = paddle.incubate.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+              sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
               weight = paddle.randn((1, 3, 3, 1, 1), dtype='float32')
-              y = paddle.incubate.sparse.nn.functional.subm_conv3d(sparse_x, weight)
+              y = paddle.sparse.nn.functional.subm_conv3d(sparse_x, weight)
               print(y.shape)
               #(1, 1, 3, 4, 1)
     """
-    return _conv3d(x, weight, bias, stride, padding, dilation, groups, True,
-                   key, data_format, name)
+    return _conv3d(
+        x,
+        weight,
+        bias,
+        stride,
+        padding,
+        dilation,
+        groups,
+        True,
+        key,
+        data_format,
+        name,
+    )

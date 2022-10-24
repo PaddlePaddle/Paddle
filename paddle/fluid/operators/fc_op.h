@@ -22,8 +22,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-enum { kFCMKLDNNFP32 = 1, kFCMKLDNNINT8 = 2 };
-
 using Tensor = phi::DenseTensor;
 
 inline void FCOutputSize(const framework::DDim& in_dims,

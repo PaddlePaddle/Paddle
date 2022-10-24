@@ -39,8 +39,11 @@ def check_approval(count, required_reviewers):
         else:
             required_reviewers_login.add(rr)
 
-    if len(set(approved_user_ids) & required_reviewers_int) + len(
-            approved_user_logins & required_reviewers_login) >= count:
+    if (
+        len(set(approved_user_ids) & required_reviewers_int)
+        + len(approved_user_logins & required_reviewers_login)
+        >= count
+    ):
         print("TRUE")
     else:
         print("FALSE")

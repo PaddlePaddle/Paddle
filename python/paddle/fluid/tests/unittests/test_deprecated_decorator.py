@@ -51,9 +51,11 @@ def get_warning_index(api):
 
     doc_lst = api.__doc__.splitlines()
     for idx, val in enumerate(doc_lst):
-        if val.startswith("Warning: ") and val.endswith(
-                " instead."
-        ) and "and will be removed in future versions." in val:
+        if (
+            val.startswith("Warning: ")
+            and val.endswith(" instead.")
+            and "and will be removed in future versions." in val
+        ):
             return idx
     return ERROR_WARNING_POSTION
 
@@ -152,7 +154,7 @@ class TestDeprecatedDocorator(unittest.TestCase):
     def test_tensor_gradient(self):
         paddle.__version__ = '2.1.0'
 
-        x = paddle.to_tensor(5., stop_gradient=False)
+        x = paddle.to_tensor(5.0, stop_gradient=False)
         y = paddle.pow(x, 4.0)
         y.backward()
 
@@ -160,7 +162,8 @@ class TestDeprecatedDocorator(unittest.TestCase):
             grad = x.gradient()
             assert (
                 'API "paddle.fluid.dygraph.varbase_patch_methods.gradient" is '
-                'deprecated since 2.1.0') in str(w[-1].message)
+                'deprecated since 2.1.0'
+            ) in str(w[-1].message)
 
     def test_softmax_with_cross_entropy(self):
         paddle.__version__ = '2.0.0'
@@ -173,11 +176,13 @@ class TestDeprecatedDocorator(unittest.TestCase):
         x = linear(data)
 
         with warnings.catch_warnings(record=True) as w:
-            out = paddle.nn.functional.softmax_with_cross_entropy(logits=x,
-                                                                  label=label)
+            out = paddle.nn.functional.softmax_with_cross_entropy(
+                logits=x, label=label
+            )
             assert (
                 'API "paddle.nn.functional.loss.softmax_with_cross_entropy" is '
-                'deprecated since 2.0.0') in str(w[-1].message)
+                'deprecated since 2.0.0'
+            ) in str(w[-1].message)
 
     def test_deprecated_error(self):
         paddle.__version__ = '2.1.0'

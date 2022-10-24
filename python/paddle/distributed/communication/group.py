@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-class Group():
+class Group:
     """
     The abstract representation of group.
     """
@@ -69,14 +69,15 @@ class Group():
 
     def __repr__(self):
         debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
-            self.rank, self.nranks, self.id)
+            self.rank, self.nranks, self.id
+        )
         debug_str += ", ".join(map(str, self.ranks))
         debug_str += "; name: "
         debug_str += self.name if self.name else "None"
         return debug_str
 
 
-class _GroupManager():
+class _GroupManager:
     global_group_id = 0
     group_map_by_id = {}
 
@@ -89,6 +90,7 @@ def _get_global_group():
 
 def _add_new_group(group):
     if group.id in _GroupManager.group_map_by_id:
-        raise RuntimeError("The group with id {} already exist.".format(
-            group.id))
+        raise RuntimeError(
+            "The group with id {} already exist.".format(group.id)
+        )
     _GroupManager.group_map_by_id[group.id] = group

@@ -19,17 +19,21 @@ from paddle import _legacy_C_ops
 import paddle.utils.deprecated as deprecated
 
 
-@deprecated(since="2.4.0",
-            update_to="paddle.geometric.reindex_graph",
-            level=1,
-            reason="paddle.incubate.graph_reindex will be removed in future")
-def graph_reindex(x,
-                  neighbors,
-                  count,
-                  value_buffer=None,
-                  index_buffer=None,
-                  flag_buffer_hashtable=False,
-                  name=None):
+@deprecated(
+    since="2.4.0",
+    update_to="paddle.geometric.reindex_graph",
+    level=1,
+    reason="paddle.incubate.graph_reindex will be removed in future",
+)
+def graph_reindex(
+    x,
+    neighbors,
+    count,
+    value_buffer=None,
+    index_buffer=None,
+    flag_buffer_hashtable=False,
+    name=None,
+):
     """
     Graph Reindex API.
 
@@ -107,47 +111,55 @@ def graph_reindex(x,
     """
     if flag_buffer_hashtable:
         if value_buffer is None or index_buffer is None:
-            raise ValueError("`value_buffer` and `index_buffer` should not"
-                             "be None if `flag_buffer_hashtable` is True.")
+            raise ValueError(
+                "`value_buffer` and `index_buffer` should not"
+                "be None if `flag_buffer_hashtable` is True."
+            )
 
     if _non_static_mode():
-        reindex_src, reindex_dst, out_nodes = \
-            _legacy_C_ops.graph_reindex(x, neighbors, count, value_buffer, index_buffer,
-                                 "flag_buffer_hashtable", flag_buffer_hashtable)
+        reindex_src, reindex_dst, out_nodes = _legacy_C_ops.graph_reindex(
+            x,
+            neighbors,
+            count,
+            value_buffer,
+            index_buffer,
+            "flag_buffer_hashtable",
+            flag_buffer_hashtable,
+        )
         return reindex_src, reindex_dst, out_nodes
 
     check_variable_and_dtype(x, "X", ("int32", "int64"), "graph_reindex")
-    check_variable_and_dtype(neighbors, "Neighbors", ("int32", "int64"),
-                             "graph_reindex")
+    check_variable_and_dtype(
+        neighbors, "Neighbors", ("int32", "int64"), "graph_reindex"
+    )
     check_variable_and_dtype(count, "Count", ("int32"), "graph_reindex")
 
     if flag_buffer_hashtable:
-        check_variable_and_dtype(value_buffer, "HashTable_Value", ("int32"),
-                                 "graph_reindex")
-        check_variable_and_dtype(index_buffer, "HashTable_Index", ("int32"),
-                                 "graph_reindex")
+        check_variable_and_dtype(
+            value_buffer, "HashTable_Value", ("int32"), "graph_reindex"
+        )
+        check_variable_and_dtype(
+            index_buffer, "HashTable_Index", ("int32"), "graph_reindex"
+        )
 
     helper = LayerHelper("graph_reindex", **locals())
     reindex_src = helper.create_variable_for_type_inference(dtype=x.dtype)
     reindex_dst = helper.create_variable_for_type_inference(dtype=x.dtype)
     out_nodes = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="graph_reindex",
-                     inputs={
-                         "X":
-                         x,
-                         "Neighbors":
-                         neighbors,
-                         "Count":
-                         count,
-                         "HashTable_Value":
-                         value_buffer if flag_buffer_hashtable else None,
-                         "HashTable_Index":
-                         index_buffer if flag_buffer_hashtable else None,
-                     },
-                     outputs={
-                         "Reindex_Src": reindex_src,
-                         "Reindex_Dst": reindex_dst,
-                         "Out_Nodes": out_nodes
-                     },
-                     attrs={"flag_buffer_hashtable": flag_buffer_hashtable})
+    helper.append_op(
+        type="graph_reindex",
+        inputs={
+            "X": x,
+            "Neighbors": neighbors,
+            "Count": count,
+            "HashTable_Value": value_buffer if flag_buffer_hashtable else None,
+            "HashTable_Index": index_buffer if flag_buffer_hashtable else None,
+        },
+        outputs={
+            "Reindex_Src": reindex_src,
+            "Reindex_Dst": reindex_dst,
+            "Out_Nodes": out_nodes,
+        },
+        attrs={"flag_buffer_hashtable": flag_buffer_hashtable},
+    )
     return reindex_src, reindex_dst, out_nodes

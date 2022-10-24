@@ -21,14 +21,17 @@ from paddle.fluid.framework import _test_eager_guard
 
 import queue
 
-from paddle.fluid.reader import multiprocess_queue_set, _cleanup, CleanupFuncRegistrar
+from paddle.fluid.reader import (
+    multiprocess_queue_set,
+    _cleanup,
+    CleanupFuncRegistrar,
+)
 
 # NOTE: These special functions cannot be detected by the existing coverage mechanism,
 # so the following unittests are added for these internal functions.
 
 
 class TestDygraphDataLoaderCleanUpFunc(unittest.TestCase):
-
     def setUp(self):
         self.capacity = 10
 
@@ -65,8 +68,9 @@ class TestRegisterExitFunc(unittest.TestCase):
         self.func_test_not_callable_func()
 
     def func_test_old_handler_for_sigint(self):
-        CleanupFuncRegistrar.register(function=self.none_func,
-                                      signals=[signal.SIGINT])
+        CleanupFuncRegistrar.register(
+            function=self.none_func, signals=[signal.SIGINT]
+        )
 
     def test_old_handler_for_sigint(self):
         with _test_eager_guard():
@@ -78,8 +82,9 @@ class TestRegisterExitFunc(unittest.TestCase):
         def __test_process__():
             pass
 
-        CleanupFuncRegistrar.register(function=self.none_func,
-                                      signals=[signal.SIGCHLD])
+        CleanupFuncRegistrar.register(
+            function=self.none_func, signals=[signal.SIGCHLD]
+        )
 
         exception = None
         try:

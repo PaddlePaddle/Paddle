@@ -19,8 +19,7 @@ import paddle.distributed as dist
 import test_collective_api_base as test_collective_base
 
 
-class StreamAllToAllTestCase():
-
+class StreamAllToAllTestCase:
     def __init__(self):
         self._sync_op = eval(os.getenv("sync_op"))
         self._use_calc_stream = eval(os.getenv("use_calc_stream"))
@@ -30,7 +29,8 @@ class StreamAllToAllTestCase():
         self._seeds = eval(os.getenv("seeds"))
         if self._backend not in ["nccl", "gloo"]:
             raise NotImplementedError(
-                "Only support nccl and gloo as the backend for now.")
+                "Only support nccl and gloo as the backend for now."
+            )
         os.environ["PADDLE_DISTRI_BACKEND"] = self._backend
 
     def run_test_case(self):
@@ -39,17 +39,23 @@ class StreamAllToAllTestCase():
         test_data_list = []
         for seed in self._seeds:
             test_data_list.append(
-                test_collective_base.create_test_data(shape=self._shape,
-                                                      dtype=self._dtype,
-                                                      seed=seed))
+                test_collective_base.create_test_data(
+                    shape=self._shape, dtype=self._dtype, seed=seed
+                )
+            )
 
         nranks = len(test_data_list)
         data1 = test_data_list[0]
         data2 = test_data_list[1]
         result1 = np.vstack(
-            [data1[0:data1.shape[0] // 2, :], data2[0:data2.shape[0] // 2, :]])
+            [
+                data1[0 : data1.shape[0] // 2, :],
+                data2[0 : data2.shape[0] // 2, :],
+            ]
+        )
         result2 = np.vstack(
-            [data1[data1.shape[0] // 2:, :], data2[data2.shape[0] // 2:, :]])
+            [data1[data1.shape[0] // 2 :, :], data2[data2.shape[0] // 2 :, :]]
+        )
 
         rank = dist.get_rank()
         tensor = paddle.to_tensor(test_data_list[rank])
@@ -57,48 +63,52 @@ class StreamAllToAllTestCase():
 
         # case 1: pass an empty tensor list
         empty_tensor_list = []
-        task = dist.stream.alltoall(empty_tensor_list, [t1, t2],
-                                    sync_op=self._sync_op,
-                                    use_calc_stream=self._use_calc_stream)
+        task = dist.stream.alltoall(
+            empty_tensor_list,
+            [t1, t2],
+            sync_op=self._sync_op,
+            use_calc_stream=self._use_calc_stream,
+        )
         if not self._sync_op:
             task.wait()
         result_tensor_list = np.vstack(empty_tensor_list)
         if rank == 0:
-            assert np.allclose(result_tensor_list,
-                               result1,
-                               rtol=1e-05,
-                               atol=1e-05)
+            assert np.allclose(
+                result_tensor_list, result1, rtol=1e-05, atol=1e-05
+            )
         else:
-            assert np.allclose(result_tensor_list,
-                               result2,
-                               rtol=1e-05,
-                               atol=1e-05)
+            assert np.allclose(
+                result_tensor_list, result2, rtol=1e-05, atol=1e-05
+            )
 
         # case 2: pass a pre-sized tensor list
         full_tensor_list = [paddle.empty_like(t1) for _ in test_data_list]
-        task = dist.stream.alltoall(full_tensor_list, [t1, t2],
-                                    sync_op=self._sync_op,
-                                    use_calc_stream=self._use_calc_stream)
+        task = dist.stream.alltoall(
+            full_tensor_list,
+            [t1, t2],
+            sync_op=self._sync_op,
+            use_calc_stream=self._use_calc_stream,
+        )
         if not self._sync_op:
             task.wait()
         result_tensor_list = np.vstack(full_tensor_list)
         if rank == 0:
-            assert np.allclose(result_tensor_list,
-                               result1,
-                               rtol=1e-05,
-                               atol=1e-05)
+            assert np.allclose(
+                result_tensor_list, result1, rtol=1e-05, atol=1e-05
+            )
         else:
-            assert np.allclose(result_tensor_list,
-                               result2,
-                               rtol=1e-05,
-                               atol=1e-05)
+            assert np.allclose(
+                result_tensor_list, result2, rtol=1e-05, atol=1e-05
+            )
 
         # case 3: pass a pre-sized tensor
         out_tensor = paddle.empty_like(tensor)
-        task = dist.stream.alltoall(out_tensor,
-                                    tensor,
-                                    sync_op=self._sync_op,
-                                    use_calc_stream=self._use_calc_stream)
+        task = dist.stream.alltoall(
+            out_tensor,
+            tensor,
+            sync_op=self._sync_op,
+            use_calc_stream=self._use_calc_stream,
+        )
         if not self._sync_op:
             task.wait()
         if rank == 0:

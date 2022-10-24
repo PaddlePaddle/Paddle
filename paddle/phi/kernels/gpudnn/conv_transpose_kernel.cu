@@ -26,11 +26,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/operators/conv_miopen_helper.h"
 #include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
-#include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
 namespace phi {
@@ -199,15 +199,15 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
   // ------------------- cudnn descriptors ---------------------
-  paddle::operators::ConvArgs args{&transformed_out,
-                                   &filter,
-                                   &transformed_x,
-                                   strides,
-                                   padding_common,
-                                   dilations_,
-                                   dtype,
-                                   groups,
-                                   data_layout};
+  ConvArgs args{&transformed_out,
+                &filter,
+                &transformed_x,
+                strides,
+                padding_common,
+                dilations_,
+                dtype,
+                groups,
+                data_layout};
   args.handle = handle;
   args.idesc.set(transformed_out, iwo_groups);
   args.wdesc.set(filter, layout_tensor, iwo_groups);
@@ -220,16 +220,14 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                  c_groups);
 
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result;
-  using search =
-      paddle::operators::SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
+  SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result;
+  using search = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
   workspace_size = std::max(workspace_size, search::GetWorkspaceSize(args));
   bwd_result.algo =
       search::Find<T>(args, false, deterministic, workspace_size, ctx);
 #else
-  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
-  using search =
-      paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+  SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
+  using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);
   workspace_size =
       std::max(workspace_size, search::GetWorkspaceSize(args, bwd_result.algo));
@@ -239,8 +237,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   int x_offset = transformed_x.numel() / transformed_x.dims()[0] / groups;
   int out_offset = transformed_out.numel() / transformed_out.dims()[0] / groups;
   int filter_offset = filter.numel() / groups;
-  paddle::operators::ScalingParamType<T> alpha = 1.0f;
-  paddle::operators::ScalingParamType<T> beta = 0.0f;
+  ScalingParamType<T> alpha = 1.0f;
+  ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = ctx.cudnn_workspace_handle();
   for (int g = 0; g < groups; g++) {
 #ifdef PADDLE_WITH_HIP
