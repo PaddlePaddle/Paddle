@@ -83,18 +83,16 @@ class BatchNorm(paddle.nn.BatchNorm1D):
         .. code-block:: python
 
           import paddle
-          from paddle.fluid.framework import _test_eager_guard
 
-          with _test_eager_guard():
-              paddle.seed(123)
-              channels = 3
-              x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
-              dense_x = paddle.to_tensor(x_data)
-              sparse_x = dense_x.to_sparse_coo(4)
-              batch_norm = paddle.sparse.nn.BatchNorm(channels)
-              batch_norm_out = batch_norm(sparse_x)
-              print(batch_norm_out.shape)
-              # [1, 6, 6, 6, 3]
+          paddle.seed(123)
+          channels = 3
+          x_data = paddle.randn((1, 6, 6, 6, channels)).astype('float32')
+          dense_x = paddle.to_tensor(x_data)
+          sparse_x = dense_x.to_sparse_coo(4)
+          batch_norm = paddle.sparse.nn.BatchNorm(channels)
+          batch_norm_out = batch_norm(sparse_x)
+          print(batch_norm_out.shape)
+          # [1, 6, 6, 6, 3]
     """
 
     def __init__(
@@ -270,6 +268,8 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. If it is set to False, this layer will not
              have trainable bias parameter. Default: None.
+        data_format(str, optional): Specify the input data format, may be "NCHW". Default "NCHW".
+        name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shapes:
         input: Tensor that the dimension from 2 to 5.
@@ -282,10 +282,8 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
           # required: gpu
           import paddle
           import paddle.sparse.nn as nn
-          import numpy as np
 
-          x = np.array([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-          x = paddle.to_tensor(x)
+          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]], dtype='float32')
           x = x.to_sparse_coo(len(x.shape)-1)
 
           if paddle.is_compiled_with_cuda():
