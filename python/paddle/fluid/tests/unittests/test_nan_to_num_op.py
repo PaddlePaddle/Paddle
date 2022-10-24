@@ -21,16 +21,23 @@ import paddle.fluid.core as core
 # from op_test import OpTest
 
 
-def np_nan_to_num(x: np.ndarray,
-                  nan: float = 0.0,
-                  posinf: Optional[float] = None,
-                  neginf: Optional[float] = None) -> np.ndarray:
+def np_nan_to_num(
+    x: np.ndarray,
+    nan: float = 0.0,
+    posinf: Optional[float] = None,
+    neginf: Optional[float] = None,
+) -> np.ndarray:
     return np.nan_to_num(x, True, nan=nan, posinf=posinf, neginf=neginf)
 
 
-def np_nan_to_num_op(x: np.ndarray, nan: float, replace_posinf_with_max: bool,
-                     posinf: float, replace_neginf_with_min: bool,
-                     neginf: float) -> np.ndarray:
+def np_nan_to_num_op(
+    x: np.ndarray,
+    nan: float,
+    replace_posinf_with_max: bool,
+    posinf: float,
+    replace_neginf_with_min: bool,
+    neginf: float,
+) -> np.ndarray:
     if replace_posinf_with_max:
         posinf = None
     if replace_neginf_with_min:
@@ -45,25 +52,28 @@ def np_nan_to_num_grad(x: np.ndarray, dout: np.ndarray) -> np.ndarray:
 
 
 class TestNanToNum(unittest.TestCase):
-
     def setUp(self):
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def test_static(self):
-        x_np = np.array([[1, np.nan, -2], [np.inf, 0,
-                                           -np.inf]]).astype(np.float32)
+        x_np = np.array([[1, np.nan, -2], [np.inf, 0, -np.inf]]).astype(
+            np.float32
+        )
         out1_np = np_nan_to_num(x_np)
-        out2_np = np_nan_to_num(x_np, 1.)
-        out3_np = np_nan_to_num(x_np, 1., 9.)
-        out4_np = np_nan_to_num(x_np, 1., 9., -12.)
+        out2_np = np_nan_to_num(x_np, 1.0)
+        out3_np = np_nan_to_num(x_np, 1.0, 9.0)
+        out4_np = np_nan_to_num(x_np, 1.0, 9.0, -12.0)
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', x_np.shape)
             out1 = paddle.nan_to_num(x)
-            out2 = paddle.nan_to_num(x, 1.)
-            out3 = paddle.nan_to_num(x, 1., 9.)
-            out4 = paddle.nan_to_num(x, 1., 9., -12.)
+            out2 = paddle.nan_to_num(x, 1.0)
+            out3 = paddle.nan_to_num(x, 1.0, 9.0)
+            out4 = paddle.nan_to_num(x, 1.0, 9.0, -12.0)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': x_np}, fetch_list=[out1, out2, out3, out4])
 
@@ -78,28 +88,29 @@ class TestNanToNum(unittest.TestCase):
 
         with paddle.fluid.dygraph.guard():
             # NOTE(tiancaishaonvjituizi): float64 input fails the test
-            x_np = np.array([[1, np.nan, -2], [np.inf, 0,
-                                               -np.inf]]).astype(np.float32)
-            # -np.inf]]).astype(np.float64)
+            x_np = np.array([[1, np.nan, -2], [np.inf, 0, -np.inf]]).astype(
+                np.float32
+                # np.float64
+            )
             x_tensor = paddle.to_tensor(x_np, stop_gradient=False)
 
             out_tensor = paddle.nan_to_num(x_tensor)
             out_np = np_nan_to_num(x_np)
             self.assertTrue(np.allclose(out_tensor.numpy(), out_np))
 
-            out_tensor = paddle.nan_to_num(x_tensor, 1., None, None)
+            out_tensor = paddle.nan_to_num(x_tensor, 1.0, None, None)
             out_np = np_nan_to_num(x_np, 1, None, None)
             self.assertTrue(np.allclose(out_tensor.numpy(), out_np))
 
-            out_tensor = paddle.nan_to_num(x_tensor, 1., 2., None)
+            out_tensor = paddle.nan_to_num(x_tensor, 1.0, 2.0, None)
             out_np = np_nan_to_num(x_np, 1, 2, None)
             self.assertTrue(np.allclose(out_tensor.numpy(), out_np))
 
-            out_tensor = paddle.nan_to_num(x_tensor, 1., None, -10.)
+            out_tensor = paddle.nan_to_num(x_tensor, 1.0, None, -10.0)
             out_np = np_nan_to_num(x_np, 1, None, -10)
             self.assertTrue(np.allclose(out_tensor.numpy(), out_np))
 
-            out_tensor = paddle.nan_to_num(x_tensor, 1., 100., -10.)
+            out_tensor = paddle.nan_to_num(x_tensor, 1.0, 100.0, -10.0)
             out_np = np_nan_to_num(x_np, 1, 100, -10)
             self.assertTrue(np.allclose(out_tensor.numpy(), out_np))
 
@@ -107,8 +118,9 @@ class TestNanToNum(unittest.TestCase):
 
     def test_check_grad(self):
         paddle.disable_static(place=self.place)
-        x_np = np.array([[1, np.nan, -2], [np.inf, 0,
-                                           -np.inf]]).astype(np.float32)
+        x_np = np.array([[1, np.nan, -2], [np.inf, 0, -np.inf]]).astype(
+            np.float32
+        )
         x_tensor = paddle.to_tensor(x_np, stop_gradient=False)
 
         y = paddle.nan_to_num(x_tensor)
