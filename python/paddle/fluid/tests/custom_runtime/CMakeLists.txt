@@ -24,8 +24,11 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
     PLUGIN_URL=${PLUGIN_URL}
     PLUGIN_TAG=${PLUGIN_TAG})
 
-  set_tests_properties(test_custom_cpu_plugin PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_custom_cpu_profiler_plugin PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_custom_cpu_plugin
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+  set_tests_properties(test_custom_cpu_profiler_plugin
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   set_tests_properties(test_fleet_launch_custom_device PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_custom_cpu_to_static PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_custom_cpu_to_static
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
 endif()
