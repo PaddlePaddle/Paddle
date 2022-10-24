@@ -81,13 +81,13 @@ class SumOp : public framework::OperatorWithKernel {
       if (!((data_type == framework::proto::VarType::FP32 ||
              data_type == framework::proto::VarType::BF16) &&
             ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {
-        dnn_fallback_ = true;
+        this->SetDnnFallback(true);
       } else if (!std::all_of(x_vars.begin(),
                               x_vars.end(),
                               [](const framework::Variable* v) {
                                 return v->IsType<phi::DenseTensor>();
                               })) {
-        dnn_fallback_ = true;
+        this->SetDnnFallback(true);
       }
       // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 

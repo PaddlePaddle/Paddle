@@ -55,7 +55,7 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
 #endif
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
-  dnn_fallback_ = !CanMKLDNNSupportPool(ctx);
+  this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
   return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
@@ -97,7 +97,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
 #endif
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
-  dnn_fallback_ = !CanMKLDNNSupportPool(ctx);
+  this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
   return framework::OpKernelType(

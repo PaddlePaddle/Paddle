@@ -100,7 +100,7 @@ class CastOp : public framework::OperatorWithKernel {
 
     if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) ||
         (out_dtype != dtype_fp32 && out_dtype != dtype_bf16)) {
-      dnn_fallback_ = true;
+      this->SetDnnFallback(true);
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 

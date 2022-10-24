@@ -197,8 +197,7 @@ PreparedOp PrepareImpl(
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-  if (!op.dnn_fallback() &&
-      !paddle::platform::in_mkldnn_white_list(op.Type()) &&
+  if (!op.DnnFallback() && !paddle::platform::in_mkldnn_white_list(op.Type()) &&
       op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;

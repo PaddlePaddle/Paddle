@@ -115,7 +115,7 @@ class LayerNormOp : public framework::OperatorWithKernel {
     int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
     if (begin_norm_axis !=
         ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
-      dnn_fallback_ = true;
+      this->SetDnnFallback(true);
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 

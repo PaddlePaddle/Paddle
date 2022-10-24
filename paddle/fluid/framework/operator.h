@@ -704,7 +704,9 @@ class OperatorWithKernel : public OperatorBase {
     kernel_type_.reset(kernel_type);
   }
 
-  bool dnn_fallback() const { return dnn_fallback_; }
+  bool DnnFallback() const { return dnn_fallback_; }
+
+  void SetDnnFallback(bool dnn_fallback) const { dnn_fallback_ = dnn_fallback; }
 
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;

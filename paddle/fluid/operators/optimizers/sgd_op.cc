@@ -45,7 +45,7 @@ class SGDOp : public framework::OperatorWithKernel {
     bool dense_param_and_grad = param_var->IsType<phi::DenseTensor>() &&
                                 grad_var->IsType<phi::DenseTensor>();
     if (!(dense_param_sparse_grad || dense_param_and_grad)) {
-      dnn_fallback_ = true;
+      this->SetDnnFallback(true);
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 

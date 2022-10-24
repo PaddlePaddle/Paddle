@@ -593,7 +593,7 @@ class ReduceOp : public framework::OperatorWithKernel {
     // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
     if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5 ||
         !HasOptimizedOneDNNKernel(ctx)) {
-      dnn_fallback_ = true;
+      this->SetDnnFallback(true);
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
