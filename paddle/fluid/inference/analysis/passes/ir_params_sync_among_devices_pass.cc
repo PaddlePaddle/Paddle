@@ -163,7 +163,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
         VLOG(5) << "var_name is " << var_name << ", data type is "
                 << var_data_type;
         platform::CPUPlace cpu_place;
-        framework::LoDTensor temp_tensor;
+        phi::DenseTensor temp_tensor;
         temp_tensor.Resize(t->dims());
         paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
         t->clear();
