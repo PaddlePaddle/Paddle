@@ -20,17 +20,18 @@ from test_softmax_op import stable_softmax
 
 
 def attention_lstm(
-        x,  # T x M
-        lod,  # 1 x N
-        h0,  # N x D
-        c0,  # N x D
-        fcws,  # (M+D) x 1, 1x1
-        fcbs,  # 1 x 1, 1x1
-        w,  # (M+D) x 4D
-        b,  # 1 x 4D
-        act_gate,
-        act_cell,
-        act_cand):
+    x,  # T x M
+    lod,  # 1 x N
+    h0,  # N x D
+    c0,  # N x D
+    fcws,  # (M+D) x 1, 1x1
+    fcbs,  # 1 x 1, 1x1
+    w,  # (M+D) x 4D
+    b,  # 1 x 4D
+    act_gate,
+    act_cell,
+    act_cand,
+):
 
     T = sum(lod[0])
     N = len(lod[0])
@@ -44,8 +45,9 @@ def attention_lstm(
     start_offset = 0
     for bid in range(N):
         seq_len = lod[0][bid]
-        xi = np.copy(x[start_offset:start_offset + seq_len, :]).reshape(
-            seq_len, M)
+        xi = np.copy(x[start_offset : start_offset + seq_len, :]).reshape(
+            seq_len, M
+        )
         prev_cell = np.copy(c0[bid]).reshape([1, D])
         prev_hidden = np.copy(h0[bid]).reshape([1, D])
         for step in range(seq_len):
@@ -86,7 +88,6 @@ def attention_lstm(
 
 
 class TestAttentionLSTMOp(OpTest):
-
     def set_conf(self):
         pass
 
@@ -117,14 +118,24 @@ class TestAttentionLSTMOp(OpTest):
         fcb2 = np.random.normal(size=(1, 1)).astype('float32')
 
         # lstm weight and bias
-        w = np.random.normal(size=(self.M + self.D,
-                                   self.D * 4)).astype('float32')
+        w = np.random.normal(size=(self.M + self.D, self.D * 4)).astype(
+            'float32'
+        )
         b = np.random.normal(size=(1, self.D * 4)).astype('float32')
 
-        h, c = attention_lstm(x, self.lod, h0, c0, [fcw1, fcw2], [fcb1, fcb2],
-                              w, b, ACTIVATION[self.act_gate],
-                              ACTIVATION[self.act_cell],
-                              ACTIVATION[self.act_cand])
+        h, c = attention_lstm(
+            x,
+            self.lod,
+            h0,
+            c0,
+            [fcw1, fcw2],
+            [fcb1, fcb2],
+            w,
+            b,
+            ACTIVATION[self.act_gate],
+            ACTIVATION[self.act_cell],
+            ACTIVATION[self.act_cand],
+        )
 
         self.inputs = {
             'X': (x, self.lod),
@@ -134,7 +145,7 @@ class TestAttentionLSTMOp(OpTest):
             'AttentionScalar': fcw2,
             'AttentionScalarBias': fcb2,
             'LSTMWeight': w,
-            'LSTMBias': b
+            'LSTMBias': b,
         }
 
         if self.has_initial_hidden:
@@ -147,7 +158,7 @@ class TestAttentionLSTMOp(OpTest):
         self.attrs = {
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
-            'candidate_activation': self.act_cand
+            'candidate_activation': self.act_cand,
         }
 
     def test_check_output(self):
@@ -155,13 +166,11 @@ class TestAttentionLSTMOp(OpTest):
 
 
 class TestAttentionOpNonInit(TestAttentionLSTMOp):
-
     def set_conf(self):
         self.has_initial_hidden = False
 
 
 class TestAttentionOpAct(TestAttentionLSTMOp):
-
     def set_conf(self):
         self.M = 3
         self.D = 2
@@ -171,28 +180,24 @@ class TestAttentionOpAct(TestAttentionLSTMOp):
 
 
 class TestAttentionOpMD1(TestAttentionLSTMOp):
-
     def set_conf(self):
         self.M = 36
         self.D = 8
 
 
 class TestAttentionOpMD2(TestAttentionLSTMOp):
-
     def set_conf(self):
         self.M = 8
         self.D = 8
 
 
 class TestAttentionOpMD3(TestAttentionLSTMOp):
-
     def set_conf(self):
         self.M = 15
         self.D = 30
 
 
 class TestAttentionOpBS1(TestAttentionLSTMOp):
-
     def set_conf(self):
         self.lod = [[5]]
         self.M = 16
@@ -200,13 +205,11 @@ class TestAttentionOpBS1(TestAttentionLSTMOp):
 
 
 class TestAttentionOpBS2(TestAttentionLSTMOp):
-
     def set_conf(self):
         self.lod = [[3, 6]]
 
 
 class TestAttentionOpBS5(TestAttentionLSTMOp):
-
     def set_conf(self):
         self.lod = [[3, 2, 4, 7, 5]]
 

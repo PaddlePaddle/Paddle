@@ -109,5 +109,5 @@ with section("parse"):
                 "SRCS": '*',
                 "DEPS": '*',
             }
-        }
+        },
     }

@@ -14,12 +14,10 @@
 
 import unittest
 
-import six
 import paddle.fluid.core as core
 
 
 class TestInferShape(unittest.TestCase):
-
     def test_sum_op(self):
         prog = core.ProgramDesc()
         self.assertIsNotNone(prog)
@@ -29,14 +27,14 @@ class TestInferShape(unittest.TestCase):
         shape = [10, 20]
 
         # prepare input/output
-        x1 = block.var(six.b("x1"))
+        x1 = block.var(b'x1')
         x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(shape)
-        x2 = block.var(six.b("x2"))
+        x2 = block.var(b'x2')
         x2.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x2.set_shape(shape)
 
-        out = block.var(six.b("out"))
+        out = block.var(b'out')
         out.set_type(core.VarDesc.VarType.LOD_TENSOR)
 
         # prepare the operator
@@ -59,14 +57,14 @@ class TestInferShape(unittest.TestCase):
         y_shape = [20, 30]
 
         # prepare input/output
-        x1 = block.var(six.b("x"))
+        x1 = block.var(b'x')
         x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(x_shape)
-        x2 = block.var(six.b("y"))
+        x2 = block.var(b'y')
         x2.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x2.set_shape(y_shape)
 
-        out = block.var(six.b("out"))
+        out = block.var(b'out')
         out.set_type(core.VarDesc.VarType.LOD_TENSOR)
 
         # prepare the operator
@@ -92,11 +90,11 @@ class TestInferShape(unittest.TestCase):
         expand_times = [3, 1]
 
         # prepare input/output
-        x1 = block.var(six.b("x"))
+        x1 = block.var(b'x')
         x1.set_type(core.VarDesc.VarType.LOD_TENSOR)
         x1.set_shape(shape)
 
-        out = block.var(six.b("out"))
+        out = block.var(b'out')
         out.set_type(core.VarDesc.VarType.LOD_TENSOR)
 
         # prepare the operator

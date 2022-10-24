@@ -18,7 +18,6 @@ import unittest
 
 
 class TestBF16DataType(unittest.TestCase):
-
     def test_matmul(self):
         a_bf16 = np.random.random((6, 7)).astype(bfloat16)
         b_bf16 = np.random.random((7, 8)).astype(bfloat16)

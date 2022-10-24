@@ -71,7 +71,9 @@ class MetricRecords(object):
         if direction not in {"min", "max"}:
             raise ValueError(
                 "direction should be one of {{min, max}}, but got: {}.".format(
-                    direction))
+                    direction
+                )
+            )
         self._direction = direction
         self._records = {}
 

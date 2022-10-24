@@ -20,10 +20,10 @@ def check_import_scipy(OsName):
             import scipy.io as scio  # noqa: F401
         except ImportError as e:
             print_info = str(e)
-        if (len(print_info) > 0):
+        if len(print_info) > 0:
             if 'DLL load failed' in print_info:
                 raise ImportError(
-                    print_info +
-                    "\nplease download Visual C++ Redistributable from https://support.microsoft.com/en-us/topic/the-latest-supported-visual-c-downloads-2647da03-1eea-4433-9aff-95f26a218cc0"
+                    print_info
+                    + "\nplease download Visual C++ Redistributable from https://support.microsoft.com/en-us/topic/the-latest-supported-visual-c-downloads-2647da03-1eea-4433-9aff-95f26a218cc0"
                 )
     return

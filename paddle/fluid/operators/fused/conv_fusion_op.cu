@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/kernels/funcs/padding.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
 
 DECLARE_int64(cudnn_exhaustive_search_times);
 
@@ -216,7 +216,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               cudnn_conv_desc,
               cudnn_output_desc,
               output_data,
-              kNUM_CUDNN_FWD_ALGS,
+              phi::kNUM_CUDNN_FWD_ALGS,
               &find_count,
               &find_result,
               cudnn_workspace_ptr,
@@ -337,7 +337,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
       int best_algo_idx = 0;
       size_t tmp_size = 0;
       std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
-          new cudnnConvolutionFwdAlgoPerf_t[kNUM_CUDNN_FWD_ALGS]);
+          new cudnnConvolutionFwdAlgoPerf_t[phi::kNUM_CUDNN_FWD_ALGS]);
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
               handle,
@@ -345,7 +345,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               cudnn_filter_desc,
               cudnn_conv_desc,
               cudnn_output_desc,
-              kNUM_CUDNN_FWD_ALGS,
+              phi::kNUM_CUDNN_FWD_ALGS,
               &perf_count,
               perf_results.get()));
       algo = (perf_results.get())[best_algo_idx].algo;
@@ -378,7 +378,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
           [&]() -> SearchFuseResult<cudnnConvolutionFwdAlgo_t> {
         int returned_algo_count;
         SearchFuseResult<cudnnConvolutionFwdAlgo_t> fwd_result;
-        std::array<cudnnConvolutionFwdAlgoPerf_t, kNUM_CUDNN_FWD_ALGS>
+        std::array<cudnnConvolutionFwdAlgoPerf_t, phi::kNUM_CUDNN_FWD_ALGS>
             fwd_perf_stat;
         auto cudnn_find_func = [&](void* cudnn_workspace) {
           PADDLE_ENFORCE_GPU_SUCCESS(
@@ -391,7 +391,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
                   cudnn_conv_desc,
                   cudnn_output_desc,
                   output_data,
-                  kNUM_CUDNN_FWD_ALGS,
+                  phi::kNUM_CUDNN_FWD_ALGS,
                   &returned_algo_count,
                   fwd_perf_stat.data(),
                   cudnn_workspace,

@@ -2100,12 +2100,40 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+    if (op_type == "merge_layernorm") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The merge_layernorm op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
 
     if (op_type == "lookup_table") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
                    "static shape yet";
         return false;
+      }
+    }
+
+    if (op_type == "expand_v2") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (!desc.HasAttr("shape")) {
+        return false;
+      }
+      auto expand_v2_inputs = desc.Inputs();
+      if (expand_v2_inputs.find("Shape") != expand_v2_inputs.end()) {
+        if (desc.Input("Shape").size() >= 1) {
+          return false;
+        }
+      }
+      if (expand_v2_inputs.find("expand_shapes_tensor") !=
+          expand_v2_inputs.end()) {
+        if (desc.Input("expand_shapes_tensor").size() >= 1) {
+          return false;
+        }
       }
     }
 
@@ -2232,7 +2260,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "layernorm_shift_partition",
       "lookup_table",
-      "lookup_table_v2"};
+      "lookup_table_v2",
+      "expand_v2"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "matmul",
@@ -2347,8 +2376,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "unsqueeze2",
       "fused_token_prune",
       "layernorm_shift_partition",
+      "merge_layernorm",
       "lookup_table",
-      "lookup_table_v2"};
+      "lookup_table_v2",
+      "expand_v2"};
 };
 
 struct GenericPluginTeller : public Teller {

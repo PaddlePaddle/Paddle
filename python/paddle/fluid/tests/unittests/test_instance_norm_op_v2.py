@@ -23,11 +23,11 @@ import paddle
 
 
 class TestInstanceNorm(unittest.TestCase):
-
     def test_error(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+            "instance_norm"
+        ):
             places.append(fluid.CUDAPlace(0))
         for p in places:
 
@@ -48,9 +48,9 @@ class TestInstanceNorm(unittest.TestCase):
 
             def weight_bias_false():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm3d = paddle.nn.InstanceNorm3D(1,
-                                                           weight_attr=False,
-                                                           bias_attr=False)
+                instance_norm3d = paddle.nn.InstanceNorm3D(
+                    1, weight_attr=False, bias_attr=False
+                )
 
             with fluid.dygraph.guard(p):
                 weight_bias_false()
@@ -61,7 +61,8 @@ class TestInstanceNorm(unittest.TestCase):
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+            "instance_norm"
+        ):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             shape = [4, 10, 4, 4]
@@ -86,7 +87,8 @@ class TestInstanceNorm(unittest.TestCase):
     def test_static(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "instance_norm"):
+            "instance_norm"
+        ):
             places.append(fluid.CUDAPlace(0))
         for p in places:
             exe = fluid.Executor(p)
