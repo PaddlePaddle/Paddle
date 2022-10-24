@@ -28,13 +28,12 @@ import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 import re
 import functools
-import six
 
 __all__ = []
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
-#URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+# URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
 URL = 'https://dataset.bj.bcebos.com/movielens%2Fml-1m.zip'
 MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
@@ -54,13 +53,17 @@ class MovieInfo(object):
         Get information from a movie.
         """
         return [
-            self.index, [CATEGORIES_DICT[c] for c in self.categories],
-            [MOVIE_TITLE_DICT[w.lower()] for w in self.title.split()]
+            self.index,
+            [CATEGORIES_DICT[c] for c in self.categories],
+            [MOVIE_TITLE_DICT[w.lower()] for w in self.title.split()],
         ]
 
     def __str__(self):
         return "<MovieInfo id(%d), title(%s), categories(%s)>" % (
-            self.index, self.title, self.categories)
+            self.index,
+            self.title,
+            self.categories,
+        )
 
     def __repr__(self):
         return self.__str__()
@@ -85,8 +88,11 @@ class UserInfo(object):
 
     def __str__(self):
         return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
-            self.index, "M" if self.is_male else "F", age_table[self.age],
-            self.job_id)
+            self.index,
+            "M" if self.is_male else "F",
+            age_table[self.age],
+            self.job_id,
+        )
 
     def __repr__(self):
         return str(self)
@@ -118,7 +124,8 @@ def __initialize_meta_info__():
                             categories_set.add(c)
                         title = pattern.match(title).group(1)
                         MOVIE_INFO[int(movie_id)] = MovieInfo(
-                            index=movie_id, categories=categories, title=title)
+                            index=movie_id, categories=categories, title=title
+                        )
                         for w in title.split():
                             title_word_set.add(w.lower())
 
@@ -138,10 +145,9 @@ def __initialize_meta_info__():
                     for line in user_file:
                         line = line.decode(encoding='latin')
                         uid, gender, age, job, _ = line.strip().split("::")
-                        USER_INFO[int(uid)] = UserInfo(index=uid,
-                                                       gender=gender,
-                                                       age=age,
-                                                       job_id=job)
+                        USER_INFO[int(uid)] = UserInfo(
+                            index=uid, gender=gender, age=age, job_id=job
+                        )
     return fn
 
 
@@ -167,7 +173,8 @@ def __reader__(rand_seed=0, test_ratio=0.1, is_test=False):
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def __reader_creator__(**kwargs):
     return lambda: __reader__(**kwargs)
 
@@ -180,7 +187,8 @@ test = functools.partial(__reader_creator__, is_test=True)
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def get_movie_title_dict():
     """
     Get movie title dictionary.
@@ -200,26 +208,28 @@ def __max_index_info__(a, b):
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def max_movie_id():
     """
     Get the maximum value of movie id.
     """
     __initialize_meta_info__()
-    return six.moves.reduce(__max_index_info__, list(MOVIE_INFO.values())).index
+    return functools.reduce(__max_index_info__, list(MOVIE_INFO.values())).index
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def max_user_id():
     """
     Get the maximum value of user id.
     """
     __initialize_meta_info__()
-    return six.moves.reduce(__max_index_info__, list(USER_INFO.values())).index
+    return functools.reduce(__max_index_info__, list(USER_INFO.values())).index
 
 
 def __max_job_id_impl__(a, b):
@@ -233,21 +243,24 @@ def __max_job_id_impl__(a, b):
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def max_job_id():
     """
     Get the maximum value of job id.
     """
     __initialize_meta_info__()
-    return six.moves.reduce(__max_job_id_impl__,
-                            list(USER_INFO.values())).job_id
+    return functools.reduce(
+        __max_job_id_impl__, list(USER_INFO.values())
+    ).job_id
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def movie_categories():
     """
     Get movie categories dictionary.
@@ -260,7 +273,8 @@ def movie_categories():
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def user_info():
     """
     Get user info dictionary.
@@ -273,7 +287,8 @@ def user_info():
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def movie_info():
     """
     Get movie info dictionary.
@@ -295,7 +310,8 @@ def unittest():
     since="2.0.0",
     update_to="paddle.text.datasets.Movielens",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def fetch():
     paddle.dataset.common.download(URL, "movielens", MD5)
 

@@ -20,20 +20,22 @@ import numpy as np
 from op_test_xpu import XPUOpTest
 import paddle
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestSplitOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'split'
         self.use_dynamic_create_class = False
 
     # test with attr(num)
     class TestSplitOp(XPUOpTest):
-
         def setUp(self):
             self.init_dtype()
             self.__class__.use_xpu = True
@@ -44,12 +46,13 @@ class XPUTestSplitOp(XPUOpTestWrapper):
             self.attrs = {
                 'axis': self.axis,
                 'sections': self.sections,
-                'num': self.num
+                'num': self.num,
             }
 
             out = np.split(self.x, self.indices_or_sections, self.axis)
-            self.outputs = {'Out': [('out%d' % i, out[i]) \
-                                    for i in range(len(out))]}
+            self.outputs = {
+                'Out': [('out%d' % i, out[i]) for i in range(len(out))]
+            }
 
         def init_dtype(self):
             self.dtype = self.in_type
@@ -66,7 +69,6 @@ class XPUTestSplitOp(XPUOpTestWrapper):
 
     # unknown sections
     class TestSplitOp1(TestSplitOp):
-
         def initParameters(self):
             self.x = np.random.random((4, 5, 6)).astype(self.dtype)
             self.axis = 2
@@ -76,7 +78,6 @@ class XPUTestSplitOp(XPUOpTestWrapper):
 
     # test with int32
     class TestSplitOp2(TestSplitOp):
-
         def initParameters(self):
             self.x = np.random.random((4, 5, 6)).astype(np.int32)
             self.axis = 2

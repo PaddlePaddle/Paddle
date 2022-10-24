@@ -22,7 +22,6 @@ from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 
 class TestPF16Pass(AutoPallelPassTestBase):
-
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
@@ -42,29 +41,28 @@ class TestPF16Pass(AutoPallelPassTestBase):
                 'layer_norm',
                 'gelu',
             ],
-            "custom_black_list":
-            ['c_softmax_with_cross_entropy', 'elementwise_div', 'reduce_sum'],
-            "init_loss_scaling":
-            32768,
-            "use_dynamic_loss_scaling":
-            True,
-            "use_pure_fp16":
-            True,
-            "use_fp16_guard":
-            False
+            "custom_black_list": [
+                'c_softmax_with_cross_entropy',
+                'elementwise_div',
+                'reduce_sum',
+            ],
+            "init_loss_scaling": 32768,
+            "use_dynamic_loss_scaling": True,
+            "use_pure_fp16": True,
+            "use_fp16_guard": False,
         }
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
 
     def test_bs_8(self):
-        self.check_main(gpus=[0, 1],
-                        batch_size=8,
-                        sequence_len=512,
-                        vocab_size=1000)
+        self.check_main(
+            gpus=[0, 1], batch_size=8, sequence_len=512, vocab_size=1000
+        )
 
     def get_model(self, place, batch_size, sequence_len, vocab_size):
-        return self.get_gpt_model("mp", place, batch_size, sequence_len,
-                                  vocab_size)
+        return self.get_gpt_model(
+            "mp", place, batch_size, sequence_len, vocab_size
+        )
 
 
 if __name__ == "__main__":

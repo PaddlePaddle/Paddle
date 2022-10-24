@@ -22,16 +22,14 @@ from typing import List
 
 
 class TrtConvertFlattenTest_dim_2(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input(batch):
             return np.random.random([batch, 32]).astype(np.float32)
 
-        for batch in [1, 2, 4]:
+        for batch in [1, 4]:
             for axis in [0, 1]:
                 for type in ["flatten", "flatten2"]:
                     if type == "flatten":
@@ -39,34 +37,35 @@ class TrtConvertFlattenTest_dim_2(TrtLayerAutoScanTest):
                     else:
                         op_outputs = {
                             "Out": ["output_data"],
-                            "XShape": ["xshape_data"]
+                            "XShape": ["xshape_data"],
                         }
                     dics = [{"axis": axis}]
-                    ops_config = [{
-                        "op_type": "flatten",
-                        "op_inputs": {
-                            "X": ["input_data"]
-                        },
-                        "op_outputs": op_outputs,
-                        "op_attrs": dics[0]
-                    }]
+                    ops_config = [
+                        {
+                            "op_type": "flatten",
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": op_outputs,
+                            "op_attrs": dics[0],
+                        }
+                    ]
                     ops = self.generate_op_config(ops_config)
 
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
-                            "input_data":
-                            TensorConfig(
-                                data_gen=partial(generate_input, batch))
+                            "input_data": TensorConfig(
+                                data_gen=partial(generate_input, batch)
+                            )
                         },
-                        outputs=["output_data"])
+                        outputs=["output_data"],
+                    )
 
                     yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 64]}
@@ -100,35 +99,37 @@ class TrtConvertFlattenTest_dim_2(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-3, 1e-3)
+            attrs, False
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-3, 1e-3)
+            attrs, True
+        ), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()
 
 
 class TrtConvertFlattenTest_dim_3(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input(batch):
             return np.random.random([batch, 32, 64]).astype(np.float32)
 
-        for batch in [1, 2, 4]:
+        for batch in [1, 4]:
             for axis in [0, 1, 2]:
                 for type in ["flatten", "flatten2"]:
                     if type == "flatten":
@@ -136,38 +137,39 @@ class TrtConvertFlattenTest_dim_3(TrtLayerAutoScanTest):
                     else:
                         op_outputs = {
                             "Out": ["output_data"],
-                            "XShape": ["xshape_data"]
+                            "XShape": ["xshape_data"],
                         }
                     dics = [{"axis": axis}]
-                    ops_config = [{
-                        "op_type": "flatten",
-                        "op_inputs": {
-                            "X": ["input_data"]
-                        },
-                        "op_outputs": op_outputs,
-                        "op_attrs": dics[0]
-                    }]
+                    ops_config = [
+                        {
+                            "op_type": "flatten",
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": op_outputs,
+                            "op_attrs": dics[0],
+                        }
+                    ]
                     ops = self.generate_op_config(ops_config)
 
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
-                            "input_data":
-                            TensorConfig(
-                                data_gen=partial(generate_input, batch))
+                            "input_data": TensorConfig(
+                                data_gen=partial(generate_input, batch)
+                            )
                         },
-                        outputs=["output_data"])
+                        outputs=["output_data"],
+                    )
 
                     yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 64, 768]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [2, 32, 256]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [2, 32, 64]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -198,35 +200,37 @@ class TrtConvertFlattenTest_dim_3(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-3, 1e-3)
+            attrs, False
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-3, 1e-3)
+            attrs, True
+        ), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()
 
 
 class TrtConvertFlattenTest_dim_4(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input(batch):
             return np.random.random([batch, 8, 8, 8]).astype(np.float32)
 
-        for batch in [1, 2, 4]:
+        for batch in [1, 4]:
             for axis in [0, 1, 2, 3]:
                 for type in ["flatten", "flatten2"]:
                     if type == "flatten":
@@ -234,37 +238,38 @@ class TrtConvertFlattenTest_dim_4(TrtLayerAutoScanTest):
                     else:
                         op_outputs = {
                             "Out": ["output_data"],
-                            "XShape": ["xshape_data"]
+                            "XShape": ["xshape_data"],
                         }
                     dics = [{"axis": axis}]
-                    ops_config = [{
-                        "op_type": "flatten",
-                        "op_inputs": {
-                            "X": ["input_data"]
-                        },
-                        "op_outputs": op_outputs,
-                        "op_attrs": dics[0]
-                    }]
+                    ops_config = [
+                        {
+                            "op_type": "flatten",
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": op_outputs,
+                            "op_attrs": dics[0],
+                        }
+                    ]
                     ops = self.generate_op_config(ops_config)
 
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
-                            "input_data":
-                            TensorConfig(
-                                data_gen=partial(generate_input, batch))
+                            "input_data": TensorConfig(
+                                data_gen=partial(generate_input, batch)
+                            )
                         },
-                        outputs=["output_data"])
+                        outputs=["output_data"],
+                    )
 
                     yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 4, 4, 4]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 64, 64]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 32, 32]}
             self.dynamic_shape.opt_input_shape = {"input_data": [2, 16, 16, 8]}
 
         def clear_dynamic_shape():
@@ -294,36 +299,39 @@ class TrtConvertFlattenTest_dim_4(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-3, 1e-3)
+            attrs, False
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-3, 1e-3)
+            attrs, True
+        ), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()
 
 
 class TrtConvertFlattenTest_dim_5(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
-
         def generate_input(batch):
             return np.random.random([batch, 8, 8, 8]).astype(np.float32)
 
-        for batch in [1, 2, 4]:
+        for batch in [1, 4]:
             for axis in [0, 1, 2, 3, 4]:
                 for type in ["flatten", "flatten2"]:
                     if type == "flatten":
@@ -331,37 +339,38 @@ class TrtConvertFlattenTest_dim_5(TrtLayerAutoScanTest):
                     else:
                         op_outputs = {
                             "Out": ["output_data"],
-                            "XShape": ["xshape_data"]
+                            "XShape": ["xshape_data"],
                         }
                     dics = [{"axis": axis}]
-                    ops_config = [{
-                        "op_type": "flatten",
-                        "op_inputs": {
-                            "X": ["input_data"]
-                        },
-                        "op_outputs": op_outputs,
-                        "op_attrs": dics[0]
-                    }]
+                    ops_config = [
+                        {
+                            "op_type": "flatten",
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": op_outputs,
+                            "op_attrs": dics[0],
+                        }
+                    ]
                     ops = self.generate_op_config(ops_config)
 
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
-                            "input_data":
-                            TensorConfig(
-                                data_gen=partial(generate_input, batch))
+                            "input_data": TensorConfig(
+                                data_gen=partial(generate_input, batch)
+                            )
                         },
-                        outputs=["output_data"])
+                        outputs=["output_data"],
+                    )
 
                     yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 4, 4, 4]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 64, 64]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 16, 16, 8]}
             self.dynamic_shape.opt_input_shape = {"input_data": [2, 16, 16, 8]}
 
         def clear_dynamic_shape():
@@ -391,20 +400,25 @@ class TrtConvertFlattenTest_dim_5(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-3, 1e-3)
+            attrs, False
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-3, 1e-3)
+            attrs, True
+        ), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()

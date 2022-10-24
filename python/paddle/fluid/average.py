@@ -14,6 +14,7 @@
 
 import numpy as np
 import warnings
+
 """
     Class of all kinds of Average.
 
@@ -27,8 +28,11 @@ __all__ = ["WeightedAverage"]
 
 
 def _is_number_(var):
-    return isinstance(var, int) or isinstance(
-        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
+    return (
+        isinstance(var, int)
+        or isinstance(var, float)
+        or (isinstance(var, np.ndarray) and var.shape == (1,))
+    )
 
 
 def _is_number_or_matrix_(var):
@@ -59,8 +63,10 @@ class WeightedAverage(object):
 
     def __init__(self):
         warnings.warn(
-            "The %s is deprecated, please use fluid.metrics.Accuracy instead." %
-            (self.__class__.__name__), Warning)
+            "The %s is deprecated, please use fluid.metrics.Accuracy instead."
+            % (self.__class__.__name__),
+            Warning,
+        )
         self.reset()
 
     def reset(self):
@@ -70,7 +76,8 @@ class WeightedAverage(object):
     def add(self, value, weight):
         if not _is_number_or_matrix_(value):
             raise ValueError(
-                "The 'value' must be a number(int, float) or a numpy ndarray.")
+                "The 'value' must be a number(int, float) or a numpy ndarray."
+            )
         if not _is_number_(weight):
             raise ValueError("The 'weight' must be a number(int, float).")
 
@@ -84,5 +91,6 @@ class WeightedAverage(object):
     def eval(self):
         if self.numerator is None or self.denominator is None:
             raise ValueError(
-                "There is no data to be averaged in WeightedAverage.")
+                "There is no data to be averaged in WeightedAverage."
+            )
         return self.numerator / self.denominator

@@ -16,8 +16,10 @@ import paddle
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from .layer_function_generator import templatedoc
 from ..static import Variable
+
 # TODO: define logic functions of a tensor
 from ..fluid.framework import _in_eager_mode_
+
 if _in_eager_mode_:
     Tensor = paddle.fluid.framework.core.eager.Tensor
 else:
@@ -26,6 +28,7 @@ else:
 from ..framework import in_dygraph_mode
 from ..framework import LayerHelper
 from ..fluid.framework import _in_legacy_dygraph
+
 # TODO: define logic functions of a tensor
 from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.creation import full
@@ -47,14 +50,18 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         else:
             return op(x)
     check_variable_and_dtype(
-        x, "x",
+        x,
+        "x",
         ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
-        op_name)
+        op_name,
+    )
     if y is not None:
         check_variable_and_dtype(
-            y, "y",
+            y,
+            "y",
             ["bool", "int8", "int16", "int32", "int64", "float32", "float64"],
-            op_name)
+            op_name,
+        )
     if out is not None:
         check_type(out, "out", Variable, op_name)
 
@@ -63,18 +70,16 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
     if binary_op and x.dtype != y.dtype:
         raise ValueError(
             "(InvalidArgument) The DataType of %s Op's Variable must be consistent, but received %s and %s."
-            % (op_name, x.dtype, y.dtype))
+            % (op_name, x.dtype, y.dtype)
+        )
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     if binary_op:
-        helper.append_op(type=op_name,
-                         inputs={
-                             "X": x,
-                             "Y": y
-                         },
-                         outputs={"Out": out})
+        helper.append_op(
+            type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
+        )
     else:
         helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
 
@@ -116,12 +121,9 @@ def logical_and(x, y, out=None, name=None):
     if in_dygraph_mode():
         return _C_ops.logical_and(x, y)
 
-    return _logical_op(op_name="logical_and",
-                       x=x,
-                       y=y,
-                       name=name,
-                       out=out,
-                       binary_op=True)
+    return _logical_op(
+        op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True
+    )
 
 
 def logical_or(x, y, out=None, name=None):
@@ -161,12 +163,9 @@ def logical_or(x, y, out=None, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.logical_or(x, y)
-    return _logical_op(op_name="logical_or",
-                       x=x,
-                       y=y,
-                       name=name,
-                       out=out,
-                       binary_op=True)
+    return _logical_op(
+        op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
+    )
 
 
 def logical_xor(x, y, out=None, name=None):
@@ -207,12 +206,9 @@ def logical_xor(x, y, out=None, name=None):
     if in_dygraph_mode():
         return _C_ops.logical_xor(x, y)
 
-    return _logical_op(op_name="logical_xor",
-                       x=x,
-                       y=y,
-                       name=name,
-                       out=out,
-                       binary_op=True)
+    return _logical_op(
+        op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True
+    )
 
 
 @templatedoc()
@@ -245,12 +241,9 @@ def logical_not(x, out=None, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.logical_not(x)
-    return _logical_op(op_name="logical_not",
-                       x=x,
-                       y=None,
-                       name=name,
-                       out=out,
-                       binary_op=False)
+    return _logical_op(
+        op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False
+    )
 
 
 def is_empty(x, name=None):
@@ -288,16 +281,17 @@ def is_empty(x, name=None):
     if _in_legacy_dygraph():
         return _legacy_C_ops.is_empty(x)
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             'is_empty')
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64'], 'is_empty'
+    )
     check_type(name, "name", (str, type(None)), "is_empty")
 
     helper = LayerHelper("is_empty", **locals())
     cond = helper.create_variable_for_type_inference(dtype='bool')
     cond.stop_gradient = True
-    helper.append_op(type='is_empty',
-                     inputs={'X': [x]},
-                     outputs={'Out': [cond]})
+    helper.append_op(
+        type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]}
+    )
     return cond
 
 
@@ -338,12 +332,9 @@ def equal_all(x, y, name=None):
 
     helper = LayerHelper("equal_all", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
-    helper.append_op(type='equal_all',
-                     inputs={
-                         'X': [x],
-                         'Y': [y]
-                     },
-                     outputs={'Out': [out]})
+    helper.append_op(
+        type='equal_all', inputs={'X': [x], 'Y': [y]}, outputs={'Out': [out]}
+    )
     return out
 
 
@@ -393,8 +384,9 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     if in_dygraph_mode():
         return _C_ops.allclose(x, y, rtol, atol, equal_nan)
     if _in_legacy_dygraph():
-        return _legacy_C_ops.allclose(x, y, 'rtol', str(rtol), 'atol',
-                                      str(atol), 'equal_nan', equal_nan)
+        return _legacy_C_ops.allclose(
+            x, y, 'rtol', str(rtol), 'atol', str(atol), 'equal_nan', equal_nan
+        )
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'allclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'allclose')
     check_type(rtol, 'rtol', float, 'allclose')
@@ -407,10 +399,9 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     inputs = {'Input': x, 'Other': y}
     outputs = {'Out': out}
     attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
-    helper.append_op(type='allclose',
-                     inputs=inputs,
-                     outputs=outputs,
-                     attrs=attrs)
+    helper.append_op(
+        type='allclose', inputs=inputs, outputs=outputs, attrs=attrs
+    )
 
     return out
 
@@ -446,8 +437,10 @@ def equal(x, y, name=None):
     """
     if not isinstance(y, (int, bool, float, Variable)):
         raise TypeError(
-            "Type of input args must be float, bool, int or Tensor, but received type {}"
-            .format(type(y)))
+            "Type of input args must be float, bool, int or Tensor, but received type {}".format(
+                type(y)
+            )
+        )
     if not isinstance(y, Variable):
         y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
@@ -459,21 +452,26 @@ def equal(x, y, name=None):
             return _legacy_C_ops.equal(x, y)
         else:
             check_variable_and_dtype(
-                x, "x", ["bool", "float32", "float64", "int32", "int64"],
-                "equal")
+                x,
+                "x",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "equal",
+            )
             check_variable_and_dtype(
-                y, "y", ["bool", "float32", "float64", "int32", "int64"],
-                "equal")
+                y,
+                "y",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "equal",
+            )
             helper = LayerHelper("equal", **locals())
             out = helper.create_variable_for_type_inference(dtype='bool')
             out.stop_gradient = True
 
-            helper.append_op(type='equal',
-                             inputs={
-                                 'X': [x],
-                                 'Y': [y]
-                             },
-                             outputs={'Out': [out]})
+            helper.append_op(
+                type='equal',
+                inputs={'X': [x], 'Y': [y]},
+                outputs={'Out': [out]},
+            )
             return out
 
 
@@ -511,21 +509,26 @@ def greater_equal(x, y, name=None):
             return _legacy_C_ops.greater_equal(x, y)
         else:
             check_variable_and_dtype(
-                x, "x", ["bool", "float32", "float64", "int32", "int64"],
-                "greater_equal")
+                x,
+                "x",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "greater_equal",
+            )
             check_variable_and_dtype(
-                y, "y", ["bool", "float32", "float64", "int32", "int64"],
-                "greater_equal")
+                y,
+                "y",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "greater_equal",
+            )
             helper = LayerHelper("greater_equal", **locals())
             out = helper.create_variable_for_type_inference(dtype='bool')
             out.stop_gradient = True
 
-            helper.append_op(type='greater_equal',
-                             inputs={
-                                 'X': [x],
-                                 'Y': [y]
-                             },
-                             outputs={'Out': [out]})
+            helper.append_op(
+                type='greater_equal',
+                inputs={'X': [x], 'Y': [y]},
+                outputs={'Out': [out]},
+            )
             return out
 
 
@@ -562,21 +565,26 @@ def greater_than(x, y, name=None):
             return _legacy_C_ops.greater_than(x, y)
         else:
             check_variable_and_dtype(
-                x, "x", ["bool", "float32", "float64", "int32", "int64"],
-                "greater_than")
+                x,
+                "x",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "greater_than",
+            )
             check_variable_and_dtype(
-                y, "y", ["bool", "float32", "float64", "int32", "int64"],
-                "greater_than")
+                y,
+                "y",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "greater_than",
+            )
             helper = LayerHelper("greater_than", **locals())
             out = helper.create_variable_for_type_inference(dtype='bool')
             out.stop_gradient = True
 
-            helper.append_op(type='greater_than',
-                             inputs={
-                                 'X': [x],
-                                 'Y': [y]
-                             },
-                             outputs={'Out': [out]})
+            helper.append_op(
+                type='greater_than',
+                inputs={'X': [x], 'Y': [y]},
+                outputs={'Out': [out]},
+            )
             return out
 
 
@@ -615,21 +623,26 @@ def less_equal(x, y, name=None):
             return _legacy_C_ops.less_equal(x, y)
         else:
             check_variable_and_dtype(
-                x, "x", ["bool", "float32", "float64", "int32", "int64"],
-                "less_equal")
+                x,
+                "x",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "less_equal",
+            )
             check_variable_and_dtype(
-                y, "y", ["bool", "float32", "float64", "int32", "int64"],
-                "less_equal")
+                y,
+                "y",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "less_equal",
+            )
             helper = LayerHelper("less_equal", **locals())
             out = helper.create_variable_for_type_inference(dtype='bool')
             out.stop_gradient = True
 
-            helper.append_op(type='less_equal',
-                             inputs={
-                                 'X': [x],
-                                 'Y': [y]
-                             },
-                             outputs={'Out': [out]})
+            helper.append_op(
+                type='less_equal',
+                inputs={'X': [x], 'Y': [y]},
+                outputs={'Out': [out]},
+            )
             return out
 
 
@@ -668,21 +681,26 @@ def less_than(x, y, name=None):
             return _legacy_C_ops.less_than(x, y)
         else:
             check_variable_and_dtype(
-                x, "x", ["bool", "float32", "float64", "int32", "int64"],
-                "less_than")
+                x,
+                "x",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "less_than",
+            )
             check_variable_and_dtype(
-                y, "y", ["bool", "float32", "float64", "int32", "int64"],
-                "less_than")
+                y,
+                "y",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "less_than",
+            )
             helper = LayerHelper("less_than", **locals())
             out = helper.create_variable_for_type_inference(dtype='bool')
             out.stop_gradient = True
 
-            helper.append_op(type='less_than',
-                             inputs={
-                                 'X': [x],
-                                 'Y': [y]
-                             },
-                             outputs={'Out': [out]})
+            helper.append_op(
+                type='less_than',
+                inputs={'X': [x], 'Y': [y]},
+                outputs={'Out': [out]},
+            )
             return out
 
 
@@ -721,21 +739,26 @@ def not_equal(x, y, name=None):
             return _legacy_C_ops.not_equal(x, y)
         else:
             check_variable_and_dtype(
-                x, "x", ["bool", "float32", "float64", "int32", "int64"],
-                "not_equal")
+                x,
+                "x",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "not_equal",
+            )
             check_variable_and_dtype(
-                y, "y", ["bool", "float32", "float64", "int32", "int64"],
-                "not_equal")
+                y,
+                "y",
+                ["bool", "float32", "float64", "int32", "int64"],
+                "not_equal",
+            )
             helper = LayerHelper("not_equal", **locals())
             out = helper.create_variable_for_type_inference(dtype='bool')
             out.stop_gradient = True
 
-            helper.append_op(type='not_equal',
-                             inputs={
-                                 'X': [x],
-                                 'Y': [y]
-                             },
-                             outputs={'Out': [out]})
+            helper.append_op(
+                type='not_equal',
+                inputs={'X': [x], 'Y': [y]},
+                outputs={'Out': [out]},
+            )
             return out
 
 
@@ -782,11 +805,15 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
             return op(x)
 
     check_variable_and_dtype(
-        x, "x", ["bool", "uint8", "int8", "int16", "int32", "int64"], op_name)
+        x, "x", ["bool", "uint8", "int8", "int16", "int32", "int64"], op_name
+    )
     if y is not None:
         check_variable_and_dtype(
-            y, "y", ["bool", "uint8", "int8", "int16", "int32", "int64"],
-            op_name)
+            y,
+            "y",
+            ["bool", "uint8", "int8", "int16", "int32", "int64"],
+            op_name,
+        )
     if out is not None:
         check_type(out, "out", Variable, op_name)
 
@@ -798,12 +825,9 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     if binary_op:
-        helper.append_op(type=op_name,
-                         inputs={
-                             "X": x,
-                             "Y": y
-                         },
-                         outputs={"Out": out})
+        helper.append_op(
+            type=op_name, inputs={"X": x, "Y": y}, outputs={"Out": out}
+        )
     else:
         helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
 
@@ -834,12 +858,9 @@ def bitwise_and(x, y, out=None, name=None):
     """
     if in_dygraph_mode() and out is None:
         return _C_ops.bitwise_and(x, y)
-    return _bitwise_op(op_name="bitwise_and",
-                       x=x,
-                       y=y,
-                       name=name,
-                       out=out,
-                       binary_op=True)
+    return _bitwise_op(
+        op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True
+    )
 
 
 @templatedoc()
@@ -867,12 +888,9 @@ def bitwise_or(x, y, out=None, name=None):
     if in_dygraph_mode() and out is None:
         return _C_ops.bitwise_or(x, y)
 
-    return _bitwise_op(op_name="bitwise_or",
-                       x=x,
-                       y=y,
-                       name=name,
-                       out=out,
-                       binary_op=True)
+    return _bitwise_op(
+        op_name="bitwise_or", x=x, y=y, name=name, out=out, binary_op=True
+    )
 
 
 @templatedoc()
@@ -899,12 +917,9 @@ def bitwise_xor(x, y, out=None, name=None):
     """
     if in_dygraph_mode() and out is None:
         return _C_ops.bitwise_xor(x, y)
-    return _bitwise_op(op_name="bitwise_xor",
-                       x=x,
-                       y=y,
-                       name=name,
-                       out=out,
-                       binary_op=True)
+    return _bitwise_op(
+        op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True
+    )
 
 
 @templatedoc()
@@ -930,12 +945,9 @@ def bitwise_not(x, out=None, name=None):
     if in_dygraph_mode() and out is None:
         return _C_ops.bitwise_not(x)
 
-    return _bitwise_op(op_name="bitwise_not",
-                       x=x,
-                       y=None,
-                       name=name,
-                       out=out,
-                       binary_op=False)
+    return _bitwise_op(
+        op_name="bitwise_not", x=x, y=None, name=name, out=out, binary_op=False
+    )
 
 
 @templatedoc()
@@ -982,8 +994,9 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     if in_dygraph_mode():
         return _C_ops.isclose(x, y, rtol, atol, equal_nan)
     if _in_legacy_dygraph():
-        return _legacy_C_ops.isclose(x, y, 'rtol', str(rtol), 'atol', str(atol),
-                                     'equal_nan', equal_nan)
+        return _legacy_C_ops.isclose(
+            x, y, 'rtol', str(rtol), 'atol', str(atol), 'equal_nan', equal_nan
+        )
 
     check_variable_and_dtype(x, "input", ['float32', 'float64'], 'isclose')
     check_variable_and_dtype(y, "input", ['float32', 'float64'], 'isclose')
@@ -997,8 +1010,7 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     inputs = {'Input': x, 'Other': y}
     outputs = {'Out': out}
     attrs = {'rtol': str(rtol), 'atol': str(atol), 'equal_nan': equal_nan}
-    helper.append_op(type='isclose',
-                     inputs=inputs,
-                     outputs=outputs,
-                     attrs=attrs)
+    helper.append_op(
+        type='isclose', inputs=inputs, outputs=outputs, attrs=attrs
+    )
     return out

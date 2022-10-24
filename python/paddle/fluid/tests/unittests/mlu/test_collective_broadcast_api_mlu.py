@@ -22,21 +22,23 @@ paddle.enable_static()
 
 
 class TestCollectiveBroadcastAPI(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_broadcast_cncl_fp16(self):
-        self.check_with_place("collective_broadcast_api.py", "broadcast",
-                              "float16")
+        self.check_with_place(
+            "collective_broadcast_api.py", "broadcast", "float16"
+        )
 
     def test_broadcast_cncl_fp32(self):
-        self.check_with_place("collective_broadcast_api.py", "broadcast",
-                              "float32")
+        self.check_with_place(
+            "collective_broadcast_api.py", "broadcast", "float32"
+        )
 
     def test_broadcast_cncl_int32(self):
-        self.check_with_place("collective_broadcast_api.py", "broadcast",
-                              "int32")
+        self.check_with_place(
+            "collective_broadcast_api.py", "broadcast", "int32"
+        )
 
 
 if __name__ == '__main__':

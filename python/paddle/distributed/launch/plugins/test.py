@@ -31,13 +31,12 @@ class_dim = 102
 
 # define a random dataset
 class RandomDataset(Dataset):
-
     def __init__(self, num_samples):
         self.num_samples = num_samples
 
     def __getitem__(self, idx):
         image = np.random.random([3, 224, 224]).astype('float32')
-        label = np.random.randint(0, class_dim - 1, (1, )).astype('int64')
+        label = np.random.randint(0, class_dim - 1, (1,)).astype('int64')
         return image, label
 
     def __len__(self):
@@ -49,7 +48,8 @@ def optimizer_setting(parameter_list=None):
         learning_rate=base_lr,
         momentum=momentum_rate,
         weight_decay=paddle.regularizer.L2Decay(l2_decay),
-        parameters=parameter_list)
+        parameters=parameter_list,
+    )
     return optimizer
 
 
@@ -62,11 +62,13 @@ def train_resnet():
     resnet = fleet.distributed_model(resnet)
 
     dataset = RandomDataset(batch_num * batch_size)
-    train_loader = DataLoader(dataset,
-                              batch_size=batch_size,
-                              shuffle=True,
-                              drop_last=True,
-                              num_workers=2)
+    train_loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        drop_last=True,
+        num_workers=2,
+    )
 
     print("Distributed training start...")
     for eop in range(epoch):
@@ -86,14 +88,17 @@ def train_resnet():
             optimizer.step()
             resnet.clear_gradients()
 
-            print("[Epoch %d, batch %d] loss: %.5f, acc1: %.5f, acc5: %.5f" %
-                  (eop, batch_id, avg_loss, acc_top1, acc_top5))
+            print(
+                "[Epoch %d, batch %d] loss: %.5f, acc1: %.5f, acc5: %.5f"
+                % (eop, batch_id, avg_loss, acc_top1, acc_top5)
+            )
 
     print("Distributed training completed")
 
 
 if __name__ == '__main__':
     import os
+
     nnodes = os.getenv('PADDLE_NNODES')
     cn = os.getenv('PADDLE_LOCAL_SIZE')
     print(f"Prepare distributed training with {nnodes} nodes {cn} cards")

@@ -35,14 +35,16 @@ class VarDistributed(object):
     the slice var's properties, such as type/shape/offset/endpoint.
     """
 
-    def __init__(self,
-                 origin_var,
-                 slice_var,
-                 is_slice=None,
-                 block_id=None,
-                 offset=None,
-                 vtype=None,
-                 endpoint=None):
+    def __init__(
+        self,
+        origin_var,
+        slice_var,
+        is_slice=None,
+        block_id=None,
+        offset=None,
+        vtype=None,
+        endpoint=None,
+    ):
         """
         Args:
             origin_var(Variable|VarStruct): origin var properties
@@ -85,8 +87,14 @@ class VarDistributed(object):
 
     @staticmethod
     def __create_var_struct(var):
-        return VarStruct(var.name, var.shape, var.dtype, var.type,
-                         var.lod_level, var.persistable)
+        return VarStruct(
+            var.name,
+            var.shape,
+            var.dtype,
+            var.type,
+            var.lod_level,
+            var.persistable,
+        )
 
     @staticmethod
     def equal(var1, var2):
@@ -97,26 +105,45 @@ class VarDistributed(object):
         """
         assert isinstance(var1, VarStruct) and isinstance(var2, VarStruct)
 
-        return var1.name == var2.name and \
-               var1.type == var2.type and \
-               var1.shape == var2.shape and \
-               var1.dtype == var2.dtype and \
-               var1.lod_level == var2.lod_level and \
-               var1.persistable == var2.persistable
+        return (
+            var1.name == var2.name
+            and var1.type == var2.type
+            and var1.shape == var2.shape
+            and var1.dtype == var2.dtype
+            and var1.lod_level == var2.lod_level
+            and var1.persistable == var2.persistable
+        )
 
     def __str__(self):
-        origin_var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})". \
-            format(i="{", e="}", name=self.origin.name, type=self.origin.type,
-                   shape=self.origin.shape, dtype=self.origin.dtype)
+        origin_var_str = (
+            "{name} : fluid.{type}.shape{shape}.astype({dtype})".format(
+                i="{",
+                e="}",
+                name=self.origin.name,
+                type=self.origin.type,
+                shape=self.origin.shape,
+                dtype=self.origin.dtype,
+            )
+        )
 
-        slice_var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})" \
-                        ".slice({is_slice}).block({block_id}).offset({offset})". \
-            format(i="{", e="}", name=self.slice.name, type=self.slice.type,
-                   shape=self.slice.shape, dtype=self.slice.dtype,
-                   is_slice=self.is_slice, block_id=self.block_id, offset=self.offset)
+        slice_var_str = (
+            "{name} : fluid.{type}.shape{shape}.astype({dtype})"
+            ".slice({is_slice}).block({block_id}).offset({offset})".format(
+                i="{",
+                e="}",
+                name=self.slice.name,
+                type=self.slice.type,
+                shape=self.slice.shape,
+                dtype=self.slice.dtype,
+                is_slice=self.is_slice,
+                block_id=self.block_id,
+                offset=self.offset,
+            )
+        )
 
         return "var owned: {}, origin var: ( {} ), slice var: ( {} ), endpoint: {} ".format(
-            self.vtype, origin_var_str, slice_var_str, self.endpoint)
+            self.vtype, origin_var_str, slice_var_str, self.endpoint
+        )
 
 
 class VarsDistributed(object):
@@ -130,14 +157,16 @@ class VarsDistributed(object):
     def __init__(self):
         self.distributed_vars = []
 
-    def add_distributed_var(self,
-                            origin_var,
-                            slice_var,
-                            is_slice=None,
-                            block_id=None,
-                            offset=None,
-                            vtype=None,
-                            endpoint=None):
+    def add_distributed_var(
+        self,
+        origin_var,
+        slice_var,
+        is_slice=None,
+        block_id=None,
+        offset=None,
+        vtype=None,
+        endpoint=None,
+    ):
         """
         add distributed var in this.
 
@@ -153,8 +182,16 @@ class VarsDistributed(object):
             None
         """
         self.distributed_vars.append(
-            VarDistributed(origin_var, slice_var, is_slice, block_id, offset,
-                           vtype, endpoint))
+            VarDistributed(
+                origin_var,
+                slice_var,
+                is_slice,
+                block_id,
+                offset,
+                vtype,
+                endpoint,
+            )
+        )
 
     def get_distributed_var_by_slice(self, var_name):
         """
@@ -177,12 +214,14 @@ class VarsDistributed(object):
         Returns:
             bool: equal will return True else False
         """
-        return var1.name == var2.name and \
-               var1.type == var2.type and \
-               var1.shape == var2.shape and \
-               var1.dtype == var2.dtype and \
-               var1.lod_level == var2.lod_level and \
-               var1.persistable == var2.persistable
+        return (
+            var1.name == var2.name
+            and var1.type == var2.type
+            and var1.shape == var2.shape
+            and var1.dtype == var2.dtype
+            and var1.lod_level == var2.lod_level
+            and var1.persistable == var2.persistable
+        )
 
     def get_distributed_var_by_origin_and_ep(self, origin_var_name, endpoint):
         """
@@ -195,7 +234,10 @@ class VarsDistributed(object):
             VarDistributed: distributed var.
         """
         for dist_var in self.distributed_vars:
-            if dist_var.origin.name == origin_var_name and dist_var.endpoint == endpoint:
+            if (
+                dist_var.origin.name == origin_var_name
+                and dist_var.endpoint == endpoint
+            ):
                 return dist_var
         return None
 

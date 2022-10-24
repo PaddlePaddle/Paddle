@@ -21,12 +21,9 @@ from paddle import _legacy_C_ops
 __all__ = []
 
 
-def reindex_graph(x,
-                  neighbors,
-                  count,
-                  value_buffer=None,
-                  index_buffer=None,
-                  name=None):
+def reindex_graph(
+    x, neighbors, count, value_buffer=None, index_buffer=None, name=None
+):
     """
     Reindex Graph API.
 
@@ -91,58 +88,62 @@ def reindex_graph(x,
             # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6]
 
     """
-    use_buffer_hashtable = True if value_buffer is not None \
-                                and index_buffer is not None else False
+    use_buffer_hashtable = (
+        True if value_buffer is not None and index_buffer is not None else False
+    )
 
     if _non_static_mode():
-        reindex_src, reindex_dst, out_nodes = \
-            _legacy_C_ops.graph_reindex(x, neighbors, count, value_buffer, index_buffer,
-                                 "flag_buffer_hashtable", use_buffer_hashtable)
+        reindex_src, reindex_dst, out_nodes = _legacy_C_ops.graph_reindex(
+            x,
+            neighbors,
+            count,
+            value_buffer,
+            index_buffer,
+            "flag_buffer_hashtable",
+            use_buffer_hashtable,
+        )
         return reindex_src, reindex_dst, out_nodes
 
     check_variable_and_dtype(x, "X", ("int32", "int64"), "graph_reindex")
-    check_variable_and_dtype(neighbors, "Neighbors", ("int32", "int64"),
-                             "graph_reindex")
+    check_variable_and_dtype(
+        neighbors, "Neighbors", ("int32", "int64"), "graph_reindex"
+    )
     check_variable_and_dtype(count, "Count", ("int32"), "graph_reindex")
 
     if use_buffer_hashtable:
-        check_variable_and_dtype(value_buffer, "HashTable_Value", ("int32"),
-                                 "graph_reindex")
-        check_variable_and_dtype(index_buffer, "HashTable_Index", ("int32"),
-                                 "graph_reindex")
+        check_variable_and_dtype(
+            value_buffer, "HashTable_Value", ("int32"), "graph_reindex"
+        )
+        check_variable_and_dtype(
+            index_buffer, "HashTable_Index", ("int32"), "graph_reindex"
+        )
 
     helper = LayerHelper("reindex_graph", **locals())
     reindex_src = helper.create_variable_for_type_inference(dtype=x.dtype)
     reindex_dst = helper.create_variable_for_type_inference(dtype=x.dtype)
     out_nodes = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="graph_reindex",
-                     inputs={
-                         "X":
-                         x,
-                         "Neighbors":
-                         neighbors,
-                         "Count":
-                         count,
-                         "HashTable_Value":
-                         value_buffer if use_buffer_hashtable else None,
-                         "HashTable_Index":
-                         index_buffer if use_buffer_hashtable else None,
-                     },
-                     outputs={
-                         "Reindex_Src": reindex_src,
-                         "Reindex_Dst": reindex_dst,
-                         "Out_Nodes": out_nodes
-                     },
-                     attrs={"flag_buffer_hashtable": use_buffer_hashtable})
+    helper.append_op(
+        type="graph_reindex",
+        inputs={
+            "X": x,
+            "Neighbors": neighbors,
+            "Count": count,
+            "HashTable_Value": value_buffer if use_buffer_hashtable else None,
+            "HashTable_Index": index_buffer if use_buffer_hashtable else None,
+        },
+        outputs={
+            "Reindex_Src": reindex_src,
+            "Reindex_Dst": reindex_dst,
+            "Out_Nodes": out_nodes,
+        },
+        attrs={"flag_buffer_hashtable": use_buffer_hashtable},
+    )
     return reindex_src, reindex_dst, out_nodes
 
 
-def reindex_heter_graph(x,
-                        neighbors,
-                        count,
-                        value_buffer=None,
-                        index_buffer=None,
-                        name=None):
+def reindex_heter_graph(
+    x, neighbors, count, value_buffer=None, index_buffer=None, name=None
+):
     """
     Reindex HeterGraph API.
 
@@ -215,15 +216,22 @@ def reindex_heter_graph(x,
             # out_nodes: [0, 1, 2, 8, 9, 4, 7, 6, 3, 5]
 
     """
-    use_buffer_hashtable = True if value_buffer is not None \
-                                and index_buffer is not None else False
+    use_buffer_hashtable = (
+        True if value_buffer is not None and index_buffer is not None else False
+    )
 
     if _non_static_mode():
         neighbors = paddle.concat(neighbors, axis=0)
         count = paddle.concat(count, axis=0)
-        reindex_src, reindex_dst, out_nodes = \
-            _legacy_C_ops.graph_reindex(x, neighbors, count, value_buffer, index_buffer,
-                                 "flag_buffer_hashtable", use_buffer_hashtable)
+        reindex_src, reindex_dst, out_nodes = _legacy_C_ops.graph_reindex(
+            x,
+            neighbors,
+            count,
+            value_buffer,
+            index_buffer,
+            "flag_buffer_hashtable",
+            use_buffer_hashtable,
+        )
         return reindex_src, reindex_dst, out_nodes
 
     if isinstance(neighbors, Variable):
@@ -235,15 +243,18 @@ def reindex_heter_graph(x,
     count = paddle.concat(count, axis=0)
 
     check_variable_and_dtype(x, "X", ("int32", "int64"), "heter_graph_reindex")
-    check_variable_and_dtype(neighbors, "Neighbors", ("int32", "int64"),
-                             "graph_reindex")
+    check_variable_and_dtype(
+        neighbors, "Neighbors", ("int32", "int64"), "graph_reindex"
+    )
     check_variable_and_dtype(count, "Count", ("int32"), "graph_reindex")
 
     if use_buffer_hashtable:
-        check_variable_and_dtype(value_buffer, "HashTable_Value", ("int32"),
-                                 "graph_reindex")
-        check_variable_and_dtype(index_buffer, "HashTable_Index", ("int32"),
-                                 "graph_reindex")
+        check_variable_and_dtype(
+            value_buffer, "HashTable_Value", ("int32"), "graph_reindex"
+        )
+        check_variable_and_dtype(
+            index_buffer, "HashTable_Index", ("int32"), "graph_reindex"
+        )
 
     helper = LayerHelper("reindex_heter_graph", **locals())
     reindex_src = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -251,23 +262,20 @@ def reindex_heter_graph(x,
     out_nodes = helper.create_variable_for_type_inference(dtype=x.dtype)
     neighbors = paddle.concat(neighbors, axis=0)
     count = paddle.concat(count, axis=0)
-    helper.append_op(type="graph_reindex",
-                     inputs={
-                         "X":
-                         x,
-                         "Neighbors":
-                         neighbors,
-                         "Count":
-                         count,
-                         "HashTable_Value":
-                         value_buffer if use_buffer_hashtable else None,
-                         "HashTable_Index":
-                         index_buffer if use_buffer_hashtable else None,
-                     },
-                     outputs={
-                         "Reindex_Src": reindex_src,
-                         "Reindex_Dst": reindex_dst,
-                         "Out_Nodes": out_nodes
-                     },
-                     attrs={"flag_buffer_hashtable": use_buffer_hashtable})
+    helper.append_op(
+        type="graph_reindex",
+        inputs={
+            "X": x,
+            "Neighbors": neighbors,
+            "Count": count,
+            "HashTable_Value": value_buffer if use_buffer_hashtable else None,
+            "HashTable_Index": index_buffer if use_buffer_hashtable else None,
+        },
+        outputs={
+            "Reindex_Src": reindex_src,
+            "Reindex_Dst": reindex_dst,
+            "Out_Nodes": out_nodes,
+        },
+        attrs={"flag_buffer_hashtable": use_buffer_hashtable},
+    )
     return reindex_src, reindex_dst, out_nodes

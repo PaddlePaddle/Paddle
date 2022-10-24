@@ -21,7 +21,7 @@ from paddle.fluid.transpiler import collective
 
 
 class TestTranspile(unittest.TestCase):
-    """  TestCases for BoxPS Preload """
+    """TestCases for BoxPS Preload"""
 
     def get_transpile(self, mode, trainers="127.0.0.1:6174"):
         config = fluid.DistributeTranspilerConfig()
@@ -34,44 +34,52 @@ class TestTranspile(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         t = self.get_transpile("single_process_multi_thread")
-        t.transpile(trainer_id=0,
-                    startup_program=startup_program,
-                    trainers="127.0.0.1:6174",
-                    program=main_program)
+        t.transpile(
+            trainer_id=0,
+            startup_program=startup_program,
+            trainers="127.0.0.1:6174",
+            program=main_program,
+        )
         t = self.get_transpile("grad_allreduce")
         try:
-            t.transpile(trainer_id=0,
-                        startup_program=startup_program,
-                        trainers="127.0.0.1:6174",
-                        program=main_program)
+            t.transpile(
+                trainer_id=0,
+                startup_program=startup_program,
+                trainers="127.0.0.1:6174",
+                program=main_program,
+            )
         except ValueError as e:
             print(e)
 
     def test_single_trainers(self):
         transpiler = collective.GradAllReduce(0)
         try:
-            transpiler.transpile(startup_program=fluid.Program(),
-                                 main_program=fluid.Program(),
-                                 rank=1,
-                                 endpoints="127.0.0.1:6174",
-                                 current_endpoint="127.0.0.1:6174",
-                                 wait_port="6174")
+            transpiler.transpile(
+                startup_program=fluid.Program(),
+                main_program=fluid.Program(),
+                rank=1,
+                endpoints="127.0.0.1:6174",
+                current_endpoint="127.0.0.1:6174",
+                wait_port="6174",
+            )
         except ValueError as e:
             print(e)
         transpiler = collective.LocalSGD(0)
         try:
-            transpiler.transpile(startup_program=fluid.Program(),
-                                 main_program=fluid.Program(),
-                                 rank=1,
-                                 endpoints="127.0.0.1:6174",
-                                 current_endpoint="127.0.0.1:6174",
-                                 wait_port="6174")
+            transpiler.transpile(
+                startup_program=fluid.Program(),
+                main_program=fluid.Program(),
+                rank=1,
+                endpoints="127.0.0.1:6174",
+                current_endpoint="127.0.0.1:6174",
+                wait_port="6174",
+            )
         except ValueError as e:
             print(e)
 
 
 class TestRunCmd(unittest.TestCase):
-    """ TestCases for run_cmd"""
+    """TestCases for run_cmd"""
 
     def test_run_cmd(self):
         ret1 = int(core.run_cmd("ls; echo $?").strip().split('\n')[-1])
@@ -81,20 +89,18 @@ class TestRunCmd(unittest.TestCase):
 
 
 class TestPullBoxSparseOP(unittest.TestCase):
-    """ TestCases for _pull_box_sparse op"""
+    """TestCases for _pull_box_sparse op"""
 
     def test_pull_box_sparse_op(self):
         paddle.enable_static()
         program = fluid.Program()
         with fluid.program_guard(program):
-            x = fluid.layers.data(name='x',
-                                  shape=[1],
-                                  dtype='int64',
-                                  lod_level=0)
-            y = fluid.layers.data(name='y',
-                                  shape=[1],
-                                  dtype='int64',
-                                  lod_level=0)
+            x = fluid.layers.data(
+                name='x', shape=[1], dtype='int64', lod_level=0
+            )
+            y = fluid.layers.data(
+                name='y', shape=[1], dtype='int64', lod_level=0
+            )
             emb_x, emb_y = _pull_box_sparse([x, y], size=1)
 
 

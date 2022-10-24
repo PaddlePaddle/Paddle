@@ -28,11 +28,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/operators/conv_miopen_helper.h"
 #include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
-#include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
 namespace phi {
@@ -173,33 +173,31 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
 
-  paddle::operators::ConvArgs args1{&transformed_dout,
-                                    &filter,
-                                    &x_transpose,
-                                    strides,
-                                    padding_common,
-                                    dilations_,
-                                    dtype,
-                                    groups,
-                                    layout};
-  paddle::operators::ConvArgs args2{&transformed_dout,
-                                    &filter,
-                                    &x_transpose,
-                                    strides,
-                                    padding_common,
-                                    dilations_,
-                                    dtype,
-                                    groups,
-                                    layout};
+  ConvArgs args1{&transformed_dout,
+                 &filter,
+                 &x_transpose,
+                 strides,
+                 padding_common,
+                 dilations_,
+                 dtype,
+                 groups,
+                 layout};
+  ConvArgs args2{&transformed_dout,
+                 &filter,
+                 &x_transpose,
+                 strides,
+                 padding_common,
+                 dilations_,
+                 dtype,
+                 groups,
+                 layout};
 
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
-  paddle::operators::SearchResult<miopenConvBwdWeightsAlgorithm_t>
-      filter_result;
+  SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
+  SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
 #else
-  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
-  paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
-      filter_result;
+  SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
+  SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
 #endif
 
   auto layout_tensor = paddle::platform::GetCudnnTensorFormat(layout);
@@ -222,15 +220,13 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                     paddle::platform::AllowTF32Cudnn(),
                     c_groups);
 #ifdef PADDLE_WITH_HIP
-    using search1 =
-        paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
+    using search1 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
     workspace_size = std::max(workspace_size, search1::GetWorkspaceSize(args1));
     fwd_result.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
 #else
-    using search1 =
-        paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-    fwd_result = search1::Find<T>(args1, false, deterministic, ctx);
+    using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+    fwd_result = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search1::GetWorkspaceSize(args1, fwd_result.algo));
 #endif
@@ -249,15 +245,13 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
                     paddle::platform::AllowTF32Cudnn(),
                     c_groups);
 #ifdef PADDLE_WITH_HIP
-    using search2 =
-        paddle::operators::SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
+    using search2 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
     workspace_size = std::max(workspace_size, search2::GetWorkspaceSize(args2));
     filter_result.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
 #else
-    using search2 =
-        paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-    filter_result = search2::Find<T>(args2, false, deterministic, ctx);
+    using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    filter_result = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search2::GetWorkspaceSize(args2, filter_result.algo));
 #endif
@@ -269,8 +263,8 @@ void ConvTransposeGradRawGPUDNNKernel(const Context& ctx,
   int dout_offset =
       transformed_dout.numel() / transformed_dout.dims()[0] / groups;
   int filter_offset = filter.numel() / groups;
-  paddle::operators::ScalingParamType<T> alpha = 1.0f;
-  paddle::operators::ScalingParamType<T> beta = 0.0f;
+  ScalingParamType<T> alpha = 1.0f;
+  ScalingParamType<T> beta = 0.0f;
   auto workspace_handle = ctx.cudnn_workspace_handle();
   if (dx) {
     // Because beta is zero, it is unnecessary to reset dx.
@@ -631,55 +625,53 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
   auto handle = ctx.cudnn_handle();
   auto layout = paddle::platform::GetCudnnTensorFormat(GPUDNNDataLayout::kNCHW);
 
-  paddle::operators::ConvArgs args1{&transformed_ddout_channel,
-                                    &filter,
-                                    &transformed_ddx,
-                                    strides,
-                                    padding_common,
-                                    dilations_,
-                                    dtype,
-                                    groups,
-                                    GPUDNNDataLayout::kNCHW};
-  paddle::operators::ConvArgs args2{&transformed_ddout_channel,
-                                    &ddfilter,
-                                    &transformed_x,
-                                    strides,
-                                    padding_common,
-                                    dilations_,
-                                    dtype,
-                                    groups,
-                                    GPUDNNDataLayout::kNCHW};
+  ConvArgs args1{&transformed_ddout_channel,
+                 &filter,
+                 &transformed_ddx,
+                 strides,
+                 padding_common,
+                 dilations_,
+                 dtype,
+                 groups,
+                 GPUDNNDataLayout::kNCHW};
+  ConvArgs args2{&transformed_ddout_channel,
+                 &ddfilter,
+                 &transformed_x,
+                 strides,
+                 padding_common,
+                 dilations_,
+                 dtype,
+                 groups,
+                 GPUDNNDataLayout::kNCHW};
 
-  paddle::operators::ConvArgs args3{&transformed_dout,
-                                    dfilter,
-                                    &transformed_ddx_channel,
-                                    strides,
-                                    padding_common,
-                                    dilations_,
-                                    dtype,
-                                    groups,
-                                    GPUDNNDataLayout::kNCHW};
-  paddle::operators::ConvArgs args4{&transformed_dout,
-                                    &ddfilter,
-                                    &transformed_dx_channel,
-                                    strides,
-                                    padding_common,
-                                    dilations_,
-                                    dtype,
-                                    groups,
-                                    GPUDNNDataLayout::kNCHW};
+  ConvArgs args3{&transformed_dout,
+                 dfilter,
+                 &transformed_ddx_channel,
+                 strides,
+                 padding_common,
+                 dilations_,
+                 dtype,
+                 groups,
+                 GPUDNNDataLayout::kNCHW};
+  ConvArgs args4{&transformed_dout,
+                 &ddfilter,
+                 &transformed_dx_channel,
+                 strides,
+                 padding_common,
+                 dilations_,
+                 dtype,
+                 groups,
+                 GPUDNNDataLayout::kNCHW};
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result1;
-  paddle::operators::SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result2;
-  paddle::operators::SearchResult<miopenConvBwdWeightsAlgorithm_t>
-      filter_result;
-  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
+  SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result1;
+  SearchResult<miopenConvBwdDataAlgorithm_t> bwd_result2;
+  SearchResult<miopenConvBwdWeightsAlgorithm_t> filter_result;
+  SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
 #else
-  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result1;
-  paddle::operators::SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result2;
-  paddle::operators::SearchResult<cudnnConvolutionBwdFilterAlgo_t>
-      filter_result;
-  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
+  SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result1;
+  SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result2;
+  SearchResult<cudnnConvolutionBwdFilterAlgo_t> filter_result;
+  SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
 #endif
 
   // ddo = conv(ddI, filter) + conv(I, ddfilter)
@@ -702,15 +694,13 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     paddle::platform::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
-    using search1 =
-        paddle::operators::SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
+    using search1 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
     workspace_size = search1::GetWorkspaceSize(args1);
     bwd_result1.algo =
         search1::Find<T>(args1, false, deterministic, workspace_size, ctx);
 #else
-    using search1 =
-        paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-    bwd_result1 = search1::Find<T>(args1, false, deterministic, ctx);
+    using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    bwd_result1 = search1::Find<T>(ctx, args1, false, deterministic, false);
     workspace_size = search1::GetWorkspaceSize(args1, bwd_result1.algo);
 #endif
 
@@ -726,15 +716,13 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     paddle::platform::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
-    using search2 =
-        paddle::operators::SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
+    using search2 = SearchAlgorithm<miopenConvBwdDataAlgorithm_t>;
     workspace_size = std::max(workspace_size, search2::GetWorkspaceSize(args2));
     bwd_result2.algo =
         search2::Find<T>(args2, false, deterministic, workspace_size, ctx);
 #else
-    using search2 =
-        paddle::operators::SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
-    bwd_result2 = search2::Find<T>(args2, false, deterministic, ctx);
+    using search2 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    bwd_result2 = search2::Find<T>(ctx, args2, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search2::GetWorkspaceSize(args2, bwd_result2.algo));
 #endif
@@ -753,15 +741,13 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     paddle::platform::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
-    using search3 =
-        paddle::operators::SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
+    using search3 = SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t>;
     workspace_size = std::max(workspace_size, search3::GetWorkspaceSize(args3));
     filter_result.algo =
         search3::Find<T>(args3, false, deterministic, workspace_size, ctx);
 #else
-    using search3 =
-        paddle::operators::SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-    filter_result = search3::Find<T>(args3, false, deterministic, ctx);
+    using search3 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+    filter_result = search3::Find<T>(ctx, args3, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search3::GetWorkspaceSize(args3, filter_result.algo));
 #endif
@@ -781,37 +767,35 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
                     paddle::platform::AllowTF32Cudnn(),
                     c_group);
 #ifdef PADDLE_WITH_HIP
-    using search4 =
-        paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
+    using search4 = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
     workspace_size = std::max(workspace_size, search4::GetWorkspaceSize(args4));
     fwd_result.algo =
         search4::Find<T>(args4, false, deterministic, workspace_size, ctx);
 #else
-    using search4 =
-        paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-    fwd_result = search4::Find<T>(args4, false, deterministic, ctx);
+    using search4 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+    fwd_result = search4::Find<T>(ctx, args4, false, deterministic, false);
     workspace_size = std::max(
         workspace_size, search4::GetWorkspaceSize(args4, fwd_result.algo));
 #endif
   }
 
   int i_n, i_c, i_d, i_h, i_w;
-  paddle::operators::GetNCDHW(transformed_x.dims(),
-                              GPUDNNDataLayout::kNCHW,
-                              &i_n,
-                              &i_c,
-                              &i_d,
-                              &i_h,
-                              &i_w);
+  GetNCDHW(transformed_x.dims(),
+           GPUDNNDataLayout::kNCHW,
+           &i_n,
+           &i_c,
+           &i_d,
+           &i_h,
+           &i_w);
 
   int o_n, o_c, o_d, o_h, o_w;
-  paddle::operators::GetNCDHW(transformed_dout.dims(),
-                              GPUDNNDataLayout::kNCHW,
-                              &o_n,
-                              &o_c,
-                              &o_d,
-                              &o_h,
-                              &o_w);
+  GetNCDHW(transformed_dout.dims(),
+           GPUDNNDataLayout::kNCHW,
+           &o_n,
+           &o_c,
+           &o_d,
+           &o_h,
+           &o_w);
 
   int group_offset_in =
       transformed_x.numel() / transformed_x.dims()[0] / groups;
@@ -819,8 +803,8 @@ void Conv2dTransposeDoubleGradGPUDNNKernel(
       transformed_dout.numel() / transformed_dout.dims()[0] / groups;
   int group_offset_filter = filter.numel() / groups;
 
-  paddle::operators::ScalingParamType<T> alpha = 1.0f;
-  paddle::operators::ScalingParamType<T> beta = 0.0f;
+  ScalingParamType<T> alpha = 1.0f;
+  ScalingParamType<T> beta = 0.0f;
 
   auto wkspace_handle = ctx.cudnn_workspace_handle();
 

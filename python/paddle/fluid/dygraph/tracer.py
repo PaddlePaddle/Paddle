@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
-
 from collections import defaultdict
 from paddle.fluid import core
 from paddle.fluid import framework
@@ -26,7 +24,7 @@ name_mapping = {
         "src_index": "Src_index",
         "dst_index": "Dst_index",
         "out": "Out",
-        "dst_count": "Dst_count"
+        "dst_count": "Dst_count",
     },
     "matmul_v2": {
         "final_op_name": "matmul",
@@ -108,13 +106,15 @@ class Tracer(core.Tracer):
 
         self._train_mode = True
 
-    def eager_legacy_trace_op(self,
-                              op_type,
-                              inputs,
-                              outputs,
-                              attrs,
-                              stop_gradient=False,
-                              inplace_map=None):
+    def eager_legacy_trace_op(
+        self,
+        op_type,
+        inputs,
+        outputs,
+        attrs,
+        stop_gradient=False,
+        inplace_map=None,
+    ):
         function_ptr = _legacy_C_ops.__dict__[op_type]
 
         core_ops_args_info = _legacy_C_ops.get_core_ops_args_info()
@@ -188,14 +188,17 @@ class Tracer(core.Tracer):
                     if isinstance(returns[i], list):
                         for j in range(len(returns[i])):
                             outputs[retname][j].reconstruct_from_(
-                                returns[i][j], False)
+                                returns[i][j], False
+                            )
                     else:
                         if isinstance(outputs[retname], list):
                             outputs[retname][0].reconstruct_from_(
-                                returns[i], False)
+                                returns[i], False
+                            )
                         else:
                             outputs[retname].reconstruct_from_(
-                                returns[i], False)
+                                returns[i], False
+                            )
         elif isinstance(returns, list):
             assert len(outputs.keys()) == 1
             key = list(outputs.keys())[0]
@@ -209,13 +212,15 @@ class Tracer(core.Tracer):
             else:
                 outputs[key].reconstruct_from_(returns, False)
 
-    def eager_trace_op(self,
-                       op_type,
-                       inputs,
-                       outputs,
-                       attrs,
-                       stop_gradient=False,
-                       inplace_map=None):
+    def eager_trace_op(
+        self,
+        op_type,
+        inputs,
+        outputs,
+        attrs,
+        stop_gradient=False,
+        inplace_map=None,
+    ):
         assert op_type in name_mapping.keys()
 
         op_type = name_mapping[op_type]["final_op_name"]
@@ -275,7 +280,8 @@ class Tracer(core.Tracer):
                     if isinstance(returns[i], list):
                         for j in range(len(returns[i])):
                             outputs[retname][j].reconstruct_from_(
-                                returns[i][j], False)
+                                returns[i][j], False
+                            )
                     else:
                         outputs[retname][0].reconstruct_from_(returns[i], False)
         elif isinstance(returns, list):
@@ -291,13 +297,15 @@ class Tracer(core.Tracer):
             else:
                 outputs[key].reconstruct_from_(returns, False)
 
-    def trace_op(self,
-                 type,
-                 inputs,
-                 outputs,
-                 attrs,
-                 stop_gradient=False,
-                 inplace_map=None):
+    def trace_op(
+        self,
+        type,
+        inputs,
+        outputs,
+        attrs,
+        stop_gradient=False,
+        inplace_map=None,
+    ):
         if not framework._in_legacy_dygraph():
             # inputs : {"sum": [tensor], ...}
             # outputs : {"sum": [tensor], ...}
@@ -305,16 +313,23 @@ class Tracer(core.Tracer):
                 type = name_mapping[type]["final_op_name"]
 
                 assert type in _legacy_C_ops.__dict__
-                self.eager_trace_op(type, inputs, outputs, attrs, stop_gradient,
-                                    inplace_map)
+                self.eager_trace_op(
+                    type, inputs, outputs, attrs, stop_gradient, inplace_map
+                )
             else:
-                self.eager_legacy_trace_op(type, inputs, outputs, attrs,
-                                           stop_gradient, inplace_map)
+                self.eager_legacy_trace_op(
+                    type, inputs, outputs, attrs, stop_gradient, inplace_map
+                )
         else:
-            self.trace(type, inputs, outputs, attrs,
-                       framework._current_expected_place(), self._has_grad
-                       and not stop_gradient,
-                       inplace_map if inplace_map else {})
+            self.trace(
+                type,
+                inputs,
+                outputs,
+                attrs,
+                framework._current_expected_place(),
+                self._has_grad and not stop_gradient,
+                inplace_map if inplace_map else {},
+            )
 
     def train_mode(self):
         self._train_mode = True

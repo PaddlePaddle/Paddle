@@ -50,13 +50,13 @@ def write_file(name, ct):
 
 def get_files(pth, prefix):
     return [
-        f for f in listdir(pth)
+        f
+        for f in listdir(pth)
         if isfile(join(pth, f)) and not f.endswith('gpu.log')
     ]
 
 
 class Collective_Test(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.path = os.path.join(self.temp_dir.name, pyname)
@@ -87,7 +87,8 @@ class Collective_Test(unittest.TestCase):
     def test_collective_2(self):
         log_dir = tempfile.TemporaryDirectory()
         args = "--job_id test2 --devices 0,1,2 --log_dir {}".format(
-            log_dir.name)
+            log_dir.name
+        )
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -116,7 +117,6 @@ class Collective_Test(unittest.TestCase):
 
 
 class PS_Test(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.path = os.path.join(self.temp_dir.name, pyname)
@@ -143,8 +143,11 @@ class PS_Test(unittest.TestCase):
 
     def test_ps_2(self):
         log_dir = tempfile.TemporaryDirectory()
-        args = "--job_id ps2 --server_num=2 --trainer_num=2 --log_dir {}".format(
-            log_dir.name)
+        args = (
+            "--job_id ps2 --server_num=2 --trainer_num=2 --log_dir {}".format(
+                log_dir.name
+            )
+        )
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -174,7 +177,8 @@ class PS_Test(unittest.TestCase):
     def test_ps_4(self):
         log_dir = tempfile.TemporaryDirectory()
         args = "--job_id ps4 --log_dir {} --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903".format(
-            log_dir.name)
+            log_dir.name
+        )
         p1 = self.pdrun(args)
         p1.wait()
         self.assertTrue(p1.poll() == 0)

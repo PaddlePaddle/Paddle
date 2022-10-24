@@ -1946,6 +1946,33 @@ struct LayernormShiftPartitionPattern : public PatternBase {
   PATTERN_DECL_NODE(reshape4_out);
 };
 
+// pattern for merge_layernorm
+struct MergeLayernormPattern : public PatternBase {
+  MergeLayernormPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "merge_layernorm") {}
+
+  PDNode* operator()(PDNode* reshape2_in);
+
+  PATTERN_DECL_NODE(reshape2_00_op);
+  PATTERN_DECL_NODE(reshape2_00_out);
+  PATTERN_DECL_NODE(strided_slice_10_op);
+  PATTERN_DECL_NODE(strided_slice_10_out);
+  PATTERN_DECL_NODE(strided_slice_11_op);
+  PATTERN_DECL_NODE(strided_slice_11_out);
+  PATTERN_DECL_NODE(strided_slice_12_op);
+  PATTERN_DECL_NODE(strided_slice_12_out);
+  PATTERN_DECL_NODE(strided_slice_13_op);
+  PATTERN_DECL_NODE(strided_slice_13_out);
+  PATTERN_DECL_NODE(concat_20_op);
+  PATTERN_DECL_NODE(concat_20_out);
+  PATTERN_DECL_NODE(reshape2_30_op);
+  PATTERN_DECL_NODE(reshape2_30_out);
+  PATTERN_DECL_NODE(layernorm_40_op);
+  PATTERN_DECL_NODE(layernorm_40_in_bias);
+  PATTERN_DECL_NODE(layernorm_40_in_scale);
+  PATTERN_DECL_NODE(layernorm_40_out);
+};
+
 // Add support int8 flag
 struct AddSupportInt8 : public PatternBase {
   AddSupportInt8(PDPattern* pattern, const std::string& name_scope)
@@ -1962,6 +1989,14 @@ struct AddSupportInt8 : public PatternBase {
 #define IR_NODE_LINK_TO(a, b) \
   a->outputs.push_back(b);    \
   b->inputs.push_back(a);
+
+// UnLink 2 ir::Nodes from each other.
+#define IR_NODE_UNLINK(a, b)                                                  \
+  a->outputs.erase(                                                           \
+      std::remove(std::begin(a->outputs), std::end(a->outputs), b),           \
+      std::end(a->outputs));                                                  \
+  b->inputs.erase(std::remove(std::begin(b->inputs), std::end(b->inputs), a), \
+                  std::end(b->inputs));
 
 // Set the out_var as the output of the op
 #define IR_OP_VAR_LINK(op, out_var) \

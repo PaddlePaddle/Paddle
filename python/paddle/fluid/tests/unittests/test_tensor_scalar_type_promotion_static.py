@@ -29,7 +29,6 @@ from paddle.static import Program
 
 
 class TestTensorScalarTypePromotionStatic(unittest.TestCase):
-
     def setUp(self):
         paddle.enable_static()
 

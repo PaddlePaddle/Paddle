@@ -33,21 +33,24 @@ if fluid.is_compiled_with_cuda():
 
 
 class SimpleConvPool(fluid.dygraph.Layer):
-
-    def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
-                 use_cudnn=True,
-                 batch_size=None):
+    def __init__(
+        self,
+        num_channels,
+        num_filters,
+        filter_size,
+        use_cudnn=True,
+        batch_size=None,
+    ):
         super(SimpleConvPool, self).__init__()
         self.batch_size = batch_size
-        self._conv2d = Conv2D(num_channels=num_channels,
-                              num_filters=num_filters,
-                              filter_size=filter_size,
-                              padding=[1, 1],
-                              use_cudnn=use_cudnn,
-                              act='tanh')
+        self._conv2d = Conv2D(
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=filter_size,
+            padding=[1, 1],
+            use_cudnn=use_cudnn,
+            act='tanh',
+        )
 
     def forward(self, inputs):
         x = self._conv2d(inputs)
@@ -57,7 +60,6 @@ class SimpleConvPool(fluid.dygraph.Layer):
 
 
 class CNN(fluid.dygraph.Layer):
-
     def __init__(self, dict_dim, batch_size, seq_len):
         super(CNN, self).__init__()
         self.dict_dim = dict_dim
@@ -69,29 +71,37 @@ class CNN(fluid.dygraph.Layer):
         self.win_size = [3, self.hid_dim]
         self.batch_size = batch_size
         self.seq_len = seq_len
-        self.embedding = Embedding(size=[self.dict_dim + 1, self.emb_dim],
-                                   dtype='float32',
-                                   is_sparse=False)
-        self._simple_conv_pool_1 = SimpleConvPool(self.channels,
-                                                  self.hid_dim,
-                                                  self.win_size,
-                                                  batch_size=self.batch_size)
-        self._fc1 = Linear(input_dim=self.hid_dim * self.seq_len,
-                           output_dim=self.fc_hid_dim,
-                           act="softmax")
-        self._fc_prediction = Linear(input_dim=self.fc_hid_dim,
-                                     output_dim=self.class_dim,
-                                     act="softmax")
+        self.embedding = Embedding(
+            size=[self.dict_dim + 1, self.emb_dim],
+            dtype='float32',
+            is_sparse=False,
+        )
+        self._simple_conv_pool_1 = SimpleConvPool(
+            self.channels,
+            self.hid_dim,
+            self.win_size,
+            batch_size=self.batch_size,
+        )
+        self._fc1 = Linear(
+            input_dim=self.hid_dim * self.seq_len,
+            output_dim=self.fc_hid_dim,
+            act="softmax",
+        )
+        self._fc_prediction = Linear(
+            input_dim=self.fc_hid_dim, output_dim=self.class_dim, act="softmax"
+        )
 
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        o_np_mask = (fluid.layers.reshape(inputs, [-1, 1]) !=
-                     self.dict_dim).astype(dtype='float32')
+        o_np_mask = (
+            fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim
+        ).astype(dtype='float32')
         mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
         emb = emb * mask_emb
         emb = fluid.layers.reshape(
-            emb, shape=[-1, self.channels, self.seq_len, self.hid_dim])
+            emb, shape=[-1, self.channels, self.seq_len, self.hid_dim]
+        )
         conv_3 = self._simple_conv_pool_1(emb)
         fc_1 = self._fc1(conv_3)
         prediction = self._fc_prediction(fc_1)
@@ -103,7 +113,6 @@ class CNN(fluid.dygraph.Layer):
 
 
 class BOW(fluid.dygraph.Layer):
-
     def __init__(self, dict_dim, batch_size, seq_len):
         super(BOW, self).__init__()
         self.dict_dim = dict_dim
@@ -113,24 +122,27 @@ class BOW(fluid.dygraph.Layer):
         self.class_dim = 2
         self.batch_size = batch_size
         self.seq_len = seq_len
-        self.embedding = Embedding(size=[self.dict_dim + 1, self.emb_dim],
-                                   dtype='float32',
-                                   is_sparse=False)
-        self._fc1 = Linear(input_dim=self.hid_dim,
-                           output_dim=self.hid_dim,
-                           act="tanh")
-        self._fc2 = Linear(input_dim=self.hid_dim,
-                           output_dim=self.fc_hid_dim,
-                           act="tanh")
-        self._fc_prediction = Linear(input_dim=self.fc_hid_dim,
-                                     output_dim=self.class_dim,
-                                     act="softmax")
+        self.embedding = Embedding(
+            size=[self.dict_dim + 1, self.emb_dim],
+            dtype='float32',
+            is_sparse=False,
+        )
+        self._fc1 = Linear(
+            input_dim=self.hid_dim, output_dim=self.hid_dim, act="tanh"
+        )
+        self._fc2 = Linear(
+            input_dim=self.hid_dim, output_dim=self.fc_hid_dim, act="tanh"
+        )
+        self._fc_prediction = Linear(
+            input_dim=self.fc_hid_dim, output_dim=self.class_dim, act="softmax"
+        )
 
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        o_np_mask = (fluid.layers.reshape(inputs, [-1, 1]) !=
-                     self.dict_dim).astype(dtype='float32')
+        o_np_mask = (
+            fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim
+        ).astype(dtype='float32')
         mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
         emb = emb * mask_emb
         emb = fluid.layers.reshape(emb, shape=[-1, self.seq_len, self.hid_dim])
@@ -147,7 +159,6 @@ class BOW(fluid.dygraph.Layer):
 
 
 class GRU(fluid.dygraph.Layer):
-
     def __init__(self, dict_dim, batch_size, seq_len):
         super(GRU, self).__init__()
         self.dict_dim = dict_dim
@@ -157,30 +168,34 @@ class GRU(fluid.dygraph.Layer):
         self.class_dim = 2
         self.batch_size = batch_size
         self.seq_len = seq_len
-        self.embedding = Embedding(size=[self.dict_dim + 1, self.emb_dim],
-                                   dtype='float32',
-                                   param_attr=fluid.ParamAttr(learning_rate=30),
-                                   is_sparse=False)
+        self.embedding = Embedding(
+            size=[self.dict_dim + 1, self.emb_dim],
+            dtype='float32',
+            param_attr=fluid.ParamAttr(learning_rate=30),
+            is_sparse=False,
+        )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
         h_0 = to_variable(h_0)
         self._fc1 = Linear(input_dim=self.hid_dim, output_dim=self.hid_dim * 3)
-        self._fc2 = Linear(input_dim=self.hid_dim,
-                           output_dim=self.fc_hid_dim,
-                           act="tanh")
-        self._fc_prediction = Linear(input_dim=self.fc_hid_dim,
-                                     output_dim=self.class_dim,
-                                     act="softmax")
+        self._fc2 = Linear(
+            input_dim=self.hid_dim, output_dim=self.fc_hid_dim, act="tanh"
+        )
+        self._fc_prediction = Linear(
+            input_dim=self.fc_hid_dim, output_dim=self.class_dim, act="softmax"
+        )
         self._gru = DynamicGRU(size=self.hid_dim, h_0=h_0)
 
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        o_np_mask = (fluid.layers.reshape(inputs, [-1, 1]) !=
-                     self.dict_dim).astype('float32')
+        o_np_mask = (
+            fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim
+        ).astype('float32')
         mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
         emb = emb * mask_emb
-        emb = fluid.layers.reshape(emb,
-                                   shape=[self.batch_size, -1, self.hid_dim])
+        emb = fluid.layers.reshape(
+            emb, shape=[self.batch_size, -1, self.hid_dim]
+        )
         fc_1 = self._fc1(emb)
         gru_hidden = self._gru(fc_1)
         gru_hidden = fluid.layers.reduce_max(gru_hidden, dim=1)
@@ -195,7 +210,6 @@ class GRU(fluid.dygraph.Layer):
 
 
 class BiGRU(fluid.dygraph.Layer):
-
     def __init__(self, dict_dim, batch_size, seq_len):
         super(BiGRU, self).__init__()
         self.dict_dim = dict_dim
@@ -205,42 +219,47 @@ class BiGRU(fluid.dygraph.Layer):
         self.class_dim = 2
         self.batch_size = batch_size
         self.seq_len = seq_len
-        self.embedding = Embedding(size=[self.dict_dim + 1, self.emb_dim],
-                                   dtype='float32',
-                                   param_attr=fluid.ParamAttr(learning_rate=30),
-                                   is_sparse=False)
+        self.embedding = Embedding(
+            size=[self.dict_dim + 1, self.emb_dim],
+            dtype='float32',
+            param_attr=fluid.ParamAttr(learning_rate=30),
+            is_sparse=False,
+        )
         h_0 = np.zeros((self.batch_size, self.hid_dim), dtype="float32")
         h_0 = to_variable(h_0)
         self._fc1 = Linear(input_dim=self.hid_dim, output_dim=self.hid_dim * 3)
-        self._fc2 = Linear(input_dim=self.hid_dim * 2,
-                           output_dim=self.fc_hid_dim,
-                           act="tanh")
-        self._fc_prediction = Linear(input_dim=self.fc_hid_dim,
-                                     output_dim=self.class_dim,
-                                     act="softmax")
-        self._gru_forward = DynamicGRU(size=self.hid_dim,
-                                       h_0=h_0,
-                                       is_reverse=False)
-        self._gru_backward = DynamicGRU(size=self.hid_dim,
-                                        h_0=h_0,
-                                        is_reverse=True)
+        self._fc2 = Linear(
+            input_dim=self.hid_dim * 2, output_dim=self.fc_hid_dim, act="tanh"
+        )
+        self._fc_prediction = Linear(
+            input_dim=self.fc_hid_dim, output_dim=self.class_dim, act="softmax"
+        )
+        self._gru_forward = DynamicGRU(
+            size=self.hid_dim, h_0=h_0, is_reverse=False
+        )
+        self._gru_backward = DynamicGRU(
+            size=self.hid_dim, h_0=h_0, is_reverse=True
+        )
 
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        o_np_mask = (fluid.layers.reshape(inputs, [-1, 1]) !=
-                     self.dict_dim).astype('float32')
+        o_np_mask = (
+            fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim
+        ).astype('float32')
         mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
         emb = emb * mask_emb
-        emb = fluid.layers.reshape(emb,
-                                   shape=[self.batch_size, -1, self.hid_dim])
+        emb = fluid.layers.reshape(
+            emb, shape=[self.batch_size, -1, self.hid_dim]
+        )
         fc_1 = self._fc1(emb)
         gru_forward = self._gru_forward(fc_1)
         gru_backward = self._gru_backward(fc_1)
         gru_forward_tanh = fluid.layers.tanh(gru_forward)
         gru_backward_tanh = fluid.layers.tanh(gru_backward)
         encoded_vector = fluid.layers.concat(
-            input=[gru_forward_tanh, gru_backward_tanh], axis=2)
+            input=[gru_forward_tanh, gru_backward_tanh], axis=2
+        )
         encoded_vector = fluid.layers.reduce_max(encoded_vector, dim=1)
         fc_2 = self._fc2(encoded_vector)
         prediction = self._fc_prediction(fc_2)
@@ -261,11 +280,13 @@ def fake_data_reader(class_num, vocab_size, batch_size, padding_size):
         batch_data = []
         while True:
             label = local_random.randint(0, class_num)
-            seq_len = local_random.randint(padding_size // 2,
-                                           int(padding_size * 1.2))
+            seq_len = local_random.randint(
+                padding_size // 2, int(padding_size * 1.2)
+            )
             word_ids = local_random.randint(0, vocab_size, [seq_len]).tolist()
-            word_ids = word_ids[:padding_size] + [vocab_size
-                                                  ] * (padding_size - seq_len)
+            word_ids = word_ids[:padding_size] + [vocab_size] * (
+                padding_size - seq_len
+            )
             batch_data.append((word_ids, [label], seq_len))
             if len(batch_data) == batch_size:
                 yield batch_data
@@ -287,16 +308,20 @@ class Args(object):
 
 def train(args, to_static):
     program_translator.enable(to_static)
-    place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
+    place = (
+        fluid.CUDAPlace(0)
+        if fluid.is_compiled_with_cuda()
         else fluid.CPUPlace()
+    )
 
     with fluid.dygraph.guard(place):
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
-        train_reader = fake_data_reader(args.class_num, args.vocab_size,
-                                        args.batch_size, args.padding_size)
+        train_reader = fake_data_reader(
+            args.class_num, args.vocab_size, args.batch_size, args.padding_size
+        )
         train_loader = fluid.io.DataLoader.from_generator(capacity=24)
         train_loader.set_sample_list_generator(train_reader)
 
@@ -309,7 +334,8 @@ def train(args, to_static):
         elif args.model_type == 'bigru_net':
             model = BiGRU(args.vocab_size, args.batch_size, args.padding_size)
         sgd_optimizer = fluid.optimizer.Adagrad(
-            learning_rate=args.lr, parameter_list=model.parameters())
+            learning_rate=args.lr, parameter_list=model.parameters()
+        )
 
         loss_data = []
         for eop in range(args.epoch):
@@ -333,9 +359,14 @@ def train(args, to_static):
                     # used_time may be 0.0, cause zero division error
                     if used_time < 1e-5:
                         used_time = 1e-5
-                    print("step: %d, ave loss: %f, speed: %f steps/s" %
-                          (batch_id, avg_cost.numpy()[0],
-                           args.log_step / used_time))
+                    print(
+                        "step: %d, ave loss: %f, speed: %f steps/s"
+                        % (
+                            batch_id,
+                            avg_cost.numpy()[0],
+                            args.log_step / used_time,
+                        )
+                    )
                     time_begin = time.time()
 
                 if batch_id == args.train_step:
@@ -345,7 +376,6 @@ def train(args, to_static):
 
 
 class TestSentiment(unittest.TestCase):
-
     def setUp(self):
         self.args = Args()
 
@@ -353,11 +383,12 @@ class TestSentiment(unittest.TestCase):
         self.args.model_type = model_type
         st_out = train(self.args, True)
         dy_out = train(self.args, False)
-        np.testing.assert_allclose(dy_out,
-                                   st_out,
-                                   rtol=1e-05,
-                                   err_msg='dy_out:\n {}\n st_out:\n {}'.format(
-                                       dy_out, st_out))
+        np.testing.assert_allclose(
+            dy_out,
+            st_out,
+            rtol=1e-05,
+            err_msg='dy_out:\n {}\n st_out:\n {}'.format(dy_out, st_out),
+        )
 
     def test_train(self):
         model_types = ['cnn_net', 'bow_net', 'gru_net', 'bigru_net']

@@ -69,10 +69,7 @@ static const std::unordered_set<std::string> mkldnn_white_list = {
     "reduce_sum_grad",
     // NOTE(jiahongyu): Below ops register kernel with customized_type_value, we
     // need to analysis and solve them one-by-one.
-    "prior_box",
-    "fc",
-    "mul",
-    "mul_grad"};
+    "prior_box"};
 
 inline bool in_mkldnn_white_list(const std::string& op_name) {
   return mkldnn_white_list.find(op_name) != mkldnn_white_list.end();

@@ -157,18 +157,18 @@ static void PrintNanInf(const T* value,
     }
 
     if (count < static_cast<size_t>(print_num)) {
-      printf("numel:%lu index:%lu value:%f\n",
-             static_cast<uint64_t>(numel),
-             static_cast<uint64_t>(i),
+      printf("numel:%zu index:%zu value:%f\n",
+             numel,
+             i,
              static_cast<float>(value[i]));
     }
   }
   printf(
-      "In cpu, there has %lu,%lu,%lu nan,inf,num. "
+      "In cpu, there has %zu,%zu,%zu nan,inf,num. "
       "And in num, min_value is %f, max_value is %f\n",
-      static_cast<uint64_t>(nan_count),
-      static_cast<uint64_t>(inf_count),
-      static_cast<uint64_t>(num_count),
+      nan_count,
+      inf_count,
+      num_count,
       static_cast<double>(min_value),
       static_cast<double>(max_value));
   if (abort) {
