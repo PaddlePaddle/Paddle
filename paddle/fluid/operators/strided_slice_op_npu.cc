@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using Variable = framework::Variable;
 using LoDTensorArray = framework::LoDTensorArray;
 using DDim = framework::DDim;
