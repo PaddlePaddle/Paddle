@@ -12,25 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
 import paddle.inference as paddle_infer
+import numpy as np
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
-
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
-import hypothesis.strategies as st
 
 
 class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
-        # gpu
-        config = self.create_inference_config(use_gpu=True)
-        yield config, ["multihead_matmul_roformer", "mul"], (1e-2, 1e-3)
+        #trt
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            max_batch_size=8,
+            workspace_size=102400,
+            min_subgraph_size=0,
+            precision_mode=paddle_infer.PrecisionType.Float32,
+            use_static=False,
+            use_calib_mode=False)
+        config.set_trt_dynamic_shape_info(
+            {
+                "mul_x": [1, 1, 768],
+                "eltadd_qk_b_var": [1, 12, 1, 1],
+                "cos_input": [1, 12, 1, 64],
+                "sin_input": [1, 12, 1, 64]
+            }, {
+                "mul_x": [1, 128, 768],
+                "eltadd_qk_b_var": [1, 12, 128, 128],
+                "cos_input": [1, 12, 128, 64],
+                "sin_input": [1, 12, 128, 64]
+            }, {
+                "mul_x": [1, 128, 768],
+                "eltadd_qk_b_var": [1, 12, 128, 128],
+                "cos_input": [1, 12, 128, 64],
+                "sin_input": [1, 12, 128, 64]
+            })
+        yield config, ["multihead_matmul_roformer", "matmul"], (1e-2, 1e-3)
 
     def sample_program_config(self, draw):
 
@@ -46,30 +65,33 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
         def generate_sin_input():
             return np.random.random([1, 12, 128, 64]).astype(np.float32) - 0.5
 
-        mul_0 = OpConfig("mul",
+        mul_0 = OpConfig("matmul",
                          inputs={
                              "X": ["mul_x"],
                              "Y": ["mul_0_w"]
                          },
                          outputs={"Out": ["mul_0_out"]},
-                         x_num_col_dims=2,
-                         y_num_col_dims=1)
-        mul_1 = OpConfig("mul",
+                         alpha=1.0,
+                         transpose_X=False,
+                         transpose_Y=False)
+        mul_1 = OpConfig("matmul",
                          inputs={
                              "X": ["mul_x"],
                              "Y": ["mul_1_w"]
                          },
                          outputs={"Out": ["mul_1_out"]},
-                         x_num_col_dims=2,
-                         y_num_col_dims=1)
-        mul_2 = OpConfig("mul",
+                         alpha=1.0,
+                         transpose_X=False,
+                         transpose_Y=False)
+        mul_2 = OpConfig("matmul",
                          inputs={
                              "X": ["mul_x"],
                              "Y": ["mul_2_w"]
                          },
                          outputs={"Out": ["mul_2_out"]},
-                         x_num_col_dims=2,
-                         y_num_col_dims=1)
+                         alpha=1.0,
+                         transpose_X=False,
+                         transpose_Y=False)
         ele_0 = OpConfig("elementwise_add",
                          inputs={
                              "X": [mul_0.outputs["Out"][0]],
@@ -126,19 +148,19 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
                                axis=(0, 2, 1, 3))
 
         # roformer part
-        # q without scale branch
+        # q with scale branch
         ele_mul_q_0 = OpConfig(
             "elementwise_mul",  # without split && concat
             inputs={
                 "X": [transpose_0.outputs["Out"][0]],
-                "Y": ["sin_input"]
+                "Y": ["cos_input"]
             },
             outputs={"Out": ["ele_mul_q_0_out"]},
             axis=-1)
 
         split_q_0 = OpConfig(
             "split",
-            inputs={"X": [ele_mul_q_0.outputs["Out"][0]]},
+            inputs={"X": [transpose_0.outputs["Out"][0]]},
             outputs={"Out": ["split_q_0_out_0", "split_q_0_out_1"]},
             axis=3,
             num=2)
@@ -152,10 +174,10 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
             axis=-1)
 
         ele_mul_q_1 = OpConfig(
-            "elementwise_mul",  # with split && concat
+            "elementwise_mul",  # without split && concat
             inputs={
                 "X": [concat_q_0.outputs["Out"][0]],
-                "Y": ["cos_input"]
+                "Y": ["sin_input"]
             },
             outputs={"Out": ["ele_mul_q_1_out"]},
             axis=-1)
@@ -168,19 +190,25 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
                                outputs={"Out": ["ele_add_q_0_out"]},
                                axis=-1)
 
-        #k branch which with scale op
+        scale_0 = OpConfig("scale",
+                           inputs={"X": [ele_add_q_0.outputs["Out"][0]]},
+                           outputs={"Out": ["scale_0_out"]},
+                           scale=0.1961161345243454,
+                           bias=0)
+
+        #k branch which without scale op
         ele_mul_k_0 = OpConfig(
             "elementwise_mul",  # without split && concat
             inputs={
                 "X": [transpose_1.outputs["Out"][0]],
-                "Y": ["sin_input"]
+                "Y": ["cos_input"]
             },
             outputs={"Out": ["ele_mul_k_0_out"]},
             axis=-1)
 
         split_k_0 = OpConfig(
             "split",
-            inputs={"X": [ele_mul_k_0.outputs["Out"][0]]},
+            inputs={"X": [transpose_1.outputs["Out"][0]]},
             outputs={"Out": ["split_k_0_out_0", "split_k_0_out_1"]},
             axis=3,
             num=2)
@@ -197,7 +225,7 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
             "elementwise_mul",  # with split && concat
             inputs={
                 "X": [concat_k_0.outputs["Out"][0]],
-                "Y": ["cos_input"]
+                "Y": ["sin_input"]
             },
             outputs={"Out": ["ele_mul_k_1_out"]},
             axis=-1)
@@ -209,16 +237,11 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
                                },
                                outputs={"Out": ["ele_add_k_0_out"]},
                                axis=-1)
-        scale_0 = OpConfig("scale",
-                           inputs={"X": [ele_add_k_0.outputs["Out"][0]]},
-                           outputs={"Out": ["scale_0_out"]},
-                           scale=0.1961161345243454,
-                           bias=0)
 
         matmul_0 = OpConfig("matmul",
                             inputs={
                                 "X": [scale_0.outputs["Out"][0]],
-                                "Y": [ele_add_q_0.outputs["Out"][0]]
+                                "Y": [ele_add_k_0.outputs["Out"][0]]
                             },
                             outputs={"Out": ["matmul_0_out"]},
                             alpha=1.0,
@@ -250,13 +273,7 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
                             outputs={"Out": ["matmul_1_out"]},
                             alpha=1.0,
                             transpose_X=False,
-                            transpose_Y=False,
-                            fused_reshape_Out=[],
-                            fused_reshape_X=[],
-                            fused_reshape_Y=[],
-                            fused_transpose_Out=[],
-                            fused_transpose_X=[],
-                            fused_transpose_Y=[])
+                            transpose_Y=False)
         transpose_3 = OpConfig("transpose2",
                                inputs={"X": [matmul_1.outputs["Out"][0]]},
                                outputs={"Out": ["transpose_3_out"]},
@@ -268,45 +285,27 @@ class TestMultiheadMatmulRoformerFusePass(PassAutoScanTest):
                                  "XShape": ["reshape_3_Xout"]
                              },
                              shape=(1, 128, 768))
-        mul_3 = OpConfig("mul",
+        mul_3 = OpConfig("matmul",
                          inputs={
                              "X": [reshape_3.outputs["Out"][0]],
                              "Y": ["mul_3_w"]
                          },
                          outputs={"Out": ["mul_3_out"]},
-                         x_num_col_dims=2,
-                         y_num_col_dims=1)
+                         alpha=1.0,
+                         transpose_X=False,
+                         transpose_Y=False,
+                         fused_reshape_Out=[],
+                         fused_reshape_X=[],
+                         fused_reshape_Y=[],
+                         fused_transpose_Out=[],
+                         fused_transpose_X=[],
+                         fused_transpose_Y=[])
         ops = [
-            mul_0,
-            mul_1,
-            mul_2,
-            ele_0,
-            ele_1,
-            ele_2,
-            reshape_0,
-            reshape_1,
-            reshape_2,
-            transpose_0,
-            transpose_1,
-            transpose_2,
-            ele_mul_q_0,
-            split_q_0,
-            concat_q_0,
-            ele_mul_q_1,
-            ele_add_q_0,
-            ele_mul_k_0,
-            split_k_0,
-            concat_k_0,
-            ele_mul_k_1,
-            ele_add_k_0,
-            scale_0,
-            matmul_0,
-            ele_3,
-            softmax_op,
-            matmul_1,
-            transpose_3,
-            reshape_3,
-            mul_3,
+            mul_0, mul_1, mul_2, ele_0, ele_1, ele_2, reshape_0, reshape_1,
+            reshape_2, transpose_0, transpose_1, transpose_2, ele_mul_q_0,
+            split_q_0, concat_q_0, ele_mul_q_1, ele_add_q_0, ele_mul_k_0,
+            split_k_0, concat_k_0, ele_mul_k_1, ele_add_k_0, scale_0, matmul_0,
+            ele_3, softmax_op, matmul_1, transpose_3, reshape_3, mul_3
         ]
         program_config = ProgramConfig(
             ops=ops,
