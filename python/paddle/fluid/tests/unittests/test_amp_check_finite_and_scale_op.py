@@ -24,7 +24,6 @@ def check_finite_and_unscale_wrapper(x, scale):
 
 
 class TestCheckFiniteAndUnscaleOp(OpTest):
-
     def setUp(self):
         self.op_type = "check_finite_and_unscale"
         self.python_api = check_finite_and_unscale_wrapper
@@ -47,7 +46,6 @@ class TestCheckFiniteAndUnscaleOp(OpTest):
 
 
 class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
-
     def setUp(self):
         self.op_type = "check_finite_and_unscale"
         self.init_dtype()
@@ -73,7 +71,6 @@ class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
 
 
 class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
-
     def setUp(self):
         self.op_type = "check_finite_and_unscale"
         self.init_dtype()

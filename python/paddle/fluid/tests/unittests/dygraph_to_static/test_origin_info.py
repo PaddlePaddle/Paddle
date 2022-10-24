@@ -16,7 +16,7 @@ import sys
 import unittest
 
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import *
+from paddle.fluid.dygraph.dygraph_to_static.origin_info import Location, ORIGI_INFO, OriginInfo, attach_origin_info, create_and_update_origin_info_map, gast, inspect, unwrap
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.jit import declarative
 

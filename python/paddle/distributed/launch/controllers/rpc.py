@@ -18,7 +18,6 @@ import json
 
 
 class RpcController(Controller):
-
     @classmethod
     def enable(cls, ctx):
         if ctx.args.run_mode == ControleMode.RPC:
@@ -28,8 +27,9 @@ class RpcController(Controller):
             return False
 
     def build_pod(self):
-        assert (self.ctx.args.master
-                is not None), "Master is None, Please set master address!"
+        assert (
+            self.ctx.args.master is not None
+        ), "Master is None, Please set master address!"
         self._build_pod_with_master()
 
     def _build_pod_with_master(self):
@@ -47,14 +47,16 @@ class RpcController(Controller):
             for p in self.ctx.node.get_free_ports(self.pod.replicas)
         ]
 
-        data = json.dumps({
-            "name": self.pod.name,
-            "rank": self.pod.rank,
-            "replicas": self.pod.replicas,
-            "dtype": self.ctx.node.device.dtype,
-            "candidate": "{}:{}".format(self.ctx.node.ip, port),
-            "endpoints": ",".join(endpoints),
-        })
+        data = json.dumps(
+            {
+                "name": self.pod.name,
+                "rank": self.pod.rank,
+                "replicas": self.pod.replicas,
+                "dtype": self.ctx.node.device.dtype,
+                "candidate": "{}:{}".format(self.ctx.node.ip, port),
+                "endpoints": ",".join(endpoints),
+            }
+        )
         peer_list, rank = self.master.sync_peers(
             "/{}/info".format(self.job.id),
             self.pod.name,

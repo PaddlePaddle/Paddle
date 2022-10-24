@@ -58,6 +58,14 @@ set(STATIC_INFERENCE_API
     phi
     ${mkldnn_quantizer_cfg})
 
+set(OP_LIST
+    ""
+    CACHE STRING "The list of operators that will be compiled")
+
+set(KERNEL_LIST
+    ""
+    CACHE STRING "The list of phi kernels that will be compiled")
+
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} phi ${STATIC_INFERENCE_API}
@@ -106,6 +114,10 @@ endif()
 if(WITH_PSCORE)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} fleet ps_service
                             tensor_table)
+endif()
+
+if(WITH_INFERENCE_NVTX AND NOT WIN32)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} cuda_profiler)
 endif()
 
 if(WITH_ONNXRUNTIME)

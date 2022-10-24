@@ -79,7 +79,7 @@
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
@@ -92,7 +92,7 @@
 namespace paddle {
 
 using inference::Singleton;
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
 using inference::tensorrt::TRTInt8Calibrator;
@@ -1271,7 +1271,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       [](framework::ProgramDesc *prog) {
 // Note, please do NOT use any member variables, because member variables may
 // have been destructed in multiple threads.
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
         auto &block = prog->Block(0);
         for (auto &op_desc : block.AllOps()) {
           if (op_desc->Type() == "tensorrt_engine") {
@@ -1366,6 +1366,17 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       } else {
         process_level_allocator_enabled = true;
       }
+
+      // support set flags from enviorment.
+      const platform::ExportedFlagInfoMap &env_map =
+          platform::GetExportedFlagInfoMap();
+      std::ostringstream os;
+      os << "--tryfromenv=";
+      for (auto &pair : env_map) {
+        os << pair.second.name << ",";
+      }
+      auto tryfromenv_str = os.str();
+      gflags.push_back(os.str().substr(0, tryfromenv_str.size() - 1));
 
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
@@ -1977,7 +1988,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
   }
 }
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(),
                     true,
@@ -2033,7 +2044,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
 #endif
 
 AnalysisPredictor::~AnalysisPredictor() {
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled() &&
       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
       Singleton<TRTCalibratorEngineManager>::Global().Has()) {
@@ -2157,7 +2168,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
 
 }  // namespace paddle
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 USE_TRT_CONVERTER(elementwise_add_weight);
 USE_TRT_CONVERTER(elementwise_sub_weight);
 USE_TRT_CONVERTER(elementwise_mul_weight);

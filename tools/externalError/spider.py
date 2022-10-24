@@ -22,8 +22,8 @@ from html.parser import HTMLParser
 
 
 def parsing(externalErrorDesc):
-    #*********************************************************************************************#
-    #*********************************** CUDA Error Message **************************************#
+    # *********************************************************************************************#
+    # *********************************** CUDA Error Message **************************************#
     print("start crawling errorMessage for nvidia CUDA API--->")
     url = 'https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g3f51e3575c2178246db0a94a430e0038'
 
@@ -51,7 +51,8 @@ def parsing(externalErrorDesc):
             m_message = m_message.replace(list_a[idx], list_shape[idx])
 
         m_message = m_message.replace(
-            '<h6 class=\"deprecated_header\">Deprecated</h6>', '')
+            '<h6 class=\"deprecated_header\">Deprecated</h6>', ''
+        )
 
         res_span = r'(<span class=.*?</span>)'
         res_span_detail = r'<span class=.*?>(.*?)</span>'
@@ -81,8 +82,8 @@ def parsing(externalErrorDesc):
         _Messages.message = "'%s'. %s" % (m_type[0], m_message)
     print("End crawling errorMessage for nvidia CUDA API!\n")
 
-    #***********************************************************************************************#
-    #*********************************** CURAND Error Message **************************************#
+    # ***********************************************************************************************#
+    # *********************************** CURAND Error Message **************************************#
     print("start crawling errorMessage for nvidia CURAND API--->")
     url = 'https://docs.nvidia.com/cuda/curand/group__HOST.html#group__HOST_1gb94a31d5c165858c96b6c18b70644437'
 
@@ -112,8 +113,8 @@ def parsing(externalErrorDesc):
         _Messages.message = "'%s'. %s" % (m_type[0], m_message)
     print("End crawling errorMessage for nvidia CURAND API!\n")
 
-    #**************************************************************************************************#
-    #*********************************** CUDNN Error Message ******************************************#
+    # **************************************************************************************************#
+    # *********************************** CUDNN Error Message ******************************************#
     cudnnStatus_t = {
         "CUDNN_STATUS_SUCCESS": 0,
         "CUDNN_STATUS_NOT_INITIALIZED": 1,
@@ -155,8 +156,9 @@ def parsing(externalErrorDesc):
         list_class_detail = re.findall(res_class_detail, m_message, re.S | re.M)
         assert len(list_class) == len(list_class_detail)
         for idx in range(len(list_class)):
-            m_message = m_message.replace(list_class[idx],
-                                          list_class_detail[idx])
+            m_message = m_message.replace(
+                list_class[idx], list_class_detail[idx]
+            )
 
         res_a = r'(<a class="xref".*?</a>)'
         res_shape = r'<a class="xref".*?>(.*?)</a>'
@@ -189,8 +191,8 @@ def parsing(externalErrorDesc):
         _Messages.message = "'%s'. %s" % (error[0], m_message)
     print("End crawling errorMessage for nvidia CUDNN API!\n")
 
-    #*************************************************************************************************#
-    #*********************************** CUBLAS Error Message ****************************************#
+    # *************************************************************************************************#
+    # *********************************** CUBLAS Error Message ****************************************#
     cublasStatus_t = {
         "CUBLAS_STATUS_SUCCESS": 0,
         "CUBLAS_STATUS_NOT_INITIALIZED": 1,
@@ -201,7 +203,7 @@ def parsing(externalErrorDesc):
         "CUBLAS_STATUS_EXECUTION_FAILED": 13,
         "CUBLAS_STATUS_INTERNAL_ERROR": 14,
         "CUBLAS_STATUS_NOT_SUPPORTED": 15,
-        "CUBLAS_STATUS_LICENSE_ERROR": 16
+        "CUBLAS_STATUS_LICENSE_ERROR": 16,
     }
 
     print("start crawling errorMessage for nvidia CUBLAS API--->")
@@ -243,8 +245,8 @@ def parsing(externalErrorDesc):
         _Messages.message = "'%s'. %s" % (error[0], m_message)
     print("End crawling errorMessage for nvidia CUBLAS API!\n")
 
-    #*************************************************************************************************#
-    #*********************************** CUSOLVER Error Message **************************************#
+    # *************************************************************************************************#
+    # *********************************** CUSOLVER Error Message **************************************#
     cusolverStatus_t = {
         "CUSOLVER_STATUS_SUCCESS": 0,
         "CUSOLVER_STATUS_NOT_INITIALIZED": 1,
@@ -264,7 +266,7 @@ def parsing(externalErrorDesc):
         "CUSOLVER_STATUS_IRS_NOT_SUPPORTED": 15,
         "CUSOLVER_STATUS_IRS_OUT_OF_RANGE": 16,
         "CUSOLVER_STATUS_IRS_NRHS_NOT_SUPPORTED_FOR_REFINE_GMRES": 17,
-        "CUSOLVER_STATUS_IRS_INFOS_NOT_INITIALIZED": 18
+        "CUSOLVER_STATUS_IRS_INFOS_NOT_INITIALIZED": 18,
     }
     print("start crawling errorMessage for nvidia CUSOLVER API--->")
     url = 'https://docs.nvidia.com/cuda/cusolver/index.html#cuSolverSPstatus'
@@ -277,7 +279,9 @@ def parsing(externalErrorDesc):
     res_div = r'This is a status type returned by the library functions and.*?<div class="tablenoborder">(.*?)</div>'
     m_div = re.findall(res_div, html, re.S | re.M)[0]
 
-    res_dt = r'<samp class="ph codeph">(.*?)</samp></td>.*?colspan="1">(.*?)</td>'
+    res_dt = (
+        r'<samp class="ph codeph">(.*?)</samp></td>.*?colspan="1">(.*?)</td>'
+    )
     m_dt = re.findall(res_dt, m_div, re.S | re.M)
 
     for error in m_dt:
@@ -304,20 +308,22 @@ def parsing(externalErrorDesc):
         res_strong = r'<strong class="ph b">.*?</strong>'
         res_strong_detail = r'<strong class="ph b">(.*?)</strong>'
         list_strong = re.findall(res_strong, m_message, re.S | re.M)
-        list_strong_detail = re.findall(res_strong_detail, m_message,
-                                        re.S | re.M)
+        list_strong_detail = re.findall(
+            res_strong_detail, m_message, re.S | re.M
+        )
         assert len(list_strong) == len(list_strong_detail)
         for idx in range(len(list_strong)):
-            m_message = m_message.replace(list_strong[idx],
-                                          list_strong_detail[idx])
+            m_message = m_message.replace(
+                list_strong[idx], list_strong_detail[idx]
+            )
 
         _Messages = allMessageDesc.messages.add()
         _Messages.code = int(cusolverStatus_t[error[0]])
         _Messages.message = "'%s'. %s" % (error[0], m_message)
     print("End crawling errorMessage for nvidia CUSOLVER API!\n")
 
-    #**********************************************************************************************#
-    #*************************************** NCCL error *******************************************#
+    # **********************************************************************************************#
+    # *************************************** NCCL error *******************************************#
     print("start crawling errorMessage for nvidia NCCL API--->")
     url = 'https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/types.html#ncclresult-t'
     allMessageDesc = externalErrorDesc.errors.add()
@@ -335,8 +341,8 @@ def parsing(externalErrorDesc):
         _Messages.message = "'%s'. %s" % (error[0], m_message)
     print("End crawling errorMessage for nvidia NCCL API!\n")
 
-    #*************************************************************************************************#
-    #*********************************** CUFFT Error Message **************************************#
+    # *************************************************************************************************#
+    # *********************************** CUFFT Error Message **************************************#
     print("start crawling errorMessage for nvidia CUFFT API--->")
     url = 'https://docs.nvidia.com/cuda/cufft/index.html#cufftresult'
 
@@ -346,8 +352,7 @@ def parsing(externalErrorDesc):
     html = urllib.request.urlopen(url).read().decode('utf-8')
 
     class CUFFTHTMLParser(HTMLParser):
-        '''CUFFTHTML Parser
-        '''
+        '''CUFFTHTML Parser'''
 
         def handle_data(self, data):
             if 'typedef enum cufftResult_t' in data:
@@ -355,8 +360,10 @@ def parsing(externalErrorDesc):
                     status, code, desc = re.split('=|//', line.strip())
                     _Messages = allMessageDesc.messages.add()
                     _Messages.code = int(code.strip(' ,'))
-                    _Messages.message = "'%s'. %s" % (status.strip(),
-                                                      desc.strip())
+                    _Messages.message = "'%s'. %s" % (
+                        status.strip(),
+                        desc.strip(),
+                    )
 
     CUFFTHTMLParser().feed(html)
 

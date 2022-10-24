@@ -14,8 +14,6 @@
 
 import collections
 from .wrapped_decorator import signature_safe_contextmanager
-import six
-import sys
 
 __all__ = ['generate', 'switch', 'guard']
 
@@ -123,6 +121,7 @@ def generate(key):
 # in order to keep name consistency.
 def generate_with_ignorable_key(key):
     from .framework import _non_static_mode, _dygraph_tracer
+
     if _non_static_mode():
         return _dygraph_tracer()._generate_unique_name()
 
@@ -214,9 +213,9 @@ def guard(new_generator=None):
                 name_2 = paddle.utils.unique_name.generate('fc')
             print(name_1, name_2) # Afc_0, Bfc_0
     """
-    if isinstance(new_generator, six.string_types):
+    if isinstance(new_generator, str):
         new_generator = UniqueNameGenerator(new_generator)
-    elif isinstance(new_generator, six.binary_type):
+    elif isinstance(new_generator, bytes):
         new_generator = UniqueNameGenerator(new_generator.decode())
 
     old_generator, old_para_name_checker = switch(new_generator)

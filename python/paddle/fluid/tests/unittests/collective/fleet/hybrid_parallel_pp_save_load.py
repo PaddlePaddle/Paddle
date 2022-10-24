@@ -29,7 +29,6 @@ vocab_size = 128
 
 
 class TestDistPPSaveLoadTraning(unittest.TestCase):
-
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1
@@ -42,7 +41,7 @@ class TestDistPPSaveLoadTraning(unittest.TestCase):
         }
         strategy.pipeline_configs = {
             "accumulate_steps": batch_size // micro_batch_size,
-            "micro_batch_size": micro_batch_size
+            "micro_batch_size": micro_batch_size,
         }
         fleet.init(is_collective=True, strategy=strategy)
 
@@ -56,11 +55,12 @@ class TestDistPPSaveLoadTraning(unittest.TestCase):
         set_random_seed(1024, dp_id, rank_id)
 
         model = ModelPipe(topology)
-        scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=[2],
-                                                       values=[0.001, 0.002],
-                                                       verbose=True)
-        optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
-                                         parameters=model.parameters())
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2], values=[0.001, 0.002], verbose=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=scheduler, parameters=model.parameters()
+        )
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
@@ -74,14 +74,16 @@ class TestDistPPSaveLoadTraning(unittest.TestCase):
             loss = model.train_batch([x, x], optimizer, scheduler)
 
         model._layers.save_state_dict(output_dir)
-        paddle.save(optimizer.state_dict(),
-                    os.path.join(output_dir, "model_state.pdopt"))
+        paddle.save(
+            optimizer.state_dict(),
+            os.path.join(output_dir, "model_state.pdopt"),
+        )
 
         # construct data
         test_steps = 5
-        np_data = np.random.randint(0,
-                                    vocab_size,
-                                    size=[test_steps, batch_size, length])
+        np_data = np.random.randint(
+            0, vocab_size, size=[test_steps, batch_size, length]
+        )
 
         origin_loss = []
         for step_id in range(5):
@@ -101,8 +103,12 @@ class TestDistPPSaveLoadTraning(unittest.TestCase):
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
             loss = model.train_batch([x, x], optimizer, scheduler)
-            print("origin loss: ", origin_loss[step_id], "current loss: ",
-                  loss.numpy())
+            print(
+                "origin loss: ",
+                origin_loss[step_id],
+                "current loss: ",
+                loss.numpy(),
+            )
             np.testing.assert_allclose(loss.numpy(), origin_loss[step_id])
 
         # finally, remove the model/optimizer path

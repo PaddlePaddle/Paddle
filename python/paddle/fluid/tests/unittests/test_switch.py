@@ -22,7 +22,6 @@ from paddle.fluid.framework import default_startup_program
 
 
 class TestSwitch(unittest.TestCase):
-
     def check_switch(self, value):
         x = layers.fill_constant(shape=[1], dtype='float32', value=value)
         zero_var = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
@@ -30,10 +29,9 @@ class TestSwitch(unittest.TestCase):
         two_var = layers.fill_constant(shape=[1], dtype='float32', value=2.0)
         three_var = layers.fill_constant(shape=[1], dtype='float32', value=3.0)
 
-        result = layers.create_global_var(shape=[1],
-                                          value=-1.0,
-                                          dtype='float32',
-                                          persistable=True)
+        result = layers.create_global_var(
+            shape=[1], value=-1.0, dtype='float32', persistable=True
+        )
 
         with layers.Switch() as switch:
             with switch.case(layers.less_than(x, zero_var)):
@@ -63,20 +61,18 @@ class TestSwitch(unittest.TestCase):
 
 
 class TestSwitchCaseError(unittest.TestCase):
-
     def test_error(self):
         main_program = framework.Program()
         startup_program = framework.Program()
         with framework.program_guard(main_program, startup_program):
             cond = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
-            zero_var = layers.fill_constant(shape=[1],
-                                            dtype='float32',
-                                            value=0.0)
+            zero_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=0.0
+            )
 
-            result = layers.create_global_var(shape=[1],
-                                              value=-1.0,
-                                              dtype='float32',
-                                              persistable=True)
+            result = layers.create_global_var(
+                shape=[1], value=-1.0, dtype='float32', persistable=True
+            )
 
             # 1. The type of 'condition' in case must be Variable.
             def test_condition_type():
