@@ -692,6 +692,39 @@ void exec_hipfft_plan(const DeviceContext& ctx, const FFTConfig& config,
 
 #endif
 
+
+inline bool has_large_prime_factor(int64_t n) {
+  constexpr int64_t first_large_prime = 11;
+  const std::array<int64_t, 4> prime_radices{{2, 3, 5, 7}};
+  for (auto prime : prime_radices) {
+    if (n < first_large_prime) {
+      return false;
+    }
+    while (n % prime == 0) {
+      n /= prime;
+    }
+  }
+  return n != 1;
+}
+
+#if defined(PADDLE_WITH_CUDA)
+inline bool use_cache(const int64_t* signal_size) {
+  bool using_cache = true;
+  int cufft_version;
+  phi::dynload::cufftGetVersion(&cufft_version);
+  if (10300 <= cufft_version && cufft_version <= 10400) {
+    using_cache = std::none_of(
+        signal_size + 1, signal_size + kMaxDataNdim, [](int64_t dim_size) {
+          return has_large_prime_factor(dim_size);
+        });
+  }
+  return using_cache;
+}
+#elif defined(PADDLE_WITH_HIP)
+inline bool use_cache(const int64_t* signal_size) { return true; }
+#endif
+
+
 // Execute a general unnormalized fft operation (can be c2c, onesided r2c or
 // onesided c2r)
 template <typename DeviceContext, typename Ti, typename To>
@@ -758,10 +791,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   // create plan
   FFTConfigKey key =
       create_fft_configkey(collapsed_input, collapsed_output, signal_ndim);
-  bool using_cache = false;
-#if !defined(CUFFT_VERSION) || (CUFFT_VERSION < 10200)
-  using_cache = true;
-#endif
+  bool using_cache = use_cache(key.sizes_);
 
   if (using_cache) {
     const int64_t device_id = static_cast<int64_t>(

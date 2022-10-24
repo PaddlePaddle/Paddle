@@ -231,10 +231,12 @@ def _elementwise_op(helper):
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool',
+        'complex64', 'complex128'],
         original_op_type)
     check_variable_and_dtype(
-        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool',
+        'complex64', 'complex128'],
         original_op_type)
 
     axis = helper.kwargs.get('axis', -1)
