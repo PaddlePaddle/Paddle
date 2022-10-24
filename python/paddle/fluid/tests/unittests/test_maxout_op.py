@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -30,14 +28,15 @@ np.random.seed(1)
 def maxout_forward_naive(x, groups, channel_axis):
     s0, s1, s2, s3 = x.shape
     if channel_axis == 1:
-        return np.ndarray([s0, s1 // groups, groups, s2, s3], \
-            buffer = x, dtype=x.dtype).max(axis=2)
-    return np.ndarray([s0, s1, s2, s3 // groups, groups], \
-        buffer = x, dtype=x.dtype).max(axis=4)
+        return np.ndarray(
+            [s0, s1 // groups, groups, s2, s3], buffer=x, dtype=x.dtype
+        ).max(axis=2)
+    return np.ndarray(
+        [s0, s1, s2, s3 // groups, groups], buffer=x, dtype=x.dtype
+    ).max(axis=4)
 
 
 class TestMaxOutOp(OpTest):
-
     def setUp(self):
         self.op_type = "maxout"
         self.python_api = paddle.nn.functional.maxout
@@ -65,25 +64,21 @@ class TestMaxOutOp(OpTest):
 
 
 class TestMaxOutOpAxis0(TestMaxOutOp):
-
     def set_attrs(self):
         self.axis = -1
 
 
 class TestMaxOutOpAxis1(TestMaxOutOp):
-
     def set_attrs(self):
         self.axis = 3
 
 
 class TestMaxOutOpFP32(TestMaxOutOp):
-
     def set_attrs(self):
         self.dtype = 'float32'
 
 
 class TestMaxOutOpGroups(TestMaxOutOp):
-
     def set_attrs(self):
         self.groups = 3
 
@@ -94,8 +89,11 @@ class TestMaxoutAPI(unittest.TestCase):
         self.x_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float64)
         self.groups = 2
         self.axis = 1
-        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -107,9 +105,9 @@ class TestMaxoutAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = maxout_forward_naive(self.x_np, self.groups, self.axis)
         for r in res:
-            self.assertTrue(np.allclose(out_ref, r))
+            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
-    def test_dygraph_api(self):
+    def func_test_dygraph_api(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         out1 = F.maxout(x, self.groups, self.axis)
@@ -117,11 +115,11 @@ class TestMaxoutAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = maxout_forward_naive(self.x_np, self.groups, self.axis)
         for r in [out1, out2]:
-            self.assertTrue(np.allclose(out_ref, r.numpy()))
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
         out3 = F.maxout(x, self.groups, -1)
         out3_ref = maxout_forward_naive(self.x_np, self.groups, -1)
-        self.assertTrue(np.allclose(out3_ref, out3.numpy()))
+        np.testing.assert_allclose(out3_ref, out3.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_fluid_api(self):
@@ -131,12 +129,12 @@ class TestMaxoutAPI(unittest.TestCase):
             exe = fluid.Executor(self.place)
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = maxout_forward_naive(self.x_np, self.groups, self.axis)
-        self.assertTrue(np.allclose(out_ref, res[0]))
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np)
         out = paddle.fluid.layers.maxout(x, groups=self.groups, axis=self.axis)
-        self.assertTrue(np.allclose(out_ref, out.numpy()))
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_errors(self):
@@ -144,17 +142,18 @@ class TestMaxoutAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.maxout, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32',
-                                        shape=[2, 4, 6, 8],
-                                        dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[2, 4, 6, 8], dtype='int32'
+            )
             self.assertRaises(TypeError, F.maxout, x_int32)
 
             x_float32 = paddle.fluid.data(name='x_float32', shape=[2, 4, 6, 8])
             self.assertRaises(ValueError, F.maxout, x_float32, 2, 2)
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with _test_eager_guard():
-            self.test_dygraph_api()
+            self.func_test_dygraph_api()
+        self.func_test_dygraph_api()
 
 
 if __name__ == '__main__':

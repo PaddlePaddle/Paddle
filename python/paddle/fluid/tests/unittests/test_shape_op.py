@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -23,7 +21,6 @@ from paddle.fluid.op import Operator
 
 
 class TestShapeOp(OpTest):
-
     def setUp(self):
         self.op_type = "shape"
         self.python_api = paddle.shape
@@ -41,19 +38,16 @@ class TestShapeOp(OpTest):
 
 
 class case1(TestShapeOp):
-
     def config(self):
         self.shape = [2]
 
 
 class case2(TestShapeOp):
-
     def config(self):
         self.shape = [1, 2, 3]
 
 
 class TestShapeWithSelectedRows(unittest.TestCase):
-
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():

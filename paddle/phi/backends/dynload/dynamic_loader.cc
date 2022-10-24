@@ -326,7 +326,7 @@ void* GetCublasDsoHandle() {
 
 void* GetCublasLtDsoHandle() {
 // APIs available after CUDA 10.1
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10100
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10010
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
 #else
   std::string warning_msg(
@@ -479,7 +479,7 @@ void* GetNCCLDsoHandle() {
 #else
   std::string warning_msg(
       "You may need to install 'nccl2' from NVIDIA official website: "
-      "https://developer.nvidia.com/nccl/nccl-download"
+      "https://developer.nvidia.com/nccl/nccl-download "
       "before install PaddlePaddle.");
 #endif
 

@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestAutoParallelDataUnshard(TestMultipleGpus):
-
     def test_auto_parallel_data_unshard(self):
         self.run_mnist_2gpu('auto_parallel_data_unshard.py')
 

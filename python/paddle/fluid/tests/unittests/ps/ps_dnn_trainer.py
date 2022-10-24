@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.distributed.ps.utils.ps_program_builder import *
+from paddle.distributed.ps.utils.ps_program_builder import (
+    debug_program,
+    logger,
+    new_pass,
+    ps_log_root_dir,
+)
 import paddle.distributed.fleet as fleet
 import argparse
-import time
 import sys
-import yaml, six, copy
+import yaml
+import copy
 import paddle
 import os
-import warnings
 import ast
 import numpy as np
 import struct
@@ -44,7 +47,6 @@ def is_distributed_env():
 
 
 class YamlHelper(object):
-
     def load_yaml(self, yaml_file, other_part=None):
         part_list = ["runner", "hyper_parameters"]
         if other_part:
@@ -69,20 +71,12 @@ class YamlHelper(object):
                 use_full_loader = False
 
         if os.path.isfile(config):
-            if six.PY2:
-                with open(config, 'r') as rb:
-                    if use_full_loader:
-                        _config = yaml.load(rb.read(), Loader=yaml.FullLoader)
-                    else:
-                        _config = yaml.load(rb.read())
-                    return _config
-            else:
-                with open(config, 'r', encoding="utf-8") as rb:
-                    if use_full_loader:
-                        _config = yaml.load(rb.read(), Loader=yaml.FullLoader)
-                    else:
-                        _config = yaml.load(rb.read())
-                    return _config
+            with open(config, 'r', encoding="utf-8") as rb:
+                if use_full_loader:
+                    _config = yaml.load(rb.read(), Loader=yaml.FullLoader)
+                else:
+                    _config = yaml.load(rb.read())
+                return _config
         else:
             raise ValueError("config {} can not be supported".format(config))
 
@@ -124,7 +118,8 @@ class YamlHelper(object):
             max_k = max(max_k, len(k))
 
         h_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
-            max_k, " " * spacing, max_v)
+            max_k, " " * spacing, max_v
+        )
         l_format = "    " + "|{{:>{}s}}{{}}{{:^{}s}}|\n".format(max_k, max_v)
         length = max_k + max_v + spacing
 
@@ -160,7 +155,7 @@ def get_user_defined_strategy(config):
         logger.warn(
             "Not Find Distributed env, Change To local train mode. If you want train with fleet, please use [fleetrun] command."
         )
-        #return None
+        # return None
     sync_mode = config.get("runner.sync_mode")
     assert sync_mode in ["async", "sync", "geo", "heter", "gpubox"]
     if sync_mode == "sync":
@@ -169,8 +164,9 @@ def get_user_defined_strategy(config):
     elif sync_mode == "async":
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
-        strategy.is_fl_ps_mode = True if config.get(
-            "runner.is_fl_ps_mode") == 1 else False
+        strategy.is_fl_ps_mode = (
+            True if config.get("runner.is_fl_ps_mode") == 1 else False
+        )
         if strategy.is_fl_ps_mode == True:
             strategy.pipeline = False
             micro_num = 1
@@ -201,7 +197,7 @@ def get_user_defined_strategy(config):
         "dump_param": config.get("runner.dump_param", []),
         "stat_var_names": config.get("stat_var_names", []),
         "local_sparse": config.get("runner.local_sparse", []),
-        "remote_sparse": config.get("runner.remote_sparse", [])
+        "remote_sparse": config.get("runner.remote_sparse", []),
     }
     print("strategy:", strategy.trainer_desc_configs)
 
@@ -210,7 +206,7 @@ def get_user_defined_strategy(config):
             "uri": config.get("runner.fs_client.uri", ""),
             "user": config.get("runner.fs_client.user", ""),
             "passwd": config.get("runner.fs_client.passwd", ""),
-            "hadoop_bin": config.get("runner.fs_client.hadoop_bin", "hadoop")
+            "hadoop_bin": config.get("runner.fs_client.hadoop_bin", "hadoop"),
         }
     print("strategy:", strategy.fs_client_param)
 
@@ -235,7 +231,9 @@ def get_user_defined_strategy(config):
 
 
 def get_distributed_strategy(user_defined_strategy):  # pslib
-    from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+    from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+        StrategyFactory,
+    )
 
     k_steps = user_defined_strategy.a_sync_configs["k_steps"]
     strategy = None
@@ -264,45 +262,38 @@ def get_model(config):
 
 def parse_args():
     parser = argparse.ArgumentParser("PsTest train script")
-    parser.add_argument('-m',
-                        '--config_yaml',
-                        type=str,
-                        required=True,
-                        help='config file path')
-    parser.add_argument('-bf16',
-                        '--pure_bf16',
-                        type=ast.literal_eval,
-                        default=False,
-                        help="whether use bf16")
+    parser.add_argument(
+        '-m', '--config_yaml', type=str, required=True, help='config file path'
+    )
+    parser.add_argument(
+        '-bf16',
+        '--pure_bf16',
+        type=ast.literal_eval,
+        default=False,
+        help="whether use bf16",
+    )
 
-    parser.add_argument('--run_minimize',
-                        type=int,
-                        default=0,
-                        help="test single pass")
-    parser.add_argument('--run_single_pass',
-                        type=int,
-                        default=0,
-                        help="test single pass")
-    parser.add_argument('--run_the_one_ps',
-                        type=int,
-                        default=0,
-                        help="test the_one_ps")
-    parser.add_argument('--debug_new_minimize',
-                        type=int,
-                        default=0,
-                        help="test single pass")
-    parser.add_argument('--debug_new_pass',
-                        type=int,
-                        default=0,
-                        help="test single pass")
-    parser.add_argument('--applied_pass_name',
-                        type=str,
-                        default="",
-                        help="test single pass")
-    parser.add_argument('--debug_the_one_ps',
-                        type=int,
-                        default=0,
-                        help="test the_one_ps")
+    parser.add_argument(
+        '--run_minimize', type=int, default=0, help="test single pass"
+    )
+    parser.add_argument(
+        '--run_single_pass', type=int, default=0, help="test single pass"
+    )
+    parser.add_argument(
+        '--run_the_one_ps', type=int, default=0, help="test the_one_ps"
+    )
+    parser.add_argument(
+        '--debug_new_minimize', type=int, default=0, help="test single pass"
+    )
+    parser.add_argument(
+        '--debug_new_pass', type=int, default=0, help="test single pass"
+    )
+    parser.add_argument(
+        '--applied_pass_name', type=str, default="", help="test single pass"
+    )
+    parser.add_argument(
+        '--debug_the_one_ps', type=int, default=0, help="test the_one_ps"
+    )
 
     args = parser.parse_args()
     args.abs_dir = os.path.dirname(os.path.abspath(args.config_yaml))
@@ -327,7 +318,6 @@ def bf16_to_fp32(val):
 
 
 class DnnTrainer(object):
-
     def __init__(self, config):
         self.metrics = {}
         self.config = config
@@ -361,36 +351,59 @@ class DnnTrainer(object):
         loss = self.model._cost
         user_defined_strategy = get_user_defined_strategy(self.config)
         learning_rate = self.config.get(
-            "hyper_parameters.optimizer.learning_rate")
+            "hyper_parameters.optimizer.learning_rate"
+        )
         sync_mode = self.config.get("runner.sync_mode")
         inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
 
         self.role_maker._generate_role()  # 必要
         if self.config['debug_new_minimize'] == 1:
             print("entering run_minimize -- new")
-            from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
+            from paddle.distributed.fleet.meta_optimizers.ps_optimizer import (
+                ParameterServerOptimizer,
+            )
+
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
-            ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
-                                         user_defined_strategy)
+            ps_optimizer._set_basic_info(
+                loss, self.role_maker, inner_optimizer, user_defined_strategy
+            )
             ps_optimizer.minimize_impl(loss)
         else:
             print("entering run_minimize -- old")
             fleet_obj = fleet.distributed_optimizer(
-                inner_optimizer, user_defined_strategy)  ## Fleet 对象
+                inner_optimizer, user_defined_strategy
+            )  ## Fleet 对象
             fleet_obj.minimize(loss)
 
         if fleet.is_server():
-            _main_file = ps_log_root_dir + sync_mode + '_run_minimize' + '_debug:_' + str(
-                self.config['debug_new_minimize']) + '_server_main.prototxt'
+            _main_file = (
+                ps_log_root_dir
+                + sync_mode
+                + '_run_minimize'
+                + '_debug:_'
+                + str(self.config['debug_new_minimize'])
+                + '_server_main.prototxt'
+            )
             debug_program(_main_file, loss.block.program)
         elif fleet.is_worker():
-            _main_file = ps_log_root_dir + sync_mode + '_run_minimize' + '_debug:_' + str(
-                self.config['debug_new_minimize']) + '_worker_main.prototxt'
+            _main_file = (
+                ps_log_root_dir
+                + sync_mode
+                + '_run_minimize'
+                + '_debug:_'
+                + str(self.config['debug_new_minimize'])
+                + '_worker_main.prototxt'
+            )
             debug_program(_main_file, loss.block.program)
         elif self.role_maker._is_heter_worker():
-            _main_file = ps_log_root_dir + sync_mode + '_run_minimize' + '_debug:_' + str(
-                self.config['debug_new_minimize']
-            ) + '_heter_worker_main.prototxt'
+            _main_file = (
+                ps_log_root_dir
+                + sync_mode
+                + '_run_minimize'
+                + '_debug:_'
+                + str(self.config['debug_new_minimize'])
+                + '_heter_worker_main.prototxt'
+            )
             debug_program(_main_file, loss.block.program)
 
     def run_single_pass(self):
@@ -406,42 +419,70 @@ class DnnTrainer(object):
         startup_program = paddle.static.default_startup_program()
         inner_optimizer.minimize(loss, startup_program)
         if self.config['debug_new_pass'] == 1:
-            print("entering run {} - new".format(
-                str(config["applied_pass_name"])))
-            from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
+            print(
+                "entering run {} - new".format(str(config["applied_pass_name"]))
+            )
+            from paddle.distributed.fleet.meta_optimizers.ps_optimizer import (
+                ParameterServerOptimizer,
+            )
+
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
-            ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
-                                         user_defined_strategy)
+            ps_optimizer._set_basic_info(
+                loss, self.role_maker, inner_optimizer, user_defined_strategy
+            )
             ps_optimizer._set_origin_programs([loss])
             ps_optimizer._init_ps_pass_context(loss, startup_program)
             _main = ps_optimizer.pass_ctx._attrs['cloned_main']
 
-            append_send_ops_pass = new_pass(config["applied_pass_name"],
-                                            ps_optimizer.pass_ctx._attrs)
+            append_send_ops_pass = new_pass(
+                config["applied_pass_name"], ps_optimizer.pass_ctx._attrs
+            )
             append_send_ops_pass.apply([_main], [None], ps_optimizer.pass_ctx)
         else:
-            print("entering run {} - old".format(
-                str(config["applied_pass_name"])))
-            from paddle.fluid.incubate.fleet.parameter_server.ir import public as public
+            print(
+                "entering run {} - old".format(str(config["applied_pass_name"]))
+            )
+            from paddle.fluid.incubate.fleet.parameter_server.ir import (
+                public as public,
+            )
+
             dist_strategy = get_distributed_strategy(user_defined_strategy)
             compiled_config = public.CompileTimeStrategy(
-                loss.block.program, startup_program, dist_strategy,
-                self.role_maker)
+                loss.block.program,
+                startup_program,
+                dist_strategy,
+                self.role_maker,
+            )
 
             _main = compiled_config.origin_main_program.clone()
             _startup = compiled_config.origin_startup_program.clone()
-            from paddle.fluid.incubate.fleet.parameter_server.ir import trainer_pass as worker
+            from paddle.fluid.incubate.fleet.parameter_server.ir import (
+                trainer_pass as worker,
+            )
+
             _main = worker.append_send_ops_pass(_main, compiled_config)
 
         if fleet.is_server():
-            _main_file = ps_log_root_dir + sync_mode + "_" + str(
-                config["applied_pass_name"]) + '_debug:_' + str(
-                    self.config['debug_new_pass']) + '_server_main.prototxt'
+            _main_file = (
+                ps_log_root_dir
+                + sync_mode
+                + "_"
+                + str(config["applied_pass_name"])
+                + '_debug:_'
+                + str(self.config['debug_new_pass'])
+                + '_server_main.prototxt'
+            )
             debug_program(_main_file, _main)
         elif fleet.is_worker():
-            _main_file = ps_log_root_dir + sync_mode + "_" + str(
-                config["applied_pass_name"]) + '_debug:_' + str(
-                    self.config['debug_new_pass']) + '_worker_main.prototxt'
+            _main_file = (
+                ps_log_root_dir
+                + sync_mode
+                + "_"
+                + str(config["applied_pass_name"])
+                + '_debug:_'
+                + str(self.config['debug_new_pass'])
+                + '_worker_main.prototxt'
+            )
             debug_program(_main_file, _main)
 
     def run_the_one_ps(self):
@@ -452,7 +493,8 @@ class DnnTrainer(object):
         loss = self.model._cost
         user_defined_strategy = get_user_defined_strategy(self.config)
         learning_rate = self.config.get(
-            "hyper_parameters.optimizer.learning_rate")
+            "hyper_parameters.optimizer.learning_rate"
+        )
         sync_mode = self.config.get("runner.sync_mode")
         inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
 
@@ -460,37 +502,46 @@ class DnnTrainer(object):
         if self.config['debug_the_one_ps'] == 1:
             print("entering run_the_one_ps -- new")
 
-            from paddle.distributed.fleet.meta_optimizers.ps_optimizer import ParameterServerOptimizer
+            from paddle.distributed.fleet.meta_optimizers.ps_optimizer import (
+                ParameterServerOptimizer,
+            )
+
             ps_optimizer = ParameterServerOptimizer(inner_optimizer)
-            ps_optimizer._set_basic_info(loss, self.role_maker, inner_optimizer,
-                                         user_defined_strategy)
+            ps_optimizer._set_basic_info(
+                loss, self.role_maker, inner_optimizer, user_defined_strategy
+            )
             ps_optimizer.minimize_impl(loss)
 
             from paddle.distributed.ps.the_one_ps import TheOnePSRuntime
+
             _runtime_handle = TheOnePSRuntime()  # ps 目录下重构版的 TheOnePSRuntime
             _runtime_handle._set_basic_info(ps_optimizer.pass_ctx._attrs)
             if fleet.is_worker():
-                worker_desc = _runtime_handle.ps_desc_builder.build_worker_desc(
+                worker_desc = (
+                    _runtime_handle.ps_desc_builder.build_worker_desc()
                 )
                 with open(
-                        ps_log_root_dir + sync_mode + '_' +
-                        'new_worker_ps_desc', 'w') as f:
+                    ps_log_root_dir + sync_mode + '_' + 'new_worker_ps_desc',
+                    'w',
+                ) as f:
                     f.write(worker_desc)
             if fleet.is_server():
-                server_desc = _runtime_handle.ps_desc_builder.build_server_desc(
+                server_desc = (
+                    _runtime_handle.ps_desc_builder.build_server_desc()
                 )
                 with open(
-                        ps_log_root_dir + sync_mode + '_' +
-                        'new_server_ps_desc', 'w') as f:
+                    ps_log_root_dir + sync_mode + '_' + 'new_server_ps_desc',
+                    'w',
+                ) as f:
                     f.write(server_desc)
 
         else:
             pass
-        '''          
+        '''
             print("entering run_the_one_ps -- old")
             fleet_obj = fleet.distributed_optimizer(
-                inner_optimizer, user_defined_strategy)  
-            fleet_obj.minimize(loss)  
+                inner_optimizer, user_defined_strategy)
+            fleet_obj.minimize(loss)
             if fleet.is_worker():
                 worker_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=False, is_sync=False)
                 server_desc = fleet_obj._runtime_handle._get_fleet_proto(is_server=True, is_sync=False)
@@ -502,16 +553,34 @@ class DnnTrainer(object):
                     f.write(str(server_desc) + str(fleet_obj._runtime_handle._get_fs_client_desc().to_string()))
         '''
         if fleet.is_server():
-            _main_file = ps_log_root_dir + sync_mode + '_run_the_one_ps' + '_debug:_' + str(
-                self.config['debug_the_one_ps']) + '_server_main.prototxt'
+            _main_file = (
+                ps_log_root_dir
+                + sync_mode
+                + '_run_the_one_ps'
+                + '_debug:_'
+                + str(self.config['debug_the_one_ps'])
+                + '_server_main.prototxt'
+            )
             debug_program(_main_file, loss.block.program)
         elif fleet.is_worker():
-            _main_file = ps_log_root_dir + sync_mode + '_run_the_one_ps' + '_debug:_' + str(
-                self.config['debug_the_one_ps']) + '_worker_main.prototxt'
+            _main_file = (
+                ps_log_root_dir
+                + sync_mode
+                + '_run_the_one_ps'
+                + '_debug:_'
+                + str(self.config['debug_the_one_ps'])
+                + '_worker_main.prototxt'
+            )
             debug_program(_main_file, loss.block.program)
         elif self.role_maker._is_heter_worker():
-            _main_file = ps_log_root_dir + sync_mode + '_run_the_one_ps' + '_debug:_' + str(
-                self.config['debug_the_one_ps']) + '_heter_worker_main.prototxt'
+            _main_file = (
+                ps_log_root_dir
+                + sync_mode
+                + '_run_the_one_ps'
+                + '_debug:_'
+                + str(self.config['debug_the_one_ps'])
+                + '_heter_worker_main.prototxt'
+            )
             debug_program(_main_file, loss.block.program)
 
 

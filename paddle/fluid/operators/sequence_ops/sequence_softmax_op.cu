@@ -29,7 +29,7 @@ namespace cub = hipcub;
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T, int BlockDim>
 using BlockReduce = cub::BlockReduce<T, BlockDim>;

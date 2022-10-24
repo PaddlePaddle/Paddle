@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
 import paddle
 import textwrap
 from paddle.utils import gast
 from paddle.fluid import unique_name
 from paddle.fluid.framework import Variable
-from paddle.fluid.dygraph.dygraph_to_static.utils import UndefinedVar, create_undefined_variable
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    UndefinedVar,
+    create_undefined_variable,
+)
+from paddle.fluid.layers.utils import map_structure, is_sequence
 
 __all__ = [
     'create_bool_as_type',
@@ -39,16 +40,19 @@ def create_fill_constant_node(name, value=0):
     func_code = "{} = paddle.full(shape=[1], ".format(name)
     if isinstance(value, bool):
         func_code += "dtype='bool', fill_value={}, name='{}')".format(
-            value, name)
+            value, name
+        )
         return gast.parse(func_code).body[0]
     if isinstance(value, float):
         func_code += "dtype='float64', fill_value={}, name='{}')".format(
-            value, name)
+            value, name
+        )
         return gast.parse(func_code).body[0]
 
     if isinstance(value, int):
         func_code += "dtype='int64', fill_value={}, name='{}')".format(
-            value, name)
+            value, name
+        )
         return gast.parse(func_code).body[0]
 
 
@@ -60,12 +64,15 @@ def to_static_variable(x):
         return paddle.full(shape=[1], dtype='bool', fill_value=x)
     if isinstance(x, float):
         return paddle.full(shape=[1], dtype='float64', fill_value=x)
-    if isinstance(x, six.integer_types):
+    if isinstance(x, int):
         return paddle.full(shape=[1], dtype='int64', fill_value=x)
     if isinstance(x, UndefinedVar) or x is None:
-        """ for early return case, we need a variable to represent None, current we use data_layer_not_check.
+        """
+        for early return case, we need a variable to represent None, current we use data_layer_not_check.
         """
         return create_undefined_variable()
+    if is_sequence(x):
+        return map_structure(to_static_variable, x)
     return x
 
 

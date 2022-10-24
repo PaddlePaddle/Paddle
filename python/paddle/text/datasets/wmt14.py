@@ -12,25 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import tarfile
 import numpy as np
-import gzip
-import six
 
 from paddle.io import Dataset
-import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download
 
 __all__ = []
 
-URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
-                'cslm_joint_paper/data/dev+test.tgz')
+URL_DEV_TEST = (
+    'http://www-lium.univ-lemans.fr/~schwenk/'
+    'cslm_joint_paper/data/dev+test.tgz'
+)
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
 # this is a small set of data for test. The original data is too large and
 # will be add later.
-URL_TRAIN = ('http://paddlemodels.bj.bcebos.com/wmt/wmt14.tgz')
+URL_TRAIN = 'http://paddlemodels.bj.bcebos.com/wmt/wmt14.tgz'
 MD5_TRAIN = '0791583d57d5beb693b9414c5b36798c'
 
 START = "<s>"
@@ -87,21 +84,24 @@ class WMT14(Dataset):
 
     """
 
-    def __init__(self,
-                 data_file=None,
-                 mode='train',
-                 dict_size=-1,
-                 download=True):
-        assert mode.lower() in ['train', 'test', 'gen'], \
-            "mode should be 'train', 'test' or 'gen', but got {}".format(mode)
+    def __init__(
+        self, data_file=None, mode='train', dict_size=-1, download=True
+    ):
+        assert mode.lower() in [
+            'train',
+            'test',
+            'gen',
+        ], "mode should be 'train', 'test' or 'gen', but got {}".format(mode)
         self.mode = mode.lower()
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(data_file, URL_TRAIN,
-                                                        MD5_TRAIN, 'wmt14',
-                                                        download)
+            assert (
+                download
+            ), "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(
+                data_file, URL_TRAIN, MD5_TRAIN, 'wmt14', download
+            )
 
         # read dataset into memory
         assert dict_size > 0, "dict_size should be set as positive number"
@@ -109,12 +109,11 @@ class WMT14(Dataset):
         self._load_data()
 
     def _load_data(self):
-
         def __to_dict(fd, size):
             out_dict = dict()
             for line_count, line in enumerate(fd):
                 if line_count < size:
-                    out_dict[cpt.to_text(line.strip())] = line_count
+                    out_dict[line.strip().decode()] = line_count
                 else:
                     break
             return out_dict
@@ -124,13 +123,15 @@ class WMT14(Dataset):
         self.trg_ids_next = []
         with tarfile.open(self.data_file, mode='r') as f:
             names = [
-                each_item.name for each_item in f
+                each_item.name
+                for each_item in f
                 if each_item.name.endswith("src.dict")
             ]
             assert len(names) == 1
             self.src_dict = __to_dict(f.extractfile(names[0]), self.dict_size)
             names = [
-                each_item.name for each_item in f
+                each_item.name
+                for each_item in f
                 if each_item.name.endswith("trg.dict")
             ]
             assert len(names) == 1
@@ -138,12 +139,13 @@ class WMT14(Dataset):
 
             file_name = "{}/{}".format(self.mode, self.mode)
             names = [
-                each_item.name for each_item in f
+                each_item.name
+                for each_item in f
                 if each_item.name.endswith(file_name)
             ]
             for name in names:
                 for line in f.extractfile(name):
-                    line = cpt.to_text(line)
+                    line = line.decode()
                     line_split = line.strip().split('\t')
                     if len(line_split) != 2:
                         continue
@@ -169,8 +171,11 @@ class WMT14(Dataset):
                     self.trg_ids_next.append(trg_ids_next)
 
     def __getitem__(self, idx):
-        return (np.array(self.src_ids[idx]), np.array(self.trg_ids[idx]),
-                np.array(self.trg_ids_next[idx]))
+        return (
+            np.array(self.src_ids[idx]),
+            np.array(self.trg_ids[idx]),
+            np.array(self.trg_ids_next[idx]),
+        )
 
     def __len__(self):
         return len(self.src_ids)
@@ -182,20 +187,20 @@ class WMT14(Dataset):
         Args:
             reverse (bool): wether to reverse key and value in dictionary,
                 i.e. key: value to value: key.
-    
+
         Returns:
             Two dictionaries, the source and target dictionary.
-    
+
         Examples:
-    
+
             .. code-block:: python
-    
+
                 from paddle.text.datasets import WMT14
                 wmt14 = WMT14(mode='train', dict_size=50)
                 src_dict, trg_dict = wmt14.get_dict()
         """
         src_dict, trg_dict = self.src_dict, self.trg_dict
         if reverse:
-            src_dict = {v: k for k, v in six.iteritems(src_dict)}
-            trg_dict = {v: k for k, v in six.iteritems(trg_dict)}
+            src_dict = {v: k for k, v in src_dict.items()}
+            trg_dict = {v: k for k, v in trg_dict.items()}
         return src_dict, trg_dict

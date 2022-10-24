@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -31,7 +29,6 @@ np.random.seed(10)
 
 
 class TestAbs(OpTest):
-
     def setUp(self):
         self.op_type = "abs"
         self.set_mlu()
@@ -58,12 +55,12 @@ class TestAbs(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], ['Out'],
-                                   check_eager=False)
+        self.check_grad_with_place(
+            self.place, ['X'], ['Out'], check_eager=False
+        )
 
 
 class TestAbsHalf(OpTest):
-
     def setUp(self):
         self.op_type = "abs"
         self.set_mlu()
@@ -90,8 +87,9 @@ class TestAbsHalf(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], ['Out'],
-                                   check_eager=False)
+        self.check_grad_with_place(
+            self.place, ['X'], ['Out'], check_eager=False
+        )
 
 
 if __name__ == "__main__":

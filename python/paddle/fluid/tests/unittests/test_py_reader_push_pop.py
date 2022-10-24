@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 import numpy as np
@@ -26,7 +24,6 @@ def feed_data(feed_queue, inputs):
 
 
 class TestPyReader(unittest.TestCase):
-
     def setUp(self):
         self.capacity = 10
         self.batch_size_min = 10
@@ -44,46 +41,55 @@ class TestPyReader(unittest.TestCase):
 
     def main(self, use_thread=False):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            place = fluid.CUDAPlace(
-                0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            place = (
+                fluid.CUDAPlace(0)
+                if fluid.core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
             executor = fluid.Executor(place)
 
-            data_file = fluid.layers.py_reader(capacity=self.capacity,
-                                               dtypes=self.dtypes,
-                                               lod_levels=self.lod_levels,
-                                               shapes=self.shapes)
+            data_file = fluid.layers.py_reader(
+                capacity=self.capacity,
+                dtypes=self.dtypes,
+                lod_levels=self.lod_levels,
+                shapes=self.shapes,
+            )
             feed_queue = data_file.queue
             read_out_data = fluid.layers.read_file(data_file)
             self.inputs = []
 
             for i in range(self.iterations):
                 in_data = fluid.LoDTensorArray()
-                batch_size = np.random.random_integers(self.batch_size_min,
-                                                       self.batch_size_max)
+                batch_size = np.random.random_integers(
+                    self.batch_size_min, self.batch_size_max
+                )
                 for shape, dtype in zip(self.shapes, self.dtypes):
-                    next_data = np.random.uniform(low=0,
-                                                  high=1000,
-                                                  size=(batch_size, ) +
-                                                  shape[1:]).astype(dtype)
+                    next_data = np.random.uniform(
+                        low=0, high=1000, size=(batch_size,) + shape[1:]
+                    ).astype(dtype)
                     in_data.append(
-                        fluid.executor._as_lodtensor(next_data, place))
+                        fluid.executor._as_lodtensor(next_data, place)
+                    )
 
                 self.inputs.append(in_data)
 
             executor.run(fluid.default_startup_program())
             self.outputs = []
             if use_thread:
-                thread = Thread(target=feed_data,
-                                args=(feed_queue, self.inputs))
+                thread = Thread(
+                    target=feed_data, args=(feed_queue, self.inputs)
+                )
                 thread.start()
                 for in_data in self.inputs:
                     self.outputs.append(
-                        executor.run(fetch_list=list(read_out_data)))
+                        executor.run(fetch_list=list(read_out_data))
+                    )
             else:
                 for in_data in self.inputs:
                     feed_queue.push(in_data)
                     self.outputs.append(
-                        executor.run(fetch_list=list(read_out_data)))
+                        executor.run(fetch_list=list(read_out_data))
+                    )
 
             feed_queue.close()
             self.validate()

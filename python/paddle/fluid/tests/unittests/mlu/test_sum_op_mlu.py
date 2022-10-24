@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -29,7 +27,6 @@ SEED = 2021
 
 
 class TestSum1(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.init_dtype()
@@ -56,7 +53,6 @@ class TestSum1(OpTest):
 
 
 class TestSum2(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.init_dtype()
@@ -74,8 +70,12 @@ class TestSum2(OpTest):
         # For example, the results of `x0+x1+x2+x3` is different from that of
         # `x3+x2+x1+x0` if the dtype is fp16.
         # Therefore, converting the input to fp32 for calculation.
-        y = (x0.astype(np.float32) + x1.astype(np.float32) +
-             x2.astype(np.float32) + x3.astype(np.float32)).astype(self.dtype)
+        y = (
+            x0.astype(np.float32)
+            + x1.astype(np.float32)
+            + x2.astype(np.float32)
+            + x3.astype(np.float32)
+        ).astype(self.dtype)
         self.outputs = {'Out': y}
 
         self.attrs = {'use_mkldnn': False}
@@ -91,7 +91,6 @@ class TestSum2(OpTest):
 
 
 class TestSum3(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.init_dtype()

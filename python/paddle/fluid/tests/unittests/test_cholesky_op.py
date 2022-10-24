@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -26,16 +24,15 @@ from decorator_helper import prog_scope
 
 
 @skip_check_grad_ci(
-    reason=
-    "The input of cholesky_op should always be symmetric positive-definite. "
+    reason="The input of cholesky_op should always be symmetric positive-definite. "
     "However, OpTest calculates the numeric gradient of each element in input "
     "via small finite difference, which makes the input no longer symmetric "
     "positive-definite thus can not compute the Cholesky decomposition. "
     "While we can use the gradient_checker.grad_check to perform gradient "
     "check of cholesky_op, since it supports check gradient with a program "
-    "and we can construct symmetric positive-definite matrices in the program")
+    "and we can construct symmetric positive-definite matrices in the program"
+)
 class TestCholeskyOp(OpTest):
-
     def setUp(self):
         self.op_type = "cholesky"
         self._input_shape = (2, 32, 32)
@@ -43,12 +40,14 @@ class TestCholeskyOp(OpTest):
         self.init_config()
         self.trans_dims = list(range(len(self._input_shape) - 2)) + [
             len(self._input_shape) - 1,
-            len(self._input_shape) - 2
+            len(self._input_shape) - 2,
         ]
         self.root_data = np.random.random(self._input_shape).astype("float64")
         # construct symmetric positive-definite matrice
-        input_data = np.matmul(
-            self.root_data, self.root_data.transpose(self.trans_dims)) + 1e-05
+        input_data = (
+            np.matmul(self.root_data, self.root_data.transpose(self.trans_dims))
+            + 1e-05
+        )
         output_data = np.linalg.cholesky(input_data).astype("float64")
         if self._upper:
             output_data = output_data.transpose(self.trans_dims)
@@ -72,8 +71,9 @@ class TestCholeskyOp(OpTest):
         root_data = self.root_data[..., :3, :3]
         prog = fluid.Program()
         with fluid.program_guard(prog):
-            root = layers.create_parameter(dtype=root_data.dtype,
-                                           shape=root_data.shape)
+            root = layers.create_parameter(
+                dtype=root_data.dtype, shape=root_data.shape
+            )
             root_t = layers.transpose(root, self.trans_dims)
             x = layers.matmul(x=root, y=root_t) + 1e-05
             out = paddle.cholesky(x, upper=self.attrs["upper"])
@@ -84,19 +84,16 @@ class TestCholeskyOp(OpTest):
 
 
 class TestCholeskyOpLower(TestCholeskyOp):
-
     def init_config(self):
         self._upper = False
 
 
 class TestCholeskyOp2D(TestCholeskyOp):
-
     def init_config(self):
         self._input_shape = (64, 64)
 
 
 class TestDygraph(unittest.TestCase):
-
     def test_dygraph(self):
         if core.is_compiled_with_rocm():
             paddle.disable_static(place=fluid.CPUPlace())
@@ -110,7 +107,6 @@ class TestDygraph(unittest.TestCase):
 
 
 class TestCholeskySingularAPI(unittest.TestCase):
-
     def setUp(self):
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
@@ -125,15 +121,15 @@ class TestCholeskySingularAPI(unittest.TestCase):
 
             exe = fluid.Executor(place)
             try:
-                fetches = exe.run(fluid.default_main_program(),
-                                  feed={"input": input_np},
-                                  fetch_list=[result])
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
             except RuntimeError as ex:
                 print("The mat is singular")
-                pass
             except ValueError as ex:
                 print("The mat is singular")
-                pass
 
     def test_static(self):
         for place in self.places:
@@ -142,18 +138,19 @@ class TestCholeskySingularAPI(unittest.TestCase):
     def test_dygraph(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-                input_np = np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                                     [[10, 11, 12], [13, 14, 15],
-                                      [16, 17, 18]]]).astype("float64")
+                input_np = np.array(
+                    [
+                        [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                        [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+                    ]
+                ).astype("float64")
                 input = fluid.dygraph.to_variable(input_np)
                 try:
                     result = paddle.cholesky(input)
                 except RuntimeError as ex:
                     print("The mat is singular")
-                    pass
                 except ValueError as ex:
                     print("The mat is singular")
-                    pass
 
 
 if __name__ == "__main__":

@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
 
 namespace paddle {
 namespace operators {
 
 #if CUDNN_VERSION >= 7100
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
@@ -40,12 +40,12 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    auto* input = ctx.Input<Tensor>("Input");
-    auto filters = ctx.MultiInput<framework::Tensor>("Filter");
-    auto bias = ctx.MultiInput<framework::Tensor>("Bias");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto filters = ctx.MultiInput<phi::DenseTensor>("Filter");
+    auto bias = ctx.MultiInput<phi::DenseTensor>("Bias");
 
-    auto* output = ctx.Output<Tensor>("Output");
-    auto temp_outs = ctx.MultiOutput<framework::Tensor>("TempOutput");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
+    auto temp_outs = ctx.MultiOutput<phi::DenseTensor>("TempOutput");
 
     const std::string pool_type = ctx.Attr<std::string>("pooling_type");
     const std::string activation = ctx.Attr<std::string>("activation");
@@ -55,8 +55,10 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
         static_cast<size_t>(ctx.Attr<int>("workspace_size_MB"));
 
     const T* input_data = input->data<T>();
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    T* temp_data = temp_outs[0]->mutable_data<T>(input->dims(), ctx.GetPlace());
+    T* output_data = dev_ctx.Alloc<T>(output, output->numel() * sizeof(T));
+    temp_outs[0]->Resize(input->dims());
+    T* temp_data =
+        dev_ctx.Alloc<T>(temp_outs[0], temp_outs[0]->numel() * sizeof(T));
 
     DataLayout layout = DataLayout::kNCHW;
     std::vector<int> in_dim = phi::vectorize<int>(input->dims());
@@ -204,7 +206,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
       int best_algo_idx = 0;
       size_t tmp_size = 0;
       std::unique_ptr<cudnnConvolutionFwdAlgoPerf_t[]> perf_results(
-          new cudnnConvolutionFwdAlgoPerf_t[kNUM_CUDNN_FWD_ALGS]);
+          new cudnnConvolutionFwdAlgoPerf_t[phi::kNUM_CUDNN_FWD_ALGS]);
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardAlgorithm_v7(
               handle,
@@ -212,7 +214,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
               filter_desc[i],
               conv_desc[i],
               out_desc[i],
-              kNUM_CUDNN_FWD_ALGS,
+              phi::kNUM_CUDNN_FWD_ALGS,
               &perf_count,
               perf_results.get()));
       algo[i] = (perf_results.get())[best_algo_idx].algo;
@@ -254,8 +256,9 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     in_datas.push_back(static_cast<const void*>(input_data));
     in_datas.push_back(
         static_cast<const void*>(output_data + (oc0 + oc1) * h * w));
-    T* temp2_data = temp_outs[1]->mutable_data<T>(phi::make_ddim(out_dims[2]),
-                                                  ctx.GetPlace());
+    temp_outs[1]->Resize(phi::make_ddim(out_dims[2]));
+    T* temp2_data =
+        dev_ctx.Alloc<T>(temp_outs[1], temp_outs[1]->numel() * sizeof(T));
     in_datas.push_back(static_cast<const void*>(temp2_data + oc2 * h * w));
 
     std::vector<void*> out_datas;

@@ -16,6 +16,7 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace phi {
@@ -43,13 +44,13 @@ ScaleLossGradOpHandle::~ScaleLossGradOpHandle() {}
 
 struct ScaleLossGradFunctor {
   float coeff_;
-  Tensor *out_;
+  phi::DenseTensor *out_;
   platform::Place place_;
   proto::VarType::Type out_dtype_;
   platform::DeviceContext *ctx_;
 
   ScaleLossGradFunctor(float coeff,
-                       Tensor *out,
+                       phi::DenseTensor *out,
                        platform::Place place,
                        proto::VarType::Type dtype,
                        platform::DeviceContext *ctx)
@@ -101,6 +102,7 @@ std::string ScaleLossGradOpHandle::LossGradName() const {
 void ScaleLossGradOpHandle::RunImpl() {
   platform::RecordEvent record_event(
       Name(), platform::TracerEventType::UserDefined, 2);
+
   RunOnVar(local_exec_scopes_[0]->FindVar(LossGradName()), true);
 }
 

@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.tensor as tensor
@@ -25,7 +22,6 @@ import paddle
 
 
 class TestTraceOp(OpTest):
-
     def setUp(self):
         self.op_type = "trace"
         self.python_api = paddle.trace
@@ -46,31 +42,32 @@ class TestTraceOp(OpTest):
 
 
 class TestTraceOpCase1(TestTraceOp):
-
     def init_config(self):
         self.case = np.random.randn(2, 20, 2, 3).astype('float32')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 1, 'axis1': 0, 'axis2': 2}
-        self.target = np.trace(self.inputs['Input'],
-                               offset=self.attrs['offset'],
-                               axis1=self.attrs['axis1'],
-                               axis2=self.attrs['axis2'])
+        self.target = np.trace(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
 
 
 class TestTraceOpCase2(TestTraceOp):
-
     def init_config(self):
         self.case = np.random.randn(2, 20, 2, 3).astype('float32')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -5, 'axis1': 1, 'axis2': -1}
-        self.target = np.trace(self.inputs['Input'],
-                               offset=self.attrs['offset'],
-                               axis1=self.attrs['axis1'],
-                               axis2=self.attrs['axis2'])
+        self.target = np.trace(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
 
 
 class TestTraceAPICase(unittest.TestCase):
-
     def test_case1(self):
         case = np.random.randn(2, 20, 2, 3).astype('float32')
         data1 = fluid.data(name='data1', shape=[2, 20, 2, 3], dtype='float32')
@@ -79,14 +76,16 @@ class TestTraceAPICase(unittest.TestCase):
 
         place = core.CPUPlace()
         exe = fluid.Executor(place)
-        results = exe.run(fluid.default_main_program(),
-                          feed={"data1": case},
-                          fetch_list=[out1, out2],
-                          return_numpy=True)
+        results = exe.run(
+            fluid.default_main_program(),
+            feed={"data1": case},
+            fetch_list=[out1, out2],
+            return_numpy=True,
+        )
         target1 = np.trace(case)
         target2 = np.trace(case, offset=-5, axis1=1, axis2=-1)
-        self.assertTrue(np.allclose(results[0], target1))
-        self.assertTrue(np.allclose(results[1], target2))
+        np.testing.assert_allclose(results[0], target1, rtol=1e-05)
+        np.testing.assert_allclose(results[1], target2, rtol=1e-05)
 
 
 if __name__ == "__main__":

@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.utils import gast
 from .logging_utils import warn
-from .utils import is_paddle_api, is_dygraph_api, is_numpy_api, index_in_list, ast_to_source_code
+from .utils import (
+    is_paddle_api,
+    is_dygraph_api,
+    is_numpy_api,
+    index_in_list,
+    ast_to_source_code,
+)
 
 __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
 
@@ -28,6 +32,7 @@ class NodeVarType(object):
     tensor variable in if clause may lead to different conversion from dygraph
     to static graph.
     """
+
     ERROR = -1  # Returns when static analysis gets error
     UNKNOWN = 0  # Reserve for AST nodes have not known the type
     STATEMENT = 1  # For nodes representing statement (non-variable type)
@@ -64,7 +69,7 @@ class NodeVarType(object):
         "int": INT,
         "float": FLOAT,
         "bool": BOOLEAN,
-        "str": STRING
+        "str": STRING,
     }
 
     @staticmethod
@@ -78,9 +83,12 @@ class NodeVarType(object):
             return in_type1
 
         supported_types = [
-            NodeVarType.BOOLEAN, NodeVarType.INT, NodeVarType.FLOAT,
-            NodeVarType.NUMPY_NDARRAY, NodeVarType.TENSOR,
-            NodeVarType.PADDLE_RETURN_TYPES
+            NodeVarType.BOOLEAN,
+            NodeVarType.INT,
+            NodeVarType.FLOAT,
+            NodeVarType.NUMPY_NDARRAY,
+            NodeVarType.TENSOR,
+            NodeVarType.PADDLE_RETURN_TYPES,
         ]
 
         if in_type1 not in supported_types:
@@ -124,14 +132,14 @@ class AstVarScope(object):
     AstVarScope is a class holding the map from current scope variable to its
     type.
     """
+
     SCOPE_TYPE_SCRIPT = 0
     SCOPE_TYPE_FUNCTION = 1
     SCOPE_TYPE_CLASS = 2
 
-    def __init__(self,
-                 scope_name='',
-                 scope_type=SCOPE_TYPE_SCRIPT,
-                 parent_scope=None):
+    def __init__(
+        self, scope_name='', scope_type=SCOPE_TYPE_SCRIPT, parent_scope=None
+    ):
         self.sub_scopes = []
         self.name_to_id = {}
         self.id_to_type = {}
@@ -160,8 +168,9 @@ class AstVarScope(object):
             num_id = self.cur_id
             self.cur_id += 1
             self.name_to_id[var_name] = num_id
-        self.id_to_type[num_id] = node_var_type if isinstance(
-            node_var_type, set) else {node_var_type}
+        self.id_to_type[num_id] = (
+            node_var_type if isinstance(node_var_type, set) else {node_var_type}
+        )
 
     def get_var_type(self, var_name):
         if var_name in self.name_to_id:
@@ -181,20 +190,24 @@ class AstVarEnv(object):
         self.cur_scope = AstVarScope()
 
     def enter_scope(self, scope_name, scope_type):
-        self.cur_scope = AstVarScope(scope_name,
-                                     scope_type,
-                                     parent_scope=self.cur_scope)
+        self.cur_scope = AstVarScope(
+            scope_name, scope_type, parent_scope=self.cur_scope
+        )
         return self.cur_scope
 
     def exit_scope(self):
-        assert self.cur_scope.parent_scope is not None, "Call exit_scope in "\
+        assert self.cur_scope.parent_scope is not None, (
+            "Call exit_scope in "
             "AstVarEnv when current scope doesn't have parent scope."
+        )
         self.cur_scope = self.cur_scope.parent_scope
         return self.cur_scope
 
     def get_parent_scope(self):
-        assert self.cur_scope.parent_scope is not None, "Call parent_scope in "\
+        assert self.cur_scope.parent_scope is not None, (
+            "Call parent_scope in "
             "AstVarEnv when current scope doesn't have parent scope."
+        )
         return self.cur_scope.parent_scope
 
     def add_var_type(self, var_name, node_var_type):
@@ -254,11 +267,13 @@ class StaticAnalysisVisitor(object):
         self.ancestor_wrappers.append(cur_wrapper)
         for child in gast.iter_child_nodes(node):
             if isinstance(child, gast.FunctionDef) or isinstance(
-                    child, gast.AsyncFunctionDef):
+                child, gast.AsyncFunctionDef
+            ):
                 # TODO: current version is function name mapping to its type
                 # consider complex case involving parameters
-                self.var_env.enter_scope(child.name,
-                                         AstVarScope.SCOPE_TYPE_FUNCTION)
+                self.var_env.enter_scope(
+                    child.name, AstVarScope.SCOPE_TYPE_FUNCTION
+                )
                 func_type = self.dfs_visit(child)
                 self.var_env.exit_scope()
             else:
@@ -286,8 +301,10 @@ class StaticAnalysisVisitor(object):
             return True
 
     def _get_constant_node_type(self, node):
-        assert isinstance(node, gast.Constant), \
-            "Type of input node should be gast.Constant, but received %s" % type(node)
+        assert isinstance(node, gast.Constant), (
+            "Type of input node should be gast.Constant, but received %s"
+            % type(node)
+        )
         # singleton: None, True or False
         if node.value is None:
             return {NodeVarType.NONE}
@@ -340,7 +357,8 @@ class StaticAnalysisVisitor(object):
                     for sub_target in target.elts:
                         if isinstance(sub_target, gast.Name):
                             self.node_to_wrapper_map[
-                                sub_target].node_var_type = ret_type
+                                sub_target
+                            ].node_var_type = ret_type
                             self.var_env.set_var_type(sub_target.id, ret_type)
             return ret_type
 
@@ -351,9 +369,12 @@ class StaticAnalysisVisitor(object):
             # if annotation and value(Constant) are diffent type, we use value type
             if node.value:
                 node_value_type = self.node_to_wrapper_map[
-                    node.value].node_var_type
-                if not (node_value_type
-                        & {NodeVarType.UNKNOWN, NodeVarType.STATEMENT}):
+                    node.value
+                ].node_var_type
+                if not (
+                    node_value_type
+                    & {NodeVarType.UNKNOWN, NodeVarType.STATEMENT}
+                ):
                     ret_type = node_value_type
             if isinstance(node.target, gast.Name):
                 self.node_to_wrapper_map[node.target].node_var_type = ret_type
@@ -367,8 +388,9 @@ class StaticAnalysisVisitor(object):
                 return {NodeVarType.BOOLEAN}
             # If node is child of functionDef.arguments
             parent_node_wrapper = cur_wrapper.parent
-            if parent_node_wrapper and isinstance(parent_node_wrapper.node,
-                                                  gast.arguments):
+            if parent_node_wrapper and isinstance(
+                parent_node_wrapper.node, gast.arguments
+            ):
 
                 return self._get_func_argument_type(parent_node_wrapper, node)
 
@@ -380,7 +402,10 @@ class StaticAnalysisVisitor(object):
                 return {NodeVarType.NONE}
 
             return_type = self.node_to_wrapper_map[node.value].node_var_type
-            assert self.var_env.cur_scope.scope_type == AstVarScope.SCOPE_TYPE_FUNCTION, "Return at non-function scope"
+            assert (
+                self.var_env.cur_scope.scope_type
+                == AstVarScope.SCOPE_TYPE_FUNCTION
+            ), "Return at non-function scope"
             func_name = self.var_env.cur_scope.scope_name
             parent_scope = self.var_env.get_parent_scope()
             parent_scope.add_var_type(func_name, return_type)
@@ -408,11 +433,11 @@ class StaticAnalysisVisitor(object):
     def _get_func_argument_type(self, parent_node_wrapper, node):
         """
         Returns type information by parsing annotation or default values.
-        
+
         For example:
             1. parse by default values.
                 foo(x, y=1, z='s') -> x: UNKNOWN, y: INT, z: STR
-            
+
             2. parse by Py3 type annotation.
                 foo(x: Tensor, y: int, z: str) -> x: Tensor, y: INT, z: STR
 

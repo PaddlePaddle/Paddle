@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import subprocess
 import unittest
@@ -27,7 +25,10 @@ import paddle
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from test_uniform_random_op import TestUniformRandomOp, TestUniformRandomOpSelectedRows
+from test_uniform_random_op import (
+    TestUniformRandomOp,
+    TestUniformRandomOpSelectedRows,
+)
 
 paddle.enable_static()
 
@@ -41,7 +42,6 @@ def output_hist(out):
 
 
 class TestNPUUniformRandomOp(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.op_type = "uniform_random"
@@ -55,7 +55,7 @@ class TestNPUUniformRandomOp(OpTest):
             "shape": [1000, 784],
             "min": -5.0,
             "max": 10.0,
-            "seed": 10
+            "seed": 10,
         }
         self.output_hist = output_hist
 
@@ -71,15 +71,10 @@ class TestNPUUniformRandomOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg="hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
-
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_npu():
@@ -94,20 +89,18 @@ class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         paddle.seed(10)
-        op = Operator("uniform_random",
-                      Out="X",
-                      shape=[1000, 784],
-                      min=-5.0,
-                      max=10.0,
-                      seed=10)
+        op = Operator(
+            "uniform_random",
+            Out="X",
+            shape=[1000, 784],
+            min=-5.0,
+            max=10.0,
+            seed=10,
+        )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        np.testing.assert_allclose(hist,
-                                   prob,
-                                   rtol=0,
-                                   atol=0.01,
-                                   err_msg="hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 if __name__ == "__main__":

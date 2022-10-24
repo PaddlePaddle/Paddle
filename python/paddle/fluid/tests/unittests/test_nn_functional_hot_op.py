@@ -12,22 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import math
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn.functional as functional
-import paddle.fluid.framework as framework
 from paddle.fluid.framework import Program, program_guard
 
 
 class TestOneHotOp(OpTest):
-
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -51,7 +46,6 @@ class TestOneHotOp(OpTest):
 
 
 class TestOneHotOp_attr(OpTest):
-
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -60,8 +54,9 @@ class TestOneHotOp_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]), 1,
-                              depth)).astype('float32')
+        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+            'float32'
+        )
 
         for i in range(np.product(x.shape)):
             out[i, 0, x[i]] = 1.0
@@ -75,7 +70,6 @@ class TestOneHotOp_attr(OpTest):
 
 
 class TestOneHotOp_default_dtype(OpTest):
-
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -99,7 +93,6 @@ class TestOneHotOp_default_dtype(OpTest):
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
-
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -108,8 +101,9 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]), 1,
-                              depth)).astype('float32')
+        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+            'float32'
+        )
 
         for i in range(np.product(x.shape)):
             out[i, 0, x[i]] = 1.0
@@ -123,7 +117,6 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOp_exception(unittest.TestCase):
-
     def setUp(self):
         self.op_type = 'one_hot_v2'
         self.depth = 10
@@ -139,30 +132,34 @@ class TestOneHotOp_exception(unittest.TestCase):
     def test_check_output(self):
         program = Program()
         with program_guard(program):
-            x = fluid.layers.data(name='x',
-                                  shape=[self.dimension],
-                                  dtype='float32',
-                                  lod_level=1)
+            x = fluid.layers.data(
+                name='x', shape=[self.dimension], dtype='float32', lod_level=1
+            )
             block = program.current_block()
-            one_hot_out = block.create_var(name="one_hot_out",
-                                           type=core.VarDesc.VarType.LOD_TENSOR,
-                                           dtype='float32')
-            block.append_op(type='one_hot',
-                            inputs={'X': x},
-                            attrs={'depth': self.depth},
-                            outputs={'Out': one_hot_out})
+            one_hot_out = block.create_var(
+                name="one_hot_out",
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                dtype='float32',
+            )
+            block.append_op(
+                type='one_hot',
+                inputs={'X': x},
+                attrs={'depth': self.depth},
+                outputs={'Out': one_hot_out},
+            )
             exe = fluid.Executor(self.place)
 
             def run():
-                exe.run(feed={'x': self.x},
-                        fetch_list=[one_hot_out],
-                        return_numpy=False)
+                exe.run(
+                    feed={'x': self.x},
+                    fetch_list=[one_hot_out],
+                    return_numpy=False,
+                )
 
             self.assertRaises(ValueError, run)
 
 
 class TestOneHotOpApi(unittest.TestCase):
-
     def test_api(self):
         num_classes = 10
         self._run(num_classes)
@@ -173,40 +170,45 @@ class TestOneHotOpApi(unittest.TestCase):
 
     def test_api_with_dygraph(self):
         num_classes = 10
-        label = np.array([
-            np.random.randint(0, num_classes - 1) for i in range(6)
-        ]).reshape([6, 1])
+        label = np.array(
+            [np.random.randint(0, num_classes - 1) for i in range(6)]
+        ).reshape([6, 1])
         with fluid.dygraph.guard():
             one_hot_label = functional.one_hot(
-                x=fluid.dygraph.to_variable(label), num_classes=num_classes)
+                x=fluid.dygraph.to_variable(label), num_classes=num_classes
+            )
 
     def _run(self, num_classes):
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
         one_hot_label = functional.one_hot(x=label, num_classes=num_classes)
 
         place = fluid.CPUPlace()
-        label_data = np.array([np.random.randint(0, 10 - 1)
-                               for i in range(6)]).reshape([6, 1])
+        label_data = np.array(
+            [np.random.randint(0, 10 - 1) for i in range(6)]
+        ).reshape([6, 1])
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={
-            'label': label_data,
-        },
-                      fetch_list=[one_hot_label],
-                      return_numpy=False)
+        ret = exe.run(
+            feed={
+                'label': label_data,
+            },
+            fetch_list=[one_hot_label],
+            return_numpy=False,
+        )
 
 
 class BadInputTestOnehotV2(unittest.TestCase):
-
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
-                label = fluid.layers.data(name="label",
-                                          shape=[4],
-                                          append_batch_size=False,
-                                          dtype="float32")
+                label = fluid.layers.data(
+                    name="label",
+                    shape=[4],
+                    append_batch_size=False,
+                    dtype="float32",
+                )
                 one_hot_label = functional.one_hot(x=label, num_classes=4)
 
             self.assertRaises(TypeError, test_bad_x)

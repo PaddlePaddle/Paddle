@@ -12,18 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 
 
 class API_Test_Nansum(unittest.TestCase):
-
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = fluid.Program()
@@ -40,12 +35,14 @@ class API_Test_Nansum(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup_program)
 
-            x = np.array([[float('nan'), 3, 5, 9], [1, 2,
-                                                    float('-nan'),
-                                                    7]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': x},
-                          fetch_list=[out1, out2, out3, out4])
+            x = np.array(
+                [[float('nan'), 3, 5, 9], [1, 2, float('-nan'), 7]]
+            ).astype(np.float32)
+            res = exe.run(
+                train_program,
+                feed={'input': x},
+                fetch_list=[out1, out2, out3, out4],
+            )
 
             out1_np = np.array(res[0])
             out2_np = np.array(res[1])
@@ -56,14 +53,22 @@ class API_Test_Nansum(unittest.TestCase):
             out3_ref = np.array([17, 10]).astype(np.float32)
             out4_ref = np.array([[17], [10]]).astype(np.float32)
 
-            self.assertTrue((out1_np == out1_ref).all(),
-                            msg='nansum output is wrong, out =' + str(out1_np))
-            self.assertTrue((out2_np == out2_ref).all(),
-                            msg='nansum output is wrong, out =' + str(out2_np))
-            self.assertTrue((out3_np == out3_ref).all(),
-                            msg='nansum output is wrong, out =' + str(out3_np))
-            self.assertTrue((out4_np == out4_ref).all(),
-                            msg='nansum output is wrong, out =' + str(out4_np))
+            self.assertTrue(
+                (out1_np == out1_ref).all(),
+                msg='nansum output is wrong, out =' + str(out1_np),
+            )
+            self.assertTrue(
+                (out2_np == out2_ref).all(),
+                msg='nansum output is wrong, out =' + str(out2_np),
+            )
+            self.assertTrue(
+                (out3_np == out3_ref).all(),
+                msg='nansum output is wrong, out =' + str(out3_np),
+            )
+            self.assertTrue(
+                (out4_np == out4_ref).all(),
+                msg='nansum output is wrong, out =' + str(out4_np),
+            )
 
     def test_error_api(self):
         paddle.enable_static()
@@ -83,8 +88,9 @@ class API_Test_Nansum(unittest.TestCase):
         self.assertRaises(TypeError, run2)
 
     def test_dygraph(self):
-        x = np.array([[float('nan'), 3, 5, 9], [1, 2, float('-nan'),
-                                                7]]).astype(np.float32)
+        x = np.array(
+            [[float('nan'), 3, 5, 9], [1, 2, float('-nan'), 7]]
+        ).astype(np.float32)
         with fluid.dygraph.guard():
             inputs = fluid.dygraph.to_variable(x)
             out = paddle.nansum(inputs)
@@ -92,7 +98,8 @@ class API_Test_Nansum(unittest.TestCase):
 
             self.assertTrue(
                 (out.numpy() == out_ref).all(),
-                msg='nansum output is wrong, out =' + str(out.numpy()))
+                msg='nansum output is wrong, out =' + str(out.numpy()),
+            )
 
 
 if __name__ == "__main__":

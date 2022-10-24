@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -26,23 +24,27 @@ def PolygonBoxRestore(input):
     geo_channels = shape[1]
     h = shape[2]
     w = shape[3]
-    h_indexes = np.array(list(range(h)) * w).reshape(
-        [w, h]).transpose()[np.newaxis, :]  # [1, h, w]
-    w_indexes = np.array(list(range(w)) * h).reshape(
-        [h, w])[np.newaxis, :]  # [1, h, w]
-    indexes = np.concatenate(
-        (w_indexes, h_indexes))[np.newaxis, :]  # [1, 2, h, w]
+    h_indexes = (
+        np.array(list(range(h)) * w).reshape([w, h]).transpose()[np.newaxis, :]
+    )  # [1, h, w]
+    w_indexes = np.array(list(range(w)) * h).reshape([h, w])[
+        np.newaxis, :
+    ]  # [1, h, w]
+    indexes = np.concatenate((w_indexes, h_indexes))[
+        np.newaxis, :
+    ]  # [1, 2, h, w]
+    indexes = indexes.repeat([geo_channels / 2], axis=0)[
+        np.newaxis, :
+    ]  # [1, geo_channels/2, 2, h, w]
     indexes = indexes.repeat(
-        [geo_channels / 2],
-        axis=0)[np.newaxis, :]  # [1, geo_channels/2, 2, h, w]
-    indexes = indexes.repeat([batch_size],
-                             axis=0)  # [batch_size, geo_channels/2, 2, h, w]
-    return indexes.reshape(
-        input.shape) * 4 - input  # [batch_size, geo_channels, h, w]
+        [batch_size], axis=0
+    )  # [batch_size, geo_channels/2, 2, h, w]
+    return (
+        indexes.reshape(input.shape) * 4 - input
+    )  # [batch_size, geo_channels, h, w]
 
 
 class TestPolygonBoxRestoreOp(OpTest):
-
     def config(self):
         self.input_shape = (1, 8, 2, 2)
 
@@ -59,25 +61,21 @@ class TestPolygonBoxRestoreOp(OpTest):
 
 
 class TestCase1(TestPolygonBoxRestoreOp):
-
     def config(self):
         self.input_shape = (2, 10, 3, 2)
 
 
 class TestCase2(TestPolygonBoxRestoreOp):
-
     def config(self):
         self.input_shape = (3, 12, 4, 5)
 
 
 class TestPolygonBoxInvalidInput(unittest.TestCase):
-
     def test_error(self):
-
         def test_invalid_input():
-            input = fluid.data(name='input',
-                               shape=[None, 3, 32, 32],
-                               dtype='int64')
+            input = fluid.data(
+                name='input', shape=[None, 3, 32, 32], dtype='int64'
+            )
             out = fluid.layers.polygon_box_transform(input)
 
         self.assertRaises(TypeError, test_invalid_input)

@@ -12,20 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
 from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDiagV2Op(OpTest):
-
     def setUp(self):
         self.op_type = "diag_v2"
         self.python_api = paddle.diag
@@ -38,7 +34,7 @@ class TestDiagV2Op(OpTest):
         self.inputs = {'X': self.x}
         self.attrs = {
             'offset': self.offset,
-            'padding_value': self.padding_value
+            'padding_value': self.padding_value,
         }
         self.outputs = {'Out': self.out}
 
@@ -55,38 +51,36 @@ class TestDiagV2Op(OpTest):
 
 
 class TestDiagV2OpCase1(TestDiagV2Op):
-
     def init_config(self):
         self.offset = 1
         self.out = np.diag(self.x, self.offset)
 
 
 class TestDiagV2OpCase2(TestDiagV2Op):
-
     def init_config(self):
         self.offset = -1
         self.out = np.diag(self.x, self.offset)
 
 
 class TestDiagV2OpCase3(TestDiagV2Op):
-
     def init_config(self):
         self.x = np.random.randint(-10, 10, size=(10, 10)).astype("float64")
         self.out = np.diag(self.x, self.offset)
 
 
 class TestDiagV2OpCase4(TestDiagV2Op):
-
     def init_config(self):
         self.x = np.random.rand(100)
         self.padding_value = 2
         n = self.x.size
-        self.out = self.padding_value * np.ones((n, n)) + np.diag(
-            self.x, self.offset) - np.diag(self.padding_value * np.ones(n))
+        self.out = (
+            self.padding_value * np.ones((n, n))
+            + np.diag(self.x, self.offset)
+            - np.diag(self.padding_value * np.ones(n))
+        )
 
 
 class TestDiagV2Error(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -107,7 +101,6 @@ class TestDiagV2Error(unittest.TestCase):
 
 
 class TestDiagV2API(unittest.TestCase):
-
     def setUp(self):
         self.input_np = np.random.random(size=(10, 10)).astype(np.float32)
         self.expected0 = np.diag(self.input_np)
@@ -118,21 +111,27 @@ class TestDiagV2API(unittest.TestCase):
         self.offset = 0
         self.padding_value = 8
         n = self.input_np2.size
-        self.expected3 = self.padding_value * np.ones(
-            (n, n)) + np.diag(self.input_np2, self.offset) - np.diag(
-                self.padding_value * np.ones(n))
+        self.expected3 = (
+            self.padding_value * np.ones((n, n))
+            + np.diag(self.input_np2, self.offset)
+            - np.diag(self.padding_value * np.ones(n))
+        )
 
         self.input_np3 = np.random.randint(-10, 10, size=(100)).astype(np.int64)
         self.padding_value = 8.0
         n = self.input_np3.size
-        self.expected4 = self.padding_value * np.ones(
-            (n, n)) + np.diag(self.input_np3, self.offset) - np.diag(
-                self.padding_value * np.ones(n))
+        self.expected4 = (
+            self.padding_value * np.ones((n, n))
+            + np.diag(self.input_np3, self.offset)
+            - np.diag(self.padding_value * np.ones(n))
+        )
 
         self.padding_value = -8
-        self.expected5 = self.padding_value * np.ones(
-            (n, n)) + np.diag(self.input_np3, self.offset) - np.diag(
-                self.padding_value * np.ones(n))
+        self.expected5 = (
+            self.padding_value * np.ones((n, n))
+            + np.diag(self.input_np3, self.offset)
+            - np.diag(self.padding_value * np.ones(n))
+        )
 
         self.input_np4 = np.random.random(size=(2000, 2000)).astype(np.float32)
         self.expected6 = np.diag(self.input_np4)
@@ -150,60 +149,60 @@ class TestDiagV2API(unittest.TestCase):
     def run_imperative(self):
         x = paddle.to_tensor(self.input_np)
         y = paddle.diag(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected0))
+        np.testing.assert_allclose(y.numpy(), self.expected0, rtol=1e-05)
 
         y = paddle.diag(x, offset=1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected1))
+        np.testing.assert_allclose(y.numpy(), self.expected1, rtol=1e-05)
 
         y = paddle.diag(x, offset=-1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected2))
+        np.testing.assert_allclose(y.numpy(), self.expected2, rtol=1e-05)
 
         x = paddle.to_tensor(self.input_np2)
         y = paddle.diag(x, padding_value=8)
-        self.assertTrue(np.allclose(y.numpy(), self.expected3))
+        np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
 
         x = paddle.to_tensor(self.input_np3)
         y = paddle.diag(x, padding_value=8.0)
-        self.assertTrue(np.allclose(y.numpy(), self.expected4))
+        np.testing.assert_allclose(y.numpy(), self.expected4, rtol=1e-05)
 
         y = paddle.diag(x, padding_value=-8)
-        self.assertTrue(np.allclose(y.numpy(), self.expected5))
+        np.testing.assert_allclose(y.numpy(), self.expected5, rtol=1e-05)
 
         x = paddle.to_tensor(self.input_np4)
         y = paddle.diag(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected6))
+        np.testing.assert_allclose(y.numpy(), self.expected6, rtol=1e-05)
 
         y = paddle.diag(x, offset=1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected7))
+        np.testing.assert_allclose(y.numpy(), self.expected7, rtol=1e-05)
 
         y = paddle.diag(x, offset=-1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected8))
+        np.testing.assert_allclose(y.numpy(), self.expected8, rtol=1e-05)
 
         x = paddle.to_tensor(self.input_np5)
         y = paddle.diag(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected9))
+        np.testing.assert_allclose(y.numpy(), self.expected9, rtol=1e-05)
 
         y = paddle.diag(x, offset=1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected10))
+        np.testing.assert_allclose(y.numpy(), self.expected10, rtol=1e-05)
 
         y = paddle.diag(x, offset=-1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected11))
+        np.testing.assert_allclose(y.numpy(), self.expected11, rtol=1e-05)
 
         x = paddle.to_tensor(self.input_np6)
         y = paddle.diag(x, offset=-1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected12))
+        np.testing.assert_allclose(y.numpy(), self.expected12, rtol=1e-05)
 
     def run_static(self, use_gpu=False):
         x = paddle.static.data(name='input', shape=[10, 10], dtype='float32')
         x2 = paddle.static.data(name='input2', shape=[100], dtype='float64')
         x3 = paddle.static.data(name='input3', shape=[100], dtype='int64')
-        x4 = paddle.static.data(name='input4',
-                                shape=[2000, 2000],
-                                dtype='float32')
+        x4 = paddle.static.data(
+            name='input4', shape=[2000, 2000], dtype='float32'
+        )
         x5 = paddle.static.data(name='input5', shape=[2000], dtype='float32')
-        x6 = paddle.static.data(name='input6',
-                                shape=[2000, 1500],
-                                dtype='float32')
+        x6 = paddle.static.data(
+            name='input6', shape=[2000, 1500], dtype='float32'
+        )
         result0 = paddle.diag(x)
         result1 = paddle.diag(x, offset=1)
         result2 = paddle.diag(x, offset=-1)
@@ -222,34 +221,60 @@ class TestDiagV2API(unittest.TestCase):
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        res0, res1, res2, res4, res5, res6, res7, res8, res9, res10, res11, res12, res13 = exe.run(
+        (
+            res0,
+            res1,
+            res2,
+            res4,
+            res5,
+            res6,
+            res7,
+            res8,
+            res9,
+            res10,
+            res11,
+            res12,
+            res13,
+        ) = exe.run(
             feed={
                 "input": self.input_np,
                 "input2": self.input_np2,
                 'input3': self.input_np3,
                 'input4': self.input_np4,
                 'input5': self.input_np5,
-                'input6': self.input_np6
+                'input6': self.input_np6,
             },
             fetch_list=[
-                result0, result1, result2, result4, result5, result6, result7,
-                result8, result9, result10, result11, result12, result13
-            ])
+                result0,
+                result1,
+                result2,
+                result4,
+                result5,
+                result6,
+                result7,
+                result8,
+                result9,
+                result10,
+                result11,
+                result12,
+                result13,
+            ],
+        )
 
-        self.assertTrue(np.allclose(res0, self.expected0))
-        self.assertTrue(np.allclose(res1, self.expected1))
-        self.assertTrue(np.allclose(res2, self.expected2))
+        np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
+        np.testing.assert_allclose(res1, self.expected1, rtol=1e-05)
+        np.testing.assert_allclose(res2, self.expected2, rtol=1e-05)
         self.assertTrue('aaa' in result3.name)
-        self.assertTrue(np.allclose(res4, self.expected3))
-        self.assertTrue(np.allclose(res5, self.expected4))
-        self.assertTrue(np.allclose(res6, self.expected5))
-        self.assertTrue(np.allclose(res7, self.expected6))
-        self.assertTrue(np.allclose(res8, self.expected7))
-        self.assertTrue(np.allclose(res9, self.expected8))
-        self.assertTrue(np.allclose(res10, self.expected9))
-        self.assertTrue(np.allclose(res11, self.expected10))
-        self.assertTrue(np.allclose(res12, self.expected11))
-        self.assertTrue(np.allclose(res13, self.expected12))
+        np.testing.assert_allclose(res4, self.expected3, rtol=1e-05)
+        np.testing.assert_allclose(res5, self.expected4, rtol=1e-05)
+        np.testing.assert_allclose(res6, self.expected5, rtol=1e-05)
+        np.testing.assert_allclose(res7, self.expected6, rtol=1e-05)
+        np.testing.assert_allclose(res8, self.expected7, rtol=1e-05)
+        np.testing.assert_allclose(res9, self.expected8, rtol=1e-05)
+        np.testing.assert_allclose(res10, self.expected9, rtol=1e-05)
+        np.testing.assert_allclose(res11, self.expected10, rtol=1e-05)
+        np.testing.assert_allclose(res12, self.expected11, rtol=1e-05)
+        np.testing.assert_allclose(res13, self.expected12, rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.fluid.CPUPlace())

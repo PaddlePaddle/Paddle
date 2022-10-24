@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
 import numpy as np
 
@@ -24,7 +22,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexAbsOp(OpTest):
-
     def setUp(self):
         paddle.enable_static()
         self.python_api = paddle.abs
@@ -39,7 +36,8 @@ class TestComplexAbsOp(OpTest):
 
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = np.abs(self.x)
 
     def init_grad_input_output(self):
@@ -50,15 +48,16 @@ class TestComplexAbsOp(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        user_defined_grads=[self.grad_x],
-                        user_defined_grad_outputs=[self.grad_out],
-                        check_eager=False)
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=False,
+        )
 
 
 class TestComplexAbsOpZeroValues(OpTest):
-
     def setUp(self):
         paddle.enable_static()
         self.op_type = "abs"
@@ -72,8 +71,9 @@ class TestComplexAbsOpZeroValues(OpTest):
         self.outputs = {'Out': self.out}
 
     def init_input_output(self):
-        self.x = np.zeros(self.shape).astype(
-            self.dtype) + 1J * np.zeros(self.shape).astype(self.dtype)
+        self.x = np.zeros(self.shape).astype(self.dtype) + 1j * np.zeros(
+            self.shape
+        ).astype(self.dtype)
         self.out = np.abs(self.x)
 
     def init_grad_input_output(self):
@@ -84,15 +84,16 @@ class TestComplexAbsOpZeroValues(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        user_defined_grads=[self.grad_x],
-                        user_defined_grad_outputs=[self.grad_out],
-                        check_eager=False)
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=False,
+        )
 
 
 class TestAbs(unittest.TestCase):
-
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -105,7 +106,7 @@ class TestAbs(unittest.TestCase):
             for place in self._places:
                 with dg.guard(place):
                     y = paddle.abs(paddle.to_tensor(x))
-                    self.assertTrue(np.allclose(np.abs(x), y.numpy()))
+                    np.testing.assert_allclose(np.abs(x), y.numpy(), rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():
@@ -113,7 +114,6 @@ class TestAbs(unittest.TestCase):
 
 
 class TestRealAbsOp(OpTest):
-
     def setUp(self):
         paddle.enable_static()
         self.python_api = paddle.abs
@@ -138,11 +138,13 @@ class TestRealAbsOp(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        user_defined_grads=[self.grad_x],
-                        user_defined_grad_outputs=[self.grad_out],
-                        check_eager=False)
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=False,
+        )
 
 
 if __name__ == '__main__':

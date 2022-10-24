@@ -21,9 +21,10 @@ from paddle.distributed.passes import new_pass, PassManager
 import unittest
 from dist_pass_test_base import DistPassTestBase
 
+paddle.enable_static()
+
 
 class BatchNormActNet(nn.Layer):
-
     def __init__(self):
         super(BatchNormActNet, self).__init__()
 
@@ -40,15 +41,14 @@ class BatchNormActNet(nn.Layer):
 
 
 class TestFuseBatchNormActPass(DistPassTestBase):
-
     def init(self):
         self.atol = 1e-4
         self.rtol = 1e-4
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
-        image = paddle.static.data(shape=[batch_size] + image_shape,
-                                   dtype='float32',
-                                   name='image')
+        image = paddle.static.data(
+            shape=[batch_size] + image_shape, dtype='float32', name='image'
+        )
 
         model = BatchNormActNet()
         pred_out = model(image)

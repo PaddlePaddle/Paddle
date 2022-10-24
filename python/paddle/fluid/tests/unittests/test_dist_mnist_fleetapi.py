@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 import paddle
@@ -21,7 +20,6 @@ paddle.enable_static()
 
 
 class TestDistMnistNCCL2FleetApi(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -32,20 +30,24 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_mnist.py",
                 delta=1e-5,
                 check_error_log=True,
-                need_envs={'FLAGS_allreduce_record_one_event': '1'})
+                need_envs={'FLAGS_allreduce_record_one_event': '1'},
+            )
 
 
 class FleetCollectiveTest(unittest.TestCase):
-
     def test_open_sync_batch_norm(self):
         import paddle.fluid as fluid
         import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-        from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
+        from paddle.fluid.incubate.fleet.collective import (
+            fleet,
+            DistributedStrategy,
+        )
 
         if not fluid.core.is_compiled_with_cuda():
             # Operator "gen_nccl_id" has not been registered
@@ -63,8 +65,9 @@ class FleetCollectiveTest(unittest.TestCase):
         dist_strategy = DistributedStrategy()
         dist_strategy.sync_batch_norm = True
 
-        dist_optimizer = fleet.distributed_optimizer(optimizer,
-                                                     strategy=dist_strategy)
+        dist_optimizer = fleet.distributed_optimizer(
+            optimizer, strategy=dist_strategy
+        )
         dist_optimizer.minimize(loss)
 
         self.assertEqual(dist_strategy.exec_strategy.num_threads, 1)

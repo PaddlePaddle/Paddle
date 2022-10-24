@@ -18,6 +18,26 @@
 #include "paddle/phi/kernels/gpu/sync_batch_norm_utils.h"
 
 namespace phi {
+namespace detail {
+
+ccl::CCLComm GetCCLComm(const Place &place, int global_gid) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  ncclComm_t comm = nullptr;
+
+  if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
+          global_gid)) {
+    auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
+        paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
+            global_gid));
+    comm = nccl_pg->NCCLComm(place);
+  }
+  return comm;
+#else
+  return nullptr;
+#endif
+}
+
+}  // namespace detail
 
 template <typename T, typename Context>
 void SyncBatchNormKernel(const Context &ctx,
@@ -48,8 +68,7 @@ void SyncBatchNormKernel(const Context &ctx,
 
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout layout = phi::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_statistics);
   const auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -86,30 +105,25 @@ void SyncBatchNormKernel(const Context &ctx,
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from platform::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-    alloc_ptr = paddle::memory::Alloc(ctx, bytes);
+    alloc_ptr = paddle::memory::Alloc(
+        ctx.GetPlace(),
+        bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
     const int threads = 256;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
-    if (layout == paddle::framework::DataLayout::kNCHW) {
-      KeLocalStats<T, threads, paddle::framework::DataLayout::kNCHW>
+    if (layout == phi::DataLayout::kNCHW) {
+      KeLocalStats<T, threads, phi::DataLayout::kNCHW>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     } else {
-      KeLocalStats<T, threads, paddle::framework::DataLayout::kNHWC>
+      KeLocalStats<T, threads, phi::DataLayout::kNHWC>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    int global_gid = 0;
-    ncclComm_t comm = nullptr;
-
-    if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
-            global_gid)) {
-      auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
-          paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
-              global_gid));
-      comm = nccl_pg->NCCLComm(x.place());
-    } else {
+    ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
+    if (comm == nullptr) {
       comm = ctx.nccl_comm();
     }
 
@@ -156,8 +170,8 @@ void SyncBatchNormKernel(const Context &ctx,
   }
 
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
-  if (layout == paddle::framework::DataLayout::kNCHW) {
-    KeNormAffine<T, paddle::framework::DataLayout::kNCHW>
+  if (layout == phi::DataLayout::kNCHW) {
+    KeNormAffine<T, phi::DataLayout::kNCHW>
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,
@@ -169,7 +183,7 @@ void SyncBatchNormKernel(const Context &ctx,
                                       x_numel,
                                       y_d);
   } else {
-    KeNormAffine<T, paddle::framework::DataLayout::kNHWC>
+    KeNormAffine<T, phi::DataLayout::kNHWC>
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,

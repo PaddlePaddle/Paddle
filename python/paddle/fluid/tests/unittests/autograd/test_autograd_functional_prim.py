@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import typing
 import unittest
 
 import numpy as np
@@ -23,23 +22,35 @@ import utils
 
 
 @utils.place(config.DEVICES)
-@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'args', 'dtype'), (
-    ('unary_float32', paddle.tanh, (np.random.rand(2, 3), ), 'float32'),
-    ('binary_float32', paddle.matmul,
-     (np.random.rand(2, 3), np.random.rand(3, 2)), 'float32'),
-    ('unary_float64', paddle.tanh, (np.random.rand(2, 3), ), 'float64'),
-    ('binary_float64', paddle.matmul,
-     (np.random.rand(2, 3), np.random.rand(3, 2)), 'float64'),
-))
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'args', 'dtype'),
+    (
+        ('unary_float32', paddle.tanh, (np.random.rand(2, 3),), 'float32'),
+        (
+            'binary_float32',
+            paddle.matmul,
+            (np.random.rand(2, 3), np.random.rand(3, 2)),
+            'float32',
+        ),
+        ('unary_float64', paddle.tanh, (np.random.rand(2, 3),), 'float64'),
+        (
+            'binary_float64',
+            paddle.matmul,
+            (np.random.rand(2, 3), np.random.rand(3, 2)),
+            'float64',
+        ),
+    ),
+)
 class TestJacobianPrim(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.args = [arg.astype(cls.dtype) for arg in cls.args]
-        cls._rtol = config.TOLERANCE.get(
-            cls.dtype).get('first_order_grad').get('rtol')
-        cls._atol = config.TOLERANCE.get(
-            cls.dtype).get('first_order_grad').get('atol')
+        cls._rtol = (
+            config.TOLERANCE.get(cls.dtype).get('first_order_grad').get('rtol')
+        )
+        cls._atol = (
+            config.TOLERANCE.get(cls.dtype).get('first_order_grad').get('atol')
+        )
 
     def setUp(self):
         paddle.enable_static()
@@ -50,7 +61,6 @@ class TestJacobianPrim(unittest.TestCase):
         paddle.disable_static()
 
     def test_jacobian_prim(self):
-
         def wrapper(fun, args):
             mp = paddle.static.Program()
             sp = paddle.static.Program()
@@ -66,10 +76,11 @@ class TestJacobianPrim(unittest.TestCase):
                     paddle.incubate.autograd.prim2orig()
             exe = paddle.static.Executor()
             exe.run(sp)
-            [jac] = exe.run(mp,
-                            feed={f'arg{i}': arg
-                                  for i, arg in enumerate(args)},
-                            fetch_list=[jac])
+            [jac] = exe.run(
+                mp,
+                feed={f'arg{i}': arg for i, arg in enumerate(args)},
+                fetch_list=[jac],
+            )
             return jac
 
         paddle.incubate.autograd.enable_prim()
@@ -77,30 +88,41 @@ class TestJacobianPrim(unittest.TestCase):
         paddle.incubate.autograd.disable_prim()
         orig_jac = wrapper(self.fun, self.args)
 
-        np.testing.assert_allclose(orig_jac,
-                                   prim_jac,
-                                   rtol=self._rtol,
-                                   atol=self._atol)
+        np.testing.assert_allclose(
+            orig_jac, prim_jac, rtol=self._rtol, atol=self._atol
+        )
 
 
 @utils.place(config.DEVICES)
-@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'args', 'dtype'), (
-    ('unary_float32', paddle.tanh, (np.random.rand(1), ), 'float32'),
-    ('binary_float32', paddle.multiply,
-     (np.random.rand(1), np.random.rand(1)), 'float32'),
-    ('unary_float64', paddle.tanh, (np.random.rand(1), ), 'float64'),
-    ('binary_float64', paddle.multiply,
-     (np.random.rand(1), np.random.rand(1)), 'float64'),
-))
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'args', 'dtype'),
+    (
+        ('unary_float32', paddle.tanh, (np.random.rand(1),), 'float32'),
+        (
+            'binary_float32',
+            paddle.multiply,
+            (np.random.rand(1), np.random.rand(1)),
+            'float32',
+        ),
+        ('unary_float64', paddle.tanh, (np.random.rand(1),), 'float64'),
+        (
+            'binary_float64',
+            paddle.multiply,
+            (np.random.rand(1), np.random.rand(1)),
+            'float64',
+        ),
+    ),
+)
 class TestHessianPrim(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.args = [arg.astype(cls.dtype) for arg in cls.args]
-        cls._rtol = config.TOLERANCE.get(
-            cls.dtype).get('second_order_grad').get('rtol')
-        cls._atol = config.TOLERANCE.get(
-            cls.dtype).get('second_order_grad').get('atol')
+        cls._rtol = (
+            config.TOLERANCE.get(cls.dtype).get('second_order_grad').get('rtol')
+        )
+        cls._atol = (
+            config.TOLERANCE.get(cls.dtype).get('second_order_grad').get('atol')
+        )
 
     def setUp(self):
         paddle.enable_static()
@@ -111,7 +133,6 @@ class TestHessianPrim(unittest.TestCase):
         paddle.disable_static()
 
     def test_jacobian_prim(self):
-
         def wrapper(fun, args):
             mp = paddle.static.Program()
             sp = paddle.static.Program()
@@ -127,11 +148,11 @@ class TestHessianPrim(unittest.TestCase):
                     paddle.incubate.autograd.prim2orig()
             exe = paddle.static.Executor()
             exe.run(sp)
-            [hessian
-             ] = exe.run(mp,
-                         feed={f'arg{i}': arg
-                               for i, arg in enumerate(args)},
-                         fetch_list=[hessian])
+            [hessian] = exe.run(
+                mp,
+                feed={f'arg{i}': arg for i, arg in enumerate(args)},
+                fetch_list=[hessian],
+            )
             return hessian
 
         paddle.incubate.autograd.enable_prim()
@@ -139,30 +160,41 @@ class TestHessianPrim(unittest.TestCase):
         paddle.incubate.autograd.disable_prim()
         orig_jac = wrapper(self.fun, self.args)
 
-        np.testing.assert_allclose(orig_jac,
-                                   prim_jac,
-                                   rtol=self._rtol,
-                                   atol=self._atol)
+        np.testing.assert_allclose(
+            orig_jac, prim_jac, rtol=self._rtol, atol=self._atol
+        )
 
 
 @utils.place(config.DEVICES)
-@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'args', 'dtype'), (
-    ('unary_float32', paddle.tanh, (np.random.rand(2, 3), ), 'float32'),
-    ('binary_float32', paddle.matmul,
-     (np.random.rand(2, 3), np.random.rand(3, 2)), 'float32'),
-    ('unary_float64', paddle.tanh, (np.random.rand(2, 3), ), 'float64'),
-    ('binary_float64', paddle.matmul,
-     (np.random.rand(2, 3), np.random.rand(3, 2)), 'float64'),
-))
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'args', 'dtype'),
+    (
+        ('unary_float32', paddle.tanh, (np.random.rand(2, 3),), 'float32'),
+        (
+            'binary_float32',
+            paddle.matmul,
+            (np.random.rand(2, 3), np.random.rand(3, 2)),
+            'float32',
+        ),
+        ('unary_float64', paddle.tanh, (np.random.rand(2, 3),), 'float64'),
+        (
+            'binary_float64',
+            paddle.matmul,
+            (np.random.rand(2, 3), np.random.rand(3, 2)),
+            'float64',
+        ),
+    ),
+)
 class TestJvpPrim(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.args = [arg.astype(cls.dtype) for arg in cls.args]
-        cls._rtol = config.TOLERANCE.get(
-            cls.dtype).get('first_order_grad').get('rtol')
-        cls._atol = config.TOLERANCE.get(
-            cls.dtype).get('first_order_grad').get('atol')
+        cls._rtol = (
+            config.TOLERANCE.get(cls.dtype).get('first_order_grad').get('rtol')
+        )
+        cls._atol = (
+            config.TOLERANCE.get(cls.dtype).get('first_order_grad').get('atol')
+        )
 
     def setUp(self):
         paddle.enable_static()
@@ -173,7 +205,6 @@ class TestJvpPrim(unittest.TestCase):
         paddle.disable_static()
 
     def test_jacobian_prim(self):
-
         def wrapper(fun, args):
             mp = paddle.static.Program()
             sp = paddle.static.Program()
@@ -191,9 +222,9 @@ class TestJvpPrim(unittest.TestCase):
             exe.run(sp)
             jvp_res = exe.run(
                 mp,
-                feed={f'arg{i}': arg
-                      for i, arg in enumerate(args)},
-                fetch_list=[jvp_res])
+                feed={f'arg{i}': arg for i, arg in enumerate(args)},
+                fetch_list=[jvp_res],
+            )
             return jvp_res
 
         paddle.incubate.autograd.enable_prim()
@@ -201,30 +232,41 @@ class TestJvpPrim(unittest.TestCase):
         paddle.incubate.autograd.disable_prim()
         orig_jvp = wrapper(self.fun, self.args)
 
-        np.testing.assert_allclose(orig_jvp,
-                                   prim_jvp,
-                                   rtol=self._rtol,
-                                   atol=self._atol)
+        np.testing.assert_allclose(
+            orig_jvp, prim_jvp, rtol=self._rtol, atol=self._atol
+        )
 
 
 @utils.place(config.DEVICES)
-@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'args', 'dtype'), (
-    ('unary_float32', paddle.tanh, (np.random.rand(2, 3), ), 'float32'),
-    ('binary_float32', paddle.matmul,
-     (np.random.rand(2, 3), np.random.rand(3, 2)), 'float32'),
-    ('unary_float64', paddle.tanh, (np.random.rand(2, 3), ), 'float64'),
-    ('binary_float64', paddle.matmul,
-     (np.random.rand(2, 3), np.random.rand(3, 2)), 'float64'),
-))
+@utils.parameterize(
+    (utils.TEST_CASE_NAME, 'fun', 'args', 'dtype'),
+    (
+        ('unary_float32', paddle.tanh, (np.random.rand(2, 3),), 'float32'),
+        (
+            'binary_float32',
+            paddle.matmul,
+            (np.random.rand(2, 3), np.random.rand(3, 2)),
+            'float32',
+        ),
+        ('unary_float64', paddle.tanh, (np.random.rand(2, 3),), 'float64'),
+        (
+            'binary_float64',
+            paddle.matmul,
+            (np.random.rand(2, 3), np.random.rand(3, 2)),
+            'float64',
+        ),
+    ),
+)
 class TestVjpPrim(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.args = [arg.astype(cls.dtype) for arg in cls.args]
-        cls._rtol = config.TOLERANCE.get(
-            cls.dtype).get('first_order_grad').get('rtol')
-        cls._atol = config.TOLERANCE.get(
-            cls.dtype).get('first_order_grad').get('atol')
+        cls._rtol = (
+            config.TOLERANCE.get(cls.dtype).get('first_order_grad').get('rtol')
+        )
+        cls._atol = (
+            config.TOLERANCE.get(cls.dtype).get('first_order_grad').get('atol')
+        )
 
     def setUp(self):
         paddle.enable_static()
@@ -235,7 +277,6 @@ class TestVjpPrim(unittest.TestCase):
         paddle.disable_static()
 
     def test_jacobian_prim(self):
-
         def wrapper(fun, args):
             mp = paddle.static.Program()
             sp = paddle.static.Program()
@@ -253,9 +294,9 @@ class TestVjpPrim(unittest.TestCase):
             exe.run(sp)
             vjp_res = exe.run(
                 mp,
-                feed={f'arg{i}': arg
-                      for i, arg in enumerate(args)},
-                fetch_list=[vjp_res])
+                feed={f'arg{i}': arg for i, arg in enumerate(args)},
+                fetch_list=[vjp_res],
+            )
             return vjp_res
 
         paddle.incubate.autograd.enable_prim()
@@ -264,10 +305,9 @@ class TestVjpPrim(unittest.TestCase):
         orig_vjp = wrapper(self.fun, self.args)
 
         for orig, prim in zip(orig_vjp, prim_vjp):
-            np.testing.assert_allclose(orig,
-                                       prim,
-                                       rtol=self._rtol,
-                                       atol=self._atol)
+            np.testing.assert_allclose(
+                orig, prim, rtol=self._rtol, atol=self._atol
+            )
 
 
 if __name__ == "__main__":

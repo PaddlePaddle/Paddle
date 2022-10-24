@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -20,7 +19,6 @@ from op_test import OpTest
 
 
 class TestSpaceToDepthOp(OpTest):
-
     @staticmethod
     def helper(in_, width, height, channel, batch, blocksize, forward, out_):
         channel_out = channel // (blocksize * blocksize)
@@ -34,8 +32,9 @@ class TestSpaceToDepthOp(OpTest):
                         width2 = i * blocksize + offset % blocksize
                         height2 = j * blocksize + offset // blocksize
                         out_index = width2 + width * blocksize * (
-                            height2 + height * blocksize *
-                            (channel2 + channel_out * b))
+                            height2
+                            + height * blocksize * (channel2 + channel_out * b)
+                        )
                         if forward:
                             out_[out_index] = in_[in_index]
                         else:
@@ -46,9 +45,16 @@ class TestSpaceToDepthOp(OpTest):
 
         self.op_type = "space_to_depth"
         self.inputs = {"X": self.x}
-        self.helper(self.x_1d, self.x.shape[3], self.x.shape[2],
-                    self.x.shape[1], self.x.shape[0], self.blocksize,
-                    self.forward, self.out_1d)
+        self.helper(
+            self.x_1d,
+            self.x.shape[3],
+            self.x.shape[2],
+            self.x.shape[1],
+            self.x.shape[0],
+            self.blocksize,
+            self.forward,
+            self.out_1d,
+        )
         self.out = np.reshape(self.out_1d, self.infered_shape)
         self.attrs = {"blocksize": self.blocksize}
         self.outputs = {"Out": self.out}
@@ -66,18 +72,23 @@ class TestSpaceToDepthOp(OpTest):
         self.forward = 1
 
     def test_check_output(self):
-        place = fluid.core.CUDAPlace(
-            0) if fluid.core.is_compiled_with_cuda() else fluid.core.CPUPlace()
+        place = (
+            fluid.core.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.core.CPUPlace()
+        )
         self.check_output_with_place(place, 1e-5, None, False)
 
     def test_check_grad(self):
-        place = fluid.core.CUDAPlace(
-            0) if fluid.core.is_compiled_with_cuda() else fluid.core.CPUPlace()
+        place = (
+            fluid.core.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.core.CPUPlace()
+        )
         self.check_grad_with_place(place, ['X'], 'Out')
 
 
 class TestSpaceToDepthOpBasic(TestSpaceToDepthOp):
-
     def init_data(self):
         self.ori_shape = (32, 8, 6, 6)
         self.infered_shape = (32, 32, 3, 3)
@@ -92,7 +103,6 @@ class TestSpaceToDepthOpBasic(TestSpaceToDepthOp):
 
 
 class TestSpaceToDepthOpDoubleBasic(TestSpaceToDepthOp):
-
     def init_data(self):
         self.ori_shape = (32, 8, 6, 6)
         self.infered_shape = (32, 32, 3, 3)
@@ -107,7 +117,6 @@ class TestSpaceToDepthOpDoubleBasic(TestSpaceToDepthOp):
 
 
 class TestSpaceToDepthOpWithStride3(TestSpaceToDepthOp):
-
     def init_data(self):
         self.ori_shape = (32, 9, 6, 6)
         self.infered_shape = (32, 81, 2, 2)
@@ -122,7 +131,6 @@ class TestSpaceToDepthOpWithStride3(TestSpaceToDepthOp):
 
 
 class TestSpaceToDepthOpWithNotSquare(TestSpaceToDepthOp):
-
     def init_data(self):
         self.ori_shape = (32, 9, 9, 6)
         self.infered_shape = (32, 81, 3, 2)

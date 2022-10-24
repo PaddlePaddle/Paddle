@@ -1,18 +1,17 @@
 #  Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserve.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-import yaml
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,7 +25,6 @@ CONFIG_SECS = [
 
 
 class AttrDict(dict):
-
     def __getattr__(self, key):
         return self[key]
 
@@ -40,6 +38,7 @@ class AttrDict(dict):
 def parse_config(cfg_file):
     """Load a config file into AttrDict"""
     import yaml
+
     with open(cfg_file, 'r') as fopen:
         yaml_config = AttrDict(yaml.load(fopen, Loader=yaml.Loader))
     create_attr_dict(yaml_config)
@@ -48,6 +47,7 @@ def parse_config(cfg_file):
 
 def create_attr_dict(yaml_config):
     from ast import literal_eval
+
     for key, value in yaml_config.items():
         if type(value) is dict:
             yaml_config[key] = value = AttrDict(value)
@@ -79,7 +79,8 @@ def merge_configs(cfg, sec, args_dict):
 
 def print_configs(cfg, mode):
     logger.info(
-        "---------------- {:>5} Arguments ----------------".format(mode))
+        "---------------- {:>5} Arguments ----------------".format(mode)
+    )
     for sec, sec_items in cfg.items():
         logger.info("{}:".format(sec))
         for k, v in sec_items.items():

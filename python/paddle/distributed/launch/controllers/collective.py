@@ -16,13 +16,9 @@ from .controller import Controller, ControleMode
 from ..context.device import DeviceType
 
 import json
-import os
-import six
-import time
 
 
 class CollectiveController(Controller):
-
     @classmethod
     def enable(cls, ctx):
         # collective is the default mode
@@ -34,7 +30,11 @@ class CollectiveController(Controller):
             return False
 
     def build_pod(self):
-        if self.ctx.args.master is None and self.ctx.args.start_port and self.ctx.args.ips:
+        if (
+            self.ctx.args.master is None
+            and self.ctx.args.start_port
+            and self.ctx.args.ips
+        ):
             self._build_pod_with_args()
         else:
             self._build_pod_with_master()
@@ -51,14 +51,18 @@ class CollectiveController(Controller):
 
         self.ctx.logger.debug("job endpoints: {}".format(job_endpoints))
 
-        rank_offset = ips.index(
-            self.ctx.node.ip) if self.ctx.node.ip in ips else 0
+        rank_offset = (
+            ips.index(self.ctx.node.ip) * self.pod.replicas
+            if self.ctx.node.ip in ips
+            else 0
+        )
 
         self.save_pod_log(job_endpoints)
 
         selected_dev_key = self.ctx.node.device.get_selected_device_key()
         selected_dev_list = self.ctx.node.device.get_selected_devices(
-            self.ctx.args.devices)
+            self.ctx.args.devices
+        )
 
         for i in range(self.pod.replicas):
             e = {
@@ -66,7 +70,7 @@ class CollectiveController(Controller):
                 "PADDLE_LOCAL_SIZE": "{}".format(self.pod.replicas),
                 "PADDLE_GLOBAL_RANK": "{}".format(i + rank_offset),
                 "PADDLE_LOCAL_RANK": "{}".format(i),
-                "PADDLE_NNODES": "{}".format(self.job.replicas),
+                "PADDLE_NNODES": "{}".format(len(ips)),
                 ## compatible env
                 "PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints),
                 "PADDLE_CURRENT_ENDPOINT": job_endpoints[i + rank_offset],
@@ -93,7 +97,7 @@ class CollectiveController(Controller):
         self.pod.replicas = self.pod_replicas()
 
         # rank will be reset when restart
-        self.pod.rank = self.ctx.args.rank
+        self.pod.rank = int(self.ctx.args.rank)
 
         port = self.ctx.node.get_free_port()
 
@@ -103,19 +107,24 @@ class CollectiveController(Controller):
             for p in self.ctx.node.get_free_ports(self.pod.replicas)
         ]
 
-        data = json.dumps({
-            'name': self.pod.name,
-            'rank': self.pod.rank,
-            'replicas': self.pod.replicas,
-            'dtype': self.ctx.node.device.dtype,
-            'candidate': '{}:{}'.format(self.ctx.node.ip, port),
-            'endpoints': ",".join(endpoints),
-        })
+        data = json.dumps(
+            {
+                'name': self.pod.name,
+                'rank': self.pod.rank,
+                'replicas': self.pod.replicas,
+                'dtype': self.ctx.node.device.dtype,
+                'candidate': '{}:{}'.format(self.ctx.node.ip, port),
+                'endpoints': ",".join(endpoints),
+            }
+        )
 
-        peer_list, rank = self.master.sync_peers('/{}/info'.format(self.job.id),
-                                                 self.pod.name, data,
-                                                 self.job.replicas,
-                                                 self.pod.rank)
+        peer_list, rank = self.master.sync_peers(
+            '/{}/info'.format(self.job.id),
+            self.pod.name,
+            data,
+            self.job.replicas,
+            self.pod.rank,
+        )
         self.pod.rank = rank
 
         if len(peer_list) < 1:
@@ -138,7 +147,8 @@ class CollectiveController(Controller):
         self.pod.reset()
         selected_dev_key = self.ctx.node.device.get_selected_device_key()
         selected_dev_list = self.ctx.node.device.get_selected_devices(
-            self.ctx.args.devices)
+            self.ctx.args.devices
+        )
         for i in range(self.pod.replicas):
             e = {
                 "PADDLE_MASTER": collective_master,
@@ -172,7 +182,6 @@ class CollectiveController(Controller):
 
 
 class CollectiveElasticController(CollectiveController):
-
     @classmethod
     def enable(cls, ctx):
         if ctx.args.master and ctx.args.master.startswith("etcd://"):
@@ -202,9 +211,9 @@ class CollectiveElasticController(CollectiveController):
 
             self.ctx.logger.info("Waiting peer ready...")
 
-            ok, replicas = self.master.wait_peer_ready(self.job.replicas_min,
-                                                       self.job.replicas_max,
-                                                       timeout)
+            ok, replicas = self.master.wait_peer_ready(
+                self.job.replicas_min, self.job.replicas_max, timeout
+            )
             if ok:
                 self.job.replicas = replicas
             else:

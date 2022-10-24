@@ -12,38 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle.static import Program, program_guard
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMultiplyApi(unittest.TestCase):
-
     def _run_static_graph_case(self, x_data, y_data):
         with program_guard(Program(), Program()):
             paddle.enable_static()
-            x = paddle.static.data(name='x',
-                                   shape=x_data.shape,
-                                   dtype=x_data.dtype)
-            y = paddle.static.data(name='y',
-                                   shape=y_data.shape,
-                                   dtype=y_data.dtype)
+            x = paddle.static.data(
+                name='x', shape=x_data.shape, dtype=x_data.dtype
+            )
+            y = paddle.static.data(
+                name='y', shape=y_data.shape, dtype=y_data.dtype
+            )
             res = paddle.outer(x, y)
 
-            place = paddle.CUDAPlace(
-                0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+            place = (
+                paddle.CUDAPlace(0)
+                if paddle.is_compiled_with_cuda()
+                else paddle.CPUPlace()
+            )
             exe = paddle.static.Executor(place)
-            outs = exe.run(paddle.static.default_main_program(),
-                           feed={
-                               'x': x_data,
-                               'y': y_data
-                           },
-                           fetch_list=[res])
+            outs = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_data, 'y': y_data},
+                fetch_list=[res],
+            )
             res = outs[0]
             return res
 
@@ -61,53 +61,57 @@ class TestMultiplyApi(unittest.TestCase):
         x_data = np.random.rand(2, 10, 10).astype(np.float64)
         y_data = np.random.rand(2, 5, 10).astype(np.float64)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test static computation graph: 2-d array
         x_data = np.random.rand(200, 5).astype(np.float64)
         y_data = np.random.rand(50, 5).astype(np.float64)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test static computation graph: 1-d array
         x_data = np.random.rand(50).astype(np.float64)
         y_data = np.random.rand(50).astype(np.float64)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: 3-d array
         x_data = np.random.rand(5, 10, 10).astype(np.float64)
         y_data = np.random.rand(2, 10).astype(np.float64)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: 2-d array
         x_data = np.random.rand(20, 50).astype(np.float64)
         y_data = np.random.rand(50).astype(np.float64)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: Scalar
         x_data = np.random.rand(20, 10).astype(np.float32)
         y_data = np.random.rand(1).astype(np.float32).item()
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data), rtol=1e4))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=10000.0)
 
         # test dynamic computation graph: 2-d array Complex
         x_data = np.random.rand(20, 50).astype(
-            np.float64) + 1J * np.random.rand(20, 50).astype(np.float64)
-        y_data = np.random.rand(50).astype(
-            np.float64) + 1J * np.random.rand(50).astype(np.float64)
+            np.float64
+        ) + 1j * np.random.rand(20, 50).astype(np.float64)
+        y_data = np.random.rand(50).astype(np.float64) + 1j * np.random.rand(
+            50
+        ).astype(np.float64)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: 3-d array Complex
         x_data = np.random.rand(5, 10, 10).astype(
-            np.float64) + 1J * np.random.rand(5, 10, 10).astype(np.float64)
-        y_data = np.random.rand(2, 10).astype(
-            np.float64) + 1J * np.random.rand(2, 10).astype(np.float64)
+            np.float64
+        ) + 1j * np.random.rand(5, 10, 10).astype(np.float64)
+        y_data = np.random.rand(2, 10).astype(np.float64) + 1j * np.random.rand(
+            2, 10
+        ).astype(np.float64)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.outer(x_data, y_data)))
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
     def test_multiply(self):
         with _test_eager_guard():
@@ -116,7 +120,6 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-
     def func_test_errors(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()

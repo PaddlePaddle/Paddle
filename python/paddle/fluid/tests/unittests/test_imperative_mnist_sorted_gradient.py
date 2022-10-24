@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import contextlib
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -30,7 +26,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestImperativeMnistSortGradient(unittest.TestCase):
-
     def func_test_mnist_sort_gradient_float32(self):
         seed = 90
         epoch_num = 1
@@ -41,21 +36,25 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
             mnist2 = MNIST()
-            sgd2 = SGDOptimizer(learning_rate=1e-3,
-                                parameter_list=mnist2.parameters())
-            train_reader2 = paddle.batch(paddle.dataset.mnist.train(),
-                                         batch_size=128,
-                                         drop_last=True)
+            sgd2 = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=mnist2.parameters()
+            )
+            train_reader2 = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True
+            )
 
             mnist2.train()
             dy_param_init_value2 = {}
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader2()):
-                    dy_x_data2 = np.array([
-                        x[0].reshape(1, 28, 28) for x in data
-                    ]).astype('float32')
-                    y_data2 = np.array([x[1] for x in data
-                                        ]).astype('int64').reshape(128, 1)
+                    dy_x_data2 = np.array(
+                        [x[0].reshape(1, 28, 28) for x in data]
+                    ).astype('float32')
+                    y_data2 = (
+                        np.array([x[1] for x in data])
+                        .astype('int64')
+                        .reshape(128, 1)
+                    )
 
                     img2 = to_variable(dy_x_data2)
                     label2 = to_variable(y_data2)
@@ -85,18 +84,21 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            exe = fluid.Executor(
+                fluid.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else fluid.CUDAPlace(0)
+            )
 
             mnist = MNIST()
             sgd = SGDOptimizer(learning_rate=1e-3)
-            train_reader = paddle.batch(paddle.dataset.mnist.train(),
-                                        batch_size=128,
-                                        drop_last=True)
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True
+            )
 
-            img = fluid.layers.data(name='pixel',
-                                    shape=[1, 28, 28],
-                                    dtype='float32')
+            img = fluid.layers.data(
+                name='pixel', shape=[1, 28, 28], dtype='float32'
+            )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
             loss = fluid.layers.cross_entropy(cost, label)
@@ -109,46 +111,57 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             for param in mnist.parameters():
                 static_param_name_list.append(param.name)
 
-            out = exe.run(fluid.default_startup_program(),
-                          fetch_list=static_param_name_list)
+            out = exe.run(
+                fluid.default_startup_program(),
+                fetch_list=static_param_name_list,
+            )
 
             for i in range(len(static_param_name_list)):
                 static_param_init_value[static_param_name_list[i]] = out[i]
 
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
-                    static_x_data = np.array([
-                        x[0].reshape(1, 28, 28) for x in data
-                    ]).astype('float32')
-                    y_data = np.array([x[1] for x in data
-                                       ]).astype('int64').reshape([128, 1])
+                    static_x_data = np.array(
+                        [x[0].reshape(1, 28, 28) for x in data]
+                    ).astype('float32')
+                    y_data = (
+                        np.array([x[1] for x in data])
+                        .astype('int64')
+                        .reshape([128, 1])
+                    )
 
                     fetch_list = [avg_loss.name]
                     fetch_list.extend(static_param_name_list)
-                    out = exe.run(fluid.default_main_program(),
-                                  feed={
-                                      "pixel": static_x_data,
-                                      "label": y_data
-                                  },
-                                  fetch_list=fetch_list)
+                    out = exe.run(
+                        fluid.default_main_program(),
+                        feed={"pixel": static_x_data, "label": y_data},
+                        fetch_list=fetch_list,
+                    )
 
                     static_param_value = {}
                     static_out = out[0]
                     for i in range(1, len(out)):
-                        static_param_value[static_param_name_list[i -
-                                                                  1]] = out[i]
+                        static_param_value[static_param_name_list[i - 1]] = out[
+                            i
+                        ]
                     if batch_id == 20:
                         break
 
-        self.assertTrue(np.allclose(dy_x_data2.all(), static_x_data.all()))
+        np.testing.assert_allclose(
+            dy_x_data2.all(), static_x_data.all(), rtol=1e-05
+        )
 
-        for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value2[key]))
+        for key, value in static_param_init_value.items():
+            np.testing.assert_allclose(
+                value, dy_param_init_value2[key], rtol=1e-05
+            )
 
-        self.assertTrue(np.allclose(static_out, dy_out2))
+        np.testing.assert_allclose(static_out, dy_out2, rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value2[key], atol=1e-5))
+        for key, value in static_param_value.items():
+            np.testing.assert_allclose(
+                value, dy_param_value2[key], rtol=1e-05, atol=1e-05
+            )
 
     def test_mnist_sort_gradient_float32(self):
         with _test_eager_guard():

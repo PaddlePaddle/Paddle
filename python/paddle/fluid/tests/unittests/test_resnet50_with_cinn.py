@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import logging
 import numpy as np
 import paddle
@@ -21,8 +19,9 @@ import unittest
 
 paddle.enable_static()
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
 
@@ -38,11 +37,14 @@ def set_cinn_flag(val):
 
 @unittest.skipIf(not set_cinn_flag(True), "Paddle is not compiled with CINN.")
 class TestResnet50Accuracy(unittest.TestCase):
-
     def reader(self, limit):
         for _ in range(limit):
-            yield {'image': np.random.randint(0, 256, size=[32, 3, 224, 224]).astype('float32'), \
-                   'label': np.random.randint(0, 1000, size=[32]).astype('int64')}
+            yield {
+                'image': np.random.randint(
+                    0, 256, size=[32, 3, 224, 224]
+                ).astype('float32'),
+                'label': np.random.randint(0, 1000, size=[32]).astype('int64'),
+            }
 
     def generate_random_data(self, loop_num=10):
         feed = []
@@ -53,9 +55,9 @@ class TestResnet50Accuracy(unittest.TestCase):
 
     def build_program(self, main_program, startup_program):
         with paddle.static.program_guard(main_program, startup_program):
-            image = paddle.static.data(name='image',
-                                       shape=[32, 3, 224, 224],
-                                       dtype='float32')
+            image = paddle.static.data(
+                name='image', shape=[32, 3, 224, 224], dtype='float32'
+            )
             label = paddle.static.data(name='label', shape=[32], dtype='int64')
 
             # TODO: stop_gradient slower training speed, need fix
@@ -64,8 +66,9 @@ class TestResnet50Accuracy(unittest.TestCase):
             model = paddle.vision.models.resnet50()
             prediction = model(image)
 
-            loss = paddle.nn.functional.cross_entropy(input=prediction,
-                                                      label=label)
+            loss = paddle.nn.functional.cross_entropy(
+                input=prediction, label=label
+            )
             loss = paddle.mean(loss)
             adam = paddle.optimizer.Adam(learning_rate=0.001)
             adam.minimize(loss)
@@ -85,23 +88,29 @@ class TestResnet50Accuracy(unittest.TestCase):
         exe = paddle.static.Executor(place)
 
         compiled_prog = paddle.static.CompiledProgram(
-            main_program).with_data_parallel(loss_name=loss.name)
+            main_program
+        ).with_data_parallel(loss_name=loss.name)
         loss_vals = []
         scope = paddle.static.Scope()
 
         with paddle.static.scope_guard(scope):
             exe.run(startup_program)
             for step in range(iters):
-                loss_v = exe.run(compiled_prog,
-                                 feed=feed[step],
-                                 fetch_list=[loss],
-                                 return_numpy=True)
+                loss_v = exe.run(
+                    compiled_prog,
+                    feed=feed[step],
+                    fetch_list=[loss],
+                    return_numpy=True,
+                )
                 loss_vals.append(loss_v[0][0])
         return loss_vals
 
     def test_check_resnet50_accuracy(self):
-        place = paddle.CUDAPlace(
-            0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
 
         loop_num = 10
         feed = self.generate_random_data(loop_num)
@@ -112,7 +121,7 @@ class TestResnet50Accuracy(unittest.TestCase):
         print(loss_c)
         print("Losses of Paddle")
         print(loss_p)
-        self.assertTrue(np.allclose(loss_c, loss_p, atol=1e-5))
+        np.testing.assert_allclose(loss_c, loss_p, rtol=1e-05, atol=1e-05)
 
 
 if __name__ == '__main__':

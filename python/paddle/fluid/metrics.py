@@ -15,12 +15,8 @@
 Fluid Metrics
 """
 
-from __future__ import print_function
-
 import numpy as np
 import copy
-import warnings
-import six
 
 from .layer_helper import LayerHelper
 from .initializer import Constant
@@ -47,8 +43,12 @@ def _is_numpy_(var):
 
 
 def _is_number_(var):
-    return isinstance(var, int) or isinstance(var, np.int64) or isinstance(
-        var, float) or (isinstance(var, np.ndarray) and var.shape == (1, ))
+    return (
+        isinstance(var, int)
+        or isinstance(var, np.int64)
+        or isinstance(var, float)
+        or (isinstance(var, np.ndarray) and var.shape == (1,))
+    )
 
 
 def _is_number_or_matrix_(var):
@@ -57,15 +57,15 @@ def _is_number_or_matrix_(var):
 
 class MetricBase(object):
     """
-    In many cases, we usually have to split the test data into mini-batches for evaluating 
-    deep neural networks, therefore we need to collect the evaluation results of each 
-    mini-batch and aggregate them into the final result. The paddle.fluid.metrics is 
-    designed for a convenient way of deep neural network evaluation. 
+    In many cases, we usually have to split the test data into mini-batches for evaluating
+    deep neural networks, therefore we need to collect the evaluation results of each
+    mini-batch and aggregate them into the final result. The paddle.fluid.metrics is
+    designed for a convenient way of deep neural network evaluation.
 
-    The paddle.fluid.metrics contains serval different evaluation metrics 
+    The paddle.fluid.metrics contains serval different evaluation metrics
     like precision and recall, and most of them have the following functions:
 
-    1. take the prediction result and the corresponding labels of a mini-batch as input, 
+    1. take the prediction result and the corresponding labels of a mini-batch as input,
     then compute the evaluation result for the input mini-batch.
 
     2. aggregate the existing evaluation results as the overall performance.
@@ -106,8 +106,8 @@ class MetricBase(object):
 
     def reset(self):
         """
-        reset function empties the evaluation memory for previous mini-batches. 
-        
+        reset function empties the evaluation memory for previous mini-batches.
+
         Args:
             None
 
@@ -120,14 +120,14 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in six.iteritems(self.__dict__)
+            for attr, value in self.__dict__.items()
             if not attr.startswith("_")
         }
-        for attr, value in six.iteritems(states):
+        for attr, value in states.items():
             if isinstance(value, int):
                 setattr(self, attr, 0)
             elif isinstance(value, float):
-                setattr(self, attr, .0)
+                setattr(self, attr, 0.0)
             elif isinstance(value, (np.ndarray, np.generic)):
                 setattr(self, attr, np.zeros_like(value))
             else:
@@ -149,7 +149,7 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in six.iteritems(self.__dict__)
+            for attr, value in self.__dict__.items()
             if not attr.startswith("_")
         }
         config = {}
@@ -159,9 +159,9 @@ class MetricBase(object):
     def update(self, preds, labels):
         """
         Given the prediction results (preds) and the labels (labels)
-        of some mini-batch, compute the evaluation result of that mini-batch, 
+        of some mini-batch, compute the evaluation result of that mini-batch,
         and memorize the evaluation result. Please notice that the update function only
-        memorizes the evaluation result but would not return the score. If you want to 
+        memorizes the evaluation result but would not return the score. If you want to
         get the evaluation result, please call eval() function.
 
         Args:
@@ -176,7 +176,8 @@ class MetricBase(object):
 
         """
         raise NotImplementedError(
-            "Should not use it directly, please extend it.")
+            "Should not use it directly, please extend it."
+        )
 
     def eval(self):
         """
@@ -193,16 +194,17 @@ class MetricBase(object):
             float|list(float)|numpy.array: the metrics via Python.
         """
         raise NotImplementedError(
-            "Should not use it directly, please extend it.")
+            "Should not use it directly, please extend it."
+        )
 
 
 class CompositeMetric(MetricBase):
     """
-    This op creates a container that contains the union of all the added metrics. 
+    This op creates a container that contains the union of all the added metrics.
     After the metrics added in, calling eval() method will compute all the contained metrics automatically.
     CAUTION: only metrics with the SAME argument list can be added in a CompositeMetric instance.
 
-    Inherit from: `MetricBase <https://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/api_cn/metrics_cn.html#paddle.fluid.metrics.MetricBase>`_ 
+    Inherit from: `MetricBase <https://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/api_cn/metrics_cn.html#paddle.fluid.metrics.MetricBase>`_
 
     Args:
        name (str, optional): Metric name. For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -234,8 +236,8 @@ class CompositeMetric(MetricBase):
 
     def add_metric(self, metric):
         """
-        Add a new metric to container. Noted that the argument list 
-        of the added one should be consistent with existed ones.  
+        Add a new metric to container. Noted that the argument list
+        of the added one should be consistent with existed ones.
 
         Args:
             metric(MetricBase): a instance of MetricBase
@@ -250,7 +252,7 @@ class CompositeMetric(MetricBase):
 
         Args:
             preds(numpy.array): predicted results of current mini-batch, the shape and dtype of which should meet the requirements of the corresponded metric.
-            labels(numpy.array): ground truth of current mini-batch, the shape and dtype of which should meet the requirements of the corresponded metric. 
+            labels(numpy.array): ground truth of current mini-batch, the shape and dtype of which should meet the requirements of the corresponded metric.
         """
         for m in self._metrics:
             m.update(preds, labels)
@@ -260,7 +262,7 @@ class CompositeMetric(MetricBase):
         Calculate the results of all metrics sequentially.
 
         Returns:
-            list: results of all added metrics. 
+            list: results of all added metrics.
             The shape and dtype of each result depend on the definition of its metric.
         """
         ans = []
@@ -315,11 +317,11 @@ class Precision(MetricBase):
         Update the precision based on the current mini-batch prediction results .
 
         Args:
-            preds(numpy.ndarray): prediction results of current mini-batch, 
-                                the output of two-class sigmoid function. 
+            preds(numpy.ndarray): prediction results of current mini-batch,
+                                the output of two-class sigmoid function.
                                 Shape: [batch_size, 1]. Dtype: 'float64' or 'float32'.
-            labels(numpy.ndarray): ground truth (labels) of current mini-batch, 
-                                 the shape should keep the same as preds. 
+            labels(numpy.ndarray): ground truth (labels) of current mini-batch,
+                                 the shape should keep the same as preds.
                                  Shape: [batch_size, 1], Dtype: 'int32' or 'int64'.
         """
         if not _is_numpy_(preds):
@@ -346,7 +348,7 @@ class Precision(MetricBase):
             float: Results of the calculated Precision. Scalar output with float dtype.
         """
         ap = self.tp + self.fp
-        return float(self.tp) / ap if ap != 0 else .0
+        return float(self.tp) / ap if ap != 0 else 0.0
 
 
 class Recall(MetricBase):
@@ -398,11 +400,11 @@ class Recall(MetricBase):
         Update the recall based on the current mini-batch prediction results.
 
         Args:
-            preds(numpy.array): prediction results of current mini-batch, 
-                              the output of two-class sigmoid function. 
+            preds(numpy.array): prediction results of current mini-batch,
+                              the output of two-class sigmoid function.
                               Shape: [batch_size, 1]. Dtype: 'float64' or 'float32'.
-            labels(numpy.array): ground truth (labels) of current mini-batch, 
-                               the shape should keep the same as preds. 
+            labels(numpy.array): ground truth (labels) of current mini-batch,
+                               the shape should keep the same as preds.
                                Shape: [batch_size, 1], Dtype: 'int32' or 'int64'.
         """
         if not _is_numpy_(preds):
@@ -429,13 +431,13 @@ class Recall(MetricBase):
             float: results of the calculated Recall. Scalar output with float dtype.
         """
         recall = self.tp + self.fn
-        return float(self.tp) / recall if recall != 0 else .0
+        return float(self.tp) / recall if recall != 0 else 0.0
 
 
 class Accuracy(MetricBase):
     """
     This interface is used to calculate the mean accuracy over multiple batches.
-    Accuracy object has two state: value and weight. The definition of Accuracy is available at 
+    Accuracy object has two state: value and weight. The definition of Accuracy is available at
     https://en.wikipedia.org/wiki/Accuracy_and_precision
 
     Args:
@@ -471,8 +473,8 @@ class Accuracy(MetricBase):
 
     def __init__(self, name=None):
         super(Accuracy, self).__init__(name)
-        self.value = .0
-        self.weight = .0
+        self.value = 0.0
+        self.weight = 0.0
 
     def update(self, value, weight):
         r"""
@@ -488,7 +490,8 @@ class Accuracy(MetricBase):
         """
         if not _is_number_or_matrix_(value):
             raise ValueError(
-                "The 'value' must be a number(int, float) or a numpy ndarray.")
+                "The 'value' must be a number(int, float) or a numpy ndarray."
+            )
         if not _is_number_(weight):
             raise ValueError("The 'weight' must be a number(int, float).")
         if _is_number_(weight) and weight < 0:
@@ -500,13 +503,15 @@ class Accuracy(MetricBase):
         """
         This function returns the mean accuracy (float or numpy.array) for all accumulated minibatches.
 
-        Returns: 
+        Returns:
             float or numpy.array: mean accuracy for all accumulated minibatches.
 
         """
         if self.weight == 0:
-            raise ValueError("There is no data in Accuracy Metrics. \
-                Please check layers.accuracy output has added to Accuracy.")
+            raise ValueError(
+                "There is no data in Accuracy Metrics. \
+                Please check layers.accuracy output has added to Accuracy."
+            )
         return self.value / self.weight
 
 
@@ -515,9 +520,9 @@ class ChunkEvaluator(MetricBase):
     Accumulate counter numbers output by chunk_eval from mini-batches and
     compute the precision recall and F1-score using the accumulated counter
     numbers.
-    ChunkEvaluator has three states: num_infer_chunks, num_label_chunks and num_correct_chunks, 
+    ChunkEvaluator has three states: num_infer_chunks, num_label_chunks and num_correct_chunks,
     which correspond to the number of chunks, the number of labeled chunks, and the number of correctly identified chunks.
-    For some basics of chunking, please refer to 
+    For some basics of chunking, please refer to
     `Chunking with Support Vector Machines <https://www.aclweb.org/anthology/N01-1025>`_ .
     ChunkEvalEvaluator computes the precision, recall, and F1-score of chunk detection,
     and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
@@ -534,7 +539,7 @@ class ChunkEvaluator(MetricBase):
 
             # suppose the model predict 10 chucks, while 8 ones are correct and the ground truth has 9 chucks.
             num_infer_chunks = 10
-            num_label_chunks = 9 
+            num_label_chunks = 9
             num_correct_chunks = 8
 
             metric.update(num_infer_chunks, num_label_chunks, num_correct_chunks)
@@ -564,8 +569,8 @@ class ChunkEvaluator(MetricBase):
         r"""
         This function takes (num_infer_chunks, num_label_chunks, num_correct_chunks) as input,
         to accumulate and update the corresponding status of the ChunkEvaluator object. The update method is as follows:
-        
-        .. math:: 
+
+        .. math::
                    \\\\ \\begin{array}{l}{\\text { self. num_infer_chunks }+=\\text { num_infer_chunks }} \\\\ {\\text { self. num_Label_chunks }+=\\text { num_label_chunks }} \\\\ {\\text { self. num_correct_chunks }+=\\text { num_correct_chunks }}\\end{array} \\\\
 
         Args:
@@ -594,26 +599,34 @@ class ChunkEvaluator(MetricBase):
         """
         This function returns the mean precision, recall and f1 score for all accumulated minibatches.
 
-        Returns: 
+        Returns:
             float: mean precision, recall and f1 score.
 
         """
-        precision = float(
-            self.num_correct_chunks
-        ) / self.num_infer_chunks if self.num_infer_chunks else 0
-        recall = float(self.num_correct_chunks
-                       ) / self.num_label_chunks if self.num_label_chunks else 0
-        f1_score = float(2 * precision * recall) / (
-            precision + recall) if self.num_correct_chunks else 0
+        precision = (
+            float(self.num_correct_chunks) / self.num_infer_chunks
+            if self.num_infer_chunks
+            else 0
+        )
+        recall = (
+            float(self.num_correct_chunks) / self.num_label_chunks
+            if self.num_label_chunks
+            else 0
+        )
+        f1_score = (
+            float(2 * precision * recall) / (precision + recall)
+            if self.num_correct_chunks
+            else 0
+        )
         return precision, recall, f1_score
 
 
 class EditDistance(MetricBase):
     """
     This API is for the management of edit distances.
-    Editing distance is a method to quantify the degree of dissimilarity 
-    between two strings, such as words, by calculating the minimum editing 
-    operand (add, delete or replace) required to convert one string into another. 
+    Editing distance is a method to quantify the degree of dissimilarity
+    between two strings, such as words, by calculating the minimum editing
+    operand (add, delete or replace) required to convert one string into another.
     Refer to https://en.wikipedia.org/wiki/Edit_distance.
 
     Args:
@@ -659,7 +672,7 @@ class EditDistance(MetricBase):
 
     def __init__(self, name):
         super(EditDistance, self).__init__(name)
-        self.total_distance = .0
+        self.total_distance = 0.0
         self.seq_num = 0
         self.instance_error = 0
 
@@ -795,11 +808,14 @@ class Auc(MetricBase):
             tot_neg_prev = tot_neg
             tot_pos += self._stat_pos[idx]
             tot_neg += self._stat_neg[idx]
-            auc += self.trapezoid_area(tot_neg, tot_neg_prev, tot_pos,
-                                       tot_pos_prev)
+            auc += self.trapezoid_area(
+                tot_neg, tot_neg_prev, tot_pos, tot_pos_prev
+            )
             idx -= 1
 
-        return auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0
+        return (
+            auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0
+        )
 
 
 class DetectionMAP(object):
@@ -885,16 +901,18 @@ class DetectionMAP(object):
 
     """
 
-    def __init__(self,
-                 input,
-                 gt_label,
-                 gt_box,
-                 gt_difficult=None,
-                 class_num=None,
-                 background_label=0,
-                 overlap_threshold=0.5,
-                 evaluate_difficult=True,
-                 ap_version='integral'):
+    def __init__(
+        self,
+        input,
+        gt_label,
+        gt_box,
+        gt_difficult=None,
+        class_num=None,
+        background_label=0,
+        overlap_threshold=0.5,
+        evaluate_difficult=True,
+        ap_version='integral',
+    ):
 
         self.helper = LayerHelper('map_eval')
         gt_label = layers.cast(x=gt_label, dtype=gt_box.dtype)
@@ -905,30 +923,36 @@ class DetectionMAP(object):
             label = layers.concat([gt_label, gt_box], axis=1)
 
         # calculate mean average precision (mAP) of current mini-batch
-        map = detection.detection_map(input,
-                                      label,
-                                      class_num,
-                                      background_label,
-                                      overlap_threshold=overlap_threshold,
-                                      evaluate_difficult=evaluate_difficult,
-                                      ap_version=ap_version)
+        map = detection.detection_map(
+            input,
+            label,
+            class_num,
+            background_label,
+            overlap_threshold=overlap_threshold,
+            evaluate_difficult=evaluate_difficult,
+            ap_version=ap_version,
+        )
 
         states = []
         states.append(
-            self._create_state(dtype='int32',
-                               shape=None,
-                               suffix='accum_pos_count'))
+            self._create_state(
+                dtype='int32', shape=None, suffix='accum_pos_count'
+            )
+        )
         states.append(
-            self._create_state(dtype='float32',
-                               shape=None,
-                               suffix='accum_true_pos'))
+            self._create_state(
+                dtype='float32', shape=None, suffix='accum_true_pos'
+            )
+        )
         states.append(
-            self._create_state(dtype='float32',
-                               shape=None,
-                               suffix='accum_false_pos'))
+            self._create_state(
+                dtype='float32', shape=None, suffix='accum_false_pos'
+            )
+        )
         var = self._create_state(dtype='int32', shape=[1], suffix='has_state')
-        self.helper.set_variable_initializer(var,
-                                             initializer=Constant(value=int(0)))
+        self.helper.set_variable_initializer(
+            var, initializer=Constant(value=int(0))
+        )
         self.has_state = var
 
         # calculate accumulative mAP
@@ -942,12 +966,15 @@ class DetectionMAP(object):
             has_state=self.has_state,
             input_states=states,
             out_states=states,
-            ap_version=ap_version)
+            ap_version=ap_version,
+        )
 
-        layers.fill_constant(shape=self.has_state.shape,
-                             value=1,
-                             dtype=self.has_state.dtype,
-                             out=self.has_state)
+        layers.fill_constant(
+            shape=self.has_state.shape,
+            value=1,
+            dtype=self.has_state.dtype,
+            out=self.has_state,
+        )
 
         self.cur_map = map
         self.accum_map = accum_map
@@ -961,11 +988,12 @@ class DetectionMAP(object):
             shape(tuple|list): the shape of state
         Returns: State variable
         """
-        state = self.helper.create_variable(name="_".join(
-            [unique_name.generate(self.helper.name), suffix]),
-                                            persistable=True,
-                                            dtype=dtype,
-                                            shape=shape)
+        state = self.helper.create_variable(
+            name="_".join([unique_name.generate(self.helper.name), suffix]),
+            persistable=True,
+            dtype=dtype,
+            shape=shape,
+        )
         return state
 
     def get_map_var(self):
@@ -987,19 +1015,20 @@ class DetectionMAP(object):
 
         def _clone_var_(block, var):
             assert isinstance(var, Variable)
-            return block.create_var(name=var.name,
-                                    shape=var.shape,
-                                    dtype=var.dtype,
-                                    type=var.type,
-                                    lod_level=var.lod_level,
-                                    persistable=var.persistable)
+            return block.create_var(
+                name=var.name,
+                shape=var.shape,
+                dtype=var.dtype,
+                type=var.type,
+                lod_level=var.lod_level,
+                persistable=var.persistable,
+            )
 
         if reset_program is None:
             reset_program = Program()
         with program_guard(main_program=reset_program):
             var = _clone_var_(reset_program.current_block(), self.has_state)
-            layers.fill_constant(shape=var.shape,
-                                 value=0,
-                                 dtype=var.dtype,
-                                 out=var)
+            layers.fill_constant(
+                shape=var.shape, value=0, dtype=var.dtype, out=var
+            )
         executor.run(reset_program)

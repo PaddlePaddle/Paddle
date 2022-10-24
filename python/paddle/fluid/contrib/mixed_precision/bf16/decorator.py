@@ -12,10 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import (core, default_main_program, layers, program_guard,
-                          unique_name)
-from .amp_utils import (rewrite_program_bf16, cast_model_to_bf16,
-                        cast_parameters_to_bf16)
+from paddle.fluid import (
+    core,
+    default_main_program,
+    layers,
+    program_guard,
+    unique_name,
+)
+from .amp_utils import (
+    rewrite_program_bf16,
+    cast_model_to_bf16,
+    cast_parameters_to_bf16,
+)
 from .amp_lists import AutoMixedPrecisionListsBF16
 import types
 import warnings
@@ -25,11 +33,11 @@ __all__ = ["decorate_bf16"]
 
 class OptimizerWithMixedPrecision(object):
     """
-    Optimizer with mixed-precision (MP) training. This is a wrapper of a common 
+    Optimizer with mixed-precision (MP) training. This is a wrapper of a common
     optimizer, plus the support of mixed-precision pre-training. The object
-    of this class almost has the same behavior as the common optimizer, with the 
-    methods `minimize()`, `backward()`, `apply_gradients()` implemented. 
-    Additionally, it enables the MP training automatically, i.e, the creation 
+    of this class almost has the same behavior as the common optimizer, with the
+    methods `minimize()`, `backward()`, `apply_gradients()` implemented.
+    Additionally, it enables the MP training automatically, i.e, the creation
     and maintenance of master parameters, scaling of loss, etc.
 
     Args:
@@ -58,26 +66,30 @@ class OptimizerWithMixedPrecision(object):
         # Ensure the data type of learning rate vars is float32 (same as the
         # master parameter dtype)
         if isinstance(self._optimizer._learning_rate, float):
-            self._optimizer._learning_rate_map[default_main_program()] = \
-                    layers.create_global_var(
-                    name=unique_name.generate("learning_rate"),
-                    shape=[1],
-                    value=float(self._optimizer._learning_rate),
-                    dtype='float32',
-                    persistable=True)
+            self._optimizer._learning_rate_map[
+                default_main_program()
+            ] = layers.create_global_var(
+                name=unique_name.generate("learning_rate"),
+                shape=[1],
+                value=float(self._optimizer._learning_rate),
+                dtype='float32',
+                persistable=True,
+            )
 
-    def backward(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None,
-                 callbacks=None):
+    def backward(
+        self,
+        loss,
+        startup_program=None,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None,
+    ):
         """
         Backward propagation or auto differentiation for gradients' computation.
 
         Args:
             loss (Variable): The loss Variable to minimize.
-            startup_program (Program|None): The startup Program for initializing 
+            startup_program (Program|None): The startup Program for initializing
                                        parameters in `parameter_list`.
             parameter_list (list|None): A list of Variables to update.
             no_grad_set (set|None): A set of Variables should be ignored.
@@ -85,7 +97,7 @@ class OptimizerWithMixedPrecision(object):
                                    backward operator for one parameter.
 
         Returns:
-            A list of (param, grad), which is a tuple of a parameter and its 
+            A list of (param, grad), which is a tuple of a parameter and its
             gradient respectively, and the scaled loss.
         """
         train_program = loss.block.program
@@ -96,29 +108,30 @@ class OptimizerWithMixedPrecision(object):
 
             if self._use_pure_bf16:
                 self._to_bf16_var_names = cast_model_to_bf16(
-                    self._train_program, startup_program, self._amp_lists,
-                    self._use_bf16_guard)
+                    self._train_program,
+                    startup_program,
+                    self._amp_lists,
+                    self._use_bf16_guard,
+                )
             else:
                 rewrite_program_bf16(self._train_program, self._amp_lists)
 
             if loss.dtype != core.VarDesc.VarType.FP32:
                 loss = loss.astype('float32')
 
-            params_grads = self._optimizer.backward(loss, startup_program,
-                                                    parameter_list, no_grad_set,
-                                                    callbacks)
+            params_grads = self._optimizer.backward(
+                loss, startup_program, parameter_list, no_grad_set, callbacks
+            )
         return params_grads
 
-    def amp_init(self,
-                 place,
-                 scope=None,
-                 test_program=None,
-                 use_bf16_test=False):
+    def amp_init(
+        self, place, scope=None, test_program=None, use_bf16_test=False
+    ):
         """
         Init the amp training, such as cast fp32 parameters to bf16 type.
-  
+
         Args:
-            place(CPUPlace): place is used to initialize 
+            place(CPUPlace): place is used to initialize
                 bf16 parameters with fp32 values.
             scope(Scope): The scope is used to find fp32 parameters.
             test_program(Program): The program is used for testing.
@@ -145,7 +158,7 @@ class OptimizerWithMixedPrecision(object):
                         loss = paddle.mean(hidden)
                     # 2) Create the optimizer and set `multi_precision` to True.
                     # Setting `multi_precision` to True can avoid the poor accuracy
-                    # or the slow convergence in a way. 
+                    # or the slow convergence in a way.
                     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                     # 3) These ops in `custom_fp32_list` will keep in the float32 computation type.
                     amp_list = paddle.static.amp.CustomOpLists(
@@ -163,28 +176,32 @@ class OptimizerWithMixedPrecision(object):
                     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                     optimizer.amp_init(place, scope=paddle.static.global_scope())
-                    
+
         """
-        assert self._train_program is not None, \
-            "Please call the minimize method first."
+        assert (
+            self._train_program is not None
+        ), "Please call the minimize method first."
         if self._use_pure_bf16:
-            cast_parameters_to_bf16(place, self._train_program, scope,
-                                    self._to_bf16_var_names)
+            cast_parameters_to_bf16(
+                place, self._train_program, scope, self._to_bf16_var_names
+            )
         if test_program is not None:
             if self._use_pure_bf16:
-                cast_model_to_bf16(test_program,
-                                   amp_lists=self._amp_lists,
-                                   use_bf16_guard=self._use_bf16_guard)
+                cast_model_to_bf16(
+                    test_program,
+                    amp_lists=self._amp_lists,
+                    use_bf16_guard=self._use_bf16_guard,
+                )
             elif use_bf16_test:
                 rewrite_program_bf16(test_program, amp_lists=self._amp_lists)
 
     def apply_gradients(self, params_grads):
         """
         Apply gradients.
-  
+
         Args:
             params_grads (list): A list of params.
-    
+
         Returns:
             A list of optimize operators.
         """
@@ -197,11 +214,9 @@ class OptimizerWithMixedPrecision(object):
             optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None):
+    def minimize(
+        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
+    ):
         """
         Perform optimization by minimizing the given loss.
 
@@ -217,27 +232,29 @@ class OptimizerWithMixedPrecision(object):
             list of scaled parameters and gradients.
         """
         opt_dict = self._optimizer.__class__.__dict__
-        if 'minimize' in opt_dict and isinstance(opt_dict['minimize'],
-                                                 types.FunctionType):
+        if 'minimize' in opt_dict and isinstance(
+            opt_dict['minimize'], types.FunctionType
+        ):
             warnings.warn(
                 "The decorated optimizer has its own `minimize` method, but it will not be executed."
             )
 
-        params_grads = self.backward(loss,
-                                     startup_program=startup_program,
-                                     parameter_list=parameter_list,
-                                     no_grad_set=no_grad_set)
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set,
+        )
 
         optimize_ops = self.apply_optimize(loss, startup_program, params_grads)
 
         return optimize_ops, params_grads
 
 
-def decorate_bf16(optimizer,
-                  amp_lists=None,
-                  use_pure_bf16=False,
-                  use_bf16_guard=None):
-    """ 
+def decorate_bf16(
+    optimizer, amp_lists=None, use_pure_bf16=False, use_bf16_guard=None
+):
+    """
     Decorate the given optimizer to adapt to the mixed-precision training.
 
     Args:
@@ -248,11 +265,11 @@ def decorate_bf16(optimizer,
                            Default None, which means that its value equals to `use_pure_bf16`.
 
     Returns:
-        An optimizer acting like a normal one but with mixed-precision training 
+        An optimizer acting like a normal one but with mixed-precision training
         enabled.
 
     Examples 1:
-	    .. code-block:: python
+            .. code-block:: python
 
             # fp32&bf16 list based strategy example
             import paddle
@@ -290,7 +307,7 @@ def decorate_bf16(optimizer,
                     loss = paddle.mean(hidden)
                 # 2) Create the optimizer and set `multi_precision` to True.
                 # Setting `multi_precision` to True can avoid the poor accuracy
-                # or the slow convergence in a way. 
+                # or the slow convergence in a way.
                 optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                 # 3) These ops in `custom_fp32_list` will keep in the float32 computation type.
                 amp_list = paddle.static.amp.CustomOpLists(
@@ -308,7 +325,7 @@ def decorate_bf16(optimizer,
                 # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                 # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                 optimizer.amp_init(place, scope=paddle.static.global_scope())
-                
+
     """
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionListsBF16()
@@ -316,7 +333,8 @@ def decorate_bf16(optimizer,
     if use_bf16_guard is None:
         use_bf16_guard = use_pure_bf16
 
-    mp_optimizer = OptimizerWithMixedPrecision(optimizer, amp_lists,
-                                               use_pure_bf16, use_bf16_guard)
+    mp_optimizer = OptimizerWithMixedPrecision(
+        optimizer, amp_lists, use_pure_bf16, use_bf16_guard
+    )
 
     return mp_optimizer

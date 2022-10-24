@@ -15,8 +15,6 @@
 All util layers.
 """
 
-from __future__ import print_function
-
 from .layer_function_generator import autodoc
 from ..framework import unique_name
 from ..layer_helper import LayerHelper
@@ -30,15 +28,16 @@ __all__ = []
 def get_places(device_count=None, device_type=None):
     helper = LayerHelper('get_places', **locals())
     out_places = helper.create_variable(
-        name=unique_name.generate_with_ignorable_key(helper.name + ".out"))
+        name=unique_name.generate_with_ignorable_key(helper.name + ".out")
+    )
     attrs = dict()
     if device_count is not None:
         attrs['device_count'] = int(device_count)
     if device_type is not None:
         attrs['device_type'] = str(device_type)
 
-    helper.append_op(type='get_places',
-                     outputs={"Out": [out_places]},
-                     attrs=attrs)
+    helper.append_op(
+        type='get_places', outputs={"Out": [out_places]}, attrs=attrs
+    )
 
     return out_places

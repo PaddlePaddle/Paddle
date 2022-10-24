@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
 import numpy as np
 
@@ -30,7 +28,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
-
     def check_operation(self, a, b, c, op):
         if op == '+':
             c_rlt = a + b

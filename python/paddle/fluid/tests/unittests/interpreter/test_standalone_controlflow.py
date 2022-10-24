@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
 import unittest
 import paddle
 from paddle.fluid import core, framework
-from paddle.fluid.core import StandaloneExecutor
-import paddle.fluid as fluid
 from paddle.fluid.framework import Program, program_guard
 import paddle.fluid.layers as layers
 
@@ -31,32 +27,28 @@ paddle.enable_static()
 #  and new executor twice and check the result.
 #  please override the _get_feeds() and build_prgram()
 class TestCompatibility(unittest.TestCase):
-
     def setUp(self):
-        self.place = paddle.CUDAPlace(
-            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         self.iter_run = 4
 
     def _get_feed(self):
-        """ return the feeds
-        """
+        """return the feeds"""
         return None
 
     def build_program(self):
-
         def true_func():
-            return layers.fill_constant(shape=[1, 2], dtype='int32',
-                                        value=1), layers.fill_constant(
-                                            shape=[2, 3],
-                                            dtype='bool',
-                                            value=True)
+            return layers.fill_constant(
+                shape=[1, 2], dtype='int32', value=1
+            ), layers.fill_constant(shape=[2, 3], dtype='bool', value=True)
 
         def false_func():
-            return layers.fill_constant(shape=[3, 4], dtype='float32',
-                                        value=3), layers.fill_constant(
-                                            shape=[4, 5],
-                                            dtype='int64',
-                                            value=2)
+            return layers.fill_constant(
+                shape=[3, 4], dtype='float32', value=3
+            ), layers.fill_constant(shape=[4, 5], dtype='int64', value=2)
 
         main_program = Program()
         startup_program = Program()
@@ -105,14 +97,11 @@ class TestCompatibility(unittest.TestCase):
 
 
 class TestWhile(TestCompatibility):
-
     def _get_feed(self):
-        """ return the feeds
-        """
+        """return the feeds"""
         return None
 
     def build_program(self):
-
         def cond(i, ten):
             return i < ten
 
@@ -123,10 +112,12 @@ class TestWhile(TestCompatibility):
         main_program = paddle.static.default_main_program()
         startup_program = paddle.static.default_startup_program()
         with paddle.static.program_guard(main_program, startup_program):
-            i = paddle.full(shape=[1], fill_value=0,
-                            dtype='int64')  # loop counter
-            ten = paddle.full(shape=[1], fill_value=10,
-                              dtype='int64')  # loop length
+            i = paddle.full(
+                shape=[1], fill_value=0, dtype='int64'
+            )  # loop counter
+            ten = paddle.full(
+                shape=[1], fill_value=10, dtype='int64'
+            )  # loop length
             i, ten = paddle.static.nn.while_loop(cond, body, [i, ten])
 
             exe = paddle.static.Executor(paddle.CPUPlace())

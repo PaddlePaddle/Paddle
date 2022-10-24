@@ -14,19 +14,17 @@
 
 import os
 import paddle
-import paddle.compat as cpt
-from ..ps.utils.public import *
+from ..ps.utils.public import *  # noqa: F403
 from paddle.framework import core
 from paddle.distributed.passes.pass_base import PassBase, register_pass
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.transpiler.collective import SingleProcessMultiThread
-from _collections import deque, defaultdict
+from _collections import defaultdict
 from paddle.fluid.framework import Program, Parameter
 
 
 @register_pass("append_send_ops_pass")
 class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
-
     def __init__(self):
         super(AppendSendOpsPass, self).__init__()
 
@@ -36,8 +34,9 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
     def _check_conflict(self, other_pass):
         return True
 
-    def _append_send_op(self, program, union_vars, queue, is_sparse, table_id,
-                        ps_mode):
+    def _append_send_op(
+        self, program, union_vars, queue, is_sparse, table_id, ps_mode
+    ):
         if queue == STEP_COUNTER:
             send_input_vars = []
         else:
@@ -49,43 +48,42 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
         dummy_output = []
         if ps_mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
             dummy_output = program.global_block().create_var(
-                name=framework.generate_control_dev_var_name())
-        program.global_block().append_op(type="send",
-                                         inputs={"X": send_input_vars},
-                                         outputs={"Out": dummy_output},
-                                         attrs={
-                                             "send_varnames": [queue],
-                                             "is_sparse":
-                                             is_sparse,
-                                             "table_id":
-                                             table_id,
-                                             RPC_OP_ROLE_ATTR_NAME:
-                                             RPC_OP_ROLE_ATTR_VALUE
-                                         })
+                name=framework.generate_control_dev_var_name()
+            )
+        program.global_block().append_op(
+            type="send",
+            inputs={"X": send_input_vars},
+            outputs={"Out": dummy_output},
+            attrs={
+                "send_varnames": [queue],
+                "is_sparse": is_sparse,
+                "table_id": table_id,
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+            },
+        )
 
         return dummy_output
 
     def _append_barrier_op(self, program, dummys, trainer_id):
-        program.global_block().append_op(type="send_barrier",
-                                         inputs={"X": dummys},
-                                         outputs={"Out": []},
-                                         attrs={
-                                             "trainer_id":
-                                             trainer_id,
-                                             "half_async":
-                                             True,
-                                             RPC_OP_ROLE_ATTR_NAME:
-                                             RPC_OP_ROLE_ATTR_VALUE
-                                         })
+        program.global_block().append_op(
+            type="send_barrier",
+            inputs={"X": dummys},
+            outputs={"Out": []},
+            attrs={
+                "trainer_id": trainer_id,
+                "half_async": True,
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+            },
+        )
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
         ps_mode = attrs['ps_mode']
-        #if ps_mode == DistributedMode.GEO:
+        # if ps_mode == DistributedMode.GEO:
         #   send_ctx = get_geo_trainer_send_context(attrs)  # geo 模式, 没必要
         send_ctx = get_the_one_send_context(
-            attrs,
-            split_dense_table=attrs['is_heter_ps_mode'])  # async、sync 等各种模式
+            attrs, split_dense_table=attrs['is_heter_ps_mode']
+        )  # async、sync 等各种模式
 
         dummys = []
         for merged_name, send in send_ctx.items():  # embedding_0.w_0@GRAD
@@ -100,9 +98,15 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
             is_sparse = 1 if send.is_sparse() else 0
             is_sparse = 2 if send.is_distributed() else is_sparse
             dummys.append(
-                self._append_send_op(main_program, send.origin_varnames(),
-                                     merged_name, is_sparse, send.table_id(),
-                                     ps_mode))
+                self._append_send_op(
+                    main_program,
+                    send.origin_varnames(),
+                    merged_name,
+                    is_sparse,
+                    send.table_id(),
+                    ps_mode,
+                )
+            )
         if ps_mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
             trainer_id = get_role_id(attrs['role_maker'])
             self._append_barrier_op(main_program, dummys, trainer_id)
@@ -110,7 +114,6 @@ class AppendSendOpsPass(PassBase):  # 该 pass 被多种模式复用
 
 @register_pass("distributed_ops_pass")
 class DistributedOpsPass(PassBase):
-
     def __init__(self):
         super(DistributedOpsPass, self).__init__()
         self.w_2_table_id = {}
@@ -139,8 +142,10 @@ class DistributedOpsPass(PassBase):
             if len(entry) == 3 and entry[0] == 'show_click_entry':
                 show_var_name = entry[1]
                 click_var_name = entry[2]
-                if show_var_name in _program.global_block(
-                ).vars and click_var_name in _program.global_block().vars:
+                if (
+                    show_var_name in _program.global_block().vars
+                    and click_var_name in _program.global_block().vars
+                ):
                     show = _program.global_block().vars[show_var_name]
                     clk = _program.global_block().vars[click_var_name]
                     use_entry = True
@@ -155,31 +160,37 @@ class DistributedOpsPass(PassBase):
                 name="show",
                 dtype=core.VarDesc.VarType.FP32,
                 persistable=False,
-                stop_gradient=True)
-            _program.global_block()._insert_op(index=0,
-                                               type='fill_constant',
-                                               inputs={},
-                                               outputs={'Out': show},
-                                               attrs={
-                                                   'shape': [1],
-                                                   'dtype': show.dtype,
-                                                   'value': 1,
-                                               })
+                stop_gradient=True,
+            )
+            _program.global_block()._insert_op(
+                index=0,
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': show},
+                attrs={
+                    'shape': [1],
+                    'dtype': show.dtype,
+                    'value': 1,
+                },
+            )
 
             clk = _program.global_block().create_var(
                 name="clk",
                 dtype=core.VarDesc.VarType.FP32,
                 persistable=False,
-                stop_gradient=True)
-            _program.global_block()._insert_op(index=0,
-                                               type='fill_constant',
-                                               inputs={},
-                                               outputs={'Out': clk},
-                                               attrs={
-                                                   'shape': [1],
-                                                   'dtype': clk.dtype,
-                                                   'value': 0,
-                                               })
+                stop_gradient=True,
+            )
+            _program.global_block()._insert_op(
+                index=0,
+                type='fill_constant',
+                inputs={},
+                outputs={'Out': clk},
+                attrs={
+                    'shape': [1],
+                    'dtype': clk.dtype,
+                    'value': 0,
+                },
+            )
 
         for param, ops in push_sparse_ops.items():
             all_ops = _program.global_block().ops
@@ -204,27 +215,27 @@ class DistributedOpsPass(PassBase):
             for idx in op_idxs[::-1]:
                 _program.global_block()._remove_op(idx)
 
-            _program.global_block().append_op(type="distributed_push_sparse",
-                                              inputs={
-                                                  "Ids": inputs,
-                                                  'W': w,
-                                                  "Outputs": outputs,
-                                                  "Shows": show,
-                                                  "Clicks": clk,
-                                              },
-                                              outputs={"Outputs": outputs},
-                                              attrs={
-                                                  "is_distributed":
-                                                  is_distributed,
-                                                  "padding_idx": padding_idx,
-                                                  "table_id": table_id,
-                                                  "size": self.emb_size[param],
-                                                  "use_cvm_op": use_cvm_op,
-                                                  "slots": slots
-                                              })
+            _program.global_block().append_op(
+                type="distributed_push_sparse",
+                inputs={
+                    "Ids": inputs,
+                    'W': w,
+                    "Outputs": outputs,
+                    "Shows": show,
+                    "Clicks": clk,
+                },
+                outputs={"Outputs": outputs},
+                attrs={
+                    "is_distributed": is_distributed,
+                    "padding_idx": padding_idx,
+                    "table_id": table_id,
+                    "size": self.emb_size[param],
+                    "use_cvm_op": use_cvm_op,
+                    "slots": slots,
+                },
+            )
 
     def _pull_sparse_fuse(self, _program, pull_sparse_ops, attrs, send_ctx):
-
         def dag_check_up_and_reorder(program, inputs, outputs):
             global_block = program.global_block()
             min_output_index = len(global_block.ops)
@@ -349,7 +360,8 @@ class DistributedOpsPass(PassBase):
 
             if table_id == -1:
                 raise ValueError(
-                    "can not find suitable sparse table, please check")
+                    "can not find suitable sparse table, please check"
+                )
 
             self.w_2_table_id[param] = table_id
             padding_idx = ops[0].attr("padding_idx")
@@ -380,8 +392,9 @@ class DistributedOpsPass(PassBase):
                     ins = op.input(op.input_names[i])
                     for out_id, out_var in enumerate(outputs):
                         if out_var.name in ins:
-                            outputs_idxs[out_id] = min(idx,
-                                                       outputs_idxs[out_id])
+                            outputs_idxs[out_id] = min(
+                                idx, outputs_idxs[out_id]
+                            )
 
             if attrs['use_ps_gpu']:
                 gpups_inputs_idxs.extend(inputs_idxs)
@@ -389,8 +402,9 @@ class DistributedOpsPass(PassBase):
                 gpups_inputs.extend(inputs)
                 gpups_outputs.extend(outputs)
                 gpups_w_size.extend([w.shape[1]] * len(inputs))
-                gpups_min_distributed_idx = min(min(op_idxs),
-                                                gpups_min_distributed_idx)
+                gpups_min_distributed_idx = min(
+                    min(op_idxs), gpups_min_distributed_idx
+                )
                 continue
 
             if min(outputs_idxs) - max(inputs_idxs) >= 1:
@@ -402,18 +416,16 @@ class DistributedOpsPass(PassBase):
                 _program.global_block()._insert_op(
                     index=distributed_idx,
                     type="distributed_lookup_table",
-                    inputs={
-                        "Ids": inputs,
-                        'W': w
-                    },
+                    inputs={"Ids": inputs, 'W': w},
                     outputs={"Outputs": outputs},
                     attrs={
                         "is_distributed": is_distributed,
                         "padding_idx": padding_idx,
                         "table_id": table_id,
                         "lookup_table_version": op_type,
-                        "op_device": op_device
-                    })
+                        "op_device": op_device,
+                    },
+                )
             else:
                 for i in range(len(inputs_idxs)):
                     distributed_idx = op_idxs[i]
@@ -421,34 +433,34 @@ class DistributedOpsPass(PassBase):
                     _program.global_block()._insert_op(
                         index=distributed_idx,
                         type="distributed_lookup_table",
-                        inputs={
-                            "Ids": [inputs[i]],
-                            'W': w
-                        },
+                        inputs={"Ids": [inputs[i]], 'W': w},
                         outputs={"Outputs": [outputs[i]]},
                         attrs={
                             "is_distributed": is_distributed,
                             "padding_idx": padding_idx,
                             "table_id": table_id,
                             "lookup_table_version": op_type,
-                            "op_device": op_device
-                        })
+                            "op_device": op_device,
+                        },
+                    )
 
         if attrs['use_ps_gpu'] and len(gpups_inputs) > 0:
             if max(gpups_inputs_idxs) > 0:
                 raise ValueError("There can't be ops before embedding in gpups")
 
-            _program.global_block()._insert_op(index=gpups_min_distributed_idx,
-                                               type="pull_gpups_sparse",
-                                               inputs={
-                                                   "Ids": gpups_inputs,
-                                               },
-                                               outputs={"Out": gpups_outputs},
-                                               attrs={
-                                                   "size": gpups_w_size,
-                                                   "is_distributed": True,
-                                                   "is_sparse": True
-                                               })
+            _program.global_block()._insert_op(
+                index=gpups_min_distributed_idx,
+                type="pull_gpups_sparse",
+                inputs={
+                    "Ids": gpups_inputs,
+                },
+                outputs={"Out": gpups_outputs},
+                attrs={
+                    "size": gpups_w_size,
+                    "is_distributed": True,
+                    "is_sparse": True,
+                },
+            )
             PSGPU = paddle.fluid.core.PSGPU()
             try:
                 gpu_slot = [int(var.name) for var in gpups_inputs]
@@ -467,8 +479,10 @@ class DistributedOpsPass(PassBase):
         ops = {}
         use_cvm_op = False
         for op in _program.global_block().ops:
-            if op.type in SPARSE_OP_TYPE_DICT.keys() \
-                    and op.attr('remote_prefetch') is True:
+            if (
+                op.type in SPARSE_OP_TYPE_DICT.keys()
+                and op.attr('remote_prefetch') is True
+            ):
                 param_name = op.input(SPARSE_OP_TYPE_DICT[op.type])[0]
                 if attrs['is_heter_ps_mode'] and not attrs['is_fl_ps_mode']:
                     # TODO: trick for matchnet, need to modify for heter_ps
@@ -487,8 +501,10 @@ class DistributedOpsPass(PassBase):
         for op in _program.global_block().ops:
             if op.type in SPARSE_GRAD_OP_TYPE_DICT.keys():
                 param_name = op.input(SPARSE_GRAD_OP_TYPE_DICT[op.type])[0]
-                if param_name in pull_sparse_ids and op.input(
-                        "Ids")[0] in pull_sparse_ids[param_name]:
+                if (
+                    param_name in pull_sparse_ids
+                    and op.input("Ids")[0] in pull_sparse_ids[param_name]
+                ):
                     ops = push_sparse_ops.get(param_name, [])
                     ops.append(op)
                     push_sparse_ops[param_name] = ops
@@ -497,19 +513,25 @@ class DistributedOpsPass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
-        pull_sparse_ops, push_sparse_ops, use_cvm_op = self._get_pull_sparse_ops(
-            main_program, attrs)
-        print("is_heter_ps_mode in distributed_ops_pass {}?".format(
-            attrs['is_heter_ps_mode']))
+        (
+            pull_sparse_ops,
+            push_sparse_ops,
+            use_cvm_op,
+        ) = self._get_pull_sparse_ops(main_program, attrs)
+        print(
+            "is_heter_ps_mode in distributed_ops_pass {}?".format(
+                attrs['is_heter_ps_mode']
+            )
+        )
         send_ctx = get_the_one_send_context(
-            attrs, split_dense_table=attrs['is_heter_ps_mode'])
+            attrs, split_dense_table=attrs['is_heter_ps_mode']
+        )
         self._pull_sparse_fuse(main_program, pull_sparse_ops, attrs, send_ctx)
         self._push_sparse_fuse(main_program, push_sparse_ops, attrs, use_cvm_op)
 
 
 @register_pass("delete_optimizer_pass")
 class DeleteOptimizesPass(PassBase):
-
     def __init__(self):
         super(DeleteOptimizesPass, self).__init__()
 
@@ -519,8 +541,9 @@ class DeleteOptimizesPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _delete_optimizer_op_and_vars(self, _program, remote_optimize_ops,
-                                      local_optimize_ops):
+    def _delete_optimizer_op_and_vars(
+        self, _program, remote_optimize_ops, local_optimize_ops
+    ):
         local_optimize_vars = []
         remote_optimize_vars = []
         remote_optimize_op_role_vars = []
@@ -534,14 +557,18 @@ class DeleteOptimizesPass(PassBase):
             remote_optimize_op_role_vars.extend(op.attr("op_role_var"))
 
         remote_optimize_vars = list(
-            set(remote_optimize_vars
-                ))  # param + grad + optimizer_state + learning_rate
+            set(remote_optimize_vars)
+        )  # param + grad + optimizer_state + learning_rate
         remote_optimize_op_role_vars = list(
-            set(remote_optimize_op_role_vars))  # param + grad
+            set(remote_optimize_op_role_vars)
+        )  # param + grad
         print(
-            "remote_optimize_vars: {}, remote_optimize_op_role_vars: {}, local_optimize_vars: {}"
-            .format(remote_optimize_vars, remote_optimize_op_role_vars,
-                    local_optimize_vars))
+            "remote_optimize_vars: {}, remote_optimize_op_role_vars: {}, local_optimize_vars: {}".format(
+                remote_optimize_vars,
+                remote_optimize_op_role_vars,
+                local_optimize_vars,
+            )
+        )
         for var in remote_optimize_vars:
             if var in local_optimize_vars:
                 continue
@@ -556,26 +583,32 @@ class DeleteOptimizesPass(PassBase):
 
     def _add_lr_var(self, main_program, attrs):
         # Todo: hard code for pe
-        lr_var = attrs['origin_main_program'].global_block(
-        ).vars["learning_rate_0"]
-        main_program.global_block().create_var(name=lr_var.name,
-                                               shape=lr_var.shape,
-                                               dtype=lr_var.dtype,
-                                               type=lr_var.type,
-                                               lod_level=lr_var.lod_level,
-                                               persistable=True)
+        lr_var = (
+            attrs['origin_main_program'].global_block().vars["learning_rate_0"]
+        )
+        main_program.global_block().create_var(
+            name=lr_var.name,
+            shape=lr_var.shape,
+            dtype=lr_var.dtype,
+            type=lr_var.type,
+            lod_level=lr_var.lod_level,
+            persistable=True,
+        )
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
         all_optimize_ops = get_optimize_ops(main_program)
-        remote_optimize_ops = get_optimize_ops(main_program,
-                                               attrs['remote_sparse'])
+        remote_optimize_ops = get_optimize_ops(
+            main_program, attrs['remote_sparse']
+        )
         lr_ops = get_lr_ops(main_program)
         remote_optimize_ops.extend(lr_ops)
         local_optimize_ops = list(
-            set(all_optimize_ops) - set(remote_optimize_ops))
-        self._delete_optimizer_op_and_vars(main_program, remote_optimize_ops,
-                                           local_optimize_ops)
+            set(all_optimize_ops) - set(remote_optimize_ops)
+        )
+        self._delete_optimizer_op_and_vars(
+            main_program, remote_optimize_ops, local_optimize_ops
+        )
 
         if hasattr(attrs['origin_main_program'], 'lr_sheduler'):
             self._add_lr_var(main_program, attrs)
@@ -583,7 +616,6 @@ class DeleteOptimizesPass(PassBase):
 
 @register_pass("delete_extra_optimizer_pass")
 class DeleteExtraOptimizerPass(PassBase):
-
     def __init__(self):
         super(DeleteExtraOptimizerPass, self).__init__()
 
@@ -599,10 +631,12 @@ class DeleteExtraOptimizerPass(PassBase):
         remote_optimize_op_role_vars = []
         optimize_need_delete_vars = []
         all_optimize_ops = get_optimize_ops(main_program)
-        remote_optimize_ops = get_optimize_ops(main_program,
-                                               attrs['remote_sparse'])
+        remote_optimize_ops = get_optimize_ops(
+            main_program, attrs['remote_sparse']
+        )
         local_optimize_ops = list(
-            set(all_optimize_ops) - set(remote_optimize_ops))
+            set(all_optimize_ops) - set(remote_optimize_ops)
+        )
 
         local_optimize_vars = []
         for op in local_optimize_ops:
@@ -616,6 +650,8 @@ class DeleteExtraOptimizerPass(PassBase):
         remote_optimize_op_role_vars = list(set(remote_optimize_op_role_vars))
         for var in remote_optimize_vars:
             if var in local_optimize_vars:
+                continue
+            if 'learning_rate_0' == var:
                 continue
             if var not in remote_optimize_op_role_vars:
                 optimize_need_delete_vars.append(var)
@@ -637,7 +673,6 @@ class DeleteExtraOptimizerPass(PassBase):
 
 @register_pass("fake_init_ops_pass")
 class FakeInitOpsPass(PassBase):
-
     def __init__(self):
         super(FakeInitOpsPass, self).__init__()
 
@@ -648,19 +683,24 @@ class FakeInitOpsPass(PassBase):
         return True
 
     def _get_sparse_table_names(self, attrs):
-        dist_varnames = get_sparse_tablenames(attrs['origin_main_programs'],
-                                              True)
-        sparse_varnames = get_sparse_tablenames(attrs['origin_main_programs'],
-                                                False)
+        dist_varnames = get_sparse_tablenames(
+            attrs['origin_main_programs'], True
+        )
+        sparse_varnames = get_sparse_tablenames(
+            attrs['origin_main_programs'], False
+        )
         return list(set(dist_varnames + sparse_varnames))
 
-    def _fake_init_sparsetable(self, startup_program, sparse_table_names,
-                               attrs):
+    def _fake_init_sparsetable(
+        self, startup_program, sparse_table_names, attrs
+    ):
         # delete table init op
         for table_name in sparse_table_names:
             table_var = startup_program.global_block().vars[table_name]
-            if str(table_var).split(
-                    ":")[0].strip().split()[-1] in attrs['local_sparse']:
+            if (
+                str(table_var).split(":")[0].strip().split()[-1]
+                in attrs['local_sparse']
+            ):
                 continue
             table_param_init_op = []
             for op in startup_program.global_block().ops:
@@ -668,14 +708,16 @@ class FakeInitOpsPass(PassBase):
                     table_param_init_op.append(op)
             init_op_num = len(table_param_init_op)
             if init_op_num != 1:
-                raise ValueError("table init op num should be 1, now is " +
-                                 str(init_op_num))
+                raise ValueError(
+                    "table init op num should be 1, now is " + str(init_op_num)
+                )
             table_init_op = table_param_init_op[0]
             startup_program.global_block().append_op(
                 type="fake_init",
                 inputs={},
                 outputs={"Out": table_var},
-                attrs={"shape": table_init_op.attr('shape')})
+                attrs={"shape": table_init_op.attr('shape')},
+            )
             delete_ops(startup_program.global_block(), table_param_init_op)
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
@@ -686,7 +728,6 @@ class FakeInitOpsPass(PassBase):
 
 @register_pass("ps_gpu_pass")
 class PsGpuPass(PassBase):
-
     def __init__(self):
         super(PsGpuPass, self).__init__()
 
@@ -705,14 +746,17 @@ class PsGpuPass(PassBase):
             if op.type != "pull_box_sparse" and op.type != "pull_gpups_sparse":
                 continue
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, cpt.to_text(set()), [])
+                op.desc, set(), []
+            )
             for op_desc in grad_op_desc:
                 new_op_desc = program.global_block().desc._insert_op(
-                    insert_index + 1)
+                    insert_index + 1
+                )
                 new_op_desc.copy_from(op_desc)
                 new_op_desc._set_attr(op_role_attr_name, backward)
                 new_op = paddle.fluid.framework.Operator(
-                    program.global_block(), new_op_desc)
+                    program.global_block(), new_op_desc
+                )
                 program.global_block().ops.insert(insert_index + 1, new_op)
                 program.global_block()._sync_with_cpp()
 
@@ -786,7 +830,6 @@ class PsGpuPass(PassBase):
 
 @register_pass("ps_transpile_pass")
 class PsTranspilePass(PassBase):
-
     def __init__(self):
         super(PsTranspilePass, self).__init__()
 
@@ -800,17 +843,18 @@ class PsTranspilePass(PassBase):
         attrs = pass_ctx._attrs
         t = SingleProcessMultiThread()
         env = get_dist_env()
-        t.transpile(startup_program=startup_program,
-                    main_program=main_program,
-                    rank=env["trainer_id"],
-                    endpoints=env["trainer_endpoints"],
-                    current_endpoint=env['current_endpoint'],
-                    wait_port=False)
+        t.transpile(
+            startup_program=startup_program,
+            main_program=main_program,
+            rank=env["trainer_id"],
+            endpoints=env["trainer_endpoints"],
+            current_endpoint=env['current_endpoint'],
+            wait_port=False,
+        )
 
 
 @register_pass("split_heter_worker_ops_pass")
 class SplitHeterWorkerOpsPass(PassBase):
-
     def __init__(self):
         super(SplitHeterWorkerOpsPass, self).__init__()
 
@@ -820,9 +864,15 @@ class SplitHeterWorkerOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _create_heter_program(self, program, attrs, heter_program,
-                              program_block_ops_list, heter_ops,
-                              block_var_detail):
+    def _create_heter_program(
+        self,
+        program,
+        attrs,
+        heter_program,
+        program_block_ops_list,
+        heter_ops,
+        block_var_detail,
+    ):
         # This function mainly includes the following contents:
         # 1. For every heter block:
         #     a) copy heter device op from origin program
@@ -848,10 +898,12 @@ class SplitHeterWorkerOpsPass(PassBase):
         current_device = role_maker._heter_device_type().lower()
         stage_id = int(role_maker._get_stage_id())
 
-        heter_block_ops_forward = program_block_ops_list[stage_id -
-                                                         1]["forward"]
-        heter_block_ops_backward = program_block_ops_list[stage_id -
-                                                          1]["backward"]
+        heter_block_ops_forward = program_block_ops_list[stage_id - 1][
+            "forward"
+        ]
+        heter_block_ops_backward = program_block_ops_list[stage_id - 1][
+            "backward"
+        ]
 
         heter_block = heter_program._create_block(pre_block_idx)
         optimizer_block.append(heter_block)
@@ -873,59 +925,82 @@ class SplitHeterWorkerOpsPass(PassBase):
             for _, op in enumerate(heter_block_ops_backward):
                 block_append_op(heter_program, program, heter_block_bp, op)
 
-            bp_entrance_vars = block_var_detail[stage_id -
-                                                1]["backward"]["entrance"]
-            add_vars_by_var_list(bp_entrance_vars, program, heter_program,
-                                 heter_block_bp)
+            bp_entrance_vars = block_var_detail[stage_id - 1]["backward"][
+                "entrance"
+            ]
+            add_vars_by_var_list(
+                bp_entrance_vars, program, heter_program, heter_block_bp
+            )
             bp_exit_vars = block_var_detail[stage_id - 1]["backward"]["exit"]
-            add_vars_by_var_list(bp_exit_vars, program, heter_program,
-                                 heter_block_bp)
-            backward_comm_info = get_communicate_var_info(program,
-                                                          stage_id,
-                                                          bp_entrance_vars,
-                                                          type="backward")
+            add_vars_by_var_list(
+                bp_exit_vars, program, heter_program, heter_block_bp
+            )
+            backward_comm_info = get_communicate_var_info(
+                program, stage_id, bp_entrance_vars, type="backward"
+            )
 
-            grad_to_block_id.append(backward_comm_info["block_input_var_name"] +
-                                    ":" + str(heter_block_bp.idx))
+            grad_to_block_id.append(
+                backward_comm_info["block_input_var_name"]
+                + ":"
+                + str(heter_block_bp.idx)
+            )
 
         else:
             for _, op in enumerate(heter_block_ops_backward):
                 block_append_op(heter_program, program, heter_block, op)
 
-            bp_entrance_vars = block_var_detail[stage_id -
-                                                1]["backward"]["entrance"]
-            add_vars_by_var_list(bp_entrance_vars, program, heter_program,
-                                 heter_block)
+            bp_entrance_vars = block_var_detail[stage_id - 1]["backward"][
+                "entrance"
+            ]
+            add_vars_by_var_list(
+                bp_entrance_vars, program, heter_program, heter_block
+            )
             bp_exit_vars = block_var_detail[stage_id - 1]["backward"]["exit"]
-            add_vars_by_var_list(bp_exit_vars, program, heter_program,
-                                 heter_block)
+            add_vars_by_var_list(
+                bp_exit_vars, program, heter_program, heter_block
+            )
 
             heter_block_bp = heter_block
 
-        forward_comm_info = get_communicate_var_info(program,
-                                                     stage_id,
-                                                     entrance_vars,
-                                                     type="forward")
+        forward_comm_info = get_communicate_var_info(
+            program, stage_id, entrance_vars, type="forward"
+        )
 
-        grad_to_block_id.append(forward_comm_info["block_input_var_name"] +
-                                ":" + str(heter_block.idx))
+        grad_to_block_id.append(
+            forward_comm_info["block_input_var_name"]
+            + ":"
+            + str(heter_block.idx)
+        )
 
         first_op_index_bp = len(heter_block_bp.ops)
 
         if stage_id <= len(block_var_detail) - 1:
-            static_var = insert_communicate_op(program, role_maker, heter_block,
-                                               stage_id, first_op_index_fp,
-                                               block_var_detail, current_device)
-        static_var_bp = insert_communicate_op(program, role_maker,
-                                              heter_block_bp, stage_id,
-                                              first_op_index_bp,
-                                              block_var_detail, current_device,
-                                              False)
+            static_var = insert_communicate_op(
+                program,
+                role_maker,
+                heter_block,
+                stage_id,
+                first_op_index_fp,
+                block_var_detail,
+                current_device,
+            )
+        static_var_bp = insert_communicate_op(
+            program,
+            role_maker,
+            heter_block_bp,
+            stage_id,
+            first_op_index_bp,
+            block_var_detail,
+            current_device,
+            False,
+        )
 
         # add send op
         send_grad_var_list = add_send_op(
-            program, heter_block_bp,
-            block_var_detail[stage_id - 1]["backward"]["persistables"])
+            program,
+            heter_block_bp,
+            block_var_detail[stage_id - 1]["backward"]["persistables"],
+        )
 
         # add step conter
         send_input_vars = []
@@ -940,13 +1015,15 @@ class SplitHeterWorkerOpsPass(PassBase):
             "pserver_id": get_role_id(role_maker),
             "distributed_mode": attrs['ps_mode'],
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
         }
         # append the listen_and_serv op
-        heter_program.global_block().append_op(type="heter_listen_and_serv",
-                                               inputs={'X': []},
-                                               outputs={},
-                                               attrs=attrs)
+        heter_program.global_block().append_op(
+            type="heter_listen_and_serv",
+            inputs={'X': []},
+            outputs={},
+            attrs=attrs,
+        )
         # TODO check heter program
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
@@ -959,7 +1036,8 @@ class SplitHeterWorkerOpsPass(PassBase):
         attrs = pass_ctx._attrs
         default_deveice = "cpu"
         program, heter_ops, _, program_block_ops = find_heter_ops(
-            main_program, default_deveice)
+            main_program, default_deveice
+        )
         if len(heter_ops) == 0:
             warnings.warn(
                 "Currently running in Heter Parameter Server mode, but no OP running on heterogeneous devices, Please check your code."
@@ -968,18 +1046,23 @@ class SplitHeterWorkerOpsPass(PassBase):
             return
 
         program_block_ops = union_forward_gradient_op(program_block_ops)
-        block_vars_detail = find_block_joints(program, program_block_ops,
-                                              heter_ops)
+        block_vars_detail = find_block_joints(
+            program, program_block_ops, heter_ops
+        )
         heter_program = framework.Program()
-        self._create_heter_program(program, attrs, heter_program,
-                                   program_block_ops, heter_ops,
-                                   block_vars_detail)
+        self._create_heter_program(
+            program,
+            attrs,
+            heter_program,
+            program_block_ops,
+            heter_ops,
+            block_vars_detail,
+        )
         main_program = heter_program
 
 
 @register_pass("split_trainer_ops_pass")
 class SplitTrainerOpsPass(PassBase):
-
     def __init__(self):
         super(SplitTrainerOpsPass, self).__init__()
 
@@ -989,8 +1072,9 @@ class SplitTrainerOpsPass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def _replace_ops_by_communicate_op(self, program, attrs, heter_block_index,
-                                       ops_list, block_var_detail):
+    def _replace_ops_by_communicate_op(
+        self, program, attrs, heter_block_index, ops_list, block_var_detail
+    ):
         all_op = program.global_block().ops
         start_op = ops_list[0]
         first_op_idx = -1
@@ -1007,10 +1091,12 @@ class SplitTrainerOpsPass(PassBase):
             next_heter_worker_endpoints = get_next_stage_trainers(role_maker)
 
             entrance_var = block_var_detail[heter_block_index]["forward"][
-                "entrance"]
+                "entrance"
+            ]
 
-            comm_info = get_communicate_var_info(program, heter_block_index + 1,
-                                                 entrance_var)
+            comm_info = get_communicate_var_info(
+                program, heter_block_index + 1, entrance_var
+            )
             program.global_block()._insert_op(
                 index=first_op_idx,
                 type="send_and_recv",
@@ -1024,8 +1110,9 @@ class SplitTrainerOpsPass(PassBase):
                     "next_endpoints": next_heter_worker_endpoints,
                     "previous_endpoints": [],
                     "trainer_id": get_role_id(role_maker),
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-                })
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                },
+            )
 
         return entrance_var
 
@@ -1050,18 +1137,22 @@ class SplitTrainerOpsPass(PassBase):
                 del attrs['merged_sparse_pairs'][index]
                 return
 
-    def _remove_trainer_send_op(self, program, attrs, heter_block_index,
-                                block_var_detail):
+    def _remove_trainer_send_op(
+        self, program, attrs, heter_block_index, block_var_detail
+    ):
         # if trainer do FF->BP->SEND, it has follow vars: var, var@GRAD
         # if trainer only do SEND, it has one var: var@GRAD
         # Delete Send op ,if trainer doesn't has pair var (var<->var@GRAD)
-        persistables = block_var_detail[heter_block_index]["forward"]["persistables"] + \
-                    block_var_detail[heter_block_index]["backward"]["persistables"]
+        persistables = (
+            block_var_detail[heter_block_index]["forward"]["persistables"]
+            + block_var_detail[heter_block_index]["backward"]["persistables"]
+        )
         need_remove_send_op = []
         need_remove_grad_var = []
         for op in find_send_op(program):
-            input_list, _ = find_op_input_output(program,
-                                                 program.global_block(), op)
+            input_list, _ = find_op_input_output(
+                program, program.global_block(), op
+            )
             for var_name in input_list:
                 origin_var_name = var_name.split("@GRAD")[0]
                 if origin_var_name in persistables:
@@ -1072,8 +1163,14 @@ class SplitTrainerOpsPass(PassBase):
         for grad_var_name in need_remove_grad_var:
             self._remove_var_pair_by_grad(grad_var_name, attrs)
 
-    def _create_trainer_program(self, program, origin_program, attrs,
-                                program_block_ops_list, block_var_detail):
+    def _create_trainer_program(
+        self,
+        program,
+        origin_program,
+        attrs,
+        program_block_ops_list,
+        block_var_detail,
+    ):
         # This function mainly includes the following contents:
         # 1. For every heter block in origin program
         #     a) delete heter op and related variables
@@ -1086,13 +1183,16 @@ class SplitTrainerOpsPass(PassBase):
         # 2. check every op's device
         static_var = []
         for heter_block_index in range(1, len(program_block_ops_list)):
-            ops_list = program_block_ops_list[heter_block_index][
-                "forward"] + program_block_ops_list[heter_block_index][
-                    "backward"]
+            ops_list = (
+                program_block_ops_list[heter_block_index]["forward"]
+                + program_block_ops_list[heter_block_index]["backward"]
+            )
             static_var += self._replace_ops_by_communicate_op(
-                program, attrs, heter_block_index, ops_list, block_var_detail)
-            self._remove_trainer_send_op(program, attrs, heter_block_index,
-                                         block_var_detail)
+                program, attrs, heter_block_index, ops_list, block_var_detail
+            )
+            self._remove_trainer_send_op(
+                program, attrs, heter_block_index, block_var_detail
+            )
 
         optimizer_block = []
         grad_to_block_id = []
@@ -1100,65 +1200,77 @@ class SplitTrainerOpsPass(PassBase):
         bp_ops_list = program_block_ops_list[0]["backward"]
         delete_same_ops(program.global_block(), bp_ops_list)
         delete_trainer_useless_var(program, static_var)
-        backward_block = create_backward_block(program, origin_program,
-                                               bp_ops_list, block_var_detail)
+        backward_block = create_backward_block(
+            program, origin_program, bp_ops_list, block_var_detail
+        )
 
         bp_entrance_vars = block_var_detail[0]["backward"]["entrance"]
-        backward_comm_info = get_communicate_var_info(origin_program,
-                                                      1,
-                                                      bp_entrance_vars,
-                                                      type="backward")
+        backward_comm_info = get_communicate_var_info(
+            origin_program, 1, bp_entrance_vars, type="backward"
+        )
 
-        grad_to_block_id.append(backward_comm_info["block_input_var_name"] +
-                                ":" + str(backward_block.idx))
+        grad_to_block_id.append(
+            backward_comm_info["block_input_var_name"]
+            + ":"
+            + str(backward_block.idx)
+        )
         optimizer_block.append(backward_block)
         role_maker = attrs['role_maker']
         attrs = {
             "message_to_block_id": grad_to_block_id,
             "optimize_blocks": optimizer_block,
             # runtime attribute
-            "endpoint":
-            get_trainer_endpoint(role_maker),  ## get trainer endpoint
+            "endpoint": get_trainer_endpoint(
+                role_maker
+            ),  ## get trainer endpoint
             "fanin": 0,  ## get heter worker
             "pserver_id": get_role_id(role_maker),
             "distributed_mode": attrs['ps_mode'],
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
         }
         # append the listen_and_serv op
-        program.global_block()._insert_op(index=0,
-                                          type="heter_listen_and_serv",
-                                          inputs={'X': []},
-                                          outputs={},
-                                          attrs=attrs)
+        program.global_block()._insert_op(
+            index=0,
+            type="heter_listen_and_serv",
+            inputs={'X': []},
+            outputs={},
+            attrs=attrs,
+        )
 
         ## TODO add check for bp block
-        #check_op_device(program.global_block(), DEFAULT_DEVICE)
+        # check_op_device(program.global_block(), DEFAULT_DEVICE)
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         """
         split cpu-trainer program from origin-program
         1. find heter op (located on different device)
         2. find input&output of every heter-block
-        3. create cpu-trainer program, add send&recv op 
+        3. create cpu-trainer program, add send&recv op
         """
         attrs = pass_ctx._attrs
         default_device_ = 'cpu'
         program, heter_ops, default_ops, program_block_ops = find_heter_ops(
-            main_program, default_device_)
+            main_program, default_device_
+        )
         program_block_ops = union_forward_gradient_op(program_block_ops)
 
-        block_vars_detail = find_block_joints(program, program_block_ops,
-                                              heter_ops)
+        block_vars_detail = find_block_joints(
+            program, program_block_ops, heter_ops
+        )
         trainer_program = program.clone()
-        self._create_trainer_program(trainer_program, program, attrs,
-                                     program_block_ops, block_vars_detail)
+        self._create_trainer_program(
+            trainer_program,
+            program,
+            attrs,
+            program_block_ops,
+            block_vars_detail,
+        )
         main_program = trainer_program
 
 
 @register_pass("set_heter_pipeline_opt_pass")
 class SetHeterPipelineOptPass(PassBase):
-
     def __init__(self):
         super(SetHeterPipelineOptPass, self).__init__()
 
@@ -1172,32 +1284,31 @@ class SetHeterPipelineOptPass(PassBase):
         attrs = pass_ctx._attrs
         role_maker = attrs['role_maker']
         num_microbatches = attrs['user_defined_strategy'].pipeline_configs[
-            'accumulate_steps']
+            'accumulate_steps'
+        ]
 
         startup_program._heter_pipeline_opt = {
             "startup_program": startup_program,
             "pipeline_stage": int(role_maker._get_stage_id()) - 1,
             "heter_place": role_maker._heter_device(),
-            "is_fl_mode": 1
+            "is_fl_mode": 1,
         }
         main_program._heter_pipeline_opt = {
             "trainer": "HeterPipelineTrainer",
             "device_worker": "HeterSection",
-            "trainers":
-            role_maker._get_stage_trainers(),  ## trainer num in each stage
+            "trainers": role_maker._get_stage_trainers(),  ## trainer num in each stage
             "trainer_id": int(role_maker._role_id()),
             "pipeline_stage": int(role_maker._get_stage_id()) - 1,
             "num_pipeline_stages": int(role_maker._get_num_stage()),
             "section_program": main_program,
             "num_microbatches": num_microbatches,
             "heter_place": role_maker._heter_device(),
-            "is_fl_mode": 1
+            "is_fl_mode": 1,
         }
 
 
 @register_pass("split_fl_ops_pass")
 class SplitFlOpsPass(PassBase):
-
     def __init__(self):
         super(SplitFlOpsPass, self).__init__()
         self.PART_A_DEVICE_FlAG = 'gpu:0'
@@ -1230,10 +1341,17 @@ class SplitFlOpsPass(PassBase):
         block = self.ori_main_program.block(0)
         for op in block.ops:
             device = op.attr(OP_DEVICE_KEY)
-            if device == self.PART_A_DEVICE_FlAG or device == '' or device == self.PART_A_JOINT_OP_DEVICE_FlAG:
+            if (
+                device == self.PART_A_DEVICE_FlAG
+                or device == ''
+                or device == self.PART_A_JOINT_OP_DEVICE_FlAG
+            ):
                 program = party_program_map['a']
                 self.partA_ops.append(op)
-            elif device == self.PART_B_DEVICE_FlAG or device == self.PART_B_JOINT_OP_DEVICE_FlAG:
+            elif (
+                device == self.PART_B_DEVICE_FlAG
+                or device == self.PART_B_JOINT_OP_DEVICE_FlAG
+            ):
                 program = party_program_map['b']
                 self.partB_ops.append(op)
             op_desc = op.desc
@@ -1256,21 +1374,24 @@ class SplitFlOpsPass(PassBase):
             outputs={'Out': []},
             attrs={
                 'mode': 'forward',  # mode 直接关联前向和反向 channel 选择
-                'send_var_name':
-                self.partA_to_partB_tensor_name + ["microbatch_id"],
+                'send_var_name': self.partA_to_partB_tensor_name
+                + ["microbatch_id"],
                 'recv_var_name': [],
                 'message_name': comm_info,
-                'next_endpoints':
-                get_next_stage_trainers(self.role_maker),  # partB_endpoints
-                'previous_endpoints':
-                get_previous_stage_trainers(self.role_maker),
+                'next_endpoints': get_next_stage_trainers(
+                    self.role_maker
+                ),  # partB_endpoints
+                'previous_endpoints': get_previous_stage_trainers(
+                    self.role_maker
+                ),
                 'trainer_id': get_role_id(self.role_maker),  # global id
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+            },
+        )
         return
 
     def _insert_partB_communicate_op(self, block, idx):
-        comm_info = ("backward_joint_{}_{}@fl_ps".format(2, 1))
+        comm_info = "backward_joint_{}_{}@fl_ps".format(2, 1)
         block._insert_op(
             idx,
             type='send_and_recv',
@@ -1278,17 +1399,20 @@ class SplitFlOpsPass(PassBase):
             outputs={'Out': []},
             attrs={
                 'mode': 'backward',
-                'send_var_name':
-                self.partB_to_partA_grad_name + ["microbatch_id"],
+                'send_var_name': self.partB_to_partA_grad_name
+                + ["microbatch_id"],
                 'recv_var_name': [],
                 'message_name': comm_info,
-                'next_endpoints':
-                get_next_stage_trainers(self.role_maker),  # partA_endpoints
-                'previous_endpoints':
-                get_previous_stage_trainers(self.role_maker),
+                'next_endpoints': get_next_stage_trainers(
+                    self.role_maker
+                ),  # partA_endpoints
+                'previous_endpoints': get_previous_stage_trainers(
+                    self.role_maker
+                ),
                 'trainer_id': get_role_id(self.role_maker),  # global id
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+            },
+        )
         return
 
     def _create_var_for_block(self, vars, block):
@@ -1307,7 +1431,8 @@ class SplitFlOpsPass(PassBase):
                     trainable=source_var.trainable,
                     optimize_attr=source_var.optimize_attr,
                     regularizer=source_var.regularizer,
-                    error_clip=source_var.error_clip)
+                    error_clip=source_var.error_clip,
+                )
             else:
                 dest_var = block._clone_variable(source_var, False)
             dest_var.stop_gradient = source_var.stop_gradient
@@ -1361,15 +1486,18 @@ class SplitFlOpsPass(PassBase):
     def _find_dense_grad_vars(self, bp_op_list):
         program = self.ori_main_program
         bp_op_input, bp_op_output = find_ops_list_input_output(
-            program, bp_op_list)
-        return (screen_persistables(program, bp_op_input) +
-                screen_persistables(program, bp_op_output))
+            program, bp_op_list
+        )
+        return screen_persistables(program, bp_op_input) + screen_persistables(
+            program, bp_op_output
+        )
 
     def _get_partA_program(self, block):
         # 1. create block 0
         # 1.1 insert send op
-        op_idx = self._find_joint_forward_op(block,
-                                             self.PART_A_JOINT_OP_DEVICE_FlAG)
+        op_idx = self._find_joint_forward_op(
+            block, self.PART_A_JOINT_OP_DEVICE_FlAG
+        )
         op_list = []
         for i in range(len(block.ops)):
             op = block.ops[i]
@@ -1387,8 +1515,9 @@ class SplitFlOpsPass(PassBase):
         bp_op_list = get_bp_op_list(block)
         push_sparse_op_list = get_distributed_push_sparse_op_list(block)
         # logger.info('bp_op_list: {}'.format(bp_op_list))
-        second_block = self._get_block_by_idx(bp_op_list + push_sparse_op_list,
-                                              self.partA_program, 1)
+        second_block = self._get_block_by_idx(
+            bp_op_list + push_sparse_op_list, self.partA_program, 1
+        )
         # 2.1. insert partA recv op
         block_input_flag = "backward_joint_{}_{}@fl_ps".format(2, 1)
         grad_to_block_id = block_input_flag + ":" + str(second_block.idx)
@@ -1400,13 +1529,15 @@ class SplitFlOpsPass(PassBase):
             "pserver_id": get_role_id(self.role_maker),
             "distributed_mode": self.ps_mode,
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
         }
-        second_block._insert_op(index=0,
-                                type='heter_listen_and_serv',
-                                inputs={'X': []},
-                                outputs={},
-                                attrs=attrs)
+        second_block._insert_op(
+            index=0,
+            type='heter_listen_and_serv',
+            inputs={'X': []},
+            outputs={},
+            attrs=attrs,
+        )
         # 2.2 insert push dense grad op
         send_ops = find_send_op(self.ori_main_program)  # push dense
         delete_same_ops(block, send_ops)
@@ -1416,9 +1547,11 @@ class SplitFlOpsPass(PassBase):
 
     def _get_partB_program(self, block):
         op_idx1 = self._find_joint_forward_op(
-            block, self.PART_B_JOINT_OP_DEVICE_FlAG)  # elementwise_add op
-        op_idx2 = self._find_joint_backward_op(block,
-                                               self.PART_B_JOINT_OP_DEVICE_FlAG)
+            block, self.PART_B_JOINT_OP_DEVICE_FlAG
+        )  # elementwise_add op
+        op_idx2 = self._find_joint_backward_op(
+            block, self.PART_B_JOINT_OP_DEVICE_FlAG
+        )
         op_cnt = 0
         op_list1 = []
         op_list2 = []
@@ -1457,16 +1590,18 @@ class SplitFlOpsPass(PassBase):
             "pserver_id": 1,  # TODO
             "distributed_mode": self.ps_mode,
             "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
         }
-        first_block._insert_op(index=len(op_list1),
-                               type="heter_listen_and_serv",
-                               inputs={'X': []},
-                               outputs={},
-                               attrs=attrs)
+        first_block._insert_op(
+            index=len(op_list1),
+            type="heter_listen_and_serv",
+            inputs={'X': []},
+            outputs={},
+            attrs=attrs,
+        )
 
-        #logger.info('partB-first_block:{}'.format(first_block))
-        #logger.info('partB-second_block:{}'.format(second_block))
+        # logger.info('partB-first_block:{}'.format(first_block))
+        # logger.info('partB-second_block:{}'.format(second_block))
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
         attrs = pass_ctx._attrs
@@ -1481,8 +1616,9 @@ class SplitFlOpsPass(PassBase):
         prog_a = party_program_map['a']
         _main_file = ps_log_root_dir + '6_fl_A_main_program.prototxt'
         debug_program(_main_file, prog_a)
-        self._get_partB_to_partA_grad(prog_a.global_block(),
-                                      self.PART_A_JOINT_OP_DEVICE_FlAG)
+        self._get_partB_to_partA_grad(
+            prog_a.global_block(), self.PART_A_JOINT_OP_DEVICE_FlAG
+        )
 
         prog_b = party_program_map['b']
         _main_file = ps_log_root_dir + '6_fl_B_main_program.prototxt'

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import paddle
@@ -25,13 +23,11 @@ SEED = 2020
 
 
 class Pool2D(fluid.dygraph.Layer):
-
     def __init__(self):
         super(Pool2D, self).__init__()
-        self.pool2d = fluid.dygraph.Pool2D(pool_size=2,
-                                           pool_type='avg',
-                                           pool_stride=1,
-                                           global_pooling=False)
+        self.pool2d = fluid.dygraph.Pool2D(
+            pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False
+        )
 
     @declarative
     def forward(self, x):
@@ -44,17 +40,19 @@ class Pool2D(fluid.dygraph.Layer):
 
 
 class Linear(fluid.dygraph.Layer):
-
     def __init__(self, input_dim=10, output_dim=5):
         super(Linear, self).__init__()
         self.fc = fluid.dygraph.Linear(
             input_dim,
             output_dim,
             act='relu',
-            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.99)),
-            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.5)))
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.99)
+            ),
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.5)
+            ),
+        )
 
     @declarative
     def forward(self, x):
@@ -64,7 +62,6 @@ class Linear(fluid.dygraph.Layer):
 
 
 class TestPool2D(unittest.TestCase):
-
     def setUp(self):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
@@ -92,13 +89,17 @@ class TestPool2D(unittest.TestCase):
         dygraph_res = self.train_dygraph()
         static_res = self.train_static()
 
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph_res is {}\n static_res is \n{}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph_res is {}\n static_res is \n{}'.format(
+                dygraph_res, static_res
+            ),
+        )
 
 
 class TestLinear(TestPool2D):
-
     def setUp(self):
         self.dygraph_class = Linear
         self.data = np.random.random((4, 10)).astype('float32')

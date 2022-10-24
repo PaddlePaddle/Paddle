@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import inspect
 import os
 import fcntl
@@ -88,16 +86,19 @@ xpu_test_op_type_white_list = [
     'dropout_float16',
     'dropout_grad_float16',
     "grad_add_float32",  # no api for grad_add, skip
+    "lamb_float16",
     "lars_momentum_float32",
     "resnet_unit",
-    "resnet_unit_grad"
+    "resnet_unit_grad",
+    "c_embedding_float32",  # unittests of collective ops do not using xpu testing framework
+    "c_sync_comm_stream_float32",
+    "c_sync_calc_stream_float32",
 ]
 xpu_test_device_op_white_list = []
 xpu_test_device_op_type_white_list = []
 
 
 class XPUOpTestWrapper(object):
-
     def create_classes(self):
         base_class = None
         classes = []
@@ -108,7 +109,8 @@ def get_op_white_list():
     op_white_list = xpu_test_op_white_list
     if os.getenv('XPU_TEST_OP_WHITE_LIST') is not None:
         op_white_list.extend(
-            os.getenv('XPU_TEST_OP_WHITE_LIST').strip().split(','))
+            os.getenv('XPU_TEST_OP_WHITE_LIST').strip().split(',')
+        )
     return list(set(op_white_list))
 
 
@@ -124,10 +126,13 @@ def get_type_white_list():
         else:
             xpu2_type_white_list.append(t_type)
 
-    type_white_list = xpu1_type_white_list if version_str == "xpu1" else xpu2_type_white_list
+    type_white_list = (
+        xpu1_type_white_list if version_str == "xpu1" else xpu2_type_white_list
+    )
     if os.getenv('XPU_TEST_TYPE_WHITE_LIST') is not None:
         type_white_list.extend(
-            os.getenv('XPU_TEST_TYPE_WHITE_LIST').strip().split(','))
+            os.getenv('XPU_TEST_TYPE_WHITE_LIST').strip().split(',')
+        )
     return list(set(type_white_list))
 
 
@@ -135,7 +140,8 @@ def get_op_type_white_list():
     op_type_white_list = xpu_test_op_type_white_list
     if os.getenv('XPU_TEST_OP_TYPE_WHITE_LIST') is not None:
         op_type_white_list.extend(
-            os.getenv('XPU_TEST_OP_TYPE_WHITE_LIST').strip().split(','))
+            os.getenv('XPU_TEST_OP_TYPE_WHITE_LIST').strip().split(',')
+        )
     return list(set(op_type_white_list))
 
 
@@ -143,7 +149,8 @@ def get_device_op_white_list():
     device_op_white_list = xpu_test_device_op_white_list
     if os.getenv('XPU_TEST_DEVICE_OP_WHITE_LIST') is not None:
         device_op_white_list.extend(
-            os.getenv('XPU_TEST_DEVICE_OP_WHITE_LIST').strip().split(','))
+            os.getenv('XPU_TEST_DEVICE_OP_WHITE_LIST').strip().split(',')
+        )
     return list(set(device_op_white_list))
 
 
@@ -151,7 +158,8 @@ def get_device_op_type_white_list():
     device_op_type_white_list = xpu_test_device_op_type_white_list
     if os.getenv('XPU_TEST_DEVICE_OP_TYPE_WHITE_LIST') is not None:
         device_op_type_white_list.extend(
-            os.getenv('XPU_TEST_DEVICE_OP_TYPE_WHITE_LIST').strip().split(','))
+            os.getenv('XPU_TEST_DEVICE_OP_TYPE_WHITE_LIST').strip().split(',')
+        )
     return list(set(device_op_type_white_list))
 
 
@@ -178,13 +186,15 @@ def make_xpu_op_list(xpu_version):
             if op_type == paddle.bfloat16:
                 op_type = paddle.bfloat16
 
-            if type_dict_paddle_to_str[
-                    op_type] in type_white_list or op_type not in type_dict_paddle_to_str.keys(
-                    ):
+            if (
+                type_dict_paddle_to_str[op_type] in type_white_list
+                or op_type not in type_dict_paddle_to_str.keys()
+            ):
                 continue
 
-            device_op_type_name = device_op_name + '_' + type_dict_paddle_to_str[
-                op_type]
+            device_op_type_name = (
+                device_op_name + '_' + type_dict_paddle_to_str[op_type]
+            )
             if device_op_type_name in device_op_type_white_list:
                 continue
 
@@ -199,12 +209,14 @@ def make_xpu_op_list(xpu_version):
 def get_xpu_op_support_types(op_name, dev_id=0):
     xpu_version = core.get_xpu_device_version(dev_id)
     support_type_list = core.get_xpu_device_op_support_types(
-        op_name, xpu_version)
+        op_name, xpu_version
+    )
     support_type_str_list = []
     for stype in support_type_list:
         if stype == paddle.bfloat16:
             support_type_str_list.append(
-                type_dict_paddle_to_str[paddle.bfloat16])
+                type_dict_paddle_to_str[paddle.bfloat16]
+            )
         else:
             support_type_str_list.append(type_dict_paddle_to_str[stype])
     ops = make_xpu_op_list(xpu_version)
@@ -241,12 +253,14 @@ def is_empty_grad_op_type(xpu_version, op, test_type):
     return False
 
 
-def create_test_class(func_globals,
-                      test_class,
-                      test_type,
-                      test_grad=True,
-                      ignore_device_version=[],
-                      test_device_version=[]):
+def create_test_class(
+    func_globals,
+    test_class,
+    test_type,
+    test_grad=True,
+    ignore_device_version=[],
+    test_device_version=[],
+):
     xpu_version = core.get_xpu_device_version(0)
     if xpu_version in ignore_device_version:
         return
@@ -265,14 +279,19 @@ def create_test_class(func_globals,
         class_obj = test_class[1]
         cls_name = "{0}_{1}".format(test_class[0], str(test_type))
         func_globals[cls_name] = type(
-            cls_name, (class_obj, ), {
+            cls_name,
+            (class_obj,),
+            {
                 'in_type': type_dict_str_to_numpy[test_type],
                 'in_type_str': test_type,
-                'op_type_need_check_grad': True
-            })
+                'op_type_need_check_grad': True,
+            },
+        )
 
-    if hasattr(test_class_obj, 'use_dynamic_create_class'
-               ) and test_class_obj.use_dynamic_create_class:
+    if (
+        hasattr(test_class_obj, 'use_dynamic_create_class')
+        and test_class_obj.use_dynamic_create_class
+    ):
         base_class, dynamic_classes = test_class_obj.dynamic_create_class()
         for dy_class in dynamic_classes:
             cls_name = "{0}_{1}".format(dy_class[0], str(test_type))
@@ -280,7 +299,7 @@ def create_test_class(func_globals,
             attr_dict['in_type'] = type_dict_str_to_numpy[test_type]
             attr_dict['in_type_str'] = test_type
             attr_dict['op_type_need_check_grad'] = True
-            func_globals[cls_name] = type(cls_name, (base_class, ), attr_dict)
+            func_globals[cls_name] = type(cls_name, (base_class,), attr_dict)
 
     record_op_test(op_name, test_type)
     if not no_grad:
@@ -307,9 +326,12 @@ def get_test_cover_info():
     total_len = len(set(xpu_op_list))
     covered_len = len(set(xpu_op_covered))
     print('{} test: {}/{}'.format(version_str, covered_len, total_len))
-    if (len(diff_list) != 0):
-        print("These ops need to be tested on {0}! ops:{1}".format(
-            version_str, ','.join(diff_list)))
+    if len(diff_list) != 0:
+        print(
+            "These ops need to be tested on {0}! ops:{1}".format(
+                version_str, ','.join(diff_list)
+            )
+        )
 
 
 if __name__ == '__main__':

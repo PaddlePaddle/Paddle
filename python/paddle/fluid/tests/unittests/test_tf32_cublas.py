@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import six
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -21,7 +20,6 @@ import paddle.fluid.core as core
 
 
 class TestTF32Switch(unittest.TestCase):
-
     def test_on_off(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
@@ -37,7 +35,6 @@ class TestTF32Switch(unittest.TestCase):
 
 
 class TestTF32OnMatmul(unittest.TestCase):
-
     def test_dygraph_without_out(self):
         if core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
@@ -49,7 +46,7 @@ class TestTF32OnMatmul(unittest.TestCase):
                 data2 = paddle.to_tensor(input_array2)
                 out = paddle.matmul(data1, data2)
                 expected_result = np.matmul(input_array1, input_array2)
-            self.assertTrue(np.allclose(expected_result, out.numpy(), 1e-03))
+            np.testing.assert_allclose(expected_result, out.numpy(), rtol=0.001)
             core.set_cublas_switch(True)  # restore the switch
         else:
             pass

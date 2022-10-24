@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.test_profiler import TestProfiler
@@ -30,19 +27,20 @@ os.environ['NCCL_SHM_DISABLE'] = str(1)
 
 
 class TestPEProfiler(TestProfiler):
-
     def test_cpu_profiler(self):
         exe = fluid.Executor(fluid.CPUPlace())
         self.net_profiler(exe, 'CPU', "Default", use_parallel_executor=True)
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(),
-                     "profiler is enabled only with GPU")
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "profiler is enabled only with GPU"
+    )
     def test_cuda_profiler(self):
         exe = fluid.Executor(fluid.CUDAPlace(0))
         self.net_profiler(exe, 'GPU', "OpDetail", use_parallel_executor=True)
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(),
-                     "profiler is enabled only with GPU")
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "profiler is enabled only with GPU"
+    )
     def test_all_profiler(self):
         exe = fluid.Executor(fluid.CUDAPlace(0))
         self.net_profiler(exe, 'All', "AllOpDetail", use_parallel_executor=True)

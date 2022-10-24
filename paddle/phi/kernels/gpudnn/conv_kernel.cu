@@ -19,13 +19,12 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/operators/conv_miopen_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
-#include "paddle/fluid/operators/conv_cudnn_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -56,8 +55,7 @@ void ConvCudnnKernel(const Context& ctx,
 
   bool exhaustive_search = FLAGS_cudnn_exhaustive_search || exhaustive_search_t;
   bool deterministic = FLAGS_cudnn_deterministic;
-  auto exhaustive_deterministic = exhaustive_search && deterministic;
-  PADDLE_ENFORCE_EQ(exhaustive_deterministic,
+  PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
                     phi::errors::InvalidArgument(
                         "Cann't set exhaustive_search True and "
@@ -207,13 +205,15 @@ void ConvCudnnKernel(const Context& ctx,
   const T* filter_data = transformed_filter_channel.data<T>();
 
   // ------------------- cudnn descriptors ---------------------
-  paddle::operators::ConvArgs args{&transformed_input,
-                                   &transformed_filter_channel,
-                                   &transformed_output,
-                                   strides,
-                                   padding_common,
-                                   dilations,
-                                   dtype};
+  ConvArgs args{&transformed_input,
+                &transformed_filter_channel,
+                &transformed_output,
+                strides,
+                padding_common,
+                dilations,
+                dtype,
+                groups,
+                compute_format};
 
   auto handle = ctx.cudnn_handle();
   auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -266,35 +266,35 @@ void ConvCudnnKernel(const Context& ctx,
   int o_n, o_c, o_d, o_h, o_w;
 
   if (compute_format == paddle::platform::DataLayout::kNHWC) {
-    paddle::operators::GetNCDHW(transformed_input.dims(),
-                                paddle::platform::DataLayout::kNHWC,
-                                &i_n,
-                                &i_c,
-                                &i_d,
-                                &i_h,
-                                &i_w);
-    paddle::operators::GetNCDHW(transformed_output.dims(),
-                                paddle::platform::DataLayout::kNHWC,
-                                &o_n,
-                                &o_c,
-                                &o_d,
-                                &o_h,
-                                &o_w);
+    GetNCDHW(transformed_input.dims(),
+             paddle::platform::DataLayout::kNHWC,
+             &i_n,
+             &i_c,
+             &i_d,
+             &i_h,
+             &i_w);
+    GetNCDHW(transformed_output.dims(),
+             paddle::platform::DataLayout::kNHWC,
+             &o_n,
+             &o_c,
+             &o_d,
+             &o_h,
+             &o_w);
   } else {
-    paddle::operators::GetNCDHW(transformed_input.dims(),
-                                paddle::platform::DataLayout::kNCHW,
-                                &i_n,
-                                &i_c,
-                                &i_d,
-                                &i_h,
-                                &i_w);
-    paddle::operators::GetNCDHW(transformed_output.dims(),
-                                paddle::platform::DataLayout::kNCHW,
-                                &o_n,
-                                &o_c,
-                                &o_d,
-                                &o_h,
-                                &o_w);
+    GetNCDHW(transformed_input.dims(),
+             paddle::platform::DataLayout::kNCHW,
+             &i_n,
+             &i_c,
+             &i_d,
+             &i_h,
+             &i_w);
+    GetNCDHW(transformed_output.dims(),
+             paddle::platform::DataLayout::kNCHW,
+             &o_n,
+             &o_c,
+             &o_d,
+             &o_h,
+             &o_w);
   }
 
   int group_offset_in = i_c / groups * i_h * i_w * i_d;
@@ -304,17 +304,16 @@ void ConvCudnnKernel(const Context& ctx,
   size_t workspace_size = 0;  // final workspace to allocate.
 // ------------------- cudnn conv algorithm ---------------------
 #ifdef PADDLE_WITH_HIP
-  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
-  using search = paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
+  SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
+  using search = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
   workspace_size = search::GetWorkspaceSize(args);
   fwd_result.algo = search::Find<T>(
       args, exhaustive_search, deterministic, workspace_size, ctx);
 #else
-  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
-  using search =
-      paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-  fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-  workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
+  SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
+  using search = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+  fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
+  workspace_size = fwd_result.workspace_size;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
@@ -328,8 +327,8 @@ void ConvCudnnKernel(const Context& ctx,
 #endif
 
   // ------------------- cudnn conv forward ---------------------
-  paddle::operators::ScalingParamType<T> alpha = 1.0f;
-  paddle::operators::ScalingParamType<T> beta = 0.0f;
+  ScalingParamType<T> alpha = 1.0f;
+  ScalingParamType<T> beta = 0.0f;
 
   // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
   // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;

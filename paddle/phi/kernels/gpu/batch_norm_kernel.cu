@@ -552,8 +552,7 @@ void BatchNormKernel(const Context &ctx,
                      DenseTensor *reserve_space) {
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.
@@ -1105,7 +1104,7 @@ void BatchNormKernel(const Context &ctx,
         // Create reserve space and workspace for batch norm.
         // Create tensor for each batchnorm op, it will be used in the
         // backward. Thus this tensor shouldn't be temp.
-        // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+        // auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
         if (reserve_space == nullptr) {
           reserve_space = &reserve_space_tensor;
         }

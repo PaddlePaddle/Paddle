@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
-import paddle.fluid.core as core
-from paddle.static import program_guard, Program
-import paddle.compat as cpt
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -26,16 +21,18 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 paddle.enable_static()
 
 
-def fill_constant_batch_size_like(input,
-                                  shape,
-                                  value,
-                                  data_type,
-                                  input_dim_idx=0,
-                                  output_dim_idx=0,
-                                  force_cpu=False):
+def fill_constant_batch_size_like(
+    input,
+    shape,
+    value,
+    data_type,
+    input_dim_idx=0,
+    output_dim_idx=0,
+    force_cpu=False,
+):
     return paddle.fluid.layers.fill_constant_batch_size_like(
-        input, shape, data_type, value, input_dim_idx, output_dim_idx,
-        force_cpu)
+        input, shape, data_type, value, input_dim_idx, output_dim_idx, force_cpu
+    )
 
 
 class TestFillConstatnBatchSizeLike1(OpTest):
@@ -56,7 +53,7 @@ class TestFillConstatnBatchSizeLike1(OpTest):
             'value': self.value,
             'input_dim_idx': self.input_dim_idx,
             'output_dim_idx': self.output_dim_idx,
-            'force_cpu': self.force_cpu
+            'force_cpu': self.force_cpu,
         }
 
     def init_data(self):

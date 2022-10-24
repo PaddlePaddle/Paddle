@@ -13,15 +13,19 @@
 # limitations under the License.
 """Defination of Role Makers."""
 
-from __future__ import print_function
 from multiprocessing import Process, Manager
 import paddle.fluid as fluid
 import os
 import time
 
 __all__ = [
-    'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
-    'UserDefinedCollectiveRoleMaker', 'PaddleCloudRoleMaker', 'GeneralRoleMaker'
+    'Role',
+    'RoleMakerBase',
+    'MPISymetricRoleMaker',
+    'UserDefinedRoleMaker',
+    'UserDefinedCollectiveRoleMaker',
+    'PaddleCloudRoleMaker',
+    'GeneralRoleMaker',
 ]
 
 
@@ -146,8 +150,11 @@ class RoleMakerBase(object):
 
     def to_string(self):
         return "role: {}, current_id: {}, worker_endpoints: {}, server_endpoints: {}".format(
-            self._role, self._current_id, self._worker_endpoints,
-            self._server_endpoints)
+            self._role,
+            self._current_id,
+            self._worker_endpoints,
+            self._server_endpoints,
+        )
 
     def all_gather(self, input):
         """
@@ -197,6 +204,7 @@ class MPIRoleMaker(RoleMakerBase):
         """Init."""
         super(MPIRoleMaker, self).__init__()
         from mpi4py import MPI
+
         self.MPI = MPI
         self._comm = MPI.COMM_WORLD
         self._node_type_comm = None
@@ -252,6 +260,7 @@ class MPIRoleMaker(RoleMakerBase):
     def get_local_ip(self):
         """Return get local ip."""
         import socket
+
         self._ip = socket.gethostbyname(socket.gethostname())
         return self._ip
 
@@ -348,6 +357,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         """
         if self._pserver_rand_port <= 0:
             import random
+
             random.seed(self._server_num())
             # port will be randomly generated from 60001 to 63999
             # random seed is server num so that all nodes will get
@@ -496,7 +506,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
                     # format: string(ip:port), eg. 127.0.0.1:6001
                     eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(
-                        ",")
+                        ","
+                    )
                     # note that, we usually assign the same port to different ips
                     # if we run parameter server training in local mode
                     # port should be different in environment variables
@@ -506,7 +517,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
                     if training_role not in ["TRAINER", "PSERVER"]:
                         raise ValueError(
-                            "TRAINING_ROLE must be PSERVER or TRAINER")
+                            "TRAINING_ROLE must be PSERVER or TRAINER"
+                        )
 
                     if training_role == "TRAINER":
                         role = Role.WORKER
@@ -519,7 +531,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                         current_id = eplist.index(curr_endpoint)
                     else:
                         raise ValueError(
-                            "TRAINING_ROLE must be PSERVER or TRAINER")
+                            "TRAINING_ROLE must be PSERVER or TRAINER"
+                        )
                 except ValueError as ve:
                     raise ValueError(
                         "something wrong with PaddleCloud, please check environment"
@@ -531,12 +544,15 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 self._current_id = current_id
             else:
                 self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-                self._training_role = os.getenv("PADDLE_TRAINING_ROLE",
-                                                "TRAINER")
-                assert (self._training_role == "TRAINER")
+                self._training_role = os.getenv(
+                    "PADDLE_TRAINING_ROLE", "TRAINER"
+                )
+                assert self._training_role == "TRAINER"
                 self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
                 self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
-                assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
+                assert (
+                    self._worker_endpoints is not None
+                ), "can't find PADDLE_TRAINER_ENDPOINTS"
                 self._worker_endpoints = self._worker_endpoints.split(",")
                 self._trainers_num = len(self._worker_endpoints)
 
@@ -631,7 +647,8 @@ class GeneralRoleMaker(RoleMakerBase):
             self._is_barrier_all = 1
             if "PADDLE_IS_BARRIER_ALL_ROLE" in os.environ:
                 self._is_barrier_all = int(
-                    os.environ["PADDLE_IS_BARRIER_ALL_ROLE"])
+                    os.environ["PADDLE_IS_BARRIER_ALL_ROLE"]
+                )
             if training_role == "TRAINER":
                 role = Role.WORKER
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
@@ -639,12 +656,13 @@ class GeneralRoleMaker(RoleMakerBase):
                     size_d = {
                         "trainer": len(worker_endpoints),
                         "pserver": len(eplist),
-                        "all": len(worker_endpoints) + len(eplist)
+                        "all": len(worker_endpoints) + len(eplist),
                     }
                     # child process for http server
-                    self._http_server = Process(target=self.__start_kv_server,
-                                                args=(self._http_server_d,
-                                                      size_d))
+                    self._http_server = Process(
+                        target=self.__start_kv_server,
+                        args=(self._http_server_d, size_d),
+                    )
                     self._http_server.daemon = True
                     # set running status to True
                     self._http_server_d["running"] = True
@@ -658,15 +676,21 @@ class GeneralRoleMaker(RoleMakerBase):
                     gloo.set_size(len(worker_endpoints))
                     gloo.set_prefix(self._prefix)
                     gloo.set_iface(self._iface)
-                    gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                             self._run_timeout_seconds)
+                    gloo.set_timeout_seconds(
+                        self._init_timeout_seconds, self._run_timeout_seconds
+                    )
                     if len(self._http_ip_port) != 0:
-                        gloo.set_http_store(self._http_ip_port[0],
-                                            int(self._http_ip_port[1]),
-                                            "trainer")
+                        gloo.set_http_store(
+                            self._http_ip_port[0],
+                            int(self._http_ip_port[1]),
+                            "trainer",
+                        )
                     else:
-                        gloo.set_hdfs_store(self._hdfs_path + "/trainer",
-                                            self._hdfs_name, self._hdfs_ugi)
+                        gloo.set_hdfs_store(
+                            self._hdfs_path + "/trainer",
+                            self._hdfs_name,
+                            self._hdfs_ugi,
+                        )
                     gloo.init()
                     self._node_type_comm = gloo
                     if self._use_ps_gpu or self._use_metric:
@@ -677,7 +701,9 @@ class GeneralRoleMaker(RoleMakerBase):
                         Gloo_strategy.ip_port = int(self._http_ip_port[1])
                         Default_init_timeout_seconds = 3600
                         Default_run_timeout_seconds = 9999999
-                        Gloo_strategy.init_seconds = Default_init_timeout_seconds
+                        Gloo_strategy.init_seconds = (
+                            Default_init_timeout_seconds
+                        )
                         Gloo_strategy.run_seconds = Default_run_timeout_seconds
                         Gloo = fluid.core.GlooParallelContext(Gloo_strategy)
                         Gloo.init()
@@ -701,14 +727,21 @@ class GeneralRoleMaker(RoleMakerBase):
                 gloo.set_size(len(eplist))
                 gloo.set_prefix(self._prefix)
                 gloo.set_iface(self._iface)
-                gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                         self._run_timeout_seconds)
+                gloo.set_timeout_seconds(
+                    self._init_timeout_seconds, self._run_timeout_seconds
+                )
                 if len(self._http_ip_port) != 0:
-                    gloo.set_http_store(self._http_ip_port[0],
-                                        int(self._http_ip_port[1]), "pserver")
+                    gloo.set_http_store(
+                        self._http_ip_port[0],
+                        int(self._http_ip_port[1]),
+                        "pserver",
+                    )
                 else:
-                    gloo.set_hdfs_store(self._hdfs_path + "/pserver",
-                                        self._hdfs_name, self._hdfs_ugi)
+                    gloo.set_hdfs_store(
+                        self._hdfs_path + "/pserver",
+                        self._hdfs_name,
+                        self._hdfs_ugi,
+                    )
                 gloo.init()
                 self._node_type_comm = gloo
 
@@ -718,14 +751,17 @@ class GeneralRoleMaker(RoleMakerBase):
             gloo.set_size(len(all_list))
             gloo.set_prefix(self._prefix)
             gloo.set_iface(self._iface)
-            gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                     self._run_timeout_seconds)
+            gloo.set_timeout_seconds(
+                self._init_timeout_seconds, self._run_timeout_seconds
+            )
             if len(self._http_ip_port) != 0:
-                gloo.set_http_store(self._http_ip_port[0],
-                                    int(self._http_ip_port[1]), "all")
+                gloo.set_http_store(
+                    self._http_ip_port[0], int(self._http_ip_port[1]), "all"
+                )
             else:
-                gloo.set_hdfs_store(self._hdfs_path + "/all", self._hdfs_name,
-                                    self._hdfs_ugi)
+                gloo.set_hdfs_store(
+                    self._hdfs_path + "/all", self._hdfs_name, self._hdfs_ugi
+                )
             gloo.init()
             self._all_comm = gloo
             self._trainers_num = trainers_num
@@ -978,8 +1014,12 @@ class GeneralRoleMaker(RoleMakerBase):
                 gateway = None
                 if len(item) > gateway_idx:
                     gateway = item[gateway_idx]
-                if gateway and gateway != '*' and gateway != "0.0.0.0" and len(
-                        item) > iface_idx:
+                if (
+                    gateway
+                    and gateway != '*'
+                    and gateway != "0.0.0.0"
+                    and len(item) > iface_idx
+                ):
                     return item[iface_idx]
         return "lo"
 
@@ -987,8 +1027,9 @@ class GeneralRoleMaker(RoleMakerBase):
         """
         get default physical interface
         """
-        res = os.popen("ip -f inet addr | awk NR%3==1").read().strip().split(
-            "\n")
+        res = (
+            os.popen("ip -f inet addr | awk NR%3==1").read().strip().split("\n")
+        )
         for item in res:
             if "BROADCAST" in item:
                 return item.split(":")[1].strip()
@@ -996,6 +1037,7 @@ class GeneralRoleMaker(RoleMakerBase):
 
     def __start_kv_server(self, http_server_d, size_d):
         from paddle.fluid.incubate.fleet.utils.http_server import KVServer
+
         http_server = KVServer(int(self._http_ip_port[1]), size_d)
         http_server.start()
         wait_seconds = 5
@@ -1029,7 +1071,8 @@ class HeterRoleMaker(GeneralRoleMaker):
             xpu_num = len(xpu_endpoints)
             if training_role not in ["TRAINER", "PSERVER", "XPU"]:
                 raise ValueError(
-                    "TRAINING_ROLE must be PSERVER or TRAINER or XPU")
+                    "TRAINING_ROLE must be PSERVER or TRAINER or XPU"
+                )
             if training_role == "TRAINER":
                 role = Role.WORKER
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
@@ -1041,11 +1084,14 @@ class HeterRoleMaker(GeneralRoleMaker):
                 gloo.set_size(len(worker_endpoints))
                 gloo.set_prefix(self._prefix)
                 gloo.set_iface(self._iface)
-                gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                         self._run_timeout_seconds)
+                gloo.set_timeout_seconds(
+                    self._init_timeout_seconds, self._run_timeout_seconds
+                )
                 gloo.set_hdfs_store(
-                    self._hdfs_path.rstrip("/") + "/trainer", self._hdfs_name,
-                    self._hdfs_ugi)
+                    self._hdfs_path.rstrip("/") + "/trainer",
+                    self._hdfs_name,
+                    self._hdfs_ugi,
+                )
                 gloo.init()
                 self._node_type_comm = gloo
             elif training_role == "XPU":
@@ -1059,11 +1105,14 @@ class HeterRoleMaker(GeneralRoleMaker):
                 gloo.set_size(len(xpu_endpoints))
                 gloo.set_prefix(self._prefix)
                 gloo.set_iface(self._iface)
-                gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                         self._run_timeout_seconds)
+                gloo.set_timeout_seconds(
+                    self._init_timeout_seconds, self._run_timeout_seconds
+                )
                 gloo.set_hdfs_store(
-                    self._hdfs_path.rstrip("/") + "/xpu", self._hdfs_name,
-                    self._hdfs_ugi)
+                    self._hdfs_path.rstrip("/") + "/xpu",
+                    self._hdfs_name,
+                    self._hdfs_ugi,
+                )
                 gloo.init()
                 self._node_type_comm = gloo
             elif training_role == "PSERVER":
@@ -1084,11 +1133,14 @@ class HeterRoleMaker(GeneralRoleMaker):
                 gloo.set_size(len(eplist))
                 gloo.set_prefix(self._prefix)
                 gloo.set_iface(self._iface)
-                gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                         self._run_timeout_seconds)
+                gloo.set_timeout_seconds(
+                    self._init_timeout_seconds, self._run_timeout_seconds
+                )
                 gloo.set_hdfs_store(
-                    self._hdfs_path.rstrip("/") + "/pserver", self._hdfs_name,
-                    self._hdfs_ugi)
+                    self._hdfs_path.rstrip("/") + "/pserver",
+                    self._hdfs_name,
+                    self._hdfs_ugi,
+                )
                 gloo.init()
                 self._node_type_comm = gloo
 
@@ -1100,11 +1152,14 @@ class HeterRoleMaker(GeneralRoleMaker):
                 gloo.set_size(len(heter_list))
                 gloo.set_prefix(self._prefix)
                 gloo.set_iface(self._iface)
-                gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                         self._run_timeout_seconds)
+                gloo.set_timeout_seconds(
+                    self._init_timeout_seconds, self._run_timeout_seconds
+                )
                 gloo.set_hdfs_store(
-                    self._hdfs_path.rstrip("/") + "/heter", self._hdfs_name,
-                    self._hdfs_ugi)
+                    self._hdfs_path.rstrip("/") + "/heter",
+                    self._hdfs_name,
+                    self._hdfs_ugi,
+                )
                 gloo.init()
                 self._heter_comm = gloo
 
@@ -1115,11 +1170,14 @@ class HeterRoleMaker(GeneralRoleMaker):
             gloo.set_size(len(all_list))
             gloo.set_prefix(self._prefix)
             gloo.set_iface(self._iface)
-            gloo.set_timeout_seconds(self._init_timeout_seconds,
-                                     self._run_timeout_seconds)
+            gloo.set_timeout_seconds(
+                self._init_timeout_seconds, self._run_timeout_seconds
+            )
             gloo.set_hdfs_store(
-                self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
-                self._hdfs_ugi)
+                self._hdfs_path.rstrip("/") + "/all",
+                self._hdfs_name,
+                self._hdfs_ugi,
+            )
             gloo.init()
 
             self._all_comm = gloo
@@ -1168,8 +1226,7 @@ class HeterRoleMaker(GeneralRoleMaker):
             self._heter_comm.barrier()
 
     def xpu_num(self):
-        """
-        """
+        """ """
         if not self._role_is_generated:
             self.generate_role()
         return len(self._xpu_endpoints)
@@ -1182,18 +1239,21 @@ class UserDefinedRoleMaker(RoleMakerBase):
     on each physical node, It can be assign by user.
     """
 
-    def __init__(self,
-                 current_id=0,
-                 role=Role.WORKER,
-                 worker_num=0,
-                 server_endpoints=None):
+    def __init__(
+        self,
+        current_id=0,
+        role=Role.WORKER,
+        worker_num=0,
+        server_endpoints=None,
+    ):
         super(UserDefinedRoleMaker, self).__init__()
 
         if not isinstance(server_endpoints, list):
             raise TypeError("server_endpoints must be as string list")
         elif len(server_endpoints) <= 0:
             raise ValueError(
-                "the length of server_endpoints list must be greater than 0")
+                "the length of server_endpoints list must be greater than 0"
+            )
         elif len(server_endpoints) != len(set(server_endpoints)):
             raise ValueError("server_endpoints can't have duplicate elements")
         else:
@@ -1214,9 +1274,11 @@ class UserDefinedRoleMaker(RoleMakerBase):
         else:
             if current_id < 0:
                 raise ValueError(
-                    "current_id must be greater than or equal to 0")
+                    "current_id must be greater than or equal to 0"
+                )
             elif self._role == Role.SERVER and current_id >= len(
-                    server_endpoints):
+                server_endpoints
+            ):
                 raise ValueError(
                     "if role is Role.SERVER, current_id must be less than or equal to len(server_endpoints) - 1"
                 )
@@ -1264,7 +1326,8 @@ class UserDefinedCollectiveRoleMaker(RoleMakerBase):
             raise TypeError("worker_endpoints must be as string list")
         elif len(worker_endpoints) <= 0:
             raise ValueError(
-                "the length of worker_endpoints list must be greater than 0")
+                "the length of worker_endpoints list must be greater than 0"
+            )
         elif len(worker_endpoints) != len(set(worker_endpoints)):
             raise ValueError("worker_endpoints can't have duplicate elements")
         else:
@@ -1280,7 +1343,8 @@ class UserDefinedCollectiveRoleMaker(RoleMakerBase):
         else:
             if current_id < 0:
                 raise ValueError(
-                    "current_id must be greater than or equal to 0")
+                    "current_id must be greater than or equal to 0"
+                )
             elif current_id >= len(worker_endpoints):
                 raise ValueError(
                     "current_id must be less than or equal to len(worker_endpoints) - 1"

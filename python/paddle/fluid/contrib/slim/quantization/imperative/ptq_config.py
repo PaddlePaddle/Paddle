@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import abc
 import copy
 
@@ -36,7 +35,7 @@ class PTQConfig(object):
             activation_quantizer(BaseQuantizer): The activation quantizer.
                 It should be the instance of BaseQuantizer.
             weight_quantizer(BaseQuantizer): The weight quantizer.
-                It should be the instance of BaseQuantizer.    
+                It should be the instance of BaseQuantizer.
         """
         super(PTQConfig, self).__init__()
         assert isinstance(activation_quantizer, tuple(SUPPORT_ACT_QUANTIZERS))

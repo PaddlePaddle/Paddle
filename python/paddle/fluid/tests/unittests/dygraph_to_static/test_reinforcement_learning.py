@@ -29,7 +29,6 @@ program_translator = ProgramTranslator()
 
 
 class Policy(Layer):
-
     def __init__(self):
         super(Policy, self).__init__()
 
@@ -74,17 +73,18 @@ def train(args, place, to_static):
 
         eps = np.finfo(np.float32).eps.item()
         optimizer = fluid.optimizer.AdamaxOptimizer(
-            learning_rate=1e-2, parameter_list=policy.parameters())
+            learning_rate=1e-2, parameter_list=policy.parameters()
+        )
 
         def get_mean_and_std(values=[]):
-            n = 0.
-            s = 0.
+            n = 0.0
+            s = 0.0
             for val in values:
                 s += val
                 n += 1
             mean = s / n
 
-            std = 0.
+            std = 0.0
             for val in values:
                 std += (val - mean) * (val - mean)
             std /= n
@@ -99,14 +99,14 @@ def train(args, place, to_static):
             while idx < len(probs) and sample > probs[idx]:
                 sample -= probs[idx]
                 idx += 1
-            mask = [0.] * len(probs)
-            mask[idx] = 1.
+            mask = [0.0] * len(probs)
+            mask[idx] = 1.0
 
             return idx, np.array([mask]).astype("float32")
 
         def choose_best_action(probs):
             idx = 0 if probs[0] > probs[1] else 1
-            mask = [1., 0.] if idx == 0 else [0., 1.]
+            mask = [1.0, 0.0] if idx == 0 else [0.0, 1.0]
 
             return idx, np.array([mask]).astype("float32")
 
@@ -189,9 +189,10 @@ def train(args, place, to_static):
             running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
             if i_episode % args.log_interval == 0:
                 print(
-                    'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'
-                    .format(i_episode, ep_reward, running_reward,
-                            loss.numpy()[0]))
+                    'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'.format(
+                        i_episode, ep_reward, running_reward, loss.numpy()[0]
+                    )
+                )
 
             if i_episode > args.train_step:
                 break
@@ -200,18 +201,18 @@ def train(args, place, to_static):
 
 
 class TestDeclarative(unittest.TestCase):
-
     def setUp(self):
-        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
+        )
         self.args = Args()
 
     def test_train(self):
         st_out = train(self.args, self.place, to_static=True)
         dy_out = train(self.args, self.place, to_static=False)
-        self.assertTrue(np.allclose(st_out, dy_out),
-                        msg="dy_out:\n {}\n st_out:\n{}\n".format(
-                            dy_out, st_out))
+        np.testing.assert_allclose(st_out, dy_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

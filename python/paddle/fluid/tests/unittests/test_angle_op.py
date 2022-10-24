@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -31,7 +29,7 @@ def angle_grad(x, dout):
         def angle_grad_element(xi, douti):
             if xi == 0:
                 return 0
-            rsquare = np.abs(xi)**2
+            rsquare = np.abs(xi) ** 2
             return -douti * xi.imag / rsquare + 1j * douti * xi.real / rsquare
 
         return np.vectorize(angle_grad_element)(x, dout)
@@ -40,7 +38,6 @@ def angle_grad(x, dout):
 
 
 class TestAngleOpFloat(OpTest):
-
     def setUp(self):
         self.op_type = "angle"
         self.python_api = paddle.angle
@@ -54,17 +51,17 @@ class TestAngleOpFloat(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        user_defined_grads=[
-                            angle_grad(self.x,
-                                       np.ones_like(self.x) / self.x.size)
-                        ],
-                        check_eager=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[
+                angle_grad(self.x, np.ones_like(self.x) / self.x.size)
+            ],
+            check_eager=True,
+        )
 
 
 class TestAngleOpComplex(OpTest):
-
     def setUp(self):
         self.op_type = "angle"
         self.python_api = paddle.angle
@@ -80,17 +77,17 @@ class TestAngleOpComplex(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        user_defined_grads=[
-                            angle_grad(self.x,
-                                       np.ones_like(self.x) / self.x.size)
-                        ],
-                        check_eager=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[
+                angle_grad(self.x, np.ones_like(self.x) / self.x.size)
+            ],
+            check_eager=True,
+        )
 
 
 class TestAngleAPI(unittest.TestCase):
-
     def setUp(self):
         self.x = np.random.randn(2, 3) + 1j * np.random.randn(2, 3)
         self.out = np.angle(self.x)
@@ -99,7 +96,7 @@ class TestAngleAPI(unittest.TestCase):
         with dygraph.guard():
             x = paddle.to_tensor(self.x)
             out_np = paddle.angle(x).numpy()
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_static(self):
         mp, sp = static.Program(), static.Program()
@@ -110,7 +107,7 @@ class TestAngleAPI(unittest.TestCase):
         exe = static.Executor()
         exe.run(sp)
         [out_np] = exe.run(mp, feed={"x": self.x}, fetch_list=[out])
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
 
 if __name__ == "__main__":

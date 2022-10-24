@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -30,11 +28,10 @@ np.random.seed(SEED)
 
 
 def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
-    return np.maximum(np.minimum(x * slope + offset, 1.), 0.).astype(x.dtype)
+    return np.maximum(np.minimum(x * slope + offset, 1.0), 0.0).astype(x.dtype)
 
 
 class TestMLUHardSigmoid(OpTest):
-
     def setUp(self):
         paddle.enable_static()
 
@@ -45,7 +42,7 @@ class TestMLUHardSigmoid(OpTest):
 
         x = np.random.uniform(-5, 5, [10, 12]).astype(self.dtype)
         lower_threshold = -self.offset / self.slope
-        upper_threshold = (1. - self.offset) / self.slope
+        upper_threshold = (1.0 - self.offset) / self.slope
 
         # Same reason as TestAbs
         delta = 0.005
@@ -77,21 +74,18 @@ class TestMLUHardSigmoid(OpTest):
 
 
 class TestMLUHardSigmoid2(TestMLUHardSigmoid):
-
     def set_attrs(self):
         self.slope = 0.2
         self.offset = 0.5
 
 
 class TestMLUHardSigmoid3(TestMLUHardSigmoid):
-
     def set_attrs(self):
         self.slope = 0.2
         self.offset = 0.4
 
 
 class TestMLUHardSigmoidFp16(unittest.TestCase):
-
     def setUp(self):
         paddle.disable_static()
 
@@ -116,17 +110,21 @@ class TestMLUHardSigmoidFp16(unittest.TestCase):
 
         cpu_diff_1 = np.divide(
             np.sum(np.abs(self.float32_y.numpy() - self.float16_y)),
-            np.sum(np.abs(self.float32_y.numpy())))
+            np.sum(np.abs(self.float32_y.numpy())),
+        )
         mlu_diff_1 = np.divide(
             np.sum(np.abs(self.float32_y.numpy() - mlu_float16_y.numpy())),
-            np.sum(np.abs(self.float32_y.numpy())))
+            np.sum(np.abs(self.float32_y.numpy())),
+        )
 
         cpu_diff_2 = np.divide(
             np.sum(np.square(self.float32_y.numpy() - self.float16_y)),
-            np.sum(np.square(self.float32_y.numpy())))
+            np.sum(np.square(self.float32_y.numpy())),
+        )
         mlu_diff_2 = np.divide(
             np.sum(np.square(self.float32_y.numpy() - mlu_float16_y.numpy())),
-            np.sum(np.square(self.float32_y.numpy())))
+            np.sum(np.square(self.float32_y.numpy())),
+        )
         assert mlu_diff_1 <= cpu_diff_1
         assert mlu_diff_2 <= cpu_diff_2
 
@@ -181,14 +179,14 @@ class TestHardsigmoidAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardsigmoid, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32',
-                                        shape=[12, 10],
-                                        dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
             self.assertRaises(TypeError, F.hardsigmoid, x_int32)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16',
-                                       shape=[12, 10],
-                                       dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
             F.hardsigmoid(x_fp16)
 
 

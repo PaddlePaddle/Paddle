@@ -22,22 +22,23 @@ np.random.seed(10)
 
 
 def logit(x, eps):
-    x_min = np.minimum(x, 1. - eps)
+    x_min = np.minimum(x, 1.0 - eps)
     x_max = np.maximum(x_min, eps)
-    return np.log(x_max / (1. - x_max))
+    return np.log(x_max / (1.0 - x_max))
 
 
 def logit_grad(x, eps=1e-8):
-    tmp_x = np.select([x < eps, x > (1. - eps)], [x * 0., x * 0.], default=-1.0)
-    x_1 = 1. - x
+    tmp_x = np.select(
+        [x < eps, x > (1.0 - eps)], [x * 0.0, x * 0.0], default=-1.0
+    )
+    x_1 = 1.0 - x
     _x = np.select([tmp_x == -1.0], [np.reciprocal(x * x_1)], default=0.0)
-    dout = np.full_like(x, fill_value=1. / _x.size)
+    dout = np.full_like(x, fill_value=1.0 / _x.size)
     dx = dout * _x
     return dx
 
 
 class TestLogitOp(OpTest):
-
     def setUp(self):
         self.op_type = 'logit'
         self.python_api = paddle.logit
@@ -45,7 +46,7 @@ class TestLogitOp(OpTest):
         self.shape = [120]
         self.eps = 1e-8
         self.set_attrs()
-        x = np.random.uniform(-1., 1., self.shape).astype(self.dtype)
+        x = np.random.uniform(-1.0, 1.0, self.shape).astype(self.dtype)
         out = logit(x, self.eps)
         self.x_grad = logit_grad(x, self.eps)
         self.inputs = {'X': x}
@@ -59,31 +60,30 @@ class TestLogitOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'],
-                        user_defined_grads=[self.x_grad],
-                        check_eager=True)
+        self.check_grad(
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_eager=True
+        )
 
 
 class TestLogitShape(TestLogitOp):
-
     def set_attrs(self):
         self.shape = [2, 60]
 
 
 class TestLogitEps(TestLogitOp):
-
     def set_attrs(self):
         self.eps = 1e-8
 
 
 class TestLogitAPI(unittest.TestCase):
-
     def setUp(self):
         self.x_shape = [120]
-        self.x = np.random.uniform(0., 1., self.x_shape).astype(np.float32)
-        self.place = paddle.CUDAPlace(0) \
-            if paddle.fluid.core.is_compiled_with_cuda() \
+        self.x = np.random.uniform(0.0, 1.0, self.x_shape).astype(np.float32)
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def check_api(self, eps=1e-8):
         ref_out = logit(self.x, eps)
@@ -93,12 +93,12 @@ class TestLogitAPI(unittest.TestCase):
             y = paddle.logit(x, eps)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
-        self.assertTrue(np.allclose(out[0], ref_out))
+        np.testing.assert_allclose(out[0], ref_out, rtol=1e-05)
         # test dygrapg api
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = paddle.logit(x, 1e-8)
-        self.assertTrue(np.allclose(y.numpy(), ref_out))
+        np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-05)
         paddle.enable_static()
 
     def test_check_api(self):

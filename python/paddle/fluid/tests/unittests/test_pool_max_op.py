@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-from __future__ import division
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -28,12 +25,9 @@ def adaptive_end_index(index, input_size, output_size):
     return int(np.ceil((index + 1) * input_size / output_size))
 
 
-def max_pool3D_forward_naive(x,
-                             ksize,
-                             strides,
-                             paddings,
-                             global_pool=False,
-                             adaptive=False):
+def max_pool3D_forward_naive(
+    x, ksize, strides, paddings, global_pool=False, adaptive=False
+):
 
     N, C, D, H, W = x.shape
     if global_pool:
@@ -80,19 +74,19 @@ def max_pool3D_forward_naive(x,
                         sub_deep = index[0][0]
                         sub_row = index[1][0]
                         sub_col = index[2][0]
-                        index = ((d_start + sub_deep) * H +
-                                 (h_start + sub_row)) * W + w_start + sub_col
+                        index = (
+                            ((d_start + sub_deep) * H + (h_start + sub_row)) * W
+                            + w_start
+                            + sub_col
+                        )
                         mask[n, c, k, i, j] = index
 
     return out, mask
 
 
-def max_pool2D_forward_naive(x,
-                             ksize,
-                             strides,
-                             paddings,
-                             global_pool=False,
-                             adaptive=False):
+def max_pool2D_forward_naive(
+    x, ksize, strides, paddings, global_pool=False, adaptive=False
+):
 
     N, C, H, W = x.shape
     if global_pool:
@@ -135,17 +129,21 @@ def max_pool2D_forward_naive(x,
 
 
 class TestMaxPoolWithIndex_Op(OpTest):
-
     def setUp(self):
         self.init_test_case()
         self.init_global()
         self.init_adaptive()
 
         input = np.random.random(self.shape).astype("float64")
-        input = np.round(input * 100., 2)
-        output, mask = self.pool_forward_naive(input, self.ksize, self.strides,
-                                               self.paddings, self.global_pool,
-                                               self.adaptive)
+        input = np.round(input * 100.0, 2)
+        output, mask = self.pool_forward_naive(
+            input,
+            self.ksize,
+            self.strides,
+            self.paddings,
+            self.global_pool,
+            self.adaptive,
+        )
         output = output.astype("float64")
         mask = mask.astype("int32")
 
@@ -182,13 +180,11 @@ class TestMaxPoolWithIndex_Op(OpTest):
 
 
 class TestCase1(TestMaxPoolWithIndex_Op):
-
     def init_global(self):
         self.global_pool = True
 
 
 class TestCase2(TestMaxPoolWithIndex_Op):
-
     def init_test_case(self):
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
@@ -202,14 +198,12 @@ class TestCase2(TestMaxPoolWithIndex_Op):
 
 
 class TestCase3(TestCase2):
-
     def init_global(self):
         self.global_pool = False
 
 
-#----------------max_pool2d_with_index----------------
+# ----------------max_pool2d_with_index----------------
 class TestCase4(TestMaxPoolWithIndex_Op):
-
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
@@ -223,13 +217,11 @@ class TestCase4(TestMaxPoolWithIndex_Op):
 
 
 class TestCase5(TestCase4):
-
     def init_global(self):
         self.global_pool = False
 
 
 class TestCase6(TestMaxPoolWithIndex_Op):
-
     def init_test_case(self):
         self.op_type = "max_pool2d_with_index"
         self.pool_forward_naive = max_pool2D_forward_naive
@@ -243,19 +235,16 @@ class TestCase6(TestMaxPoolWithIndex_Op):
 
 
 class TestCase7(TestCase6):
-
     def init_global(self):
         self.global_pool = False
 
 
 class TestCastAdaptive2d(TestCase6):
-
     def init_adaptive(self):
         self.adaptive = True
 
 
 class TestCastAdaptive3d(TestMaxPoolWithIndex_Op):
-
     def init_adaptive(self):
         self.adaptive = True
 

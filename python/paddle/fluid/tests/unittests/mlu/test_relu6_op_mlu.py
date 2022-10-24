@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle.fluid as fluid
 import paddle
 import sys
@@ -35,7 +34,6 @@ def ref_relu6(x, threshold=6.0):
 
 
 class TestRelu6(OpTest):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "relu6"
@@ -65,7 +63,6 @@ class TestRelu6(OpTest):
 
 
 class TestRelu6Float16(TestRelu6):
-
     def set_mlu(self):
         self.__class__.use_mlu = True
         self.__class__.no_need_check_grad = True
@@ -78,7 +75,6 @@ class TestRelu6Float16(TestRelu6):
 
 
 class TestReluNeg(TestRelu6):
-
     def setUp(self):
         self.set_mlu()
         self.op_type = "relu6"
@@ -105,7 +101,6 @@ class TestReluNeg(TestRelu6):
 
 
 class TestRelu6Net(unittest.TestCase):
-
     def _test(self, run_mlu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -120,9 +115,9 @@ class TestRelu6Net(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(name="label",
-                                       shape=[32, 1],
-                                       dtype='int64')
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             sum = paddle.add(a, b)
             z = paddle.nn.functional.relu6(sum)
@@ -146,16 +141,17 @@ class TestRelu6Net(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={
-                                             "a": a_np,
-                                             "b": b_np,
-                                             "label": label_np
-                                         },
-                                         fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 

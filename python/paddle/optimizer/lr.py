@@ -59,7 +59,7 @@ class LRScheduler(object):
         instance to schedule learning rate.
 
     Examples:
-        Here is an example of a simple ``StepDecay`` implementation. 
+        Here is an example of a simple ``StepDecay`` implementation.
 
         .. code-block:: python
 
@@ -93,8 +93,10 @@ class LRScheduler(object):
     def __init__(self, learning_rate=0.1, last_epoch=-1, verbose=False):
         if not isinstance(learning_rate, (float, int)):
             raise TypeError(
-                "The type of learning rate must be float, but received {}".
-                format(type(learning_rate)))
+                "The type of learning rate must be float, but received {}".format(
+                    type(learning_rate)
+                )
+            )
         self.base_lr = float(learning_rate)
         self.last_lr = float(learning_rate)
         self.last_epoch = last_epoch
@@ -133,8 +135,11 @@ class LRScheduler(object):
                 self.last_lr = self.get_lr()
 
         if self.verbose:
-            print('Epoch {}: {} set learning rate to {}.'.format(
-                self.last_epoch, self.__class__.__name__, self.last_lr))
+            print(
+                'Epoch {}: {} set learning rate to {}.'.format(
+                    self.last_epoch, self.__class__.__name__, self.last_lr
+                )
+            )
 
     def state_dict(self):
         """
@@ -153,7 +158,8 @@ class LRScheduler(object):
                 assert value.shape == [
                     1
                 ], "shape of Tensor in state_dict must be [1] {}".format(
-                    value.shape)
+                    value.shape
+                )
                 value = value.numpy()[0]
             state_dict[key] = value
 
@@ -184,8 +190,10 @@ class LRScheduler(object):
                 self.__dict__[key] = state_dict[key]
             else:
                 raise RuntimeError(
-                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict"
-                    .format(key))
+                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict".format(
+                        key
+                    )
+                )
         if len(state_dict) > len(self.keys):
             warnings.warn(
                 "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
@@ -279,12 +287,14 @@ class NoamDecay(LRScheduler):
 
     """
 
-    def __init__(self,
-                 d_model,
-                 warmup_steps,
-                 learning_rate=1.0,
-                 last_epoch=-1,
-                 verbose=False):
+    def __init__(
+        self,
+        d_model,
+        warmup_steps,
+        learning_rate=1.0,
+        last_epoch=-1,
+        verbose=False,
+    ):
         self.d_model = d_model
         self.warmup_steps = warmup_steps
         super(NoamDecay, self).__init__(learning_rate, last_epoch, verbose)
@@ -379,8 +389,9 @@ class PiecewiseDecay(LRScheduler):
     def __init__(self, boundaries, values, last_epoch=-1, verbose=False):
         self.boundaries = boundaries
         self.values = values
-        super(PiecewiseDecay, self).__init__(last_epoch=last_epoch,
-                                             verbose=verbose)
+        super(PiecewiseDecay, self).__init__(
+            last_epoch=last_epoch, verbose=verbose
+        )
 
     def get_lr(self):
         for i in range(len(self.boundaries)):
@@ -460,10 +471,13 @@ class NaturalExpDecay(LRScheduler):
     """
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
-        assert gamma > 0.0, " 'gamma' must be a positive number so that the learning rate will decay."
+        assert (
+            gamma > 0.0
+        ), " 'gamma' must be a positive number so that the learning rate will decay."
         self.gamma = gamma
-        super(NaturalExpDecay, self).__init__(learning_rate, last_epoch,
-                                              verbose)
+        super(NaturalExpDecay, self).__init__(
+            learning_rate, last_epoch, verbose
+        )
 
     def get_lr(self):
         return self.base_lr * math.exp(-1 * self.gamma * self.last_epoch)
@@ -543,8 +557,9 @@ class InverseTimeDecay(LRScheduler):
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
         self.gamma = gamma
-        super(InverseTimeDecay, self).__init__(learning_rate, last_epoch,
-                                               verbose)
+        super(InverseTimeDecay, self).__init__(
+            learning_rate, last_epoch, verbose
+        )
 
     def get_lr(self):
         return self.base_lr / (1 + self.gamma * self.last_epoch)
@@ -637,30 +652,37 @@ class PolynomialDecay(LRScheduler):
               # scheduler.step()        # If you update learning rate each epoch
     """
 
-    def __init__(self,
-                 learning_rate,
-                 decay_steps,
-                 end_lr=0.0001,
-                 power=1.0,
-                 cycle=False,
-                 last_epoch=-1,
-                 verbose=False):
+    def __init__(
+        self,
+        learning_rate,
+        decay_steps,
+        end_lr=0.0001,
+        power=1.0,
+        cycle=False,
+        last_epoch=-1,
+        verbose=False,
+    ):
         assert decay_steps > 0 and isinstance(
-            decay_steps, int), " 'decay_steps' must be a positive integer."
+            decay_steps, int
+        ), " 'decay_steps' must be a positive integer."
         self.decay_steps = decay_steps
         self.end_lr = end_lr
-        assert power > 0.0, " 'power' must be greater than 0.0 so that the learning rate will decay."
+        assert (
+            power > 0.0
+        ), " 'power' must be greater than 0.0 so that the learning rate will decay."
         self.power = power
         self.cycle = cycle
-        super(PolynomialDecay, self).__init__(learning_rate, last_epoch,
-                                              verbose)
+        super(PolynomialDecay, self).__init__(
+            learning_rate, last_epoch, verbose
+        )
 
     def get_lr(self):
         tmp_epoch_num = self.last_epoch
         tmp_decay_steps = self.decay_steps
         if self.cycle:
             div_res = math.ceil(
-                float(self.last_epoch) / float(self.decay_steps))
+                float(self.last_epoch) / float(self.decay_steps)
+            )
 
             if self.last_epoch == 0:
                 div_res = 1
@@ -669,8 +691,8 @@ class PolynomialDecay(LRScheduler):
             tmp_epoch_num = min(self.last_epoch, self.decay_steps)
 
         return (self.base_lr - self.end_lr) * (
-            (1 - float(tmp_epoch_num) / float(tmp_decay_steps))**
-            self.power) + self.end_lr
+            (1 - float(tmp_epoch_num) / float(tmp_decay_steps)) ** self.power
+        ) + self.end_lr
 
 
 class LinearWarmup(LRScheduler):
@@ -758,27 +780,36 @@ class LinearWarmup(LRScheduler):
               # scheduler.step()        # If you update learning rate each epoch
     """
 
-    def __init__(self,
-                 learning_rate,
-                 warmup_steps,
-                 start_lr,
-                 end_lr,
-                 last_epoch=-1,
-                 verbose=False):
-        type_check = isinstance(learning_rate, float) or isinstance(
-            learning_rate, int) or isinstance(learning_rate, LRScheduler)
+    def __init__(
+        self,
+        learning_rate,
+        warmup_steps,
+        start_lr,
+        end_lr,
+        last_epoch=-1,
+        verbose=False,
+    ):
+        type_check = (
+            isinstance(learning_rate, float)
+            or isinstance(learning_rate, int)
+            or isinstance(learning_rate, LRScheduler)
+        )
         if not type_check:
             raise TypeError(
-                "the type of learning_rate should be [int, float or LRScheduler], the current type is {}"
-                .format(learning_rate))
+                "the type of learning_rate should be [int, float or LRScheduler], the current type is {}".format(
+                    learning_rate
+                )
+            )
         self.learning_rate = learning_rate
         assert warmup_steps > 0 and isinstance(
-            warmup_steps, int), " 'warmup_steps' must be a positive integer."
+            warmup_steps, int
+        ), " 'warmup_steps' must be a positive integer."
         self.warmup_steps = warmup_steps
         self.start_lr = start_lr
         self.end_lr = end_lr
-        assert end_lr > start_lr, "end_lr {} must be greater than start_lr {}".format(
-            end_lr, start_lr)
+        assert (
+            end_lr > start_lr
+        ), "end_lr {} must be greater than start_lr {}".format(end_lr, start_lr)
         super(LinearWarmup, self).__init__(start_lr, last_epoch, verbose)
 
     def state_dict(self):
@@ -803,7 +834,8 @@ class LinearWarmup(LRScheduler):
     def get_lr(self):
         if self.last_epoch < self.warmup_steps:
             return (self.end_lr - self.start_lr) * float(
-                self.last_epoch) / float(self.warmup_steps) + self.start_lr
+                self.last_epoch
+            ) / float(self.warmup_steps) + self.start_lr
         else:
             if isinstance(self.learning_rate, LRScheduler):
                 self.learning_rate.step(self.last_epoch - self.warmup_steps)
@@ -884,10 +916,13 @@ class ExponentialDecay(LRScheduler):
     """
 
     def __init__(self, learning_rate, gamma, last_epoch=-1, verbose=False):
-        assert gamma > 0.0 and gamma < 1.0, " 'gamma' must be in interval (0.0, 1.0) so that the learning rate will decay."
+        assert (
+            gamma > 0.0 and gamma < 1.0
+        ), " 'gamma' must be in interval (0.0, 1.0) so that the learning rate will decay."
         self.gamma = gamma
-        super(ExponentialDecay, self).__init__(learning_rate, last_epoch,
-                                               verbose)
+        super(ExponentialDecay, self).__init__(
+            learning_rate, last_epoch, verbose
+        )
 
     def get_lr(self):
         return self.base_lr * (self.gamma**self.last_epoch)
@@ -973,21 +1008,21 @@ class MultiStepDecay(LRScheduler):
               # scheduler.step()        # If you update learning rate each epoch
     """
 
-    def __init__(self,
-                 learning_rate,
-                 milestones,
-                 gamma=0.1,
-                 last_epoch=-1,
-                 verbose=False):
+    def __init__(
+        self, learning_rate, milestones, gamma=0.1, last_epoch=-1, verbose=False
+    ):
         if not isinstance(milestones, (tuple, list)):
             raise TypeError(
                 "The type of 'milestones' in 'MultiStepDecay' must be 'tuple, list', but received %s."
-                % type(milestones))
+                % type(milestones)
+            )
 
-        if not all([
+        if not all(
+            [
                 milestones[i] < milestones[i + 1]
                 for i in range(len(milestones) - 1)
-        ]):
+            ]
+        ):
             raise ValueError('The elements of milestones must be incremented')
         if gamma >= 1.0:
             raise ValueError('gamma should be < 1.0.')
@@ -1000,7 +1035,7 @@ class MultiStepDecay(LRScheduler):
         for i in range(len(self.milestones)):
             if self.last_epoch < self.milestones[i]:
                 return self.base_lr * (self.gamma**i)
-        return self.base_lr * (self.gamma**len(self.milestones))
+        return self.base_lr * (self.gamma ** len(self.milestones))
 
 
 class StepDecay(LRScheduler):
@@ -1082,21 +1117,20 @@ class StepDecay(LRScheduler):
               # scheduler.step()        # If you update learning rate each epoch
     """
 
-    def __init__(self,
-                 learning_rate,
-                 step_size,
-                 gamma=0.1,
-                 last_epoch=-1,
-                 verbose=False):
+    def __init__(
+        self, learning_rate, step_size, gamma=0.1, last_epoch=-1, verbose=False
+    ):
         if not isinstance(step_size, int):
             raise TypeError(
-                "The type of 'step_size' must be 'int', but received %s." %
-                type(step_size))
+                "The type of 'step_size' must be 'int', but received %s."
+                % type(step_size)
+            )
         if gamma >= 1.0:
             raise ValueError('gamma should be < 1.0.')
 
         assert step_size > 0 and isinstance(
-            step_size, int), " 'step_size' must be a positive integer."
+            step_size, int
+        ), " 'step_size' must be a positive integer."
         self.step_size = step_size
         self.gamma = gamma
         super(StepDecay, self).__init__(learning_rate, last_epoch, verbose)
@@ -1185,7 +1219,8 @@ class LambdaDecay(LRScheduler):
         if not callable(lr_lambda):
             raise TypeError(
                 "The type of 'lr_lambda' in 'LambdaDecay' must be 'function', but received %s."
-                % type(lr_lambda))
+                % type(lr_lambda)
+            )
 
         self.lr_lambda = lr_lambda
         super(LambdaDecay, self).__init__(learning_rate, last_epoch, verbose)
@@ -1281,17 +1316,19 @@ class ReduceOnPlateau(LRScheduler):
 
     """
 
-    def __init__(self,
-                 learning_rate,
-                 mode='min',
-                 factor=0.1,
-                 patience=10,
-                 threshold=1e-4,
-                 threshold_mode='rel',
-                 cooldown=0,
-                 min_lr=0,
-                 epsilon=1e-8,
-                 verbose=False):
+    def __init__(
+        self,
+        learning_rate,
+        mode='min',
+        factor=0.1,
+        patience=10,
+        threshold=1e-4,
+        threshold_mode='rel',
+        cooldown=0,
+        min_lr=0,
+        epsilon=1e-8,
+        verbose=False,
+    ):
         mode = mode.lower()
         if mode not in ['min', 'max']:
             raise ValueError('mode: ' + mode + ' is unknown!')
@@ -1299,18 +1336,21 @@ class ReduceOnPlateau(LRScheduler):
 
         if factor >= 1.0:
             raise ValueError(
-                'new_lr = origin_lr * gamma and gamma should be < 1.0.')
+                'new_lr = origin_lr * gamma and gamma should be < 1.0.'
+            )
         self.factor = factor
 
         threshold_mode = threshold_mode.lower()
         if threshold_mode not in ['rel', 'abs']:
-            raise ValueError('threshold mode: ' + threshold_mode +
-                             ' is unknown!')
+            raise ValueError(
+                'threshold mode: ' + threshold_mode + ' is unknown!'
+            )
         self.threshold_mode = threshold_mode
         if not isinstance(learning_rate, (float, int)):
             raise TypeError(
                 "The type of 'learning_rate' in 'ReduceOnPlateau' must be 'float', but received %s."
-                % type(learning_rate))
+                % type(learning_rate)
+            )
 
         self.patience = patience
         self.threshold = threshold
@@ -1333,8 +1373,11 @@ class ReduceOnPlateau(LRScheduler):
     # "cooldown_counter / best / num_bad_epochs / last_epoch / last_lr" will be stored.
     def state_keys(self):
         self.keys = [
-            'cooldown_counter', 'best', 'num_bad_epochs', 'last_epoch',
-            'last_lr'
+            'cooldown_counter',
+            'best',
+            'num_bad_epochs',
+            'last_epoch',
+            'last_lr',
         ]
 
     def step(self, metrics, epoch=None):
@@ -1364,18 +1407,25 @@ class ReduceOnPlateau(LRScheduler):
         else:
             # need to declarate explicitly
             from paddle.framework import VarBase as Tensor
+
             tmp = Tensor
         # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
         if isinstance(metrics, (tmp, numpy.ndarray)):
-            assert len(metrics.shape) == 1 and metrics.shape[0] == 1, "the metrics.shape " \
-                                                                      "should be (1L,), but the current metrics.shape is {}. Maybe that " \
-                                                                      "you should call paddle.mean to process it first.".format(
-                metrics.shape)
-        elif not isinstance(metrics,
-                            (int, float, numpy.float32, numpy.float64)):
+            assert len(metrics.shape) == 1 and metrics.shape[0] == 1, (
+                "the metrics.shape "
+                "should be (1L,), but the current metrics.shape is {}. Maybe that "
+                "you should call paddle.mean to process it first.".format(
+                    metrics.shape
+                )
+            )
+        elif not isinstance(
+            metrics, (int, float, numpy.float32, numpy.float64)
+        ):
             raise TypeError(
-                "metrics must be 'int', 'float', 'np.float', 'numpy.ndarray' or 'paddle.Tensor', but receive {}"
-                .format(type(metrics)))
+                "metrics must be 'int', 'float', 'np.float', 'numpy.ndarray' or 'paddle.Tensor', but receive {}".format(
+                    type(metrics)
+                )
+            )
 
         if self.cooldown_counter > 0:
             self.cooldown_counter -= 1
@@ -1393,9 +1443,13 @@ class ReduceOnPlateau(LRScheduler):
                 if self.last_lr - new_lr > self.epsilon:
                     self.last_lr = new_lr
                     if self.verbose:
-                        print('Epoch {}: {} set learning rate to {}.'.format(
-                            self.last_epoch, self.__class__.__name__,
-                            self.last_lr))
+                        print(
+                            'Epoch {}: {} set learning rate to {}.'.format(
+                                self.last_epoch,
+                                self.__class__.__name__,
+                                self.last_lr,
+                            )
+                        )
 
     def _is_better(self, current, best):
         if self.mode == 'min' and self.threshold_mode == 'rel':
@@ -1493,41 +1547,50 @@ class CosineAnnealingDecay(LRScheduler):
               # scheduler.step()        # If you update learning rate each epoch
     """
 
-    def __init__(self,
-                 learning_rate,
-                 T_max,
-                 eta_min=0,
-                 last_epoch=-1,
-                 verbose=False):
+    def __init__(
+        self, learning_rate, T_max, eta_min=0, last_epoch=-1, verbose=False
+    ):
         if not isinstance(T_max, int):
             raise TypeError(
                 "The type of 'T_max' in 'CosineAnnealingDecay' must be 'int', but received %s."
-                % type(T_max))
+                % type(T_max)
+            )
         if not isinstance(eta_min, (float, int)):
             raise TypeError(
                 "The type of 'eta_min' in 'CosineAnnealingDecay' must be 'float, int', but received %s."
-                % type(eta_min))
+                % type(eta_min)
+            )
         assert T_max > 0 and isinstance(
-            T_max, int), " 'T_max' must be a positive integer."
+            T_max, int
+        ), " 'T_max' must be a positive integer."
         self.T_max = T_max
         self.eta_min = float(eta_min)
-        super(CosineAnnealingDecay, self).__init__(learning_rate, last_epoch,
-                                                   verbose)
+        super(CosineAnnealingDecay, self).__init__(
+            learning_rate, last_epoch, verbose
+        )
 
     def get_lr(self):
         if self.last_epoch == 0:
             return self.base_lr
         elif (self.last_epoch - 1 - self.T_max) % (2 * self.T_max) == 0:
-            return self.last_lr + (self.base_lr - self.eta_min) * (
-                1 - math.cos(math.pi / self.T_max)) / 2
+            return (
+                self.last_lr
+                + (self.base_lr - self.eta_min)
+                * (1 - math.cos(math.pi / self.T_max))
+                / 2
+            )
 
         return (1 + math.cos(math.pi * self.last_epoch / self.T_max)) / (
-            1 + math.cos(math.pi * (self.last_epoch - 1) / self.T_max)) * (
-                self.last_lr - self.eta_min) + self.eta_min
+            1 + math.cos(math.pi * (self.last_epoch - 1) / self.T_max)
+        ) * (self.last_lr - self.eta_min) + self.eta_min
 
     def _get_closed_form_lr(self):
-        return self.eta_min + (self.base_lr - self.eta_min) * (
-            1 + math.cos(math.pi * self.last_epoch / self.T_max)) / 2
+        return (
+            self.eta_min
+            + (self.base_lr - self.eta_min)
+            * (1 + math.cos(math.pi * self.last_epoch / self.T_max))
+            / 2
+        )
 
 
 class MultiplicativeDecay(LRScheduler):
@@ -1559,7 +1622,6 @@ class MultiplicativeDecay(LRScheduler):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             # train on default dynamic graph mode
             linear = paddle.nn.Linear(10, 10)
@@ -1582,11 +1644,13 @@ class MultiplicativeDecay(LRScheduler):
         if not callable(lr_lambda):
             raise TypeError(
                 "The type of 'lr_lambda' in 'MultiplicativeDecay' must be 'function', but received %s."
-                % type(lr_lambda))
+                % type(lr_lambda)
+            )
 
         self.lr_lambda = lr_lambda
-        super(MultiplicativeDecay, self).__init__(learning_rate, last_epoch,
-                                                  verbose)
+        super(MultiplicativeDecay, self).__init__(
+            learning_rate, last_epoch, verbose
+        )
 
     def get_lr(self):
         cur_lr = self.base_lr
@@ -1679,29 +1743,35 @@ class OneCycleLR(LRScheduler):
                     scheduler.step()    # You should update learning rate each step
     """
 
-    def __init__(self,
-                 max_learning_rate,
-                 total_steps,
-                 divide_factor=25.,
-                 end_learning_rate=0.0001,
-                 phase_pct=0.3,
-                 anneal_strategy='cos',
-                 three_phase=False,
-                 last_epoch=-1,
-                 verbose=False):
+    def __init__(
+        self,
+        max_learning_rate,
+        total_steps,
+        divide_factor=25.0,
+        end_learning_rate=0.0001,
+        phase_pct=0.3,
+        anneal_strategy='cos',
+        three_phase=False,
+        last_epoch=-1,
+        verbose=False,
+    ):
         # Check type and value of max_learning_rate
         if not isinstance(max_learning_rate, (float, int)):
             raise TypeError(
-                "'max_learning_rate' must be 'float' or 'int', but received {}".
-                format(type(max_learning_rate)))
+                "'max_learning_rate' must be 'float' or 'int', but received {}".format(
+                    type(max_learning_rate)
+                )
+            )
         if max_learning_rate < 0:
             raise ValueError("'max_learning_rate' must be a positive integer.")
 
         # Check type and value of end_learning_rate
         if not isinstance(end_learning_rate, (float, int)):
             raise TypeError(
-                "'end_learning_rate' must be 'float' or 'int', but received {}".
-                format(type(end_learning_rate)))
+                "'end_learning_rate' must be 'float' or 'int', but received {}".format(
+                    type(end_learning_rate)
+                )
+            )
         if end_learning_rate < 0:
             raise ValueError("'end_learning_rate' must be a positive integer.")
 
@@ -1709,7 +1779,9 @@ class OneCycleLR(LRScheduler):
         if not isinstance(total_steps, int):
             raise TypeError(
                 "'total_step' must be 'int', but received {}".format(
-                    type(total_steps)))
+                    type(total_steps)
+                )
+            )
         if total_steps <= 0:
             raise ValueError("'total_step' must be a positive integer.")
         self.total_steps = total_steps
@@ -1718,17 +1790,23 @@ class OneCycleLR(LRScheduler):
         if not isinstance(phase_pct, float):
             raise TypeError(
                 "'phase_pct' must be 'float', but received {}".format(
-                    type(phase_pct)))
+                    type(phase_pct)
+                )
+            )
         if phase_pct < 0 or phase_pct > 1:
             raise ValueError(
                 "'phase_pct' must be between 0 and 1, but received {}".format(
-                    phase_pct))
+                    phase_pct
+                )
+            )
 
         # Check type and value of divide_factor
         if not isinstance(divide_factor, (float, int)):
             raise TypeError(
-                "'divide_factor' must be 'float' or 'int', but received {}".
-                format(type(divide_factor)))
+                "'divide_factor' must be 'float' or 'int', but received {}".format(
+                    type(divide_factor)
+                )
+            )
 
         initial_lr = max_learning_rate / float(divide_factor)
         min_lr = float(end_learning_rate)
@@ -1751,17 +1829,22 @@ class OneCycleLR(LRScheduler):
                 self._step_config[1] - self._step_config[0],
                 self._step_config[2] - self._step_config[1],
                 self._step_config[3] - self._step_config[2],
-                self._step_config[3] -
-                self._step_config[2],  # for the last step.
+                self._step_config[3]
+                - self._step_config[2],  # for the last step.
             ]
             # start lr and end lr of each phase.
             self._lr_config = [
-                initial_lr, max_learning_rate, initial_lr, min_lr
+                initial_lr,
+                max_learning_rate,
+                initial_lr,
+                min_lr,
             ]
         else:
             self._step_config = [
-                0, phase_pct * self.total_steps - 1, self.total_steps - 1,
-                self.total_steps - 1
+                0,
+                phase_pct * self.total_steps - 1,
+                self.total_steps - 1,
+                self.total_steps - 1,
             ]
             self._steps_size = [
                 self._step_config[1] - self._step_config[0],
@@ -1777,8 +1860,10 @@ class OneCycleLR(LRScheduler):
             self.anneal_func = self._linear_annealing
         else:
             raise ValueError(
-                "'anneal_strategy' must by one of 'cos' or 'linear', but received {}"
-                .format(anneal_strategy))
+                "'anneal_strategy' must by one of 'cos' or 'linear', but received {}".format(
+                    anneal_strategy
+                )
+            )
         super(OneCycleLR, self).__init__(initial_lr, last_epoch, verbose)
 
     def _cos_annealing(self, start_lr, end_lr, pct):
@@ -1793,17 +1878,21 @@ class OneCycleLR(LRScheduler):
 
         if current_step > self.total_steps:
             raise ValueError(
-                "Tried to step {} times. However the number of total steps is {}"
-                .format(current_step, self.total_steps))
+                "Tried to step {} times. However the number of total steps is {}".format(
+                    current_step, self.total_steps
+                )
+            )
 
         for (i, (end_step, step_size)) in enumerate(
-                zip(self._step_config[1:], self._steps_size)):
+            zip(self._step_config[1:], self._steps_size)
+        ):
             # i == len(self._lr_config) - 2 catch the last step, otherwise it will return None.
             if current_step <= end_step or i == len(self._lr_config) - 2:
                 # self._step_config[i] means start step of a phase.
                 percentage = (current_step - self._step_config[i]) / step_size
-                return self.anneal_func(self._lr_config[i],
-                                        self._lr_config[i + 1], percentage)
+                return self.anneal_func(
+                    self._lr_config[i], self._lr_config[i + 1], percentage
+                )
 
 
 class CyclicLR(LRScheduler):
@@ -1847,7 +1936,7 @@ class CyclicLR(LRScheduler):
         verbose: (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
     Returns:
-    ``CyclicLR`` instance to schedule learning rate.
+        ``CyclicLR`` instance to schedule learning rate.
 
     Examples:
         .. code-block:: python
@@ -1897,71 +1986,93 @@ class CyclicLR(LRScheduler):
                     scheduler.step()    # You should update learning rate each step
     """
 
-    def __init__(self,
-                 base_learning_rate,
-                 max_learning_rate,
-                 step_size_up,
-                 step_size_down=None,
-                 mode='triangular',
-                 exp_gamma=1.,
-                 scale_fn=None,
-                 scale_mode='cycle',
-                 last_epoch=-1,
-                 verbose=False):
+    def __init__(
+        self,
+        base_learning_rate,
+        max_learning_rate,
+        step_size_up,
+        step_size_down=None,
+        mode='triangular',
+        exp_gamma=1.0,
+        scale_fn=None,
+        scale_mode='cycle',
+        last_epoch=-1,
+        verbose=False,
+    ):
         # check type and value of max_learning_rate
         if not isinstance(max_learning_rate, (float, int)):
             raise TypeError(
-                "'max_learning_rate' must be 'float' or 'int', but received {}".
-                format(type(max_learning_rate)))
+                "'max_learning_rate' must be 'float' or 'int', but received {}".format(
+                    type(max_learning_rate)
+                )
+            )
         if max_learning_rate < 0:
             raise ValueError(
-                "'max_learning_rate' must be a positive integer, but received {}"
-                .format(max_learning_rate))
+                "'max_learning_rate' must be a positive integer, but received {}".format(
+                    max_learning_rate
+                )
+            )
 
         # check type and value of step_size_up
         if not isinstance(step_size_up, int):
             raise TypeError(
-                "The type of 'step_size_up' must be int, but received {}".
-                format(type(step_size_up)))
+                "The type of 'step_size_up' must be int, but received {}".format(
+                    type(step_size_up)
+                )
+            )
         if step_size_up <= 0:
             raise ValueError(
-                "'step_size_up' must be a positive integer, but received {}".
-                format(step_size_up))
+                "'step_size_up' must be a positive integer, but received {}".format(
+                    step_size_up
+                )
+            )
 
         # check type and value of step_size_down
         if step_size_down is not None:
             if not isinstance(step_size_down, int):
                 raise TypeError(
-                    "The type of 'step_size_down' must be int, but received {}".
-                    format(type(step_size_down)))
+                    "The type of 'step_size_down' must be int, but received {}".format(
+                        type(step_size_down)
+                    )
+                )
             if step_size_down <= 0:
                 raise ValueError(
-                    "'step_size_down' must be a positive integer, but received {}"
-                    .format(step_size_down))
+                    "'step_size_down' must be a positive integer, but received {}".format(
+                        step_size_down
+                    )
+                )
 
         # check type of exp_gamma
         if not isinstance(exp_gamma, float):
             raise TypeError(
                 "The type of 'exp_gamma' must be float, but received {}".format(
-                    type(exp_gamma)))
+                    type(exp_gamma)
+                )
+            )
 
         step_size_up = float(step_size_up)
-        step_size_down = float(
-            step_size_down) if step_size_down is not None else step_size_up
+        step_size_down = (
+            float(step_size_down)
+            if step_size_down is not None
+            else step_size_up
+        )
 
         self.cycle_size = step_size_up + step_size_down
         self.step_up_pct = step_size_up / self.cycle_size
         self.max_lr = float(max_learning_rate)
         self.amplitude = self.max_lr - base_learning_rate
 
-        if mode not in ['triangular', 'triangular2', 'exp_range'
-                        ] and scale_fn is None:
+        if (
+            mode not in ['triangular', 'triangular2', 'exp_range']
+            and scale_fn is None
+        ):
             raise ValueError(
                 "'mode' is invalid and 'scale_fn' is not specified, make sure one of 'mode' or 'scale_fn' is valid"
             )
         if scale_mode not in ['cycle', 'iterations']:
             raise ValueError(
-                "'scale_mode' must be one of 'cycle' or 'iterations")
+                "'scale_mode' must be one of 'cycle' or 'iterations"
+            )
 
         self.mode = mode
         self.gamma = exp_gamma  # only for exp_range mode
@@ -1982,10 +2093,10 @@ class CyclicLR(LRScheduler):
         super().__init__(base_learning_rate, last_epoch, verbose)
 
     def _triangular_scale_fn(self, x):
-        return 1.
+        return 1.0
 
     def _triangular2_scale_fn(self, x):
-        return 1 / (2.**(x - 1))
+        return 1 / (2.0 ** (x - 1))
 
     def _exp_range_scale_fn(self, x):
         return self.gamma**x
@@ -1994,7 +2105,7 @@ class CyclicLR(LRScheduler):
         iterations = self.last_epoch
 
         cycle = 1 + iterations // self.cycle_size
-        pct_per_cycle = 1. + iterations / self.cycle_size - cycle
+        pct_per_cycle = 1.0 + iterations / self.cycle_size - cycle
 
         if pct_per_cycle <= self.step_up_pct:
             scale_factor = pct_per_cycle / self.step_up_pct

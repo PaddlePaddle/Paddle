@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class FusedAttentionOp : public framework::OperatorWithKernel {
  public:
@@ -257,7 +257,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -432,8 +432,8 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   The fused_attention operator is the same as following pseudo codes:
 
-  // @input: [batch_size, seq_len, embed_dim] 
-  // @final_out: [batch_size, seq_len, num_heads, head_dim] 
+  // @input: [batch_size, seq_len, embed_dim]
+  // @final_out: [batch_size, seq_len, num_heads, head_dim]
   residual = input
   if (pre_layernorm)
     query = layer_norm(input);
@@ -447,7 +447,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     out = dropout(out);
     out = out * v;
     out = transpose(out, perm=[0, 2, 1, 3]);
-                
+
   }
   // out linear
   out = linear(out);
@@ -567,7 +567,7 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }

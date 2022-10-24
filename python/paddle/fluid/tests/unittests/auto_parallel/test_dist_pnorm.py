@@ -14,11 +14,10 @@
 
 import unittest
 import paddle
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
 
 paddle.enable_static()
 
@@ -29,11 +28,9 @@ def make_program_dp2():
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
         x.stop_gradient = False
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": auto.ProcessMesh([0, 1]),
-                              "dims_mapping": [0, -1, -1]
-                          })
+        auto.shard_tensor(
+            x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x", None, None]
+        )
         tmp_0 = paddle.norm(x, p=2)
     return main_program, start_program, tmp_0
 
@@ -44,11 +41,9 @@ def make_program_serial():
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
         x.stop_gradient = False
-        auto.shard_tensor(x,
-                          dist_attr={
-                              "process_mesh": auto.ProcessMesh([0]),
-                              "dims_mapping": [-1, -1, -1]
-                          })
+        auto.shard_tensor(
+            x, auto.ProcessMesh([0], dim_names=["x"]), [None, None, None]
+        )
         tmp_0 = paddle.norm(x, p=2)
     return main_program, start_program, tmp_0
 
@@ -67,19 +62,20 @@ def parallelizer(program_func, rank):
 
     with program_guard(main_program, start_program):
         params_grads = append_backward(
-            loss, distop_context=dist_context.dist_op_context)
+            loss, distop_context=dist_context.dist_op_context
+        )
     completer.complete_backward_annotation(main_program)
 
     dist_context.block_state.parse_backward_blocks(main_program)
     partitioner = Partitioner(dist_context, rank)
-    dist_main_prog, _, _ = partitioner.partition(main_program, start_program,
-                                                 [])
+    dist_main_prog, _, _ = partitioner.partition(
+        main_program, start_program, []
+    )
 
     return dist_main_prog, dist_context
 
 
 class TestDistPNorm(unittest.TestCase):
-
     def test_dist_pnorm_dp2(self):
 
         for rank in range(2):
@@ -108,10 +104,12 @@ class TestDistPNorm(unittest.TestCase):
                     for output_attr in op_dist_attr.outputs_dist_attrs.values():
                         assert output_attr.dims_mapping[0] == 0
                         assert set(output_attr.dims_mapping[1:]) == set([-1])
-
             assert op_types == [
-                "fill_constant", "barrier", "c_allgather", "p_norm",
-                "fill_constant", "p_norm_grad", "slice"
+                "c_allgather",
+                "p_norm",
+                "fill_constant",
+                "p_norm_grad",
+                "slice",
             ]
 
     def test_dist_pnorm_serial(self):

@@ -15,6 +15,7 @@
 #include <paddle/fluid/platform/device_context.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <type_traits>
 
 #include "paddle/fluid/framework/convert_utils.h"
@@ -32,13 +33,13 @@ template <typename DeviceContext, typename T>
 class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    using Tensor = framework::Tensor;
+    using Tensor = phi::DenseTensor;
     auto &device_ctx = context.template device_context<DeviceContext>();
-    auto ids = context.MultiInput<framework::Tensor>("Ids");
-    auto embs = context.MultiInput<framework::Tensor>("Embs");
+    auto ids = context.MultiInput<phi::DenseTensor>("Ids");
+    auto embs = context.MultiInput<phi::DenseTensor>("Embs");
     int input_num = static_cast<int>(ids.size());
 
-    framework::Tensor in_ids_(
+    phi::DenseTensor in_ids_(
         framework::TransToPhiDataType(framework::proto::VarType::INT64)),
         in_embs_(
             framework::TransToPhiDataType(framework::proto::VarType::INT64));
@@ -49,12 +50,16 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 #else
     cudaGetDevice(&device_id);
 #endif
+
+    auto &dev_ctx = context.template device_context<phi::GPUContext>();
+
     in_ids_.Resize(in_dim);
     in_embs_.Resize(in_dim);
-    int64_t *in_ids_d =
-        in_ids_.mutable_data<int64_t>(platform::CUDAPlace(device_id));
-    int64_t *in_embs_d =
-        in_embs_.mutable_data<int64_t>(platform::CUDAPlace(device_id));
+
+    int64_t *in_ids_d = dev_ctx.template Alloc<int64_t>(
+        &in_ids_, in_ids_.numel() * sizeof(int64_t));
+    int64_t *in_embs_d = dev_ctx.template Alloc<int64_t>(
+        &in_embs_, in_embs_.numel() * sizeof(int64_t));
 
     std::vector<int64_t> in1s, in2s;
     for (int i = 0; i < input_num; ++i) {
@@ -85,9 +90,9 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
                     device_ctx.stream());
 #endif
 
-    auto *bias = context.Input<framework::Tensor>("Bias");
-    auto *scale = context.Input<framework::Tensor>("Scale");
-    auto *out = context.Output<framework::Tensor>("Out");
+    auto *bias = context.Input<phi::DenseTensor>("Bias");
+    auto *scale = context.Input<phi::DenseTensor>("Scale");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     // should be (B * S * hidden)
     auto id0_dims = ids[0]->dims();
@@ -99,7 +104,8 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 
     auto *bias_d = bias->data<T>();
     auto *scale_d = scale->data<T>();
-    auto *output_d = out->mutable_data<T>(context.GetPlace());
+    auto *output_d = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+
     float eps = context.Attr<float>("epsilon");
 
     if (std::is_same<T, paddle::platform::float16>::value) {

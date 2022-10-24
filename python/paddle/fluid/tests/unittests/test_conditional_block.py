@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import paddle
@@ -26,7 +24,6 @@ from paddle.fluid.layers.control_flow import ConditionalBlock
 
 
 class ConditionalBlockTest(unittest.TestCase):
-
     def test_forward(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -52,12 +49,12 @@ class ConditionalBlockTest(unittest.TestCase):
             outs = exe.run(
                 main_program,
                 feed={'X': x},
-                fetch_list=[main_program.block(0).var(data.name + "@GRAD")])[0]
+                fetch_list=[main_program.block(0).var(data.name + "@GRAD")],
+            )[0]
             print(outs)
 
 
 class TestConditionalBlockOpInferShape(unittest.TestCase):
-
     def test_infer_shape(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -66,24 +63,21 @@ class TestConditionalBlockOpInferShape(unittest.TestCase):
             sub_block = main_program._create_block()
             main_program._rollback()
             step_scope = global_block.create_var(
-                type=core.VarDesc.VarType.STEP_SCOPES)
-            cond_var = layers.fill_constant(shape=[1],
-                                            dtype='bool',
-                                            value=False)
+                type=core.VarDesc.VarType.STEP_SCOPES
+            )
+            cond_var = layers.fill_constant(
+                shape=[1], dtype='bool', value=False
+            )
 
-            op = global_block.append_op(type='conditional_block',
-                                        inputs={
-                                            'Cond': [cond_var],
-                                            'Input': [],
-                                        },
-                                        outputs={
-                                            'Out': [],
-                                            'Scope': [step_scope]
-                                        },
-                                        attrs={
-                                            'sub_block': sub_block,
-                                            'is_scalar_condition': True
-                                        })
+            op = global_block.append_op(
+                type='conditional_block',
+                inputs={
+                    'Cond': [cond_var],
+                    'Input': [],
+                },
+                outputs={'Out': [], 'Scope': [step_scope]},
+                attrs={'sub_block': sub_block, 'is_scalar_condition': True},
+            )
             op.desc.infer_shape(global_block.desc)
 
 

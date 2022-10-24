@@ -14,18 +14,19 @@
 
 import multiprocessing
 import os
-import six
 import sys
 import warnings
-from .. import compat as cpt
 from . import framework
 from .framework import _get_paddle_place, _get_paddle_place_list
 from .framework import cuda_places, cpu_places, xpu_places
 from . import core
 
 __all__ = [
-    'CompiledProgram', 'ExecutionStrategy', 'BuildStrategy',
-    'IpuCompiledProgram', 'IpuStrategy'
+    'CompiledProgram',
+    'ExecutionStrategy',
+    'BuildStrategy',
+    'IpuCompiledProgram',
+    'IpuStrategy',
 ]
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
@@ -42,8 +43,7 @@ def _place_obj(place):
 
 
 def _is_pserver_mode(main_program):
-    main = main_program if main_program \
-        else framework.default_main_program()
+    main = main_program if main_program else framework.default_main_program()
     for op in main.global_block().ops:
         if op.type in ["send", "recv"]:
             return True
@@ -52,8 +52,11 @@ def _is_pserver_mode(main_program):
 
 def _has_backward_op(graph):
     for node in graph.nodes():
-        if node.is_op() and node.op() is not None and \
-                node.op().type().endswith("_grad"):
+        if (
+            node.is_op()
+            and node.op() is not None
+            and node.op().type().endswith("_grad")
+        ):
             return True
     return False
 
@@ -62,7 +65,8 @@ def _prune_feed_ops(program):
     # prune the feed ops in the program.
     pop_idx = []
     for i, op in enumerate(program.global_block().ops):
-        if op.type == "feed": pop_idx.append(i)
+        if op.type == "feed":
+            pop_idx.append(i)
     for index in pop_idx[::-1]:
         program.global_block()._remove_op(index)
 
@@ -71,8 +75,9 @@ def _has_optimize_op(block):
     for op in block.ops:
         op_maker = core.op_proto_and_checker_maker
         optimize = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleVarAttrName() in op.attr_names and \
-                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize):
+        if op_maker.kOpRoleVarAttrName() in op.attr_names and int(
+            op.all_attrs()[op_maker.kOpRoleAttrName()]
+        ) == int(optimize):
             return True
     return False
 
@@ -95,14 +100,15 @@ def _should_broadcast_or_not_exists(program, var_name):
     if var is None:
         return True
     is_distributed = getattr(var, '_is_distributed', False) or getattr(
-        var, 'is_distributed', False)
+        var, 'is_distributed', False
+    )
     return not is_distributed
 
 
 class CompiledProgram(object):
     """
     :api_attr: Static Graph
-    
+
     The CompiledProgram is used to transform a program or graph for
     various optimizations according to the configuration of build_strategy,
     for example, the operators' fusion in the computation graph, memory
@@ -161,7 +167,8 @@ class CompiledProgram(object):
         else:
             raise TypeError(
                 "The type of program_to_graph parameter is wrong, expected Graph or Program, but received %s"
-                % type(program_or_graph))
+                % type(program_or_graph)
+            )
 
         self._scope = None
         self._place = None
@@ -175,24 +182,26 @@ class CompiledProgram(object):
         self._build_strategy = build_strategy
         self._exec_strategy = None
 
-    def with_data_parallel(self,
-                           loss_name=None,
-                           build_strategy=None,
-                           exec_strategy=None,
-                           share_vars_from=None,
-                           places=None):
+    def with_data_parallel(
+        self,
+        loss_name=None,
+        build_strategy=None,
+        exec_strategy=None,
+        share_vars_from=None,
+        places=None,
+    ):
         """
         This interface is used to transform the input Program or Graph to a multi-graph
         to run the model in data parallel mode. Users can use the build_strategy and
         exec_strategy to set some optimizations that can be applied during the construction
         and computation of the Graph, such as reducing the number of AllReduce operations,
         specifying the size of the thread pool used in the computation Graph running the model,
-        and so on. 
-        
+        and so on.
+
         .. note::
-            If build_strategy is specified when building CompiledProgram and calling 
-            with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore, 
-            if it is data parallel training, it is recommended to set build_strategy when calling 
+            If build_strategy is specified when building CompiledProgram and calling
+            with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore,
+            if it is data parallel training, it is recommended to set build_strategy when calling
             with_data_parallel interface.
 
         Args:
@@ -228,7 +237,7 @@ class CompiledProgram(object):
                 export CPU_NUM=4, if the environment variable is not set, the executor will
                 add the variable to the environment variable and set its value to 1.
                 The default is None. If ``places`` is the list of string, the string in the list
-                can be ``cpu``, ``gpu:x``, where ``x`` is the index of the GPUs. 
+                can be ``cpu``, ``gpu:x``, where ``x`` is the index of the GPUs.
 
         Returns:
             CompiledProgram
@@ -270,7 +279,7 @@ class CompiledProgram(object):
                     static.default_main_program()).with_data_parallel(
                             loss_name=loss.name, places=parallel_places)
                 # NOTE: if not set share_vars_from=compiled_train_prog,
-                # the parameters used in test process are different with 
+                # the parameters used in test process are different with
                 # the parameters used by train process
                 compiled_test_prog = static.CompiledProgram(
                     test_program).with_data_parallel(
@@ -286,14 +295,19 @@ class CompiledProgram(object):
                                 feed={"X": test_data},
                                 fetch_list=[loss.name])
         """
-        assert not self._is_data_parallel, "Already compiled with parallel, cannot be recompiled."
-        assert not self._is_inference, "Cannot compile with both data parallel and inference."
+        assert (
+            not self._is_data_parallel
+        ), "Already compiled with parallel, cannot be recompiled."
+        assert (
+            not self._is_inference
+        ), "Cannot compile with both data parallel and inference."
         self._is_data_parallel = True
         # FIXME(zcd): Currently, the build_strategy can be set during creating
         # CompiledProgram or calling with_data_parallel, and it may be confusing,
         # but in the long run, we should set up build_strategy only when creating
         # CompiledProgram, and exec_strategy should be deprecated.
-        if build_strategy is not None: self._build_strategy = build_strategy
+        if build_strategy is not None:
+            self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
         self._share_vars_from = share_vars_from
@@ -303,7 +317,9 @@ class CompiledProgram(object):
             self._places = _get_paddle_place(places)
 
         if _has_backward_op(self._graph):
-            assert self._loss_name is not None, "The loss name of CompiledProgram is None. The loss name should be set if CompiledProgram contains backward part."
+            assert (
+                self._loss_name is not None
+            ), "The loss name of CompiledProgram is None. The loss name should be set if CompiledProgram contains backward part."
 
         if self._places is not None:
             if not isinstance(self._places, (list, tuple)):
@@ -312,20 +328,26 @@ class CompiledProgram(object):
         return self
 
     def _with_inference_optimize(self, config):
-        """ Add inference optimize
+        """Add inference optimize
 
         Args:
             config: instance of `NativeConfig` or `AnalysisConfig` to create predictor
         Returns:
             self
         """
-        assert not self._is_data_parallel, "Cannot compile with both data parallel and inference"
-        assert not self._is_inference, "Already compiled with inference, cannot be recompiled."
+        assert (
+            not self._is_data_parallel
+        ), "Cannot compile with both data parallel and inference"
+        assert (
+            not self._is_inference
+        ), "Already compiled with inference, cannot be recompiled."
 
-        assert any([
-            isinstance(config, InferNativeConfig),
-            isinstance(config, InferAnalysisConfig)
-        ])
+        assert any(
+            [
+                isinstance(config, InferNativeConfig),
+                isinstance(config, InferAnalysisConfig),
+            ]
+        )
         self._is_inference = True
         self._infer_config = config
         return self
@@ -342,18 +364,23 @@ class CompiledProgram(object):
             if not self._share_vars_from._is_data_parallel:
                 raise ValueError(
                     "The shared Program is not data parallel, cannot "
-                    "share variables from it.")
+                    "share variables from it."
+                )
             if self._share_vars_from._executor is None:
                 raise ValueError(
                     "The shared Program is not compiled and executed, so there is no "
-                    "variables to share.")
+                    "variables to share."
+                )
             self._local_scopes = self._share_vars_from._executor.local_scopes()
         else:
             assert scope is not None, ""
             self._local_scopes = []
 
-        assert isinstance(places, tuple) or isinstance(places, list), \
-            "Currently , The places type can only be list or tuple, but the input type is {}.".format(type(places))
+        assert isinstance(places, tuple) or isinstance(
+            places, list
+        ), "Currently , The places type can only be list or tuple, but the input type is {}.".format(
+            type(places)
+        )
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
@@ -374,41 +401,61 @@ class CompiledProgram(object):
             else:
                 self._exec_strategy.num_threads = len(places) * 2
 
-        if "FLAGS_use_cinn" in core.globals() and core.globals(
-        )["FLAGS_use_cinn"] and self._exec_strategy.num_threads != 1:
-            warnings.warn("At present, when CINN is turned on, each process can " \
-                  "only contain one thread, so reset the number of threads to 1 here.")
+        if (
+            "FLAGS_use_cinn" in core.globals()
+            and core.globals()["FLAGS_use_cinn"]
+            and self._exec_strategy.num_threads != 1
+        ):
+            warnings.warn(
+                "At present, when CINN is turned on, each process can "
+                "only contain one thread, so reset the number of threads to 1 here."
+            )
             self._exec_strategy.num_threads = 1
 
         if self._build_strategy.num_trainers > 1:
-            assert self._is_data_parallel, \
-                "If you use multi-trainer to train the model, you should use "\
+            assert self._is_data_parallel, (
+                "If you use multi-trainer to train the model, you should use "
                 "the data parallel model, i.e. calling with_data_parallel function."
+            )
 
         # TODO(wuyi): trainer endpoings should be passed in through
         # build_strategy, not program.xxx.
         # TODO(gongwb): let user to set them once.
-        if self._program and self._build_strategy.num_trainers > 1 and \
-                self._program._trainers_endpoints:
+        if (
+            self._program
+            and self._build_strategy.num_trainers > 1
+            and self._program._trainers_endpoints
+        ):
             tps = self._program._trainers_endpoints
 
             assert self._build_strategy.num_trainers == len(
-                tps), "The trainer numbers is not equal to endpoint numbers."
+                tps
+            ), "The trainer numbers is not equal to endpoint numbers."
             self._build_strategy.trainers_endpoints = tps
 
         if self._program:
             self._build_strategy.nccl_comm_num = self._program._nccl_comm_num
-            self._build_strategy.use_hierarchical_allreduce = self._program._use_hierarchical_allreduce
-            self._build_strategy.hierarchical_allreduce_inter_nranks = self._program._hierarchical_allreduce_inter_nranks
+            self._build_strategy.use_hierarchical_allreduce = (
+                self._program._use_hierarchical_allreduce
+            )
+            self._build_strategy.hierarchical_allreduce_inter_nranks = (
+                self._program._hierarchical_allreduce_inter_nranks
+            )
 
         if self._build_strategy.sync_batch_norm:
             self._build_strategy.enable_sequential_execution = True
 
         if self._program is not None and self._program._enable_dgc:
-            assert self._exec_strategy._use_device == DeviceType.CUDA, "DGC only used under CUDA environment."
-            assert self._build_strategy.num_trainers * len(
-                places) > 1, "DGC is not avaliable for single card training."
-            assert self._build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "DGC \
+            assert (
+                self._exec_strategy._use_device == DeviceType.CUDA
+            ), "DGC only used under CUDA environment."
+            assert (
+                self._build_strategy.num_trainers * len(places) > 1
+            ), "DGC is not avaliable for single card training."
+            assert (
+                self._build_strategy.reduce_strategy
+                == BuildStrategy.ReduceStrategy.AllReduce
+            ), "DGC \
                 only can be used for AllReduce BuildStrategy."
 
             # DGC doesn't support fuse for now, close fuse.
@@ -416,12 +463,18 @@ class CompiledProgram(object):
 
         self._persistable_vars = []
         for node in self._graph.nodes():
-            if node.is_var() and node.var() is not None and node.var().persistable() and \
-                    node.var().type() != core.VarDesc.VarType.RAW:
-                name = cpt.to_text(node.name())
-                if self._program is not None and _should_broadcast_or_not_exists(
-                        self._program, name):
-                    self._persistable_vars.append(cpt.to_text(node.name()))
+            if (
+                node.is_var()
+                and node.var() is not None
+                and node.var().persistable()
+                and node.var().type() != core.VarDesc.VarType.RAW
+            ):
+                name = node.name()
+                if (
+                    self._program is not None
+                    and _should_broadcast_or_not_exists(self._program, name)
+                ):
+                    self._persistable_vars.append(node.name())
 
         places = list(map(_place_obj, places))
 
@@ -432,10 +485,15 @@ class CompiledProgram(object):
         self._persistable_vars.sort()
 
         return core.ParallelExecutor(
-            places, self._persistable_vars,
-            cpt.to_text(self._loss_name) if self._loss_name else six.u(''),
-            self._scope, self._local_scopes, self._exec_strategy,
-            self._build_strategy, self._graph)
+            places,
+            self._persistable_vars,
+            self._loss_name if self._loss_name else '',
+            self._scope,
+            self._local_scopes,
+            self._exec_strategy,
+            self._build_strategy,
+            self._graph,
+        )
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
@@ -473,28 +531,31 @@ class CompiledProgram(object):
             # Todo(liym27):If optimizer is used in control flow,
             #  training on multi-places is not supported now, will
             #  be supported later.
-            if len(self._places) > 1 and \
-                    _has_optimizer_in_control_flow(self._program):
+            if len(self._places) > 1 and _has_optimizer_in_control_flow(
+                self._program
+            ):
                 raise NotImplementedError(
                     "If optimizer is used in control flow, "
-                    "training on multi-places is not supported now.")
+                    "training on multi-places is not supported now."
+                )
             if isinstance(self._place, core.CUDAPlace):
                 use_device = DeviceType.CUDA
             elif isinstance(self._place, core.XPUPlace):
                 use_device = DeviceType.XPU
             else:
                 use_device = DeviceType.CPU
-            self._executor = self._compile_data_parallel(use_device=use_device,
-                                                         scope=self._scope,
-                                                         places=self._places)
+            self._executor = self._compile_data_parallel(
+                use_device=use_device, scope=self._scope, places=self._places
+            )
         return self
 
     def _get_places(self, place, place_list):
-        has_set_place = (place_list is not None)
+        has_set_place = place_list is not None
         if has_set_place:
             for p in place_list:
-                assert p._type() == place._type(), \
-                    "Place type not match. You may set wrong type of places."
+                assert (
+                    p._type() == place._type()
+                ), "Place type not match. You may set wrong type of places."
         else:
             if isinstance(place, core.CUDAPlace):
                 place_list = cuda_places()
@@ -517,9 +578,9 @@ class IpuDynamicPatcher(object):
         pass
 
     @staticmethod
-    def convert_concrete_program(ipu_strategy,
-                                 concrete_program,
-                                 class_instance=None):
+    def convert_concrete_program(
+        ipu_strategy, concrete_program, class_instance=None
+    ):
         """
         Convert the ConcreteProgram to IPUConcreteProgram.
         """
@@ -555,7 +616,8 @@ class IpuDynamicPatcher(object):
         # copy the bias and filters
         for param_or_buffer in concrete_program.parameters:
             param_or_buffer_tensor = scope.var(
-                param_or_buffer.name).get_tensor()
+                param_or_buffer.name
+            ).get_tensor()
             src_tensor = param_or_buffer.value().get_tensor()
             param_or_buffer_tensor._share_data_with(src_tensor)
 
@@ -578,13 +640,16 @@ class IpuDynamicPatcher(object):
                         dtype=var_tmp.dtype,
                         type=var_tmp.type,
                         shape=var_tmp.shape,
-                        belong_to_optimizer=True)
+                        belong_to_optimizer=True,
+                    )
                     device = optimizer._get_device_for_param(param_name)
                     with device_guard(device):
                         optimizer.helper.set_variable_initializer(
-                            var, initializer=Constant(value=0.0))
+                            var, initializer=Constant(value=0.0)
+                        )
                     param_or_lr_tensor = scope.find_var(
-                        var_tmp.name).get_tensor()
+                        var_tmp.name
+                    ).get_tensor()
                     optim_tensor = var.value().get_tensor()
                     param_or_lr_tensor._share_data_with(optim_tensor)
                     optimizer._accumulators[k][param_name] = var
@@ -597,16 +662,19 @@ class IpuDynamicPatcher(object):
                 to_fp16_var_names = paddle.static.amp.cast_model_to_fp16(
                     concrete_program.main_program,
                     amp_list,
-                    use_fp16_guard=False)
+                    use_fp16_guard=False,
+                )
                 paddle.static.amp.cast_parameters_to_fp16(
                     paddle.CPUPlace(),
                     concrete_program.main_program,
-                    to_fp16_var_names=to_fp16_var_names)
+                    to_fp16_var_names=to_fp16_var_names,
+                )
 
-            program = IpuCompiledProgram(concrete_program.main_program,
-                                         ipu_strategy=ipu_strategy,
-                                         scope=scope).compile(
-                                             feed_list, fetch_list)
+            program = IpuCompiledProgram(
+                concrete_program.main_program,
+                ipu_strategy=ipu_strategy,
+                scope=scope,
+            ).compile(feed_list, fetch_list)
             return program
 
         main_program = func_compile()
@@ -615,7 +683,7 @@ class IpuDynamicPatcher(object):
 
     @staticmethod
     def patch_program_cache(ipu_strategy):
-        """ Monkey patch ProgramCache discriptor to support dynamic2static in IPU.
+        """Monkey patch ProgramCache discriptor to support dynamic2static in IPU.
 
         Args:
             ipu_strategy: The ipu_strategy used in dynamic graph.
@@ -623,53 +691,70 @@ class IpuDynamicPatcher(object):
         Returns:
             None
         """
-        from ..fluid.dygraph.dygraph_to_static.program_translator import ProgramCache
-        from ..fluid.dygraph.dygraph_to_static.program_translator import CacheKey
+        from ..fluid.dygraph.dygraph_to_static.program_translator import (
+            ProgramCache,
+        )
+        from ..fluid.dygraph.dygraph_to_static.program_translator import (
+            CacheKey,
+        )
         from ..fluid.dygraph.dygraph_to_static import logging_utils
-        from ..fluid.dygraph.dygraph_to_static.program_translator import MAX_TRACED_PROGRAM_COUNT
-        from ..fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
+        from ..fluid.dygraph.dygraph_to_static.program_translator import (
+            MAX_TRACED_PROGRAM_COUNT,
+        )
+        from ..fluid.dygraph.dygraph_to_static.partial_program import (
+            partial_program_from,
+        )
 
         old_getter = ProgramCache.__getitem__
 
         def patch_getter(self, item):
             if not isinstance(item, CacheKey):
                 raise ValueError(
-                    'type(item) should be CacheKey, but received %s' %
-                    type(item).__name__)
+                    'type(item) should be CacheKey, but received %s'
+                    % type(item).__name__
+                )
             item_id = hash(item)
             self._recent_key = item_id
             if item_id not in self._caches or ipu_strategy.need_compile:
                 if item_id in self._caches:
                     logging_utils.warn(
-                        "ipu_strategy chances detected. Please sync weights.")
+                        "ipu_strategy chances detected. Please sync weights."
+                    )
                 if self._caches and not ipu_strategy.need_compile:
                     logging_utils.warn(
                         "dynamic2static on IPU doesn't support mutiple caches. Please make sure"
-                        "dynamic inputs is not used.")
+                        "dynamic inputs is not used."
+                    )
                 concrete_program, _ = self._build_once(item)
                 concrete_program = IpuDynamicPatcher.convert_concrete_program(
-                    ipu_strategy, concrete_program, item.class_instance)
+                    ipu_strategy, concrete_program, item.class_instance
+                )
 
-                self._caches[item_id] = (concrete_program,
-                                         partial_program_from(concrete_program))
+                self._caches[item_id] = (
+                    concrete_program,
+                    partial_program_from(concrete_program),
+                )
                 # Note: raise warnings if number of traced program is more than `max_tracing_count`
                 current_tracing_count = len(self._caches)
                 if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
                     logging_utils.warn(
                         "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. "
-                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors."
-                        .format(current_tracing_count,
-                                MAX_TRACED_PROGRAM_COUNT))
+                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".format(
+                            current_tracing_count, MAX_TRACED_PROGRAM_COUNT
+                        )
+                    )
 
             return self._caches[item_id]
 
         setattr(ProgramCache, '__getitem__', patch_getter)
         IpuDynamicPatcher.patcher_cache.append(
-            [ProgramCache, '__getitem__', old_getter])
+            [ProgramCache, '__getitem__', old_getter]
+        )
 
     @staticmethod
     def patch_lr_scheduler(ipu_strategy):
         from paddle.optimizer.lr import LRScheduler
+
         # For IPU dynamic graph usage, lr_var is not synced in executor as static mode do.
         # Manually set lr to ipu_strategy to update the lr.
         old_step = LRScheduler.step
@@ -701,7 +786,7 @@ class IpuStrategy(object):
 
     Examples:
         .. code-block:: python
-	
+
             # required: ipu
 
             import paddle
@@ -720,10 +805,8 @@ class IpuStrategy(object):
                     'on_chip': 0,
                     'use_replicated_tensor_sharding': 1,
                 },  # set optimizer location
-                'accumulation_and_replication_reduction_type':
-                1,  # popart::ReductionType::Mean
-                'mean_accumulation_and_replication_reduction_strategy':
-                1,  # popart::MeanReductionStrategy::Post
+                'accumulation_and_replication_reduction_type': 1,  # popart::ReductionType::Mean
+                'mean_accumulation_and_replication_reduction_strategy': 1,  # popart::MeanReductionStrategy::Post
             }
             self._ipu_strategy.set_options(default_options)
             self.has_custom_ops = False
@@ -734,6 +817,7 @@ class IpuStrategy(object):
                 "Can not use IpuStrategy in non IPU compiled environment, please re-compile with WITH_IPU=ON."
             )
         from paddle import in_dynamic_mode
+
         if in_dynamic_mode():
             self.register_patch()
 
@@ -744,7 +828,7 @@ class IpuStrategy(object):
 
         Examples:
             .. code-block:: python
-	
+
                 # required: ipu
 
                 import paddle
@@ -762,7 +846,7 @@ class IpuStrategy(object):
 
         Examples:
             .. code-block:: python
-	
+
                 # required: ipu
 
                 import paddle
@@ -780,13 +864,13 @@ class IpuStrategy(object):
 
           Args:
               optimizer (Optimizer): Optimizer to be used in training.
-              
+
           Returns:
               None.
 
           Examples:
               .. code-block:: python
-	
+
                   # required: ipu
 
                   import paddle
@@ -799,6 +883,7 @@ class IpuStrategy(object):
                   ipu_strategy.set_optimizer(optimizer)
         """
         from paddle import in_dynamic_mode
+
         if in_dynamic_mode():
             self._optimizer = optimizer
             optimizer_attrs = self.parse_optimizer(optimizer)
@@ -812,13 +897,13 @@ class IpuStrategy(object):
 
           Args:
               optimizer (Optimizer): Optimizer to be parsed.
-              
+
           Returns:
               Dict.
 
           Examples:
               .. code-block:: python
-	
+
                   # required: ipu
 
                   import paddle
@@ -833,6 +918,7 @@ class IpuStrategy(object):
 
         def get_lr():
             from paddle.optimizer.lr import LRScheduler
+
             if isinstance(optimizer._learning_rate, float):
                 return {"lr": optimizer._learning_rate}
             elif isinstance(optimizer._learning_rate, LRScheduler):
@@ -844,11 +930,13 @@ class IpuStrategy(object):
             optimizer_attrs.update(fn())
         return optimizer_attrs
 
-    def set_graph_config(self,
-                         num_ipus=1,
-                         is_training=True,
-                         micro_batch_size=1,
-                         enable_manual_shard=False):
+    def set_graph_config(
+        self,
+        num_ipus=1,
+        is_training=True,
+        micro_batch_size=1,
+        enable_manual_shard=False,
+    ):
         """
         Set graph configuration to the IpuStrategy instance.
 
@@ -857,15 +945,15 @@ class IpuStrategy(object):
             is_training (bool, optional): True is training graph, False is inference graph. Default True, which means is training mode.
             batch_size (int, optional): The batch-size in the graph. Used to make the graph batch-size fixed,
                 if the batch-size in the graph is dynamic. Default 1, which means the batch-size would be set 1, if the batch-size is dynamice.
-            enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True. 
-                Default False, which means disabled.    
-            
+            enable_manual_shard (bool, optional): Enable graph sharding or not. Only if num_ipus > 1, enable_manual_shard is able to be set True.
+                Default False, which means disabled.
+
         Returns:
             None.
 
         Examples:
             .. code-block:: python
-	
+
                 # required: ipu
 
                 import paddle
@@ -891,24 +979,26 @@ class IpuStrategy(object):
         }
         self.set_options(options)
 
-    def set_pipelining_config(self,
-                              enable_pipelining=False,
-                              batches_per_step=1,
-                              enable_gradient_accumulation=False,
-                              accumulation_factor=1):
+    def set_pipelining_config(
+        self,
+        enable_pipelining=False,
+        batches_per_step=1,
+        enable_gradient_accumulation=False,
+        accumulation_factor=1,
+    ):
         """
         Set pipelining configuration to the IpuStrategy instance. Used to optimize the throughput performance.
 
         Args:
-            enable_pipelining (bool, optional): Enable data pipelining between subgraphs. Only if enable_manual_shard=True, enable_pipelining is able to be set True. 
+            enable_pipelining (bool, optional): Enable data pipelining between subgraphs. Only if enable_manual_shard=True, enable_pipelining is able to be set True.
                 Default False, which means disabled.
             batches_per_step (int, optional): Set the batches per run in data pipelining mode. Only if enable_pipelining=True, batches_per_step is able to be set > 1.
                 Default 1, which means no data pipelining.
             enable_gradient_accumulation (bool, optional): Enable to accumulate gradients before updating the weights in training mode. Only if enable_pipelining=True,
-                enable_gradient_accumulation is able to be set True. Default False, which means no gradient accumulation. 
-            accumulation_factor (int, optional): Specify the number of micro-batches to accumulate 
+                enable_gradient_accumulation is able to be set True. Default False, which means no gradient accumulation.
+            accumulation_factor (int, optional): Specify the number of micro-batches to accumulate
                 before applying the varUpdate. Default 1, which means disable the accumulation.
-        
+
         Returns:
             None.
 
@@ -947,7 +1037,7 @@ class IpuStrategy(object):
 
         Args:
             enable_fp16 (bool, optional): Enable FLOAT16 mode and transform FLOAT32 to FLOAT16. Default False, which means disable FLOAT16 mode.
-        
+
         Returns:
             None.
 
@@ -969,11 +1059,9 @@ class IpuStrategy(object):
         }
         self.set_options(options)
 
-    def add_custom_op(self,
-                      paddle_op,
-                      popart_op=None,
-                      domain='custom.ops',
-                      version=1):
+    def add_custom_op(
+        self, paddle_op, popart_op=None, domain='custom.ops', version=1
+    ):
         """
         Add a mapping to use popart custom ops running on the IPU.
 
@@ -985,7 +1073,7 @@ class IpuStrategy(object):
             domain(str): domain name of custom op in popart.
 
             version(int): version of custom op in popart.
-        
+
         Returns:
             None.
 
@@ -1021,7 +1109,7 @@ class IpuStrategy(object):
 
         Args:
             options(dict): dict of options.
-        
+
         Returns:
             None.
 
@@ -1051,7 +1139,7 @@ class IpuStrategy(object):
 
         Args:
             option(str): name of option.
-        
+
         Returns:
             option value.
 
@@ -1076,7 +1164,7 @@ class IpuStrategy(object):
 
         Args:
             pattern(string): the name of the pattern.
-        
+
         Returns:
             None.
 
@@ -1101,7 +1189,7 @@ class IpuStrategy(object):
 
         Args:
             pattern(string): the name of the pattern.
-        
+
         Returns:
             None.
 
@@ -1156,21 +1244,21 @@ class IpuCompiledProgram(object):
 
     Args:
         program(Program, optional): This parameter represents the :code:`Program`
-            to be executed. Default is None, which means the program will be set to 
+            to be executed. Default is None, which means the program will be set to
             the default program :code:`paddle.static.default_main_program()` .
         scope(Scope, optional): The scope used to run this program, you can switch
-            it to different scope. Default is None, which means use the global 
+            it to different scope. Default is None, which means use the global
             scope :code:`paddle.static.global_scope()` .
         ipu_strategy(IpuStrategy, optional): This argument is used to build the program with the
             specified options, such as half computation, training or inference session, the number of IPUs, etc.
-            Default is None, which means build the program based on the default `ipu_strategy`. 
+            Default is None, which means build the program based on the default `ipu_strategy`.
 
     Returns:
         IpuCompiledProgram
 
     Example:
         .. code-block:: python
-	
+
             # required: ipu
 
             import paddle
@@ -1181,12 +1269,12 @@ class IpuCompiledProgram(object):
             a = static.data(name='data', shape=[None, 1], dtype='int32')
             b = a + 1
             main_prog = static.default_main_program()
-            
+
             ipu_strategy = static.IpuStrategy()
             ipu_strategy.set_graph_config(num_ipus=1, is_training=True, micro_batch_size=1)
             ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, enable_gradient_accumulation=False, accumulation_factor=1)
             ipu_strategy.set_precision_config(enable_fp16=False)
-            
+
             ipu_compiled_program = static.IpuCompiledProgram(
                 main_prog,
                 ipu_strategy=ipu_strategy)
@@ -1203,8 +1291,9 @@ class IpuCompiledProgram(object):
 
         if not isinstance(program, framework.Program):
             raise TypeError(
-                "The type of program is wrong, expected Program, but got %s" %
-                type(program))
+                "The type of program is wrong, expected Program, but got %s"
+                % type(program)
+            )
 
         self._program = program
         self._compiled = False
@@ -1214,6 +1303,7 @@ class IpuCompiledProgram(object):
         else:
             # import here to avoiding confused
             import paddle
+
             self._scope = paddle.static.global_scope()
 
         if ipu_strategy is not None:
@@ -1232,7 +1322,7 @@ class IpuCompiledProgram(object):
         """
         This interface is used to compile the input Program to a program
         to run the model on the ipu.
-        
+
         Args:
             feed_list(list): This parameter represents the input Tensors of the model.
 
@@ -1244,14 +1334,14 @@ class IpuCompiledProgram(object):
 
         Example:
             .. code-block:: python
-    	
+
                 # required: ipu
-    
+
                 import paddle
                 import paddle.static as static
-    
+
                 paddle.enable_static()
-    
+
                 a = static.data(name='data', shape=[None, 1], dtype='int32')
                 b = a + 1
                 main_prog = static.default_main_program()
@@ -1260,7 +1350,7 @@ class IpuCompiledProgram(object):
                 ipu_strategy.set_graph_config(num_ipus=1, is_training=True, micro_batch_size=1)
                 ipu_strategy.set_pipelining_config(enable_pipelining=False, batches_per_step=1, enable_gradient_accumulation=False, accumulation_factor=1)
                 ipu_strategy.set_precision_config(enable_fp16=False)
-                
+
                 program = static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile([a.name], [b.name])

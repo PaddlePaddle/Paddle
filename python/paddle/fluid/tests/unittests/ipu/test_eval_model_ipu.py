@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -57,25 +56,27 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(name='image',
-                                           shape=[1, 3, 10, 10],
-                                           dtype='float32')
-                conv1 = paddle.static.nn.conv2d(image,
-                                                num_filters=3,
-                                                filter_size=3,
-                                                bias_attr=False)
+                image = paddle.static.data(
+                    name='image', shape=[1, 3, 10, 10], dtype='float32'
+                )
+                conv1 = paddle.static.nn.conv2d(
+                    image, num_filters=3, filter_size=3, bias_attr=False
+                )
                 loss = paddle.mean(conv1)
 
                 weight_decay = self.attrs['weight_decay']
-                opt = paddle.optimizer.SGD(learning_rate=1e-1,
-                                           weight_decay=weight_decay)
+                opt = paddle.optimizer.SGD(
+                    learning_rate=1e-1, weight_decay=weight_decay
+                )
                 if self.attrs['optimizer'] == 'adam':
-                    opt = paddle.optimizer.Adam(learning_rate=1e-1,
-                                                weight_decay=weight_decay)
+                    opt = paddle.optimizer.Adam(
+                        learning_rate=1e-1, weight_decay=weight_decay
+                    )
                 elif self.attrs['optimizer'] == 'lamb':
 
-                    opt = paddle.optimizer.Lamb(learning_rate=1e-1,
-                                                lamb_weight_decay=weight_decay)
+                    opt = paddle.optimizer.Lamb(
+                        learning_rate=1e-1, lamb_weight_decay=weight_decay
+                    )
                 opt.minimize(loss)
 
             if run_ipu:
@@ -92,8 +93,8 @@ class TestBase(IPUOpTest):
                 ipu_strategy.set_graph_config(is_training=True)
                 ipu_strategy.set_options({"runtime_options.enable_eval": True})
                 program = paddle.static.IpuCompiledProgram(
-                    main_prog,
-                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+                    main_prog, ipu_strategy=ipu_strategy
+                ).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 
@@ -102,16 +103,17 @@ class TestBase(IPUOpTest):
                 for epoch in range(200):
                     if epoch == 100:
                         ipu_strategy.set_options(
-                            {"runtime_options.enable_eval": False})
-                    loss_res = exe.run(program,
-                                       feed=self.feed,
-                                       fetch_list=[loss])
+                            {"runtime_options.enable_eval": False}
+                        )
+                    loss_res = exe.run(
+                        program, feed=self.feed, fetch_list=[loss]
+                    )
                     result.append(loss_res)
             else:
                 for epoch in range(100):
-                    loss_res = exe.run(program,
-                                       feed=self.feed,
-                                       fetch_list=[loss])
+                    loss_res = exe.run(
+                        program, feed=self.feed, fetch_list=[loss]
+                    )
                     result.append(loss_res)
             return np.array(result)
 
@@ -120,7 +122,9 @@ class TestBase(IPUOpTest):
         ipu_loss = self._test_optimizer(True).flatten()
         cpu_loss = self._test_optimizer(False).flatten()
         self.assertTrue(ipu_loss[0] == ipu_loss[99])
-        self.assertTrue(np.allclose(ipu_loss[100:], cpu_loss, atol=self.atol))
+        np.testing.assert_allclose(
+            ipu_loss[100:], cpu_loss, rtol=1e-05, atol=self.atol
+        )
 
 
 if __name__ == "__main__":

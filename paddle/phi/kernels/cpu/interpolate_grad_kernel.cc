@@ -373,8 +373,7 @@ static void Interpolate1DCPUBwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -472,8 +471,7 @@ static void Interpolate2DCPUBwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -633,8 +631,7 @@ static void Interpolate3DCPUBwd(
     bool align_corners,
     int align_mode,
     DenseTensor* input_grad) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
   funcs::ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
@@ -1036,7 +1033,7 @@ void BicubicInterpGradKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(bilinear_interp_v2_grad,
+PD_REGISTER_KERNEL(bilinear_interp_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::BilinearInterpGradKernel,
@@ -1054,7 +1051,7 @@ PD_REGISTER_KERNEL(nearest_interp_grad,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(trilinear_interp_v2_grad,
+PD_REGISTER_KERNEL(trilinear_interp_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::TrilinearInterpGradKernel,
@@ -1072,7 +1069,7 @@ PD_REGISTER_KERNEL(linear_interp_grad,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(bicubic_interp_v2_grad,
+PD_REGISTER_KERNEL(bicubic_interp_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::BicubicInterpGradKernel,

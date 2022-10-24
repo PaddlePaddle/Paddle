@@ -15,8 +15,6 @@
 All layers just related to the detection neural network.
 """
 
-from __future__ import print_function
-
 import paddle
 
 from .layer_function_generator import generate_layer_fn
@@ -31,12 +29,16 @@ from . import ops
 from ... import compat as cpt
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
-import six
 import numpy as np
 from functools import reduce
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..data_feeder import (
+    convert_dtype,
+    check_variable_and_dtype,
+    check_type,
+    check_dtype,
+)
 from paddle.utils import deprecated
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from ..framework import in_dygraph_mode
 
 __all__ = [
@@ -71,17 +73,19 @@ __all__ = [
 ]
 
 
-def retinanet_target_assign(bbox_pred,
-                            cls_logits,
-                            anchor_box,
-                            anchor_var,
-                            gt_boxes,
-                            gt_labels,
-                            is_crowd,
-                            im_info,
-                            num_classes=1,
-                            positive_overlap=0.5,
-                            negative_overlap=0.4):
+def retinanet_target_assign(
+    bbox_pred,
+    cls_logits,
+    anchor_box,
+    anchor_var,
+    gt_boxes,
+    gt_labels,
+    is_crowd,
+    im_info,
+    num_classes=1,
+    positive_overlap=0.5,
+    negative_overlap=0.4,
+):
     r"""
     **Target Assign Layer for the detector RetinaNet.**
 
@@ -140,9 +144,9 @@ def retinanet_target_assign(bbox_pred,
             :math:`[xmin, ymin]` is the left top coordinate of the anchor box,
             :math:`[xmax, ymax]` is the right bottom coordinate of the anchor box.
             The data type of :attr:`anchor_box` is float32 or float64. Please refer
-            to the OP :ref:`api_fluid_layers_anchor_generator` 
+            to the OP :ref:`api_fluid_layers_anchor_generator`
             for the generation of :attr:`anchor_box`.
-        anchor_var(Variable): A 2-D Tensor with shape :math:`[M,4]` represents the expanded 
+        anchor_var(Variable): A 2-D Tensor with shape :math:`[M,4]` represents the expanded
             factors of anchor locations used in loss function. :math:`M` is number of
             all anchors of one image, each anchor possesses a 4-vector expanded factor.
             The data type of :attr:`anchor_var` is float32 or float64. Please refer
@@ -181,7 +185,7 @@ def retinanet_target_assign(bbox_pred,
 
     Returns:
         A tuple with 6 Variables:
-        
+
         **predict_scores** (Variable): A 2-D Tensor with shape :math:`[F+B, C]` represents
         category prediction belonging to positive and negative samples. :math:`F`
         is the number of positive samples in a mini-batch, :math:`B` is the number
@@ -248,22 +252,42 @@ def retinanet_target_assign(bbox_pred,
 
     """
 
-    check_variable_and_dtype(bbox_pred, 'bbox_pred', ['float32', 'float64'],
-                             'retinanet_target_assign')
-    check_variable_and_dtype(cls_logits, 'cls_logits', ['float32', 'float64'],
-                             'retinanet_target_assign')
-    check_variable_and_dtype(anchor_box, 'anchor_box', ['float32', 'float64'],
-                             'retinanet_target_assign')
-    check_variable_and_dtype(anchor_var, 'anchor_var', ['float32', 'float64'],
-                             'retinanet_target_assign')
-    check_variable_and_dtype(gt_boxes, 'gt_boxes', ['float32', 'float64'],
-                             'retinanet_target_assign')
-    check_variable_and_dtype(gt_labels, 'gt_labels', ['int32'],
-                             'retinanet_target_assign')
-    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
-                             'retinanet_target_assign')
-    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
-                             'retinanet_target_assign')
+    check_variable_and_dtype(
+        bbox_pred,
+        'bbox_pred',
+        ['float32', 'float64'],
+        'retinanet_target_assign',
+    )
+    check_variable_and_dtype(
+        cls_logits,
+        'cls_logits',
+        ['float32', 'float64'],
+        'retinanet_target_assign',
+    )
+    check_variable_and_dtype(
+        anchor_box,
+        'anchor_box',
+        ['float32', 'float64'],
+        'retinanet_target_assign',
+    )
+    check_variable_and_dtype(
+        anchor_var,
+        'anchor_var',
+        ['float32', 'float64'],
+        'retinanet_target_assign',
+    )
+    check_variable_and_dtype(
+        gt_boxes, 'gt_boxes', ['float32', 'float64'], 'retinanet_target_assign'
+    )
+    check_variable_and_dtype(
+        gt_labels, 'gt_labels', ['int32'], 'retinanet_target_assign'
+    )
+    check_variable_and_dtype(
+        is_crowd, 'is_crowd', ['int32'], 'retinanet_target_assign'
+    )
+    check_variable_and_dtype(
+        im_info, 'im_info', ['float32', 'float64'], 'retinanet_target_assign'
+    )
 
     helper = LayerHelper('retinanet_target_assign', **locals())
     # Assign target label to anchors
@@ -271,30 +295,34 @@ def retinanet_target_assign(bbox_pred,
     score_index = helper.create_variable_for_type_inference(dtype='int32')
     target_label = helper.create_variable_for_type_inference(dtype='int32')
     target_bbox = helper.create_variable_for_type_inference(
-        dtype=anchor_box.dtype)
+        dtype=anchor_box.dtype
+    )
     bbox_inside_weight = helper.create_variable_for_type_inference(
-        dtype=anchor_box.dtype)
+        dtype=anchor_box.dtype
+    )
     fg_num = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(type="retinanet_target_assign",
-                     inputs={
-                         'Anchor': anchor_box,
-                         'GtBoxes': gt_boxes,
-                         'GtLabels': gt_labels,
-                         'IsCrowd': is_crowd,
-                         'ImInfo': im_info
-                     },
-                     outputs={
-                         'LocationIndex': loc_index,
-                         'ScoreIndex': score_index,
-                         'TargetLabel': target_label,
-                         'TargetBBox': target_bbox,
-                         'BBoxInsideWeight': bbox_inside_weight,
-                         'ForegroundNumber': fg_num
-                     },
-                     attrs={
-                         'positive_overlap': positive_overlap,
-                         'negative_overlap': negative_overlap
-                     })
+    helper.append_op(
+        type="retinanet_target_assign",
+        inputs={
+            'Anchor': anchor_box,
+            'GtBoxes': gt_boxes,
+            'GtLabels': gt_labels,
+            'IsCrowd': is_crowd,
+            'ImInfo': im_info,
+        },
+        outputs={
+            'LocationIndex': loc_index,
+            'ScoreIndex': score_index,
+            'TargetLabel': target_label,
+            'TargetBBox': target_bbox,
+            'BBoxInsideWeight': bbox_inside_weight,
+            'ForegroundNumber': fg_num,
+        },
+        attrs={
+            'positive_overlap': positive_overlap,
+            'negative_overlap': negative_overlap,
+        },
+    )
 
     loc_index.stop_gradient = True
     score_index.stop_gradient = True
@@ -308,22 +336,31 @@ def retinanet_target_assign(bbox_pred,
     predicted_cls_logits = nn.gather(cls_logits, score_index)
     predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
 
-    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight, fg_num
+    return (
+        predicted_cls_logits,
+        predicted_bbox_pred,
+        target_label,
+        target_bbox,
+        bbox_inside_weight,
+        fg_num,
+    )
 
 
-def rpn_target_assign(bbox_pred,
-                      cls_logits,
-                      anchor_box,
-                      anchor_var,
-                      gt_boxes,
-                      is_crowd,
-                      im_info,
-                      rpn_batch_size_per_im=256,
-                      rpn_straddle_thresh=0.0,
-                      rpn_fg_fraction=0.5,
-                      rpn_positive_overlap=0.7,
-                      rpn_negative_overlap=0.3,
-                      use_random=True):
+def rpn_target_assign(
+    bbox_pred,
+    cls_logits,
+    anchor_box,
+    anchor_var,
+    gt_boxes,
+    is_crowd,
+    im_info,
+    rpn_batch_size_per_im=256,
+    rpn_straddle_thresh=0.0,
+    rpn_fg_fraction=0.5,
+    rpn_positive_overlap=0.7,
+    rpn_negative_overlap=0.3,
+    use_random=True,
+):
     """
     **Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection.**
 
@@ -357,7 +394,7 @@ def rpn_target_assign(bbox_pred,
             if the input is image feature map, they are close to the origin
             of the coordinate system. [xmax, ymax] is the right bottom
             coordinate of the anchor box. The data type can be float32 or float64.
-        anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
+        anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded
             variances of anchors. The data type can be float32 or float64.
         gt_boxes (Variable): The ground-truth bounding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
@@ -382,7 +419,7 @@ def rpn_target_assign(bbox_pred,
     Returns:
         tuple:
         A tuple(predicted_scores, predicted_location, target_label,
-        target_bbox, bbox_inside_weight) is returned. The predicted_scores 
+        target_bbox, bbox_inside_weight) is returned. The predicted_scores
         and predicted_location is the predicted result of the RPN.
         The target_label and target_bbox is the ground truth,
         respectively. The predicted_location is a 2D Tensor with shape
@@ -413,51 +450,62 @@ def rpn_target_assign(bbox_pred,
 
     helper = LayerHelper('rpn_target_assign', **locals())
 
-    check_variable_and_dtype(bbox_pred, 'bbox_pred', ['float32', 'float64'],
-                             'rpn_target_assign')
-    check_variable_and_dtype(cls_logits, 'cls_logits', ['float32', 'float64'],
-                             'rpn_target_assign')
-    check_variable_and_dtype(anchor_box, 'anchor_box', ['float32', 'float64'],
-                             'rpn_target_assign')
-    check_variable_and_dtype(anchor_var, 'anchor_var', ['float32', 'float64'],
-                             'rpn_target_assign')
-    check_variable_and_dtype(gt_boxes, 'gt_boxes', ['float32', 'float64'],
-                             'rpn_target_assign')
-    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
-                             'rpn_target_assign')
-    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
-                             'rpn_target_assign')
+    check_variable_and_dtype(
+        bbox_pred, 'bbox_pred', ['float32', 'float64'], 'rpn_target_assign'
+    )
+    check_variable_and_dtype(
+        cls_logits, 'cls_logits', ['float32', 'float64'], 'rpn_target_assign'
+    )
+    check_variable_and_dtype(
+        anchor_box, 'anchor_box', ['float32', 'float64'], 'rpn_target_assign'
+    )
+    check_variable_and_dtype(
+        anchor_var, 'anchor_var', ['float32', 'float64'], 'rpn_target_assign'
+    )
+    check_variable_and_dtype(
+        gt_boxes, 'gt_boxes', ['float32', 'float64'], 'rpn_target_assign'
+    )
+    check_variable_and_dtype(
+        is_crowd, 'is_crowd', ['int32'], 'rpn_target_assign'
+    )
+    check_variable_and_dtype(
+        im_info, 'im_info', ['float32', 'float64'], 'rpn_target_assign'
+    )
 
     # Assign target label to anchors
     loc_index = helper.create_variable_for_type_inference(dtype='int32')
     score_index = helper.create_variable_for_type_inference(dtype='int32')
     target_label = helper.create_variable_for_type_inference(dtype='int32')
     target_bbox = helper.create_variable_for_type_inference(
-        dtype=anchor_box.dtype)
+        dtype=anchor_box.dtype
+    )
     bbox_inside_weight = helper.create_variable_for_type_inference(
-        dtype=anchor_box.dtype)
-    helper.append_op(type="rpn_target_assign",
-                     inputs={
-                         'Anchor': anchor_box,
-                         'GtBoxes': gt_boxes,
-                         'IsCrowd': is_crowd,
-                         'ImInfo': im_info
-                     },
-                     outputs={
-                         'LocationIndex': loc_index,
-                         'ScoreIndex': score_index,
-                         'TargetLabel': target_label,
-                         'TargetBBox': target_bbox,
-                         'BBoxInsideWeight': bbox_inside_weight
-                     },
-                     attrs={
-                         'rpn_batch_size_per_im': rpn_batch_size_per_im,
-                         'rpn_straddle_thresh': rpn_straddle_thresh,
-                         'rpn_positive_overlap': rpn_positive_overlap,
-                         'rpn_negative_overlap': rpn_negative_overlap,
-                         'rpn_fg_fraction': rpn_fg_fraction,
-                         'use_random': use_random
-                     })
+        dtype=anchor_box.dtype
+    )
+    helper.append_op(
+        type="rpn_target_assign",
+        inputs={
+            'Anchor': anchor_box,
+            'GtBoxes': gt_boxes,
+            'IsCrowd': is_crowd,
+            'ImInfo': im_info,
+        },
+        outputs={
+            'LocationIndex': loc_index,
+            'ScoreIndex': score_index,
+            'TargetLabel': target_label,
+            'TargetBBox': target_bbox,
+            'BBoxInsideWeight': bbox_inside_weight,
+        },
+        attrs={
+            'rpn_batch_size_per_im': rpn_batch_size_per_im,
+            'rpn_straddle_thresh': rpn_straddle_thresh,
+            'rpn_positive_overlap': rpn_positive_overlap,
+            'rpn_negative_overlap': rpn_negative_overlap,
+            'rpn_fg_fraction': rpn_fg_fraction,
+            'use_random': use_random,
+        },
+    )
 
     loc_index.stop_gradient = True
     score_index.stop_gradient = True
@@ -470,7 +518,13 @@ def rpn_target_assign(bbox_pred,
     predicted_cls_logits = nn.gather(cls_logits, score_index)
     predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
 
-    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
+    return (
+        predicted_cls_logits,
+        predicted_bbox_pred,
+        target_label,
+        target_bbox,
+        bbox_inside_weight,
+    )
 
 
 def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
@@ -484,12 +538,12 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
     `Focal Loss <https://arxiv.org/abs/1708.02002>`_ is used to address the foreground-background
     class imbalance existed on the training phase of many computer vision tasks. This OP computes
     the sigmoid value for each element in the input tensor :attr:`x`, after which focal loss is
-    measured between the sigmoid value and target label. 
+    measured between the sigmoid value and target label.
 
     The focal loss is given as followed:
 
     .. math::
-  
+
         \\mathop{loss_{i,\\,j}}\\limits_{i\\in\\mathbb{[0,\\,N-1]},\\,j\\in\\mathbb{[0,\\,C-1]}}=\\left\\{
         \\begin{array}{rcl}
         - \\frac{1}{fg\_num} * \\alpha * {(1 - \\sigma(x_{i,\\,j}))}^{\\gamma} * \\log(\\sigma(x_{i,\\,j})) & & {(j +1) = label_{i,\\,0}} \\\\
@@ -498,7 +552,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
 
 
     We know that
-    
+
     .. math::
         \\sigma(x_j) = \\frac{1}{1 + \\exp(-x_j)}
 
@@ -524,7 +578,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
             is set to 0.25.
 
     Returns:
-        Variable(the data type is float32 or float64): 
+        Variable(the data type is float32 or float64):
             A 2-D tensor with shape :math:`[N, C]`, which is the focal loss of each element in the input
             tensor :attr:`x`.
 
@@ -533,22 +587,22 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
 
             import numpy as np
             import paddle.fluid as fluid
-            
+
             num_classes = 10  # exclude background
             image_width = 16
             image_height = 16
             batch_size = 32
             max_iter = 20
-            
-            
+
+
             def gen_train_data():
                 x_data = np.random.uniform(0, 255, (batch_size, 3, image_height,
                                                     image_width)).astype('float64')
                 label_data = np.random.randint(0, num_classes,
                                                (batch_size, 1)).astype('int32')
                 return {"x": x_data, "label": label_data}
-            
-            
+
+
             def get_focal_loss(pred, label, fg_num, num_classes):
                 pred = fluid.layers.reshape(pred, [-1, num_classes])
                 label = fluid.layers.reshape(label, [-1, 1])
@@ -557,8 +611,8 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                     pred, label, fg_num, gamma=2.0, alpha=0.25)
                 loss = fluid.layers.reduce_sum(loss)
                 return loss
-            
-            
+
+
             def build_model(mode='train'):
                 x = fluid.data(name="x", shape=[-1, 3, -1, -1], dtype='float64')
                 output = fluid.layers.pool2d(input=x, pool_type='avg', global_pooling=True)
@@ -586,8 +640,8 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                     # output of the final fc layer should be connected to a sigmoid layer.
                     pred = fluid.layers.sigmoid(output)
                     return pred
-            
-            
+
+
             loss = build_model('train')
             moment_optimizer = fluid.optimizer.MomentumOptimizer(
                 learning_rate=0.001, momentum=0.9)
@@ -600,8 +654,9 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                 print(outs)
     """
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'],
-                             'sigmoid_focal_loss')
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64'], 'sigmoid_focal_loss'
+    )
     check_variable_and_dtype(label, 'label', ['int32'], 'sigmoid_focal_loss')
     check_variable_and_dtype(fg_num, 'fg_num', ['int32'], 'sigmoid_focal_loss')
 
@@ -609,31 +664,28 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type="sigmoid_focal_loss",
-                     inputs={
-                         "X": x,
-                         "Label": label,
-                         "FgNum": fg_num
-                     },
-                     attrs={
-                         "gamma": gamma,
-                         'alpha': alpha
-                     },
-                     outputs={"Out": out})
+    helper.append_op(
+        type="sigmoid_focal_loss",
+        inputs={"X": x, "Label": label, "FgNum": fg_num},
+        attrs={"gamma": gamma, 'alpha': alpha},
+        outputs={"Out": out},
+    )
     return out
 
 
-def detection_output(loc,
-                     scores,
-                     prior_box,
-                     prior_box_var,
-                     background_label=0,
-                     nms_threshold=0.3,
-                     nms_top_k=400,
-                     keep_top_k=200,
-                     score_threshold=0.01,
-                     nms_eta=1.0,
-                     return_index=False):
+def detection_output(
+    loc,
+    scores,
+    prior_box,
+    prior_box_var,
+    background_label=0,
+    nms_threshold=0.3,
+    nms_top_k=400,
+    keep_top_k=200,
+    score_threshold=0.01,
+    nms_eta=1.0,
+    return_index=False,
+):
     """
 
     Given the regression locations, classification confidences and prior boxes,
@@ -681,7 +733,7 @@ def detection_output(loc,
     Returns:
 
         A tuple with two Variables: (Out, Index) if return_index is True,
-        otherwise, a tuple with one Variable(Out) is returned. 
+        otherwise, a tuple with one Variable(Out) is returned.
 
         Out (Variable): The detection outputs is a LoDTensor with shape [No, 6].
         Data type is the same as input (loc). Each row has six values:
@@ -718,50 +770,48 @@ def detection_output(loc,
                                        return_index=True)
     """
     helper = LayerHelper("detection_output", **locals())
-    decoded_box = box_coder(prior_box=prior_box,
-                            prior_box_var=prior_box_var,
-                            target_box=loc,
-                            code_type='decode_center_size')
+    decoded_box = box_coder(
+        prior_box=prior_box,
+        prior_box_var=prior_box_var,
+        target_box=loc,
+        code_type='decode_center_size',
+    )
     scores = nn.softmax(input=scores)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
-        dtype=decoded_box.dtype)
+        dtype=decoded_box.dtype
+    )
     if return_index:
         index = helper.create_variable_for_type_inference(dtype='int')
-        helper.append_op(type="multiclass_nms2",
-                         inputs={
-                             'Scores': scores,
-                             'BBoxes': decoded_box
-                         },
-                         outputs={
-                             'Out': nmsed_outs,
-                             'Index': index
-                         },
-                         attrs={
-                             'background_label': 0,
-                             'nms_threshold': nms_threshold,
-                             'nms_top_k': nms_top_k,
-                             'keep_top_k': keep_top_k,
-                             'score_threshold': score_threshold,
-                             'nms_eta': 1.0,
-                         })
+        helper.append_op(
+            type="multiclass_nms2",
+            inputs={'Scores': scores, 'BBoxes': decoded_box},
+            outputs={'Out': nmsed_outs, 'Index': index},
+            attrs={
+                'background_label': 0,
+                'nms_threshold': nms_threshold,
+                'nms_top_k': nms_top_k,
+                'keep_top_k': keep_top_k,
+                'score_threshold': score_threshold,
+                'nms_eta': 1.0,
+            },
+        )
         index.stop_gradient = True
     else:
-        helper.append_op(type="multiclass_nms",
-                         inputs={
-                             'Scores': scores,
-                             'BBoxes': decoded_box
-                         },
-                         outputs={'Out': nmsed_outs},
-                         attrs={
-                             'background_label': 0,
-                             'nms_threshold': nms_threshold,
-                             'nms_top_k': nms_top_k,
-                             'keep_top_k': keep_top_k,
-                             'score_threshold': score_threshold,
-                             'nms_eta': 1.0,
-                         })
+        helper.append_op(
+            type="multiclass_nms",
+            inputs={'Scores': scores, 'BBoxes': decoded_box},
+            outputs={'Out': nmsed_outs},
+            attrs={
+                'background_label': 0,
+                'nms_threshold': nms_threshold,
+                'nms_top_k': nms_top_k,
+                'keep_top_k': keep_top_k,
+                'score_threshold': score_threshold,
+                'nms_eta': 1.0,
+            },
+        )
     nmsed_outs.stop_gradient = True
     if return_index:
         return nmsed_outs, index
@@ -771,9 +821,9 @@ def detection_output(loc,
 @templatedoc()
 def iou_similarity(x, y, box_normalized=True, name=None):
     """
-	:alias_main: paddle.nn.functional.iou_similarity
-	:alias: paddle.nn.functional.iou_similarity,paddle.nn.functional.loss.iou_similarity
-	:old_api: paddle.fluid.layers.iou_similarity
+        :alias_main: paddle.nn.functional.iou_similarity
+        :alias: paddle.nn.functional.iou_similarity,paddle.nn.functional.loss.iou_similarity
+        :old_api: paddle.fluid.layers.iou_similarity
 
     ${comment}
 
@@ -813,30 +863,31 @@ def iou_similarity(x, y, box_normalized=True, name=None):
     helper = LayerHelper("iou_similarity", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type="iou_similarity",
-                     inputs={
-                         "X": x,
-                         "Y": y
-                     },
-                     attrs={"box_normalized": box_normalized},
-                     outputs={"Out": out})
+    helper.append_op(
+        type="iou_similarity",
+        inputs={"X": x, "Y": y},
+        attrs={"box_normalized": box_normalized},
+        outputs={"Out": out},
+    )
     return out
 
 
 @templatedoc()
-def box_coder(prior_box,
-              prior_box_var,
-              target_box,
-              code_type="encode_center_size",
-              box_normalized=True,
-              name=None,
-              axis=0):
+def box_coder(
+    prior_box,
+    prior_box_var,
+    target_box,
+    code_type="encode_center_size",
+    box_normalized=True,
+    name=None,
+    axis=0,
+):
     r"""
 
     **Box Coder Layer**
 
     Encode/Decode the target bounding box with the priorbox information.
-    
+
     The Encoding schema described below:
 
     .. math::
@@ -845,78 +896,78 @@ def box_coder(prior_box,
 
         oy = (ty - py) / ph / pyv
 
-        ow = \log(\abs(tw / pw)) / pwv 
+        ow = \log(\abs(tw / pw)) / pwv
 
-        oh = \log(\abs(th / ph)) / phv 
+        oh = \log(\abs(th / ph)) / phv
 
     The Decoding schema described below:
-    
+
     .. math::
-  
+
         ox = (pw * pxv * tx * + px) - tw / 2
 
         oy = (ph * pyv * ty * + py) - th / 2
 
         ow = \exp(pwv * tw) * pw + tw / 2
 
-        oh = \exp(phv * th) * ph + th / 2   
+        oh = \exp(phv * th) * ph + th / 2
 
-    where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates, 
-    width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote 
-    the priorbox's (anchor) center coordinates, width and height. `pxv`, 
-    `pyv`, `pwv`, `phv` denote the variance of the priorbox and `ox`, `oy`, 
-    `ow`, `oh` denote the encoded/decoded coordinates, width and height. 
+    where `tx`, `ty`, `tw`, `th` denote the target box's center coordinates,
+    width and height respectively. Similarly, `px`, `py`, `pw`, `ph` denote
+    the priorbox's (anchor) center coordinates, width and height. `pxv`,
+    `pyv`, `pwv`, `phv` denote the variance of the priorbox and `ox`, `oy`,
+    `ow`, `oh` denote the encoded/decoded coordinates, width and height.
 
-    During Box Decoding, two modes for broadcast are supported. Say target 
-    box has shape [N, M, 4], and the shape of prior box can be [N, 4] or 
-    [M, 4]. Then prior box will broadcast to target box along the 
-    assigned axis. 
+    During Box Decoding, two modes for broadcast are supported. Say target
+    box has shape [N, M, 4], and the shape of prior box can be [N, 4] or
+    [M, 4]. Then prior box will broadcast to target box along the
+    assigned axis.
 
     Args:
-        prior_box(Variable): Box list prior_box is a 2-D Tensor with shape 
+        prior_box(Variable): Box list prior_box is a 2-D Tensor with shape
             [M, 4] holds M boxes and data type is float32 or float64. Each box
-            is represented as [xmin, ymin, xmax, ymax], [xmin, ymin] is the 
+            is represented as [xmin, ymin, xmax, ymax], [xmin, ymin] is the
             left top coordinate of the anchor box, if the input is image feature
-            map, they are close to the origin of the coordinate system. 
-            [xmax, ymax] is the right bottom coordinate of the anchor box.       
-        prior_box_var(List|Variable|None): prior_box_var supports three types 
-            of input. One is variable with shape [M, 4] which holds M group and 
-            data type is float32 or float64. The second is list consist of 
-            4 elements shared by all boxes and data type is float32 or float64. 
-            Other is None and not involved in calculation. 
-        target_box(Variable): This input can be a 2-D LoDTensor with shape 
-            [N, 4] when code_type is 'encode_center_size'. This input also can 
-            be a 3-D Tensor with shape [N, M, 4] when code_type is 
-            'decode_center_size'. Each box is represented as 
-            [xmin, ymin, xmax, ymax]. The data type is float32 or float64. 
-            This tensor can contain LoD information to represent a batch of inputs. 
+            map, they are close to the origin of the coordinate system.
+            [xmax, ymax] is the right bottom coordinate of the anchor box.
+        prior_box_var(List|Variable|None): prior_box_var supports three types
+            of input. One is variable with shape [M, 4] which holds M group and
+            data type is float32 or float64. The second is list consist of
+            4 elements shared by all boxes and data type is float32 or float64.
+            Other is None and not involved in calculation.
+        target_box(Variable): This input can be a 2-D LoDTensor with shape
+            [N, 4] when code_type is 'encode_center_size'. This input also can
+            be a 3-D Tensor with shape [N, M, 4] when code_type is
+            'decode_center_size'. Each box is represented as
+            [xmin, ymin, xmax, ymax]. The data type is float32 or float64.
+            This tensor can contain LoD information to represent a batch of inputs.
         code_type(str): The code type used with the target box. It can be
-            `encode_center_size` or `decode_center_size`. `encode_center_size` 
+            `encode_center_size` or `decode_center_size`. `encode_center_size`
             by default.
         box_normalized(bool): Whether treat the priorbox as a normalized box.
             Set true by default.
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default. 
-        axis(int): Which axis in PriorBox to broadcast for box decode, 
-            for example, if axis is 0 and TargetBox has shape [N, M, 4] and 
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
+        axis(int): Which axis in PriorBox to broadcast for box decode,
+            for example, if axis is 0 and TargetBox has shape [N, M, 4] and
             PriorBox has shape [M, 4], then PriorBox will broadcast to [N, M, 4]
-            for decoding. It is only valid when code type is 
-            `decode_center_size`. Set 0 by default. 
+            for decoding. It is only valid when code type is
+            `decode_center_size`. Set 0 by default.
 
     Returns:
         Variable:
 
-        output_box(Variable): When code_type is 'encode_center_size', the 
-        output tensor of box_coder_op with shape [N, M, 4] representing the 
-        result of N target boxes encoded with M Prior boxes and variances. 
-        When code_type is 'decode_center_size', N represents the batch size 
+        output_box(Variable): When code_type is 'encode_center_size', the
+        output tensor of box_coder_op with shape [N, M, 4] representing the
+        result of N target boxes encoded with M Prior boxes and variances.
+        When code_type is 'decode_center_size', N represents the batch size
         and M represents the number of decoded boxes.
 
     Examples:
- 
+
         .. code-block:: python
- 
+
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
@@ -945,36 +996,49 @@ def box_coder(prior_box,
                                     box_normalized=False,
                                     axis=1)
     """
-    check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
-                             'box_coder')
-    check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
-                             'box_coder')
+    check_variable_and_dtype(
+        prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
+    )
+    check_variable_and_dtype(
+        target_box, 'target_box', ['float32', 'float64'], 'box_coder'
+    )
     if in_dygraph_mode():
         if isinstance(prior_box_var, Variable):
-            box_coder_op = _C_ops.final_state_box_coder(prior_box,
-                                                        prior_box_var,
-                                                        target_box, code_type,
-                                                        box_normalized, axis,
-                                                        [])
+            box_coder_op = _C_ops.box_coder(
+                prior_box,
+                prior_box_var,
+                target_box,
+                code_type,
+                box_normalized,
+                axis,
+                [],
+            )
         elif isinstance(prior_box_var, list):
-            box_coder_op = _C_ops.final_state_box_coder(prior_box, None,
-                                                        target_box, code_type,
-                                                        box_normalized, axis,
-                                                        prior_box_var)
+            box_coder_op = _C_ops.box_coder(
+                prior_box,
+                None,
+                target_box,
+                code_type,
+                box_normalized,
+                axis,
+                prior_box_var,
+            )
         else:
             raise TypeError(
-                "Input variance of box_coder must be Variable or lisz")
+                "Input variance of box_coder must be Variable or lisz"
+            )
         return box_coder_op
     helper = LayerHelper("box_coder", **locals())
 
     output_box = helper.create_variable_for_type_inference(
-        dtype=prior_box.dtype)
+        dtype=prior_box.dtype
+    )
 
     inputs = {"PriorBox": prior_box, "TargetBox": target_box}
     attrs = {
         "code_type": code_type,
         "box_normalized": box_normalized,
-        "axis": axis
+        "axis": axis,
     }
     if isinstance(prior_box_var, Variable):
         inputs['PriorBoxVar'] = prior_box_var
@@ -982,10 +1046,12 @@ def box_coder(prior_box,
         attrs['variance'] = prior_box_var
     else:
         raise TypeError("Input variance of box_coder must be Variable or lisz")
-    helper.append_op(type="box_coder",
-                     inputs=inputs,
-                     attrs=attrs,
-                     outputs={"OutputBox": output_box})
+    helper.append_op(
+        type="box_coder",
+        inputs=inputs,
+        attrs=attrs,
+        outputs={"OutputBox": output_box},
+    )
     return output_box
 
 
@@ -1005,59 +1071,64 @@ def polygon_box_transform(input, name=None):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
             input = fluid.data(name='input', shape=[4, 10, 5, 5], dtype='float32')
             out = fluid.layers.polygon_box_transform(input)
     """
-    check_variable_and_dtype(input, "input", ['float32', 'float64'],
-                             'polygon_box_transform')
+    check_variable_and_dtype(
+        input, "input", ['float32', 'float64'], 'polygon_box_transform'
+    )
     helper = LayerHelper("polygon_box_transform", **locals())
     output = helper.create_variable_for_type_inference(dtype=input.dtype)
 
-    helper.append_op(type="polygon_box_transform",
-                     inputs={"Input": input},
-                     attrs={},
-                     outputs={"Output": output})
+    helper.append_op(
+        type="polygon_box_transform",
+        inputs={"Input": input},
+        attrs={},
+        outputs={"Output": output},
+    )
     return output
 
 
 @deprecated(since="2.0.0", update_to="paddle.vision.ops.yolo_loss")
 @templatedoc(op_type="yolov3_loss")
-def yolov3_loss(x,
-                gt_box,
-                gt_label,
-                anchors,
-                anchor_mask,
-                class_num,
-                ignore_thresh,
-                downsample_ratio,
-                gt_score=None,
-                use_label_smooth=True,
-                name=None,
-                scale_x_y=1.):
+def yolov3_loss(
+    x,
+    gt_box,
+    gt_label,
+    anchors,
+    anchor_mask,
+    class_num,
+    ignore_thresh,
+    downsample_ratio,
+    gt_score=None,
+    use_label_smooth=True,
+    name=None,
+    scale_x_y=1.0,
+):
     """
 
     ${comment}
 
     Args:
-        x (Variable): ${x_comment}The data type is float32 or float64. 
+        x (Variable): ${x_comment}The data type is float32 or float64.
         gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
-                          in the third dimension, x, y, w, h should be stored. 
+                          in the third dimension, x, y, w, h should be stored.
                           x,y is the center coordinate of boxes, w, h are the
-                          width and height, x, y, w, h should be divided by 
+                          width and height, x, y, w, h should be divided by
                           input image height to scale to [0, 1].
-                          N is the batch number and B is the max box number in 
-                          an image.The data type is float32 or float64. 
+                          N is the batch number and B is the max box number in
+                          an image.The data type is float32 or float64.
         gt_label (Variable): class id of ground truth boxes, should be in shape
-                            of [N, B].The data type is int32. 
+                            of [N, B].The data type is int32.
         anchors (list|tuple): ${anchors_comment}
         anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): The default value is None.  Normally there is no need 
-                       for user to set this property.  For more information, 
+        name (string): The default value is None.  Normally there is no need
+                       for user to set this property.  For more information,
                        please refer to :ref:`api_guide_Name`
         gt_score (Variable): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
@@ -1090,7 +1161,7 @@ def yolov3_loss(x,
           anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
           anchor_mask = [0, 1, 2]
           loss = fluid.layers.yolov3_loss(x=x, gt_box=gt_box, gt_label=gt_label,
-                                          gt_score=gt_score, anchors=anchors, 
+                                          gt_score=gt_score, anchors=anchors,
                                           anchor_mask=anchor_mask, class_num=80,
                                           ignore_thresh=0.7, downsample_ratio=32)
     """
@@ -1111,17 +1182,33 @@ def yolov3_loss(x,
         raise TypeError("Attr class_num of yolov3_loss must be an integer")
     if not isinstance(ignore_thresh, float):
         raise TypeError(
-            "Attr ignore_thresh of yolov3_loss must be a float number")
+            "Attr ignore_thresh of yolov3_loss must be a float number"
+        )
     if not isinstance(use_label_smooth, bool):
         raise TypeError(
-            "Attr use_label_smooth of yolov3_loss must be a bool value")
+            "Attr use_label_smooth of yolov3_loss must be a bool value"
+        )
 
     if _non_static_mode():
-        attrs = ("anchors", anchors, "anchor_mask", anchor_mask, "class_num",
-                 class_num, "ignore_thresh", ignore_thresh, "downsample_ratio",
-                 downsample_ratio, "use_label_smooth", use_label_smooth,
-                 "scale_x_y", scale_x_y)
-        loss, _, _ = _C_ops.yolov3_loss(x, gt_box, gt_label, gt_score, *attrs)
+        attrs = (
+            "anchors",
+            anchors,
+            "anchor_mask",
+            anchor_mask,
+            "class_num",
+            class_num,
+            "ignore_thresh",
+            ignore_thresh,
+            "downsample_ratio",
+            downsample_ratio,
+            "use_label_smooth",
+            use_label_smooth,
+            "scale_x_y",
+            scale_x_y,
+        )
+        loss, _, _ = _legacy_C_ops.yolov3_loss(
+            x, gt_box, gt_label, gt_score, *attrs
+        )
         return loss
 
     helper = LayerHelper('yolov3_loss', **locals())
@@ -1147,52 +1234,56 @@ def yolov3_loss(x,
         "scale_x_y": scale_x_y,
     }
 
-    helper.append_op(type='yolov3_loss',
-                     inputs=inputs,
-                     outputs={
-                         'Loss': loss,
-                         'ObjectnessMask': objectness_mask,
-                         'GTMatchMask': gt_match_mask
-                     },
-                     attrs=attrs)
+    helper.append_op(
+        type='yolov3_loss',
+        inputs=inputs,
+        outputs={
+            'Loss': loss,
+            'ObjectnessMask': objectness_mask,
+            'GTMatchMask': gt_match_mask,
+        },
+        attrs=attrs,
+    )
     return loss
 
 
 @deprecated(since="2.0.0", update_to="paddle.vision.ops.yolo_box")
 @templatedoc(op_type="yolo_box")
-def yolo_box(x,
-             img_size,
-             anchors,
-             class_num,
-             conf_thresh,
-             downsample_ratio,
-             clip_bbox=True,
-             name=None,
-             scale_x_y=1.,
-             iou_aware=False,
-             iou_aware_factor=0.5):
+def yolo_box(
+    x,
+    img_size,
+    anchors,
+    class_num,
+    conf_thresh,
+    downsample_ratio,
+    clip_bbox=True,
+    name=None,
+    scale_x_y=1.0,
+    iou_aware=False,
+    iou_aware_factor=0.5,
+):
     """
 
     ${comment}
 
     Args:
-        x (Variable): ${x_comment} The data type is float32 or float64. 
-        img_size (Variable): ${img_size_comment} The data type is int32. 
+        x (Variable): ${x_comment} The data type is float32 or float64.
+        img_size (Variable): ${img_size_comment} The data type is int32.
         anchors (list|tuple): ${anchors_comment}
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
         clip_bbox (bool): ${clip_bbox_comment}
         scale_x_y (float): ${scale_x_y_comment}
-        name (string): The default value is None.  Normally there is no need 
-                       for user to set this property.  For more information, 
+        name (string): The default value is None.  Normally there is no need
+                       for user to set this property.  For more information,
                        please refer to :ref:`api_guide_Name`
         iou_aware (bool): ${iou_aware_comment}
         iou_aware_factor (float): ${iou_aware_factor_comment}
 
     Returns:
         Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
-        and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification 
+        and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification
         scores of boxes.
 
     Raises:
@@ -1211,7 +1302,7 @@ def yolo_box(x,
         x = fluid.data(name='x', shape=[None, 255, 13, 13], dtype='float32')
         img_size = fluid.data(name='img_size',shape=[None, 2],dtype='int64')
         anchors = [10, 13, 16, 30, 33, 23]
-        boxes,scores = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors, 
+        boxes,scores = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors,
                                         conf_thresh=0.01, downsample_ratio=32)
     """
     helper = LayerHelper('yolo_box', **locals())
@@ -1238,33 +1329,37 @@ def yolo_box(x,
         "clip_bbox": clip_bbox,
         "scale_x_y": scale_x_y,
         "iou_aware": iou_aware,
-        "iou_aware_factor": iou_aware_factor
+        "iou_aware_factor": iou_aware_factor,
     }
 
-    helper.append_op(type='yolo_box',
-                     inputs={
-                         "X": x,
-                         "ImgSize": img_size,
-                     },
-                     outputs={
-                         'Boxes': boxes,
-                         'Scores': scores,
-                     },
-                     attrs=attrs)
+    helper.append_op(
+        type='yolo_box',
+        inputs={
+            "X": x,
+            "ImgSize": img_size,
+        },
+        outputs={
+            'Boxes': boxes,
+            'Scores': scores,
+        },
+        attrs=attrs,
+    )
     return boxes, scores
 
 
 @templatedoc()
-def detection_map(detect_res,
-                  label,
-                  class_num,
-                  background_label=0,
-                  overlap_threshold=0.3,
-                  evaluate_difficult=True,
-                  has_state=None,
-                  input_states=None,
-                  out_states=None,
-                  ap_version='integral'):
+def detection_map(
+    detect_res,
+    label,
+    class_num,
+    background_label=0,
+    overlap_threshold=0.3,
+    evaluate_difficult=True,
+    has_state=None,
+    input_states=None,
+    out_states=None,
+    ap_version='integral',
+):
     """
     ${comment}
 
@@ -1312,45 +1407,49 @@ def detection_map(detect_res,
         return helper.create_variable_for_type_inference(dtype=type)
 
     map_out = __create_var('float32')
-    accum_pos_count_out = out_states[
-        0] if out_states is not None else __create_var('int32')
-    accum_true_pos_out = out_states[
-        1] if out_states is not None else __create_var('float32')
-    accum_false_pos_out = out_states[
-        2] if out_states is not None else __create_var('float32')
+    accum_pos_count_out = (
+        out_states[0] if out_states is not None else __create_var('int32')
+    )
+    accum_true_pos_out = (
+        out_states[1] if out_states is not None else __create_var('float32')
+    )
+    accum_false_pos_out = (
+        out_states[2] if out_states is not None else __create_var('float32')
+    )
 
     pos_count = input_states[0] if input_states is not None else None
     true_pos = input_states[1] if input_states is not None else None
     false_pos = input_states[2] if input_states is not None else None
 
-    helper.append_op(type="detection_map",
-                     inputs={
-                         'Label': label,
-                         'DetectRes': detect_res,
-                         'HasState': has_state,
-                         'PosCount': pos_count,
-                         'TruePos': true_pos,
-                         'FalsePos': false_pos
-                     },
-                     outputs={
-                         'MAP': map_out,
-                         'AccumPosCount': accum_pos_count_out,
-                         'AccumTruePos': accum_true_pos_out,
-                         'AccumFalsePos': accum_false_pos_out
-                     },
-                     attrs={
-                         'overlap_threshold': overlap_threshold,
-                         'evaluate_difficult': evaluate_difficult,
-                         'ap_type': ap_version,
-                         'class_num': class_num,
-                     })
+    helper.append_op(
+        type="detection_map",
+        inputs={
+            'Label': label,
+            'DetectRes': detect_res,
+            'HasState': has_state,
+            'PosCount': pos_count,
+            'TruePos': true_pos,
+            'FalsePos': false_pos,
+        },
+        outputs={
+            'MAP': map_out,
+            'AccumPosCount': accum_pos_count_out,
+            'AccumTruePos': accum_true_pos_out,
+            'AccumFalsePos': accum_false_pos_out,
+        },
+        attrs={
+            'overlap_threshold': overlap_threshold,
+            'evaluate_difficult': evaluate_difficult,
+            'ap_type': ap_version,
+            'class_num': class_num,
+        },
+    )
     return map_out
 
 
-def bipartite_match(dist_matrix,
-                    match_type=None,
-                    dist_threshold=None,
-                    name=None):
+def bipartite_match(
+    dist_matrix, match_type=None, dist_threshold=None, name=None
+):
     """
 
     This operator implements a greedy bipartite matching algorithm, which is
@@ -1377,23 +1476,23 @@ def bipartite_match(dist_matrix,
 
     Args:
         dist_matrix(Variable): This input is a 2-D LoDTensor with shape
-            [K, M]. The data type is float32 or float64. It is pair-wise 
-            distance matrix between the entities represented by each row and 
-            each column. For example, assumed one entity is A with shape [K], 
-            another entity is B with shape [M]. The dist_matrix[i][j] is the 
-            distance between A[i] and B[j]. The bigger the distance is, the 
-            better matching the pairs are. NOTE: This tensor can contain LoD 
-            information to represent a batch of inputs. One instance of this 
+            [K, M]. The data type is float32 or float64. It is pair-wise
+            distance matrix between the entities represented by each row and
+            each column. For example, assumed one entity is A with shape [K],
+            another entity is B with shape [M]. The dist_matrix[i][j] is the
+            distance between A[i] and B[j]. The bigger the distance is, the
+            better matching the pairs are. NOTE: This tensor can contain LoD
+            information to represent a batch of inputs. One instance of this
             batch can contain different numbers of entities.
         match_type(str, optional): The type of matching method, should be
            'bipartite' or 'per_prediction'. None ('bipartite') by default.
         dist_threshold(float32, optional): If `match_type` is 'per_prediction',
             this threshold is to determine the extra matching bboxes based
             on the maximum distance, 0.5 by default.
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
- 
+
     Returns:
         Tuple:
 
@@ -1422,25 +1521,30 @@ def bipartite_match(dist_matrix,
     helper = LayerHelper('bipartite_match', **locals())
     match_indices = helper.create_variable_for_type_inference(dtype='int32')
     match_distance = helper.create_variable_for_type_inference(
-        dtype=dist_matrix.dtype)
-    helper.append_op(type='bipartite_match',
-                     inputs={'DistMat': dist_matrix},
-                     attrs={
-                         'match_type': match_type,
-                         'dist_threshold': dist_threshold,
-                     },
-                     outputs={
-                         'ColToRowMatchIndices': match_indices,
-                         'ColToRowMatchDist': match_distance
-                     })
+        dtype=dist_matrix.dtype
+    )
+    helper.append_op(
+        type='bipartite_match',
+        inputs={'DistMat': dist_matrix},
+        attrs={
+            'match_type': match_type,
+            'dist_threshold': dist_threshold,
+        },
+        outputs={
+            'ColToRowMatchIndices': match_indices,
+            'ColToRowMatchDist': match_distance,
+        },
+    )
     return match_indices, match_distance
 
 
-def target_assign(input,
-                  matched_indices,
-                  negative_indices=None,
-                  mismatch_value=None,
-                  name=None):
+def target_assign(
+    input,
+    matched_indices,
+    negative_indices=None,
+    mismatch_value=None,
+    name=None,
+):
     """
 
     This operator can be, for given the target bounding boxes or labels,
@@ -1529,36 +1633,37 @@ def target_assign(input,
     helper = LayerHelper('target_assign', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     out_weight = helper.create_variable_for_type_inference(dtype='float32')
-    helper.append_op(type='target_assign',
-                     inputs={
-                         'X': input,
-                         'MatchIndices': matched_indices,
-                         'NegIndices': negative_indices
-                     },
-                     outputs={
-                         'Out': out,
-                         'OutWeight': out_weight
-                     },
-                     attrs={'mismatch_value': mismatch_value})
+    helper.append_op(
+        type='target_assign',
+        inputs={
+            'X': input,
+            'MatchIndices': matched_indices,
+            'NegIndices': negative_indices,
+        },
+        outputs={'Out': out, 'OutWeight': out_weight},
+        attrs={'mismatch_value': mismatch_value},
+    )
     return out, out_weight
 
 
-def ssd_loss(location,
-             confidence,
-             gt_box,
-             gt_label,
-             prior_box,
-             prior_box_var=None,
-             background_label=0,
-             overlap_threshold=0.5,
-             neg_pos_ratio=3.0,
-             neg_overlap=0.5,
-             loc_loss_weight=1.0,
-             conf_loss_weight=1.0,
-             match_type='per_prediction',
-             mining_type='max_negative',
-             normalize=True,
-             sample_size=None):
+def ssd_loss(
+    location,
+    confidence,
+    gt_box,
+    gt_label,
+    prior_box,
+    prior_box_var=None,
+    background_label=0,
+    overlap_threshold=0.5,
+    neg_pos_ratio=3.0,
+    neg_overlap=0.5,
+    loc_loss_weight=1.0,
+    conf_loss_weight=1.0,
+    match_type='per_prediction',
+    mining_type='max_negative',
+    normalize=True,
+    sample_size=None,
+):
     r"""
 	:alias_main: paddle.nn.functional.ssd_loss
 	:alias: paddle.nn.functional.ssd_loss,paddle.nn.functional.loss.ssd_loss
@@ -1690,17 +1795,19 @@ def ssd_loss(location,
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
     iou = iou_similarity(x=gt_box, y=prior_box)
     #   1.2 Compute matched bounding box by bipartite matching algorithm.
-    matched_indices, matched_dist = bipartite_match(iou, match_type,
-                                                    overlap_threshold)
+    matched_indices, matched_dist = bipartite_match(
+        iou, match_type, overlap_threshold
+    )
 
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
-    gt_label = nn.reshape(x=gt_label,
-                          shape=(len(gt_label.shape) - 1) * (0, ) + (-1, 1))
+    gt_label = nn.reshape(
+        x=gt_label, shape=(len(gt_label.shape) - 1) * (0,) + (-1, 1)
+    )
     gt_label.stop_gradient = True
-    target_label, _ = target_assign(gt_label,
-                                    matched_indices,
-                                    mismatch_value=background_label)
+    target_label, _ = target_assign(
+        gt_label, matched_indices, mismatch_value=background_label
+    )
     # 2.2. Compute confidence loss.
     # Reshape confidence to 2D tensor.
     confidence = __reshape_to_2d(confidence)
@@ -1713,47 +1820,54 @@ def ssd_loss(location,
     actual_shape.stop_gradient = True
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
-    conf_loss = nn.reshape(x=conf_loss,
-                           shape=(-1, 0),
-                           actual_shape=actual_shape)
+    conf_loss = nn.reshape(
+        x=conf_loss, shape=(-1, 0), actual_shape=actual_shape
+    )
     conf_loss.stop_gradient = True
     neg_indices = helper.create_variable_for_type_inference(dtype='int32')
     dtype = matched_indices.dtype
     updated_matched_indices = helper.create_variable_for_type_inference(
-        dtype=dtype)
-    helper.append_op(type='mine_hard_examples',
-                     inputs={
-                         'ClsLoss': conf_loss,
-                         'LocLoss': None,
-                         'MatchIndices': matched_indices,
-                         'MatchDist': matched_dist,
-                     },
-                     outputs={
-                         'NegIndices': neg_indices,
-                         'UpdatedMatchIndices': updated_matched_indices
-                     },
-                     attrs={
-                         'neg_pos_ratio': neg_pos_ratio,
-                         'neg_dist_threshold': neg_overlap,
-                         'mining_type': mining_type,
-                         'sample_size': sample_size,
-                     })
+        dtype=dtype
+    )
+    helper.append_op(
+        type='mine_hard_examples',
+        inputs={
+            'ClsLoss': conf_loss,
+            'LocLoss': None,
+            'MatchIndices': matched_indices,
+            'MatchDist': matched_dist,
+        },
+        outputs={
+            'NegIndices': neg_indices,
+            'UpdatedMatchIndices': updated_matched_indices,
+        },
+        attrs={
+            'neg_pos_ratio': neg_pos_ratio,
+            'neg_dist_threshold': neg_overlap,
+            'mining_type': mining_type,
+            'sample_size': sample_size,
+        },
+    )
 
     # 4. Assign classification and regression targets
     # 4.1. Encoded bbox according to the prior boxes.
-    encoded_bbox = box_coder(prior_box=prior_box,
-                             prior_box_var=prior_box_var,
-                             target_box=gt_box,
-                             code_type='encode_center_size')
+    encoded_bbox = box_coder(
+        prior_box=prior_box,
+        prior_box_var=prior_box_var,
+        target_box=gt_box,
+        code_type='encode_center_size',
+    )
     # 4.2. Assign regression targets
     target_bbox, target_loc_weight = target_assign(
-        encoded_bbox, updated_matched_indices, mismatch_value=background_label)
+        encoded_bbox, updated_matched_indices, mismatch_value=background_label
+    )
     # 4.3. Assign classification targets
     target_label, target_conf_weight = target_assign(
         gt_label,
         updated_matched_indices,
         negative_indices=neg_indices,
-        mismatch_value=background_label)
+        mismatch_value=background_label,
+    )
 
     # 5. Compute loss.
     # 5.1 Compute confidence loss.
@@ -1799,7 +1913,7 @@ def prior_box(
     image,
     min_sizes,
     max_sizes=None,
-    aspect_ratios=[1.],
+    aspect_ratios=[1.0],
     variance=[0.1, 0.1, 0.2, 0.2],
     flip=False,
     clip=False,
@@ -1845,66 +1959,66 @@ def prior_box(
         Tuple: A tuple with two Variable (boxes, variances)
 
         boxes(Variable): the output prior boxes of PriorBox.
-	4-D tensor, the layout is [H, W, num_priors, 4].
+        4-D tensor, the layout is [H, W, num_priors, 4].
         H is the height of input, W is the width of input,
         num_priors is the total box count of each position of input.
 
         variances(Variable): the expanded variances of PriorBox.
-    	4-D tensor, the layput is [H, W, num_priors, 4].
+        4-D tensor, the layput is [H, W, num_priors, 4].
         H is the height of input, W is the width of input
         num_priors is the total box count of each position of input
 
     Examples:
         .. code-block:: python
 
-	    #declarative mode
-	    import paddle.fluid as fluid
-	    import numpy as np
+            #declarative mode
+            import paddle.fluid as fluid
+            import numpy as np
         import paddle
         paddle.enable_static()
-	    input = fluid.data(name="input", shape=[None,3,6,9])
-	    image = fluid.data(name="image", shape=[None,3,9,12])
-	    box, var = fluid.layers.prior_box(
+            input = fluid.data(name="input", shape=[None,3,6,9])
+            image = fluid.data(name="image", shape=[None,3,9,12])
+            box, var = fluid.layers.prior_box(
                  input=input,
                  image=image,
-		 min_sizes=[100.],
+                 min_sizes=[100.],
                  clip=True,
                  flip=True)
 
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
- 
-	    # prepare a batch of data
-	    input_data = np.random.rand(1,3,6,9).astype("float32")
-	    image_data = np.random.rand(1,3,9,12).astype("float32")
- 
-	    box_out, var_out = exe.run(fluid.default_main_program(),
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+
+            # prepare a batch of data
+            input_data = np.random.rand(1,3,6,9).astype("float32")
+            image_data = np.random.rand(1,3,9,12).astype("float32")
+
+            box_out, var_out = exe.run(fluid.default_main_program(),
                 feed={"input":input_data,"image":image_data},
                 fetch_list=[box,var],
                 return_numpy=True)
- 
-	    # print(box_out.shape)
-	    # (6, 9, 1, 4)
-	    # print(var_out.shape)
-	    # (6, 9, 1, 4)
 
-	    # imperative mode
-	    import paddle.fluid.dygraph as dg
+            # print(box_out.shape)
+            # (6, 9, 1, 4)
+            # print(var_out.shape)
+            # (6, 9, 1, 4)
 
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		image = dg.to_variable(image_data)
-    		box, var = fluid.layers.prior_box(
-		    input=input,
-		    image=image,
-		    min_sizes=[100.],
-		    clip=True,
-		    flip=True)
-		# print(box.shape)
-		# [6L, 9L, 1L, 4L]
+            # imperative mode
+            import paddle.fluid.dygraph as dg
+
+            with dg.guard(place) as g:
+                input = dg.to_variable(input_data)
+                image = dg.to_variable(image_data)
+                box, var = fluid.layers.prior_box(
+                    input=input,
+                    image=image,
+                    min_sizes=[100.],
+                    clip=True,
+                    flip=True)
+                # print(box.shape)
+                # [6L, 9L, 1L, 4L]
                 # print(var.shape)
-		# [6L, 9L, 1L, 4L]
+                # [6L, 9L, 1L, 4L]
 
     """
 
@@ -1912,26 +2026,38 @@ def prior_box(
         step_w, step_h = steps
         if max_sizes == None:
             max_sizes = []
-        return _C_ops.final_state_prior_box(input, image, min_sizes,
-                                            aspect_ratios, variance, max_sizes,
-                                            flip, clip, step_w, step_h, offset,
-                                            min_max_aspect_ratios_order)
+        return _C_ops.prior_box(
+            input,
+            image,
+            min_sizes,
+            aspect_ratios,
+            variance,
+            max_sizes,
+            flip,
+            clip,
+            step_w,
+            step_h,
+            offset,
+            min_max_aspect_ratios_order,
+        )
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
-    check_variable_and_dtype(input, 'input',
-                             ['uint8', 'int8', 'float32', 'float64'],
-                             'prior_box')
+    check_variable_and_dtype(
+        input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box'
+    )
 
     def _is_list_or_tuple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
+        return isinstance(data, list) or isinstance(data, tuple)
 
     if not _is_list_or_tuple_(min_sizes):
         min_sizes = [min_sizes]
     if not _is_list_or_tuple_(aspect_ratios):
         aspect_ratios = [aspect_ratios]
     if not (_is_list_or_tuple_(steps) and len(steps) == 2):
-        raise ValueError('steps should be a list or tuple ',
-                         'with length 2, (step_width, step_height).')
+        raise ValueError(
+            'steps should be a list or tuple ',
+            'with length 2, (step_width, step_height).',
+        )
 
     min_sizes = list(map(float, min_sizes))
     aspect_ratios = list(map(float, aspect_ratios))
@@ -1946,7 +2072,7 @@ def prior_box(
         'step_w': steps[0],
         'step_h': steps[1],
         'offset': offset,
-        'min_max_aspect_ratios_order': min_max_aspect_ratios_order
+        'min_max_aspect_ratios_order': min_max_aspect_ratios_order,
     }
     if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
         if not _is_list_or_tuple_(max_sizes):
@@ -1957,14 +2083,8 @@ def prior_box(
     var = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="prior_box",
-        inputs={
-            "Input": input,
-            "Image": image
-        },
-        outputs={
-            "Boxes": box,
-            "Variances": var
-        },
+        inputs={"Input": input, "Image": image},
+        outputs={"Boxes": box, "Variances": var},
         attrs=attrs,
     )
     box.stop_gradient = True
@@ -1972,29 +2092,31 @@ def prior_box(
     return box, var
 
 
-def density_prior_box(input,
-                      image,
-                      densities=None,
-                      fixed_sizes=None,
-                      fixed_ratios=None,
-                      variance=[0.1, 0.1, 0.2, 0.2],
-                      clip=False,
-                      steps=[0.0, 0.0],
-                      offset=0.5,
-                      flatten_to_2d=False,
-                      name=None):
+def density_prior_box(
+    input,
+    image,
+    densities=None,
+    fixed_sizes=None,
+    fixed_ratios=None,
+    variance=[0.1, 0.1, 0.2, 0.2],
+    clip=False,
+    steps=[0.0, 0.0],
+    offset=0.5,
+    flatten_to_2d=False,
+    name=None,
+):
     r"""
 
-    This op generates density prior boxes for SSD(Single Shot MultiBox Detector) 
-    algorithm. Each position of the input produce N prior boxes, N is 
-    determined by the count of densities, fixed_sizes and fixed_ratios. 
-    Boxes center at grid points around each input position is generated by 
-    this operator, and the grid points is determined by densities and 
-    the count of density prior box is determined by fixed_sizes and fixed_ratios. 
+    This op generates density prior boxes for SSD(Single Shot MultiBox Detector)
+    algorithm. Each position of the input produce N prior boxes, N is
+    determined by the count of densities, fixed_sizes and fixed_ratios.
+    Boxes center at grid points around each input position is generated by
+    this operator, and the grid points is determined by densities and
+    the count of density prior box is determined by fixed_sizes and fixed_ratios.
     Obviously, the number of fixed_sizes is equal to the number of densities.
-    
+
     For densities_i in densities:
-    
+
     .. math::
 
         N\_density_prior\_box = SUM(N\_fixed\_ratios * densities\_i^2)
@@ -2005,11 +2127,11 @@ def density_prior_box(input,
        input(Variable): 4-D tensor(NCHW), the data type should be float32 of float64.
        image(Variable): 4-D tensor(NCHW), the input image data of PriorBoxOp, the data type should be float32 or float64.
             the layout is NCHW.
-       densities(list|tuple|None): The densities of generated density prior 
-            boxes, this attribute should be a list or tuple of integers. 
+       densities(list|tuple|None): The densities of generated density prior
+            boxes, this attribute should be a list or tuple of integers.
             Default: None.
        fixed_sizes(list|tuple|None): The fixed sizes of generated density
-            prior boxes, this attribute should a list or tuple of same 
+            prior boxes, this attribute should a list or tuple of same
             length with :attr:`densities`. Default: None.
        fixed_ratios(list|tuple|None): The fixed ratios of generated density
             prior boxes, if this attribute is not set and :attr:`densities`
@@ -2026,7 +2148,7 @@ def density_prior_box(input,
        flatten_to_2d(bool): Whether to flatten output prior boxes and variance
            to 2D shape, the second dim is 4. Default: False.
        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-    
+
     Returns:
         Tuple: A tuple with two Variable (boxes, variances)
 
@@ -2066,7 +2188,7 @@ def density_prior_box(input,
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
- 
+
             # prepare a batch of data
             input_data = np.random.rand(1,3,6,9).astype("float32")
             image_data = np.random.rand(1,3,9,12).astype("float32")
@@ -2106,11 +2228,12 @@ def density_prior_box(input,
     """
     helper = LayerHelper("density_prior_box", **locals())
     dtype = helper.input_dtype()
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'density_prior_box')
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64'], 'density_prior_box'
+    )
 
     def _is_list_or_tuple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
+        return isinstance(data, list) or isinstance(data, tuple)
 
     check_type(densities, 'densities', (list, tuple), 'density_prior_box')
     check_type(fixed_sizes, 'fixed_sizes', (list, tuple), 'density_prior_box')
@@ -2119,8 +2242,10 @@ def density_prior_box(input,
         raise ValueError('densities and fixed_sizes length should be euqal.')
 
     if not (_is_list_or_tuple_(steps) and len(steps) == 2):
-        raise ValueError('steps should be a list or tuple ',
-                         'with length 2, (step_width, step_height).')
+        raise ValueError(
+            'steps should be a list or tuple ',
+            'with length 2, (step_width, step_height).',
+        )
 
     densities = list(map(int, densities))
     fixed_sizes = list(map(float, fixed_sizes))
@@ -2142,14 +2267,8 @@ def density_prior_box(input,
     var = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="density_prior_box",
-        inputs={
-            "Input": input,
-            "Image": image
-        },
-        outputs={
-            "Boxes": box,
-            "Variances": var
-        },
+        inputs={"Input": input, "Image": image},
+        outputs={"Boxes": box, "Variances": var},
         attrs=attrs,
     )
     box.stop_gradient = True
@@ -2158,29 +2277,31 @@ def density_prior_box(input,
 
 
 @static_only
-def multi_box_head(inputs,
-                   image,
-                   base_size,
-                   num_classes,
-                   aspect_ratios,
-                   min_ratio=None,
-                   max_ratio=None,
-                   min_sizes=None,
-                   max_sizes=None,
-                   steps=None,
-                   step_w=None,
-                   step_h=None,
-                   offset=0.5,
-                   variance=[0.1, 0.1, 0.2, 0.2],
-                   flip=True,
-                   clip=False,
-                   kernel_size=1,
-                   pad=0,
-                   stride=1,
-                   name=None,
-                   min_max_aspect_ratios_order=False):
+def multi_box_head(
+    inputs,
+    image,
+    base_size,
+    num_classes,
+    aspect_ratios,
+    min_ratio=None,
+    max_ratio=None,
+    min_sizes=None,
+    max_sizes=None,
+    steps=None,
+    step_w=None,
+    step_h=None,
+    offset=0.5,
+    variance=[0.1, 0.1, 0.2, 0.2],
+    flip=True,
+    clip=False,
+    kernel_size=1,
+    pad=0,
+    stride=1,
+    name=None,
+    min_max_aspect_ratios_order=False,
+):
     """
-	:api_attr: Static Graph
+        :api_attr: Static Graph
 
     Base on SSD ((Single Shot MultiBox Detector) algorithm, generate prior boxes,
     regression location and classification confidence on multiple input feature
@@ -2204,7 +2325,7 @@ def multi_box_head(inputs,
                   min_sizes = []
                   max_sizes = []
                   step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
-                  for ratio in six.moves.range(min_ratio, max_ratio + 1, step):
+                  for ratio in range(min_ratio, max_ratio + 1, step):
                       min_sizes.append(base_size * ratio / 100.)
                       max_sizes.append(base_size * (ratio + step) / 100.)
                       min_sizes = [base_size * .10] + min_sizes
@@ -2255,7 +2376,7 @@ def multi_box_head(inputs,
         is the number of prior boxes. Data type is the same as input.
 
         mbox_conf (Variable): The predicted boxes' confidence of the inputs.
-        The layout is [N, num_priors, C], where ``N`` and ``num_priors`` 
+        The layout is [N, num_priors, C], where ``N`` and ``num_priors``
         has the same meaning as above. C is the number of Classes.
         Data type is the same as input.
 
@@ -2325,7 +2446,7 @@ def multi_box_head(inputs,
         return out
 
     def _is_list_or_tuple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
+        return isinstance(data, list) or isinstance(data, tuple)
 
     def _is_list_or_tuple_and_equal(data, length, err_info):
         if not (_is_list_or_tuple_(data) and len(data) == length):
@@ -2343,32 +2464,40 @@ def multi_box_head(inputs,
         min_sizes = []
         max_sizes = []
         step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
-        for ratio in six.moves.range(min_ratio, max_ratio + 1, step):
-            min_sizes.append(base_size * ratio / 100.)
-            max_sizes.append(base_size * (ratio + step) / 100.)
-        min_sizes = [base_size * .10] + min_sizes
-        max_sizes = [base_size * .20] + max_sizes
+        for ratio in range(min_ratio, max_ratio + 1, step):
+            min_sizes.append(base_size * ratio / 100.0)
+            max_sizes.append(base_size * (ratio + step) / 100.0)
+        min_sizes = [base_size * 0.10] + min_sizes
+        max_sizes = [base_size * 0.20] + max_sizes
 
     if aspect_ratios:
         _is_list_or_tuple_and_equal(
-            aspect_ratios, num_layer,
+            aspect_ratios,
+            num_layer,
             'aspect_ratios should be list or tuple, and the length of inputs '
-            'and aspect_ratios should be the same.')
+            'and aspect_ratios should be the same.',
+        )
     if step_h is not None:
         _is_list_or_tuple_and_equal(
-            step_h, num_layer,
+            step_h,
+            num_layer,
             'step_h should be list or tuple, and the length of inputs and '
-            'step_h should be the same.')
+            'step_h should be the same.',
+        )
     if step_w is not None:
         _is_list_or_tuple_and_equal(
-            step_w, num_layer,
+            step_w,
+            num_layer,
             'step_w should be list or tuple, and the length of inputs and '
-            'step_w should be the same.')
+            'step_w should be the same.',
+        )
     if steps is not None:
         _is_list_or_tuple_and_equal(
-            steps, num_layer,
+            steps,
+            num_layer,
             'steps should be list or tuple, and the length of inputs and '
-            'step_w should be the same.')
+            'step_w should be the same.',
+        )
         step_w = steps
         step_h = steps
 
@@ -2392,9 +2521,20 @@ def multi_box_head(inputs,
                 aspect_ratio = [aspect_ratio]
         step = [step_w[i] if step_w else 0.0, step_h[i] if step_w else 0.0]
 
-        box, var = prior_box(input, image, min_size, max_size, aspect_ratio,
-                             variance, flip, clip, step, offset, None,
-                             min_max_aspect_ratios_order)
+        box, var = prior_box(
+            input,
+            image,
+            min_size,
+            max_size,
+            aspect_ratio,
+            variance,
+            flip,
+            clip,
+            step,
+            offset,
+            None,
+            min_max_aspect_ratios_order,
+        )
 
         box_results.append(box)
         var_results.append(var)
@@ -2403,11 +2543,13 @@ def multi_box_head(inputs,
 
         # get loc
         num_loc_output = num_boxes * 4
-        mbox_loc = nn.conv2d(input=input,
-                             num_filters=num_loc_output,
-                             filter_size=kernel_size,
-                             padding=pad,
-                             stride=stride)
+        mbox_loc = nn.conv2d(
+            input=input,
+            num_filters=num_loc_output,
+            filter_size=kernel_size,
+            padding=pad,
+            stride=stride,
+        )
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
         mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
@@ -2415,11 +2557,13 @@ def multi_box_head(inputs,
 
         # get conf
         num_conf_output = num_boxes * num_classes
-        conf_loc = nn.conv2d(input=input,
-                             num_filters=num_conf_output,
-                             filter_size=kernel_size,
-                             padding=pad,
-                             stride=stride)
+        conf_loc = nn.conv2d(
+            input=input,
+            num_filters=num_conf_output,
+            filter_size=kernel_size,
+            padding=pad,
+            stride=stride,
+        )
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
         conf_loc_flatten = nn.flatten(conf_loc, axis=1)
         mbox_confs.append(conf_loc_flatten)
@@ -2441,21 +2585,24 @@ def multi_box_head(inputs,
         mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
         mbox_locs_concat = nn.reshape(mbox_locs_concat, shape=[0, -1, 4])
         mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
-        mbox_confs_concat = nn.reshape(mbox_confs_concat,
-                                       shape=[0, -1, num_classes])
+        mbox_confs_concat = nn.reshape(
+            mbox_confs_concat, shape=[0, -1, num_classes]
+        )
 
     box.stop_gradient = True
     var.stop_gradient = True
     return mbox_locs_concat, mbox_confs_concat, box, var
 
 
-def anchor_generator(input,
-                     anchor_sizes=None,
-                     aspect_ratios=None,
-                     variance=[0.1, 0.1, 0.2, 0.2],
-                     stride=None,
-                     offset=0.5,
-                     name=None):
+def anchor_generator(
+    input,
+    anchor_sizes=None,
+    aspect_ratios=None,
+    variance=[0.1, 0.1, 0.2, 0.2],
+    stride=None,
+    offset=0.5,
+    name=None,
+):
     """
 
     **Anchor generator operator**
@@ -2469,28 +2616,28 @@ def anchor_generator(input,
        input(Variable): 4-D Tensor with shape [N,C,H,W]. The input feature map.
        anchor_sizes(float32|list|tuple, optional): The anchor sizes of generated
           anchors, given in absolute pixels e.g. [64., 128., 256., 512.].
-          For instance, the anchor size of 64 means the area of this anchor 
+          For instance, the anchor size of 64 means the area of this anchor
           equals to 64**2. None by default.
-       aspect_ratios(float32|list|tuple, optional): The height / width ratios 
+       aspect_ratios(float32|list|tuple, optional): The height / width ratios
            of generated anchors, e.g. [0.5, 1.0, 2.0]. None by default.
-       variance(list|tuple, optional): The variances to be used in box 
-           regression deltas. The data type is float32, [0.1, 0.1, 0.2, 0.2] by 
+       variance(list|tuple, optional): The variances to be used in box
+           regression deltas. The data type is float32, [0.1, 0.1, 0.2, 0.2] by
            default.
        stride(list|tuple, optional): The anchors stride across width and height.
            The data type is float32. e.g. [16.0, 16.0]. None by default.
        offset(float32, optional): Prior boxes center offset. 0.5 by default.
-       name(str, optional): For detailed information, please refer 
-           to :ref:`api_guide_Name`. Usually name is no need to set and None 
-           by default. 
+       name(str, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and None
+           by default.
 
     Returns:
         Tuple:
 
         Anchors(Variable): The output anchors with a layout of [H, W, num_anchors, 4].
         H is the height of input, W is the width of input,
-        num_anchors is the box count of each position. 
+        num_anchors is the box count of each position.
         Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
- 
+
         Variances(Variable): The expanded variances of anchors
         with a layout of [H, W, num_priors, 4].
         H is the height of input, W is the width of input
@@ -2519,15 +2666,17 @@ def anchor_generator(input,
     dtype = helper.input_dtype()
 
     def _is_list_or_tuple_(data):
-        return (isinstance(data, list) or isinstance(data, tuple))
+        return isinstance(data, list) or isinstance(data, tuple)
 
     if not _is_list_or_tuple_(anchor_sizes):
         anchor_sizes = [anchor_sizes]
     if not _is_list_or_tuple_(aspect_ratios):
         aspect_ratios = [aspect_ratios]
     if not (_is_list_or_tuple_(stride) and len(stride) == 2):
-        raise ValueError('stride should be a list or tuple ',
-                         'with length 2, (stride_width, stride_height).')
+        raise ValueError(
+            'stride should be a list or tuple ',
+            'with length 2, (stride_width, stride_height).',
+        )
 
     anchor_sizes = list(map(float, anchor_sizes))
     aspect_ratios = list(map(float, aspect_ratios))
@@ -2538,7 +2687,7 @@ def anchor_generator(input,
         'aspect_ratios': aspect_ratios,
         'variances': variance,
         'stride': stride,
-        'offset': offset
+        'offset': offset,
     }
 
     anchor = helper.create_variable_for_type_inference(dtype)
@@ -2546,10 +2695,7 @@ def anchor_generator(input,
     helper.append_op(
         type="anchor_generator",
         inputs={"Input": input},
-        outputs={
-            "Anchors": anchor,
-            "Variances": var
-        },
+        outputs={"Anchors": anchor, "Variances": var},
         attrs=attrs,
     )
     anchor.stop_gradient = True
@@ -2557,35 +2703,37 @@ def anchor_generator(input,
     return anchor, var
 
 
-def roi_perspective_transform(input,
-                              rois,
-                              transformed_height,
-                              transformed_width,
-                              spatial_scale=1.0,
-                              name=None):
+def roi_perspective_transform(
+    input,
+    rois,
+    transformed_height,
+    transformed_width,
+    spatial_scale=1.0,
+    name=None,
+):
     """
     **The** `rois` **of this op should be a LoDTensor.**
 
-    ROI perspective transform op applies perspective transform to map each roi into an 
+    ROI perspective transform op applies perspective transform to map each roi into an
     rectangular region. Perspective transform is a type of transformation in linear algebra.
 
     Parameters:
-        input (Variable): 4-D Tensor, input of ROIPerspectiveTransformOp. The format of 
+        input (Variable): 4-D Tensor, input of ROIPerspectiveTransformOp. The format of
                           input tensor is NCHW. Where N is batch size, C is the
                           number of input channels, H is the height of the feature,
                           and W is the width of the feature. The data type is float32.
-        rois (Variable):  2-D LoDTensor, ROIs (Regions of Interest) to be transformed. 
-                          It should be a 2-D LoDTensor of shape (num_rois, 8). Given as 
-                          [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the 
-                          top left coordinates, and (x2, y2) is the top right 
-                          coordinates, and (x3, y3) is the bottom right coordinates, 
+        rois (Variable):  2-D LoDTensor, ROIs (Regions of Interest) to be transformed.
+                          It should be a 2-D LoDTensor of shape (num_rois, 8). Given as
+                          [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the
+                          top left coordinates, and (x2, y2) is the top right
+                          coordinates, and (x3, y3) is the bottom right coordinates,
                           and (x4, y4) is the bottom left coordinates. The data type is the
-                          same as `input` 
+                          same as `input`
         transformed_height (int): The height of transformed output.
         transformed_width (int): The width of transformed output.
         spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
-        name(str, optional): The default value is None.  
-                             Normally there is no need for user to set this property.  
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
@@ -2612,16 +2760,24 @@ def roi_perspective_transform(input,
             rois = fluid.data(name='rois', shape=[None, 8], lod_level=1, dtype='float32')
             out, mask, transform_matrix = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
-    check_variable_and_dtype(input, 'input', ['float32'],
-                             'roi_perspective_transform')
-    check_variable_and_dtype(rois, 'rois', ['float32'],
-                             'roi_perspective_transform')
-    check_type(transformed_height, 'transformed_height', int,
-               'roi_perspective_transform')
-    check_type(transformed_width, 'transformed_width', int,
-               'roi_perspective_transform')
-    check_type(spatial_scale, 'spatial_scale', float,
-               'roi_perspective_transform')
+    check_variable_and_dtype(
+        input, 'input', ['float32'], 'roi_perspective_transform'
+    )
+    check_variable_and_dtype(
+        rois, 'rois', ['float32'], 'roi_perspective_transform'
+    )
+    check_type(
+        transformed_height,
+        'transformed_height',
+        int,
+        'roi_perspective_transform',
+    )
+    check_type(
+        transformed_width, 'transformed_width', int, 'roi_perspective_transform'
+    )
+    check_type(
+        spatial_scale, 'spatial_scale', float, 'roi_perspective_transform'
+    )
 
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
@@ -2630,43 +2786,44 @@ def roi_perspective_transform(input,
     transform_matrix = helper.create_variable_for_type_inference(dtype)
     out2in_idx = helper.create_variable_for_type_inference(dtype="int32")
     out2in_w = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(type="roi_perspective_transform",
-                     inputs={
-                         "X": input,
-                         "ROIs": rois
-                     },
-                     outputs={
-                         "Out": out,
-                         "Out2InIdx": out2in_idx,
-                         "Out2InWeights": out2in_w,
-                         "Mask": mask,
-                         "TransformMatrix": transform_matrix
-                     },
-                     attrs={
-                         "transformed_height": transformed_height,
-                         "transformed_width": transformed_width,
-                         "spatial_scale": spatial_scale
-                     })
+    helper.append_op(
+        type="roi_perspective_transform",
+        inputs={"X": input, "ROIs": rois},
+        outputs={
+            "Out": out,
+            "Out2InIdx": out2in_idx,
+            "Out2InWeights": out2in_w,
+            "Mask": mask,
+            "TransformMatrix": transform_matrix,
+        },
+        attrs={
+            "transformed_height": transformed_height,
+            "transformed_width": transformed_width,
+            "spatial_scale": spatial_scale,
+        },
+    )
     return out, mask, transform_matrix
 
 
-def generate_proposal_labels(rpn_rois,
-                             gt_classes,
-                             is_crowd,
-                             gt_boxes,
-                             im_info,
-                             batch_size_per_im=256,
-                             fg_fraction=0.25,
-                             fg_thresh=0.25,
-                             bg_thresh_hi=0.5,
-                             bg_thresh_lo=0.0,
-                             bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
-                             class_nums=None,
-                             use_random=True,
-                             is_cls_agnostic=False,
-                             is_cascade_rcnn=False,
-                             max_overlap=None,
-                             return_max_overlap=False):
+def generate_proposal_labels(
+    rpn_rois,
+    gt_classes,
+    is_crowd,
+    gt_boxes,
+    im_info,
+    batch_size_per_im=256,
+    fg_fraction=0.25,
+    fg_thresh=0.25,
+    bg_thresh_hi=0.5,
+    bg_thresh_lo=0.0,
+    bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
+    class_nums=None,
+    use_random=True,
+    is_cls_agnostic=False,
+    is_cascade_rcnn=False,
+    max_overlap=None,
+    return_max_overlap=False,
+):
     """
 
     **Generate Proposal Labels of Faster-RCNN**
@@ -2736,26 +2893,36 @@ def generate_proposal_labels(rpn_rois,
 
     helper = LayerHelper('generate_proposal_labels', **locals())
 
-    check_variable_and_dtype(rpn_rois, 'rpn_rois', ['float32', 'float64'],
-                             'generate_proposal_labels')
-    check_variable_and_dtype(gt_classes, 'gt_classes', ['int32'],
-                             'generate_proposal_labels')
-    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
-                             'generate_proposal_labels')
+    check_variable_and_dtype(
+        rpn_rois, 'rpn_rois', ['float32', 'float64'], 'generate_proposal_labels'
+    )
+    check_variable_and_dtype(
+        gt_classes, 'gt_classes', ['int32'], 'generate_proposal_labels'
+    )
+    check_variable_and_dtype(
+        is_crowd, 'is_crowd', ['int32'], 'generate_proposal_labels'
+    )
     if is_cascade_rcnn:
-        assert max_overlap is not None, "Input max_overlap of generate_proposal_labels should not be None if is_cascade_rcnn is True"
+        assert (
+            max_overlap is not None
+        ), "Input max_overlap of generate_proposal_labels should not be None if is_cascade_rcnn is True"
 
     rois = helper.create_variable_for_type_inference(dtype=rpn_rois.dtype)
     labels_int32 = helper.create_variable_for_type_inference(
-        dtype=gt_classes.dtype)
+        dtype=gt_classes.dtype
+    )
     bbox_targets = helper.create_variable_for_type_inference(
-        dtype=rpn_rois.dtype)
+        dtype=rpn_rois.dtype
+    )
     bbox_inside_weights = helper.create_variable_for_type_inference(
-        dtype=rpn_rois.dtype)
+        dtype=rpn_rois.dtype
+    )
     bbox_outside_weights = helper.create_variable_for_type_inference(
-        dtype=rpn_rois.dtype)
+        dtype=rpn_rois.dtype
+    )
     max_overlap_with_gt = helper.create_variable_for_type_inference(
-        dtype=rpn_rois.dtype)
+        dtype=rpn_rois.dtype
+    )
 
     inputs = {
         'RpnRois': rpn_rois,
@@ -2766,28 +2933,30 @@ def generate_proposal_labels(rpn_rois,
     }
     if max_overlap is not None:
         inputs['MaxOverlap'] = max_overlap
-    helper.append_op(type="generate_proposal_labels",
-                     inputs=inputs,
-                     outputs={
-                         'Rois': rois,
-                         'LabelsInt32': labels_int32,
-                         'BboxTargets': bbox_targets,
-                         'BboxInsideWeights': bbox_inside_weights,
-                         'BboxOutsideWeights': bbox_outside_weights,
-                         'MaxOverlapWithGT': max_overlap_with_gt
-                     },
-                     attrs={
-                         'batch_size_per_im': batch_size_per_im,
-                         'fg_fraction': fg_fraction,
-                         'fg_thresh': fg_thresh,
-                         'bg_thresh_hi': bg_thresh_hi,
-                         'bg_thresh_lo': bg_thresh_lo,
-                         'bbox_reg_weights': bbox_reg_weights,
-                         'class_nums': class_nums,
-                         'use_random': use_random,
-                         'is_cls_agnostic': is_cls_agnostic,
-                         'is_cascade_rcnn': is_cascade_rcnn
-                     })
+    helper.append_op(
+        type="generate_proposal_labels",
+        inputs=inputs,
+        outputs={
+            'Rois': rois,
+            'LabelsInt32': labels_int32,
+            'BboxTargets': bbox_targets,
+            'BboxInsideWeights': bbox_inside_weights,
+            'BboxOutsideWeights': bbox_outside_weights,
+            'MaxOverlapWithGT': max_overlap_with_gt,
+        },
+        attrs={
+            'batch_size_per_im': batch_size_per_im,
+            'fg_fraction': fg_fraction,
+            'fg_thresh': fg_thresh,
+            'bg_thresh_hi': bg_thresh_hi,
+            'bg_thresh_lo': bg_thresh_lo,
+            'bbox_reg_weights': bbox_reg_weights,
+            'class_nums': class_nums,
+            'use_random': use_random,
+            'is_cls_agnostic': is_cls_agnostic,
+            'is_cascade_rcnn': is_cascade_rcnn,
+        },
+    )
 
     rois.stop_gradient = True
     labels_int32.stop_gradient = True
@@ -2797,12 +2966,33 @@ def generate_proposal_labels(rpn_rois,
     max_overlap_with_gt.stop_gradient = True
 
     if return_max_overlap:
-        return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights, max_overlap_with_gt
-    return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights
+        return (
+            rois,
+            labels_int32,
+            bbox_targets,
+            bbox_inside_weights,
+            bbox_outside_weights,
+            max_overlap_with_gt,
+        )
+    return (
+        rois,
+        labels_int32,
+        bbox_targets,
+        bbox_inside_weights,
+        bbox_outside_weights,
+    )
 
 
-def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
-                         labels_int32, num_classes, resolution):
+def generate_mask_labels(
+    im_info,
+    gt_classes,
+    is_crowd,
+    gt_segms,
+    rois,
+    labels_int32,
+    num_classes,
+    resolution,
+):
     r"""
 
     **Generate Mask Labels for Mask-RCNN**
@@ -2834,8 +3024,8 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                         gt_segm.append(np.array(polys).reshape(-1, 2))
                     gt_masks.append(gt_segm)
                 batch_masks.append(gt_masks)
-            
-            
+
+
             place = fluid.CPUPlace()
             feeder = fluid.DataFeeder(place=place, feed_list=feeds)
             feeder.feed(batch_masks)
@@ -2918,28 +3108,29 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
 
     mask_rois = helper.create_variable_for_type_inference(dtype=rois.dtype)
     roi_has_mask_int32 = helper.create_variable_for_type_inference(
-        dtype=gt_classes.dtype)
+        dtype=gt_classes.dtype
+    )
     mask_int32 = helper.create_variable_for_type_inference(
-        dtype=gt_classes.dtype)
+        dtype=gt_classes.dtype
+    )
 
-    helper.append_op(type="generate_mask_labels",
-                     inputs={
-                         'ImInfo': im_info,
-                         'GtClasses': gt_classes,
-                         'IsCrowd': is_crowd,
-                         'GtSegms': gt_segms,
-                         'Rois': rois,
-                         'LabelsInt32': labels_int32
-                     },
-                     outputs={
-                         'MaskRois': mask_rois,
-                         'RoiHasMaskInt32': roi_has_mask_int32,
-                         'MaskInt32': mask_int32
-                     },
-                     attrs={
-                         'num_classes': num_classes,
-                         'resolution': resolution
-                     })
+    helper.append_op(
+        type="generate_mask_labels",
+        inputs={
+            'ImInfo': im_info,
+            'GtClasses': gt_classes,
+            'IsCrowd': is_crowd,
+            'GtSegms': gt_segms,
+            'Rois': rois,
+            'LabelsInt32': labels_int32,
+        },
+        outputs={
+            'MaskRois': mask_rois,
+            'RoiHasMaskInt32': roi_has_mask_int32,
+            'MaskInt32': mask_int32,
+        },
+        attrs={'num_classes': num_classes, 'resolution': resolution},
+    )
 
     mask_rois.stop_gradient = True
     roi_has_mask_int32.stop_gradient = True
@@ -2948,24 +3139,26 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
     return mask_rois, roi_has_mask_int32, mask_int32
 
 
-def generate_proposals(scores,
-                       bbox_deltas,
-                       im_info,
-                       anchors,
-                       variances,
-                       pre_nms_top_n=6000,
-                       post_nms_top_n=1000,
-                       nms_thresh=0.5,
-                       min_size=0.1,
-                       eta=1.0,
-                       return_rois_num=False,
-                       name=None):
+def generate_proposals(
+    scores,
+    bbox_deltas,
+    im_info,
+    anchors,
+    variances,
+    pre_nms_top_n=6000,
+    post_nms_top_n=1000,
+    nms_thresh=0.5,
+    min_size=0.1,
+    eta=1.0,
+    return_rois_num=False,
+    name=None,
+):
     """
 
     **Generate proposal Faster-RCNN**
 
     This operation proposes RoIs according to each box with their
-    probability to be a foreground object and 
+    probability to be a foreground object and
     the box can be calculated by anchors. Bbox_deltais and scores
     to be an object are the output of RPN. Final proposals
     could be used to train detection net.
@@ -2974,9 +3167,9 @@ def generate_proposals(scores,
 
     1. Transposes and resizes scores and bbox_deltas in size of
        (H*W*A, 1) and (H*W*A, 4)
-    2. Calculate box locations as proposals candidates. 
+    2. Calculate box locations as proposals candidates.
     3. Clip boxes to image
-    4. Remove predicted boxes with small area. 
+    4. Remove predicted boxes with small area.
     5. Apply NMS to get final proposals as output.
 
     Args:
@@ -2988,8 +3181,8 @@ def generate_proposals(scores,
             represents the difference between predicted box location and
             anchor location. The data type must be float32.
         im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin
-            image information for N batch. Height and width are the input sizes 
-            and scale is the ratio of network input size and original size. 
+            image information for N batch. Height and width are the input sizes
+            and scale is the ratio of network input size and original size.
             The data type can be float32 or float64.
         anchors(Variable):   A 4-D Tensor represents the anchors with a layout
             of [H, W, A, 4]. H and W are height and width of the feature map,
@@ -3007,13 +3200,13 @@ def generate_proposals(scores,
             width < min_size. The data type must be float32. `0.1` by default.
         eta(float): Apply in adaptive NMS, if adaptive `threshold > 0.5`,
             `adaptive_threshold = adaptive_threshold * eta` in each iteration.
-        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's 
+        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's
             num of each image in one batch. The N is the image's num. For example, the tensor has values [4,5] that represents
-            the first image has 4 Rois, the second image has 5 Rois. It only used in rcnn model. 
-            'False' by default. 
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default. 
+            the first image has 4 Rois, the second image has 5 Rois. It only used in rcnn model.
+            'False' by default.
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
 
     Returns:
         tuple:
@@ -3024,7 +3217,7 @@ def generate_proposals(scores,
 
     Examples:
         .. code-block:: python
-        
+
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
@@ -3037,35 +3230,37 @@ def generate_proposals(scores,
                          im_info, anchors, variances)
 
     """
-    return paddle.vision.ops.generate_proposals(scores=scores,
-                                                bbox_deltas=bbox_deltas,
-                                                img_size=im_info[:2],
-                                                anchors=anchors,
-                                                variances=variances,
-                                                pre_nms_top_n=pre_nms_top_n,
-                                                post_nms_top_n=post_nms_top_n,
-                                                nms_thresh=nms_thresh,
-                                                min_size=min_size,
-                                                eta=eta,
-                                                return_rois_num=return_rois_num,
-                                                name=name)
+    return paddle.vision.ops.generate_proposals(
+        scores=scores,
+        bbox_deltas=bbox_deltas,
+        img_size=im_info[:2],
+        anchors=anchors,
+        variances=variances,
+        pre_nms_top_n=pre_nms_top_n,
+        post_nms_top_n=post_nms_top_n,
+        nms_thresh=nms_thresh,
+        min_size=min_size,
+        eta=eta,
+        return_rois_num=return_rois_num,
+        name=name,
+    )
 
 
 def box_clip(input, im_info, name=None):
     """
-	
+
     Clip the box into the size given by im_info
     For each input box, The formula is given as follows:
-        
+
     .. code-block:: text
 
         xmin = max(min(xmin, im_w - 1), 0)
-        ymin = max(min(ymin, im_h - 1), 0) 
+        ymin = max(min(ymin, im_h - 1), 0)
         xmax = max(min(xmax, im_w - 1), 0)
         ymax = max(min(ymax, im_h - 1), 0)
-    
+
     where im_w and im_h are computed from im_info:
- 
+
     .. code-block:: text
 
         im_h = round(height / scale)
@@ -3074,24 +3269,24 @@ def box_clip(input, im_info, name=None):
     Args:
         input(Variable): The input Tensor with shape :math:`[N_1, N_2, ..., N_k, 4]`,
             the last dimension is 4 and data type is float32 or float64.
-        im_info(Variable): The 2-D Tensor with shape [N, 3] with layout 
-            (height, width, scale) representing the information of image. 
+        im_info(Variable): The 2-D Tensor with shape [N, 3] with layout
+            (height, width, scale) representing the information of image.
             Height and width are the input sizes and scale is the ratio of network input
             size and original size. The data type is float32 or float64.
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default. 
-    
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
+
     Returns:
         Variable:
 
-        output(Variable): The clipped tensor with data type float32 or float64. 
+        output(Variable): The clipped tensor with data type float32 or float64.
         The shape is same as input.
 
-        
+
     Examples:
         .. code-block:: python
-        
+
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
@@ -3103,8 +3298,9 @@ def box_clip(input, im_info, name=None):
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'box_clip')
-    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
-                             'box_clip')
+    check_variable_and_dtype(
+        im_info, 'im_info', ['float32', 'float64'], 'box_clip'
+    )
 
     helper = LayerHelper("box_clip", **locals())
     output = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -3114,19 +3310,21 @@ def box_clip(input, im_info, name=None):
     return output
 
 
-def retinanet_detection_output(bboxes,
-                               scores,
-                               anchors,
-                               im_info,
-                               score_threshold=0.05,
-                               nms_top_k=1000,
-                               keep_top_k=100,
-                               nms_threshold=0.3,
-                               nms_eta=1.0):
+def retinanet_detection_output(
+    bboxes,
+    scores,
+    anchors,
+    im_info,
+    score_threshold=0.05,
+    nms_top_k=1000,
+    keep_top_k=100,
+    nms_threshold=0.3,
+    nms_eta=1.0,
+):
     """
     **Detection Output Layer for the detector RetinaNet.**
 
-    In the detector `RetinaNet <https://arxiv.org/abs/1708.02002>`_ , many 
+    In the detector `RetinaNet <https://arxiv.org/abs/1708.02002>`_ , many
     `FPN <https://arxiv.org/abs/1612.03144>`_ levels output the category
     and location predictions, this OP is to get the detection results by
     performing following steps:
@@ -3134,7 +3332,7 @@ def retinanet_detection_output(bboxes,
     1. For each FPN level, decode box predictions according to the anchor
        boxes from at most :attr:`nms_top_k` top-scoring predictions after
        thresholding detector confidence at :attr:`score_threshold`.
-    2. Merge top predictions from all levels and apply multi-class non 
+    2. Merge top predictions from all levels and apply multi-class non
        maximum suppression (NMS) on them to get the final detections.
 
     Args:
@@ -3170,7 +3368,7 @@ def retinanet_detection_output(bboxes,
         keep_top_k(int): Number of total bounding boxes to be kept per image after
             NMS step. Default value is set to 100, -1 means keeping all bounding
             boxes after NMS step.
-        nms_threshold(float): The Intersection-over-Union(IoU) threshold used to 
+        nms_threshold(float): The Intersection-over-Union(IoU) threshold used to
             filter out boxes in NMS.
         nms_eta(float): The parameter for adjusting :attr:`nms_threshold` in NMS.
             Default value is set to 1., which represents the value of
@@ -3231,58 +3429,73 @@ def retinanet_detection_output(bboxes,
 
     check_type(bboxes, 'bboxes', (list), 'retinanet_detection_output')
     for i, bbox in enumerate(bboxes):
-        check_variable_and_dtype(bbox, 'bbox{}'.format(i),
-                                 ['float32', 'float64'],
-                                 'retinanet_detection_output')
+        check_variable_and_dtype(
+            bbox,
+            'bbox{}'.format(i),
+            ['float32', 'float64'],
+            'retinanet_detection_output',
+        )
     check_type(scores, 'scores', (list), 'retinanet_detection_output')
     for i, score in enumerate(scores):
-        check_variable_and_dtype(score, 'score{}'.format(i),
-                                 ['float32', 'float64'],
-                                 'retinanet_detection_output')
+        check_variable_and_dtype(
+            score,
+            'score{}'.format(i),
+            ['float32', 'float64'],
+            'retinanet_detection_output',
+        )
     check_type(anchors, 'anchors', (list), 'retinanet_detection_output')
     for i, anchor in enumerate(anchors):
-        check_variable_and_dtype(anchor, 'anchor{}'.format(i),
-                                 ['float32', 'float64'],
-                                 'retinanet_detection_output')
-    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
-                             'retinanet_detection_output')
+        check_variable_and_dtype(
+            anchor,
+            'anchor{}'.format(i),
+            ['float32', 'float64'],
+            'retinanet_detection_output',
+        )
+    check_variable_and_dtype(
+        im_info, 'im_info', ['float32', 'float64'], 'retinanet_detection_output'
+    )
 
     helper = LayerHelper('retinanet_detection_output', **locals())
     output = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('scores'))
-    helper.append_op(type="retinanet_detection_output",
-                     inputs={
-                         'BBoxes': bboxes,
-                         'Scores': scores,
-                         'Anchors': anchors,
-                         'ImInfo': im_info
-                     },
-                     attrs={
-                         'score_threshold': score_threshold,
-                         'nms_top_k': nms_top_k,
-                         'nms_threshold': nms_threshold,
-                         'keep_top_k': keep_top_k,
-                         'nms_eta': 1.,
-                     },
-                     outputs={'Out': output})
+        dtype=helper.input_dtype('scores')
+    )
+    helper.append_op(
+        type="retinanet_detection_output",
+        inputs={
+            'BBoxes': bboxes,
+            'Scores': scores,
+            'Anchors': anchors,
+            'ImInfo': im_info,
+        },
+        attrs={
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'keep_top_k': keep_top_k,
+            'nms_eta': 1.0,
+        },
+        outputs={'Out': output},
+    )
     output.stop_gradient = True
     return output
 
 
-def multiclass_nms(bboxes,
-                   scores,
-                   score_threshold,
-                   nms_top_k,
-                   keep_top_k,
-                   nms_threshold=0.3,
-                   normalized=True,
-                   nms_eta=1.,
-                   background_label=0,
-                   name=None):
+def multiclass_nms(
+    bboxes,
+    scores,
+    score_threshold,
+    nms_top_k,
+    keep_top_k,
+    nms_threshold=0.3,
+    normalized=True,
+    nms_eta=1.0,
+    background_label=0,
+    name=None,
+):
     """
 
     **Multiclass NMS**
-    
+
     This operator is to do multi-class non maximum suppression (NMS) on
     boxes and scores.
 
@@ -3313,9 +3526,9 @@ def multiclass_nms(bboxes,
 
         Then:
             iou = 4/11 > 0.3
-            out.data = [[1, 0.3, 3.0, 4.0, 8.0, 5.0],    
+            out.data = [[1, 0.3, 3.0, 4.0, 8.0, 5.0],
                          [2, 0.4, 2.0, 3.0, 7.0, 5.0]]
-                         
+
             Out format is (label, confidence, xmin, ymin, xmax, ymax)
     Args:
         bboxes (Variable): Two types of bboxes are supported:
@@ -3323,29 +3536,29 @@ def multiclass_nms(bboxes,
                            [N, M, 4 or 8 16 24 32] represents the
                            predicted locations of M bounding bboxes,
                            N is the batch size. Each bounding box has four
-                           coordinate values and the layout is 
+                           coordinate values and the layout is
                            [xmin, ymin, xmax, ymax], when box size equals to 4.
                            The data type is float32 or float64.
                            2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
-                           M is the number of bounding boxes, C is the 
-                           class number. The data type is float32 or float64.   
+                           M is the number of bounding boxes, C is the
+                           class number. The data type is float32 or float64.
         scores (Variable): Two types of scores are supported:
                            1. (Tensor) A 3-D Tensor with shape [N, C, M]
                            represents the predicted confidence predictions.
-                           N is the batch size, C is the class number, M is 
-                           number of bounding boxes. For each category there 
+                           N is the batch size, C is the class number, M is
+                           number of bounding boxes. For each category there
                            are total M scores which corresponding M bounding
                            boxes. Please note, M is equal to the 2nd dimension
-                           of BBoxes.The data type is float32 or float64. 
+                           of BBoxes.The data type is float32 or float64.
                            2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
                            M is the number of bbox, C is the class number.
                            In this case, input BBoxes should be the second
-                           case with shape [M, C, 4].The data type is float32 or float64. 
-        background_label (int): The index of background label, the background 
+                           case with shape [M, C, 4].The data type is float32 or float64.
+        background_label (int): The index of background label, the background
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
         score_threshold (float): Threshold to filter out bounding boxes with
-                                 low confidence score. If not provided, 
+                                 low confidence score. If not provided,
                                  consider all boxes.
         nms_top_k (int): Maximum number of detections to be kept according to
                          the confidences after the filtering detections based
@@ -3361,13 +3574,13 @@ def multiclass_nms(bboxes,
         Variable: A 2-D LoDTensor with shape [No, 6] represents the detections.
              Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
              or A 2-D LoDTensor with shape [No, 10] represents the detections.
-             Each row has 10 values: 
-             [label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the 
+             Each row has 10 values:
+             [label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the
              total number of detections. If there is no detected boxes for all
              images, lod will be set to {1} and Out only contains one value
              which is -1.
-             (After version 1.3, when no boxes detected, the lod is changed 
-             from {0} to {1}) 
+             (After version 1.3, when no boxes detected, the lod is changed
+             from {0} to {1})
 
 
     Examples:
@@ -3390,10 +3603,12 @@ def multiclass_nms(bboxes,
                                               keep_top_k=200,
                                               normalized=False)
     """
-    check_variable_and_dtype(bboxes, 'BBoxes', ['float32', 'float64'],
-                             'multiclass_nms')
-    check_variable_and_dtype(scores, 'Scores', ['float32', 'float64'],
-                             'multiclass_nms')
+    check_variable_and_dtype(
+        bboxes, 'BBoxes', ['float32', 'float64'], 'multiclass_nms'
+    )
+    check_variable_and_dtype(
+        scores, 'Scores', ['float32', 'float64'], 'multiclass_nms'
+    )
     check_type(score_threshold, 'score_threshold', float, 'multicalss_nms')
     check_type(nms_top_k, 'nums_top_k', int, 'multiclass_nms')
     check_type(keep_top_k, 'keep_top_k', int, 'mutliclass_nms')
@@ -3404,39 +3619,40 @@ def multiclass_nms(bboxes,
 
     helper = LayerHelper('multiclass_nms', **locals())
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
-    helper.append_op(type="multiclass_nms",
-                     inputs={
-                         'BBoxes': bboxes,
-                         'Scores': scores
-                     },
-                     attrs={
-                         'background_label': background_label,
-                         'score_threshold': score_threshold,
-                         'nms_top_k': nms_top_k,
-                         'nms_threshold': nms_threshold,
-                         'nms_eta': nms_eta,
-                         'keep_top_k': keep_top_k,
-                         'normalized': normalized
-                     },
-                     outputs={'Out': output})
+    helper.append_op(
+        type="multiclass_nms",
+        inputs={'BBoxes': bboxes, 'Scores': scores},
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'nms_eta': nms_eta,
+            'keep_top_k': keep_top_k,
+            'normalized': normalized,
+        },
+        outputs={'Out': output},
+    )
     output.stop_gradient = True
 
     return output
 
 
-def locality_aware_nms(bboxes,
-                       scores,
-                       score_threshold,
-                       nms_top_k,
-                       keep_top_k,
-                       nms_threshold=0.3,
-                       normalized=True,
-                       nms_eta=1.,
-                       background_label=-1,
-                       name=None):
+def locality_aware_nms(
+    bboxes,
+    scores,
+    score_threshold,
+    nms_top_k,
+    keep_top_k,
+    nms_threshold=0.3,
+    normalized=True,
+    nms_eta=1.0,
+    background_label=-1,
+    name=None,
+):
     """
     **Local Aware NMS**
-    
+
     `Local Aware NMS <https://arxiv.org/abs/1704.03155>`_ is to do locality-aware non maximum
     suppression (LANMS) on boxes and scores.
 
@@ -3512,10 +3728,12 @@ def locality_aware_nms(bboxes,
                                               keep_top_k=200,
                                               normalized=False)
     """
-    check_variable_and_dtype(bboxes, 'bboxes', ['float32', 'float64'],
-                             'locality_aware_nms')
-    check_variable_and_dtype(scores, 'scores', ['float32', 'float64'],
-                             'locality_aware_nms')
+    check_variable_and_dtype(
+        bboxes, 'bboxes', ['float32', 'float64'], 'locality_aware_nms'
+    )
+    check_variable_and_dtype(
+        scores, 'scores', ['float32', 'float64'], 'locality_aware_nms'
+    )
     check_type(background_label, 'background_label', int, 'locality_aware_nms')
     check_type(score_threshold, 'score_threshold', float, 'locality_aware_nms')
     check_type(nms_top_k, 'nms_top_k', int, 'locality_aware_nms')
@@ -3526,47 +3744,49 @@ def locality_aware_nms(bboxes,
 
     shape = scores.shape
     assert len(shape) == 3, "dim size of scores must be 3"
-    assert shape[
-        1] == 1, "locality_aware_nms only support one class, Tensor score shape must be [N, 1, M]"
+    assert (
+        shape[1] == 1
+    ), "locality_aware_nms only support one class, Tensor score shape must be [N, 1, M]"
 
     helper = LayerHelper('locality_aware_nms', **locals())
 
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     out = {'Out': output}
 
-    helper.append_op(type="locality_aware_nms",
-                     inputs={
-                         'BBoxes': bboxes,
-                         'Scores': scores
-                     },
-                     attrs={
-                         'background_label': background_label,
-                         'score_threshold': score_threshold,
-                         'nms_top_k': nms_top_k,
-                         'nms_threshold': nms_threshold,
-                         'nms_eta': nms_eta,
-                         'keep_top_k': keep_top_k,
-                         'nms_eta': nms_eta,
-                         'normalized': normalized
-                     },
-                     outputs={'Out': output})
+    helper.append_op(
+        type="locality_aware_nms",
+        inputs={'BBoxes': bboxes, 'Scores': scores},
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'nms_eta': nms_eta,
+            'keep_top_k': keep_top_k,
+            'nms_eta': nms_eta,
+            'normalized': normalized,
+        },
+        outputs={'Out': output},
+    )
     output.stop_gradient = True
 
     return output
 
 
-def matrix_nms(bboxes,
-               scores,
-               score_threshold,
-               post_threshold,
-               nms_top_k,
-               keep_top_k,
-               use_gaussian=False,
-               gaussian_sigma=2.,
-               background_label=0,
-               normalized=True,
-               return_index=False,
-               name=None):
+def matrix_nms(
+    bboxes,
+    scores,
+    score_threshold,
+    post_threshold,
+    nms_top_k,
+    keep_top_k,
+    use_gaussian=False,
+    gaussian_sigma=2.0,
+    background_label=0,
+    normalized=True,
+    return_index=False,
+    name=None,
+):
     """
     **Matrix NMS**
 
@@ -3643,19 +3863,29 @@ def matrix_nms(bboxes,
                                           normalized=False)
     """
     if in_dygraph_mode():
-        attrs = (score_threshold, nms_top_k, keep_top_k, post_threshold,
-                 use_gaussian, gaussian_sigma, background_label, normalized)
+        attrs = (
+            score_threshold,
+            nms_top_k,
+            keep_top_k,
+            post_threshold,
+            use_gaussian,
+            gaussian_sigma,
+            background_label,
+            normalized,
+        )
 
-        out, index = _C_ops.final_state_matrix_nms(bboxes, scores, *attrs)
+        out, index = _C_ops.matrix_nms(bboxes, scores, *attrs)
         if return_index:
             return out, index
         else:
             return out
 
-    check_variable_and_dtype(bboxes, 'BBoxes', ['float32', 'float64'],
-                             'matrix_nms')
-    check_variable_and_dtype(scores, 'Scores', ['float32', 'float64'],
-                             'matrix_nms')
+    check_variable_and_dtype(
+        bboxes, 'BBoxes', ['float32', 'float64'], 'matrix_nms'
+    )
+    check_variable_and_dtype(
+        scores, 'Scores', ['float32', 'float64'], 'matrix_nms'
+    )
     check_type(score_threshold, 'score_threshold', float, 'matrix_nms')
     check_type(post_threshold, 'post_threshold', float, 'matrix_nms')
     check_type(nms_top_k, 'nums_top_k', int, 'matrix_nms')
@@ -3668,25 +3898,21 @@ def matrix_nms(bboxes,
     helper = LayerHelper('matrix_nms', **locals())
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     index = helper.create_variable_for_type_inference(dtype='int')
-    helper.append_op(type="matrix_nms",
-                     inputs={
-                         'BBoxes': bboxes,
-                         'Scores': scores
-                     },
-                     attrs={
-                         'score_threshold': score_threshold,
-                         'post_threshold': post_threshold,
-                         'nms_top_k': nms_top_k,
-                         'keep_top_k': keep_top_k,
-                         'use_gaussian': use_gaussian,
-                         'gaussian_sigma': gaussian_sigma,
-                         'background_label': background_label,
-                         'normalized': normalized
-                     },
-                     outputs={
-                         'Out': output,
-                         'Index': index
-                     })
+    helper.append_op(
+        type="matrix_nms",
+        inputs={'BBoxes': bboxes, 'Scores': scores},
+        attrs={
+            'score_threshold': score_threshold,
+            'post_threshold': post_threshold,
+            'nms_top_k': nms_top_k,
+            'keep_top_k': keep_top_k,
+            'use_gaussian': use_gaussian,
+            'gaussian_sigma': gaussian_sigma,
+            'background_label': background_label,
+            'normalized': normalized,
+        },
+        outputs={'Out': output, 'Index': index},
+    )
     output.stop_gradient = True
 
     if return_index:
@@ -3695,22 +3921,24 @@ def matrix_nms(bboxes,
         return output
 
 
-def distribute_fpn_proposals(fpn_rois,
-                             min_level,
-                             max_level,
-                             refer_level,
-                             refer_scale,
-                             rois_num=None,
-                             name=None):
+def distribute_fpn_proposals(
+    fpn_rois,
+    min_level,
+    max_level,
+    refer_level,
+    refer_scale,
+    rois_num=None,
+    name=None,
+):
     r"""
-	
-    **This op only takes LoDTensor as input.** In Feature Pyramid Networks 
-    (FPN) models, it is needed to distribute all proposals into different FPN 
-    level, with respect to scale of the proposals, the referring scale and the 
-    referring level. Besides, to restore the order of proposals, we return an 
-    array which indicates the original index of rois in current proposals. 
+
+    **This op only takes LoDTensor as input.** In Feature Pyramid Networks
+    (FPN) models, it is needed to distribute all proposals into different FPN
+    level, with respect to scale of the proposals, the referring scale and the
+    referring level. Besides, to restore the order of proposals, we return an
+    array which indicates the original index of rois in current proposals.
     To compute FPN level for each roi, the formula is given as follows:
-    
+
     .. math::
 
         roi\_scale &= \sqrt{BBoxArea(fpn\_roi)}
@@ -3721,36 +3949,36 @@ def distribute_fpn_proposals(fpn_rois,
 
     Args:
 
-        fpn_rois(Variable): 2-D Tensor with shape [N, 4] and data type is 
+        fpn_rois(Variable): 2-D Tensor with shape [N, 4] and data type is
             float32 or float64. The input fpn_rois.
-        min_level(int32): The lowest level of FPN layer where the proposals come 
+        min_level(int32): The lowest level of FPN layer where the proposals come
             from.
         max_level(int32): The highest level of FPN layer where the proposals
             come from.
         refer_level(int32): The referring level of FPN layer with specified scale.
         refer_scale(int32): The referring scale of FPN layer with specified level.
-        rois_num(Tensor): 1-D Tensor contains the number of RoIs in each image. 
+        rois_num(Tensor): 1-D Tensor contains the number of RoIs in each image.
             The shape is [B] and data type is int32. B is the number of images.
-            If it is not None then return a list of 1-D Tensor. Each element 
+            If it is not None then return a list of 1-D Tensor. Each element
             is the output RoIs' number of each image on the corresponding level
             and the shape is [B]. None by default.
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default. 
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
 
     Returns:
         Tuple:
 
-        multi_rois(List) : A list of 2-D LoDTensor with shape [M, 4] 
-        and data type of float32 and float64. The length is 
+        multi_rois(List) : A list of 2-D LoDTensor with shape [M, 4]
+        and data type of float32 and float64. The length is
         max_level-min_level+1. The proposals in each FPN level.
 
-        restore_ind(Variable): A 2-D Tensor with shape [N, 1], N is 
+        restore_ind(Variable): A 2-D Tensor with shape [N, 1], N is
         the number of total rois. The data type is int32. It is
         used to restore the order of fpn_rois.
 
-        rois_num_per_level(List): A list of 1-D Tensor and each Tensor is 
-        the RoIs' number in each image on the corresponding level. The shape 
+        rois_num_per_level(List): A list of 1-D Tensor and each Tensor is
+        the RoIs' number in each image on the corresponding level. The shape
         is [B] and data type of int32. B is the number of images
 
 
@@ -3769,24 +3997,23 @@ def distribute_fpn_proposals(fpn_rois,
                 refer_level=4,
                 refer_scale=224)
     """
-    return paddle.vision.ops.distribute_fpn_proposals(fpn_rois=fpn_rois,
-                                                      min_level=min_level,
-                                                      max_level=max_level,
-                                                      refer_level=refer_level,
-                                                      refer_scale=refer_scale,
-                                                      rois_num=rois_num,
-                                                      name=name)
+    return paddle.vision.ops.distribute_fpn_proposals(
+        fpn_rois=fpn_rois,
+        min_level=min_level,
+        max_level=max_level,
+        refer_level=refer_level,
+        refer_scale=refer_scale,
+        rois_num=rois_num,
+        name=name,
+    )
 
 
 @templatedoc()
-def box_decoder_and_assign(prior_box,
-                           prior_box_var,
-                           target_box,
-                           box_score,
-                           box_clip,
-                           name=None):
+def box_decoder_and_assign(
+    prior_box, prior_box_var, target_box, box_score, box_clip, name=None
+):
     """
-	
+
     ${comment}
     Args:
         prior_box(${prior_box_type}): ${prior_box_comment}
@@ -3794,9 +4021,9 @@ def box_decoder_and_assign(prior_box,
         target_box(${target_box_type}): ${target_box_comment}
         box_score(${box_score_type}): ${box_score_comment}
         box_clip(${box_clip_type}): ${box_clip_comment}
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default. 
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
 
     Returns:
         Tuple:
@@ -3824,45 +4051,57 @@ def box_decoder_and_assign(prior_box,
                 pb, pbv, loc, scores, 4.135)
 
     """
-    check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
-                             'box_decoder_and_assign')
-    check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
-                             'box_decoder_and_assign')
-    check_variable_and_dtype(box_score, 'box_score', ['float32', 'float64'],
-                             'box_decoder_and_assign')
+    check_variable_and_dtype(
+        prior_box, 'prior_box', ['float32', 'float64'], 'box_decoder_and_assign'
+    )
+    check_variable_and_dtype(
+        target_box,
+        'target_box',
+        ['float32', 'float64'],
+        'box_decoder_and_assign',
+    )
+    check_variable_and_dtype(
+        box_score, 'box_score', ['float32', 'float64'], 'box_decoder_and_assign'
+    )
     helper = LayerHelper("box_decoder_and_assign", **locals())
 
     decoded_box = helper.create_variable_for_type_inference(
-        dtype=prior_box.dtype)
+        dtype=prior_box.dtype
+    )
     output_assign_box = helper.create_variable_for_type_inference(
-        dtype=prior_box.dtype)
+        dtype=prior_box.dtype
+    )
 
-    helper.append_op(type="box_decoder_and_assign",
-                     inputs={
-                         "PriorBox": prior_box,
-                         "PriorBoxVar": prior_box_var,
-                         "TargetBox": target_box,
-                         "BoxScore": box_score
-                     },
-                     attrs={"box_clip": box_clip},
-                     outputs={
-                         "DecodeBox": decoded_box,
-                         "OutputAssignBox": output_assign_box
-                     })
+    helper.append_op(
+        type="box_decoder_and_assign",
+        inputs={
+            "PriorBox": prior_box,
+            "PriorBoxVar": prior_box_var,
+            "TargetBox": target_box,
+            "BoxScore": box_score,
+        },
+        attrs={"box_clip": box_clip},
+        outputs={
+            "DecodeBox": decoded_box,
+            "OutputAssignBox": output_assign_box,
+        },
+    )
     return decoded_box, output_assign_box
 
 
-def collect_fpn_proposals(multi_rois,
-                          multi_scores,
-                          min_level,
-                          max_level,
-                          post_nms_top_n,
-                          rois_num_per_level=None,
-                          name=None):
+def collect_fpn_proposals(
+    multi_rois,
+    multi_scores,
+    min_level,
+    max_level,
+    post_nms_top_n,
+    rois_num_per_level=None,
+    name=None,
+):
     """
-	
-    **This OP only supports LoDTensor as input**. Concat multi-level RoIs 
-    (Region of Interest) and select N RoIs with respect to multi_scores. 
+
+    **This OP only supports LoDTensor as input**. Concat multi-level RoIs
+    (Region of Interest) and select N RoIs with respect to multi_scores.
     This operation performs the following steps:
 
     1. Choose num_level RoIs and scores as input: num_level = max_level - min_level
@@ -3872,38 +4111,38 @@ def collect_fpn_proposals(multi_rois,
     5. Re-sort RoIs by corresponding batch_id
 
     Args:
-        multi_rois(list): List of RoIs to collect. Element in list is 2-D 
-            LoDTensor with shape [N, 4] and data type is float32 or float64, 
+        multi_rois(list): List of RoIs to collect. Element in list is 2-D
+            LoDTensor with shape [N, 4] and data type is float32 or float64,
             N is the number of RoIs.
-        multi_scores(list): List of scores of RoIs to collect. Element in list 
+        multi_scores(list): List of scores of RoIs to collect. Element in list
             is 2-D LoDTensor with shape [N, 1] and data type is float32 or
             float64, N is the number of RoIs.
         min_level(int): The lowest level of FPN layer to collect
         max_level(int): The highest level of FPN layer to collect
         post_nms_top_n(int): The number of selected RoIs
-        rois_num_per_level(list, optional): The List of RoIs' numbers. 
-            Each element is 1-D Tensor which contains the RoIs' number of each 
-            image on each level and the shape is [B] and data type is 
-            int32, B is the number of images. If it is not None then return 
-            a 1-D Tensor contains the output RoIs' number of each image and 
+        rois_num_per_level(list, optional): The List of RoIs' numbers.
+            Each element is 1-D Tensor which contains the RoIs' number of each
+            image on each level and the shape is [B] and data type is
+            int32, B is the number of images. If it is not None then return
+            a 1-D Tensor contains the output RoIs' number of each image and
             the shape is [B]. Default: None
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default.        
+        name(str, optional): For detailed information, please refer
+            to :ref:`api_guide_Name`. Usually name is no need to set and
+            None by default.
 
     Returns:
         Variable:
 
-        fpn_rois(Variable): 2-D LoDTensor with shape [N, 4] and data type is 
-        float32 or float64. Selected RoIs. 
+        fpn_rois(Variable): 2-D LoDTensor with shape [N, 4] and data type is
+        float32 or float64. Selected RoIs.
 
-        rois_num(Tensor): 1-D Tensor contains the RoIs's number of each 
-        image. The shape is [B] and data type is int32. B is the number of 
-        images. 
+        rois_num(Tensor): 1-D Tensor contains the RoIs's number of each
+        image. The shape is [B] and data type is int32. B is the number of
+        images.
 
     Examples:
         .. code-block:: python
-           
+
             import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
@@ -3917,10 +4156,10 @@ def collect_fpn_proposals(multi_rois,
                     name='score_'+str(i), shape=[None, 1], dtype='float32', lod_level=1))
 
             fpn_rois = fluid.layers.collect_fpn_proposals(
-                multi_rois=multi_rois, 
+                multi_rois=multi_rois,
                 multi_scores=multi_scores,
-                min_level=2, 
-                max_level=5, 
+                min_level=2,
+                max_level=5,
                 post_nms_top_n=2000)
     """
     num_lvl = max_level - min_level + 1
@@ -3928,17 +4167,21 @@ def collect_fpn_proposals(multi_rois,
     input_scores = multi_scores[:num_lvl]
 
     if _non_static_mode():
-        assert rois_num_per_level is not None, "rois_num_per_level should not be None in dygraph mode."
+        assert (
+            rois_num_per_level is not None
+        ), "rois_num_per_level should not be None in dygraph mode."
         attrs = ('post_nms_topN', post_nms_top_n)
-        output_rois, rois_num = _C_ops.collect_fpn_proposals(
-            input_rois, input_scores, rois_num_per_level, *attrs)
+        output_rois, rois_num = _legacy_C_ops.collect_fpn_proposals(
+            input_rois, input_scores, rois_num_per_level, *attrs
+        )
 
     check_type(multi_rois, 'multi_rois', list, 'collect_fpn_proposals')
     check_type(multi_scores, 'multi_scores', list, 'collect_fpn_proposals')
     helper = LayerHelper('collect_fpn_proposals', **locals())
     dtype = helper.input_dtype('multi_rois')
-    check_dtype(dtype, 'multi_rois', ['float32', 'float64'],
-                'collect_fpn_proposals')
+    check_dtype(
+        dtype, 'multi_rois', ['float32', 'float64'], 'collect_fpn_proposals'
+    )
     output_rois = helper.create_variable_for_type_inference(dtype)
     output_rois.stop_gradient = True
 
@@ -3952,10 +4195,12 @@ def collect_fpn_proposals(multi_rois,
         rois_num = helper.create_variable_for_type_inference(dtype='int32')
         rois_num.stop_gradient = True
         outputs['RoisNum'] = rois_num
-    helper.append_op(type='collect_fpn_proposals',
-                     inputs=inputs,
-                     outputs=outputs,
-                     attrs={'post_nms_topN': post_nms_top_n})
+    helper.append_op(
+        type='collect_fpn_proposals',
+        inputs=inputs,
+        outputs=outputs,
+        attrs={'post_nms_topN': post_nms_top_n},
+    )
     if rois_num_per_level is not None:
         return output_rois, rois_num
     return output_rois

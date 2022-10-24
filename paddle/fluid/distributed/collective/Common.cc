@@ -47,5 +47,14 @@ bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors) {
       });
 }
 
+bool CheckTensorsInCustomPlace(const std::vector<phi::DenseTensor>& tensors,
+                               const std::string& dev_type) {
+  return std::all_of(
+      tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
+        return platform::places_are_same_class(
+            t.place(), paddle::platform::CustomPlace(dev_type));
+      });
+}
+
 }  //  namespace distributed
 }  //  namespace paddle

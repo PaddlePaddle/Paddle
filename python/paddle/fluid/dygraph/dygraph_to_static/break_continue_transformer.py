@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.utils import gast
 
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
 from paddle.fluid.dygraph.dygraph_to_static.utils import BaseNodeVisitor
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_bool_node
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import ForNodeVisitor
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+    create_bool_node,
+)
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    ForNodeVisitor,
+)
 
 __all__ = ['BreakContinueTransformer']
 
@@ -37,8 +41,8 @@ class ForToWhileTransformer(BaseTransformer):
 
     def __init__(self, parent_node, loop_node, condition_node):
         assert isinstance(
-            loop_node,
-            gast.For), "loop_node is not gast.For in ForToWhileTransformer"
+            loop_node, gast.For
+        ), "loop_node is not gast.For in ForToWhileTransformer"
         self.parent_node = parent_node
         self.loop_node = loop_node
         self.condition_node = condition_node
@@ -49,7 +53,7 @@ class ForToWhileTransformer(BaseTransformer):
             i = index_in_list(body_list, self.loop_node)
             if i != -1:
                 new_stmts = self.get_for_stmt_nodes(body_list[i])
-                body_list[i:i + 1] = new_stmts
+                body_list[i : i + 1] = new_stmts
                 i += len(new_stmts)
                 return new_stmts
         if hasattr(self.parent_node, 'orelse'):
@@ -57,7 +61,7 @@ class ForToWhileTransformer(BaseTransformer):
             i = index_in_list(body_list, self.loop_node)
             if i != -1:
                 new_stmts = self.get_for_stmt_nodes(body_list[i])
-                body_list[i:i + 1] = new_stmts
+                body_list[i : i + 1] = new_stmts
                 i += len(new_stmts)
                 return new_stmts
         raise ValueError(
@@ -66,7 +70,8 @@ class ForToWhileTransformer(BaseTransformer):
 
     def get_for_stmt_nodes(self, node):
         assert isinstance(
-            node, gast.For), "Input node is NOT gast.For in get_for_stmt_nodes"
+            node, gast.For
+        ), "Input node is NOT gast.For in get_for_stmt_nodes"
 
         # 1. parse current gast.For node
         current_for_node_parser = ForNodeVisitor(node)
@@ -76,13 +81,14 @@ class ForToWhileTransformer(BaseTransformer):
         init_stmts, cond_stmt, body_stmts = stmts_tuple
 
         # 2. append break statement
-        new_cond_stmt = gast.BoolOp(op=gast.And(),
-                                    values=[cond_stmt, self.condition_node])
+        new_cond_stmt = gast.BoolOp(
+            op=gast.And(), values=[cond_stmt, self.condition_node]
+        )
 
         # 3. construct gast.While node
-        while_node = gast.While(test=new_cond_stmt,
-                                body=body_stmts,
-                                orelse=node.orelse)
+        while_node = gast.While(
+            test=new_cond_stmt, body=body_stmts, orelse=node.orelse
+        )
         init_stmts.append(while_node)
         return init_stmts
 
@@ -91,7 +97,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
     """
     Rewrite 'break' and 'continue' key words in a if-else python way to make
     it equivalent to original control flow
-    
+
     The main idea of this class is:
 
         1. Map the 'break/continue' stmt with an unique boolean variable V.
@@ -134,7 +140,8 @@ class BreakContinueTransformer(BaseNodeVisitor):
         # block can be a node containing stmt list. We should remove all stmts
         # after the 'break/continue' and set the V to True here.
         first_block_index = self._remove_stmts_after_break_continue(
-            node, variable_name, loop_node_index)
+            node, variable_name, loop_node_index
+        )
 
         # 3. Add 'if not V' for stmts in ancestor blocks between the first one
         # (exclusive) and the ancestor loop (inclusive)
@@ -144,19 +151,25 @@ class BreakContinueTransformer(BaseNodeVisitor):
         assign_false_node = create_bool_node(variable_name, False)
         self._add_stmt_before_cur_node(loop_node_index, assign_false_node)
 
-        cond_var_node = gast.UnaryOp(op=gast.Not(),
-                                     operand=gast.Name(id=variable_name,
-                                                       ctx=gast.Load(),
-                                                       annotation=None,
-                                                       type_comment=None))
+        cond_var_node = gast.UnaryOp(
+            op=gast.Not(),
+            operand=gast.Name(
+                id=variable_name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None,
+            ),
+        )
 
         if isinstance(loop_node, gast.While):
-            loop_node.test = gast.BoolOp(op=gast.And(),
-                                         values=[loop_node.test, cond_var_node])
+            loop_node.test = gast.BoolOp(
+                op=gast.And(), values=[loop_node.test, cond_var_node]
+            )
         elif isinstance(loop_node, gast.For):
             parent_node = self.ancestor_nodes[loop_node_index - 1]
-            for_to_while = ForToWhileTransformer(parent_node, loop_node,
-                                                 cond_var_node)
+            for_to_while = ForToWhileTransformer(
+                parent_node, loop_node, cond_var_node
+            )
             for_to_while.transform()
 
     def visit_Continue(self, node):
@@ -171,7 +184,8 @@ class BreakContinueTransformer(BaseNodeVisitor):
         # block can be a node containing stmt list. We should remove all stmts
         # after the 'break/continue' and set the V to True here.
         first_block_index = self._remove_stmts_after_break_continue(
-            node, variable_name, loop_node_index)
+            node, variable_name, loop_node_index
+        )
 
         # 3. Add 'if not V' for stmts in ancestor blocks between the first one
         # (exclusive) and the ancestor loop (inclusive)
@@ -181,44 +195,51 @@ class BreakContinueTransformer(BaseNodeVisitor):
         assign_false_node = create_bool_node(variable_name, False)
         loop_node.body.insert(0, assign_false_node)
 
-    def _remove_stmts_after_break_continue(self, break_continue_node,
-                                           break_continue_name,
-                                           loop_node_index):
+    def _remove_stmts_after_break_continue(
+        self, break_continue_node, break_continue_name, loop_node_index
+    ):
         for first_block_index in range(
-                len(self.ancestor_nodes) - 1, loop_node_index - 1, -1):
+            len(self.ancestor_nodes) - 1, loop_node_index - 1, -1
+        ):
             first_block = self.ancestor_nodes[first_block_index]
-            if hasattr(first_block,
-                       "body") and self._replace_break_continue_in_stmt_list(
-                           first_block.body, break_continue_node,
-                           break_continue_name):
+            if hasattr(
+                first_block, "body"
+            ) and self._replace_break_continue_in_stmt_list(
+                first_block.body, break_continue_node, break_continue_name
+            ):
                 return first_block_index
 
-            if hasattr(first_block,
-                       "orelse") and self._replace_break_continue_in_stmt_list(
-                           first_block.orelse, break_continue_node,
-                           break_continue_name):
+            if hasattr(
+                first_block, "orelse"
+            ) and self._replace_break_continue_in_stmt_list(
+                first_block.orelse, break_continue_node, break_continue_name
+            ):
                 return first_block_index
 
         return first_block_index
 
-    def _replace_if_stmt(self, loop_node_index, first_block_index,
-                         break_continue_name):
+    def _replace_if_stmt(
+        self, loop_node_index, first_block_index, break_continue_name
+    ):
         for i in range(first_block_index - 1, loop_node_index - 1, -1):
             cur_node = self.ancestor_nodes[i]
             son_node = self.ancestor_nodes[i + 1]
-            if hasattr(cur_node,
-                       'body') and self._replace_after_node_to_if_in_stmt_list(
-                           cur_node.body, son_node, break_continue_name):
+            if hasattr(
+                cur_node, 'body'
+            ) and self._replace_after_node_to_if_in_stmt_list(
+                cur_node.body, son_node, break_continue_name
+            ):
                 continue
             if hasattr(
-                    cur_node,
-                    'orelse') and self._replace_after_node_to_if_in_stmt_list(
-                        cur_node.orelse, son_node, break_continue_name):
+                cur_node, 'orelse'
+            ) and self._replace_after_node_to_if_in_stmt_list(
+                cur_node.orelse, son_node, break_continue_name
+            ):
                 continue
 
-    def _replace_break_continue_in_stmt_list(self, stmt_list,
-                                             break_continue_node,
-                                             break_continue_name):
+    def _replace_break_continue_in_stmt_list(
+        self, stmt_list, break_continue_node, break_continue_name
+    ):
         i = index_in_list(stmt_list, break_continue_node)
         if i == -1:
             return False
@@ -226,8 +247,9 @@ class BreakContinueTransformer(BaseNodeVisitor):
         stmt_list[i:] = [assign_true_node]
         return True
 
-    def _replace_after_node_to_if_in_stmt_list(self, stmt_list, node,
-                                               break_continue_name):
+    def _replace_after_node_to_if_in_stmt_list(
+        self, stmt_list, node, break_continue_name
+    ):
         i = index_in_list(stmt_list, node)
         if i == -1:
             return False
@@ -236,28 +258,37 @@ class BreakContinueTransformer(BaseNodeVisitor):
             # No need to add, we consider this as added successfully
             return True
 
-        if_stmt = gast.If(test=gast.UnaryOp(op=gast.Not(),
-                                            operand=gast.Name(
-                                                id=break_continue_name,
-                                                ctx=gast.Store(),
-                                                annotation=None,
-                                                type_comment=None)),
-                          body=stmt_list[i + 1:],
-                          orelse=[])
-        stmt_list[i + 1:] = []
+        if_stmt = gast.If(
+            test=gast.UnaryOp(
+                op=gast.Not(),
+                operand=gast.Name(
+                    id=break_continue_name,
+                    ctx=gast.Store(),
+                    annotation=None,
+                    type_comment=None,
+                ),
+            ),
+            body=stmt_list[i + 1 :],
+            orelse=[],
+        )
+        stmt_list[i + 1 :] = []
         stmt_list.append(if_stmt)
         return True
 
     def _add_stmt_before_cur_node(self, cur_node_index, stmt_node):
         cur_node = self.ancestor_nodes[cur_node_index]
         parent_node = self.ancestor_nodes[cur_node_index - 1]
-        if hasattr(parent_node,
-                   "body") and self._add_stmt_into_list_before_node(
-                       parent_node.body, cur_node, stmt_node):
+        if hasattr(
+            parent_node, "body"
+        ) and self._add_stmt_into_list_before_node(
+            parent_node.body, cur_node, stmt_node
+        ):
             return True
-        if hasattr(parent_node,
-                   "orelse") and self._add_stmt_into_list_before_node(
-                       parent_node.orelse, cur_node, stmt_node):
+        if hasattr(
+            parent_node, "orelse"
+        ) and self._add_stmt_into_list_before_node(
+            parent_node.orelse, cur_node, stmt_node
+        ):
             return True
         return False
 
@@ -278,9 +309,9 @@ def _find_ancestor_loop_index(node, ancestor_nodes):
 
 class BreakTransformOptimizer(BaseNodeVisitor):
     """
-    In specific pattern, the transformed code could be optimized by joining the 
-    If.test with while.test. 
-    
+    In specific pattern, the transformed code could be optimized by joining the
+    If.test with while.test.
+
     Currently supported pattern is:
     ```
         while cond1:            while cond1 and not cond2:
@@ -288,7 +319,7 @@ class BreakTransformOptimizer(BaseNodeVisitor):
                 break
             do_something()
     ```
-    
+
     See following example:
 
     >>> def foo(x):
@@ -309,7 +340,7 @@ class BreakTransformOptimizer(BaseNodeVisitor):
                 i += 1
             return x
     ```
-    It can avoid wrapping all ops after `break` statement into `cond_op` that 
+    It can avoid wrapping all ops after `break` statement into `cond_op` that
     usually brings very heavy overhead.
     """
 
@@ -332,11 +363,13 @@ class BreakTransformOptimizer(BaseNodeVisitor):
 
             if isinstance(loop_node, gast.While):
                 loop_node.test = gast.BoolOp(
-                    op=gast.And(), values=[loop_node.test, cond_var_node])
+                    op=gast.And(), values=[loop_node.test, cond_var_node]
+                )
             elif isinstance(loop_node, gast.For):
                 parent_node = self.ancestor_nodes[loop_node_index - 1]
-                for_to_while = ForToWhileTransformer(parent_node, loop_node,
-                                                     cond_var_node)
+                for_to_while = ForToWhileTransformer(
+                    parent_node, loop_node, cond_var_node
+                )
                 for_to_while.transform()
 
     def _is_break_cond_pattern(self, break_node, loop_node):
@@ -353,8 +386,10 @@ class BreakTransformOptimizer(BaseNodeVisitor):
         is_matched = False
         if isinstance(parent_if_node, gast.If):
             # gast.If only contains `break`
-            break_first_in_if = parent_if_node.body[0] == break_node and len(
-                parent_if_node.orelse) == 0
+            break_first_in_if = (
+                parent_if_node.body[0] == break_node
+                and len(parent_if_node.orelse) == 0
+            )
             # gast.If is first node of loop_node
             if_first_in_loop = loop_node.body[0] == parent_if_node
 

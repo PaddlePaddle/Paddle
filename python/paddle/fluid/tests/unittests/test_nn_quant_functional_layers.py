@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 
 
 class TestFunctionalLayers(unittest.TestCase):
-    """
-    """
+    """ """
 
     def setUp(self):
         paddle.disable_static()
@@ -32,7 +29,7 @@ class TestFunctionalLayers(unittest.TestCase):
         self.y = paddle.to_tensor(np.random.random(shape))
 
     def check(self, x, y):
-        self.assertTrue(np.allclose(x.numpy(), y.numpy()))
+        np.testing.assert_allclose(x.numpy(), y.numpy(), rtol=1e-05)
 
     def test_quant_add(self):
         out_1 = paddle.add(self.x, self.y)

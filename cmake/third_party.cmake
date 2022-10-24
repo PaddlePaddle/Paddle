@@ -236,7 +236,7 @@ endif()
 if(WIN32
    OR APPLE
    OR NOT WITH_GPU
-   OR ON_INFER)
+   OR (ON_INFER AND NOT WITH_PYTHON))
   set(WITH_DGC OFF)
 endif()
 
@@ -422,6 +422,19 @@ if(WITH_PSCORE)
 
   include(external/rocksdb) # download, build, install rocksdb
   list(APPEND third_party_deps extern_rocksdb)
+endif()
+
+if(WITH_RPC
+   AND NOT WITH_PSCORE
+   AND NOT WITH_PSLIB)
+  include(external/snappy)
+  list(APPEND third_party_deps extern_snappy)
+
+  include(external/leveldb)
+  list(APPEND third_party_deps extern_leveldb)
+
+  include(external/brpc)
+  list(APPEND third_party_deps extern_brpc)
 endif()
 
 if(WITH_XBYAK)

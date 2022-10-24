@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 
 import ps_pb2 as pslib
+
 # NOTE: reduce removed in fuctools in python3
 from functools import reduce
 
 
 class Server(object):
     """
-        A Server basic class.
+    A Server basic class.
     """
 
     def __init__(self):
@@ -27,7 +28,7 @@ class Server(object):
 
 class Worker(object):
     """
-        A Worker basic class.
+    A Worker basic class.
     """
 
     def __init__(self):
@@ -36,32 +37,39 @@ class Worker(object):
 
 class DownpourServer(Server):
     """
-        DownpourServer class is used to generate server program_desc
-        Args:
-            server: it is pslib.ServerParameter() 
-        Examples:
-            server = DownpourServer()
+    DownpourServer class is used to generate server program_desc
+    Args:
+        server: it is pslib.ServerParameter()
+    Examples:
+        server = DownpourServer()
     """
 
     def __init__(self):
         self.server_ = pslib.ServerParameter()
         self.server_.downpour_server_param.service_param.start_server_port = 0
-        self.server_.downpour_server_param.service_param.server_class = "DownpourBrpcPsServer"
-        self.server_.downpour_server_param.service_param.client_class = "DownpourBrpcPsClient"
-        self.server_.downpour_server_param.service_param.service_class = "DownpourPsService"
+        self.server_.downpour_server_param.service_param.server_class = (
+            "DownpourBrpcPsServer"
+        )
+        self.server_.downpour_server_param.service_param.client_class = (
+            "DownpourBrpcPsClient"
+        )
+        self.server_.downpour_server_param.service_param.service_class = (
+            "DownpourPsService"
+        )
         self.server_.downpour_server_param.service_param.server_thread_num = 12
 
-    def add_sparse_table(self, table_id, learning_rate, slot_key_vars,
-                         slot_value_var):
+    def add_sparse_table(
+        self, table_id, learning_rate, slot_key_vars, slot_value_var
+    ):
         r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
                 Can be a float value
-            slot_key_vars(string): slot key id 
+            slot_key_vars(string): slot key id
             slot_value_var(string): slot key value after embedding
         Returns:
-            return None 
+            return None
         """
         table = self.server_.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
@@ -93,7 +101,7 @@ class DownpourServer(Server):
             param_var(list): all dense param. it is a list.
             grad_var(list): all dense grad parm it is a list.
         Returns:
-            return None 
+            return None
         """
         table = self.server_.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
@@ -108,8 +116,9 @@ class DownpourServer(Server):
         table.accessor.dense_sgd_param.adam.mom_decay_rate = 0.99
         table.accessor.dense_sgd_param.naive.learning_rate = 0.0002
         fea_dim = 0
-        for param in filter(lambda x: x.name.find("embedding") == -1,
-                            param_var):
+        for param in filter(
+            lambda x: x.name.find("embedding") == -1, param_var
+        ):
             fea_dim += reduce(lambda x, y: x * y, param.shape, 1)
         table.accessor.fea_dim = fea_dim
 
@@ -122,36 +131,38 @@ class DownpourServer(Server):
 
 class DownpourWorker(Worker):
     """
-        DownpourWorker class is used to generate worker program_desc
-        Args:
-            window (int): push params frequency
-            worker: it is pslib.DownpourTrainerParameter 
-        Examples:
-            worker = DownpourWorker(1)
+    DownpourWorker class is used to generate worker program_desc
+    Args:
+        window (int): push params frequency
+        worker: it is pslib.DownpourTrainerParameter
+    Examples:
+        worker = DownpourWorker(1)
     """
 
     def __init__(self, window):
         self.window = window
         self.worker_ = pslib.DownpourTrainerParameter()
 
-    def add_sparse_table(self, table_id, learning_rate, slot_key_vars,
-                         slot_value_vars):
+    def add_sparse_table(
+        self, table_id, learning_rate, slot_key_vars, slot_value_vars
+    ):
         r"""
         Args:
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
                 Can be a float value
-            slot_key_vars(string): slot key id 
+            slot_key_vars(string): slot key id
             slot_value_var(string): slot key value after embedding
         Returns:
-            return None 
+            return None
         """
         table = self.worker_.sparse_table.add()
         table.table_id = table_id
         table.slot_key.extend([var.name for var in slot_key_vars])
         table.slot_value.extend([var.name for var in slot_value_vars])
         table.slot_gradient.extend(
-            [var.name + "@GRAD" for var in slot_value_vars])
+            [var.name + "@GRAD" for var in slot_value_vars]
+        )
 
     def add_dense_table(self, table_id, learning_rate, param_vars, grad_vars):
         r"""
@@ -162,16 +173,21 @@ class DownpourWorker(Worker):
             param_var(list): all dense param. it is a list.
             grad_var(list): all dense grad parm it is a list.
         Returns:
-            return None 
+            return None
         """
         table = self.worker_.dense_table.add()
         table.table_id = table_id
         table.dense_variable_name.extend(
-            filter(lambda x: x.find("embedding") == -1,
-                   [p.name for p in param_vars]))
+            filter(
+                lambda x: x.find("embedding") == -1,
+                [p.name for p in param_vars],
+            )
+        )
         table.dense_gradient_variable_name.extend(
-            filter(lambda x: x.find("embedding") == -1,
-                   [g.name for g in grad_vars]))
+            filter(
+                lambda x: x.find("embedding") == -1, [g.name for g in grad_vars]
+            )
+        )
 
     def get_desc(self):
         """

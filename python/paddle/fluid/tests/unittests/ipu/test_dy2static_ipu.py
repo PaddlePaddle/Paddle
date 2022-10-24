@@ -17,7 +17,9 @@ import unittest
 
 import numpy as np
 import paddle
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramCache
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    ProgramCache,
+)
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest
 from paddle.jit import to_static
 from paddle.optimizer.lr import LRScheduler
@@ -25,18 +27,18 @@ from functools import partial
 
 
 class SimpleLayer(paddle.nn.Layer):
-
-    def __init__(self,
-                 loss_op=None,
-                 use_softmax=True,
-                 use_reduction=True,
-                 use_identity_loss=True):
+    def __init__(
+        self,
+        loss_op=None,
+        use_softmax=True,
+        use_reduction=True,
+        use_identity_loss=True,
+    ):
         super(SimpleLayer, self).__init__()
         self.loss_op = loss_op
-        self.conv = paddle.nn.Conv2D(in_channels=3,
-                                     out_channels=1,
-                                     kernel_size=2,
-                                     stride=1)
+        self.conv = paddle.nn.Conv2D(
+            in_channels=3, out_channels=1, kernel_size=2, stride=1
+        )
         self.use_softmax = use_softmax
         self.use_reduction = use_reduction
         self.use_identity_loss = use_identity_loss
@@ -61,7 +63,6 @@ class SimpleLayer(paddle.nn.Layer):
 
 
 class TestBase(IPUD2STest):
-
     def setUp(self):
         self.set_op_attrs()
         self.set_data_feed()
@@ -74,25 +75,30 @@ class TestBase(IPUD2STest):
         self.label = paddle.randint(0, 10, shape=[8], dtype='int64')
 
     def create_model(self, use_ipu=False):
-        return SimpleLayer(loss_op=self.loss_op,
-                           use_softmax=True,
-                           use_reduction=not use_ipu,
-                           use_identity_loss=use_ipu)
+        return SimpleLayer(
+            loss_op=self.loss_op,
+            use_softmax=True,
+            use_reduction=not use_ipu,
+            use_identity_loss=use_ipu,
+        )
 
     def _test(self, use_ipu=False):
         paddle.seed(self.SEED)
         np.random.seed(self.SEED)
         model = self.create_model(use_ipu)
-        optim = paddle.optimizer.Adam(learning_rate=0.01,
-                                      parameters=model.parameters())
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=model.parameters()
+        )
 
         if use_ipu:
             paddle.set_device('ipu')
             ipu_strategy = paddle.static.IpuStrategy()
-            ipu_strategy.set_graph_config(num_ipus=1,
-                                          is_training=True,
-                                          micro_batch_size=1,
-                                          enable_manual_shard=False)
+            ipu_strategy.set_graph_config(
+                num_ipus=1,
+                is_training=True,
+                micro_batch_size=1,
+                enable_manual_shard=False,
+            )
             ipu_strategy.set_optimizer(optim)
 
         epochs = 100
@@ -114,11 +120,10 @@ class TestBase(IPUD2STest):
     def test_training(self):
         ipu_loss = self._test(True).flatten()
         cpu_loss = self._test(False).flatten()
-        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-4))
+        np.testing.assert_allclose(ipu_loss, cpu_loss, rtol=1e-05, atol=1e-4)
 
 
 class TestSaveLoad(TestBase):
-
     def setUp(self):
         super().setUp()
         self.save_path = tempfile.TemporaryDirectory()
@@ -131,20 +136,25 @@ class TestSaveLoad(TestBase):
         paddle.seed(self.SEED)
         np.random.seed(self.SEED)
         model = self.create_model(use_ipu)
-        optim = paddle.optimizer.Adam(learning_rate=0.01,
-                                      parameters=model.parameters())
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=model.parameters()
+        )
         model_path = '{}/model_state_dict_{}.pdparams'.format(
-            self.save_path, 'ipu' if use_ipu else 'cpu')
+            self.save_path, 'ipu' if use_ipu else 'cpu'
+        )
         optim_path = '{}/optim_state_dict_{}.pdopt'.format(
-            self.save_path, 'ipu' if use_ipu else 'cpu')
+            self.save_path, 'ipu' if use_ipu else 'cpu'
+        )
 
         if use_ipu:
             paddle.set_device('ipu')
             ipu_strategy = paddle.static.IpuStrategy()
-            ipu_strategy.set_graph_config(num_ipus=1,
-                                          is_training=True,
-                                          micro_batch_size=1,
-                                          enable_manual_shard=False)
+            ipu_strategy.set_graph_config(
+                num_ipus=1,
+                is_training=True,
+                micro_batch_size=1,
+                enable_manual_shard=False,
+            )
             ipu_strategy.set_optimizer(optim)
 
         epochs = 100
@@ -182,7 +192,6 @@ class TestSaveLoad(TestBase):
 
 
 class TestPatch(IPUD2STest):
-
     def setUp(cls):
         paddle.disable_static()
 
@@ -201,16 +210,16 @@ class TestPatch(IPUD2STest):
 
 
 class TestWithoutIdentityLoss1(TestBase):
-
     def create_model(self, use_ipu=False):
-        return SimpleLayer(loss_op=self.loss_op,
-                           use_softmax=True,
-                           use_reduction=True,
-                           use_identity_loss=False)
+        return SimpleLayer(
+            loss_op=self.loss_op,
+            use_softmax=True,
+            use_reduction=True,
+            use_identity_loss=False,
+        )
 
 
 class TestWithoutIdentityLoss2(TestBase):
-
     def set_op_attrs(self):
         self.loss_op = paddle.fluid.layers.softmax_with_cross_entropy
 
@@ -219,14 +228,15 @@ class TestWithoutIdentityLoss2(TestBase):
         self.label = paddle.randint(0, 10, shape=[8, 1], dtype='int64')
 
     def create_model(self, use_ipu=False):
-        return SimpleLayer(loss_op=self.loss_op,
-                           use_softmax=False,
-                           use_reduction=True,
-                           use_identity_loss=False)
+        return SimpleLayer(
+            loss_op=self.loss_op,
+            use_softmax=False,
+            use_reduction=True,
+            use_identity_loss=False,
+        )
 
 
 class TestWithoutIdentityLoss3(TestBase):
-
     def set_op_attrs(self):
         self.loss_op = partial(paddle.fluid.layers.kldiv_loss, reduction="none")
 
@@ -235,14 +245,15 @@ class TestWithoutIdentityLoss3(TestBase):
         self.label = paddle.rand(shape=[8, 81], dtype='float32')
 
     def create_model(self, use_ipu=False):
-        return SimpleLayer(loss_op=self.loss_op,
-                           use_softmax=True,
-                           use_reduction=True,
-                           use_identity_loss=False)
+        return SimpleLayer(
+            loss_op=self.loss_op,
+            use_softmax=True,
+            use_reduction=True,
+            use_identity_loss=False,
+        )
 
 
 class TestWithoutIdentityLoss4(TestBase):
-
     def set_op_attrs(self):
         self.loss_op = paddle.nn.functional.binary_cross_entropy
 
@@ -251,27 +262,31 @@ class TestWithoutIdentityLoss4(TestBase):
         self.label = paddle.rand(shape=[8, 81], dtype='float32')
 
     def create_model(self, use_ipu=False):
-        return SimpleLayer(loss_op=self.loss_op,
-                           use_softmax=True,
-                           use_reduction=False,
-                           use_identity_loss=False)
+        return SimpleLayer(
+            loss_op=self.loss_op,
+            use_softmax=True,
+            use_reduction=False,
+            use_identity_loss=False,
+        )
 
 
 class TestWithoutIdentityLoss5(TestBase):
-
     def set_op_attrs(self):
         self.loss_op = paddle.fluid.layers.sigmoid_cross_entropy_with_logits
 
     def set_data_feed(self):
         self.data = paddle.uniform((8, 3, 10, 10), dtype='float32')
-        self.label = paddle.randint(0, 10, shape=[8, 81],
-                                    dtype='int64').astype('float32')
+        self.label = paddle.randint(0, 10, shape=[8, 81], dtype='int64').astype(
+            'float32'
+        )
 
     def create_model(self, use_ipu=False):
-        return SimpleLayer(loss_op=self.loss_op,
-                           use_softmax=True,
-                           use_reduction=True,
-                           use_identity_loss=False)
+        return SimpleLayer(
+            loss_op=self.loss_op,
+            use_softmax=True,
+            use_reduction=True,
+            use_identity_loss=False,
+        )
 
 
 if __name__ == "__main__":

@@ -11,8 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -23,12 +21,13 @@ from paddle.fluid.framework import Program, program_guard
 
 
 class TrilTriuOpDefaultTest(OpTest):
-    """ the base class of other op testcases
-    """
+    """the base class of other op testcases"""
 
     def setUp(self):
         self.initTestCase()
-        self.python_api = paddle.tril if self.real_op_type == 'tril' else paddle.triu
+        self.python_api = (
+            paddle.tril if self.real_op_type == 'tril' else paddle.triu
+        )
         self.real_np_op = getattr(np, self.real_op_type)
 
         self.op_type = "tril_triu"
@@ -38,9 +37,9 @@ class TrilTriuOpDefaultTest(OpTest):
             'lower': True if self.real_op_type == 'tril' else False,
         }
         self.outputs = {
-            'Out':
-            self.real_np_op(self.X, self.diagonal)
-            if self.diagonal else self.real_np_op(self.X)
+            'Out': self.real_np_op(self.X, self.diagonal)
+            if self.diagonal
+            else self.real_np_op(self.X)
         }
 
     def test_check_output(self):
@@ -61,27 +60,29 @@ def case_generator(op_type, Xshape, diagonal, expected):
     If arg`expercted` is 'success', it will register an Optest case and expect to pass.
     Otherwise, it will register an API case and check the expect failure.
     """
-    cls_name = "{0}_{1}_shape_{2}_diag_{3}".format(expected, op_type, Xshape,
-                                                   diagonal)
+    cls_name = "{0}_{1}_shape_{2}_diag_{3}".format(
+        expected, op_type, Xshape, diagonal
+    )
     errmsg = {
-        "diagonal: TypeError":
-        "diagonal in {} must be a python Int".format(op_type),
-        "input: ValueError":
-        "x shape in {} must be at least 2-D".format(op_type),
+        "diagonal: TypeError": "diagonal in {} must be a python Int".format(
+            op_type
+        ),
+        "input: ValueError": "x shape in {} must be at least 2-D".format(
+            op_type
+        ),
     }
 
     class FailureCase(unittest.TestCase):
-
         def test_failure(self):
             paddle.enable_static()
 
             data = fluid.data(shape=Xshape, dtype='float64', name=cls_name)
-            with self.assertRaisesRegexp(eval(expected.split(':')[-1]),
-                                         errmsg[expected]):
+            with self.assertRaisesRegexp(
+                eval(expected.split(':')[-1]), errmsg[expected]
+            ):
                 getattr(tensor, op_type)(x=data, diagonal=diagonal)
 
     class SuccessCase(TrilTriuOpDefaultTest):
-
         def initTestCase(self):
             paddle.enable_static()
 
@@ -106,15 +107,13 @@ cases = {
         (20, 20): [
             '2020',
             [20],
-            {
-                20: 20
-            },
+            {20: 20},
             (20, 20),
             20.20,
         ],  # str, list, dict, tuple, float
     },
     'input: ValueError': {
-        (2020, ): [None],
+        (2020,): [None],
     },
 }
 for _op_type in ['tril', 'triu']:
@@ -123,12 +122,15 @@ for _op_type in ['tril', 'triu']:
             list(
                 map(
                     lambda _diagonal: case_generator(
-                        _op_type, _Xshape, _diagonal, _expected), _diaglist))
+                        _op_type, _Xshape, _diagonal, _expected
+                    ),
+                    _diaglist,
+                )
+            )
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):
-    """ test case by using API and has -1 dimension 
-    """
+    """test case by using API and has -1 dimension"""
 
     def test_api(self):
         paddle.enable_static()
@@ -142,16 +144,19 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 x = fluid.data(shape=[1, 9, -1, 4], dtype=dtype, name='x')
                 tril_out, triu_out = tensor.tril(x), tensor.triu(x)
 
-                place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-                ) else fluid.CPUPlace()
+                place = (
+                    fluid.CUDAPlace(0)
+                    if fluid.core.is_compiled_with_cuda()
+                    else fluid.CPUPlace()
+                )
                 exe = fluid.Executor(place)
                 tril_out, triu_out = exe.run(
                     fluid.default_main_program(),
                     feed={"x": data},
                     fetch_list=[tril_out, triu_out],
                 )
-                self.assertTrue(np.allclose(tril_out, np.tril(data)))
-                self.assertTrue(np.allclose(triu_out, np.triu(data)))
+                np.testing.assert_allclose(tril_out, np.tril(data), rtol=1e-05)
+                np.testing.assert_allclose(triu_out, np.triu(data), rtol=1e-05)
 
     def test_api_with_dygraph(self):
         paddle.disable_static()
@@ -161,10 +166,12 @@ class TestTrilTriuOpAPI(unittest.TestCase):
             with fluid.dygraph.guard():
                 data = np.random.random([1, 9, 9, 4]).astype(dtype)
                 x = fluid.dygraph.to_variable(data)
-                tril_out, triu_out = tensor.tril(x).numpy(), tensor.triu(
-                    x).numpy()
-                self.assertTrue(np.allclose(tril_out, np.tril(data)))
-                self.assertTrue(np.allclose(triu_out, np.triu(data)))
+                tril_out, triu_out = (
+                    tensor.tril(x).numpy(),
+                    tensor.triu(x).numpy(),
+                )
+                np.testing.assert_allclose(tril_out, np.tril(data), rtol=1e-05)
+                np.testing.assert_allclose(triu_out, np.triu(data), rtol=1e-05)
 
     def test_fluid_api(self):
         paddle.enable_static()
@@ -178,12 +185,17 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 x = fluid.data(shape=[1, 9, -1, 4], dtype=dtype, name='x')
                 triu_out = fluid.layers.triu(x)
 
-                place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-                ) else fluid.CPUPlace()
+                place = (
+                    fluid.CUDAPlace(0)
+                    if fluid.core.is_compiled_with_cuda()
+                    else fluid.CPUPlace()
+                )
                 exe = fluid.Executor(place)
-                triu_out = exe.run(fluid.default_main_program(),
-                                   feed={"x": data},
-                                   fetch_list=[triu_out])
+                triu_out = exe.run(
+                    fluid.default_main_program(),
+                    feed={"x": data},
+                    fetch_list=[triu_out],
+                )
 
 
 if __name__ == '__main__':

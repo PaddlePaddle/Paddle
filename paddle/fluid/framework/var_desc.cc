@@ -221,11 +221,11 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
   PADDLE_ENFORCE_EQ(
       desc_.has_type(),
       true,
-      platform::errors::NotFound("The variable's type was not be set."));
+      platform::errors::NotFound("The variable's type was not set."));
   PADDLE_ENFORCE_EQ(
       desc_.type().has_type(),
       true,
-      platform::errors::NotFound("The variable's type was not be set."));
+      platform::errors::NotFound("The variable's type was not set."));
   switch (desc_.type().type()) {
     case proto::VarType::SELECTED_ROWS:
       return desc_.type().selected_rows();
@@ -237,6 +237,8 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
       return desc_.type().strings();
     case proto::VarType::VOCAB:
       return desc_.type().vocab();
+    case proto::VarType::SPARSE_COO:
+      return desc_.type().sparse_coo();
     default:
       PADDLE_THROW(platform::errors::Unavailable(
           "Getting 'tensor_desc' is not supported by the %s type variable.",
@@ -284,6 +286,8 @@ proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
       return desc_.mutable_type()->mutable_strings();
     case proto::VarType::VOCAB:
       return desc_.mutable_type()->mutable_vocab();
+    case proto::VarType::SPARSE_COO:
+      return desc_.mutable_type()->mutable_sparse_coo();
     default:
       PADDLE_THROW(
           platform::errors::Unavailable("Getting 'mutable_tensor_desc' is not "

@@ -592,12 +592,12 @@ struct FC : public PatternBase {
 // op: fc
 // named node:
 // fc
-// w, bias, output
+// w, bias, output, residual_data
 struct FCMKLDNN : public PatternBase {
   FCMKLDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc_mkldnn") {}
 
-  PDNode* operator()(PDNode* x, bool with_bias);
+  PDNode* operator()(bool with_residual_data);
 
   // declare operator node's name
   PATTERN_DECL_NODE(fc);
@@ -606,6 +606,7 @@ struct FCMKLDNN : public PatternBase {
   PATTERN_DECL_NODE(weights);
   PATTERN_DECL_NODE(bias);
   PATTERN_DECL_NODE(output);
+  PATTERN_DECL_NODE(residual_data);
 };
 
 // Embedding
@@ -1191,12 +1192,13 @@ struct MatmulWithInputOps : public PatternBase {
   MatmulWithInputOps(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "matmul_with_input_ops") {}
 
-  PDNode* operator()();
+  PDNode* operator()(bool with_residual);
   PATTERN_DECL_NODE(prev_op_x);
   PATTERN_DECL_NODE(prev_op_y);
   PATTERN_DECL_NODE(matmul_in_x);
   PATTERN_DECL_NODE(matmul_in_y);
   PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_residual_data);
   PATTERN_DECL_NODE(matmul_out);
 };
 
@@ -1226,39 +1228,6 @@ struct Concat : public PatternBase {
 
   PATTERN_DECL_NODE(concat_op);
   PATTERN_DECL_NODE(concat_out);
-};
-
-// Concat + ReLU
-// named nodes:
-// concat_op, concat_out, relu_op, relu_out
-struct ConcatReLU : public PatternBase {
-  ConcatReLU(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "concat_relu") {}
-
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(concat_op);
-  PATTERN_DECL_NODE(concat_out);
-  PATTERN_DECL_NODE(relu_op);
-  PATTERN_DECL_NODE(relu_out);
-};
-
-// Conv + Concat + ReLU
-// named nodes:
-// conv_op, conv_out
-// concat_op, concat_out, relu_op, relu_out
-struct ConvConcatReLU : public PatternBase {
-  ConvConcatReLU(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "conv_concat_relu") {}
-
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(conv_op);
-  PATTERN_DECL_NODE(conv_out);
-  PATTERN_DECL_NODE(concat_op);
-  PATTERN_DECL_NODE(concat_out);
-  PATTERN_DECL_NODE(relu_op);
-  PATTERN_DECL_NODE(relu_out);
 };
 
 // Op + Requant
@@ -1375,6 +1344,58 @@ struct PriorBox : public PatternBase {
   PATTERN_DECL_NODE(prior_box_image);
   PATTERN_DECL_NODE(prior_box_boxes);
   PATTERN_DECL_NODE(prior_box_variances);
+};
+
+// vit_attention
+struct VitAttention : public PatternBase {
+  VitAttention(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "vit_attention") {}
+
+  PDNode* operator()(PDNode* in);
+
+  PATTERN_DECL_NODE(matmul0_op);
+  PATTERN_DECL_NODE(matmul0_in_y);
+  PATTERN_DECL_NODE(matmul0_out);
+
+  PATTERN_DECL_NODE(elementwise0_op);
+  PATTERN_DECL_NODE(elementwise0_in_y);
+  PATTERN_DECL_NODE(elementwise0_out);
+
+  PATTERN_DECL_NODE(reshape1_op);
+  PATTERN_DECL_NODE(reshape1_out);
+
+  PATTERN_DECL_NODE(transpose1_op);
+  PATTERN_DECL_NODE(transpose1_out);
+
+  PATTERN_DECL_NODE(slice1_op);
+  PATTERN_DECL_NODE(slice1_out);
+
+  PATTERN_DECL_NODE(slice2_op);
+  PATTERN_DECL_NODE(slice2_out);
+
+  PATTERN_DECL_NODE(slice3_op);
+  PATTERN_DECL_NODE(slice3_out);
+
+  PATTERN_DECL_NODE(matmul2_op);
+  PATTERN_DECL_NODE(matmul2_out);
+
+  PATTERN_DECL_NODE(matmul1_op);
+  PATTERN_DECL_NODE(matmul1_out);
+
+  PATTERN_DECL_NODE(transpose2_op);
+  PATTERN_DECL_NODE(transpose2_out);
+
+  PATTERN_DECL_NODE(scale1_op);
+  PATTERN_DECL_NODE(scale1_out);
+
+  PATTERN_DECL_NODE(softmax1_op);
+  PATTERN_DECL_NODE(softmax1_out);
+
+  PATTERN_DECL_NODE(transpose3_op);
+  PATTERN_DECL_NODE(transpose3_out);
+
+  PATTERN_DECL_NODE(reshape2_op);
+  PATTERN_DECL_NODE(reshape2_out);
 };
 
 // Conv + ElementwiseAdd + an activation
@@ -1891,6 +1912,67 @@ struct LayerNorm : public PatternBase {
   PATTERN_DECL_NODE(shift_out);
 };
 
+//
+// \brief   Pattern looking for subgraph representing layernorm_shift_partition
+//          operation with shift_size = 0.
+//
+struct LayernormShiftPartitionPattern : public PatternBase {
+  LayernormShiftPartitionPattern(PDPattern* pattern,
+                                 const std::string& name_scope,
+                                 bool with_roll)
+      : PatternBase(pattern, name_scope, "layernorm_shift_partition"),
+        with_roll_(with_roll) {}
+
+  PDNode* operator()();
+  bool with_roll_;
+  PATTERN_DECL_NODE(layer_norm_in);
+  PATTERN_DECL_NODE(layer_norm_op);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_out);
+  PATTERN_DECL_NODE(reshape1_op);
+  PATTERN_DECL_NODE(reshape1_out);
+  // optional op roll
+  PATTERN_DECL_NODE(roll1_op);
+  PATTERN_DECL_NODE(roll1_out);
+
+  PATTERN_DECL_NODE(reshape2_op);
+  PATTERN_DECL_NODE(reshape2_out);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(reshape3_op);
+  PATTERN_DECL_NODE(reshape3_out);
+  PATTERN_DECL_NODE(reshape4_op);
+  PATTERN_DECL_NODE(reshape4_out);
+};
+
+// pattern for merge_layernorm
+struct MergeLayernormPattern : public PatternBase {
+  MergeLayernormPattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "merge_layernorm") {}
+
+  PDNode* operator()(PDNode* reshape2_in);
+
+  PATTERN_DECL_NODE(reshape2_00_op);
+  PATTERN_DECL_NODE(reshape2_00_out);
+  PATTERN_DECL_NODE(strided_slice_10_op);
+  PATTERN_DECL_NODE(strided_slice_10_out);
+  PATTERN_DECL_NODE(strided_slice_11_op);
+  PATTERN_DECL_NODE(strided_slice_11_out);
+  PATTERN_DECL_NODE(strided_slice_12_op);
+  PATTERN_DECL_NODE(strided_slice_12_out);
+  PATTERN_DECL_NODE(strided_slice_13_op);
+  PATTERN_DECL_NODE(strided_slice_13_out);
+  PATTERN_DECL_NODE(concat_20_op);
+  PATTERN_DECL_NODE(concat_20_out);
+  PATTERN_DECL_NODE(reshape2_30_op);
+  PATTERN_DECL_NODE(reshape2_30_out);
+  PATTERN_DECL_NODE(layernorm_40_op);
+  PATTERN_DECL_NODE(layernorm_40_in_bias);
+  PATTERN_DECL_NODE(layernorm_40_in_scale);
+  PATTERN_DECL_NODE(layernorm_40_out);
+};
+
 // Add support int8 flag
 struct AddSupportInt8 : public PatternBase {
   AddSupportInt8(PDPattern* pattern, const std::string& name_scope)
@@ -1907,6 +1989,14 @@ struct AddSupportInt8 : public PatternBase {
 #define IR_NODE_LINK_TO(a, b) \
   a->outputs.push_back(b);    \
   b->inputs.push_back(a);
+
+// UnLink 2 ir::Nodes from each other.
+#define IR_NODE_UNLINK(a, b)                                                  \
+  a->outputs.erase(                                                           \
+      std::remove(std::begin(a->outputs), std::end(a->outputs), b),           \
+      std::end(a->outputs));                                                  \
+  b->inputs.erase(std::remove(std::begin(b->inputs), std::end(b->inputs), a), \
+                  std::end(b->inputs));
 
 // Set the out_var as the output of the op
 #define IR_OP_VAR_LINK(op, out_var) \

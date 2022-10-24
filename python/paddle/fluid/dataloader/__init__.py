@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from . import dataset
 from .dataset import *
 
@@ -26,7 +24,9 @@ from .dataloader_iter import *
 from . import sampler
 from .sampler import *
 
-__all__ = dataset.__all__ \
-        + batch_sampler.__all__ \
-        + dataloader_iter.__all__ \
-        + sampler.__all__
+__all__ = (
+    dataset.__all__
+    + batch_sampler.__all__
+    + dataloader_iter.__all__
+    + sampler.__all__
+)

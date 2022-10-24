@@ -12,17 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import sys
-import math
 import paddle
-import paddle.fluid as fluid
 from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
-import copy
 from test_generate_proposals_op import clip_tiled_boxes, box_coder, nms
 
 
@@ -40,7 +34,11 @@ def python_generate_proposals_v2(
     pixel_offset=False,
     return_rois_num=True,
 ):
-    rpn_rois, rpn_roi_probs, rpn_rois_num = paddle.vision.ops.generate_proposals(
+    (
+        rpn_rois,
+        rpn_roi_probs,
+        rpn_rois_num,
+    ) = paddle.vision.ops.generate_proposals(
         scores,
         bbox_deltas,
         img_size,
@@ -52,13 +50,24 @@ def python_generate_proposals_v2(
         min_size=min_size,
         eta=eta,
         pixel_offset=pixel_offset,
-        return_rois_num=return_rois_num)
+        return_rois_num=return_rois_num,
+    )
     return rpn_rois, rpn_roi_probs
 
 
-def generate_proposals_v2_in_python(scores, bbox_deltas, im_shape, anchors,
-                                    variances, pre_nms_topN, post_nms_topN,
-                                    nms_thresh, min_size, eta, pixel_offset):
+def generate_proposals_v2_in_python(
+    scores,
+    bbox_deltas,
+    im_shape,
+    anchors,
+    variances,
+    pre_nms_topN,
+    post_nms_topN,
+    nms_thresh,
+    min_size,
+    eta,
+    pixel_offset,
+):
     all_anchors = anchors.reshape(-1, 4)
     rois = np.empty((0, 5), dtype=np.float32)
     roi_probs = np.empty((0, 1), dtype=np.float32)
@@ -69,10 +78,18 @@ def generate_proposals_v2_in_python(scores, bbox_deltas, im_shape, anchors,
     num_images = scores.shape[0]
     for img_idx in range(num_images):
         img_i_boxes, img_i_probs = proposal_for_one_image(
-            im_shape[img_idx, :], all_anchors, variances,
-            bbox_deltas[img_idx, :, :, :], scores[img_idx, :, :, :],
-            pre_nms_topN, post_nms_topN, nms_thresh, min_size, eta,
-            pixel_offset)
+            im_shape[img_idx, :],
+            all_anchors,
+            variances,
+            bbox_deltas[img_idx, :, :, :],
+            scores[img_idx, :, :, :],
+            pre_nms_topN,
+            post_nms_topN,
+            nms_thresh,
+            min_size,
+            eta,
+            pixel_offset,
+        )
         rois_num.append(img_i_probs.shape[0])
         rpn_rois.append(img_i_boxes)
         rpn_roi_probs.append(img_i_probs)
@@ -80,9 +97,19 @@ def generate_proposals_v2_in_python(scores, bbox_deltas, im_shape, anchors,
     return rpn_rois, rpn_roi_probs, rois_num
 
 
-def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
-                           scores, pre_nms_topN, post_nms_topN, nms_thresh,
-                           min_size, eta, pixel_offset):
+def proposal_for_one_image(
+    im_shape,
+    all_anchors,
+    variances,
+    bbox_deltas,
+    scores,
+    pre_nms_topN,
+    post_nms_topN,
+    nms_thresh,
+    min_size,
+    eta,
+    pixel_offset,
+):
     # Transpose and reshape predicted bbox transformations to get them
     # into the same order as the anchors:
     #   - bbox deltas will be (4 * A, H, W) format from conv output
@@ -130,11 +157,13 @@ def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
     # take post_nms_topN (e.g. 1000)
     # return the top proposals
     if nms_thresh > 0:
-        keep = nms(boxes=proposals,
-                   scores=scores,
-                   nms_threshold=nms_thresh,
-                   eta=eta,
-                   pixel_offset=pixel_offset)
+        keep = nms(
+            boxes=proposals,
+            scores=scores,
+            nms_threshold=nms_thresh,
+            eta=eta,
+            pixel_offset=pixel_offset,
+        )
         if post_nms_topN > 0 and post_nms_topN < len(keep):
             keep = keep[:post_nms_topN]
         proposals = proposals[keep, :]
@@ -144,25 +173,27 @@ def proposal_for_one_image(im_shape, all_anchors, variances, bbox_deltas,
 
 
 def filter_boxes(boxes, min_size, im_shape, pixel_offset=True):
-    """Only keep boxes with both sides >= min_size and center within the image.
-    """
+    """Only keep boxes with both sides >= min_size and center within the image."""
     # Scale min_size to match image scale
     min_size = max(min_size, 1.0)
     offset = 1 if pixel_offset else 0
     ws = boxes[:, 2] - boxes[:, 0] + offset
     hs = boxes[:, 3] - boxes[:, 1] + offset
     if pixel_offset:
-        x_ctr = boxes[:, 0] + ws / 2.
-        y_ctr = boxes[:, 1] + hs / 2.
-        keep = np.where((ws >= min_size) & (hs >= min_size)
-                        & (x_ctr < im_shape[1]) & (y_ctr < im_shape[0]))[0]
+        x_ctr = boxes[:, 0] + ws / 2.0
+        y_ctr = boxes[:, 1] + hs / 2.0
+        keep = np.where(
+            (ws >= min_size)
+            & (hs >= min_size)
+            & (x_ctr < im_shape[1])
+            & (y_ctr < im_shape[0])
+        )[0]
     else:
         keep = np.where((ws >= min_size) & (hs >= min_size))[0]
     return keep
 
 
 class TestGenerateProposalsV2Op(OpTest):
-
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -172,7 +203,7 @@ class TestGenerateProposalsV2Op(OpTest):
             'BboxDeltas': self.bbox_deltas,
             'ImShape': self.im_shape.astype(np.float32),
             'Anchors': self.anchors,
-            'Variances': self.variances
+            'Variances': self.variances,
         }
 
         self.attrs = {
@@ -202,7 +233,7 @@ class TestGenerateProposalsV2Op(OpTest):
         self.post_nms_topN = 5000  # train 6000, test 1000
         self.nms_thresh = 0.7
         self.min_size = 3.0
-        self.eta = 1.
+        self.eta = 1.0
         self.pixel_offset = True
 
     def init_test_input(self):
@@ -211,26 +242,43 @@ class TestGenerateProposalsV2Op(OpTest):
         layer_h = 16
         layer_w = 16
         input_feat = np.random.random(
-            (batch_size, input_channels, layer_h, layer_w)).astype('float32')
+            (batch_size, input_channels, layer_h, layer_w)
+        ).astype('float32')
         self.anchors, self.variances = anchor_generator_in_python(
             input_feat=input_feat,
-            anchor_sizes=[16., 32.],
+            anchor_sizes=[16.0, 32.0],
             aspect_ratios=[0.5, 1.0],
             variances=[1.0, 1.0, 1.0, 1.0],
             stride=[16.0, 16.0],
-            offset=0.5)
+            offset=0.5,
+        )
         self.im_shape = np.array([[64, 64]]).astype('float32')
         num_anchors = self.anchors.shape[2]
         self.scores = np.random.random(
-            (batch_size, num_anchors, layer_h, layer_w)).astype('float32')
+            (batch_size, num_anchors, layer_h, layer_w)
+        ).astype('float32')
         self.bbox_deltas = np.random.random(
-            (batch_size, num_anchors * 4, layer_h, layer_w)).astype('float32')
+            (batch_size, num_anchors * 4, layer_h, layer_w)
+        ).astype('float32')
 
     def init_test_output(self):
-        self.rpn_rois, self.rpn_roi_probs, self.rois_num = generate_proposals_v2_in_python(
-            self.scores, self.bbox_deltas, self.im_shape, self.anchors,
-            self.variances, self.pre_nms_topN, self.post_nms_topN,
-            self.nms_thresh, self.min_size, self.eta, self.pixel_offset)
+        (
+            self.rpn_rois,
+            self.rpn_roi_probs,
+            self.rois_num,
+        ) = generate_proposals_v2_in_python(
+            self.scores,
+            self.bbox_deltas,
+            self.im_shape,
+            self.anchors,
+            self.variances,
+            self.pre_nms_topN,
+            self.post_nms_topN,
+            self.nms_thresh,
+            self.min_size,
+            self.eta,
+            self.pixel_offset,
+        )
 
 
 # class TestGenerateProposalsV2OpNoBoxLeft(TestGenerateProposalsV2Op):
@@ -297,9 +345,9 @@ class TestGenerateProposalsV2Op(OpTest):
 #             pre_nms_top_n=10,
 #             post_nms_top_n=5,
 #             return_rois_num=True)
-#         self.assertTrue(np.allclose(self.roi_expected, rois.numpy()))
-#         self.assertTrue(np.allclose(self.roi_probs_expected, roi_probs.numpy()))
-#         self.assertTrue(np.allclose(self.rois_num_expected, rois_num.numpy()))
+#         np.testing.assert_allclose(self.roi_expected, rois.numpy(), rtol=1e-5)
+#         np.testing.assert_allclose(self.roi_probs_expected, roi_probs.numpy(), rtol=1e-5)
+#         np.testing.assert_allclose(self.rois_num_expected, rois_num.numpy(), rtol=1e-5)
 
 #     def test_static(self):
 #         paddle.enable_static()
@@ -340,10 +388,9 @@ class TestGenerateProposalsV2Op(OpTest):
 #             fetch_list=[rois.name, roi_probs.name, rois_num.name],
 #             return_numpy=False)
 
-#         self.assertTrue(np.allclose(self.roi_expected, np.array(rois)))
-#         self.assertTrue(
-#             np.allclose(self.roi_probs_expected, np.array(roi_probs)))
-#         self.assertTrue(np.allclose(self.rois_num_expected, np.array(rois_num)))
+#         np.testing.assert_allclose(self.roi_expected, np.array(rois), rtol=1e-5)
+#         np.testing.assert_allclose(self.roi_probs_expected, np.array(roi_probs), rtol=1e-5)
+#         np.testing.assert_allclose(self.rois_num_expected, np.array(rois_num), rtol=1e-5)
 
 if __name__ == '__main__':
     paddle.enable_static()

@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from paddle.distributed.fleet.utils.ps_util import DistributedInfer
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
 import paddle
+
 """
     high level unit test for distribute fleet.
 """
@@ -27,9 +26,7 @@ import os
 import sys
 import subprocess
 
-import six
 import shutil
-import numpy as np
 import argparse
 from contextlib import closing
 import socket
@@ -50,9 +47,9 @@ DIST_UT_PORT = 0
 
 class FleetDistRunnerBase(object):
     """
-        run_pserver,run_trainer : after init role, using transpiler split program
-        net : implment by child class, the network of model
-        do training : exe run program
+    run_pserver,run_trainer : after init role, using transpiler split program
+    net : implment by child class, the network of model
+    do training : exe run program
     """
 
     def __init__(self):
@@ -68,7 +65,8 @@ class FleetDistRunnerBase(object):
                 current_id=args.current_id,
                 role=role_maker.Role.SERVER,
                 worker_endpoints=args.trainer_endpoints.split(","),
-                server_endpoints=args.endpoints.split(","))
+                server_endpoints=args.endpoints.split(","),
+            )
         else:
             role = role_maker.UserDefinedRoleMaker(
                 is_collective=False,
@@ -77,7 +75,8 @@ class FleetDistRunnerBase(object):
                 current_id=args.current_id,
                 role=role_maker.Role.WORKER,
                 worker_endpoints=args.trainer_endpoints.split(","),
-                server_endpoints=args.endpoints.split(","))
+                server_endpoints=args.endpoints.split(","),
+            )
         self.role = role
         return role
 
@@ -104,14 +103,13 @@ class FleetDistRunnerBase(object):
         debug = int(os.getenv("Debug", "0"))
         # TODO(update strategy to support dump params)
         if False:  # debug:
-            self.strategy.set_debug_opt({
-                "dump_param":
-                self.dump_param,
-                "dump_fields":
-                self.dump_fields,
-                "dump_fields_path":
-                self.dump_fields_path
-            })
+            self.strategy.set_debug_opt(
+                {
+                    "dump_param": self.dump_param,
+                    "dump_fields": self.dump_fields,
+                    "dump_fields_path": self.dump_fields_path,
+                }
+            )
 
         return self.strategy
 
@@ -130,7 +128,8 @@ class FleetDistRunnerBase(object):
         use_decay = int(os.getenv("USE_DECAY", "0"))
         if use_decay:
             scheduler = paddle.optimizer.lr.ExponentialDecay(
-                learning_rate=LEARNING_RATE, gamma=0.999, verbose=True)
+                learning_rate=LEARNING_RATE, gamma=0.999, verbose=True
+            )
             optimizer = fluid.optimizer.SGD(scheduler, grad_clip=grad_clip)
             """
             # learning rate decay method before 2.0
@@ -139,7 +138,7 @@ class FleetDistRunnerBase(object):
                     learning_rate=LEARNING_RATE,
                     decay_steps=500,
                     decay_rate=0.969,
-                    staircase=True)) 
+                    staircase=True))
             """
         else:
             optimizer = fluid.optimizer.SGD(LEARNING_RATE, grad_clip=grad_clip)
@@ -158,7 +157,8 @@ class FleetDistRunnerBase(object):
 
     def net(self, args, batch_size=4, lr=0.01):
         raise NotImplementedError(
-            "get_model should be implemented by child classes.")
+            "get_model should be implemented by child classes."
+        )
 
     def get_executor(self):
         if self._exe is None:
@@ -172,21 +172,24 @@ class FleetDistRunnerBase(object):
 
     def do_dataset_training(self, fleet):
         raise NotImplementedError(
-            "do_dataset_training should be implemented by child classes.")
+            "do_dataset_training should be implemented by child classes."
+        )
 
     def do_pyreader_training(self, fleet):
         raise NotImplementedError(
-            "do_pyreader_training should be implemented by child classes.")
+            "do_pyreader_training should be implemented by child classes."
+        )
 
     def do_distributed_testing(self, fleet):
         raise NotImplementedError(
-            "do_distributed_testing should be implemented by child classes.")
+            "do_distributed_testing should be implemented by child classes."
+        )
 
 
 class TestFleetBase(unittest.TestCase):
     """
-        start_pserver,start_trainer : add start cmd to test
-        run_cluster : using multi process to test distribute program
+    start_pserver,start_trainer : add start cmd to test
+    run_cluster : using multi process to test distribute program
     """
 
     def _setup_config(self):
@@ -214,15 +217,23 @@ class TestFleetBase(unittest.TestCase):
         if DIST_UT_PORT:
             print("set begin_port:", DIST_UT_PORT)
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-                DIST_UT_PORT, DIST_UT_PORT + 1)
+                DIST_UT_PORT,
+                DIST_UT_PORT + 1,
+            )
             self._tr_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-                DIST_UT_PORT + 2, DIST_UT_PORT + 3)
+                DIST_UT_PORT + 2,
+                DIST_UT_PORT + 3,
+            )
             DIST_UT_PORT += 4
         else:
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-                self._find_free_port(), self._find_free_port())
+                self._find_free_port(),
+                self._find_free_port(),
+            )
             self._tr_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-                self._find_free_port(), self._find_free_port())
+                self._find_free_port(),
+                self._find_free_port(),
+            )
 
         self._python_interp = sys.executable
         self._geo_sgd_need_push_nums = 5
@@ -230,10 +241,10 @@ class TestFleetBase(unittest.TestCase):
         self._setup_config()
 
     def _find_free_port(self):
-
         def __free_port():
-            with closing(socket.socket(socket.AF_INET,
-                                       socket.SOCK_STREAM)) as s:
+            with closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ) as s:
                 s.bind(('', 0))
                 return s.getsockname()[1]
 
@@ -263,18 +274,24 @@ class TestFleetBase(unittest.TestCase):
         ps0_out = open(ps0_out_log, "wb+")
         ps1_out = open(ps1_out_log, "wb+")
 
-        ps0_proc = subprocess.Popen(ps0_cmd.strip().split(" "),
-                                    stdout=ps0_out,
-                                    stderr=ps0_err,
-                                    env=required_envs)
+        ps0_proc = subprocess.Popen(
+            ps0_cmd.strip().split(" "),
+            stdout=ps0_out,
+            stderr=ps0_err,
+            env=required_envs,
+        )
 
-        ps1_proc = subprocess.Popen(ps1_cmd.strip().split(" "),
-                                    stdout=ps1_out,
-                                    stderr=ps1_err,
-                                    env=required_envs)
+        ps1_proc = subprocess.Popen(
+            ps1_cmd.strip().split(" "),
+            stdout=ps1_out,
+            stderr=ps1_err,
+            env=required_envs,
+        )
 
-        return ((ps0_proc, ps0_out, ps0_err, ps0_out_log, ps0_err_log),
-                (ps1_proc, ps1_out, ps1_err, ps1_out_log, ps1_err_log))
+        return (
+            (ps0_proc, ps0_out, ps0_err, ps0_out_log, ps0_err_log),
+            (ps1_proc, ps1_out, ps1_err, ps1_out_log, ps1_err_log),
+        )
 
     def _start_trainer(self, cmd, required_envs):
         tr0_cmd, tr1_cmd = cmd.format(0), cmd.format(1)
@@ -296,18 +313,24 @@ class TestFleetBase(unittest.TestCase):
         tr0_out = open(tr0_out_log, "wb+")
         tr1_out = open(tr1_out_log, "wb+")
 
-        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(" "),
-                                    stdout=tr0_out,
-                                    stderr=tr0_err,
-                                    env=required_envs)
+        tr0_proc = subprocess.Popen(
+            tr0_cmd.strip().split(" "),
+            stdout=tr0_out,
+            stderr=tr0_err,
+            env=required_envs,
+        )
 
-        tr1_proc = subprocess.Popen(tr1_cmd.strip().split(" "),
-                                    stdout=tr1_out,
-                                    stderr=tr1_err,
-                                    env=required_envs)
+        tr1_proc = subprocess.Popen(
+            tr1_cmd.strip().split(" "),
+            stdout=tr1_out,
+            stderr=tr1_err,
+            env=required_envs,
+        )
 
-        return ((tr0_proc, tr0_out, tr0_err, tr0_out_log, tr0_err_log),
-                (tr1_proc, tr1_out, tr1_err, tr1_out_log, tr1_err_log))
+        return (
+            (tr0_proc, tr0_out, tr0_err, tr0_out_log, tr0_err_log),
+            (tr1_proc, tr1_out, tr1_err, tr1_out_log, tr1_err_log),
+        )
 
     def _run_cluster(self, model, envs):
         env = {'GRAD_CLIP': str(self._grad_clip_mode), 'WITH_DISTRIBUTE': 'ON'}
@@ -320,14 +343,30 @@ class TestFleetBase(unittest.TestCase):
         env.update(envs)
 
         tr_cmd = "{0} {1} --role trainer --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
-            python_path, model, self._ps_endpoints, self._tr_endpoints,
-            self._trainers, self._mode, self._geo_sgd_need_push_nums,
-            self._reader, gloo_path, self._need_test)
+            python_path,
+            model,
+            self._ps_endpoints,
+            self._tr_endpoints,
+            self._trainers,
+            self._mode,
+            self._geo_sgd_need_push_nums,
+            self._reader,
+            gloo_path,
+            self._need_test,
+        )
 
         ps_cmd = "{0} {1} --role pserver --endpoints {2} --trainer_endpoints {3} --current_id {{}} --trainers {4} --mode {5} --geo_sgd_need_push_nums {6} --reader {7} --gloo_path {8} --test {9}".format(
-            python_path, model, self._ps_endpoints, self._tr_endpoints,
-            self._trainers, self._mode, self._geo_sgd_need_push_nums,
-            self._reader, gloo_path, self._need_test)
+            python_path,
+            model,
+            self._ps_endpoints,
+            self._tr_endpoints,
+            self._trainers,
+            self._mode,
+            self._geo_sgd_need_push_nums,
+            self._reader,
+            gloo_path,
+            self._need_test,
+        )
 
         if self._model_dir:
             tr_cmd += " --model_dir {}".format(self._model_dir)
@@ -344,7 +383,7 @@ class TestFleetBase(unittest.TestCase):
         tr1_proc, tr1_out, tr1_err, tr1_out_log, tr1_err_log = tr1
 
         # Wait until trainer process terminate
-        #time_out = 120
+        # time_out = 120
         time_out = 60
         cur_time = 0
 
@@ -387,27 +426,41 @@ class TestFleetBase(unittest.TestCase):
 
         def catlog(logx):
             basename = os.path.basename(logx)
-            print("\n================== Error {} begin =====================".
-                  format(basename))
+            print(
+                "\n================== Error {} begin =====================".format(
+                    basename
+                )
+            )
             os.system("cat {}".format(logx))
-            print("================== Error {} end =====================\n".
-                  format(basename))
+            print(
+                "================== Error {} end =====================\n".format(
+                    basename
+                )
+            )
 
         if tr0_ret != 0 or tr1_ret != 0:
             if is_listen_failed(ps0_err) or is_listen_failed(ps1_err):
                 print("find parameter server port bind failed, skip the error")
                 tr0_ret, tr1_ret = 0, 0
             else:
-                for out, err in [(ps0_out_log, ps0_err_log),
-                                 (ps1_out_log, ps1_err_log),
-                                 (tr0_out_log, tr0_err_log),
-                                 (tr1_out_log, tr1_err_log)]:
+                for out, err in [
+                    (ps0_out_log, ps0_err_log),
+                    (ps1_out_log, ps1_err_log),
+                    (tr0_out_log, tr0_err_log),
+                    (tr1_out_log, tr1_err_log),
+                ]:
                     catlog(out)
                     catlog(err)
 
         for pipe in [
-                tr0_err, tr0_out, tr1_err, tr1_out, ps0_err, ps0_out, ps1_err,
-                ps1_out
+            tr0_err,
+            tr0_out,
+            tr1_err,
+            tr1_out,
+            ps0_err,
+            ps0_out,
+            ps1_err,
+            ps1_out,
         ]:
             pipe.close()
 
@@ -418,17 +471,15 @@ class TestFleetBase(unittest.TestCase):
 
         return 0, 0
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
+            "http_proxy": "",
         }
 
         required_envs.update(need_envs)
@@ -442,23 +493,20 @@ class TestFleetBase(unittest.TestCase):
 
 def runtime_main(test_class):
     parser = argparse.ArgumentParser(description='Run Fleet test.')
-    parser.add_argument('--role',
-                        type=str,
-                        required=True,
-                        choices=['pserver', 'trainer'])
+    parser.add_argument(
+        '--role', type=str, required=True, choices=['pserver', 'trainer']
+    )
     parser.add_argument('--endpoints', type=str, required=False, default="")
-    parser.add_argument('--trainer_endpoints',
-                        type=str,
-                        required=False,
-                        default="")
+    parser.add_argument(
+        '--trainer_endpoints', type=str, required=False, default=""
+    )
     parser.add_argument('--gloo_path', type=str, required=False, default="")
     parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--mode', type=str, required=False, default='geo')
-    parser.add_argument('--geo_sgd_need_push_nums',
-                        type=int,
-                        required=False,
-                        default=2)
+    parser.add_argument(
+        '--geo_sgd_need_push_nums', type=int, required=False, default=2
+    )
     parser.add_argument('--reader', type=str, required=False, default='dataset')
     parser.add_argument('--test', type=int, required=False, default=0)
     parser.add_argument('--model_dir', type=str, required=False, default="")
@@ -471,14 +519,17 @@ def runtime_main(test_class):
     if args.test and args.model_dir != "":
         avg_cost = model.net(args, is_train=False)
         dist_infer = DistributedInfer()
-        dist_infer.init_distributed_infer_env(exe=model.get_executor(),
-                                              loss=model.avg_cost,
-                                              role_maker=role,
-                                              dirname=args.model_dir)
+        dist_infer.init_distributed_infer_env(
+            exe=model.get_executor(),
+            loss=model.avg_cost,
+            role_maker=role,
+            dirname=args.model_dir,
+        )
 
         if fleet.is_worker():
             with paddle.static.program_guard(
-                    main_program=dist_infer.get_dist_infer_program()):
+                main_program=dist_infer.get_dist_infer_program()
+            ):
                 model.do_distributed_testing(fleet)
                 fleet.stop_worker()
             return
@@ -503,13 +554,17 @@ def runtime_main(test_class):
             test_origin_program = paddle.static.Program()
             test_startup_program = paddle.static.Program()
             with paddle.static.program_guard(
-                    main_program=test_origin_program,
-                    startup_program=test_startup_program):
+                main_program=test_origin_program,
+                startup_program=test_startup_program,
+            ):
                 with paddle.utils.unique_name.guard():
                     avg_cost = model.net(args, is_train=False)
-            dist_infer = DistributedInfer(main_program=test_origin_program,
-                                          startup_program=test_startup_program)
+            dist_infer = DistributedInfer(
+                main_program=test_origin_program,
+                startup_program=test_startup_program,
+            )
             with paddle.static.program_guard(
-                    main_program=dist_infer.get_dist_infer_program()):
+                main_program=dist_infer.get_dist_infer_program()
+            ):
                 model.do_distributed_testing(fleet)
         fleet.stop_worker()

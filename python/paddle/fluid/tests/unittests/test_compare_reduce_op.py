@@ -12,20 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import op_test
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
 
 def create_test_not_equal_class(op_type, typename, callback):
-
     class Cls(op_test.OpTest):
-
         def setUp(self):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10, 7)).astype(typename)
@@ -44,9 +39,7 @@ def create_test_not_equal_class(op_type, typename, callback):
 
 
 def create_test_not_shape_equal_class(op_type, typename, callback):
-
     class Cls(op_test.OpTest):
-
         def setUp(self):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10)).astype(typename)
@@ -65,9 +58,7 @@ def create_test_not_shape_equal_class(op_type, typename, callback):
 
 
 def create_test_equal_class(op_type, typename, callback):
-
     class Cls(op_test.OpTest):
-
         def setUp(self):
             x = y = np.random.random(size=(10, 7)).astype(typename)
             z = callback(x, y)
@@ -85,9 +76,7 @@ def create_test_equal_class(op_type, typename, callback):
 
 
 def create_test_dim1_class(op_type, typename, callback):
-
     class Cls(op_test.OpTest):
-
         def setUp(self):
             x = y = np.random.random(size=(1)).astype(typename)
             x = np.array([True, False, True]).astype(typename)
@@ -115,7 +104,6 @@ for _type_name in {'float32', 'float64', 'int32', 'int64', 'bool'}:
 
 
 class TestEqualReduceAPI(unittest.TestCase):
-
     def test_name(self):
         x = fluid.layers.assign(np.array([3, 4], dtype="int32"))
         y = fluid.layers.assign(np.array([3, 4], dtype="int32"))

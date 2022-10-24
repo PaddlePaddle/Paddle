@@ -13,17 +13,17 @@
 # limitations under the License.
 
 from .optimizer import Optimizer
-from ..fluid import core
 from ..fluid import framework
-from ..fluid.framework import Variable, name_scope
-from paddle import _C_ops
+from ..fluid.framework import name_scope
+from paddle import _C_ops, _legacy_C_ops
+from ..fluid.dygraph import no_grad
 
 __all__ = []
 
 
 class Adamax(Optimizer):
     r"""
-    The Adamax optimizer is implemented based on the Adamax Optimization 
+    The Adamax optimizer is implemented based on the Adamax Optimization
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
     which makes the learning rate update algorithm more stable and simple.
@@ -56,22 +56,22 @@ class Adamax(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. And you can specify different options for \
-            different parameter groups such as the learning rate, weight decay, etc, \
-            then the parameters are list of dict. Note that the learning_rate in paramter groups \
-            represents the scale of base learning_rate. \
-	    The default value is None in static mode, at this time all parameters will be updated.
-	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-	    It canbe a float value as coeff of L2 regularization or \
-	    :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-	    If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
-	    the regularization setting here in optimizer will be ignored for this parameter. \
-	    Otherwise, the regularization setting here in optimizer will take effect. \
-	    Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+            This parameter is required in dygraph mode. And you can specify different options for
+            different parameter groups such as the learning rate, weight decay, etc,
+            then the parameters are list of dict. Note that the learning_rate in paramter groups
+            represents the scale of base learning_rate.
+            The default value is None in static mode, at this time all parameters will be updated.
+        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
+            It canbe a float value as coeff of L2 regularization or
+            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already,
+            the regularization setting here in optimizer will be ignored for this parameter.
+            Otherwise, the regularization setting here in optimizer will take effect.
+            Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
@@ -82,7 +82,7 @@ class Adamax(Optimizer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import numpy as np
 
@@ -123,7 +123,7 @@ class Adamax(Optimizer):
                     'beta1': 0.8
                 }],
                 weight_decay=0.01,
-                beta1=0.9)                   
+                beta1=0.9)
             out.backward()
             adam.step()
             adam.clear_grad()
@@ -132,15 +132,17 @@ class Adamax(Optimizer):
     _inf_norm_acc_str = "inf_norm"
     _beta1_pow_acc_str = "beta1_pow_acc"
 
-    def __init__(self,
-                 learning_rate=0.001,
-                 beta1=0.9,
-                 beta2=0.999,
-                 epsilon=1e-8,
-                 parameters=None,
-                 weight_decay=None,
-                 grad_clip=None,
-                 name=None):
+    def __init__(
+        self,
+        learning_rate=0.001,
+        beta1=0.9,
+        beta2=0.999,
+        epsilon=1e-8,
+        parameters=None,
+        weight_decay=None,
+        grad_clip=None,
+        name=None,
+    ):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
@@ -151,11 +153,13 @@ class Adamax(Optimizer):
             raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
         if not 0 <= epsilon:
             raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
-        super(Adamax, self).__init__(learning_rate=learning_rate,
-                                     parameters=parameters,
-                                     weight_decay=weight_decay,
-                                     grad_clip=grad_clip,
-                                     name=name)
+        super(Adamax, self).__init__(
+            learning_rate=learning_rate,
+            parameters=parameters,
+            weight_decay=weight_decay,
+            grad_clip=grad_clip,
+            name=name,
+        )
         self.type = "adamax"
         self._beta1 = beta1
         self._beta2 = beta2
@@ -163,7 +167,7 @@ class Adamax(Optimizer):
         self._default_dict = {
             'beta1': beta1,
             'beta2': beta2,
-            'epsilon': epsilon
+            'epsilon': epsilon,
         }
 
     def _create_accumulators(self, block, parameters):
@@ -174,10 +178,12 @@ class Adamax(Optimizer):
         for p in parameters:
             self._add_accumulator(self._moment_acc_str, p)
             self._add_accumulator(self._inf_norm_acc_str, p)
-            self._add_accumulator(name=self._beta1_pow_acc_str,
-                                  param=p,
-                                  fill_value=self._beta1,
-                                  shape=[1])
+            self._add_accumulator(
+                name=self._beta1_pow_acc_str,
+                param=p,
+                fill_value=self._beta1,
+                shape=[1],
+            )
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -185,17 +191,43 @@ class Adamax(Optimizer):
             param_and_grad = self._update_param_group(param_and_grad)
 
         moment = self._get_accumulator(self._moment_acc_str, param_and_grad[0])
-        inf_norm = self._get_accumulator(self._inf_norm_acc_str,
-                                         param_and_grad[0])
-        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                              param_and_grad[0])
+        inf_norm = self._get_accumulator(
+            self._inf_norm_acc_str, param_and_grad[0]
+        )
+        beta1_pow_acc = self._get_accumulator(
+            self._beta1_pow_acc_str, param_and_grad[0]
+        )
 
-        if framework._non_static_mode():
-            _C_ops.adamax(param_and_grad[0], param_and_grad[1],
-                          self._create_param_lr(param_and_grad), moment,
-                          inf_norm, beta1_pow_acc, param_and_grad[0], moment,
-                          inf_norm, "beta1", self._beta1, "beta2", self._beta2,
-                          "epsilon", self._epsilon)
+        if framework.in_dygraph_mode():
+            _C_ops.adamax_(
+                param_and_grad[0],
+                param_and_grad[1],
+                self._create_param_lr(param_and_grad),
+                moment,
+                inf_norm,
+                beta1_pow_acc,
+                self._beta1,
+                self._beta2,
+                self._epsilon,
+            )
+        elif framework._in_legacy_dygraph():
+            _legacy_C_ops.adamax(
+                param_and_grad[0],
+                param_and_grad[1],
+                self._create_param_lr(param_and_grad),
+                moment,
+                inf_norm,
+                beta1_pow_acc,
+                param_and_grad[0],
+                moment,
+                inf_norm,
+                "beta1",
+                self._beta1,
+                "beta2",
+                self._beta2,
+                "epsilon",
+                self._epsilon,
+            )
         else:
             # create the adamax optimize op
             adamax_op = block.append_op(
@@ -206,54 +238,87 @@ class Adamax(Optimizer):
                     "LearningRate": self._create_param_lr(param_and_grad),
                     "Moment": moment,
                     "InfNorm": inf_norm,
-                    "Beta1Pow": beta1_pow_acc
+                    "Beta1Pow": beta1_pow_acc,
                 },
                 outputs={
                     "ParamOut": param_and_grad[0],
                     "MomentOut": moment,
-                    "InfNormOut": inf_norm
+                    "InfNormOut": inf_norm,
                 },
                 attrs={
                     "beta1": self._beta1,
                     "beta2": self._beta2,
-                    "epsilon": self._epsilon
+                    "epsilon": self._epsilon,
                 },
-                stop_gradient=True)
+                stop_gradient=True,
+            )
 
             return adamax_op
 
     def _finish_update(self, block, parameters_and_grads):
-        """Update Beta1 Power accumulator
-        """
+        """Update Beta1 Power accumulator"""
         assert isinstance(block, framework.Block)
         if isinstance(parameters_and_grads, list):
             for param, grad in parameters_and_grads:
                 if grad is None or param.stop_gradient is True:
                     continue
-                with param.block.program._optimized_guard(
-                    [param, grad]), name_scope('adamax'):
+                if framework.in_dygraph_mode():
                     beta1_pow_acc = self._get_accumulator(
-                        self._beta1_pow_acc_str, param)
-                    block.append_op(type="scale",
-                                    inputs={"X": beta1_pow_acc},
-                                    outputs={"Out": beta1_pow_acc},
-                                    attrs={"scale": self._beta1},
-                                    stop_gradient=True)
+                        self._beta1_pow_acc_str, param
+                    )
+                    with no_grad():
+                        tmp = _C_ops.scale(
+                            beta1_pow_acc, self._beta1, 0.0, True
+                        )
+                        beta1_pow_acc.copy_(tmp, False)
+                    continue
+                with param.block.program._optimized_guard(
+                    [param, grad]
+                ), name_scope('adamax'):
+                    beta1_pow_acc = self._get_accumulator(
+                        self._beta1_pow_acc_str, param
+                    )
+                    block.append_op(
+                        type="scale",
+                        inputs={"X": beta1_pow_acc},
+                        outputs={"Out": beta1_pow_acc},
+                        attrs={"scale": self._beta1},
+                        stop_gradient=True,
+                    )
         else:
             for param, grad in parameters_and_grads['params']:
                 if grad is None or param.stop_gradient is True:
                     continue
-                with param.block.program._optimized_guard(
-                    [param, grad]), name_scope('adamax'):
+                if framework.in_dygraph_mode():
                     beta1_pow_acc = self._get_accumulator(
-                        self._beta1_pow_acc_str, param)
+                        self._beta1_pow_acc_str, param
+                    )
                     self._beta1 = parameters_and_grads.get(
-                        'beta1', self._default_dict['beta1'])
-                    block.append_op(type="scale",
-                                    inputs={"X": beta1_pow_acc},
-                                    outputs={"Out": beta1_pow_acc},
-                                    attrs={"scale": self._beta1},
-                                    stop_gradient=True)
+                        'beta1', self._default_dict['beta1']
+                    )
+                    with no_grad():
+                        tmp = _C_ops.scale(
+                            beta1_pow_acc, self._beta1, 0.0, True
+                        )
+                        beta1_pow_acc.copy_(tmp, False)
+                    continue
+
+                with param.block.program._optimized_guard(
+                    [param, grad]
+                ), name_scope('adamax'):
+                    beta1_pow_acc = self._get_accumulator(
+                        self._beta1_pow_acc_str, param
+                    )
+                    self._beta1 = parameters_and_grads.get(
+                        'beta1', self._default_dict['beta1']
+                    )
+                    block.append_op(
+                        type="scale",
+                        inputs={"X": beta1_pow_acc},
+                        outputs={"Out": beta1_pow_acc},
+                        attrs={"scale": self._beta1},
+                        stop_gradient=True,
+                    )
 
     def _update_param_group(self, parameters):
         self._beta1 = parameters.get('beta1', self._default_dict['beta1'])

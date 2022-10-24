@@ -16,11 +16,10 @@ import tempfile
 import paddle
 import unittest
 import numpy as np
-from typing import Tuple, List, Dict, TypeVar
+from typing import Dict, List, Tuple
 
 
 class BaseLayer(paddle.nn.Layer):
-
     def __init__(self, in_size, out_size):
         super(BaseLayer, self).__init__()
         self._linear = paddle.nn.Linear(in_size, out_size)
@@ -32,7 +31,6 @@ class BaseLayer(paddle.nn.Layer):
 
 
 class LinearNetWithTuple(BaseLayer):
-
     def __init__(self, in_size, out_size):
         super(LinearNetWithTuple, self).__init__(in_size, out_size)
 
@@ -42,7 +40,6 @@ class LinearNetWithTuple(BaseLayer):
 
 
 class LinearNetWithTuple2(BaseLayer):
-
     def __init__(self, in_size, out_size):
         super(LinearNetWithTuple2, self).__init__(in_size, out_size)
 
@@ -52,7 +49,6 @@ class LinearNetWithTuple2(BaseLayer):
 
 
 class LinearNetWithList(BaseLayer):
-
     def __init__(self, in_size, out_size):
         super(LinearNetWithList, self).__init__(in_size, out_size)
 
@@ -62,7 +58,6 @@ class LinearNetWithList(BaseLayer):
 
 
 class LinearNetWithDict(BaseLayer):
-
     def __init__(self, in_size, out_size):
         super(LinearNetWithDict, self).__init__(in_size, out_size)
 
@@ -72,7 +67,6 @@ class LinearNetWithDict(BaseLayer):
 
 
 class TestTyping(unittest.TestCase):
-
     def setUp(self):
         self.in_num = 16
         self.out_num = 16
@@ -101,11 +95,10 @@ class TestTyping(unittest.TestCase):
         out = self.run_dy()
         load_net = self.save_and_load('tuple')
         load_out = load_net(self.x)
-        self.assertTrue(np.allclose(out, load_out))
+        np.testing.assert_allclose(out, load_out, rtol=1e-05)
 
 
 class TestTypingTuple(TestTyping):
-
     def build_net(self):
         return LinearNetWithTuple2(self.in_num, self.out_num)
 
@@ -116,7 +109,6 @@ class TestTypingTuple(TestTyping):
 
 
 class TestTypingList(TestTyping):
-
     def build_net(self):
         return LinearNetWithList(self.in_num, self.out_num)
 
@@ -126,7 +118,6 @@ class TestTypingList(TestTyping):
 
 
 class TestTypingDict(TestTyping):
-
     def build_net(self):
         return LinearNetWithDict(self.in_num, self.out_num)
 

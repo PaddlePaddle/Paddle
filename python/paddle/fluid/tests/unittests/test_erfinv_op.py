@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from scipy.special import erfinv
@@ -26,7 +24,6 @@ np.random.seed(0)
 
 
 class TestErfinv(OpTest):
-
     def setUp(self):
         self.op_type = "erfinv"
         self.python_api = paddle.erfinv
@@ -35,8 +32,9 @@ class TestErfinv(OpTest):
         self.x = np.random.uniform(-1, 1, size=self.shape).astype(self.dtype)
         self.res_ref = erfinv(self.x).astype(self.dtype)
         self.grad_out = np.ones(self.shape, self.dtype)
-        self.gradient = np.sqrt(np.pi) / 2 * np.exp(np.square(
-            self.res_ref)) * self.grad_out
+        self.gradient = (
+            np.sqrt(np.pi) / 2 * np.exp(np.square(self.res_ref)) * self.grad_out
+        )
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.res_ref}
 
@@ -47,20 +45,20 @@ class TestErfinv(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        user_defined_grads=[self.gradient],
-                        user_defined_grad_outputs=self.grad_out)
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.gradient],
+            user_defined_grad_outputs=self.grad_out,
+        )
 
 
 class TestErfinvFP32(TestErfinv):
-
     def init_dtype(self):
         self.dtype = np.float32
 
 
 class TestErfinvAPI(unittest.TestCase):
-
     def init_dtype(self):
         self.dtype = 'float32'
 
@@ -82,30 +80,28 @@ class TestErfinvAPI(unittest.TestCase):
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'x': self.x.reshape([1, 5])})
             for r in res:
-                self.assertEqual(np.allclose(self.res_ref, r), True)
+                np.testing.assert_allclose(self.res_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
 
     def test_dygraph_api(self):
-
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
             out = paddle.erfinv(x)
-            self.assertEqual(np.allclose(self.res_ref, out.numpy()), True)
+            np.testing.assert_allclose(self.res_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
             run(place)
 
     def test_inplace_api(self):
-
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
             x.erfinv_()
-            self.assertEqual(np.allclose(self.res_ref, x.numpy()), True)
+            np.testing.assert_allclose(self.res_ref, x.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:

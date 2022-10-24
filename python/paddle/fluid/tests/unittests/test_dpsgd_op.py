@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 
 
 class TestDpsgdOp(OpTest):
-
     def setUp(self):
-        '''Test Dpsgd Operator with supplied attributes
-        '''
+        '''Test Dpsgd Operator with supplied attributes'''
         self.op_type = "dpsgd"
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -36,7 +32,7 @@ class TestDpsgdOp(OpTest):
         self.inputs = {
             'Param': param,
             'Grad': grad,
-            'LearningRate': np.array([learning_rate]).astype("float32")
+            'LearningRate': np.array([learning_rate]).astype("float32"),
         }
 
         self.attrs = {'clip': clip, 'batch_size': batch_size, 'sigma': sigma}
@@ -72,5 +68,6 @@ def dpsgd_step(inputs, attributes):
 
 if __name__ == "__main__":
     import paddle
+
     paddle.enable_static()
     unittest.main()

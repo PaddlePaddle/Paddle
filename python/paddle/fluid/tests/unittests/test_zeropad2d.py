@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -73,7 +71,7 @@ class TestZeroPad2dAPI(unittest.TestCase):
 
             x_tensor = to_tensor(x).astype(dtype)
             ret_res = zeropad2d(x_tensor, [pad, pad, pad, pad]).numpy()
-            self.assertTrue(np.allclose(expect_res, ret_res))
+            np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
     def test_support_dtypes(self):
         with paddle.fluid.framework._test_eager_guard():
@@ -87,11 +85,12 @@ class TestZeroPad2dAPI(unittest.TestCase):
         pad = [1, 2, 3, 4]
         x = np.random.randint(-255, 255, size=self.shape)
         expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[2], pad[3]], [pad[0], pad[1]]])
+            x, [[0, 0], [0, 0], [pad[2], pad[3]], [pad[0], pad[1]]]
+        )
 
         x_tensor = to_tensor(x)
         ret_res = zeropad2d(x_tensor, pad).numpy()
-        self.assertTrue(np.allclose(expect_res, ret_res))
+        np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
     def test_support_pad2(self):
         with paddle.fluid.framework._test_eager_guard():
@@ -105,11 +104,12 @@ class TestZeroPad2dAPI(unittest.TestCase):
         pad = (1, 2, 3, 4)
         x = np.random.randint(-255, 255, size=self.shape)
         expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[2], pad[3]], [pad[0], pad[1]]])
+            x, [[0, 0], [0, 0], [pad[2], pad[3]], [pad[0], pad[1]]]
+        )
 
         x_tensor = to_tensor(x)
         ret_res = zeropad2d(x_tensor, pad).numpy()
-        self.assertTrue(np.allclose(expect_res, ret_res))
+        np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
     def test_support_pad3(self):
         with paddle.fluid.framework._test_eager_guard():
@@ -123,12 +123,13 @@ class TestZeroPad2dAPI(unittest.TestCase):
         pad = [1, 2, 3, 4]
         x = np.random.randint(-255, 255, size=self.shape)
         expect_res = np.pad(
-            x, [[0, 0], [0, 0], [pad[2], pad[3]], [pad[0], pad[1]]])
+            x, [[0, 0], [0, 0], [pad[2], pad[3]], [pad[0], pad[1]]]
+        )
 
         x_tensor = to_tensor(x)
         pad_tensor = to_tensor(pad, dtype='int32')
         ret_res = zeropad2d(x_tensor, pad_tensor).numpy()
-        self.assertTrue(np.allclose(expect_res, ret_res))
+        np.testing.assert_allclose(expect_res, ret_res, rtol=1e-05)
 
     def test_support_pad4(self):
         with paddle.fluid.framework._test_eager_guard():
@@ -146,15 +147,22 @@ class TestZeroPad2DLayer(unittest.TestCase):
         self.pad = [2, 2, 4, 1]
         self.padLayer = ZeroPad2D(padding=self.pad)
         self.x = np.random.randint(-255, 255, size=self.shape)
-        self.expect_res = np.pad(self.x,
-                                 [[0, 0], [0, 0], [self.pad[2], self.pad[3]],
-                                  [self.pad[0], self.pad[1]]])
+        self.expect_res = np.pad(
+            self.x,
+            [
+                [0, 0],
+                [0, 0],
+                [self.pad[2], self.pad[3]],
+                [self.pad[0], self.pad[1]],
+            ],
+        )
 
     def func_layer(self):
-        self.assertTrue(
-            np.allclose(
-                zeropad2d(to_tensor(self.x), self.pad).numpy(),
-                self.padLayer(to_tensor(self.x))))
+        np.testing.assert_allclose(
+            zeropad2d(to_tensor(self.x), self.pad).numpy(),
+            self.padLayer(to_tensor(self.x)),
+            rtol=1e-05,
+        )
 
     def test_layer(self):
         with paddle.fluid.framework._test_eager_guard():

@@ -14,8 +14,12 @@
 import paddle
 from paddle.fluid import core, unique_name
 from functools import reduce
-from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op, is_backward_op, is_optimizer_op
-from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
+from paddle.distributed.fleet.meta_optimizers.common import (
+    is_loss_grad_op,
+    is_backward_op,
+    is_optimizer_op,
+)
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 import re
 import os
@@ -42,7 +46,10 @@ def check_broadcast(block):
                             "var_name areadly exist: {}"
                             "the old pos is {}, the new pos is {}".format(
                                 var_name,
-                                broadcast_vars[var_name]["broadcast_pos"], idx))
+                                broadcast_vars[var_name]["broadcast_pos"],
+                                idx,
+                            )
+                        )
                     broadcast_vars[var_name] = {
                         "fill_constant_pos": -1,
                         "broadcast_pos": idx,
@@ -69,17 +76,21 @@ def check_broadcast(block):
                 var_name = op.desc.input_arg_names()[0]
                 if "@BroadCast" in var_name:
                     if broadcast_vars[var_name]["fill_constant_pos"] != -1:
-                        assert (last_sync_calc_op_idx != -1)
-                        assert (broadcast_vars[var_name]["fill_constant_pos"] <
-                                last_sync_calc_op_idx)
-                        assert (last_sync_calc_op_idx < idx)
+                        assert last_sync_calc_op_idx != -1
+                        assert (
+                            broadcast_vars[var_name]["fill_constant_pos"]
+                            < last_sync_calc_op_idx
+                        )
+                        assert last_sync_calc_op_idx < idx
                     continue
         for input_name in op.desc.input_arg_names():
             if input_name in broadcast_vars:
-                assert (broadcast_vars[input_name]["broadcast_pos"] != -1)
-                assert (broadcast_vars[input_name]["broadcast_pos"] <
-                        last_sync_comm_op_idx)
-                assert (last_sync_comm_op_idx < idx)
+                assert broadcast_vars[input_name]["broadcast_pos"] != -1
+                assert (
+                    broadcast_vars[input_name]["broadcast_pos"]
+                    < last_sync_comm_op_idx
+                )
+                assert last_sync_comm_op_idx < idx
     return
 
 
@@ -135,8 +146,10 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                 if var_name in vars_status and vars_status[var_name] == 0:
                     vars_status[var_name] = 1
             for var_name in dp_grads_status:
-                if var_name in dp_grads_status and dp_grads_status[
-                        var_name] == 0:
+                if (
+                    var_name in dp_grads_status
+                    and dp_grads_status[var_name] == 0
+                ):
                     dp_grads_status[var_name] = 1
         # check sharding allreduce and  reduce but skip megatron allreduce
         elif op.type == "c_allreduce_sum" or op.type == "c_reduce_sum":
@@ -144,7 +157,9 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                 var_name = op.desc.input_arg_names()[0]
                 ring_id = op.desc.attr("ring_id")
                 if ring_id == sharding_ring_id:
-                    assert op.type == "c_reduce_sum", "Grad in Sharding group should be reduce rather than allreduce"
+                    assert (
+                        op.type == "c_reduce_sum"
+                    ), "Grad in Sharding group should be reduce rather than allreduce"
                     if var_name in vars_status:
                         _status = vars_status[var_name]
                     else:
@@ -152,12 +167,15 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                     if _status == -1:
                         raise ValueError(
                             "{} is not generated, but you are"
-                            "trying to all-reduce it".format(var_name))
+                            "trying to all-reduce it".format(var_name)
+                        )
                     if _status == 0:
-                        raise ValueError("There should be a sync_calc op "
-                                         "after generate Var: {} and before the"
-                                         "c_allreduce_sum op".format(var_name))
-                    assert (_status == 1)
+                        raise ValueError(
+                            "There should be a sync_calc op "
+                            "after generate Var: {} and before the"
+                            "c_allreduce_sum op".format(var_name)
+                        )
+                    assert _status == 1
                     if var_name in vars_status:
                         vars_status[var_name] = 2
                     else:
@@ -193,29 +211,37 @@ def check_allreduce_sum(block, shard, sharding_ring_id, dp_ring_id=-1):
                     if vars_status[input_name] != 3:
                         raise ValueError(
                             "There should be a sync_comm op "
-                            "after allreduce the Var: {}".format(input_name))
+                            "after allreduce the Var: {}".format(input_name)
+                        )
                     raise ValueError(
-                        "The reduce output grad [{}] should NOT be be used in Non-root rank."
-                        .format(input_name))
+                        "The reduce output grad [{}] should NOT be be used in Non-root rank.".format(
+                            input_name
+                        )
+                    )
                 if input_name in dp_grads_status:
                     if dp_ring_id == -1:
                         if dp_grads_status[input_name] != 3:
                             raise ValueError(
                                 "There should be a sync_comm op "
-                                "after allreduce the Var: {}".format(
-                                    input_name))
+                                "after allreduce the Var: {}".format(input_name)
+                            )
                     else:
                         if dp_grads_status[input_name] != 5:
                             raise ValueError(
                                 "The grad in shard should be allreduce and sync"
-                                "twice before usage {}".format(input_name))
+                                "twice before usage {}".format(input_name)
+                            )
 
             for output_name in op.desc.output_arg_names():
-                if output_name in vars_status and \
-                    vars_status[output_name] == -1:
+                if (
+                    output_name in vars_status
+                    and vars_status[output_name] == -1
+                ):
                     vars_status[output_name] = 0
-                if output_name in dp_grads_status and  \
-                    dp_grads_status[output_name] == -1:
+                if (
+                    output_name in dp_grads_status
+                    and dp_grads_status[output_name] == -1
+                ):
                     dp_grads_status[output_name] = 0
 
     # check sharding with amp
@@ -234,9 +260,9 @@ def get_valid_op_role(block, insert_idx):
     return OpRole.Forward or OpRole.Backward
     """
     op_role = block.ops[insert_idx].attr('op_role')
-    if (insert_idx >= len(block.ops)) or (op_role in [
-            int(OpRole.Backward), int(OpRole.Optimize)
-    ]):
+    if (insert_idx >= len(block.ops)) or (
+        op_role in [int(OpRole.Backward), int(OpRole.Optimize)]
+    ):
         return OpRole.Backward
     if op_role in [int(OpRole.Forward), int(OpRole.Loss)]:
         return OpRole.Forward
@@ -249,11 +275,13 @@ def insert_sync_calc_op(block, insert_idx, calc_dep_vars):
     _insert_sync_calc_op
     """
     op_role = get_valid_op_role(block, insert_idx)
-    block._insert_op_without_sync(insert_idx,
-                                  type='c_sync_calc_stream',
-                                  inputs={'X': calc_dep_vars},
-                                  outputs={'Out': calc_dep_vars},
-                                  attrs={OP_ROLE_KEY: op_role})
+    block._insert_op_without_sync(
+        insert_idx,
+        type='c_sync_calc_stream',
+        inputs={'X': calc_dep_vars},
+        outputs={'Out': calc_dep_vars},
+        attrs={OP_ROLE_KEY: op_role},
+    )
     return
 
 
@@ -262,14 +290,13 @@ def insert_sync_comm_op(block, insert_idx, ring_id, comm_dep_vars):
     insert sync_comm_op for single var
     """
     op_role = get_valid_op_role(block, insert_idx)
-    block._insert_op_without_sync(insert_idx,
-                                  type='c_sync_comm_stream',
-                                  inputs={'X': comm_dep_vars},
-                                  outputs={'Out': comm_dep_vars},
-                                  attrs={
-                                      'ring_id': ring_id,
-                                      OP_ROLE_KEY: op_role
-                                  })
+    block._insert_op_without_sync(
+        insert_idx,
+        type='c_sync_comm_stream',
+        inputs={'X': comm_dep_vars},
+        outputs={'Out': comm_dep_vars},
+        attrs={'ring_id': ring_id, OP_ROLE_KEY: op_role},
+    )
     return 1
 
 
@@ -282,14 +309,13 @@ def insert_sync_comm_ops(block, insert_idx, ring_id, comm_dep_vars):
         return 0
 
     op_role = get_valid_op_role(block, insert_idx)
-    block._insert_op_without_sync(insert_idx,
-                                  type='c_sync_comm_stream',
-                                  inputs={'X': comm_dep_vars},
-                                  outputs={'Out': comm_dep_vars},
-                                  attrs={
-                                      'ring_id': int(ring_id),
-                                      OP_ROLE_KEY: op_role
-                                  })
+    block._insert_op_without_sync(
+        insert_idx,
+        type='c_sync_comm_stream',
+        inputs={'X': comm_dep_vars},
+        outputs={'Out': comm_dep_vars},
+        attrs={'ring_id': int(ring_id), OP_ROLE_KEY: op_role},
+    )
     return 1
 
 
@@ -300,15 +326,17 @@ def insert_fill_constant_ops(block, insert_idx, fill_constant_vars):
     op_role = get_valid_op_role(block, insert_idx)
     for broadcast_name in fill_constant_vars:
         broadcast_var = block.var(broadcast_name)
-        block._insert_op_without_sync(insert_idx,
-                                      type="fill_constant",
-                                      outputs={"Out": broadcast_var.name},
-                                      attrs={
-                                          "shape": broadcast_var.shape,
-                                          "dtype": broadcast_var.dtype,
-                                          "value": 0.0,
-                                          OP_ROLE_KEY: op_role
-                                      })
+        block._insert_op_without_sync(
+            insert_idx,
+            type="fill_constant",
+            outputs={"Out": broadcast_var.name},
+            attrs={
+                "shape": broadcast_var.shape,
+                "dtype": broadcast_var.dtype,
+                "value": 0.0,
+                OP_ROLE_KEY: op_role,
+            },
+        )
     return
 
 
@@ -318,58 +346,69 @@ def insert_cast_ops(block, insert_idx, cast_ops):
     """
     op_role = get_valid_op_role(block, insert_idx)
     for fp16_name, fp32_name in cast_ops.items():
-        block._insert_op_without_sync(insert_idx,
-                                      type="cast",
-                                      inputs={"X": fp32_name},
-                                      outputs={"Out": fp16_name},
-                                      attrs={
-                                          "in_dtype": core.VarDesc.VarType.FP32,
-                                          "out_dtype":
-                                          core.VarDesc.VarType.FP16,
-                                          OP_ROLE_KEY: op_role
-                                      })
+        block._insert_op_without_sync(
+            insert_idx,
+            type="cast",
+            inputs={"X": fp32_name},
+            outputs={"Out": fp16_name},
+            attrs={
+                "in_dtype": core.VarDesc.VarType.FP32,
+                "out_dtype": core.VarDesc.VarType.FP16,
+                OP_ROLE_KEY: op_role,
+            },
+        )
     return
 
 
-def insert_allreduce_ops(block,
-                         insert_idx,
-                         ring_id,
-                         allreduce_vars,
-                         op_role=OpRole.Backward,
-                         use_calc_stream=False,
-                         user_defined_strategy=None):
+def insert_allreduce_ops(
+    block,
+    insert_idx,
+    ring_id,
+    allreduce_vars,
+    op_role=OpRole.Backward,
+    use_calc_stream=False,
+    user_defined_strategy=None,
+):
     """
     _add_allreduce_ops
     """
     if len(allreduce_vars) == 0:
         return
 
-    if user_defined_strategy and \
-            user_defined_strategy.fuse_all_reduce_ops and \
-            not user_defined_strategy.fuse_grad_merge:
+    if (
+        user_defined_strategy
+        and user_defined_strategy.fuse_all_reduce_ops
+        and not user_defined_strategy.fuse_grad_merge
+    ):
         # If fuse_grad_merge is enable, the grad vars have already been fused during
         # gradient merge pass, therefore, those vars are not need to be fused here
-        insert_fused_allreduce_ops(block, insert_idx, ring_id, allreduce_vars,
-                                   op_role, use_calc_stream,
-                                   user_defined_strategy.fuse_grad_size_in_MB)
+        insert_fused_allreduce_ops(
+            block,
+            insert_idx,
+            ring_id,
+            allreduce_vars,
+            op_role,
+            use_calc_stream,
+            user_defined_strategy.fuse_grad_size_in_MB,
+        )
     else:
         for var in allreduce_vars:
-            block._insert_op_without_sync(insert_idx,
-                                          type='c_allreduce_sum',
-                                          inputs={'X': var},
-                                          outputs={'Out': var},
-                                          attrs={
-                                              'ring_id': ring_id,
-                                              'use_calc_stream':
-                                              use_calc_stream,
-                                              OP_ROLE_KEY: op_role
-                                          })
+            block._insert_op_without_sync(
+                insert_idx,
+                type='c_allreduce_sum',
+                inputs={'X': var},
+                outputs={'Out': var},
+                attrs={
+                    'ring_id': ring_id,
+                    'use_calc_stream': use_calc_stream,
+                    OP_ROLE_KEY: op_role,
+                },
+            )
 
     return
 
 
 class FuseHelper(object):
-
     @staticmethod
     def sort_vars_by_dtype(block, vars_name):
         fp32_vars = []
@@ -389,17 +428,19 @@ class FuseHelper(object):
         return fp32_vars
 
     @staticmethod
-    def get_fused_groups(block, vars_name, fuse_size=32.):
-        """ coalesce tensor, get fused group """
+    def get_fused_groups(block, vars_name, fuse_size=32.0):
+        """coalesce tensor, get fused group"""
         groups = []
-        cur_size = 0.
+        cur_size = 0.0
         last_dtype = None
         for var_name in vars_name:
             real_var = block.var(var_name)
             var_size = get_var_size(real_var)
-            if cur_size + var_size > fuse_size \
-                    or len(groups) == 0 \
-                    or real_var.dtype != last_dtype:
+            if (
+                cur_size + var_size > fuse_size
+                or len(groups) == 0
+                or real_var.dtype != last_dtype
+            ):
                 groups.append([real_var])
                 cur_size = var_size
                 last_dtype = real_var.dtype
@@ -409,11 +450,9 @@ class FuseHelper(object):
         return groups
 
     @staticmethod
-    def insert_coalesce_tensor(block,
-                               index,
-                               groups,
-                               op_role=OpRole.Backward,
-                               prefix="Output"):
+    def insert_coalesce_tensor(
+        block, index, groups, op_role=OpRole.Backward, prefix="Output"
+    ):
         fused_vars = []
         insert_num = 0
         for group in groups:
@@ -423,247 +462,305 @@ class FuseHelper(object):
                 fused_vars.append(group[0])
                 continue
 
-            fused_var = block.create_var(name=unique_name.generate(
-                'Fused{}_{}'.format(prefix, group[0].name)),
-                                         dtype=group[0].dtype,
-                                         persistable=False,
-                                         stop_gradient=True)
+            fused_var = block.create_var(
+                name=unique_name.generate(
+                    'Fused{}_{}'.format(prefix, group[0].name)
+                ),
+                dtype=group[0].dtype,
+                persistable=False,
+                stop_gradient=True,
+            )
             fused_vars.append(fused_var)
-            block._insert_op_without_sync(index,
-                                          type="coalesce_tensor",
-                                          inputs={"Input": group},
-                                          outputs={
-                                              "Output": group,
-                                              "FusedOutput": fused_var
-                                          },
-                                          attrs={
-                                              "copy_data": True,
-                                              "use_align": True,
-                                              "dtype": group[0].dtype,
-                                              OP_ROLE_KEY: op_role
-                                          })
+            block._insert_op_without_sync(
+                index,
+                type="coalesce_tensor",
+                inputs={"Input": group},
+                outputs={"Output": group, "FusedOutput": fused_var},
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "dtype": group[0].dtype,
+                    OP_ROLE_KEY: op_role,
+                },
+            )
             insert_num += 1
         return fused_vars, insert_num
 
 
-def insert_fused_allreduce_ops(block,
-                               insert_idx,
-                               ring_id,
-                               allreduce_vars,
-                               op_role=OpRole.Backward,
-                               use_calc_stream=False,
-                               fuse_grad_size_in_MB=32):
-    groups = FuseHelper.get_fused_groups(block, allreduce_vars,
-                                         fuse_grad_size_in_MB)
+def insert_fused_allreduce_ops(
+    block,
+    insert_idx,
+    ring_id,
+    allreduce_vars,
+    op_role=OpRole.Backward,
+    use_calc_stream=False,
+    fuse_grad_size_in_MB=32,
+):
+    groups = FuseHelper.get_fused_groups(
+        block, allreduce_vars, fuse_grad_size_in_MB
+    )
 
-    fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(block,
-                                                               insert_idx,
-                                                               groups,
-                                                               op_role,
-                                                               prefix="Grad")
+    fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(
+        block, insert_idx, groups, op_role, prefix="Grad"
+    )
 
     for fused_var in fused_vars:
-        block._insert_op_without_sync(insert_idx + insert_num,
-                                      type='c_allreduce_sum',
-                                      inputs={'X': fused_var},
-                                      outputs={'Out': fused_var},
-                                      attrs={
-                                          'ring_id': ring_id,
-                                          'use_calc_stream': use_calc_stream,
-                                          OP_ROLE_KEY: op_role
-                                      })
+        block._insert_op_without_sync(
+            insert_idx + insert_num,
+            type='c_allreduce_sum',
+            inputs={'X': fused_var},
+            outputs={'Out': fused_var},
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': use_calc_stream,
+                OP_ROLE_KEY: op_role,
+            },
+        )
         if not use_calc_stream:
-            block._insert_op_without_sync(insert_idx + insert_num,
-                                          type='c_sync_calc_stream',
-                                          inputs={'X': fused_var},
-                                          outputs={'Out': fused_var},
-                                          attrs={OP_ROLE_KEY: op_role})
+            block._insert_op_without_sync(
+                insert_idx + insert_num,
+                type='c_sync_calc_stream',
+                inputs={'X': fused_var},
+                outputs={'Out': fused_var},
+                attrs={OP_ROLE_KEY: op_role},
+            )
 
 
-def insert_fused_reduce_ops(block,
-                            insert_idx,
-                            ring_id,
-                            reduce_vars,
-                            shard,
-                            op_role=OpRole.Backward,
-                            use_calc_stream=False,
-                            rank=None,
-                            fuse_grad_size=32):
+def insert_fused_reduce_ops(
+    block,
+    insert_idx,
+    ring_id,
+    reduce_vars,
+    shard,
+    op_role=OpRole.Backward,
+    use_calc_stream=False,
+    rank=None,
+    fuse_grad_size=32,
+):
     nranks = shard.worker_num
     device_to_vars = [[] for _ in range(nranks)]
 
     for var in reduce_vars:
         root_id = get_grad_device(var, shard)
-        assert 0 <= root_id < nranks, "root_id should >=0 and < nranks, " \
-            "but now nranks={}, the root_id of var={} is {}"\
-            .format(nranks, var, root_id)
+        assert 0 <= root_id < nranks, (
+            "root_id should >=0 and < nranks, "
+            "but now nranks={}, the root_id of var={} is {}".format(
+                nranks, var, root_id
+            )
+        )
         device_to_vars[root_id].append(var)
 
     for root_id, vars_name in enumerate(device_to_vars):
         groups = FuseHelper.get_fused_groups(block, vars_name, fuse_grad_size)
 
         fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(
-            block, insert_idx, groups, op_role, prefix="Grad")
+            block, insert_idx, groups, op_role, prefix="Grad"
+        )
 
         for fused_var in fused_vars:
-            block._insert_op_without_sync(insert_idx + insert_num,
-                                          type='c_reduce_sum',
-                                          inputs={'X': fused_var},
-                                          outputs={'Out': fused_var},
-                                          attrs={
-                                              'ring_id': ring_id,
-                                              'root_id': root_id,
-                                              'use_calc_stream':
-                                              use_calc_stream,
-                                              OP_ROLE_KEY: op_role
-                                          })
+            block._insert_op_without_sync(
+                insert_idx + insert_num,
+                type='c_reduce_sum',
+                inputs={'X': fused_var},
+                outputs={'Out': fused_var},
+                attrs={
+                    'ring_id': ring_id,
+                    'root_id': root_id,
+                    'use_calc_stream': use_calc_stream,
+                    OP_ROLE_KEY: op_role,
+                },
+            )
             if not use_calc_stream:
-                block._insert_op_without_sync(insert_idx + insert_num,
-                                              type='c_sync_calc_stream',
-                                              inputs={'X': fused_var},
-                                              outputs={'Out': fused_var},
-                                              attrs={OP_ROLE_KEY: op_role})
+                block._insert_op_without_sync(
+                    insert_idx + insert_num,
+                    type='c_sync_calc_stream',
+                    inputs={'X': fused_var},
+                    outputs={'Out': fused_var},
+                    attrs={OP_ROLE_KEY: op_role},
+                )
 
     return [] if rank is None else device_to_vars[rank]
 
 
-def insert_reduce_ops(block,
-                      insert_idx,
-                      ring_id,
-                      reduce_vars,
-                      shard,
-                      op_role=OpRole.Backward,
-                      use_calc_stream=False,
-                      rank=None,
-                      strategy=None):
+def insert_reduce_ops(
+    block,
+    insert_idx,
+    ring_id,
+    reduce_vars,
+    shard,
+    op_role=OpRole.Backward,
+    use_calc_stream=False,
+    rank=None,
+    strategy=None,
+):
     """
     _add_reduce_ops
     """
-    if strategy and strategy.fuse_all_reduce_ops and \
-            not strategy.fuse_grad_merge:
-        return insert_fused_reduce_ops(block, insert_idx, ring_id, reduce_vars,
-                                       shard, op_role, use_calc_stream, rank,
-                                       strategy.fuse_grad_size_in_MB)
+    if (
+        strategy
+        and strategy.fuse_all_reduce_ops
+        and not strategy.fuse_grad_merge
+    ):
+        return insert_fused_reduce_ops(
+            block,
+            insert_idx,
+            ring_id,
+            reduce_vars,
+            shard,
+            op_role,
+            use_calc_stream,
+            rank,
+            strategy.fuse_grad_size_in_MB,
+        )
 
     grad_in_this_device = []
     for var in reduce_vars:
         grad_var = var
-        if strategy and strategy.fuse_all_reduce_ops and \
-                strategy.fuse_grad_merge:
+        if (
+            strategy
+            and strategy.fuse_all_reduce_ops
+            and strategy.fuse_grad_merge
+        ):
             # TODO(wangxi): if support fp16_allreduce, need be
             # 'FusedMergedGrad.cast_fp16._'
             grad_var = var.replace('FusedMergedGrad_', '')
         root_id = get_grad_device(grad_var, shard)
-        assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
-            root_id)
+        assert (
+            root_id >= 0
+        ), "root id should be a positive int, but now root id is {}".format(
+            root_id
+        )
         if rank is not None and rank == root_id:
             grad_in_this_device.append(var)
-        block._insert_op_without_sync(insert_idx,
-                                      type='c_reduce_sum',
-                                      inputs={'X': var},
-                                      outputs={'Out': var},
-                                      attrs={
-                                          'ring_id': ring_id,
-                                          'root_id': root_id,
-                                          'use_calc_stream': use_calc_stream,
-                                          OP_ROLE_KEY: op_role
-                                      })
+        block._insert_op_without_sync(
+            insert_idx,
+            type='c_reduce_sum',
+            inputs={'X': var},
+            outputs={'Out': var},
+            attrs={
+                'ring_id': ring_id,
+                'root_id': root_id,
+                'use_calc_stream': use_calc_stream,
+                OP_ROLE_KEY: op_role,
+            },
+        )
 
     return grad_in_this_device
 
 
-def insert_fused_broadcast_param_ops(block,
-                                     insert_idx,
-                                     ring_id,
-                                     params,
-                                     shard,
-                                     op_role=OpRole.Optimize,
-                                     use_calc_stream=False,
-                                     rank=None,
-                                     fuse_size=32):
+def insert_fused_broadcast_param_ops(
+    block,
+    insert_idx,
+    ring_id,
+    params,
+    shard,
+    op_role=OpRole.Optimize,
+    use_calc_stream=False,
+    rank=None,
+    fuse_size=32,
+):
     nranks = shard.worker_num
     device_to_vars = [[] for _ in range(nranks)]
 
     for var in params:
         root_id = shard.device(var)
-        assert 0 <= root_id < nranks, "root_id should >=0 and < nranks, " \
-            "but now nranks={}, the root_id of var={} is {}"\
-            .format(nranks, var, root_id)
+        assert 0 <= root_id < nranks, (
+            "root_id should >=0 and < nranks, "
+            "but now nranks={}, the root_id of var={} is {}".format(
+                nranks, var, root_id
+            )
+        )
         device_to_vars[root_id].append(var)
 
     for root_id, vars_name in enumerate(device_to_vars):
         groups = FuseHelper.get_fused_groups(block, vars_name, fuse_size)
 
         fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(
-            block, insert_idx, groups, op_role, prefix="Param")
+            block, insert_idx, groups, op_role, prefix="Param"
+        )
 
         for fused_var in fused_vars:
-            block._insert_op_without_sync(insert_idx + insert_num,
-                                          type='c_broadcast',
-                                          inputs={'X': fused_var},
-                                          outputs={'Out': fused_var},
-                                          attrs={
-                                              'ring_id': ring_id,
-                                              'root': root_id,
-                                              'use_calc_stream':
-                                              use_calc_stream,
-                                              OP_ROLE_KEY: op_role
-                                          })
+            block._insert_op_without_sync(
+                insert_idx + insert_num,
+                type='c_broadcast',
+                inputs={'X': fused_var},
+                outputs={'Out': fused_var},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': root_id,
+                    'use_calc_stream': use_calc_stream,
+                    OP_ROLE_KEY: op_role,
+                },
+            )
             if not use_calc_stream:
-                block._insert_op_without_sync(insert_idx + insert_num,
-                                              type='c_sync_calc_stream',
-                                              inputs={'X': fused_var},
-                                              outputs={'Out': fused_var},
-                                              attrs={OP_ROLE_KEY: op_role})
+                block._insert_op_without_sync(
+                    insert_idx + insert_num,
+                    type='c_sync_calc_stream',
+                    inputs={'X': fused_var},
+                    outputs={'Out': fused_var},
+                    attrs={OP_ROLE_KEY: op_role},
+                )
 
     return [] if rank is None else device_to_vars[rank]
 
 
-def insert_broadcast_param_ops(block,
-                               insert_idx,
-                               ring_id,
-                               params,
-                               shard,
-                               op_role=OpRole.Optimize,
-                               use_calc_stream=False,
-                               rank=None,
-                               strategy=None):
+def insert_broadcast_param_ops(
+    block,
+    insert_idx,
+    ring_id,
+    params,
+    shard,
+    op_role=OpRole.Optimize,
+    use_calc_stream=False,
+    rank=None,
+    strategy=None,
+):
     """
     add broadcast param ops
     """
     if strategy and strategy.fuse_all_reduce_ops:
         # TODO(wangxi): put fused var in startup_program, only need exec once
-        return insert_fused_broadcast_param_ops(block, insert_idx, ring_id,
-                                                params, shard, op_role,
-                                                use_calc_stream, rank,
-                                                strategy.fuse_grad_size_in_MB)
+        return insert_fused_broadcast_param_ops(
+            block,
+            insert_idx,
+            ring_id,
+            params,
+            shard,
+            op_role,
+            use_calc_stream,
+            rank,
+            strategy.fuse_grad_size_in_MB,
+        )
 
     param_in_this_device = []
     for param in params:
         root_id = shard.device(param)
-        assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
-            root_id)
+        assert (
+            root_id >= 0
+        ), "root id should be a positive int, but now root id is {}".format(
+            root_id
+        )
         if rank is not None and rank == root_id:
             param_in_this_device.append(param)
-        block._insert_op_without_sync(insert_idx,
-                                      type='c_broadcast',
-                                      inputs={'X': param},
-                                      outputs={'Out': param},
-                                      attrs={
-                                          'ring_id': ring_id,
-                                          'root': root_id,
-                                          'use_calc_stream': use_calc_stream,
-                                          OP_ROLE_KEY: op_role
-                                      })
+        block._insert_op_without_sync(
+            insert_idx,
+            type='c_broadcast',
+            inputs={'X': param},
+            outputs={'Out': param},
+            attrs={
+                'ring_id': ring_id,
+                'root': root_id,
+                'use_calc_stream': use_calc_stream,
+                OP_ROLE_KEY: op_role,
+            },
+        )
 
     return param_in_this_device
 
 
-def fuse_opt_broadcast_param_ops(block,
-                                 ring_id,
-                                 shard,
-                                 op_role=OpRole.Optimize,
-                                 strategy=None):
+def fuse_opt_broadcast_param_ops(
+    block, ring_id, shard, op_role=OpRole.Optimize, strategy=None
+):
     """
     fuse optimizer sharding broadcast param ops
     """
@@ -689,26 +786,30 @@ def fuse_opt_broadcast_param_ops(block,
         groups = FuseHelper.get_fused_groups(block, vars_name, fuse_size)
 
         fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(
-            block, insert_idx, groups, op_role, prefix="Param")
+            block, insert_idx, groups, op_role, prefix="Param"
+        )
 
         for fused_var in fused_vars:
-            block._insert_op_without_sync(insert_idx + insert_num,
-                                          type='c_broadcast',
-                                          inputs={'X': fused_var},
-                                          outputs={'Out': fused_var},
-                                          attrs={
-                                              'ring_id': ring_id,
-                                              'root': root_id,
-                                              'use_calc_stream': True,
-                                              OP_ROLE_KEY: op_role
-                                          })
+            block._insert_op_without_sync(
+                insert_idx + insert_num,
+                type='c_broadcast',
+                inputs={'X': fused_var},
+                outputs={'Out': fused_var},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': root_id,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: op_role,
+                },
+            )
 
     block._sync_with_cpp()
 
 
 def get_grad_device(grad_name, shard):
     assert "@GRAD" in grad_name, "[{}] should be a grad variable.".format(
-        grad_name)
+        grad_name
+    )
     base_name = None
     # NOTE: mind the traversal order
     possible_suffixes = [
@@ -725,8 +826,9 @@ def get_grad_device(grad_name, shard):
             base_name = re.sub(suffix, '', grad_name)
             break
 
-    assert base_name in shard.global_param2device, "[{}] should be a param variable.".format(
-        base_name)
+    assert (
+        base_name in shard.global_param2device
+    ), "[{}] should be a param variable.".format(base_name)
 
     return shard.global_param2device[base_name]
 
@@ -760,15 +862,17 @@ def insert_broadcast_ops(block, insert_idx, ring_id, broadcast2root):
     """
     op_role = get_valid_op_role(block, insert_idx)
     for broadcast_name, root_device in broadcast2root:
-        block._insert_op_without_sync(insert_idx,
-                                      type='c_broadcast',
-                                      inputs={'X': broadcast_name},
-                                      outputs={'Out': broadcast_name},
-                                      attrs={
-                                          'ring_id': ring_id,
-                                          'root': root_device,
-                                          OP_ROLE_KEY: op_role
-                                      })
+        block._insert_op_without_sync(
+            insert_idx,
+            type='c_broadcast',
+            inputs={'X': broadcast_name},
+            outputs={'Out': broadcast_name},
+            attrs={
+                'ring_id': ring_id,
+                'root': root_device,
+                OP_ROLE_KEY: op_role,
+            },
+        )
 
     return
 
@@ -793,8 +897,12 @@ def get_var_size(param):
         var size in MB
     """
     assert -1 not in param.shape
-    return reduce(lambda x, y: x * y,
-                  param.shape) * DtypeToSize[param.dtype] / 1024.0 / 1024.0
+    return (
+        reduce(lambda x, y: x * y, param.shape)
+        * DtypeToSize[param.dtype]
+        / 1024.0
+        / 1024.0
+    )
 
 
 def insert_scale_loss_grad_ops(block, scale=1.0):
@@ -804,9 +912,10 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
     '''
     for idx, op in reversed(list(enumerate(block.ops))):
         if is_loss_grad_op(op):
-            assert op.type == 'fill_constant', \
-                "loss_grad_op must be fill_constant op, " \
+            assert op.type == 'fill_constant', (
+                "loss_grad_op must be fill_constant op, "
                 "but this op is {}".format(op.type)
+            )
             assert op.has_attr('value')
             loss_scale = float(op.attr('value'))
             loss_scale = loss_scale / scale
@@ -816,7 +925,7 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
 
 def comm_analyse(main_program):
     """
-    Analyse the parameter size that need to be broadcast/allreduce during sharding training 
+    Analyse the parameter size that need to be broadcast/allreduce during sharding training
     """
     reduce_vars = {}
     broadcast_vars = {}
@@ -825,8 +934,9 @@ def comm_analyse(main_program):
         if op.type == "c_broadcast":
             var_name = op.desc.input_arg_names()[0]
             # convert MB to KB
-            broadcast_vars[var_name] = get_var_size(
-                block.var(var_name)) * 1024.0
+            broadcast_vars[var_name] = (
+                get_var_size(block.var(var_name)) * 1024.0
+            )
         elif op.type == "c_allreduce_sum":
             var_name = op.desc.input_arg_names()[0]
             reduce_vars[var_name] = get_var_size(block.var(var_name)) * 1024.0
@@ -836,14 +946,14 @@ def comm_analyse(main_program):
 
     for k, v in broadcast_vars.items():
         print("broadcast: {}: {} KB".format(k, v))
-        if (int(v / gap) in varsize_count):
+        if int(v / gap) in varsize_count:
             varsize_count[int(v / gap)] += 1
         else:
             varsize_count[int(v / gap)] = 1
 
     for k, v in reduce_vars.items():
         print("allreduce: {}: {} KB".format(k, v))
-        if (int(v / gap) in varsize_count):
+        if int(v / gap) in varsize_count:
             varsize_count[int(v / gap)] += 1
         else:
             varsize_count[int(v / gap)] = 1
@@ -852,18 +962,19 @@ def comm_analyse(main_program):
         sorted_varsize = sorted(varsize_count.items(), key=lambda x: x[0])
         for varsize, count in sorted_varsize:
             print("NCCL size {}~{} KB: {}".format(varsize, varsize + 1, count))
-            f.write("NCCL size {}~{} KB: {}\n".format(varsize, varsize + 1,
-                                                      count))
+            f.write(
+                "NCCL size {}~{} KB: {}\n".format(varsize, varsize + 1, count)
+            )
 
 
 def add_sync_comm(program, sharding_ring_id):
     """
-    When clone a test prog by clone from the sharding main prog, 
+    When clone a test prog by clone from the sharding main prog,
     part of the sync_comm op maybe be pruned by mistake, this function
     add the sync_comm op for the test prog.
 
     """
-    #NOTE (liangjianzhong): only support one comm stream by now, use more than one
+    # NOTE (liangjianzhong): only support one comm stream by now, use more than one
     # comm streams will cause error. should be revise in future.
 
     assert sharding_ring_id >= 0, "sharding_ring_id should larger than zero"
@@ -877,15 +988,15 @@ def add_sync_comm(program, sharding_ring_id):
             for input_name in op.desc.input_arg_names():
                 not_sync_vars.remove(input_name)
     if not_sync_vars:
-        block.append_op(type='c_sync_comm_stream',
-                        inputs={'X': list(not_sync_vars)},
-                        outputs={'Out': list(not_sync_vars)},
-                        attrs={
-                            'ring_id':
-                            sharding_ring_id,
-                            'op_role':
-                            core.op_proto_and_checker_maker.OpRole.Forward
-                        })
+        block.append_op(
+            type='c_sync_comm_stream',
+            inputs={'X': list(not_sync_vars)},
+            outputs={'Out': list(not_sync_vars)},
+            attrs={
+                'ring_id': sharding_ring_id,
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+            },
+        )
     return
 
 
@@ -905,8 +1016,14 @@ def save_persistables(exe, dirname, main_program, filename=None):
         # support EMA optimizer with '_ema_0',
         # support offload with '@offload_0' and '.cast_fp16'
         checks = [
-            "_moment1_0", "_moment2_0", "_beta1_pow_acc_0", "_beta2_pow_acc_0",
-            "_velocity_0", "_ema_0", "@offload_0", ".cast_fp16"
+            "_moment1_0",
+            "_moment2_0",
+            "_beta1_pow_acc_0",
+            "_beta2_pow_acc_0",
+            "_velocity_0",
+            "_ema_0",
+            "@offload_0",
+            ".cast_fp16",
         ]
         for check in checks:
             if var.name.endswith(check) and var.persistable:
@@ -919,24 +1036,27 @@ def save_persistables(exe, dirname, main_program, filename=None):
         return var.name.endswith("@GradiantMerge")
 
     def is_trainable(var):
-        return isinstance(var,
-                          paddle.fluid.framework.Parameter) and var.trainable
+        return (
+            isinstance(var, paddle.fluid.framework.Parameter) and var.trainable
+        )
 
     def sharding_predicate(var):
-        return is_trainable(var) or is_opt_vars(var) or is_gradient_merge_vars(
-            var)
+        return (
+            is_trainable(var) or is_opt_vars(var) or is_gradient_merge_vars(var)
+        )
 
     if int(os.environ.get('PADDLE_TRAINER_ID', 0)) == 0:
-        paddle.fluid.io.save_persistables(exe,
-                                          dirname,
-                                          main_program=main_program,
-                                          filename=None)
+        paddle.fluid.io.save_persistables(
+            exe, dirname, main_program=main_program, filename=None
+        )
     else:
-        paddle.fluid.io.save_vars(exe,
-                                  dirname,
-                                  main_program=main_program,
-                                  predicate=sharding_predicate,
-                                  filename=None)
+        paddle.fluid.io.save_vars(
+            exe,
+            dirname,
+            main_program=main_program,
+            predicate=sharding_predicate,
+            filename=None,
+        )
 
     return
 
@@ -944,22 +1064,28 @@ def save_persistables(exe, dirname, main_program, filename=None):
 def append_naive_sync(block, sync_var, ring_id):
     # NOTE (JZ-LIANG) update this to use barrier sync for more elegent logic
     # sync within global
-    block.append_op(type="fill_constant",
-                    outputs={"Out": sync_var},
-                    attrs={
-                        "shape": sync_var.shape,
-                        "dtype": sync_var.dtype,
-                        "value": int(1),
-                    })
-    block.append_op(type='c_allreduce_sum',
-                    inputs={'X': sync_var},
-                    outputs={'Out': sync_var},
-                    attrs={
-                        'ring_id': ring_id,
-                        'use_calc_stream': True,
-                        OP_ROLE_KEY: OpRole.Forward
-                    })
-    block.append_op(type='c_sync_calc_stream',
-                    inputs={'X': [sync_var]},
-                    outputs={'Out': [sync_var]},
-                    attrs={OP_ROLE_KEY: OpRole.Forward})
+    block.append_op(
+        type="fill_constant",
+        outputs={"Out": sync_var},
+        attrs={
+            "shape": sync_var.shape,
+            "dtype": sync_var.dtype,
+            "value": int(1),
+        },
+    )
+    block.append_op(
+        type='c_allreduce_sum',
+        inputs={'X': sync_var},
+        outputs={'Out': sync_var},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': True,
+            OP_ROLE_KEY: OpRole.Forward,
+        },
+    )
+    block.append_op(
+        type='c_sync_calc_stream',
+        inputs={'X': [sync_var]},
+        outputs={'Out': [sync_var]},
+        attrs={OP_ROLE_KEY: OpRole.Forward},
+    )

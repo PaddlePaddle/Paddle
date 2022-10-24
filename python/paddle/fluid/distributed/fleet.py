@@ -19,9 +19,7 @@ __all__ = ['Fleet']
 
 
 class Fleet(object):
-    """
-    
-    """
+    """ """
 
     def __init__(self):
         self.instance_ = ps_instance.PaddlePSInstance()
@@ -38,11 +36,13 @@ class Fleet(object):
     def init_pserver(self, opt_info):
         if "fleet_desc" in opt_info:
             self.dist_desc_str_ = text_format.MessageToString(
-                opt_info["fleet_desc"])
+                opt_info["fleet_desc"]
+            )
             self.dist_desc_ = opt_info["fleet_desc"]
         else:
             print(
-                "You should run distributed optimization to get opt_info first")
+                "You should run distributed optimization to get opt_info first"
+            )
             sys.exit(-1)
         self.fleet_.init_server(self.dist_desc_str_)
         ip = self.fleet_.start_server()
@@ -55,17 +55,22 @@ class Fleet(object):
     def init_worker(self, opt_info):
         if "fleet_desc" in opt_info:
             self.dist_desc_str_ = text_format.MessageToString(
-                opt_info["fleet_desc"])
+                opt_info["fleet_desc"]
+            )
             self.dist_desc_ = opt_info["fleet_desc"]
         else:
             print(
-                "You should run distributed optimization to get opt_info first")
+                "You should run distributed optimization to get opt_info first"
+            )
             sys.exit(-1)
         self.instance_.barrier_all()
         ips = self.instance.gather_ips()
-        self.fleet_.init_worker(self.dist_desc_str_, ips,
-                                self.instance_.get_node_cnt(),
-                                self.instance._rankid)
+        self.fleet_.init_worker(
+            self.dist_desc_str_,
+            ips,
+            self.instance_.get_node_cnt(),
+            self.instance._rankid,
+        )
         self.instance.barrier_worker()
 
     def init_pserver_model(self):

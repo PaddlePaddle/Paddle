@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import math
 import numpy as np
 from scipy.special import psi
 import paddle
@@ -24,7 +23,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDigammaOp(OpTest):
-
     def setUp(self):
         # switch to static
         paddle.enable_static()
@@ -50,7 +48,6 @@ class TestDigammaOp(OpTest):
 
 
 class TestDigammaOpFp32(TestDigammaOp):
-
     def init_dtype_type(self):
         self.dtype = np.float32
 
@@ -59,7 +56,6 @@ class TestDigammaOpFp32(TestDigammaOp):
 
 
 class TestDigammaAPI(unittest.TestCase):
-
     def setUp(self):
         # switch to static
         paddle.enable_static()
@@ -71,7 +67,6 @@ class TestDigammaAPI(unittest.TestCase):
         self._shape = [8, 3, 32, 32]
 
     def test_in_static_mode(self):
-
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(dtype)
             return {'x': input}, psi(input)
@@ -85,8 +80,7 @@ class TestDigammaAPI(unittest.TestCase):
 
                     exe = static.Executor(place)
                     out_value = exe.run(feed=input_dict, fetch_list=[out.name])
-                    self.assertEqual(
-                        np.allclose(out_value[0], sc_res, rtol=1e-5), True)
+                    np.testing.assert_allclose(out_value[0], sc_res, rtol=1e-05)
 
     def test_in_dynamic_mode(self):
         for dtype in self.dtypes:
@@ -97,7 +91,7 @@ class TestDigammaAPI(unittest.TestCase):
                 with fluid.dygraph.guard(place):
                     input_t = paddle.to_tensor(input)
                     res = paddle.digamma(input_t).numpy()
-                    self.assertEqual(np.allclose(res, sc_res, rtol=1e-05), True)
+                    np.testing.assert_allclose(res, sc_res, rtol=1e-05)
 
     def test_in_eager_dynamic_mode(self):
         with _test_eager_guard():

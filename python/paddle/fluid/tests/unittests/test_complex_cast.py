@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
 import numpy as np
 
@@ -22,12 +20,11 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexCastOp(unittest.TestCase):
-
     def test_complex_to_real(self):
         r = np.random.random(size=[10, 10]) * 10
         i = np.random.random(size=[10, 10])
 
-        c_t = paddle.to_tensor(r + i * 1J, dtype='complex64')
+        c_t = paddle.to_tensor(r + i * 1j, dtype='complex64')
 
         self.assertEqual(c_t.cast('int64').dtype, paddle.int64)
         self.assertEqual(c_t.cast('int32').dtype, paddle.int32)
@@ -35,15 +32,21 @@ class TestComplexCastOp(unittest.TestCase):
         self.assertEqual(c_t.cast('float64').dtype, paddle.float64)
         self.assertEqual(c_t.cast('bool').dtype, paddle.bool)
 
-        self.assertTrue(
-            np.allclose(c_t.cast('int64').numpy(), r.astype('int64')))
-        self.assertTrue(
-            np.allclose(c_t.cast('int32').numpy(), r.astype('int32')))
-        self.assertTrue(
-            np.allclose(c_t.cast('float32').numpy(), r.astype('float32')))
-        self.assertTrue(
-            np.allclose(c_t.cast('float64').numpy(), r.astype('float64')))
-        self.assertTrue(np.allclose(c_t.cast('bool').numpy(), r.astype('bool')))
+        np.testing.assert_allclose(
+            c_t.cast('int64').numpy(), r.astype('int64'), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            c_t.cast('int32').numpy(), r.astype('int32'), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            c_t.cast('float32').numpy(), r.astype('float32'), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            c_t.cast('float64').numpy(), r.astype('float64'), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            c_t.cast('bool').numpy(), r.astype('bool'), rtol=1e-05
+        )
 
     def test_real_to_complex(self):
         r = np.random.random(size=[10, 10]) * 10
@@ -52,23 +55,29 @@ class TestComplexCastOp(unittest.TestCase):
         self.assertEqual(r_t.cast('complex64').dtype, paddle.complex64)
         self.assertEqual(r_t.cast('complex128').dtype, paddle.complex128)
 
-        self.assertTrue(np.allclose(r_t.cast('complex64').real().numpy(), r))
-        self.assertTrue(np.allclose(r_t.cast('complex128').real().numpy(), r))
+        np.testing.assert_allclose(
+            r_t.cast('complex64').real().numpy(), r, rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            r_t.cast('complex128').real().numpy(), r, rtol=1e-05
+        )
 
     def test_complex64_complex128(self):
         r = np.random.random(size=[10, 10])
         i = np.random.random(size=[10, 10])
 
-        c = r + i * 1J
+        c = r + i * 1j
         c_64 = paddle.to_tensor(c, dtype='complex64')
         c_128 = paddle.to_tensor(c, dtype='complex128')
 
         self.assertTrue(c_64.cast('complex128').dtype, paddle.complex128)
         self.assertTrue(c_128.cast('complex128').dtype, paddle.complex64)
-        self.assertTrue(
-            np.allclose(c_64.cast('complex128').numpy(), c_128.numpy()))
-        self.assertTrue(
-            np.allclose(c_128.cast('complex128').numpy(), c_64.numpy()))
+        np.testing.assert_allclose(
+            c_64.cast('complex128').numpy(), c_128.numpy(), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            c_128.cast('complex128').numpy(), c_64.numpy(), rtol=1e-05
+        )
 
     def test_eager(self):
         with _test_eager_guard():

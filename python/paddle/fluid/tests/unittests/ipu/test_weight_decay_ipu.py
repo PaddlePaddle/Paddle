@@ -24,7 +24,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 @unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -57,7 +56,6 @@ class TestBase(IPUOpTest):
         }
 
     def _test_optimizer(self, run_ipu=True):
-
         def exclude_fn(param):
             return param.name.endswith('.w_0')
 
@@ -70,22 +68,23 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(name='image',
-                                           shape=[1, 3, 10, 10],
-                                           dtype='float32')
+                image = paddle.static.data(
+                    name='image', shape=[1, 3, 10, 10], dtype='float32'
+                )
                 bias = paddle.fluid.layers.create_parameter(
-                    shape=[1, 3, 10, 10], is_bias=True, dtype='float32')
+                    shape=[1, 3, 10, 10], is_bias=True, dtype='float32'
+                )
                 add1 = image + bias
-                conv1 = paddle.static.nn.conv2d(add1,
-                                                num_filters=3,
-                                                filter_size=3,
-                                                bias_attr=False)
+                conv1 = paddle.static.nn.conv2d(
+                    add1, num_filters=3, filter_size=3, bias_attr=False
+                )
 
                 loss = paddle.mean(conv1)
                 opt = paddle.optimizer.Lamb(
                     learning_rate=1e-3,
                     lamb_weight_decay=self.attrs['weight_decay'],
-                    exclude_from_weight_decay_fn=exclude_fn)
+                    exclude_from_weight_decay_fn=exclude_fn,
+                )
                 opt.minimize(loss)
 
             if run_ipu:
@@ -102,10 +101,11 @@ class TestBase(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
                 ipu_strategy.set_options(
-                    {'loss_scaling': self.attrs["loss_scaling"]})
+                    {'loss_scaling': self.attrs["loss_scaling"]}
+                )
                 program = paddle.static.IpuCompiledProgram(
-                    main_prog,
-                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+                    main_prog, ipu_strategy=ipu_strategy
+                ).compile(feed_list, fetch_list)
             else:
                 program = main_prog
 
@@ -121,7 +121,9 @@ class TestBase(IPUOpTest):
         ipu_loss = self._test_optimizer(True).flatten()
         cpu_loss = self._test_optimizer(False).flatten()
 
-        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=self.atol))
+        np.testing.assert_allclose(
+            ipu_loss, cpu_loss, rtol=1e-05, atol=self.atol
+        )
 
 
 if __name__ == "__main__":

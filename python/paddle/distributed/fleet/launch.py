@@ -54,26 +54,32 @@ launch a process on each of the given gpu card or cpu machine.
                 your_training_py (arg1 arg2 and all others)
 """
 
-from __future__ import print_function
-
 import shutil
 import sys
 import tempfile
-from sys import version
-import subprocess
 import os
 import time
-import six
 import copy
 import pathlib
-import argparse
 from argparse import ArgumentParser, REMAINDER
-import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet import launch_utils
-
-# TODO(danleifeng): Don't import * from a module
-from paddle.distributed.fleet.launch_utils import *
+from paddle.distributed.fleet.launch_utils import (
+    get_host_name_ip,
+    find_free_ports,
+    logger,
+    get_cluster,
+    DeviceMode,
+    start_local_trainers,
+    direct_start,
+    watch_local_trainers,
+    terminate_local_procs,
+    DistributeMode,
+    ParameterServerLauncher,
+    get_logger,
+    check_backend,
+    block_windows_and_macos,
+)
 from paddle.distributed.fleet import cloud_utils
 from paddle.distributed.fleet import ascend_utils
 
@@ -84,7 +90,7 @@ __all__ = []
 
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
-    for arg, value in sorted(six.iteritems(vars(args))):
+    for arg, value in sorted(vars(args).items()):
         print("%s: %s" % (arg, value))
     print("------------------------------------------------")
 
@@ -97,33 +103,38 @@ def _parse_args():
     parser = ArgumentParser(
         description='''start paddle training using multi-process mode.
 see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/training/cluster_howto.html#permalink-8--nccl2-
-''')
+'''
+    )
     base_group = parser.add_argument_group("Base Parameters")
 
     base_group.add_argument(
         "--log_dir",
         type=str,
         default="log",
-        help="The path for each process's log. Default --log_dir=log/")
+        help="The path for each process's log. Default --log_dir=log/",
+    )
     base_group.add_argument(
         "--backend",
         type=str,
         default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
         help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
-        "Default value is auto which perfers nccl or bkcl.")
+        "Default value is auto which perfers nccl or bkcl.",
+    )
     base_group.add_argument(
         "--nproc_per_node",
         type=int,
         default=None,
         help="The number of processes to launch on a node."
         "In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus). And so each process can"
-        " bound to one or average number of gpus.")
+        " bound to one or average number of gpus.",
+    )
 
     base_group.add_argument(
         "--run_mode",
         type=str,
         default=None,
-        help="run mode of job, can be:collective/ps/ps-heter")
+        help="run mode of job, can be:collective/ps/ps-heter",
+    )
 
     if fluid.core.is_compiled_with_cuda():
         base_group.add_argument(
@@ -132,7 +143,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             default=None,
             help="It's for gpu training."
             "For example:"
-            "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu."
+            "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu.",
         )
         base_group.add_argument("--selected_gpus", dest="gpus")
 
@@ -142,7 +153,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             type=str,
             default=None,
             help="It's for xpu training. For example: "
-            "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu."
+            "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu.",
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
 
@@ -152,7 +163,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             type=str,
             default=None,
             help="It's for xpu training. For example: "
-            "--npus=\"0,1,2,3\" will launch four training processes each bound to one npu."
+            "--npus=\"0,1,2,3\" will launch four training processes each bound to one npu.",
         )
         base_group.add_argument("--selected_npus", dest="npus")
 
@@ -162,16 +173,18 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             type=str,
             default=None,
             help="It's for mlu training. For example: "
-            "--mlus=\"0,1,2,3\" will launch four training processes each bound to one mlu."
+            "--mlus=\"0,1,2,3\" will launch four training processes each bound to one mlu.",
         )
         base_group.add_argument("--selected_mlus", dest="mlus")
 
-    base_group.add_argument("training_script",
-                            type=str,
-                            help="The full path to the single GPU training "
-                            "program/script to be launched in parallel, "
-                            "followed by all the arguments for the "
-                            "training script")
+    base_group.add_argument(
+        "training_script",
+        type=str,
+        help="The full path to the single GPU training "
+        "program/script to be launched in parallel, "
+        "followed by all the arguments for the "
+        "training script",
+    )
 
     base_group.add_argument('training_script_args', nargs=REMAINDER)
 
@@ -182,79 +195,86 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--ips",
         type=str,
         default="127.0.0.1",
-        help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
+        help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..",
+    )
     collective_group.add_argument(
         "--cluster_topo_path",
         type=str,
         default=None,
         help="A json format file will be stored in this path which is used"
-        "to represent the cluster topology information for auto parallel.")
+        "to represent the cluster topology information for auto parallel.",
+    )
     collective_group.add_argument(
         "--rank_mapping_path",
         type=str,
         default=None,
         help="A json format file will be stored in this path which is used"
-        "to map processes to machines for auto parallel.")
+        "to map processes to machines for auto parallel.",
+    )
     collective_group.add_argument(
         "--enable_auto_mapping",
         type=bool,
         default=False,
-        help="Set true to enable the lazy launch for auto-parallel scenario.")
+        help="Set true to enable the lazy launch for auto-parallel scenario.",
+    )
 
     ps_group = parser.add_argument_group("Parameter-Server Parameters")
     # for parameter server
-    ps_group.add_argument("--servers",
-                          type=str,
-                          default="",
-                          help="User defined servers ip:port")
-    ps_group.add_argument("--workers",
-                          type=str,
-                          default="",
-                          help="User defined workers ip:port")
-    ps_group.add_argument("--coordinators",
-                          type=str,
-                          default="",
-                          help="User defined coordinators ip:port")
+    ps_group.add_argument(
+        "--servers", type=str, default="", help="User defined servers ip:port"
+    )
+    ps_group.add_argument(
+        "--workers", type=str, default="", help="User defined workers ip:port"
+    )
+    ps_group.add_argument(
+        "--coordinators",
+        type=str,
+        default="",
+        help="User defined coordinators ip:port",
+    )
     ps_group.add_argument(
         "--heter_workers",
         type=str,
         default="",
-        help="User defined heter workers in each stage ip1:port1;ip2:port2")
+        help="User defined heter workers in each stage ip1:port1;ip2:port2",
+    )
     ps_group.add_argument(
         "--heter_devices",
         type=str,
         default="",
-        help="User defined heter devices in each stage cpu;gpu;cpu")
+        help="User defined heter devices in each stage cpu;gpu;cpu",
+    )
 
     ps_group.add_argument("--worker_num", type=int, help="number of workers")
-    ps_group.add_argument("--coordinator_num",
-                          type=int,
-                          help="number of coordinators")
+    ps_group.add_argument(
+        "--coordinator_num", type=int, help="number of coordinators"
+    )
     ps_group.add_argument("--server_num", type=int, help="number of servers")
-    ps_group.add_argument("--heter_worker_num",
-                          type=str,
-                          help="number of heter_workers in each stage 1;2;3")
+    ps_group.add_argument(
+        "--heter_worker_num",
+        type=str,
+        help="number of heter_workers in each stage 1;2;3",
+    )
     ps_group.add_argument("--http_port", type=int, help="Gloo http Port")
 
     # parameter elastic mode
     elastic_group = parser.add_argument_group("Elastic Parameters")
-    elastic_group.add_argument("--elastic_server",
-                               type=str,
-                               help="etcd server host:port")
-    elastic_group.add_argument("--elastic_pre_hook",
-                               type=str,
-                               help="elastic pre_hook shell cmd")
+    elastic_group.add_argument(
+        "--elastic_server", type=str, help="etcd server host:port"
+    )
+    elastic_group.add_argument(
+        "--elastic_pre_hook", type=str, help="elastic pre_hook shell cmd"
+    )
 
     elastic_group.add_argument("--job_id", type=str, help="job unique id")
     elastic_group.add_argument("--np", type=int, help="job pod/node number")
     elastic_group.add_argument("--scale", type=int, default=0, help="scale np")
-    elastic_group.add_argument("--host",
-                               type=str,
-                               help="bind host, default to POD_IP env")
-    elastic_group.add_argument("--force",
-                               type=bool,
-                               default=False,
-                               help="update np force")
+    elastic_group.add_argument(
+        "--host", type=str, help="bind host, default to POD_IP env"
+    )
+    elastic_group.add_argument(
+        "--force", type=bool, default=False, help="update np force"
+    )
 
     known_args, _ = parser.parse_known_args()
     return known_args
@@ -270,16 +290,23 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
         else:
             _, node_ip = get_host_name_ip()
 
-    assert node_ip in node_ips, "Can't find your local ip {%s} in node_ips: {%s}" \
-        % (node_ip, node_ips)
+    assert (
+        node_ip in node_ips
+    ), "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
     node_rank = node_ips.index(node_ip)
 
-    logger.debug("parsed from args: node_ips:{} node_ip:{} node_rank:{}".format(
-        node_ips, node_ip, node_rank))
+    logger.debug(
+        "parsed from args: node_ips:{} node_ip:{} node_rank:{}".format(
+            node_ips, node_ip, node_rank
+        )
+    )
 
     free_ports = None
-    if not cloud_utils.use_paddlecloud() and len(
-            node_ips) <= 1 and os.environ.get('FLAGS_START_PORT') is None:
+    if (
+        not cloud_utils.use_paddlecloud()
+        and len(node_ips) <= 1
+        and os.environ.get('FLAGS_START_PORT') is None
+    ):
         free_ports = find_free_ports(len(devices_per_proc))
         if free_ports is not None:
             free_ports = list(free_ports)
@@ -296,17 +323,21 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
     trainer_endpoints = []
     for ip in node_ips:
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
-    return get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
-                       devices_per_proc)
+    return get_cluster(
+        node_ips, node_ip, trainer_endpoints, device_mode, devices_per_proc
+    )
 
 
 def cpuonly_check(args):
     if args.ips and len(args.ips.split(',')) > 1:
         raise RuntimeError(
             "CPUONLY launch only support single trainer, that is len(ips)=1, but got %s."
-            % args.ips)
+            % args.ips
+        )
     if args.run_mode:
-        assert args.run_mode == 'cpuonly', "CPUONLY launch only support run mode is CPUONLY"
+        assert (
+            args.run_mode == 'cpuonly'
+        ), "CPUONLY launch only support run mode is CPUONLY"
     if args.servers:
         raise RuntimeError("CPUONLY launch can't have --servers as arguments.")
     return True
@@ -314,15 +345,20 @@ def cpuonly_check(args):
 
 def get_cluster_info(args):
     # parse arguments, used for cloud-single-machine and local
-    if args.backend == 'gloo': cpuonly_check(args)
+    if args.backend == 'gloo':
+        cpuonly_check(args)
     if args.enable_auto_mapping:
         (device_mode, devices_per_proc) = (DeviceMode.GPU, [])
     else:
-        (device_mode,
-         devices_per_proc) = launch_utils.get_device_proc_info(args)
+        (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(
+            args
+        )
     trainers_num = cloud_utils.get_trainers_num()
-    logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".format(
-        trainers_num, device_mode, devices_per_proc))
+    logger.debug(
+        "parsed from args trainerss_num:{} mode:{} devices:{}".format(
+            trainers_num, device_mode, devices_per_proc
+        )
+    )
 
     cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
 
@@ -334,52 +370,69 @@ def get_cluster_info(args):
         start_port = os.environ.get('FLAGS_START_PORT')
     # auto mapping between processes and devices for auto-parallel
     if args.enable_auto_mapping == True:
-        assert args.cluster_topo_path is not None, \
-            "The cluster topology must be provied when enabling auto mapping."
+        assert (
+            args.cluster_topo_path is not None
+        ), "The cluster topology must be provied when enabling auto mapping."
         rank_mapping_path = args.rank_mapping_path or os.getenv(
-            "PADDLE_RANK_MAPPING_PATH")
+            "PADDLE_RANK_MAPPING_PATH"
+        )
         if not rank_mapping_path:
             os.environ["PADDLE_NEED_RANK_MAPPING"] = str(True)
             os.environ["PADDLE_ENABLE_ELASTIC"] = str(
-                enable_elastic(args, device_mode))
+                enable_elastic(args, device_mode)
+            )
             cwd = pathlib.Path().resolve()
-            rank_mapping_path = os.path.join(cwd,
-                                             "auto_parallel_rank_mapping.json")
+            rank_mapping_path = os.path.join(
+                cwd, "auto_parallel_rank_mapping.json"
+            )
             os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
 
             original_args = sys.argv[1:]
             os.environ["PADDLE_ORIGINAL_CMD_ARGS"] = " ".join(original_args)
             os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
             os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
-                args.enable_auto_mapping)
-            cluster, pod = launch_utils.get_mapped_cluster_from_args_without_rank_mapping(
-                args, device_mode)
+                args.enable_auto_mapping
+            )
+            (
+                cluster,
+                pod,
+            ) = launch_utils.get_mapped_cluster_from_args_without_rank_mapping(
+                args, device_mode
+            )
         else:
             os.environ["PADDLE_NEED_RANK_MAPPING"] = str(False)
             os.environ["PADDLE_ENABLE_ELASTIC"] = str(
-                enable_elastic(args, device_mode))
+                enable_elastic(args, device_mode)
+            )
 
             os.environ["PADDLE_CLUSTER_TOPO_PATH"] = str(args.cluster_topo_path)
             os.environ["PADDLE_RANK_MAPPING_PATH"] = str(rank_mapping_path)
             os.environ["PADDLE_ENABLE_AUTO_MAPPING"] = str(
-                args.enable_auto_mapping)
-            cluster, pod = launch_utils.get_mapped_cluster_from_args_with_rank_mapping(
-                args, device_mode)
+                args.enable_auto_mapping
+            )
+            (
+                cluster,
+                pod,
+            ) = launch_utils.get_mapped_cluster_from_args_with_rank_mapping(
+                args, device_mode
+            )
     elif cloud_utils.use_paddlecloud() and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(args.ips, device_mode,
-                                                     devices_per_proc,
-                                                     start_port)
+        cluster, pod = cloud_utils.get_cloud_cluster(
+            args.ips, device_mode, devices_per_proc, start_port
+        )
         logger.debug("get cluster from cloud:{}".format(cluster))
     elif device_mode == DeviceMode.ASCEND_NPU:
         # for ascend
-        cluster, pod = ascend_utils.get_cloud_cluster(rank_table_file=os.getenv(
-            "RANK_TABLE_FILE", None),
-                                                      device_mode=device_mode,
-                                                      start_port=start_port)
+        cluster, pod = ascend_utils.get_cloud_cluster(
+            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+            device_mode=device_mode,
+            start_port=start_port,
+        )
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
-        cluster, pod = get_cluster_from_args(args, device_mode,
-                                             devices_per_proc)
+        cluster, pod = get_cluster_from_args(
+            args, device_mode, devices_per_proc
+        )
         logger.debug("get cluster from args:{}".format(cluster))
     return cluster, pod
 
@@ -399,12 +452,14 @@ def launch_collective(args):
     cluster, pod = get_cluster_info(args)
     global_envs = get_global_envs(args, tmp_dir)
 
-    procs = start_local_trainers(cluster,
-                                 pod,
-                                 training_script=args.training_script,
-                                 training_script_args=args.training_script_args,
-                                 log_dir=args.log_dir,
-                                 envs=global_envs)
+    procs = start_local_trainers(
+        cluster,
+        pod,
+        training_script=args.training_script,
+        training_script_args=args.training_script_args,
+        log_dir=args.log_dir,
+        envs=global_envs,
+    )
 
     for idx, proc in enumerate(procs):
         print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
@@ -436,7 +491,7 @@ def launch_ps(args, distribute_mode):
     if cloud_flag and distribute_mode == DistributeMode.PS:
         direct_start(args)
         return
-    #elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
+    # elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
     #    cloud_ps_heter_env_set(args)
     #    args.workers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
     #    args.servers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
@@ -448,7 +503,8 @@ def launch_ps(args, distribute_mode):
 
 
 def infer_backend(args):
-    if args.backend != "auto": return
+    if args.backend != "auto":
+        return
     if fluid.core.is_compiled_with_cuda():
         args.backend = 'nccl'
     elif fluid.core.is_compiled_with_npu():
@@ -474,8 +530,14 @@ def which_distributed_mode(args):
         return DistributeMode.PS_HETER
 
     ps_args = [
-        '--worker_num', '--server_num', '--heter_worker_num', '--servers',
-        '--workers', '--heter_workers', '--heter_devices', '--http_port'
+        '--worker_num',
+        '--server_num',
+        '--heter_worker_num',
+        '--servers',
+        '--workers',
+        '--heter_workers',
+        '--heter_devices',
+        '--http_port',
     ]
     collective_args = ['--ips']
 
@@ -487,7 +549,8 @@ def which_distributed_mode(args):
         ps_arg for ps_arg in ps_args if ps_arg in " ".join(sys.argv[1:-1])
     ]
     has_collective_args = [
-        co_arg for co_arg in collective_args
+        co_arg
+        for co_arg in collective_args
         if co_arg in " ".join(sys.argv[1:-1])
     ]
 
@@ -509,8 +572,10 @@ def which_distributed_mode(args):
 
     if len(has_ps_args) > 0:
         logger.info(
-            "Run parameter-sever mode. pserver arguments:{}, accelerators count:{}"
-            .format(has_ps_args, accelerators))
+            "Run parameter-sever mode. pserver arguments:{}, accelerators count:{}".format(
+                has_ps_args, accelerators
+            )
+        )
         has_ps_heter_args = list(set(has_ps_args) & set(ps_heter_args))
         has_coordinator_args = list(set(has_ps_args) & set(coordinator_args))
         if len(has_ps_heter_args) > 0:
@@ -520,30 +585,36 @@ def which_distributed_mode(args):
     elif len(has_collective_args) > 0:
         logger.info(
             "Run collective mode. gpu arguments:{}, cuda count:{}".format(
-                has_collective_args, accelerators))
+                has_collective_args, accelerators
+            )
+        )
         return DistributeMode.COLLECTIVE
     else:
-        if not fluid.core.is_compiled_with_cuda(
-        ) and not fluid.core.is_compiled_with_xpu(
-        ) and not fluid.core.is_compiled_with_mlu():
+        if (
+            not fluid.core.is_compiled_with_cuda()
+            and not fluid.core.is_compiled_with_xpu()
+            and not fluid.core.is_compiled_with_mlu()
+        ):
             if args.servers:
                 logger.warning(
                     "Not found distinct arguments and not compiled with cuda or xpu or npu or mlu. "
-                    "But found args.servers not empty, default use ps mode")
+                    "But found args.servers not empty, default use ps mode"
+                )
                 return DistributeMode.PS
             else:
                 return DistributeMode.COLLECTIVE
         else:
             logger.warning(
                 "Not found distinct arguments and compiled with cuda or xpu or npu or mlu. "
-                "Default use collective mode")
+                "Default use collective mode"
+            )
             return DistributeMode.COLLECTIVE
 
 
 def launch():
     """
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
-    
+
     Usage:
         .. code-block:: bash
             :name: code-block-bash1
@@ -553,7 +624,7 @@ def launch():
                              [--worker_num WORKER_NUM] [--server_num SERVER_NUM] [--heter_worker_num HETER_WORKER_NUM]
                              [--http_port HTTP_PORT] [--elastic_server ELASTIC_SERVER] [--job_id JOB_ID] [--np NP] [--scale SCALE]
                              [--host HOST] [--force FORCE]
-                             training_script ...    
+                             training_script ...
 
 
     Base Parameters:
@@ -566,9 +637,9 @@ def launch():
         - ``--gpus``: It's for gpu training. e.g., ``--gpus=0,1,2,3`` will launch four training processes each bound to one gpu.
 
         - ``--selected_gpus``: gpus aliases, recommend to use ``--gpus``.
-        
+
         - ``--xpus``: It's for xpu training if xpu is available. e.g., ``--xpus=0,1,2,3``.
-        
+
         - ``--selected_xpus``: xpus aliases, recommend to use ``--xpus``.
 
         - ``--mlus``: It's for mlu training. e.g., ``--mlus=0,1,2,3`` will launch four training processes each bound to one mlu.
@@ -594,7 +665,7 @@ def launch():
         - ``--server_num``: Number of servers (It recommend to set when in the emulated distributed environment using single node)
 
         - ``--heter_worker_num``: Number of heter_workers in each stage (It recommend to set when in the emulated distributed environment using single node)
-        
+
         - ``--heter_devices``: Type of heter_device in each stage
 
         - ``--http_port``: Gloo http Port
@@ -615,18 +686,18 @@ def launch():
     Examples 1 (collective, single node):
         .. code-block:: bash
             :name: code-block-example-bash1
-            
+
             # For training on single node using 4 gpus.
 
             python -m paddle.distributed.launch --gpus=0,1,2,3 train.py --lr=0.01
-        
+
     Examples 2 (collective, multi node):
         .. code-block:: bash
             :name: code-block-example-bash2
 
             # The parameters of --gpus and --ips must be consistent in each node.
 
-            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17
 
             # On 192.168.0.16:
 
@@ -634,15 +705,15 @@ def launch():
 
             # On 192.168.0.17:
             python -m paddle.distributed.launch --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --lr=0.01
-        
+
     Examples 3 (ps, cpu, single node):
         .. code-block:: bash
             :name: code-block-example-bash3
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers.
-            
+
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
-        
+
     Examples 4 (ps, cpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash4
@@ -662,10 +733,10 @@ def launch():
             :name: code-block-example-bash5
 
            # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, each worker use single gpu.
-            
+
             export CUDA_VISIBLE_DEVICES=0,1,2,3
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
-            
+
     Examples 6 (ps, gpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash6
@@ -687,10 +758,10 @@ def launch():
             :name: code-block-example-bash7
 
             # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, two workers use gpu, two workers use cpu.
-            
+
             export CUDA_VISIBLE_DEVICES=0,1
             python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
-            
+
     Examples 8 (ps-heter, cpu + gpu, multi node):
         .. code-block:: bash
             :name: code-block-example-bash8
@@ -712,7 +783,7 @@ def launch():
             :name: code-block-example-bash9
 
             python -m paddle.distributed.launch --elastic_server=127.0.0.1:2379 --np=2 --job_id=job1  --gpus=0,1,2,3 train.py
-        
+
     """
 
     args = _parse_args()
@@ -721,19 +792,23 @@ def launch():
 
     if args.backend == 'auto':
         distribute_mode = which_distributed_mode(
-            args)  # which_distributed_mode must modify args.backend
+            args
+        )  # which_distributed_mode must modify args.backend
     else:
-        assert args.run_mode == 'collective' or args.run_mode == None, "When backend is not 'auto', run mode must be collective"
+        assert (
+            args.run_mode == 'collective' or args.run_mode == None
+        ), "When backend is not 'auto', run mode must be collective"
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
 
-    #assert args.backend in ['gloo', 'nccl', 'bkcl', 'cncl', 'heter', 'unknown']
+    # assert args.backend in ['gloo', 'nccl', 'bkcl', 'cncl', 'heter', 'unknown']
 
     if args.backend == 'gloo':
         logger.warning("launch start with CPUONLY mode")
 
     block_windows_and_macos(
-        args.backend)  # raise error when using gloo on windows or macos
+        args.backend
+    )  # raise error when using gloo on windows or macos
 
     if enable_elastic(args, distribute_mode):
         launch_elastic(args, distribute_mode)

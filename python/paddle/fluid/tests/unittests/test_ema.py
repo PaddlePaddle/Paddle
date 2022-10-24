@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -21,7 +19,6 @@ import paddle.fluid as fluid
 
 
 class TestExponentialMovingAverage(unittest.TestCase):
-
     def setUp(self):
         self._places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -34,19 +31,21 @@ class TestExponentialMovingAverage(unittest.TestCase):
         with fluid.program_guard(self._train_program, self._startup_prog):
             with fluid.unique_name.guard():
                 data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-                hidden = fluid.layers.fc(input=data,
-                                         size=10,
-                                         param_attr=self._param_name)
+                hidden = fluid.layers.fc(
+                    input=data, size=10, param_attr=self._param_name
+                )
                 cost = paddle.mean(hidden)
 
                 self._test_program = fluid.default_main_program().clone(
-                    for_test=True)
+                    for_test=True
+                )
 
                 optimizer = fluid.optimizer.Adam(learning_rate=0.001)
                 optimizer.minimize(cost)
 
                 self._ema = fluid.optimizer.ExponentialMovingAverage(
-                    self._ema_decay)
+                    self._ema_decay
+                )
                 self._ema.update()
 
     def train(self, place):
@@ -57,16 +56,19 @@ class TestExponentialMovingAverage(unittest.TestCase):
         for pass_id in range(2):
             for batch_id in range(3):
                 data = np.random.random(size=(10, 5)).astype('float32')
-                tmp_param = np.array(fluid.global_scope().find_var(
-                    self._param_name).get_tensor())
+                tmp_param = np.array(
+                    fluid.global_scope().find_var(self._param_name).get_tensor()
+                )
                 exe.run(program=self._train_program, feed={'x': data})
-                tmp_param = np.array(fluid.global_scope().find_var(
-                    self._param_name).get_tensor())
+                tmp_param = np.array(
+                    fluid.global_scope().find_var(self._param_name).get_tensor()
+                )
                 params.append(tmp_param)
 
         with self._ema.apply(exe):
-            final_ema = np.array(fluid.global_scope().find_var(
-                self._param_name).get_tensor())
+            final_ema = np.array(
+                fluid.global_scope().find_var(self._param_name).get_tensor()
+            )
             data = np.random.random(size=(10, 5)).astype('float32')
             exe.run(program=self._test_program, feed={'x': data})
         return params, final_ema
@@ -77,10 +79,12 @@ class TestExponentialMovingAverage(unittest.TestCase):
             manu_ema = np.zeros_like(final_ema)
             if len(params) > 0:
                 for param in params:
-                    manu_ema = self._ema_decay * manu_ema + (
-                        1 - self._ema_decay) * param
-                manu_ema = manu_ema / (1.0 - self._ema_decay**len(params))
-            self.assertTrue(np.allclose(manu_ema, final_ema))
+                    manu_ema = (
+                        self._ema_decay * manu_ema
+                        + (1 - self._ema_decay) * param
+                    )
+                manu_ema = manu_ema / (1.0 - self._ema_decay ** len(params))
+            np.testing.assert_allclose(manu_ema, final_ema, rtol=1e-05)
 
 
 if __name__ == '__main__':

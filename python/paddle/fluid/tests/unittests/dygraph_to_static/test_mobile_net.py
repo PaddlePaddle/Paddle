@@ -39,32 +39,35 @@ program_translator = ProgramTranslator()
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
-
-    def __init__(self,
-                 num_channels,
-                 filter_size,
-                 num_filters,
-                 stride,
-                 padding,
-                 channels=None,
-                 num_groups=1,
-                 act='relu',
-                 use_cudnn=True,
-                 name=None):
+    def __init__(
+        self,
+        num_channels,
+        filter_size,
+        num_filters,
+        stride,
+        padding,
+        channels=None,
+        num_groups=1,
+        act='relu',
+        use_cudnn=True,
+        name=None,
+    ):
         super(ConvBNLayer, self).__init__()
 
-        self._conv = Conv2D(num_channels=num_channels,
-                            num_filters=num_filters,
-                            filter_size=filter_size,
-                            stride=stride,
-                            padding=padding,
-                            groups=num_groups,
-                            act=None,
-                            use_cudnn=use_cudnn,
-                            param_attr=ParamAttr(initializer=MSRA(),
-                                                 name=self.full_name() +
-                                                 "_weights"),
-                            bias_attr=False)
+        self._conv = Conv2D(
+            num_channels=num_channels,
+            num_filters=num_filters,
+            filter_size=filter_size,
+            stride=stride,
+            padding=padding,
+            groups=num_groups,
+            act=None,
+            use_cudnn=use_cudnn,
+            param_attr=ParamAttr(
+                initializer=MSRA(), name=self.full_name() + "_weights"
+            ),
+            bias_attr=False,
+        )
 
         self._batch_norm = BatchNorm(
             num_filters,
@@ -72,7 +75,8 @@ class ConvBNLayer(fluid.dygraph.Layer):
             param_attr=ParamAttr(name=self.full_name() + "_bn" + "_scale"),
             bias_attr=ParamAttr(name=self.full_name() + "_bn" + "_offset"),
             moving_mean_name=self.full_name() + "_bn" + '_mean',
-            moving_variance_name=self.full_name() + "_bn" + '_variance')
+            moving_variance_name=self.full_name() + "_bn" + '_variance',
+        )
 
     def forward(self, inputs, if_act=False):
         y = self._conv(inputs)
@@ -83,32 +87,35 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
 
 class DepthwiseSeparable(fluid.dygraph.Layer):
-
-    def __init__(self,
-                 num_channels,
-                 num_filters1,
-                 num_filters2,
-                 num_groups,
-                 stride,
-                 scale,
-                 name=None):
+    def __init__(
+        self,
+        num_channels,
+        num_filters1,
+        num_filters2,
+        num_groups,
+        stride,
+        scale,
+        name=None,
+    ):
         super(DepthwiseSeparable, self).__init__()
 
-        self._depthwise_conv = ConvBNLayer(num_channels=num_channels,
-                                           num_filters=int(num_filters1 *
-                                                           scale),
-                                           filter_size=3,
-                                           stride=stride,
-                                           padding=1,
-                                           num_groups=int(num_groups * scale),
-                                           use_cudnn=True)
+        self._depthwise_conv = ConvBNLayer(
+            num_channels=num_channels,
+            num_filters=int(num_filters1 * scale),
+            filter_size=3,
+            stride=stride,
+            padding=1,
+            num_groups=int(num_groups * scale),
+            use_cudnn=True,
+        )
 
         self._pointwise_conv = ConvBNLayer(
             num_channels=int(num_filters1 * scale),
             filter_size=1,
             num_filters=int(num_filters2 * scale),
             stride=1,
-            padding=0)
+            padding=0,
+        )
 
     def forward(self, inputs):
         y = self._depthwise_conv(inputs)
@@ -117,118 +124,148 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
 
 
 class MobileNetV1(fluid.dygraph.Layer):
-
     def __init__(self, scale=1.0, class_dim=1000):
         super(MobileNetV1, self).__init__()
         self.scale = scale
         self.dwsl = []
 
-        self.conv1 = ConvBNLayer(num_channels=3,
-                                 filter_size=3,
-                                 channels=3,
-                                 num_filters=int(32 * scale),
-                                 stride=2,
-                                 padding=1)
+        self.conv1 = ConvBNLayer(
+            num_channels=3,
+            filter_size=3,
+            channels=3,
+            num_filters=int(32 * scale),
+            stride=2,
+            padding=1,
+        )
 
-        dws21 = self.add_sublayer(sublayer=DepthwiseSeparable(num_channels=int(
-            32 * scale),
-                                                              num_filters1=32,
-                                                              num_filters2=64,
-                                                              num_groups=32,
-                                                              stride=1,
-                                                              scale=scale),
-                                  name="conv2_1")
+        dws21 = self.add_sublayer(
+            sublayer=DepthwiseSeparable(
+                num_channels=int(32 * scale),
+                num_filters1=32,
+                num_filters2=64,
+                num_groups=32,
+                stride=1,
+                scale=scale,
+            ),
+            name="conv2_1",
+        )
         self.dwsl.append(dws21)
 
-        dws22 = self.add_sublayer(sublayer=DepthwiseSeparable(num_channels=int(
-            64 * scale),
-                                                              num_filters1=64,
-                                                              num_filters2=128,
-                                                              num_groups=64,
-                                                              stride=2,
-                                                              scale=scale),
-                                  name="conv2_2")
+        dws22 = self.add_sublayer(
+            sublayer=DepthwiseSeparable(
+                num_channels=int(64 * scale),
+                num_filters1=64,
+                num_filters2=128,
+                num_groups=64,
+                stride=2,
+                scale=scale,
+            ),
+            name="conv2_2",
+        )
         self.dwsl.append(dws22)
 
-        dws31 = self.add_sublayer(sublayer=DepthwiseSeparable(num_channels=int(
-            128 * scale),
-                                                              num_filters1=128,
-                                                              num_filters2=128,
-                                                              num_groups=128,
-                                                              stride=1,
-                                                              scale=scale),
-                                  name="conv3_1")
+        dws31 = self.add_sublayer(
+            sublayer=DepthwiseSeparable(
+                num_channels=int(128 * scale),
+                num_filters1=128,
+                num_filters2=128,
+                num_groups=128,
+                stride=1,
+                scale=scale,
+            ),
+            name="conv3_1",
+        )
         self.dwsl.append(dws31)
 
-        dws32 = self.add_sublayer(sublayer=DepthwiseSeparable(num_channels=int(
-            128 * scale),
-                                                              num_filters1=128,
-                                                              num_filters2=256,
-                                                              num_groups=128,
-                                                              stride=2,
-                                                              scale=scale),
-                                  name="conv3_2")
+        dws32 = self.add_sublayer(
+            sublayer=DepthwiseSeparable(
+                num_channels=int(128 * scale),
+                num_filters1=128,
+                num_filters2=256,
+                num_groups=128,
+                stride=2,
+                scale=scale,
+            ),
+            name="conv3_2",
+        )
         self.dwsl.append(dws32)
 
-        dws41 = self.add_sublayer(sublayer=DepthwiseSeparable(num_channels=int(
-            256 * scale),
-                                                              num_filters1=256,
-                                                              num_filters2=256,
-                                                              num_groups=256,
-                                                              stride=1,
-                                                              scale=scale),
-                                  name="conv4_1")
+        dws41 = self.add_sublayer(
+            sublayer=DepthwiseSeparable(
+                num_channels=int(256 * scale),
+                num_filters1=256,
+                num_filters2=256,
+                num_groups=256,
+                stride=1,
+                scale=scale,
+            ),
+            name="conv4_1",
+        )
         self.dwsl.append(dws41)
 
-        dws42 = self.add_sublayer(sublayer=DepthwiseSeparable(num_channels=int(
-            256 * scale),
-                                                              num_filters1=256,
-                                                              num_filters2=512,
-                                                              num_groups=256,
-                                                              stride=2,
-                                                              scale=scale),
-                                  name="conv4_2")
+        dws42 = self.add_sublayer(
+            sublayer=DepthwiseSeparable(
+                num_channels=int(256 * scale),
+                num_filters1=256,
+                num_filters2=512,
+                num_groups=256,
+                stride=2,
+                scale=scale,
+            ),
+            name="conv4_2",
+        )
         self.dwsl.append(dws42)
 
         for i in range(5):
-            tmp = self.add_sublayer(sublayer=DepthwiseSeparable(
-                num_channels=int(512 * scale),
-                num_filters1=512,
-                num_filters2=512,
-                num_groups=512,
-                stride=1,
-                scale=scale),
-                                    name="conv5_" + str(i + 1))
+            tmp = self.add_sublayer(
+                sublayer=DepthwiseSeparable(
+                    num_channels=int(512 * scale),
+                    num_filters1=512,
+                    num_filters2=512,
+                    num_groups=512,
+                    stride=1,
+                    scale=scale,
+                ),
+                name="conv5_" + str(i + 1),
+            )
             self.dwsl.append(tmp)
 
-        dws56 = self.add_sublayer(sublayer=DepthwiseSeparable(num_channels=int(
-            512 * scale),
-                                                              num_filters1=512,
-                                                              num_filters2=1024,
-                                                              num_groups=512,
-                                                              stride=2,
-                                                              scale=scale),
-                                  name="conv5_6")
+        dws56 = self.add_sublayer(
+            sublayer=DepthwiseSeparable(
+                num_channels=int(512 * scale),
+                num_filters1=512,
+                num_filters2=1024,
+                num_groups=512,
+                stride=2,
+                scale=scale,
+            ),
+            name="conv5_6",
+        )
         self.dwsl.append(dws56)
 
-        dws6 = self.add_sublayer(sublayer=DepthwiseSeparable(num_channels=int(
-            1024 * scale),
-                                                             num_filters1=1024,
-                                                             num_filters2=1024,
-                                                             num_groups=1024,
-                                                             stride=1,
-                                                             scale=scale),
-                                 name="conv6")
+        dws6 = self.add_sublayer(
+            sublayer=DepthwiseSeparable(
+                num_channels=int(1024 * scale),
+                num_filters1=1024,
+                num_filters2=1024,
+                num_groups=1024,
+                stride=1,
+                scale=scale,
+            ),
+            name="conv6",
+        )
         self.dwsl.append(dws6)
 
         self.pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
 
-        self.out = Linear(int(1024 * scale),
-                          class_dim,
-                          param_attr=ParamAttr(initializer=MSRA(),
-                                               name=self.full_name() +
-                                               "fc7_weights"),
-                          bias_attr=ParamAttr(name="fc7_offset"))
+        self.out = Linear(
+            int(1024 * scale),
+            class_dim,
+            param_attr=ParamAttr(
+                initializer=MSRA(), name=self.full_name() + "fc7_weights"
+            ),
+            bias_attr=ParamAttr(name="fc7_offset"),
+        )
 
     @declarative
     def forward(self, inputs):
@@ -242,7 +279,6 @@ class MobileNetV1(fluid.dygraph.Layer):
 
 
 class InvertedResidualUnit(fluid.dygraph.Layer):
-
     def __init__(
         self,
         num_channels,
@@ -255,30 +291,36 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
     ):
         super(InvertedResidualUnit, self).__init__()
         num_expfilter = int(round(num_in_filter * expansion_factor))
-        self._expand_conv = ConvBNLayer(num_channels=num_channels,
-                                        num_filters=num_expfilter,
-                                        filter_size=1,
-                                        stride=1,
-                                        padding=0,
-                                        act=None,
-                                        num_groups=1)
+        self._expand_conv = ConvBNLayer(
+            num_channels=num_channels,
+            num_filters=num_expfilter,
+            filter_size=1,
+            stride=1,
+            padding=0,
+            act=None,
+            num_groups=1,
+        )
 
-        self._bottleneck_conv = ConvBNLayer(num_channels=num_expfilter,
-                                            num_filters=num_expfilter,
-                                            filter_size=filter_size,
-                                            stride=stride,
-                                            padding=padding,
-                                            num_groups=num_expfilter,
-                                            act=None,
-                                            use_cudnn=True)
+        self._bottleneck_conv = ConvBNLayer(
+            num_channels=num_expfilter,
+            num_filters=num_expfilter,
+            filter_size=filter_size,
+            stride=stride,
+            padding=padding,
+            num_groups=num_expfilter,
+            act=None,
+            use_cudnn=True,
+        )
 
-        self._linear_conv = ConvBNLayer(num_channels=num_expfilter,
-                                        num_filters=num_filters,
-                                        filter_size=1,
-                                        stride=1,
-                                        padding=0,
-                                        act=None,
-                                        num_groups=1)
+        self._linear_conv = ConvBNLayer(
+            num_channels=num_expfilter,
+            num_filters=num_filters,
+            filter_size=1,
+            stride=1,
+            padding=0,
+            act=None,
+            num_groups=1,
+        )
 
     def forward(self, inputs, ifshortcut):
         y = self._expand_conv(inputs, if_act=True)
@@ -290,29 +332,33 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
 
 
 class InvresiBlocks(fluid.dygraph.Layer):
-
     def __init__(self, in_c, t, c, n, s):
         super(InvresiBlocks, self).__init__()
 
-        self._first_block = InvertedResidualUnit(num_channels=in_c,
-                                                 num_in_filter=in_c,
-                                                 num_filters=c,
-                                                 stride=s,
-                                                 filter_size=3,
-                                                 padding=1,
-                                                 expansion_factor=t)
+        self._first_block = InvertedResidualUnit(
+            num_channels=in_c,
+            num_in_filter=in_c,
+            num_filters=c,
+            stride=s,
+            filter_size=3,
+            padding=1,
+            expansion_factor=t,
+        )
 
         self._inv_blocks = []
         for i in range(1, n):
-            tmp = self.add_sublayer(sublayer=InvertedResidualUnit(
-                num_channels=c,
-                num_in_filter=c,
-                num_filters=c,
-                stride=1,
-                filter_size=3,
-                padding=1,
-                expansion_factor=t),
-                                    name=self.full_name() + "_" + str(i + 1))
+            tmp = self.add_sublayer(
+                sublayer=InvertedResidualUnit(
+                    num_channels=c,
+                    num_in_filter=c,
+                    num_filters=c,
+                    stride=1,
+                    filter_size=3,
+                    padding=1,
+                    expansion_factor=t,
+                ),
+                name=self.full_name() + "_" + str(i + 1),
+            )
             self._inv_blocks.append(tmp)
 
     def forward(self, inputs):
@@ -323,7 +369,6 @@ class InvresiBlocks(fluid.dygraph.Layer):
 
 
 class MobileNetV2(fluid.dygraph.Layer):
-
     def __init__(self, class_dim=1000, scale=1.0):
         super(MobileNetV2, self).__init__()
         self.scale = scale
@@ -339,48 +384,54 @@ class MobileNetV2(fluid.dygraph.Layer):
             (6, 320, 1, 1),
         ]
 
-        #1. conv1
-        self._conv1 = ConvBNLayer(num_channels=3,
-                                  num_filters=int(32 * scale),
-                                  filter_size=3,
-                                  stride=2,
-                                  act=None,
-                                  padding=1)
+        # 1. conv1
+        self._conv1 = ConvBNLayer(
+            num_channels=3,
+            num_filters=int(32 * scale),
+            filter_size=3,
+            stride=2,
+            act=None,
+            padding=1,
+        )
 
-        #2. bottleneck sequences
+        # 2. bottleneck sequences
         self._invl = []
         i = 1
         in_c = int(32 * scale)
         for layer_setting in bottleneck_params_list:
             t, c, n, s = layer_setting
             i += 1
-            tmp = self.add_sublayer(sublayer=InvresiBlocks(in_c=in_c,
-                                                           t=t,
-                                                           c=int(c * scale),
-                                                           n=n,
-                                                           s=s),
-                                    name='conv' + str(i))
+            tmp = self.add_sublayer(
+                sublayer=InvresiBlocks(
+                    in_c=in_c, t=t, c=int(c * scale), n=n, s=s
+                ),
+                name='conv' + str(i),
+            )
             self._invl.append(tmp)
             in_c = int(c * scale)
 
-        #3. last_conv
+        # 3. last_conv
         self._out_c = int(1280 * scale) if scale > 1.0 else 1280
-        self._conv9 = ConvBNLayer(num_channels=in_c,
-                                  num_filters=self._out_c,
-                                  filter_size=1,
-                                  stride=1,
-                                  act=None,
-                                  padding=0)
+        self._conv9 = ConvBNLayer(
+            num_channels=in_c,
+            num_filters=self._out_c,
+            filter_size=1,
+            stride=1,
+            act=None,
+            padding=0,
+        )
 
-        #4. pool
+        # 4. pool
         self._pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
 
-        #5. fc
+        # 5. fc
         tmp_param = ParamAttr(name=self.full_name() + "fc10_weights")
-        self._fc = Linear(self._out_c,
-                          class_dim,
-                          param_attr=tmp_param,
-                          bias_attr=ParamAttr(name="fc10_offset"))
+        self._fc = Linear(
+            self._out_c,
+            class_dim,
+            param_attr=tmp_param,
+            bias_attr=ParamAttr(name="fc10_offset"),
+        )
 
     @declarative
     def forward(self, inputs):
@@ -399,7 +450,8 @@ def create_optimizer(args, parameter_list):
         learning_rate=args.lr,
         momentum=args.momentum_rate,
         regularization=fluid.regularizer.L2Decay(args.l2_decay),
-        parameter_list=parameter_list)
+        parameter_list=parameter_list,
+    )
 
     return optimizer
 
@@ -430,8 +482,11 @@ class Args(object):
     class_dim = 50
     print_step = 1
     train_step = 10
-    place = fluid.CUDAPlace(
-        0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+    place = (
+        fluid.CUDAPlace(0)
+        if fluid.is_compiled_with_cuda()
+        else fluid.CPUPlace()
+    )
     model_save_dir = None
     model_save_prefix = None
     model_filename = None
@@ -477,8 +532,9 @@ def train_mobilenet(args, to_static):
 
                 t_end = time.time()
                 softmax_out = fluid.layers.softmax(out, use_cudnn=False)
-                loss = fluid.layers.cross_entropy(input=softmax_out,
-                                                  label=label)
+                loss = fluid.layers.cross_entropy(
+                    input=softmax_out, label=label
+                )
                 avg_loss = paddle.mean(x=loss)
                 acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
                 acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
@@ -493,17 +549,29 @@ def train_mobilenet(args, to_static):
                 t2 = time.time()
                 train_batch_elapse = t2 - t1
                 if batch_id % args.print_step == 0:
-                    print("epoch id: %d, batch step: %d,  avg_loss %0.5f acc_top1 %0.5f acc_top5 %0.5f %2.4f sec net_t:%2.4f back_t:%2.4f read_t:%2.4f" % \
-                          (eop, batch_id, avg_loss.numpy(), acc_top1.numpy(), acc_top5.numpy(), train_batch_elapse,
-                           t_end - t_start, t_end_back - t_start_back,  t1 - t_last))
+                    print(
+                        "epoch id: %d, batch step: %d,  avg_loss %0.5f acc_top1 %0.5f acc_top5 %0.5f %2.4f sec net_t:%2.4f back_t:%2.4f read_t:%2.4f"
+                        % (
+                            eop,
+                            batch_id,
+                            avg_loss.numpy(),
+                            acc_top1.numpy(),
+                            acc_top5.numpy(),
+                            train_batch_elapse,
+                            t_end - t_start,
+                            t_end_back - t_start_back,
+                            t1 - t_last,
+                        )
+                    )
                 batch_id += 1
                 t_last = time.time()
                 if batch_id > args.train_step:
                     if to_static:
                         fluid.dygraph.jit.save(net, args.model_save_prefix)
                     else:
-                        fluid.dygraph.save_dygraph(net.state_dict(),
-                                                   args.dy_state_dict_save_path)
+                        fluid.dygraph.save_dygraph(
+                            net.state_dict(), args.dy_state_dict_save_path
+                        )
                     break
 
     return np.array(loss_data)
@@ -514,15 +582,22 @@ def predict_static(args, data):
     exe = fluid.Executor(args.place)
     # load inference model
 
-    [inference_program, feed_target_names, fetch_targets
-     ] = fluid.io.load_inference_model(args.model_save_dir,
-                                       executor=exe,
-                                       model_filename=args.model_filename,
-                                       params_filename=args.params_filename)
+    [
+        inference_program,
+        feed_target_names,
+        fetch_targets,
+    ] = fluid.io.load_inference_model(
+        args.model_save_dir,
+        executor=exe,
+        model_filename=args.model_filename,
+        params_filename=args.params_filename,
+    )
 
-    pred_res = exe.run(inference_program,
-                       feed={feed_target_names[0]: data},
-                       fetch_list=fetch_targets)
+    pred_res = exe.run(
+        inference_program,
+        feed={feed_target_names[0]: data},
+        fetch_list=fetch_targets,
+    )
     return pred_res[0]
 
 
@@ -554,63 +629,86 @@ def predict_dygraph_jit(args, data):
 
 
 def predict_analysis_inference(args, data):
-    output = PredictorTools(args.model_save_dir, args.model_filename,
-                            args.params_filename, [data])
-    out = output()
+    output = PredictorTools(
+        args.model_save_dir, args.model_filename, args.params_filename, [data]
+    )
+    (out,) = output()
     return out
 
 
 class TestMobileNet(unittest.TestCase):
-
     def setUp(self):
         self.args = Args()
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.args.model_save_dir = os.path.join(self.temp_dir.name,
-                                                "./inference")
+        self.args.model_save_dir = os.path.join(
+            self.temp_dir.name, "./inference"
+        )
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
     def train(self, model_name, to_static):
         self.args.model = model_name
-        self.args.model_save_prefix = os.path.join(self.temp_dir.name,
-                                                   "./inference/" + model_name)
+        self.args.model_save_prefix = os.path.join(
+            self.temp_dir.name, "./inference/" + model_name
+        )
         self.args.model_filename = model_name + INFER_MODEL_SUFFIX
         self.args.params_filename = model_name + INFER_PARAMS_SUFFIX
         self.args.dy_state_dict_save_path = os.path.join(
-            self.temp_dir.name, model_name + ".dygraph")
+            self.temp_dir.name, model_name + ".dygraph"
+        )
         out = train_mobilenet(self.args, to_static)
         return out
 
     def assert_same_loss(self, model_name):
         dy_out = self.train(model_name, to_static=False)
         st_out = self.train(model_name, to_static=True)
-        self.assertTrue(np.allclose(dy_out, st_out),
-                        msg="dy_out: {}, st_out: {}".format(dy_out, st_out))
+        np.testing.assert_allclose(
+            dy_out,
+            st_out,
+            rtol=1e-05,
+            err_msg='dy_out: {}, st_out: {}'.format(dy_out, st_out),
+        )
 
     def assert_same_predict(self, model_name):
         self.args.model = model_name
-        self.args.model_save_prefix = os.path.join(self.temp_dir.name,
-                                                   "./inference/" + model_name)
+        self.args.model_save_prefix = os.path.join(
+            self.temp_dir.name, "./inference/" + model_name
+        )
         self.args.model_filename = model_name + INFER_MODEL_SUFFIX
         self.args.params_filename = model_name + INFER_PARAMS_SUFFIX
         self.args.dy_state_dict_save_path = os.path.join(
-            self.temp_dir.name, model_name + ".dygraph")
+            self.temp_dir.name, model_name + ".dygraph"
+        )
         local_random = np.random.RandomState(SEED)
         image = local_random.random_sample([1, 3, 224, 224]).astype('float32')
         dy_pre = predict_dygraph(self.args, image)
         st_pre = predict_static(self.args, image)
         dy_jit_pre = predict_dygraph_jit(self.args, image)
         predictor_pre = predict_analysis_inference(self.args, image)
-        self.assertTrue(np.allclose(dy_pre, st_pre),
-                        msg="dy_pre:\n {}\n, st_pre: \n{}.".format(
-                            dy_pre, st_pre))
-        self.assertTrue(np.allclose(dy_jit_pre, st_pre),
-                        msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(
-                            dy_jit_pre, st_pre))
-        self.assertTrue(np.allclose(predictor_pre, st_pre, atol=1e-5),
-                        msg="inference_pred_res:\n {}\n, st_pre: \n{}.".format(
-                            predictor_pre, st_pre))
+        np.testing.assert_allclose(
+            dy_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre),
+        )
+        np.testing.assert_allclose(
+            dy_jit_pre,
+            st_pre,
+            rtol=1e-05,
+            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
+                dy_jit_pre, st_pre
+            ),
+        )
+        np.testing.assert_allclose(
+            predictor_pre,
+            st_pre,
+            rtol=1e-05,
+            atol=1e-05,
+            err_msg='inference_pred_res:\n {}\n, st_pre: \n{}.'.format(
+                predictor_pre, st_pre
+            ),
+        )
 
     def test_mobile_net(self):
         # MobileNet-V1

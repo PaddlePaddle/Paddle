@@ -254,6 +254,10 @@ static void ConcatTensorsWithType(
       ConcatTensorsForAllReduce<DeviceContext, double>()(
           context, dense_tensors_, p_dense_contents);
       break;
+    case phi::DataType::BFLOAT16:
+      ConcatTensorsForAllReduce<DeviceContext, platform::bfloat16>()(
+          context, dense_tensors_, p_dense_contents);
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
@@ -281,6 +285,10 @@ static void SplitTensorsWithType(const DeviceContext &context,
       SplitTensorsForAllReduce<DeviceContext, double>()(
           context, p_dense_contents, p_dense_tensors);
       break;
+    case phi::DataType::BFLOAT16:
+      SplitTensorsForAllReduce<DeviceContext, platform::bfloat16>()(
+          context, p_dense_contents, p_dense_tensors);
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it splits tensors for "
@@ -290,6 +298,9 @@ static void SplitTensorsWithType(const DeviceContext &context,
 }
 
 void EagerGroup::ConcatTensors(const platform::Place &place) {
+  dense_contents_ =
+      paddle::experimental::empty(IntArray({all_length_}), dtype_, place);
+
   if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto *default_ctx = static_cast<phi::GPUContext *>(
@@ -452,8 +463,6 @@ void EagerReducer::InitializeGroups(
     } else {
       // process the dense gradient.
       InitializeDenseGroups(tensor_indices_, &group);
-      group.dense_contents_ = paddle::experimental::empty(
-          IntArray({group.all_length_}), group.dtype_, inner_place_);
     }
 
     // map tensors to this group by VariableLocator
@@ -908,6 +917,7 @@ void EagerReducer::FinalizeBackward() {
   for (auto &group : groups_) {
     if (!group.is_sparse_) {
       group.SplitTensors(inner_place_);
+      group.dense_contents_.reset();
     }
   }
 

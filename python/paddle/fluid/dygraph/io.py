@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import six
 import pickle
 import numpy as np
 
@@ -30,7 +27,15 @@ from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _non_static_mode
-from paddle import _C_ops
+from paddle.fluid.executor import (
+    _is_enable_standalone_executor,
+    _is_dy2st_enable_standalone_executor,
+)
+from paddle.fluid.dygraph.dygraph_to_static.partial_program import (
+    add_build_strategy_for,
+    LazyInitialized,
+)
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['TranslatedLayer']
 
@@ -51,17 +56,20 @@ def _load_program_desc(model_file_path):
 
     program_desc = core.ProgramDesc(program_desc_str)
     if not core._is_program_version_supported(program_desc._version()):
-        raise ValueError("Unsupported program version: %d\n" %
-                         program_desc._version())
+        raise ValueError(
+            "Unsupported program version: %d\n" % program_desc._version()
+        )
 
     return program_desc
 
 
 def _is_persistable(var_desc):
-    if var_desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-            var_desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-            var_desc.type() == core.VarDesc.VarType.READER or \
-            var_desc.type() == core.VarDesc.VarType.RAW:
+    if (
+        var_desc.type() == core.VarDesc.VarType.FEED_MINIBATCH
+        or var_desc.type() == core.VarDesc.VarType.FETCH_LIST
+        or var_desc.type() == core.VarDesc.VarType.READER
+        or var_desc.type() == core.VarDesc.VarType.RAW
+    ):
         return False
     return var_desc.persistable()
 
@@ -69,17 +77,17 @@ def _is_persistable(var_desc):
 def _is_parameter(persistable_var_desc, program_desc):
     # 1. firstly, param should be input of op
     input_ops = []  # op can be repeated
-    for block_idx in six.moves.range(program_desc.num_blocks()):
+    for block_idx in range(program_desc.num_blocks()):
         block = program_desc.block(block_idx)
-        for op_idx in six.moves.range(block.op_size()):
+        for op_idx in range(block.op_size()):
             op = block.op(op_idx)
             # NOTE: parameter is the input of a certain op
             if persistable_var_desc.name() in op.input_arg_names():
                 input_ops.append(op)
     # 2. secondly, param should not be output of op or be same op's output
-    for block_idx in six.moves.range(program_desc.num_blocks()):
+    for block_idx in range(program_desc.num_blocks()):
         block = program_desc.block(block_idx)
-        for op_idx in six.moves.range(block.op_size()):
+        for op_idx in range(block.op_size()):
             op = block.op(op_idx)
             if persistable_var_desc.name() in op.output_arg_names():
                 # such as batch_norm_op
@@ -92,7 +100,7 @@ def _is_parameter(persistable_var_desc, program_desc):
 
 def _get_persistable_vars(program_desc):
     persistable_vars = []
-    for i in six.moves.range(program_desc.num_blocks()):
+    for i in range(program_desc.num_blocks()):
         block = program_desc.block(i)
         persistable_vars.extend(list(filter(_is_persistable, block.all_vars())))
     return persistable_vars
@@ -111,7 +119,7 @@ def _get_persistable_var_names(program_desc):
 
 def _get_all_var_names(program_desc):
     all_var_names = set()
-    for i in six.moves.range(program_desc.num_blocks()):
+    for i in range(program_desc.num_blocks()):
         block = program_desc.block(i)
         for var in block.all_vars():
             all_var_names.add(var.name())
@@ -125,7 +133,6 @@ def _append_loaded_suffix(name):
     e.g. x ==> x.load_0, x.load_0 ==> x.load_0.load_0
     """
     suffix = LOADED_VAR_SUFFIX
-    name = cpt.to_text(name)
     new_name = unique_name.generate_with_ignorable_key('.'.join((name, suffix)))
     return new_name
 
@@ -143,10 +150,10 @@ def _append_loaded_suffix_to_var(program_desc):
         new_name = _append_loaded_suffix(var_desc.name())
         suffix_varname_dict[new_name] = old_name
         var_desc.set_name(new_name)
-        for block_idx in six.moves.range(program_desc.num_blocks()):
+        for block_idx in range(program_desc.num_blocks()):
             block = program_desc.block(block_idx)
-            block._rename_var(cpt.to_bytes(old_name), cpt.to_bytes(new_name))
-            for op_idx in six.moves.range(block.op_size()):
+            block._rename_var(old_name.encode(), new_name.encode())
+            for op_idx in range(block.op_size()):
                 op = block.op(op_idx)
                 op._rename_input(old_name, new_name)
                 op._rename_output(old_name, new_name)
@@ -192,7 +199,7 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
     dict_rename_var_new_old = dict()
     old_names = []
     # Store all old names
-    for b_idx in six.moves.range(program_desc.num_blocks()):
+    for b_idx in range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
         for var in cur_block.all_vars():
             old_names.append(var.name())
@@ -200,15 +207,17 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
     # Create dict_rename_var_new_old and dict_rename_var_old_new for non double
     # grad variables
     has_double_grad = False
-    for b_idx in six.moves.range(program_desc.num_blocks()):
+    for b_idx in range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
         for var_idx, var in enumerate(cur_block.all_vars()):
             name_old = var.name()
             is_double_grad_var = "@GRAD" in name_old
             has_double_grad = has_double_grad or is_double_grad_var
-            should_rename = (include is None or name_old in include) and (
-                exclude is None
-                or name_old not in exclude) and not is_double_grad_var
+            should_rename = (
+                (include is None or name_old in include)
+                and (exclude is None or name_old not in exclude)
+                and not is_double_grad_var
+            )
             if should_rename:
                 temp_name = name_old.split('_')
                 if len(temp_name) > 1 and temp_name[-1].isnumeric():
@@ -217,15 +226,17 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
                     temp_name = name_old
                 while True:
                     name_new = _generate_unique_var_name_sync_with_main_program(
-                        temp_name)
-                    if name_new not in old_names[:var_idx] + old_names[var_idx +
-                                                                       1:]:
+                        temp_name
+                    )
+                    if (
+                        name_new
+                        not in old_names[:var_idx] + old_names[var_idx + 1 :]
+                    ):
                         break
             else:
                 name_new = name_old
             if name_old != name_new:
-                cur_block._rename_var(cpt.to_bytes(name_old),
-                                      cpt.to_bytes(name_new))
+                cur_block._rename_var(name_old.encode(), name_new.encode())
             if not is_double_grad_var:
                 dict_rename_var_old_new[name_old] = name_new
                 dict_rename_var_new_old[name_new] = name_old
@@ -234,48 +245,62 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
     if has_double_grad:
         double_grad_rename_dict = {}
         for name_old in dict_rename_var_old_new:
-            for b_idx in six.moves.range(program_desc.num_blocks()):
+            for b_idx in range(program_desc.num_blocks()):
                 cur_block = program_desc.block(b_idx)
                 for var_idx, var in enumerate(cur_block.all_vars()):
                     var_name = var.name()
                     if "@GRAD" in var_name and name_old in var_name:
                         new_var_name = var_name.replace(
-                            name_old, dict_rename_var_old_new[name_old])
+                            name_old, dict_rename_var_old_new[name_old]
+                        )
                         double_grad_rename_dict[var_name] = new_var_name
         for var_name in double_grad_rename_dict:
             dict_rename_var_old_new[var_name] = double_grad_rename_dict[
-                var_name]
+                var_name
+            ]
             dict_rename_var_new_old[
-                double_grad_rename_dict[var_name]] = var_name
+                double_grad_rename_dict[var_name]
+            ] = var_name
 
     # Rename on program desc
-    for b_idx in six.moves.range(program_desc.num_blocks()):
+    for b_idx in range(program_desc.num_blocks()):
         cur_block = program_desc.block(b_idx)
-        for op_idx in six.moves.range(cur_block.op_size()):
+        for op_idx in range(cur_block.op_size()):
             op = cur_block.op(op_idx)
             for input_arg_name in op.input_arg_names():
                 if input_arg_name in dict_rename_var_old_new:
-                    if input_arg_name != dict_rename_var_old_new[input_arg_name]:
+                    if (
+                        input_arg_name
+                        != dict_rename_var_old_new[input_arg_name]
+                    ):
                         op._rename_input(
                             input_arg_name,
-                            dict_rename_var_old_new[input_arg_name])
-                        if cur_block.has_var(cpt.to_bytes(input_arg_name)):
+                            dict_rename_var_old_new[input_arg_name],
+                        )
+                        if cur_block.has_var(input_arg_name.encode()):
                             cur_block._rename_var(
-                                cpt.to_bytes(input_arg_name),
-                                cpt.to_bytes(
-                                    dict_rename_var_old_new[input_arg_name]))
+                                input_arg_name.encode(),
+                                dict_rename_var_old_new[
+                                    input_arg_name
+                                ].encode(),
+                            )
             for output_arg_name in op.output_arg_names():
                 if output_arg_name in dict_rename_var_old_new:
-                    if output_arg_name != dict_rename_var_old_new[
-                            output_arg_name]:
+                    if (
+                        output_arg_name
+                        != dict_rename_var_old_new[output_arg_name]
+                    ):
                         op._rename_output(
                             output_arg_name,
-                            dict_rename_var_old_new[output_arg_name])
-                        if cur_block.has_var(cpt.to_bytes(output_arg_name)):
+                            dict_rename_var_old_new[output_arg_name],
+                        )
+                        if cur_block.has_var(output_arg_name.encode()):
                             cur_block._rename_var(
-                                cpt.to_bytes(output_arg_name),
-                                cpt.to_bytes(
-                                    dict_rename_var_old_new[output_arg_name]))
+                                output_arg_name.encode(),
+                                dict_rename_var_old_new[
+                                    output_arg_name
+                                ].encode(),
+                            )
     program_desc.flush()
     return dict_rename_var_new_old, dict_rename_var_old_new
 
@@ -285,8 +310,7 @@ def _build_program_by_desc(program_desc):
     prog = framework.Program()
     prog.desc = program_desc
     prog.blocks = [
-        framework.Block(prog, i)
-        for i in six.moves.range(prog.desc.num_blocks())
+        framework.Block(prog, i) for i in range(prog.desc.num_blocks())
     ]
     prog._sync_with_cpp()
     return prog
@@ -294,9 +318,9 @@ def _build_program_by_desc(program_desc):
 
 def _change_is_test_status(program_desc, is_test):
     # change all `is_test` attributes
-    for i in six.moves.range(program_desc.num_blocks()):
+    for i in range(program_desc.num_blocks()):
         block = program_desc.block(i)
-        for j in six.moves.range(block.op_size()):
+        for j in range(block.op_size()):
             op = block.op(j)
             if op.has_attr('is_test'):
                 op._set_attr('is_test', is_test)
@@ -306,8 +330,8 @@ class _ProgramHolder(object):
     """
     Holds the execution information of a Program.
 
-    _ProgramHolder is the execution unit of TranslatedLayer, 
-    if TranslatedLayer contains multiple _ProgramHolder, 
+    _ProgramHolder is the execution unit of TranslatedLayer,
+    if TranslatedLayer contains multiple _ProgramHolder,
     it can execute multiple methods
 
     _ProgramHolder is an internal concept.
@@ -331,7 +355,41 @@ class _ProgramHolder(object):
         self._infer_program_desc = self._preprocess(program_desc)
         # forward + backward program
         self._train_program_desc = self._append_backward_desc(
-            self._infer_program_desc)
+            self._infer_program_desc
+        )
+
+    # forward:
+    @switch_to_static_graph
+    def _create_forward_train_program(self):
+        whole_program = _build_program_by_desc(self._train_program_desc)
+        end_op_index = self._infer_program_desc.block(0).op_size()
+        if end_op_index > 0:
+            return add_build_strategy_for(whole_program, 0, end_op_index)
+        else:
+            return whole_program
+
+    @LazyInitialized
+    def _forward_program_desc(self):
+        return self._create_forward_train_program().desc
+
+    # backward
+    @switch_to_static_graph
+    def _create_backward_train_program(self):
+        whole_program = _build_program_by_desc(self._train_program_desc)
+        start_op_index = self._infer_program_desc.block(0).op_size() + 2 * len(
+            self._output_descs
+        )
+        end_op_index = whole_program.desc.block(0).op_size()
+        if start_op_index < end_op_index:
+            return add_build_strategy_for(
+                whole_program, start_op_index, end_op_index
+            )
+        else:
+            return paddle.static.Program()
+
+    @LazyInitialized
+    def _backward_program_desc(self):
+        return self._create_backward_train_program().desc
 
     @property
     def infer_program(self):
@@ -340,6 +398,14 @@ class _ProgramHolder(object):
     @property
     def train_program(self):
         return self._train_program_desc
+
+    @property
+    def forward_program(self):
+        return self._forward_program_desc
+
+    @property
+    def backward_program(self):
+        return self._backward_program_desc
 
     @property
     def input_descs(self):
@@ -365,34 +431,39 @@ class _ProgramHolder(object):
         # rename persistable variables of 'program_desc'
         list_persistable_var = _get_persistable_var_names(program_desc)
         rename_new_old_dict, _ = _rename_var_program_desc(
-            program_desc, list_persistable_var)
+            program_desc, list_persistable_var
+        )
         # 1. Prune original program
         # remove feed, fetch and scale-1 op, remove op_callstack attr
         ops_to_remove = []
         root_block = program_desc.block(0)
-        for i in six.moves.range(root_block.op_size()):
+        for i in range(root_block.op_size()):
             op = root_block.op(i)
             if op.type() == 'feed':
                 ops_to_remove.append(i)
-                feed_var_name = cpt.to_bytes(op.input('X')[0])
+                feed_var_name = op.input('X')[0].encode()
                 root_block._remove_var(feed_var_name)
                 self._input_descs.append(
-                    root_block.find_var(cpt.to_bytes(op.output('Out')[0])))
+                    root_block.find_var(op.output('Out')[0].encode())
+                )
             elif op.type() == 'scale' and op.output('Out')[0].startswith(
-                    'save_infer_model/scale_'):
+                'save_infer_model/scale_'
+            ):
                 ops_to_remove.append(i)
-                out_var_name = cpt.to_bytes(op.output('Out')[0])
+                out_var_name = op.output('Out')[0].encode()
                 root_block._remove_var(out_var_name)
                 self._output_descs.append(
-                    root_block.find_var(cpt.to_bytes(op.input('X')[0])))
+                    root_block.find_var(op.input('X')[0].encode())
+                )
             elif op.type() == 'fetch':
                 ops_to_remove.append(i)
-                fetch_var_name = cpt.to_bytes(op.output('Out')[0])
+                fetch_var_name = op.output('Out')[0].encode()
                 root_block._remove_var(fetch_var_name)
                 # NOTE: some old pre-train models have no extra scale_op
                 if not op.input('X')[0].startswith('save_infer_model/scale_'):
                     self._output_descs.append(
-                        root_block.find_var(cpt.to_bytes(op.input('X')[0])))
+                        root_block.find_var(op.input('X')[0].encode())
+                    )
             else:
                 if op.has_attr("op_callstack"):
                     op.remove_attr("op_callstack")
@@ -437,7 +508,8 @@ class _ProgramHolder(object):
         # there will be a problem of duplicate names, so here is unified
         # to add the LOADED suffix to the parameters of the model loaded
         self._suffix_varname_dict = _get_loaded_var_new_old(
-            program_desc, rename_new_old_dict)
+            program_desc, rename_new_old_dict
+        )
 
         # - get persistable var
         self._persistable_names = _get_persistable_var_names(program_desc)
@@ -451,16 +523,16 @@ class _ProgramHolder(object):
         with framework.program_guard(program):
             for i, out in enumerate(self._output_descs):
                 var = program.global_block().var(out.name())
-                var = nn.scale(var,
-                               1.,
-                               name="translated_layer/scale_{}".format(i))
+                var = nn.scale(
+                    var, 1.0, name="translated_layer/scale_{}".format(i)
+                )
                 scale_output_vars.append(var)
         # 2. update output names & descs
         for i, var in enumerate(scale_output_vars):
             self._output_descs[i] = var.desc
 
     @switch_to_static_graph
-    def _append_backward_desc(self, infer_program_desc):
+    def _get_train_forward_program(self, infer_program_desc):
         program_desc_copy = core.ProgramDesc(infer_program_desc)
 
         # 1. set all `is_test` attributes to False
@@ -474,20 +546,29 @@ class _ProgramHolder(object):
         program = _build_program_by_desc(program_desc_copy)
         # 3. Add the outputs which is only used for training and not saved in
         # inference program.
-        for block_idx in six.moves.range(program.num_blocks):
+        for block_idx in range(program.num_blocks):
             block = program.block(block_idx)
             for op in block.ops:
                 if op.type == "batch_norm":
-                    if "ReserveSpace" not in op.output_names or len(
-                            op.output("ReserveSpace")) == 0:
+                    if (
+                        "ReserveSpace" not in op.output_names
+                        or len(op.output("ReserveSpace")) == 0
+                    ):
                         reserve_space = block.create_var(
                             name=unique_name.generate_with_ignorable_key(
-                                ".".join(["reserve_space", 'tmp'])),
+                                ".".join(["reserve_space", 'tmp'])
+                            ),
                             dtype=block.var(op.input("X")[0]).dtype,
                             type=core.VarDesc.VarType.LOD_TENSOR,
                             persistable=False,
-                            stop_gradient=True)
+                            stop_gradient=True,
+                        )
                         op.desc.set_output("ReserveSpace", [reserve_space.name])
+        return program
+
+    @switch_to_static_graph
+    def _append_backward_desc(self, infer_program_desc):
+        program = self._get_train_forward_program(infer_program_desc)
 
         targets = []
         for out in self._output_descs:
@@ -527,9 +608,9 @@ class _ProgramHolder(object):
 
 # NOTE: [compatible] deal with model saved by save_inference_model,
 # which need get var info from program desc
-def _load_persistable_vars_by_program(model_path,
-                                      program_holder,
-                                      params_filename=None):
+def _load_persistable_vars_by_program(
+    model_path, program_holder, params_filename=None
+):
     # make sure the path has been checked
     persistable_vars = _get_persistable_vars(program_holder.infer_program)
     load_var_dict = {}
@@ -538,37 +619,43 @@ def _load_persistable_vars_by_program(model_path,
         if _is_parameter(each_var, program_holder.infer_program):
             # create output varbase
             if framework._in_eager_without_dygraph_check():
-                new_var = framework.EagerParamBase(shape=each_var.shape(),
-                                                   dtype=each_var.dtype(),
-                                                   name=each_var.name(),
-                                                   type=each_var.type(),
-                                                   persistable=True)
+                new_var = framework.EagerParamBase(
+                    shape=each_var.shape(),
+                    dtype=each_var.dtype(),
+                    name=each_var.name(),
+                    type=each_var.type(),
+                    persistable=True,
+                )
             else:
-                new_var = framework.ParamBase(shape=each_var.shape(),
-                                              dtype=each_var.dtype(),
-                                              name=each_var.name(),
-                                              type=each_var.type(),
-                                              persistable=True)
+                new_var = framework.ParamBase(
+                    shape=each_var.shape(),
+                    dtype=each_var.dtype(),
+                    name=each_var.name(),
+                    type=each_var.type(),
+                    persistable=True,
+                )
         else:
-            new_var = framework._varbase_creator(type=each_var.type(),
-                                                 name=each_var.name(),
-                                                 shape=each_var.shape(),
-                                                 dtype=each_var.dtype(),
-                                                 persistable=True)
+            new_var = framework._varbase_creator(
+                type=each_var.type(),
+                name=each_var.name(),
+                shape=each_var.shape(),
+                dtype=each_var.dtype(),
+                persistable=True,
+            )
         if params_filename is None:
             framework._dygraph_tracer().trace_op(
                 type='load',
                 inputs={},
                 outputs={'Out': new_var},
-                attrs={'file_path': os.path.join(model_path, orig_each_name)})
+                attrs={'file_path': os.path.join(model_path, orig_each_name)},
+            )
         new_var.stop_gradient = False
         load_var_dict[each_var.name()] = new_var
 
     if params_filename is not None:
         load_var_list = []
         dict_name_old_new = {
-            v: k
-            for k, v in program_holder._suffix_varname_dict.items()
+            v: k for k, v in program_holder._suffix_varname_dict.items()
         }
         for name in sorted(dict_name_old_new.keys()):
             load_var_list.append(load_var_dict[dict_name_old_new[name]])
@@ -577,7 +664,8 @@ def _load_persistable_vars_by_program(model_path,
             type='load_combine',
             inputs={},
             outputs={'Out': load_var_list},
-            attrs={'file_path': os.path.join(model_path, params_filename)})
+            attrs={'file_path': os.path.join(model_path, params_filename)},
+        )
 
         for each_var in persistable_vars:
             if not _is_parameter(each_var, program_holder.infer_program):
@@ -599,8 +687,9 @@ def _load_persistable_vars_by_program(model_path,
     return load_var_dict
 
 
-def _load_persistable_vars(model_path, var_info_path, program_holder,
-                           params_filename):
+def _load_persistable_vars(
+    model_path, var_info_path, program_holder, params_filename
+):
     # 1. load extra var info
     with open(var_info_path, 'rb') as f:
         extra_var_info = pickle.load(f)
@@ -609,8 +698,7 @@ def _load_persistable_vars(model_path, var_info_path, program_holder,
     load_var_dict = dict()
     load_var_list = []
     inv_suffix_varname_dict = {
-        value: key
-        for key, value in program_holder._suffix_varname_dict.items()
+        value: key for key, value in program_holder._suffix_varname_dict.items()
     }
 
     # NOTE(chenweihang): we need load persistable vars based the program,
@@ -621,7 +709,8 @@ def _load_persistable_vars(model_path, var_info_path, program_holder,
             raise RuntimeError(
                 "The model to be loaded is not complete."
                 "The variable `%s` of program cannot be found in loaded model.",
-                name)
+                name,
+            )
         # get suffix var name, see [why need to append suffix to persistable vars]
         new_name = inv_suffix_varname_dict[name]
         # create output varbase
@@ -634,7 +723,8 @@ def _load_persistable_vars(model_path, var_info_path, program_holder,
                     ],  # only to pass check, this shape is not meaningful
                     dtype=core.VarDesc.VarType.FP32,
                     name=new_name,
-                    persistable=True)
+                    persistable=True,
+                )
             else:
                 new_var = framework.ParamBase(
                     shape=[
@@ -642,10 +732,12 @@ def _load_persistable_vars(model_path, var_info_path, program_holder,
                     ],  # only to pass check, this shape is not meaningful
                     dtype=core.VarDesc.VarType.FP32,
                     name=new_name,
-                    persistable=True)
+                    persistable=True,
+                )
         else:
-            new_var = framework._varbase_creator(name=new_name,
-                                                 persistable=True)
+            new_var = framework._varbase_creator(
+                name=new_name, persistable=True
+            )
 
         new_var.stop_gradient = extra_var_info[name]['stop_gradient']
         load_var_dict[new_name] = new_var
@@ -658,10 +750,12 @@ def _load_persistable_vars(model_path, var_info_path, program_holder,
         if len(extra_var_info) != 0:
             raise ValueError("The model to be loaded is incomplete.")
     else:
-        framework._dygraph_tracer().trace_op(type='load_combine',
-                                             inputs={},
-                                             outputs={'Out': load_var_list},
-                                             attrs={'file_path': var_file_path})
+        framework._dygraph_tracer().trace_op(
+            type='load_combine',
+            inputs={},
+            outputs={'Out': load_var_list},
+            attrs={'file_path': var_file_path},
+        )
 
     return load_var_dict
 
@@ -683,17 +777,18 @@ def _construct_program_holders(model_path, model_filename=None):
         # [compatible] if assign model_filename, only can load one program as Layer.forward
         model_filename = os.path.basename(model_filename)
         model_file_path = os.path.join(model_path, model_filename)
-        model_name = model_filename[:-len(INFER_MODEL_SUFFIX)]
-        #Load every file that meets the requirements in the directory model_path.
+        model_name = model_filename[: -len(INFER_MODEL_SUFFIX)]
+        # Load every file that meets the requirements in the directory model_path.
         for filename in os.listdir(model_path):
             if model_filename == filename:
                 func_name = 'forward'
                 model_file_path = os.path.join(model_path, model_filename)
             elif filename.endswith(INFER_MODEL_SUFFIX) and filename.startswith(
-                    model_name):
-                parsing_names = filename[len(model_name
-                                             ):-len(INFER_MODEL_SUFFIX) +
-                                         1].split('.')
+                model_name
+            ):
+                parsing_names = filename[
+                    len(model_name) : -len(INFER_MODEL_SUFFIX) + 1
+                ].split('.')
                 if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
                     func_name = parsing_names[1]
                     model_file_path = os.path.join(model_path, filename)
@@ -702,7 +797,8 @@ def _construct_program_holders(model_path, model_filename=None):
             else:
                 continue
             program_holder_dict[func_name] = _ProgramHolder(
-                _load_program_desc(model_file_path))
+                _load_program_desc(model_file_path)
+            )
     else:
         for _, _, file_names in os.walk(model_path):
             for name in file_names:
@@ -714,30 +810,32 @@ def _construct_program_holders(model_path, model_filename=None):
                     else:
                         method_name.replace('model', '')
                     program_holder_dict[method_name] = _ProgramHolder(
-                        _load_program_desc(model_file_path))
+                        _load_program_desc(model_file_path)
+                    )
 
     return program_holder_dict
 
 
-def _construct_params_and_buffers(model_path,
-                                  programs,
-                                  params_filename=None,
-                                  append_suffix=True):
+def _construct_params_and_buffers(
+    model_path, programs, params_filename=None, append_suffix=True
+):
     var_info_filename = str(params_filename) + ".info"
     var_info_path = os.path.join(model_path, var_info_filename)
     params_path = os.path.join(model_path, str(params_filename))
 
     if os.path.exists(var_info_path):
-        var_dict = _load_persistable_vars(model_path, var_info_path,
-                                          programs['forward'], params_filename)
-        model_name = params_filename[:-len(INFER_PARAMS_SUFFIX)]
-        #Load every file that meets the requirements in the directory model_path.
+        var_dict = _load_persistable_vars(
+            model_path, var_info_path, programs['forward'], params_filename
+        )
+        model_name = params_filename[: -len(INFER_PARAMS_SUFFIX)]
+        # Load every file that meets the requirements in the directory model_path.
         for file_name in os.listdir(model_path):
             if file_name.startswith(model_name) and file_name.endswith(
-                    INFER_PARAMS_SUFFIX):
-                parsing_names = file_name[len(model_name
-                                              ):-len(INFER_PARAMS_SUFFIX) +
-                                          1].split('.')
+                INFER_PARAMS_SUFFIX
+            ):
+                parsing_names = file_name[
+                    len(model_name) : -len(INFER_PARAMS_SUFFIX) + 1
+                ].split('.')
                 if len(parsing_names) == 3 and len(parsing_names[1]) > 0:
                     func_name = parsing_names[1]
                 else:
@@ -746,15 +844,17 @@ def _construct_params_and_buffers(model_path,
                 continue
             var_info_path = os.path.join(model_path, var_info_filename)
             var_dict.update(
-                _load_persistable_vars(model_path, var_info_path,
-                                       programs[func_name], file_name))
+                _load_persistable_vars(
+                    model_path, var_info_path, programs[func_name], file_name
+                )
+            )
     elif params_filename is not None and not os.path.exists(params_path):
         # When saving XX, there is only '*.pdmodel'
         return dict()
     else:
-        var_dict = _load_persistable_vars_by_program(model_path,
-                                                     programs['forward'],
-                                                     params_filename)
+        var_dict = _load_persistable_vars_by_program(
+            model_path, programs['forward'], params_filename
+        )
 
     if not append_suffix:
         var_dict = _remove_varname_suffix(var_dict, programs['forward'])
@@ -767,13 +867,23 @@ def _valid_vars(vars):
         return vars
     if framework._in_eager_without_dygraph_check():
         return [
-            core.eager.Tensor(core.VarDesc.VarType.FP32, [], "Fake_var",
-                              core.VarDesc.VarType.RAW, False)
+            core.eager.Tensor(
+                core.VarDesc.VarType.FP32,
+                [],
+                "Fake_var",
+                core.VarDesc.VarType.RAW,
+                False,
+            )
         ]
     else:
         return [
-            core.VarBase(core.VarDesc.VarType.FP32, [], "Fake_var",
-                         core.VarDesc.VarType.RAW, False)
+            core.VarBase(
+                core.VarDesc.VarType.FP32,
+                [],
+                "Fake_var",
+                core.VarDesc.VarType.RAW,
+                False,
+            )
         ]
 
 
@@ -785,7 +895,8 @@ def _run_dygraph(instance, input, program_holder):
         if not isinstance(value, (np.ndarray, core.VarBase, core.eager.Tensor)):
             raise TypeError(
                 "The type of input in TranslatedLayer must be numpy array or Variable(VarBase), but received %s."
-                % type(value))
+                % type(value)
+            )
         # NOTE: In order to unify the API, firstly convert the input to VarBase
         if isinstance(value, np.ndarray):
             if framework._in_eager_without_dygraph_check():
@@ -794,13 +905,16 @@ def _run_dygraph(instance, input, program_holder):
                     name=program_holder.input_descs[i].name(),
                     persistable=False,
                     place=framework._current_expected_place(),
-                    zero_copy=True)
+                    zero_copy=True,
+                )
             else:
-                var = core.VarBase(value=value,
-                                   name=program_holder.input_descs[i].name(),
-                                   persistable=False,
-                                   place=framework._current_expected_place(),
-                                   zero_copy=True)
+                var = core.VarBase(
+                    value=value,
+                    name=program_holder.input_descs[i].name(),
+                    persistable=False,
+                    place=framework._current_expected_place(),
+                    zero_copy=True,
+                )
         else:
             var = value
             # NOTE: we changed var name here,
@@ -822,52 +936,113 @@ def _run_dygraph(instance, input, program_holder):
         else:
             raise ValueError(
                 "The persistable variable %s does not exist in current TranslatedLayer."
-                % var_name)
+                % var_name
+            )
 
     output_vars = []
     for var_desc in program_holder.output_descs:
         if framework._in_eager_without_dygraph_check():
-            var = core.eager.Tensor(dtype=var_desc.dtype(),
-                                    dims=var_desc.shape(),
-                                    name=var_desc.name(),
-                                    type=var_desc.type(),
-                                    persistable=False)
+            var = core.eager.Tensor(
+                dtype=var_desc.dtype(),
+                dims=var_desc.shape(),
+                name=var_desc.name(),
+                type=var_desc.type(),
+                persistable=False,
+            )
         else:
-            var = core.VarBase(var_desc.dtype(), var_desc.shape(),
-                               var_desc.name(), var_desc.type(), False)
+            var = core.VarBase(
+                var_desc.dtype(),
+                var_desc.shape(),
+                var_desc.name(),
+                var_desc.type(),
+                False,
+            )
         output_vars.append(var)
 
     # hold forward variables
     if framework._in_eager_without_dygraph_check():
         tmp_scope_vec = [program_holder.scope]
     else:
-        tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
-                                     "program_out_scope",
-                                     core.VarDesc.VarType.STEP_SCOPES, True)
+        tmp_scope_vec = core.VarBase(
+            core.VarDesc.VarType.FP32,
+            [],
+            "program_out_scope",
+            core.VarDesc.VarType.STEP_SCOPES,
+            True,
+        )
         tmp_scope_vec.value().set_scope(program_holder.scope)
 
     double_grad_vars = []
     for var_desc in program_holder.double_grad_descs:
         if framework._in_eager_without_dygraph_check():
-            var = core.eager.Tensor(dtype=var_desc.dtype(),
-                                    dims=var_desc.shape(),
-                                    name=var_desc.name(),
-                                    type=var_desc.type(),
-                                    persistable=False)
+            var = core.eager.Tensor(
+                dtype=var_desc.dtype(),
+                dims=var_desc.shape(),
+                name=var_desc.name(),
+                type=var_desc.type(),
+                persistable=False,
+            )
         else:
-            var = core.VarBase(var_desc.dtype(), var_desc.shape(),
-                               var_desc.name(), var_desc.type(), False)
+            var = core.VarBase(
+                var_desc.dtype(),
+                var_desc.shape(),
+                var_desc.name(),
+                var_desc.type(),
+                False,
+            )
         double_grad_vars.append(var)
 
     # 2. run program by op
-    trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
+    trace_program = (
+        program_holder.infer_program
+        if instance._is_test
+        else program_holder.train_program
+    )
+    forward_program = (
+        program_holder._infer_program_desc
+        if instance._is_test
+        else program_holder.forward_program
+    )
     end_op_index = program_holder.infer_program.block(0).op_size()
-    attrs = ('global_block', trace_program.block(0), 'start_op_index', 0,
-             'end_op_index', end_op_index, 'is_test', instance._is_test,
-             'program_id', _hash_with_id(trace_program, instance))
-    _C_ops.run_program(_valid_vars(input_vars), _valid_vars(persistable_vars),
-                       _valid_vars(output_vars), tmp_scope_vec,
-                       _valid_vars(double_grad_vars), None, *attrs)
+
+    attrs = [
+        'global_block',
+        trace_program.block(0),
+        'start_op_index',
+        0,
+        'end_op_index',
+        end_op_index,
+        'is_test',
+        instance._is_test,
+        'program_id',
+        _hash_with_id(trace_program, instance),
+    ]
+
+    use_interpretorcore = (
+        _is_enable_standalone_executor()
+        and _is_dy2st_enable_standalone_executor()
+    )
+    attrs.extend(('use_interpretorcore', use_interpretorcore))
+    if use_interpretorcore:
+        attrs.extend(
+            (
+                'forward_global_block',
+                forward_program.block(0),
+                'backward_global_block',
+                program_holder.backward_program.block(0),
+            )
+        )
+
+    _legacy_C_ops.run_program(
+        _valid_vars(input_vars),
+        _valid_vars(persistable_vars),
+        _valid_vars(output_vars),
+        tmp_scope_vec,
+        _valid_vars(double_grad_vars),
+        None,
+        *attrs
+    )
+
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient
     # will be SelectedRows, not LoDTensor. But tracer will just
@@ -877,7 +1052,7 @@ def _run_dygraph(instance, input, program_holder):
     # be user wanted result.
     for persistable_var in persistable_vars:
         grad_var_name = persistable_var.name + core.grad_var_suffix()
-        grad_var = trace_program.block(0).find_var(cpt.to_bytes(grad_var_name))
+        grad_var = trace_program.block(0).find_var(grad_var_name.encode())
         # NOTE: cannot find var desc maybe not problem,
         # such as in batch_norm
         if grad_var is None:
@@ -895,8 +1070,11 @@ def _run_dygraph(instance, input, program_holder):
 
 def drop_scope_if_no_grad(instance, scope_vec):
     tracer = framework._dygraph_tracer()
-    scope = scope_vec.value().get_scope() if isinstance(
-        scope_vec, (core.VarBase)) else scope_vec[0]
+    scope = (
+        scope_vec.value().get_scope()
+        if isinstance(scope_vec, (core.VarBase))
+        else scope_vec[0]
+    )
     if (not instance._is_test) and (not tracer._has_grad):
         scope.drop_kids()
 
@@ -905,15 +1083,22 @@ def _run_static_graph(input, program_holder, trace_program):
     main_program = framework.default_main_program()
     param_var_names = _get_persistable_var_names(trace_program)
     _, dict_rename_var_old_new = _rename_var_program_desc(
-        trace_program, exclude=param_var_names)
+        trace_program, exclude=param_var_names
+    )
     trace_program.flush()
     output_names = [var.name() for var in program_holder.output_descs]
     # append blocks from 'trace_program'
-    _append_block(main_program, trace_program, program_holder, input,
-                  dict_rename_var_old_new)
+    _append_block(
+        main_program,
+        trace_program,
+        program_holder,
+        input,
+        dict_rename_var_old_new,
+    )
     main_program._sync_with_cpp()
-    outs = _get_output_from_program(main_program, program_holder,
-                                    dict_rename_var_old_new)
+    outs = _get_output_from_program(
+        main_program, program_holder, dict_rename_var_old_new
+    )
     if len(outs) == 1:
         outs = outs[0]
     return outs
@@ -922,7 +1107,7 @@ def _run_static_graph(input, program_holder, trace_program):
 def _collect_current_and_parent_var(program, block_idx):
     '''
     Get variables in current block and its parent block.
-    
+
     Args:
         program(Program): The program containing the current block.
         block_idx(int): index of current block.
@@ -941,46 +1126,55 @@ def _collect_current_and_parent_var(program, block_idx):
     return vars
 
 
-def _append_block(dest_program,
-                  src_program_desc,
-                  program_holder,
-                  input_variables,
-                  dict_rename_var_old_new=None):
+def _append_block(
+    dest_program,
+    src_program_desc,
+    program_holder,
+    input_variables,
+    dict_rename_var_old_new=None,
+):
     '''
     Append Variables and Operators in 'src_program_desc' to dest_program.
-    
+
     Args:
         dest_program(Program): Variables and Operators are appended to it.
         src_program_desc(ProgramDesc): Variables in it will be appended to 'dest_program'.
         program_holder(_ProgramHolder): program_holder of TranslatedLayer
         input_variables(list): list of input variables
-        dict_rename_var_old_new(None|dict): When using '_rename_var_program_desc', 
+        dict_rename_var_old_new(None|dict): When using '_rename_var_program_desc',
         use it to map the name of the variable before it was modified and the new name.
     '''
 
     origin_block_idx = dest_program.current_block_idx
-    param_var_names = _collect_current_and_parent_var(dest_program,
-                                                      origin_block_idx)
-    append_var_from_block_desc_static(dest_program.block(origin_block_idx),
-                                      src_program_desc.block(0),
-                                      exclude=param_var_names)
+    param_var_names = _collect_current_and_parent_var(
+        dest_program, origin_block_idx
+    )
+    append_var_from_block_desc_static(
+        dest_program.block(origin_block_idx),
+        src_program_desc.block(0),
+        exclude=param_var_names,
+    )
 
     name_inp_desc = [inp.name() for inp in program_holder.input_descs]
     input_names = [inp.name for inp in input_variables]
     if len(name_inp_desc) != len(input_names):
         raise ValueError(
-            "The number of input is invalid, expected {}, but received {}.".
-            format(len(name_inp_desc), len(input_names)))
+            "The number of input is invalid, expected {}, but received {}.".format(
+                len(name_inp_desc), len(input_names)
+            )
+        )
     for i, out_name in enumerate(name_inp_desc):
         if dict_rename_var_old_new:
             out_name = dict_rename_var_old_new[out_name]
         dest_program.block(origin_block_idx).append_op(
             type='assign',
             inputs={'X': [input_names[i]]},
-            outputs={'Out': [out_name]})
+            outputs={'Out': [out_name]},
+        )
 
     append_ops = append_op_from_block_desc_static(
-        dest_program.block(origin_block_idx), src_program_desc.block(0))
+        dest_program.block(origin_block_idx), src_program_desc.block(0)
+    )
     dest_program._sync_with_cpp()
 
     offset_block_idx = dest_program.num_blocks - 1
@@ -994,11 +1188,12 @@ def _append_block(dest_program,
             else:
                 parent_idx = origin_block_idx
             dest_block = dest_program._create_block(parent_idx=parent_idx)
-            append_var_from_block_desc_static(dest_block,
-                                              src_block,
-                                              exclude=param_var_names)
+            append_var_from_block_desc_static(
+                dest_block, src_block, exclude=param_var_names
+            )
             append_ops += append_op_from_block_desc_static(
-                dest_block, src_block)
+                dest_block, src_block
+            )
 
     dest_program._sync_with_cpp()
     for op in append_ops:
@@ -1008,15 +1203,16 @@ def _append_block(dest_program,
                 origin_id = sub.id
             if isinstance(sub, framework.Block):
                 origin_id = sub.idx
-            op._set_attr('sub_block',
-                         dest_program.block(offset_block_idx + origin_id))
+            op._set_attr(
+                'sub_block', dest_program.block(offset_block_idx + origin_id)
+            )
     dest_program._sync_with_cpp()
     dest_program.current_block_idx = origin_block_idx
 
 
-def _get_output_from_program(program,
-                             program_holder,
-                             dict_rename_var_old_new=None):
+def _get_output_from_program(
+    program, program_holder, dict_rename_var_old_new=None
+):
     """
     Get output name of 'program' according to program_holder
     """
@@ -1065,20 +1261,21 @@ def append_op_from_desc_static(block, op_desc):
     op_type = op_desc.type()
     op_append = block.desc.append_op()
     op_append.copy_from(op_desc)
-    op = framework.Operator(block=block,
-                            desc=op_append,
-                            type=op_type,
-                            inputs=None,
-                            outputs=None,
-                            attrs=None)
+    op = framework.Operator(
+        block=block,
+        desc=op_append,
+        type=op_type,
+        inputs=None,
+        outputs=None,
+        attrs=None,
+    )
     block.ops.append(op)
     return op
 
 
-def append_var_from_block_desc_static(block,
-                                      src_block_desc,
-                                      include=None,
-                                      exclude=None):
+def append_var_from_block_desc_static(
+    block, src_block_desc, include=None, exclude=None
+):
     """
     Append Variables of 'src_block_desc' to current block.
     If 'include' is not `None`,variables that are not in include are not append.
@@ -1097,13 +1294,14 @@ def append_var_from_block_desc_static(block,
     for var_desc in src_block_desc.all_vars():
         var_desc_name = var_desc.name()
         should_append = (include is None or var_desc_name in include) and (
-            exclude is None or var_desc_name not in exclude)
+            exclude is None or var_desc_name not in exclude
+        )
         if not block.has_var(var_desc_name) and should_append:
             var_type = var_desc.type()
             if var_type in [
-                    core.VarDesc.VarType.SELECTED_ROWS,
-                    core.VarDesc.VarType.LOD_TENSOR,
-                    core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                core.VarDesc.VarType.SELECTED_ROWS,
+                core.VarDesc.VarType.LOD_TENSOR,
+                core.VarDesc.VarType.LOD_TENSOR_ARRAY,
             ]:
                 data_type = var_desc.dtype()
                 var_shape = var_desc.shape()
@@ -1111,8 +1309,8 @@ def append_var_from_block_desc_static(block,
                 data_type = None
                 var_shape = None
             if var_type in [
-                    core.VarDesc.VarType.LOD_TENSOR,
-                    core.VarDesc.VarType.LOD_TENSOR_ARRAY
+                core.VarDesc.VarType.LOD_TENSOR,
+                core.VarDesc.VarType.LOD_TENSOR_ARRAY,
             ]:
                 lod_level = var_desc.lod_level()
             else:
@@ -1131,16 +1329,18 @@ def append_var_from_block_desc_static(block,
                     shape=var_shape,
                     lod_level=lod_level,
                     persistable=var_desc.persistable(),
-                    set_need_check_feed=var_desc.need_check_feed()))
+                    set_need_check_feed=var_desc.need_check_feed(),
+                )
+            )
     return vars_append
 
 
 class TranslatedLayer(layers.Layer):
     """
-    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model 
-    loaded by :ref:`api_paddle_jit_load` . It can be used like a 
+    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model
+    loaded by :ref:`api_paddle_jit_load` . It can be used like a
     general Layer object in eval or train mode.
-    
+
     .. note:
         The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_paddle_jit_load` .
 
@@ -1256,8 +1456,9 @@ class TranslatedLayer(layers.Layer):
         # the TranslatedLayer object holded var names count started from 0
         with unique_name.guard():
             for name, var in persistable_vars.items():
-                if isinstance(var,
-                              (framework.ParamBase, framework.EagerParamBase)):
+                if isinstance(
+                    var, (framework.ParamBase, framework.EagerParamBase)
+                ):
                     dy_name = _generate_unique_var_name(PARAMETER_NAME_PREFIX)
                     self._persistable_var_name_dict[name] = dy_name
                     self.add_parameter(dy_name, var)
@@ -1291,7 +1492,8 @@ class TranslatedLayer(layers.Layer):
 
         # 2. load layer parameters & buffers
         persistable_vars = _construct_params_and_buffers(
-            model_path, programs, params_filename)
+            model_path, programs, params_filename
+        )
 
         # 3. construct TranslatedLayer object
         translated_layer = TranslatedLayer(programs, persistable_vars)
@@ -1303,9 +1505,12 @@ class TranslatedLayer(layers.Layer):
                     ins.name() for ins in program_holder.input_descs
                 ]
             setattr(
-                TranslatedLayer, method_name,
+                TranslatedLayer,
+                method_name,
                 TranslatedLayer._execution_method_creator(
-                    method_name, program_holder))
+                    method_name, program_holder
+                ),
+            )
 
         # 5. set TranslatedLayer's default mode to eval
         translated_layer.eval()
@@ -1314,7 +1519,6 @@ class TranslatedLayer(layers.Layer):
 
     @staticmethod
     def _execution_method_creator(method_name, program_holder):
-
         def __i_m_p_l__(self, *input):
             program_holder = self._program_holder_dict[__i_m_p_l__.__name__]
             # When using jit.save, it runs in static graph mode.
@@ -1327,7 +1531,8 @@ class TranslatedLayer(layers.Layer):
                 # because '_run_static_graph' modifies 'ProgramDesc', 'OpDesc.op_size()' will return a very large wrong number.
                 # A Segmentation fault error may occur if used 'p=ProgramDesc(program_holder.infer_program)'.
                 p = framework.Program._construct_from_desc(
-                    core.ProgramDesc(program_holder.infer_program))
+                    core.ProgramDesc(program_holder.infer_program)
+                )
                 return _run_static_graph(input, program_holder, p.desc)
 
         __i_m_p_l__.__name__ = method_name
@@ -1348,13 +1553,13 @@ class TranslatedLayer(layers.Layer):
         Args:
             - method_name (string): mehtod name corresponding to the program
                 to be obtained. Default: 'forward'.
-        
+
         Returns:
             Program
 
         Examples:
             .. code-block:: python
-            
+
                 import numpy as np
                 import paddle
                 import paddle.nn as nn
@@ -1440,8 +1645,9 @@ class TranslatedLayer(layers.Layer):
         program_holder = self._program_holder_dict.get(method_name, None)
         if program_holder is None:
             raise ValueError(
-                "The method `%s` does not exist in loaded TranslatedLayer." %
-                method_name)
+                "The method `%s` does not exist in loaded TranslatedLayer."
+                % method_name
+            )
         return program_holder
 
     def _input_spec(self, method_name='forward'):
@@ -1451,9 +1657,11 @@ class TranslatedLayer(layers.Layer):
         # 2. build input spec by input desc
         input_spec = []
         for var_desc in program_holder.input_descs:
-            spec = paddle.static.InputSpec(shape=var_desc.shape(),
-                                           dtype=var_desc.dtype(),
-                                           name=var_desc.name())
+            spec = paddle.static.InputSpec(
+                shape=var_desc.shape(),
+                dtype=var_desc.dtype(),
+                name=var_desc.name(),
+            )
             input_spec.append(spec)
 
         return input_spec
@@ -1468,9 +1676,11 @@ class TranslatedLayer(layers.Layer):
             # NOTE(chenweihang): InputSpec describes a tensor, not just input.
             # Maybe the name is not good enough. Here we use InputSpec to
             # construct the description of Output tensor
-            spec = paddle.static.InputSpec(shape=var_desc.shape(),
-                                           dtype=var_desc.dtype(),
-                                           name=var_desc.name())
+            spec = paddle.static.InputSpec(
+                shape=var_desc.shape(),
+                dtype=var_desc.dtype(),
+                name=var_desc.name(),
+            )
             output_spec.append(spec)
 
         return output_spec

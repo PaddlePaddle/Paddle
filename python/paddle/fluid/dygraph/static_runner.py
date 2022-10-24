@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.fluid.dygraph.jit import _SaveLoadConfig
 from paddle.fluid.dygraph.io import TranslatedLayer
 
@@ -26,7 +24,7 @@ class StaticModelRunner(object):
     and then performing fine-tune training or inference.
 
     .. note::
-        This is a temporary API, which will be deprecated later, please use 
+        This is a temporary API, which will be deprecated later, please use
         `fluid.dygraph.jit.load` to achieve the same function.
     """
 

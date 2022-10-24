@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -24,10 +22,10 @@ from test_layer_norm_op import _reference_layer_norm_naive
 np.random.random(123)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Paddle core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
+)
 class TestFusedFCElementwiseLayerNormOp(OpTest):
-
     def config(self):
         self.matrix = MatrixGenerate(1, 10, 15, 3, 3, 2)
         self.y_shape = [1, 15]
@@ -46,11 +44,12 @@ class TestFusedFCElementwiseLayerNormOp(OpTest):
         y = np.random.random_sample(self.y_shape).astype(np.float32)
         add_out = fc_out + y
         # layer_norm
-        scale_shape = [np.prod(self.y_shape[self.begin_norm_axis:])]
+        scale_shape = [np.prod(self.y_shape[self.begin_norm_axis :])]
         scale = np.random.random_sample(scale_shape).astype(np.float32)
         bias_1 = np.random.random_sample(scale_shape).astype(np.float32)
         out, mean, variance = _reference_layer_norm_naive(
-            add_out, scale, bias_1, epsilon, self.begin_norm_axis)
+            add_out, scale, bias_1, epsilon, self.begin_norm_axis
+        )
 
         self.inputs = {
             "X": self.matrix.input,
@@ -58,12 +57,12 @@ class TestFusedFCElementwiseLayerNormOp(OpTest):
             "Bias0": self.matrix.bias,
             "Y": y,
             "Scale": scale,
-            "Bias1": bias_1
+            "Bias1": bias_1,
         }
         self.attrs = {
             "activation_type": "relu",
             "epsilon": epsilon,
-            "begin_norm_axis": self.begin_norm_axis
+            "begin_norm_axis": self.begin_norm_axis,
         }
         self.outputs = {"Out": out, "Mean": mean, "Variance": variance}
 
@@ -73,7 +72,6 @@ class TestFusedFCElementwiseLayerNormOp(OpTest):
 
 
 class TestFusedFCElementwiseLayerNormOp2(TestFusedFCElementwiseLayerNormOp):
-
     def config(self):
         self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
         self.y_shape = [4, 6]

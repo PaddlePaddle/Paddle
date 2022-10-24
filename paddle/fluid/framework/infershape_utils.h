@@ -59,6 +59,10 @@ class CompatMetaTensor : public phi::MetaTensor {
 
   bool initialized() const override { return initialized_; };
 
+  bool is_selected_rows() const override;
+  bool is_tensor_array() const override;
+  bool is_dense() const override;
+
   operator unspecified_bool_type() const override {
     return initialized_ ? unspecified_bool_true : 0;
   }
@@ -77,15 +81,17 @@ class CompatMetaTensor : public phi::MetaTensor {
   }
 
   const phi::SelectedRows& GetSelectedRows() const {
-    PADDLE_ENFORCE_EQ(is_runtime_,
-                      true,
-                      platform::errors::Unavailable(
-                          "Only can get Tensor from MetaTensor in rumtime."));
+    PADDLE_ENFORCE_EQ(
+        is_runtime_,
+        true,
+        platform::errors::Unavailable(
+            "Only can get phi::DenseTensor from MetaTensor in rumtime."));
     auto* var = PADDLE_GET_CONST(Variable*, var_);
-    PADDLE_ENFORCE_EQ(var->IsType<phi::SelectedRows>(),
-                      true,
-                      platform::errors::Unavailable(
-                          "The Tensor in MetaTensor is not SelectedRows."));
+    PADDLE_ENFORCE_EQ(
+        var->IsType<phi::SelectedRows>(),
+        true,
+        platform::errors::Unavailable(
+            "The phi::DenseTensor in MetaTensor is not SelectedRows."));
     return var->Get<phi::SelectedRows>();
   }
 

@@ -19,7 +19,12 @@
 #     Copyright 2021, Jiaao He. All rights reserved.
 #   Licensed under the Apache License, Version 2.0 (the "License").
 
-from paddle.distributed.models.moe.utils import _number_count, _limit_by_capacity, _prune_gate_by_capacity, _assign_pos
+from paddle.distributed.models.moe.utils import (
+    _number_count,
+    _limit_by_capacity,
+    _prune_gate_by_capacity,
+    _assign_pos,
+)
 import paddle
 from paddle.fluid.framework import in_dygraph_mode
 
@@ -29,16 +34,24 @@ def _alltoall(in_tensor_list, group=None, use_calc_stream=True):
         return
 
     if in_dygraph_mode():
-        group = paddle.distributed.collective._get_default_group(
-        ) if group is None else group
+        group = (
+            paddle.distributed.collective._get_default_group()
+            if group is None
+            else group
+        )
         out = paddle.empty(in_tensor_list.shape, in_tensor_list.dtype)
         task = group.process_group.alltoall(in_tensor_list, out)
         task.wait()
         return out
     else:
         ring_id = 0 if group is None else group.id
-        return paddle._C_ops.alltoall(in_tensor_list, 'use_calc_stream',
-                                      use_calc_stream, 'ring_id', ring_id)
+        return paddle._legacy_C_ops.alltoall(
+            in_tensor_list,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+        )
 
 
 def count_by_gate(gate, num_expert, world_size, require_pos=True, group=None):
@@ -60,13 +73,12 @@ def count_by_gate(gate, num_expert, world_size, require_pos=True, group=None):
 
 def limit_by_capacity(topk_idx, num_expert, world_size, capacity, group=None):
     with paddle.no_grad():
-        capacity = paddle.ones(shape=[num_expert],
-                               dtype=paddle.int64) * capacity
-        pos, lec, gec = count_by_gate(topk_idx,
-                                      num_expert,
-                                      world_size,
-                                      require_pos=False,
-                                      group=group)
+        capacity = (
+            paddle.ones(shape=[num_expert], dtype=paddle.int64) * capacity
+        )
+        pos, lec, gec = count_by_gate(
+            topk_idx, num_expert, world_size, require_pos=False, group=group
+        )
         new_gec = _limit_by_capacity(gec, capacity, world_size)
         if world_size > 1:
             assert group.nranks == world_size
@@ -74,7 +86,8 @@ def limit_by_capacity(topk_idx, num_expert, world_size, capacity, group=None):
         else:
             new_lec = new_gec
 
-        topk_idx = _prune_gate_by_capacity(topk_idx, new_lec, num_expert,
-                                           world_size)
+        topk_idx = _prune_gate_by_capacity(
+            topk_idx, new_lec, num_expert, world_size
+        )
 
     return new_lec, new_gec, topk_idx

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import logging
 import numpy as np
 from types import MethodType
@@ -33,7 +32,7 @@ from .group_sharded_utils import Type, GroupShardedClipGrad, device_guard
 
 def _all_gather(tensor, buffer_size, group):
     """
-    The main difference with paddle.distributed.all_gather: 
+    The main difference with paddle.distributed.all_gather:
     no need to pass in tensor_list, the returned tensor is spliced
     """
 
@@ -58,8 +57,8 @@ CHECK_LAYER = dict()  # Help to check layer's id -> layer's name
 
 
 class GroupShardedStage3(nn.Layer):
-    """ 
-    A wrapper for Sharding Stage3 Layer in Dygraph. 
+    """
+    A wrapper for Sharding Stage3 Layer in Dygraph.
 
     .. warning: GroupShardedStage3 encapsulates the layer strategy and integrates it into the nn.Layer.
 
@@ -73,16 +72,18 @@ class GroupShardedStage3(nn.Layer):
     # 3. Support offload function.
     # 4. Support the establishment of independent communication groups.
 
-    def __init__(self,
-                 layer,
-                 optimizer,
-                 group=None,
-                 sync_buffers=False,
-                 device="gpu",
-                 segment_size=2**20,
-                 pertrain_sync_models=True,
-                 offload=False,
-                 sync_comm=False):
+    def __init__(
+        self,
+        layer,
+        optimizer,
+        group=None,
+        sync_buffers=False,
+        device="gpu",
+        segment_size=2**20,
+        pertrain_sync_models=True,
+        offload=False,
+        sync_comm=False,
+    ):
         super().__init__()
 
         # Default configs
@@ -97,27 +98,40 @@ class GroupShardedStage3(nn.Layer):
         self._segment_size = segment_size
 
         global DEV
-        DEV = "cpu" if paddle.get_device() == "cpu" else paddle.get_device(
-        ).split(":")[0]
+        DEV = (
+            "cpu"
+            if paddle.get_device() == "cpu"
+            else paddle.get_device().split(":")[0]
+        )
         global DEV_ID
-        DEV_ID = 0 if paddle.get_device() == "cpu" else int(
-            paddle.get_device().split(":")[1])
+        DEV_ID = (
+            0
+            if paddle.get_device() == "cpu"
+            else int(paddle.get_device().split(":")[1])
+        )
         global param2dtype
         param2dtype = dict()
 
         # Communication group establishment
-        self._group = collective.new_group(
-            collective._get_global_group().ranks) if group is None else group
+        self._group = (
+            collective.new_group(collective._get_global_group().ranks)
+            if group is None
+            else group
+        )
         self._world_size_scaling = 1.0 / self._group.nranks
-        assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1."
+        assert (
+            self._group.nranks > 1
+        ), "Training must be distributed, ranks must be greater than 1."
         self._rank = self._group.rank
         self._global_root_rank = self._group.ranks[
-            0]  # picking ranks index 0 as the reference
+            0
+        ]  # picking ranks index 0 as the reference
 
         # Parameter segmentation for global ranks
         # After flatten -> self._param2buffer_size, self._param2buffer, self._trainable_params
         self._param2buffer_size = dict()  # {param.name: size}
-        self._param2buffer = dict(
+        self._param2buffer = (
+            dict()
         )  # {param.name: [(start0, end0),(start1, end1), ...]}
         self._trainable_params = dict()  # {id(layer): [trainable_params]}
         self._unslice_params = set()  # param's numel <= segment_size
@@ -125,9 +139,11 @@ class GroupShardedStage3(nn.Layer):
         self._grad_storages = dict()  # {param.dtype: GradStorage}
 
         assert not isinstance(
-            optimizer, list), "Multiple optimizers are not supported now."
-        self._optim = _OptimizerWrapper(optimizer, self._offload, self._group,
-                                        self._update_params_slice)
+            optimizer, list
+        ), "Multiple optimizers are not supported now."
+        self._optim = _OptimizerWrapper(
+            optimizer, self._offload, self._group, self._update_params_slice
+        )
         self._ori_parameter_list = self._optim._parameter_list
         self._ori_param_groups = self._optim._param_groups
 
@@ -137,9 +153,11 @@ class GroupShardedStage3(nn.Layer):
                 "While using ClipGradByGlobalNorm in GroupShardedStage3, the grad clip of original optimizer will be changed."
             )
             self._optim._grad_clip = GroupShardedClipGrad(
-                self._optim._grad_clip, paddle.get_device(), self._group)
+                self._optim._grad_clip, paddle.get_device(), self._group
+            )
             if self._optim._parameter_list and isinstance(
-                    self._optim._parameter_list[0], dict):
+                self._optim._parameter_list[0], dict
+            ):
                 for item in self._optim._param_groups:
                     if "grad_clip" in item.keys():
                         item["grad_clip"] = self._optim._grad_clip
@@ -178,22 +196,24 @@ class GroupShardedStage3(nn.Layer):
         """
 
         for p in self._layer.parameters():
-            collective.broadcast(p,
-                                 src=self._global_root_rank,
-                                 group=self._group,
-                                 use_calc_stream=True)
+            collective.broadcast(
+                p, src=self._global_root_rank, group=self._group, sync_op=True
+            )
 
     def _clear_gradients(self):
         assert len(self._trainable_params.keys()) > 0
         current_layer_params = self._layer.parameters(include_sublayers=True)
         # 1.Handle param's slice
         trainable_params = list(
-            filter(lambda p: p.trainable and p not in self._unslice_params,
-                   current_layer_params))
+            filter(
+                lambda p: p.trainable and p not in self._unslice_params,
+                current_layer_params,
+            )
+        )
         for param in trainable_params:
-            assert hasattr(param, "fw_storage"
-                           ), "Find {} don't have fw_storage attribute.".format(
-                               param.name)
+            assert hasattr(
+                param, "fw_storage"
+            ), "Find {} don't have fw_storage attribute.".format(param.name)
 
             param.fw_storage.clear_gradient(False)
             param.bw_storage._clear()
@@ -207,8 +227,10 @@ class GroupShardedStage3(nn.Layer):
                 param.clear_gradient(False)
                 tmp_var = param.cuda(DEV_ID)
 
-                if tmp_var.dtype == Type.fp32.value and param2dtype[
-                        param.name] == Type.fp16.value:
+                if (
+                    tmp_var.dtype == Type.fp32.value
+                    and param2dtype[param.name] == Type.fp16.value
+                ):
                     tmp_var = paddle.cast(tmp_var, Type.fp16.value)
                 tmp_var._share_buffer_to(param)
                 del tmp_var
@@ -223,9 +245,11 @@ class GroupShardedStage3(nn.Layer):
         if not isinstance(self._optim._param_groups[0], dict):
             slice_params = [param.fw_storage for param in update_list]
             self._optim._parameter_list = slice_params + list(
-                self._unslice_params)
+                self._unslice_params
+            )
             self._optim._param_groups = slice_params + list(
-                self._unslice_params)
+                self._unslice_params
+            )
         else:
             for param_group in self._optim._param_groups:
                 p_group = []
@@ -251,17 +275,21 @@ class GroupShardedStage3(nn.Layer):
         return fw
 
     def set_state_dict(self, state_dict, use_structured_name=True):
-        self._layer.set_state_dict(state_dict,
-                                   use_structured_name=use_structured_name)
+        self._layer.set_state_dict(
+            state_dict, use_structured_name=use_structured_name
+        )
 
-    def state_dict(self,
-                   destination=None,
-                   include_sublayers=True,
-                   structured_name_prefix=""):
+    def state_dict(
+        self,
+        destination=None,
+        include_sublayers=True,
+        structured_name_prefix="",
+    ):
         return self._layer.state_dict(
             destination=destination,
             include_sublayers=include_sublayers,
-            structured_name_prefix=structured_name_prefix)
+            structured_name_prefix=structured_name_prefix,
+        )
 
     def _handle_unslice_params(self):
         buffer_size = dict()
@@ -288,9 +316,11 @@ class GroupShardedStage3(nn.Layer):
                     dtype=param.dtype,
                     device=self._default_device,
                     destination=self._rank,
-                    parm2align=self._unslice_params2align)
+                    parm2align=self._unslice_params2align,
+                )
             self._grad_storages[param.dtype].add_grad(
-                param, self._unslice_params2align[param.name])
+                param, self._unslice_params2align[param.name]
+            )
 
     def _segment_rank_params(self, layer, name="last_layer"):
         """
@@ -330,8 +360,11 @@ class GroupShardedStage3(nn.Layer):
             align_ = self._param2align(param)
 
             offset = align_ + param._numel()
-            buffer_size = offset if offset % self._group.nranks == 0 else offset + self._group.nranks - (
-                offset % self._group.nranks)
+            buffer_size = (
+                offset
+                if offset % self._group.nranks == 0
+                else offset + self._group.nranks - (offset % self._group.nranks)
+            )
             self._param2buffer_size[param.name] = buffer_size
 
             # 2.Combination param buffer
@@ -340,7 +373,8 @@ class GroupShardedStage3(nn.Layer):
 
             for rank_ in range(self._group.nranks):
                 self._param2buffer[param.name].append(
-                    (rank_ * pre_buffer, (rank_ + 1) * pre_buffer))
+                    (rank_ * pre_buffer, (rank_ + 1) * pre_buffer)
+                )
 
             # Record param's dtype
             param2dtype[param.name] = param.dtype
@@ -352,10 +386,11 @@ class GroupShardedStage3(nn.Layer):
         This is a function to simplify the handling of parameter InternalStorages.
         """
         assert isinstance(buffer_size, int)
-        value = np.zeros(
-            buffer_size,
-            dtype=np.float16) if Type.fp16.value == param.dtype else np.zeros(
-                buffer_size, dtype=np.float32)
+        value = (
+            np.zeros(buffer_size, dtype=np.float16)
+            if Type.fp16.value == param.dtype
+            else np.zeros(buffer_size, dtype=np.float32)
+        )
         buffer = core.eager.Tensor(value=value, place=core.CPUPlace())
 
         param_shape = param.shape
@@ -377,16 +412,19 @@ class GroupShardedStage3(nn.Layer):
         if self._offload:
             with device_guard():
                 tmp_tensor = buffer._slice(start, end)
-            param.fw_storage = core.eager.Tensor(value=tmp_tensor,
-                                                 place=core.CPUPlace(),
-                                                 name="slice@" + param.name)
+            param.fw_storage = core.eager.Tensor(
+                value=tmp_tensor,
+                place=core.CPUPlace(),
+                name="slice@" + param.name,
+            )
             with device_guard():
-                param.master_weight = paddle.cast(param.fw_storage,
-                                                  Type.fp32.value)
+                param.master_weight = paddle.cast(
+                    param.fw_storage, Type.fp32.value
+                )
         else:
-            param.fw_storage = core.eager.Tensor(value=buffer._slice(
-                start, end),
-                                                 name="slice@" + param.name)
+            param.fw_storage = core.eager.Tensor(
+                value=buffer._slice(start, end), name="slice@" + param.name
+            )
         param.status = "part"
 
         # Updata optimizer master weights
@@ -415,20 +453,32 @@ class GroupShardedStage3(nn.Layer):
             self._register_forward_hooks(sub_layer)
 
     def _register_forward_all_hooks(self, sub_layer, task_flow):
-
         def _forward_pre_hook(layer, inputs):
-            return ForwardPreHooks(layer, self._order_tracer,
-                                   self._trainable_params,
-                                   self._param2buffer_size, self._group,
-                                   self._sync_comm, self._offload, task_flow)
+            return ForwardPreHooks(
+                layer,
+                self._order_tracer,
+                self._trainable_params,
+                self._param2buffer_size,
+                self._group,
+                self._sync_comm,
+                self._offload,
+                task_flow,
+            )
 
         def _forward_post_hook(layer, inputs, outputs):
-            return ForwardPostHooks.apply(outputs, layer, self._order_tracer,
-                                          self._trainable_params,
-                                          self._param2buffer,
-                                          self._param2buffer_size, self._rank,
-                                          self._group, self._sync_comm,
-                                          self._offload, task_flow)
+            return ForwardPostHooks.apply(
+                outputs,
+                layer,
+                self._order_tracer,
+                self._trainable_params,
+                self._param2buffer,
+                self._param2buffer_size,
+                self._rank,
+                self._group,
+                self._sync_comm,
+                self._offload,
+                task_flow,
+            )
 
         # register previous forward hooks
         sub_layer.register_forward_pre_hook(_forward_pre_hook)
@@ -443,10 +493,9 @@ class GroupShardedStage3(nn.Layer):
         """
 
         for buffer in self._layer.buffers(include_sublayers=True):
-            collective.broadcast(buffer,
-                                 self._global_root_rank,
-                                 self._group,
-                                 use_calc_stream=True)
+            collective.broadcast(
+                buffer, self._global_root_rank, self._group, sync_op=True
+            )
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -463,14 +512,16 @@ class GroupShardedStage3(nn.Layer):
         assert len(self._trainable_params.keys()) > 0
         current_layer_params = self._layer.parameters(include_sublayers=True)
         trainable_params = list(
-            filter(lambda p: p.trainable and p not in self._unslice_params,
-                   current_layer_params))
+            filter(
+                lambda p: p.trainable and p not in self._unslice_params,
+                current_layer_params,
+            )
+        )
         # 1.Handle param's slice
         for param in trainable_params:
             assert hasattr(
-                param,
-                "fw_storage"), "Find {} don't have fw_storage attribute".format(
-                    param.name)
+                param, "fw_storage"
+            ), "Find {} don't have fw_storage attribute".format(param.name)
             # Gradient average
             if self._offload:
                 with device_guard():
@@ -508,16 +559,21 @@ class GroupShardedStage3(nn.Layer):
         assert len(self._trainable_params.keys()) > 0
         current_layer_params = self._layer.parameters(include_sublayers=True)
         trainable_params = list(
-            filter(lambda p: p.trainable and p not in self._unslice_params,
-                   current_layer_params))
-        t_flow = _allgather_buffer(trainable_params,
-                                   self._group,
-                                   param2buffer_size=self._param2buffer_size,
-                                   use_calc_stream=True,
-                                   task_flow=TaskFlow(),
-                                   sync_wait=True,
-                                   offload=self._offload,
-                                   convert2cpu=convert2cpu)
+            filter(
+                lambda p: p.trainable and p not in self._unslice_params,
+                current_layer_params,
+            )
+        )
+        t_flow = _allgather_buffer(
+            trainable_params,
+            self._group,
+            param2buffer_size=self._param2buffer_size,
+            use_calc_stream=True,
+            task_flow=TaskFlow(),
+            sync_wait=True,
+            offload=self._offload,
+            convert2cpu=convert2cpu,
+        )
         if convert2cpu:
             for param in trainable_params:
                 t_flow.full_param[param.name][0]._share_buffer_to(param)
@@ -528,15 +584,17 @@ class GroupShardedStage3(nn.Layer):
     def _register_backward_hooks(self):
         current_layer_params = self._layer.parameters(include_sublayers=True)
         trainable_params = list(
-            filter(lambda p: p.trainable and p not in self._unslice_params,
-                   current_layer_params))
+            filter(
+                lambda p: p.trainable and p not in self._unslice_params,
+                current_layer_params,
+            )
+        )
 
         for param in trainable_params:
             allreduce_function = self._get_allreduce_fn(param)
             param._register_backward_hook(allreduce_function)
 
     def _get_allreduce_fn(self, param):
-
         @paddle.autograd.no_grad()
         def allreduce_(*_):
             if param.name in self._task_flow.full_grad.keys():
@@ -546,21 +604,25 @@ class GroupShardedStage3(nn.Layer):
 
                 start, end = self._param2buffer[param.name][self._rank]
                 if param.bw_storage is None:
-                    param.bw_storage = full_grad._slice(start,
-                                                        end).detach().clone()
+                    param.bw_storage = (
+                        full_grad._slice(start, end).detach().clone()
+                    )
                     if self._offload:
                         param.bw_storage = _device2cpu(param.bw_storage, True)
                 else:
                     if self._offload:
                         cpu_grad = _device2cpu(
-                            full_grad._slice(start, end).detach().clone(), True)
+                            full_grad._slice(start, end).detach().clone(), True
+                        )
                         with device_guard():
                             param.bw_storage = paddle.add(
-                                param.bw_storage, cpu_grad)
+                                param.bw_storage, cpu_grad
+                            )
                     else:
                         param.bw_storage = paddle.add(
                             param.bw_storage,
-                            full_grad._slice(start, end).detach().clone())
+                            full_grad._slice(start, end).detach().clone(),
+                        )
                 param.clear_gradient(False)
                 del self._task_flow.full_grad[param.name]
 
@@ -569,8 +631,12 @@ class GroupShardedStage3(nn.Layer):
                     param.use_count = 0
                     param._clear_data()
                     start, end = self._param2buffer[param.name][self._rank]
-                    param.fw_storage = self._task_flow.full_param[
-                        param.name][0]._slice(start, end).detach().clone()
+                    param.fw_storage = (
+                        self._task_flow.full_param[param.name][0]
+                        ._slice(start, end)
+                        .detach()
+                        .clone()
+                    )
                     param.status = "part"
                     del self._task_flow.full_param[param.name]
 
@@ -584,8 +650,9 @@ class GroupShardedStage3(nn.Layer):
         # CUDA alignment 256 bytes
         size = param._numel() * align[param.dtype]
         remaining = size % alignment[self._default_device]
-        ali = 0 if remaining == 0 else alignment[
-            self._default_device] - remaining
+        ali = (
+            0 if remaining == 0 else alignment[self._default_device] - remaining
+        )
         align_ = ali // align[param.dtype]
         return align_
 
@@ -619,8 +686,16 @@ class GroupShardedStage3(nn.Layer):
         self._optim.clear_grad = MethodType(_opt_clear, self._optim)
 
 
-def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer_size,
-                    group, sync_comm, offload, task_flow):
+def ForwardPreHooks(
+    layer,
+    order_tracer,
+    trainable_params,
+    param2buffer_size,
+    group,
+    sync_comm,
+    offload,
+    task_flow,
+):
 
     # Record layer's id
     layer_id = id(layer)
@@ -635,35 +710,55 @@ def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer_size,
         # Whether to use calc stream
         task_flow.use_calc[layer_id] = use_calc
         # wait current layer params
-        _wait_layer(trainable_params[layer_id], task_flow, group,
-                    param2buffer_size, use_calc, offload)
+        _wait_layer(
+            trainable_params[layer_id],
+            task_flow,
+            group,
+            param2buffer_size,
+            use_calc,
+            offload,
+        )
 
-        if layer_id == order_tracer["layer"][-1]: return
+        if layer_id == order_tracer["layer"][-1]:
+            return
         order_ = order_tracer[layer_id]
         layer_id = order_tracer["layer"][order_ + 1]
 
-    _allgather_buffer(trainable_params[layer_id],
-                      group,
-                      param2buffer_size=param2buffer_size,
-                      use_calc_stream=use_calc,
-                      task_flow=task_flow,
-                      sync_wait=sync_wait,
-                      offload=offload)
+    _allgather_buffer(
+        trainable_params[layer_id],
+        group,
+        param2buffer_size=param2buffer_size,
+        use_calc_stream=use_calc,
+        task_flow=task_flow,
+        sync_wait=sync_wait,
+        offload=offload,
+    )
 
     return
 
 
 class ForwardPostHooks(PyLayer):
-
     @staticmethod
-    def forward(ctx, inputs, layer, order_tracer, trainable_params,
-                param2buffer, param2buffer_size, rank, group, sync_comm,
-                offload, task_flow):
+    def forward(
+        ctx,
+        inputs,
+        layer,
+        order_tracer,
+        trainable_params,
+        param2buffer,
+        param2buffer_size,
+        rank,
+        group,
+        sync_comm,
+        offload,
+        task_flow,
+    ):
 
         layer_id = id(layer)
         # release current layer full params
-        _release_param(trainable_params[layer_id], param2buffer, rank,
-                       task_flow, offload)
+        _release_param(
+            trainable_params[layer_id], param2buffer, rank, task_flow, offload
+        )
 
         if layer_id not in order_tracer.keys():
             order_ = order_tracer["order"]
@@ -671,7 +766,7 @@ class ForwardPostHooks(PyLayer):
             order_tracer["order"] += 1
             order_tracer["layer"].append(layer_id)
 
-        #Record fw info
+        # Record fw info
         ctx.order_tracer = order_tracer
         ctx.task_flow = task_flow
         ctx.group = group
@@ -699,32 +794,43 @@ class ForwardPostHooks(PyLayer):
         # Allgather params synchronization
         if sync_comm:
             use_calc, sync_wait = True, True
-            _allgather_buffer(trainable_params[layer_id],
-                              group,
-                              param2buffer_size=param2buffer_size,
-                              use_calc_stream=use_calc,
-                              task_flow=task_flow,
-                              sync_wait=sync_wait,
-                              offload=offload)
+            _allgather_buffer(
+                trainable_params[layer_id],
+                group,
+                param2buffer_size=param2buffer_size,
+                use_calc_stream=use_calc,
+                task_flow=task_flow,
+                sync_wait=sync_wait,
+                offload=offload,
+            )
         else:
-            _wait_layer(trainable_params[layer_id], task_flow, group,
-                        param2buffer_size, use_calc, offload)
+            _wait_layer(
+                trainable_params[layer_id],
+                task_flow,
+                group,
+                param2buffer_size,
+                use_calc,
+                offload,
+            )
 
         # Create params's grad
-        _create_params_grad(trainable_params[layer_id], param2buffer_size,
-                            task_flow)
+        _create_params_grad(
+            trainable_params[layer_id], param2buffer_size, task_flow
+        )
 
         # Whether to use calc stream
         task_flow.use_calc[layer_id] = use_calc
         if layer_id != order_tracer["layer"][0] and not sync_comm:
             layer_next_id = order_tracer["layer"][order_tracer[layer_id] - 1]
-            _allgather_buffer(trainable_params[layer_next_id],
-                              group,
-                              param2buffer_size=param2buffer_size,
-                              use_calc_stream=use_calc,
-                              task_flow=task_flow,
-                              sync_wait=sync_wait,
-                              offload=offload)
+            _allgather_buffer(
+                trainable_params[layer_next_id],
+                group,
+                param2buffer_size=param2buffer_size,
+                use_calc_stream=use_calc,
+                task_flow=task_flow,
+                sync_wait=sync_wait,
+                offload=offload,
+            )
 
         return args
 
@@ -734,22 +840,22 @@ class TaskFlow:
     Task flows, one way linked list for task acquisition.
     """
 
-    def __init__(self,
-                 full_param=dict(),
-                 full_grad=dict(),
-                 use_calc=dict(),
-                 callback=None):
+    def __init__(
+        self,
+        full_param=dict(),
+        full_grad=dict(),
+        use_calc=dict(),
+        callback=None,
+    ):
         self.full_param = full_param
         self.full_grad = full_grad
         self.use_calc = use_calc
         self.callback = callback
 
 
-def _release_param(trainable_params,
-                   param2buffer,
-                   rank,
-                   task_flow,
-                   offload=False):
+def _release_param(
+    trainable_params, param2buffer, rank, task_flow, offload=False
+):
     for param in trainable_params:
         # async communicate share weight not clear
         param.use_count -= 1
@@ -758,8 +864,12 @@ def _release_param(trainable_params,
             if param.name in task_flow.full_param.keys():
                 start, end = param2buffer[param.name][rank]
                 with paddle.amp.auto_cast(enable=False):
-                    param.fw_storage = task_flow.full_param[
-                        param.name][0]._slice(start, end).detach().clone()
+                    param.fw_storage = (
+                        task_flow.full_param[param.name][0]
+                        ._slice(start, end)
+                        .detach()
+                        .clone()
+                    )
                 param.status = "part"
                 del task_flow.full_param[param.name]
 
@@ -768,12 +878,14 @@ def _release_param(trainable_params,
     return
 
 
-def _wait_layer(trainable_params,
-                task_flow,
-                group,
-                param2buffer_size,
-                use_calc_stream,
-                offload=False):
+def _wait_layer(
+    trainable_params,
+    task_flow,
+    group,
+    param2buffer_size,
+    use_calc_stream,
+    offload=False,
+):
 
     for param in trainable_params:
         if param.status == "all":
@@ -788,25 +900,29 @@ def _wait_layer(trainable_params,
             param.status = "all"
             param.use_count += 1
         else:
-            _allgather_buffer(trainable_params,
-                              group,
-                              param2buffer_size=param2buffer_size,
-                              use_calc_stream=True,
-                              task_flow=task_flow,
-                              sync_wait=True,
-                              offload=offload)
+            _allgather_buffer(
+                trainable_params,
+                group,
+                param2buffer_size=param2buffer_size,
+                use_calc_stream=True,
+                task_flow=task_flow,
+                sync_wait=True,
+                offload=offload,
+            )
             break
     return task_flow
 
 
-def _allgather_buffer(trainable_params,
-                      group,
-                      param2buffer_size,
-                      use_calc_stream,
-                      task_flow,
-                      sync_wait=False,
-                      offload=False,
-                      convert2cpu=False):
+def _allgather_buffer(
+    trainable_params,
+    group,
+    param2buffer_size,
+    use_calc_stream,
+    task_flow,
+    sync_wait=False,
+    offload=False,
+    convert2cpu=False,
+):
 
     for param in trainable_params:
         if param.status == "all":
@@ -847,8 +963,9 @@ def _create_params_grad(trainable_params, param2buffer_size, task_flow):
         if param.name in task_flow.full_grad.keys():
             continue
         assert isinstance(param2buffer_size[param.name], int)
-        temp_grad = paddle.zeros([param2buffer_size[param.name]],
-                                 dtype=param.dtype)
+        temp_grad = paddle.zeros(
+            [param2buffer_size[param.name]], dtype=param.dtype
+        )
         temp_tensor = temp_grad._slice(0, param._numel())
         temp_tensor.get_tensor()._set_dims(param.shape)
         param._copy_gradient_from(temp_tensor)
@@ -876,13 +993,14 @@ def _UnsliceParam(param):
 
 def _VarBaseWrapper(param):
     varbase = param.fw_storage
-    tmp_param = EagerParamBase(shape=varbase.shape,
-                               dtype=varbase.dtype,
-                               name="slice@" + param.name)
+    tmp_param = EagerParamBase(
+        shape=varbase.shape, dtype=varbase.dtype, name="slice@" + param.name
+    )
     varbase._share_buffer_to(tmp_param)
     tmp_param.regularizer = param.regularizer
     tmp_param.optimize_attr['learning_rate'] = param.optimize_attr[
-        'learning_rate']
+        'learning_rate'
+    ]
     varbase._clear()
     return tmp_param
 
@@ -907,14 +1025,17 @@ def _device2cpu(trans_param, convert_dtype=False):
 
 def _cpu2device(param):
     tmp_p = param.fw_storage.cuda(DEV_ID)
-    if tmp_p.dtype == Type.fp32.value and param2dtype[
-            param.name] == Type.fp16.value:
+    if (
+        tmp_p.dtype == Type.fp32.value
+        and param2dtype[param.name] == Type.fp16.value
+    ):
         tmp_p = paddle.cast(tmp_p, Type.fp16.value)
     return tmp_p
 
 
 def _current_layer_params(layer):
-    return layer.parameters(
-        include_sublayers=False) + list(layer.extra_parameters) if hasattr(
-            layer, "extra_parameters") else layer.parameters(
-                include_sublayers=False)
+    return (
+        layer.parameters(include_sublayers=False) + list(layer.extra_parameters)
+        if hasattr(layer, "extra_parameters")
+        else layer.parameters(include_sublayers=False)
+    )

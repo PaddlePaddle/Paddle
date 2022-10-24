@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -21,7 +19,6 @@ import paddle.fluid as fluid
 
 
 class TestMatchMatrixTensorOp(OpTest):
-
     def setUp(self):
         self.init_op_type()
         self.set_data()
@@ -58,8 +55,8 @@ class TestMatchMatrixTensorOp(OpTest):
         for idx in range(len(x_lod[0])):
             x_len = x_lod[0][idx]
             y_len = y_lod[0][idx]
-            x_sub = x_data[x_offset:(x_offset + x_len), :]
-            y_sub = y_data[y_offset:(y_offset + y_len), :]
+            x_sub = x_data[x_offset : (x_offset + x_len), :]
+            y_sub = y_data[y_offset : (y_offset + y_len), :]
             tmp_sub = np.dot(x_sub, w_data)
             tmp = np.vstack((tmp, tmp_sub.reshape(tmp_sub.size, 1)))
 
@@ -79,7 +76,6 @@ class TestMatchMatrixTensorOp(OpTest):
 
 
 class TestMatchMatrixTensorOpCase1(TestMatchMatrixTensorOp):
-
     def set_data(self):
         ix, iy, h, dim_t = [5, 8, 25, 4]
         x_lod = [[5]]
@@ -88,7 +84,6 @@ class TestMatchMatrixTensorOpCase1(TestMatchMatrixTensorOp):
 
 
 class TestMatchMatrixTensorOpCase2(TestMatchMatrixTensorOp):
-
     def set_data(self):
         ix, iy, h, dim_t = [105, 120, 1, 4]
         x_lod = [[30, 45, 30]]
@@ -97,7 +92,6 @@ class TestMatchMatrixTensorOpCase2(TestMatchMatrixTensorOp):
 
 
 class TestMatchMatrixTensorOpCase3(TestMatchMatrixTensorOp):
-
     def set_data(self):
         ix, iy, h, dim_t = [5, 9, 32, 1]
         x_lod = [[1, 2, 2]]
@@ -106,7 +100,6 @@ class TestMatchMatrixTensorOpCase3(TestMatchMatrixTensorOp):
 
 
 class TestMatchMatrixTensorOpCase4(TestMatchMatrixTensorOp):
-
     def set_data(self):
         ix, iy, h, dim_t = [8, 12, 16, 5]
         x_lod = [[1, 2, 3, 1, 1]]
@@ -116,9 +109,9 @@ class TestMatchMatrixTensorOpCase4(TestMatchMatrixTensorOp):
     def test_api(self):
         x_lod_tensor = fluid.layers.data(name='x', shape=[10], lod_level=1)
         y_lod_tensor = fluid.layers.data(name='y', shape=[10], lod_level=1)
-        out, out_tmp = fluid.contrib.match_matrix_tensor(x=x_lod_tensor,
-                                                         y=y_lod_tensor,
-                                                         channel_num=3)
+        out, out_tmp = fluid.contrib.match_matrix_tensor(
+            x=x_lod_tensor, y=y_lod_tensor, channel_num=3
+        )
 
         place = fluid.CPUPlace()
         x_data = np.random.rand(7, 10).astype('float32')
@@ -128,12 +121,9 @@ class TestMatchMatrixTensorOpCase4(TestMatchMatrixTensorOp):
 
         exe = fluid.Executor(place=place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={
-            'x': x,
-            'y': y
-        },
-                      fetch_list=[out],
-                      return_numpy=False)
+        ret = exe.run(
+            feed={'x': x, 'y': y}, fetch_list=[out], return_numpy=False
+        )
 
 
 if __name__ == '__main__':

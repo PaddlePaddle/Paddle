@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -50,7 +48,6 @@ def ref_complex_grad(x, y, dout):
 
 
 class TestComplexOp(OpTest):
-
     def init_spec(self):
         self.x_shape = [10, 10]
         self.y_shape = [10, 10]
@@ -63,8 +60,9 @@ class TestComplexOp(OpTest):
         x = np.random.randn(*self.x_shape).astype(self.dtype)
         y = np.random.randn(*self.y_shape).astype(self.dtype)
         out_ref = ref_complex(x, y)
-        self.out_grad = np.random.randn(*self.x_shape).astype(self.dtype) \
-                      + 1j * np.random.randn(*self.y_shape).astype(self.dtype)
+        self.out_grad = np.random.randn(*self.x_shape).astype(
+            self.dtype
+        ) + 1j * np.random.randn(*self.y_shape).astype(self.dtype)
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': out_ref}
 
@@ -73,41 +71,49 @@ class TestComplexOp(OpTest):
 
     def test_check_grad(self):
         dout = self.out_grad
-        dx, dy = ref_complex_grad(self.inputs['X'], self.inputs['Y'],
-                                  self.out_grad)
-        self.check_grad(['X', 'Y'],
-                        'Out',
-                        user_defined_grads=[dx, dy],
-                        user_defined_grad_outputs=[dout],
-                        check_eager=True)
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[dx, dy],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+        )
 
     def test_check_grad_ignore_x(self):
         dout = self.out_grad
-        dx, dy = ref_complex_grad(self.inputs['X'], self.inputs['Y'],
-                                  self.out_grad)
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
         self.assertTupleEqual(dx.shape, tuple(self.x_shape))
         self.assertTupleEqual(dy.shape, tuple(self.y_shape))
-        self.check_grad(['Y'],
-                        'Out',
-                        no_grad_set=set('X'),
-                        user_defined_grads=[dy],
-                        user_defined_grad_outputs=[dout],
-                        check_eager=True)
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set('X'),
+            user_defined_grads=[dy],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+        )
 
     def test_check_grad_ignore_y(self):
         dout = self.out_grad
-        dx, dy = ref_complex_grad(self.inputs['X'], self.inputs['Y'],
-                                  self.out_grad)
-        self.check_grad(['X'],
-                        'Out',
-                        no_grad_set=set('Y'),
-                        user_defined_grads=[dx],
-                        user_defined_grad_outputs=[dout],
-                        check_eager=True)
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[dx],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+        )
 
 
 class TestComplexOpBroadcast1(TestComplexOp):
-
     def init_spec(self):
         self.x_shape = [10, 3, 1, 4]
         self.y_shape = [100, 1]
@@ -115,7 +121,6 @@ class TestComplexOpBroadcast1(TestComplexOp):
 
 
 class TestComplexOpBroadcast2(TestComplexOp):
-
     def init_spec(self):
         self.x_shape = [100, 1]
         self.y_shape = [10, 3, 1, 4]
@@ -123,7 +128,6 @@ class TestComplexOpBroadcast2(TestComplexOp):
 
 
 class TestComplexOpBroadcast3(TestComplexOp):
-
     def init_spec(self):
         self.x_shape = [1, 100]
         self.y_shape = [100]
@@ -131,7 +135,6 @@ class TestComplexOpBroadcast3(TestComplexOp):
 
 
 class TestComplexAPI(unittest.TestCase):
-
     def setUp(self):
         self.x = np.random.randn(10, 10)
         self.y = np.random.randn(10, 10)
@@ -142,7 +145,7 @@ class TestComplexAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             y = paddle.to_tensor(self.y)
             out_np = paddle.complex(x, y).numpy()
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_static(self):
         mp, sp = static.Program(), static.Program()
@@ -153,13 +156,10 @@ class TestComplexAPI(unittest.TestCase):
 
         exe = static.Executor()
         exe.run(sp)
-        [out_np] = exe.run(mp,
-                           feed={
-                               "x": self.x,
-                               "y": self.y
-                           },
-                           fetch_list=[out])
-        self.assertTrue(np.allclose(self.out, out_np))
+        [out_np] = exe.run(
+            mp, feed={"x": self.x, "y": self.y}, fetch_list=[out]
+        )
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():

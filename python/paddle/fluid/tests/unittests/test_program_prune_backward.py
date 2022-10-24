@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import contextlib
@@ -22,7 +20,11 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from simple_nets import init_data, simple_fc_net, fc_with_batchnorm
 import seresnext_net
-from test_parallel_executor_transformer import transformer, get_feed_data_reader, DeviceType
+from test_parallel_executor_transformer import (
+    transformer,
+    get_feed_data_reader,
+    DeviceType,
+)
 from fake_reader import fake_imdb_reader
 import paddle
 
@@ -34,19 +36,19 @@ def lstm_net(use_feed):
     hid_dim2 = 96
     class_dim = 2
     emb_lr = 30.0
-    data = fluid.layers.data(name="words",
-                             shape=[1],
-                             dtype="int64",
-                             lod_level=1)
+    data = fluid.layers.data(
+        name="words", shape=[1], dtype="int64", lod_level=1
+    )
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
     emb = fluid.layers.embedding(
         input=data,
         size=[dict_dim, emb_dim],
-        param_attr=fluid.ParamAttr(learning_rate=emb_lr))
+        param_attr=fluid.ParamAttr(learning_rate=emb_lr),
+    )
     fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
-    lstm_h, c = fluid.layers.dynamic_lstm(input=fc0,
-                                          size=hid_dim * 4,
-                                          is_reverse=False)
+    lstm_h, c = fluid.layers.dynamic_lstm(
+        input=fc0, size=hid_dim * 4, is_reverse=False
+    )
     lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
     lstm_max_tanh = fluid.layers.tanh(lstm_max)
     fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
@@ -66,8 +68,10 @@ def simple_fc_net_with_accuracy(use_feed):
             hidden,
             size=200,
             act='relu',
-            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=1.0)))
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=1.0)
+            ),
+        )
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = paddle.mean(loss)
@@ -92,9 +96,11 @@ def cond_net(use_feed=None):
         return avg_loss
 
     two = fluid.layers.fill_constant([1], 'int32', 2)
-    pred = (two == 0)
-    avg_loss = fluid.layers.case([(pred, lambda: loss1(prediction, label))],
-                                 lambda: loss2(prediction, label))
+    pred = two == 0
+    avg_loss = fluid.layers.case(
+        [(pred, lambda: loss1(prediction, label))],
+        lambda: loss2(prediction, label),
+    )
     return avg_loss
 
 
@@ -120,15 +126,15 @@ def optimization_in_cond_net(with_optimize=False):
 
     sgd = fluid.optimizer.SGD(learning_rate=0.1)
     two = fluid.layers.fill_constant([1], 'int32', 2)
-    pred = (two == 0)
+    pred = two == 0
     avg_loss = fluid.layers.case(
         [(pred, lambda: loss1(sgd, prediction, label, with_optimize))],
-        lambda: loss2(sgd, prediction, label, with_optimize))
+        lambda: loss2(sgd, prediction, label, with_optimize),
+    )
     return avg_loss
 
 
 class TestProgramPruneBackward(unittest.TestCase):
-
     def program_compare(self, program_a, program_b):
         assert isinstance(
             program_a, fluid.framework.Program
@@ -144,8 +150,9 @@ class TestProgramPruneBackward(unittest.TestCase):
             self.assertEqual(len(block_a.ops), len(block_b.ops))
             self.assertEqual(len(block_a.vars), len(block_b.vars))
             for op_idx in range(len(block_a.ops)):
-                self.assertEqual(block_a.ops[op_idx].type,
-                                 block_b.ops[op_idx].type)
+                self.assertEqual(
+                    block_a.ops[op_idx].type, block_b.ops[op_idx].type
+                )
             for var_key in list(block_a.vars.keys()):
                 self.assertTrue(block_b.has_var(var_key))
 
@@ -167,113 +174,111 @@ class TestProgramPruneBackward(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
 
-            loss_data_prune, = exe.run(test_prog_prune,
-                                       feed=feed_dict,
-                                       fetch_list=[loss.name])
-            loss_data_orig, = exe.run(test_prog_orig,
-                                      feed=feed_dict,
-                                      fetch_list=[loss.name])
+            (loss_data_prune,) = exe.run(
+                test_prog_prune, feed=feed_dict, fetch_list=[loss.name]
+            )
+            (loss_data_orig,) = exe.run(
+                test_prog_orig, feed=feed_dict, fetch_list=[loss.name]
+            )
             self.assertEqual(loss_data_orig, loss_data_prune)
 
     def test_simple_fc_net(self):
-
         def optimizer():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4))
+                regularization=fluid.regularizer.L2Decay(1e-4),
+            )
             return optimizer
 
         with self.program_scope_guard():
             img, label = init_data()
-            self.check_prune_correctness(method=simple_fc_net,
-                                         feed_dict={
-                                             "image": img,
-                                             "label": label
-                                         },
-                                         optimizer=optimizer)
+            self.check_prune_correctness(
+                method=simple_fc_net,
+                feed_dict={"image": img, "label": label},
+                optimizer=optimizer,
+            )
 
     def test_simple_fc_net_with_accuracy(self):
-
         def optimizer():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4))
+                regularization=fluid.regularizer.L2Decay(1e-4),
+            )
             return optimizer
 
         with self.program_scope_guard():
             img, label = init_data()
-            self.check_prune_correctness(method=simple_fc_net_with_accuracy,
-                                         feed_dict={
-                                             "image": img,
-                                             "label": label
-                                         },
-                                         optimizer=optimizer)
+            self.check_prune_correctness(
+                method=simple_fc_net_with_accuracy,
+                feed_dict={"image": img, "label": label},
+                optimizer=optimizer,
+            )
 
     def test_batchnorm_fc(self):
-
         def optimizer():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4))
+                regularization=fluid.regularizer.L2Decay(1e-4),
+            )
             return optimizer
 
         with self.program_scope_guard():
             img, label = init_data()
-            self.check_prune_correctness(method=fc_with_batchnorm,
-                                         feed_dict={
-                                             "image": img,
-                                             "label": label
-                                         },
-                                         optimizer=optimizer)
+            self.check_prune_correctness(
+                method=fc_with_batchnorm,
+                feed_dict={"image": img, "label": label},
+                optimizer=optimizer,
+            )
 
     def test_seresnet(self):
         with self.program_scope_guard():
             self.check_prune_correctness(
                 method=seresnext_net.model,
                 feed_dict=seresnext_net.feed_dict(use_device=DeviceType.CPU),
-                optimizer=seresnext_net.optimizer)
+                optimizer=seresnext_net.optimizer,
+            )
 
     def test_transformer(self):
-
         def optimizer():
             optimizer = fluid.optimizer.Adam(
                 learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4))
+                regularization=fluid.regularizer.L2Decay(1e-4),
+            )
             return optimizer
 
         with self.program_scope_guard():
             # the program argument is used to distinguish Program and CompiledProgram
             feed_dict = get_feed_data_reader().get_next(
-                fluid.Executor(core.CPUPlace()), fluid.default_main_program())
-            self.check_prune_correctness(method=transformer,
-                                         feed_dict=feed_dict,
-                                         optimizer=optimizer)
+                fluid.Executor(core.CPUPlace()), fluid.default_main_program()
+            )
+            self.check_prune_correctness(
+                method=transformer, feed_dict=feed_dict, optimizer=optimizer
+            )
 
     def test_lstm(self):
-
         def optimizer():
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=0.001,
-                regularization=fluid.regularizer.L2Decay(1e-4))
+                regularization=fluid.regularizer.L2Decay(1e-4),
+            )
             return optimizer
 
         with self.program_scope_guard():
             word_dict_size = 5147
             reader = fake_imdb_reader(word_dict_size, 1)
-            data = fluid.layers.data(name="words",
-                                     shape=[1],
-                                     dtype="int64",
-                                     lod_level=1)
+            data = fluid.layers.data(
+                name="words", shape=[1], dtype="int64", lod_level=1
+            )
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            feeder = fluid.DataFeeder(feed_list=[data, label],
-                                      place=core.CPUPlace())
+            feeder = fluid.DataFeeder(
+                feed_list=[data, label], place=core.CPUPlace()
+            )
             feed_data = feeder.feed(reader())
-            self.check_prune_correctness(method=lstm_net,
-                                         feed_dict=feed_data,
-                                         optimizer=optimizer)
+            self.check_prune_correctness(
+                method=lstm_net, feed_dict=feed_data, optimizer=optimizer
+            )
 
     def test_cond(self):
-
         def optimizer():
             optimizer = fluid.optimizer.SGD(learning_rate=0.01)
             return optimizer
@@ -282,9 +287,9 @@ class TestProgramPruneBackward(unittest.TestCase):
             x_in = np.random.random(size=(10, 4)).astype('float32')
             label_in = np.random.randint(1, size=(10, 1)).astype('int64')
             feed_dict = {'x': x_in, 'label': label_in}
-            self.check_prune_correctness(method=cond_net,
-                                         feed_dict=feed_dict,
-                                         optimizer=optimizer)
+            self.check_prune_correctness(
+                method=cond_net, feed_dict=feed_dict, optimizer=optimizer
+            )
 
     def test_optimization_in_cond(self):
         x_in = np.random.random(size=(10, 4)).astype('float32')
@@ -297,9 +302,9 @@ class TestProgramPruneBackward(unittest.TestCase):
             place = core.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            loss_data_orig, = exe.run(test_prog_orig,
-                                      feed=feed_dict,
-                                      fetch_list=[loss.name])
+            (loss_data_orig,) = exe.run(
+                test_prog_orig, feed=feed_dict, fetch_list=[loss.name]
+            )
 
         with self.program_scope_guard():
             loss = optimization_in_cond_net(True)
@@ -309,9 +314,9 @@ class TestProgramPruneBackward(unittest.TestCase):
             place = core.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            loss_data_prune, = exe.run(test_prog_prune,
-                                       feed=feed_dict,
-                                       fetch_list=[loss.name])
+            (loss_data_prune,) = exe.run(
+                test_prog_prune, feed=feed_dict, fetch_list=[loss.name]
+            )
 
         self.program_compare(test_prog_orig, test_prog_prune)
         self.assertEqual(loss_data_orig, loss_data_prune)

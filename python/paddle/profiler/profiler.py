@@ -22,16 +22,53 @@ import importlib
 import json
 
 import paddle
-from paddle.fluid.core import (_Profiler, _ProfilerResult, ProfilerOptions,
-                               TracerEventType, enable_memory_recorder,
-                               enable_input_shape_recorder,
-                               disable_memory_recorder,
-                               disable_input_shape_recorder)
+from paddle.fluid.core import (
+    _Profiler,
+    ProfilerOptions,
+    TracerEventType,
+    enable_memory_recorder,
+    enable_input_shape_recorder,
+    disable_memory_recorder,
+    disable_input_shape_recorder,
+)
 
 from .utils import RecordEvent, wrap_optimizers
 from .profiler_statistic import StatisticData, _build_table, SortedKeys
 from paddle.profiler import utils
 from .timer import benchmark
+
+
+class SummaryView(Enum):
+    r"""
+    SummaryView define the summary view of different contents.
+
+    - **SummaryView.DeviceView** : The device summary view.
+
+    - **SummaryView.OverView** : The overview summary view.
+
+    - **SummaryView.ModelView** : The model summary view.
+
+    - **SummaryView.DistributedView** : The distributed summary view.
+
+    - **SummaryView.KernelView** : The kernel summary view.
+
+    - **SummaryView.OperatorView** : The operator summary view.
+
+    - **SummaryView.MemoryView** : The memory summary view.
+
+    - **SummaryView.MemoryManipulationView** : The meomory manipulation summary view.
+
+    - **SummaryView.UDFView** : The user defined summary view.
+    """
+    DeviceView = 0
+    OverView = 1
+    ModelView = 2
+    DistributedView = 3
+    KernelView = 4
+    OperatorView = 5
+    MemoryView = 6
+    MemoryManipulationView = 7
+    UDFView = 8
 
 
 class ProfilerState(Enum):
@@ -69,14 +106,17 @@ class ProfilerTarget(Enum):
     CPU = 0
     GPU = 1
     MLU = 2
+    CUSTOM_DEVICE = 3
 
 
-def make_scheduler(*,
-                   closed: int,
-                   ready: int,
-                   record: int,
-                   repeat: int = 0,
-                   skip_first: int = 0) -> Callable:
+def make_scheduler(
+    *,
+    closed: int,
+    ready: int,
+    record: int,
+    repeat: int = 0,
+    skip_first: int = 0
+) -> Callable:
     r"""
     Return a scheduler function, which scheduler the :ref:`state <api_paddle_profiler_ProfilerState>` according to the setting.
     The state transform confirms to:
@@ -98,12 +138,12 @@ def make_scheduler(*,
         skip_first(int, optional): The number of first steps to drop, not participate in the state transform, and at ProfilerState.CLOSED state. Default value is 0.
 
     Returns:
-        A scheduler function, conforms to above state transform setting. The function will takes one parameter step_num, and returns corresponding ProfilerState.
+        A scheduler function, conforms to above state transform setting. The function will takes one parameter `step_num`, and returns corresponding ProfilerState.
 
     Examples:
-        1. profiling range [2, 5]
+        1. profiling range [2, 5].
 
-        Assume batch 0: closed, batch 1: ready, batch [2, 5] record
+        Assume batch 0: closed, batch 1: ready, batch [2, 5] record.
 
             .. code-block:: python
                 :name: code-example1
@@ -112,9 +152,9 @@ def make_scheduler(*,
                 profiler.make_scheduler(closed=1, ready=1, record=4, repeat=1)
 
 
-        2. profiling range [3,6], [9,12], [15,18]...
+        2. profiling range [3,6], [9,12], [15,18].
 
-        Assume batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat
+        Assume batch 0: skiped, batch 1: closed, batch 2: ready, batch [3,6]: record, repeat.
 
             .. code-block:: python
                 :name: code-example2
@@ -130,7 +170,9 @@ def make_scheduler(*,
         step = step - skip_first
         period_steps = closed + ready + record
         has_repeated = step // period_steps
-        if repeat > 0 and has_repeated >= repeat:  # the period has repeated repeat times, return CLOSED state
+        if (
+            repeat > 0 and has_repeated >= repeat
+        ):  # the period has repeated repeat times, return CLOSED state
             return ProfilerState.CLOSED
         mod_step = step % period_steps
         if mod_step < closed:
@@ -142,12 +184,19 @@ def make_scheduler(*,
                 return ProfilerState.RECORD
             else:
                 return ProfilerState.RECORD_AND_RETURN
-    assert closed >= 0 and ready >= 0 and record > 0 and \
-             repeat >= 0 and skip_first >= 0, "Invalid profiler scheduler arguments"
+
+    assert (
+        closed >= 0
+        and ready >= 0
+        and record > 0
+        and repeat >= 0
+        and skip_first >= 0
+    ), "Invalid profiler scheduler arguments"
     if ready == 0:
-        warn("Profiler will record data after enabling profiler immediately, \
+        warn(
+            "Profiler will record data after enabling profiler immediately, \
           some data collected at the beginning of profiling may be 'noisy' because of overhead."
-             )
+        )
     return getScheduleState
 
 
@@ -158,17 +207,18 @@ def _default_state_scheduler(step: int):
     return ProfilerState.RECORD
 
 
-def export_chrome_tracing(dir_name: str,
-                          worker_name: Optional[str] = None) -> Callable:
+def export_chrome_tracing(
+    dir_name: str, worker_name: Optional[str] = None
+) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to chrome tracing format file.
-    The output file will be saved in directory ``dir_name``, and file name will be set as worker_name.
-    if worker_name is not set, the default name is [hostname]_[pid].
+    The output file will be saved in directory ``dir_name``, and file name will be set as `worker_name`.
+    if `worker_name` is not set, the default name is `[hostname]_[pid]`.
 
     Args:
         dir_name(str): Directory to save profiling data.
-        worker_name(str, optional): Prefix of the file name saved, default is [hostname]_[pid].
-    
+        worker_name(str, optional): Prefix of the file name saved, default is `[hostname]_[pid]`.
+
     Returns:
         A callable, which takes a Profiler object as parameter and calls its export method to save data to chrome tracing format file.
 
@@ -192,32 +242,37 @@ def export_chrome_tracing(dir_name: str,
             os.makedirs(dir_name, exist_ok=True)
         except Exception:
             raise RuntimeError(
-                "Can not create directory '{}' for saving profiling results.".
-                format(dir_name))
+                "Can not create directory '{}' for saving profiling results.".format(
+                    dir_name
+                )
+            )
 
     def handle_fn(prof):
         nonlocal worker_name
         if not worker_name:
-            worker_name = "host_{}pid_{}".format(socket.gethostname(),
-                                                 str(os.getpid()))
+            worker_name = "host_{}pid_{}".format(
+                socket.gethostname(), str(os.getpid())
+            )
         now = datetime.datetime.now()
         filename = '{}_time_{}.paddle_trace.json'.format(
-            worker_name, now.strftime('%Y_%m_%d_%H_%M_%S_%f'))
+            worker_name, now.strftime('%Y_%m_%d_%H_%M_%S_%f')
+        )
         prof.export(os.path.join(dir_name, filename), "json")
 
     return handle_fn
 
 
-def export_protobuf(dir_name: str,
-                    worker_name: Optional[str] = None) -> Callable:
+def export_protobuf(
+    dir_name: str, worker_name: Optional[str] = None
+) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to protobuf file.
-    The output file will be saved in directory ``dir_name``, and file name will be set as worker_name.
-    if worker_name is not set, the default name is [hostname]_[pid].
+    The output file will be saved in directory ``dir_name``, and file name will be set as ``worker_name``.
+    if ``worker_name`` is not set, the default name is `[hostname]_[pid]`.
 
     Args:
         dir_name(str): Directory to save profiling data.
-        worker_name(str, optional): Prefix of the file name saved, default is [hostname]_[pid].
+        worker_name(str, optional): Prefix of the file name saved, default is `[hostname]_[pid]`.
 
     Returns:
         A callable, which takes a Profiler object as parameter and calls its export method to save data to protobuf file.
@@ -242,17 +297,21 @@ def export_protobuf(dir_name: str,
             os.makedirs(dir_name, exist_ok=True)
         except Exception:
             raise RuntimeError(
-                "Can not create directory '{}' for saving profiling results.".
-                format(dir_name))
+                "Can not create directory '{}' for saving profiling results.".format(
+                    dir_name
+                )
+            )
 
     def handle_fn(prof):
         nonlocal worker_name
         if not worker_name:
-            worker_name = "host_{}pid_{}".format(socket.gethostname(),
-                                                 str(os.getpid()))
+            worker_name = "host_{}pid_{}".format(
+                socket.gethostname(), str(os.getpid())
+            )
         now = datetime.datetime.now()
         filename = '{}_time_{}.paddle_trace.pb'.format(
-            worker_name, now.strftime('%Y_%m_%d_%H_%M_%S_%f'))
+            worker_name, now.strftime('%Y_%m_%d_%H_%M_%S_%f')
+        )
         prof.export(os.path.join(dir_name, filename), "pb")
 
     return handle_fn
@@ -263,10 +322,18 @@ def _get_supported_targets() -> Iterable[ProfilerTarget]:
     Get the current supported profiler target in the system.
     """
     if _Profiler.is_cupti_supported():
-        return [ProfilerTarget.CPU, ProfilerTarget.GPU]
+        return [
+            ProfilerTarget.CPU,
+            ProfilerTarget.GPU,
+            ProfilerTarget.CUSTOM_DEVICE,
+        ]
     if _Profiler.is_cnpapi_supported():
-        return [ProfilerTarget.CPU, ProfilerTarget.MLU]
-    return [ProfilerTarget.CPU]
+        return [
+            ProfilerTarget.CPU,
+            ProfilerTarget.MLU,
+            ProfilerTarget.CUSTOM_DEVICE,
+        ]
+    return [ProfilerTarget.CPU, ProfilerTarget.CUSTOM_DEVICE]
 
 
 class Profiler:
@@ -279,7 +346,7 @@ class Profiler:
             If not provided (None), the default scheduler will keep tracing until the profiler exits. If it is a tuple, it has two values start_batch and end_batch,
             which means profiling range [start_batch, end_batch).
         on_trace_ready (Callable, optional): Callable object, serves as callback function, and takes the Profiler object as parameter, which provides a way for users to do post-processing.
-            This callable object will be called when ``scheduler`` returns ``ProfilerState.RECORD_AND_RETURN``. The default value is :ref:`export_chrome_tracing <api_paddle_profiler_export_chrome_tracing>` (./profiler_log/).
+            This callable object will be called when ``scheduler`` returns ``ProfilerState.RECORD_AND_RETURN``. The default value is :ref:`export_chrome_tracing <api_paddle_profiler_export_chrome_tracing>`.
         timer_only (bool, optional): If it is True, the cost of Dataloader and every step of the model will be count without profiling. Otherwise, the model will
             be timed and profiled. Default: False.
         record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
@@ -301,7 +368,7 @@ class Profiler:
                         #train()
                         p.step()
 
-        2. profiling range [2,4], [7, 9], [11,13]
+        2. profiling range [2,4], [7, 9], [11,13].
 
             .. code-block:: python
                 :name: code-example2
@@ -316,7 +383,7 @@ class Profiler:
                         #train()
                         p.step()
 
-        3. Use profiler without context manager, and use default parameters
+        3. Use profiler without context manager, and use default parameters.
 
             .. code-block:: python
                 :name: code-example3
@@ -331,38 +398,37 @@ class Profiler:
                 p.stop()
                 p.summary()
 
-        4. Use profiler to get throughput and cost of the model
+        4. Use profiler to get throughput and cost of the model.
 
             .. code-block:: python
                 :name: code-example-timer1
 
                 import paddle
                 import paddle.profiler as profiler
-                
+
                 class RandomDataset(paddle.io.Dataset):
                     def __init__(self, num_samples):
                         self.num_samples = num_samples
-                
+
                     def __getitem__(self, idx):
                         image = paddle.rand(shape=[100], dtype='float32')
                         label = paddle.randint(0, 10, shape=[1], dtype='int64')
                         return image, label
-                
+
                     def __len__(self):
                         return self.num_samples
-                
+
                 class SimpleNet(paddle.nn.Layer):
                     def __init__(self):
                         super(SimpleNet, self).__init__()
                         self.fc = paddle.nn.Linear(100, 10)
-                
+
                     def forward(self, image, label=None):
                         return self.fc(image)
-                
+
                 dataset = RandomDataset(20 * 4)
                 simple_net = SimpleNet()
-                opt = paddle.optimizer.SGD(learning_rate=1e-3,
-                                           parameters=simple_net.parameters())
+                opt = paddle.optimizer.SGD(learning_rate=1e-3, parameters=simple_net.parameters())
                 BATCH_SIZE = 4
                 loader = paddle.io.DataLoader(
                     dataset,
@@ -395,35 +461,44 @@ class Profiler:
                 # |       ips       |    1086.42904   |    1227.30604   |    959.92796    |
     """
 
-    def __init__(self,
-                 *,
-                 targets: Optional[Iterable[ProfilerTarget]] = None,
-                 scheduler: Union[Callable[[int], ProfilerState], tuple,
-                                  None] = None,
-                 on_trace_ready: Optional[Callable[..., Any]] = None,
-                 record_shapes: Optional[bool] = False,
-                 profile_memory=False,
-                 timer_only: Optional[bool] = False,
-                 emit_nvtx: Optional[bool] = False):
+    def __init__(
+        self,
+        *,
+        targets: Optional[Iterable[ProfilerTarget]] = None,
+        scheduler: Union[Callable[[int], ProfilerState], tuple, None] = None,
+        on_trace_ready: Optional[Callable[..., Any]] = None,
+        record_shapes: Optional[bool] = False,
+        profile_memory=False,
+        timer_only: Optional[bool] = False,
+        emit_nvtx: Optional[bool] = False,
+        custom_device_types: Optional[list] = []
+    ):
         supported_targets = _get_supported_targets()
         if targets:
             self.targets = set(targets)
             for target in targets:
                 if target not in supported_targets:
                     self.targets.remove(target)
-                    warn("Profiling {} is not supported in current context.".
-                         format(target))
+                    warn(
+                        "Profiling {} is not supported in current context.".format(
+                            target
+                        )
+                    )
         else:
             self.targets = supported_targets
         profileoption = ProfilerOptions()
         if ProfilerTarget.CPU in self.targets:
             profileoption.trace_switch |= 1
         if ProfilerTarget.GPU in self.targets:
-            profileoption.trace_switch |= (1 << 1)
+            profileoption.trace_switch |= 1 << 1
         if ProfilerTarget.MLU in self.targets:
-            profileoption.trace_switch |= (1 << 2)
+            profileoption.trace_switch |= 1 << 2
+        if ProfilerTarget.CUSTOM_DEVICE in self.targets:
+            profileoption.trace_switch |= 1 << 3
+            if not custom_device_types:
+                custom_device_types = paddle.device.get_all_custom_device_type()
         wrap_optimizers()
-        self.profiler = _Profiler.create(profileoption)
+        self.profiler = _Profiler.create(profileoption, custom_device_types)
         if callable(scheduler):
             self.scheduler = scheduler
         elif isinstance(scheduler, (tuple, list)):
@@ -431,17 +506,19 @@ class Profiler:
             start_batch, end_batch = scheduler
             start_batch = max(start_batch, 0)
             if start_batch >= 1:
-                self.scheduler = make_scheduler(closed=max(start_batch - 1, 0),
-                                                ready=1,
-                                                record=(end_batch -
-                                                        start_batch),
-                                                repeat=1)
+                self.scheduler = make_scheduler(
+                    closed=max(start_batch - 1, 0),
+                    ready=1,
+                    record=(end_batch - start_batch),
+                    repeat=1,
+                )
             else:
-                self.scheduler = make_scheduler(closed=0,
-                                                ready=0,
-                                                record=(end_batch -
-                                                        start_batch),
-                                                repeat=1)
+                self.scheduler = make_scheduler(
+                    closed=0,
+                    ready=0,
+                    record=(end_batch - start_batch),
+                    repeat=1,
+                )
         else:
             self.scheduler = _default_state_scheduler
 
@@ -488,7 +565,7 @@ class Profiler:
                 prof.stop()
 
         '''
-        # Timing only without profiling
+        # Timing only without profiling.
         benchmark().begin()
         if not self.timer_only or self.emit_nvtx:
             utils._is_profiler_used = True
@@ -507,9 +584,10 @@ class Profiler:
         elif self.current_state == ProfilerState.RECORD_AND_RETURN:
             self.profiler.prepare()
             self.profiler.start()
-        self.record_event = RecordEvent(name="ProfileStep#{}".format(
-            self.step_num),
-                                        event_type=TracerEventType.ProfileStep)
+        self.record_event = RecordEvent(
+            name="ProfileStep#{}".format(self.step_num),
+            event_type=TracerEventType.ProfileStep,
+        )
         self.record_event.begin()
 
     def stop(self):
@@ -541,7 +619,7 @@ class Profiler:
         if self.profile_memory:
             disable_memory_recorder()
         # self.current_state -> CLOSED
-        # In this situation, RECORD state is regarded as RECORD_AND_RETURN
+        # In this situation, RECORD state is regarded as RECORD_AND_RETURN.
         if self.record_event:
             self.record_event.end()
             self.record_event = None
@@ -551,7 +629,10 @@ class Profiler:
             )
             self.profiler.start()
             self.profiler.stop()
-        if self.current_state == ProfilerState.RECORD or self.current_state == ProfilerState.RECORD_AND_RETURN:
+        if (
+            self.current_state == ProfilerState.RECORD
+            or self.current_state == ProfilerState.RECORD_AND_RETURN
+        ):
             self.profiler_result = self.profiler.stop()
             if self.on_trace_ready:
                 self.on_trace_ready(self)
@@ -564,7 +645,7 @@ class Profiler:
 
         Args:
             num_samples (int|None, optional): Specifies the batch size of every step of the model
-                that is used to compute throughput when timer_only is True. Default: None.
+                that is used to compute throughput when `timer_only` is True. Default: None.
 
         Examples:
             .. code-block:: python
@@ -593,16 +674,17 @@ class Profiler:
         self.step_num += 1
         self.current_state = self.scheduler(self.step_num)
         self._trigger_action()
-        self.record_event = RecordEvent(name="ProfileStep#{}".format(
-            self.step_num),
-                                        event_type=TracerEventType.ProfileStep)
+        self.record_event = RecordEvent(
+            name="ProfileStep#{}".format(self.step_num),
+            event_type=TracerEventType.ProfileStep,
+        )
         self.record_event.begin()
 
     def step_info(self, unit=None):
         r"""
         Get statistics for current step. If the function is called at certain iteration
         intervals, the result is the average of all steps between the previous call and
-        this call. Statistics are as follows：
+        this call. Statistics are as follows:
 
         1. reader_cost: the cost of loading data measured in seconds.
 
@@ -652,7 +734,9 @@ class Profiler:
             if self.current_state == ProfilerState.RECORD:  # CLOSED -> RECORD
                 self.profiler.prepare()
                 self.profiler.start()
-            if self.current_state == ProfilerState.RECORD_AND_RETURN:  # CLOSED -> RECORD_AND_RETURN
+            if (
+                self.current_state == ProfilerState.RECORD_AND_RETURN
+            ):  # CLOSED -> RECORD_AND_RETURN
                 self.profiler.prepare()
                 self.profiler.start()
 
@@ -665,7 +749,9 @@ class Profiler:
                 self.profiler.stop()
             if self.current_state == ProfilerState.RECORD:  # READY -> RECORD
                 self.profiler.start()
-            if self.current_state == ProfilerState.RECORD_AND_RETURN:  # READY -> RECORD_AND_RETURN
+            if (
+                self.current_state == ProfilerState.RECORD_AND_RETURN
+            ):  # READY -> RECORD_AND_RETURN
                 self.profiler.start()
 
         elif self.previous_state == ProfilerState.RECORD:
@@ -681,21 +767,31 @@ class Profiler:
                 )
                 self.profiler.stop()
                 self.profiler.prepare()
-            if self.current_state == ProfilerState.RECORD_AND_RETURN:  # RECORD -> RECORD_AND_RETURN
+            if (
+                self.current_state == ProfilerState.RECORD_AND_RETURN
+            ):  # RECORD -> RECORD_AND_RETURN
                 pass
 
         else:
             assert self.previous_state == ProfilerState.RECORD_AND_RETURN
-            if self.current_state == ProfilerState.CLOSED:  # RECORD_AND_RETURN -> CLOSED
+            if (
+                self.current_state == ProfilerState.CLOSED
+            ):  # RECORD_AND_RETURN -> CLOSED
                 self.profiler_result = self.profiler.stop()
-            if self.current_state == ProfilerState.READY:  # RECORD_AND_RETURN -> READY
+            if (
+                self.current_state == ProfilerState.READY
+            ):  # RECORD_AND_RETURN -> READY
                 self.profiler_result = self.profiler.stop()
                 self.profiler.prepare()
-            if self.current_state == ProfilerState.RECORD:  # RECORD_AND_RETURN -> RECORD
+            if (
+                self.current_state == ProfilerState.RECORD
+            ):  # RECORD_AND_RETURN -> RECORD
                 self.profiler_result = self.profiler.stop()
                 self.profiler.prepare()
                 self.profiler.start()
-            if self.current_state == ProfilerState.RECORD_AND_RETURN:  # RECORD_AND_RETURN -> RECORD_AND_RETURN
+            if (
+                self.current_state == ProfilerState.RECORD_AND_RETURN
+            ):  # RECORD_AND_RETURN -> RECORD_AND_RETURN
                 self.profiler_result = self.profiler.stop()
                 self.profiler.prepare()
                 self.profiler.start()
@@ -708,7 +804,7 @@ class Profiler:
 
         Args:
             path(str): file path of the output.
-            format(str, optional): output format, can be chosen from ['json', 'pb], 'json' for chrome tracing and 'pb' for protobuf, default value is "json".
+            format(str, optional): output format, can be chosen from ['json', 'pb'], 'json' for chrome tracing and 'pb' for protobuf, default value is 'json'.
 
 
         Examples:
@@ -730,11 +826,14 @@ class Profiler:
         if self.profiler_result:
             self.profiler_result.save(path, format)
 
-    def summary(self,
-                sorted_by=SortedKeys.CPUTotal,
-                op_detail=True,
-                thread_sep=False,
-                time_unit='ms'):
+    def summary(
+        self,
+        sorted_by=SortedKeys.CPUTotal,
+        op_detail=True,
+        thread_sep=False,
+        time_unit='ms',
+        views=None,
+    ):
         r"""
         Print the Summary table. Currently support overview, model, distributed, operator, memory manipulation and userdefined summary.
 
@@ -743,6 +842,7 @@ class Profiler:
             op_detail(bool, optional): expand each operator detail information, default value is True.
             thread_sep(bool, optional): print op table each thread, default value is False.
             time_unit(str, optional): time unit for display, can be chosen form ['s', 'ms', 'us', 'ns'], default value is 'ms'.
+            views(SummaryView|list[SummaryView], optional): summary tables to print, default to None means all views to be printed.
 
         Examples:
             .. code-block:: python
@@ -761,16 +861,24 @@ class Profiler:
                 prof.stop()
                 prof.summary(sorted_by=profiler.SortedKeys.CPUTotal, op_detail=True, thread_sep=False, time_unit='ms')
         """
+        if isinstance(views, SummaryView):
+            views = [views]
+
         if self.profiler_result:
             statistic_data = StatisticData(
                 self.profiler_result.get_data(),
-                self.profiler_result.get_extra_info())
+                self.profiler_result.get_extra_info(),
+            )
             print(
-                _build_table(statistic_data,
-                             sorted_by=sorted_by,
-                             op_detail=op_detail,
-                             thread_sep=thread_sep,
-                             time_unit=time_unit))
+                _build_table(
+                    statistic_data,
+                    sorted_by=sorted_by,
+                    op_detail=op_detail,
+                    thread_sep=thread_sep,
+                    time_unit=time_unit,
+                    views=views,
+                )
+            )
 
 
 def get_profiler(config_path):
@@ -803,17 +911,20 @@ def get_profiler(config_path):
                     method = getattr(module, key)
                     if not use_direct:
                         translated_config_dict['scheduler'] = method(
-                            *value['args'], **value['kwargs'])
+                            *value['args'], **value['kwargs']
+                        )
                     else:
                         translated_config_dict['scheduler'] = method
             else:
                 translated_config_dict['scheduler'] = [
-                    config_dict['scheduler'][0], config_dict['scheduler'][1]
+                    config_dict['scheduler'][0],
+                    config_dict['scheduler'][1],
                 ]
 
         except:
             print(
-                'Set scheduler parameter error, use default parameter instead.')
+                'Set scheduler parameter error, use default parameter instead.'
+            )
             translated_config_dict['scheduler'] = None
     if "on_trace_ready" in config_dict:
         try:
@@ -825,7 +936,8 @@ def get_profiler(config_path):
                     method = getattr(module, key)
                     if not use_direct:
                         translated_config_dict['on_trace_ready'] = method(
-                            *value['args'], **value['kwargs'])
+                            *value['args'], **value['kwargs']
+                        )
                     else:
                         translated_config_dict['on_trace_ready'] = method
         except:

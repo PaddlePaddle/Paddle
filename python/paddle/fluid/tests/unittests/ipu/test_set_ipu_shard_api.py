@@ -23,7 +23,6 @@ paddle.enable_static()
 
 
 class SimpleNet(paddle.nn.Layer):
-
     def __init__(self, input_size, output_size):
         super(SimpleNet, self).__init__()
         self.linear1 = nn.Linear(input_size, output_size)
@@ -46,15 +45,14 @@ class SimpleNet(paddle.nn.Layer):
 
 
 class TestSetIpuShard(unittest.TestCase):
-
     def _test(self):
         # build graph
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog):
             x = paddle.static.data(name='X', shape=[10, 46], dtype='float32')
-            label = paddle.static.data(name='Y',
-                                       shape=[10, 46],
-                                       dtype='float32')
+            label = paddle.static.data(
+                name='Y', shape=[10, 46], dtype='float32'
+            )
             model = SimpleNet(46, 46)
 
             set_ipu_shard(model.linear1, index=1)
@@ -74,20 +72,20 @@ class TestSetIpuShard(unittest.TestCase):
         ipu_index_list = self._test()
         expected_ipu_index_list = [1, 1, 2, 3, 3, 3, 4, 4]
 
-        self.assertTrue(
-            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
+        np.testing.assert_allclose(
+            ipu_index_list, expected_ipu_index_list, rtol=1e-05, atol=0
+        )
 
 
 class TestSetIpuPipeline(unittest.TestCase):
-
     def _test(self):
         # build graph
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog):
             x = paddle.static.data(name='X', shape=[10, 46], dtype='float32')
-            label = paddle.static.data(name='Y',
-                                       shape=[10, 46],
-                                       dtype='float32')
+            label = paddle.static.data(
+                name='Y', shape=[10, 46], dtype='float32'
+            )
             model = SimpleNet(46, 46)
 
             set_ipu_shard(model.linear1, stage=1)
@@ -107,27 +105,27 @@ class TestSetIpuPipeline(unittest.TestCase):
         ipu_index_list = self._test()
         expected_ipu_index_list = [1, 1, 2, 3, 3, 3, 4, 4]
 
-        self.assertTrue(
-            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
+        np.testing.assert_allclose(
+            ipu_index_list, expected_ipu_index_list, rtol=1e-05, atol=0
+        )
 
 
 class TestSetIpuShardAndPipeline(unittest.TestCase):
-
     def _test(self):
         # build graph
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog):
             x = paddle.static.data(name='X', shape=[10, 46], dtype='float32')
-            label = paddle.static.data(name='Y',
-                                       shape=[10, 46],
-                                       dtype='float32')
+            label = paddle.static.data(
+                name='Y', shape=[10, 46], dtype='float32'
+            )
             model = SimpleNet(46, 46)
 
             set_ipu_shard(model.linear1, index=1, stage=2)
             set_ipu_shard(model.relu1, index=2, stage=3)
-            model.linear_relu2 = set_ipu_shard(model.linear_relu2,
-                                               index=3,
-                                               stage=4)
+            model.linear_relu2 = set_ipu_shard(
+                model.linear_relu2, index=3, stage=4
+            )
             model.linear3 = set_ipu_shard(model.linear3, index=4, stage=1)
             out = model(x)
 
@@ -144,23 +142,38 @@ class TestSetIpuShardAndPipeline(unittest.TestCase):
     def test_set_ipu_shard(self):
         ipu_index_list = self._test()
         expected_ipu_index_list = [
-            1, 1, 2, 3, 3, 3, 4, 4, 2, 2, 3, 4, 4, 4, 1, 1
+            1,
+            1,
+            2,
+            3,
+            3,
+            3,
+            4,
+            4,
+            2,
+            2,
+            3,
+            4,
+            4,
+            4,
+            1,
+            1,
         ]
 
-        self.assertTrue(
-            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
+        np.testing.assert_allclose(
+            ipu_index_list, expected_ipu_index_list, rtol=1e-05, atol=0
+        )
 
 
 class TestSetIpuForModel(unittest.TestCase):
-
     def _test(self):
         # build graph
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog):
             x = paddle.static.data(name='X', shape=[10, 46], dtype='float32')
-            label = paddle.static.data(name='Y',
-                                       shape=[10, 46],
-                                       dtype='float32')
+            label = paddle.static.data(
+                name='Y', shape=[10, 46], dtype='float32'
+            )
             model = SimpleNet(46, 46)
 
             set_ipu_shard(model, index=1, stage=2)
@@ -179,17 +192,31 @@ class TestSetIpuForModel(unittest.TestCase):
     def test_set_ipu_shard(self):
         ipu_index_list = self._test()
         expected_ipu_index_list = [
-            1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
         ]
 
-        self.assertTrue(
-            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
+        np.testing.assert_allclose(
+            ipu_index_list, expected_ipu_index_list, rtol=1e-05, atol=0
+        )
 
 
 class TestSetIpuMixedModel(unittest.TestCase):
-
     def setUp(self):
-
         def linear_relu2_mixed(self, x):
             with paddle.static.ipu_shard_guard(index=2, stage=3):
                 x = self.linear2(x)
@@ -208,9 +235,9 @@ class TestSetIpuMixedModel(unittest.TestCase):
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog):
             x = paddle.static.data(name='X', shape=[10, 46], dtype='float32')
-            label = paddle.static.data(name='Y',
-                                       shape=[10, 46],
-                                       dtype='float32')
+            label = paddle.static.data(
+                name='Y', shape=[10, 46], dtype='float32'
+            )
             model = SimpleNet(46, 46)
 
             set_ipu_shard(model.linear1, index=1, stage=2)
@@ -231,11 +258,27 @@ class TestSetIpuMixedModel(unittest.TestCase):
     def test_set_ipu_shard(self):
         ipu_index_list = self._test()
         expected_ipu_index_list = [
-            1, 1, 2, 2, 2, 3, 4, 4, 2, 2, 3, 3, 3, 4, 1, 1
+            1,
+            1,
+            2,
+            2,
+            2,
+            3,
+            4,
+            4,
+            2,
+            2,
+            3,
+            3,
+            3,
+            4,
+            1,
+            1,
         ]
 
-        self.assertTrue(
-            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
+        np.testing.assert_allclose(
+            ipu_index_list, expected_ipu_index_list, rtol=1e-05, atol=0
+        )
 
 
 if __name__ == "__main__":

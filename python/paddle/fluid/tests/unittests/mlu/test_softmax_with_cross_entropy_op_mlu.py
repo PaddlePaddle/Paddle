@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -30,7 +28,6 @@ SEED = 2021
 
 
 class TestSoftmaxWithCrossEntropyOp(OpTest):
-
     def set_mlu(self):
         self.__class__.use_mlu = True
 
@@ -53,8 +50,10 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.initParams()
 
         logits = getattr(
-            self, "logits",
-            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype))
+            self,
+            "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype),
+        )
         softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
 
         if self.soft_label:
@@ -65,8 +64,9 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             self.shape[self.axis] = 1
             labels = np.random.randint(0, axis_dim, self.shape, dtype="int64")
 
-        loss = cross_entropy(softmax, labels, self.soft_label, self.axis,
-                             self.ignore_index)
+        loss = cross_entropy(
+            softmax, labels, self.soft_label, self.axis, self.ignore_index
+        )
 
         one_hot_label = np.eye(axis_dim)[labels.reshape(-1)]
 
@@ -74,7 +74,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.outputs = {
             "Backprop": (softmax - one_hot_label).astype(self.dtype),
             "Softmax": softmax.astype(self.dtype),
-            "Loss": loss.astype(self.dtype)
+            "Loss": loss.astype(self.dtype),
         }
         self.attrs = {
             "numeric_stable_mode": self.numeric_stable_mode,
@@ -92,14 +92,16 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         if self.dtype == np.float16:
             return
         # fp32 has low precision, cpu and mlu both need to relax the max_relative_error if using fp32
-        self.check_grad_with_place(self.place, ['Logits'],
-                                   'Loss',
-                                   numeric_grad_delta=0.001,
-                                   max_relative_error=0.5)
+        self.check_grad_with_place(
+            self.place,
+            ['Logits'],
+            'Loss',
+            numeric_grad_delta=0.001,
+            max_relative_error=0.5,
+        )
 
 
 class TestPowNet(unittest.TestCase):
-
     def _test(self, run_mlu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -114,9 +116,9 @@ class TestPowNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
-            label = paddle.static.data(name="label",
-                                       shape=[32, 1],
-                                       dtype='int64')
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -140,16 +142,17 @@ class TestPowNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={
-                                             "a": a_np,
-                                             "b": b_np,
-                                             "label": label_np
-                                         },
-                                         fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 

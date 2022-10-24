@@ -124,8 +124,9 @@ inline bool VarIsTensor(const Variable& var) {
   return var.IsType<LoDTensor>() || var.IsType<phi::SelectedRows>();
 }
 
-const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
-Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
+const phi::DenseTensor* GetLoDTensorOrSelectedRowsValueFromVar(
+    const Variable& var);
+phi::DenseTensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
 class ExecutionContext;
 class OperatorBase;
@@ -167,7 +168,7 @@ class OperatorBase {
   virtual void Stop() {}
 
   /// if scope is not null, also show dimensions of arguments
-  virtual std::string DebugStringEx(const ScopeBase* scope) const;
+  virtual std::string DebugStringEx(const Scope* scope) const;
   std::string DebugString() const { return DebugStringEx(nullptr); }
 
   virtual bool SupportGPU() const { return false; }
@@ -177,14 +178,22 @@ class OperatorBase {
 
   const std::string& Type() const { return type_; }
 
-  bool HasAttr(const std::string& name) const { return attrs_.count(name); }
+  bool HasAttr(const std::string& name) const {
+    return attrs_.count(name) || runtime_attrs_.count(name);
+  }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    PADDLE_ENFORCE_NE(
-        attrs_.find(name),
-        attrs_.end(),
-        platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
-    return PADDLE_GET_CONST(T, attrs_.at(name));
+    auto it = attrs_.find(name);
+    if (it == attrs_.end()) {
+      it = runtime_attrs_.find(name);
+      PADDLE_ENFORCE_NE(
+          it,
+          runtime_attrs_.end(),
+          platform::errors::NotFound(
+              "(%s) is not found in AttributeMap and RuntimeAttributeMap.",
+              name));
+    }
+    return PADDLE_GET_CONST(T, it->second);
   }
   void SetAttr(const std::string& name, const Attribute& v) {
     PADDLE_ENFORCE_EQ(
@@ -196,6 +205,10 @@ class OperatorBase {
     attrs_[name] = v;
   }
   const AttributeMap& Attrs() const { return attrs_; }
+  const AttributeMap& RuntimeAttrs() const { return runtime_attrs_; }
+  void SetRuntimeAttributeMap(const AttributeMap& runtime_attrs) {
+    runtime_attrs_ = runtime_attrs;
+  }
 
   const VariableNameMap& Inputs() const { return inputs_; }
   const VariableNameMap& Outputs() const { return outputs_; }
@@ -250,6 +263,12 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  // NOTE: runtime_attrs_ contains the attributes which used for dispatching
+  // kernel (use_mkldnn, use_cudnn, ...) or passing additional configuration
+  // for special heterogeneous kernel (workspace_size_MB, ...).
+  // The attributes in runtime_attrs_ are setted by framework (such as PASS),
+  // and not in the python api.
+  AttributeMap runtime_attrs_;
 
   // OpInfo
   const OpInfo* info_;
@@ -302,7 +321,18 @@ class ExecutionContext {
   }
 
   virtual const Attribute& GetAttr(const std::string& name) const {
-    return op_.Attrs().at(name);
+    auto iter = op_.Attrs().find(name);
+    if (iter == op_.Attrs().end()) {
+      iter = op_.RuntimeAttrs().find(name);
+      PADDLE_ENFORCE_NE(
+          iter,
+          op_.RuntimeAttrs().end(),
+          platform::errors::NotFound("(%s) is not found in AttributeMap and "
+                                     "RuntimeAttributeMap of (%s) operator.",
+                                     name,
+                                     op_.Type()));
+    }
+    return iter->second;
   }
 
   virtual bool HasInput(const std::string& name) const;
@@ -426,28 +456,12 @@ class ExecutionContext {
 #endif
 
   template <typename T, typename DevContext>
-  Tensor AllocateTmpTensor(const framework::DDim& dim,
-                           const DevContext& dev_ctx) const {
-    auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
-    auto& deleter = tmp_allocation_ptr.get_deleter();
-    auto* allocation_ptr = tmp_allocation_ptr.release();
-    auto shared_allocation =
-        std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
-
-    PADDLE_ENFORCE_GE(
-        allocation_ptr->size(),
-        phi::product(dim) * sizeof(T),
-        platform::errors::PreconditionNotMet(
-            "The data memory size(%d) is less than the tensor needed memory "
-            "size(%d).",
-            allocation_ptr->size(),
-            phi::product(dim) * sizeof(T)));
-
-    paddle::framework::Tensor temp_tensor(framework::TransToPhiDataType(
-        framework::ToDataType(std::type_index(typeid(T)))));
-    temp_tensor.Resize(dim);
-    temp_tensor.ResetHolder(std::move(shared_allocation));
-    return temp_tensor;
+  phi::DenseTensor AllocateTmpTensor(const framework::DDim& dim,
+                                     const DevContext& dev_ctx) const {
+    phi::DenseTensor tmp;
+    tmp.Resize(dim);
+    dev_ctx.template Alloc<T>(&tmp);
+    return tmp;
   }
 
   const RuntimeContext Context() const { return ctx_; }
@@ -505,6 +519,13 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     });
   }
 
+  bool IsSelectedRowsInputs(const std::string& name) const override {
+    auto vars = ctx_.MultiInputVar(name);
+    return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
+      return var->IsType<phi::SelectedRows>();
+    });
+  }
+
   bool IsSelectedRowsInput(const std::string& name) const override {
     const auto* var = ctx_.InputVar(name);
     return var->IsType<phi::SelectedRows>();
@@ -515,6 +536,16 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
       return var->IsType<framework::LoDTensorArray>();
     });
+  }
+
+  bool IsSparseCooTensorInput(const std::string& name) const override {
+    const auto* var = ctx_.InputVar(name);
+    return var->IsType<phi::SparseCooTensor>();
+  }
+
+  bool IsSparseCsrTensorInput(const std::string& name) const override {
+    const auto* var = ctx_.InputVar(name);
+    return var->IsType<phi::SparseCsrTensor>();
   }
 
   bool IsDenseTensorOutput(const std::string& name) const override {
@@ -538,11 +569,11 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
 };
 
 template <>
-const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
-    const std::string& name) const;
+const std::vector<const phi::DenseTensor*>
+ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const;
 
 template <>
-std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
+std::vector<phi::DenseTensor*> ExecutionContext::MultiOutput<phi::DenseTensor>(
     const std::string& name) const;
 
 class OpKernelBase {
@@ -601,7 +632,8 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
-  bool SupportsKernelType(const OpKernelType& kernel_type) const;
+  bool SupportsKernelType(const OpKernelType& kernel_type,
+                          const ExecutionContext& exe_ctx) const;
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
@@ -626,7 +658,7 @@ class OperatorWithKernel : public OperatorBase {
   // need transform data
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
-      const Tensor& tensor,
+      const phi::DenseTensor& tensor,
       const OpKernelType& expected_kernel_type) const;
 
   platform::Place GetExecutionPlace(
@@ -635,12 +667,13 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   /* member functions for adapting to phi lib */
-  /** In the Tensor calculation library, the new Kernel adopts a clearer and
-   * more streamlined design. The arguments of the Kernel and the input and
-   * output arguments registered in the original OpMaker do not match in some
-   * cases, so we use map to record the arguments required by the kernel.
-   * When selecting Kernel during Op execution, select the arguments of the
-   * original Op according to the GetExpectedPhiKernelArgs returned arguments.
+  /** In the phi::DenseTensor calculation library, the new Kernel adopts a
+   * clearer and more streamlined design. The arguments of the Kernel and the
+   * input and output arguments registered in the original OpMaker do not match
+   * in some cases, so we use map to record the arguments required by the
+   * kernel. When selecting Kernel during Op execution, select the arguments of
+   * the original Op according to the GetExpectedPhiKernelArgs returned
+   * arguments.
    */
   phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
@@ -679,10 +712,9 @@ class OperatorWithKernel : public OperatorBase {
 
   /**
    * Transfer data from scope to a transferred scope. If there is no data need
-   * to
-   * be tranfered, it returns nullptr.
+   * to be transferred, it returns nullptr.
    *
-   * * transfered_inplace_vars is a output vector.
+   * transfered_inplace_vars is a output vector.
    */
   Scope* PrepareData(const Scope& scope,
                      const OpKernelType& expected_kernel_key,
@@ -710,8 +742,8 @@ class OperatorWithKernel : public OperatorBase {
                                const std::string& name,
                                proto::VarType::Type* data_type) const;
   // used for IndicateOrPromoteVarDataTypes
-  Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
-                                   const std::string& name) const;
+  phi::DenseTensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
+                                             const std::string& name) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;

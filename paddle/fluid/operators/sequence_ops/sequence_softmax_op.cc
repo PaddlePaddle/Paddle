@@ -54,7 +54,7 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.GetPlace(),
-        framework::StringToDataLayout(data_format),
+        phi::StringToDataLayout(data_format),
         library_);
   }
 };
@@ -72,14 +72,6 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout")
         .AsExtra();
     AddComment(R"DOC(
 Sequence Softmax Operator.
@@ -162,7 +154,7 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Out"),
         ctx.GetPlace(),
-        framework::StringToDataLayout(data_format),
+        phi::StringToDataLayout(data_format),
         library_);
   }
 };

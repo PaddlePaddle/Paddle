@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from op_test import OpTest
 import paddle
 
 
 class TestSparseSquareOp(unittest.TestCase):
-
     def check_with_place(self, place):
         scope = core.Scope()
 
@@ -62,7 +57,6 @@ class TestSparseSquareOp(unittest.TestCase):
 
 
 class TestSparseSqrtOp(unittest.TestCase):
-
     def check_with_place(self, place):
         scope = core.Scope()
 
@@ -88,7 +82,7 @@ class TestSparseSqrtOp(unittest.TestCase):
 
         # get and compare result
         result_array = np.array(out_selected_rows.get_tensor())
-        self.assertTrue(np.allclose(result_array, np.sqrt(np_array)))
+        np.testing.assert_allclose(result_array, np.sqrt(np_array), rtol=1e-05)
 
     def test_sparse_acti(self):
         places = [core.CPUPlace()]

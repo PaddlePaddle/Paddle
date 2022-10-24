@@ -20,8 +20,6 @@ namespace paddle {
 namespace platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.pb";
-static const char* version = "1.0.1";
-static uint32_t span_indx = 0;
 
 static std::string DefaultFileName() {
   auto pid = GetProcessId();
@@ -40,9 +38,42 @@ void SerializationLogger::OpenFile() {
     LOG(INFO) << "writing profiling data to " << filename_ << std::endl;
   }
   node_trees_proto_ = new NodeTreesProto();
-  node_trees_proto_->set_version(std::string(version));
-  node_trees_proto_->set_span_indx(span_indx++);
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void SerializationLogger::LogDeviceProperty(
+    const std::map<uint32_t, gpuDeviceProp>& device_property_map) {
+  for (auto it = device_property_map.begin(); it != device_property_map.end();
+       it++) {
+    const gpuDeviceProp& device_property = it->second;
+    DevicePropertyProto* device_property_proto =
+        node_trees_proto_->add_device_property();
+    device_property_proto->set_id(it->first);
+    device_property_proto->set_name(device_property.name);
+    device_property_proto->set_total_global_memory(
+        device_property.totalGlobalMem);
+    device_property_proto->set_compute_major(device_property.major);
+    device_property_proto->set_compute_minor(device_property.minor);
+    device_property_proto->set_sm_count(device_property.multiProcessorCount);
+#if defined(PADDLE_WITH_CUDA)
+    device_property_proto->set_max_threads_per_block(
+        device_property.maxThreadsPerBlock);
+    device_property_proto->set_max_threads_per_multiprocessor(
+        device_property.maxThreadsPerMultiProcessor);
+    device_property_proto->set_regs_per_block(device_property.regsPerBlock);
+    device_property_proto->set_regs_per_multiprocessor(
+        device_property.regsPerMultiprocessor);
+    device_property_proto->set_warp_size(device_property.warpSize);
+    device_property_proto->set_shared_memory_per_block(
+        device_property.sharedMemPerBlock);
+    device_property_proto->set_shared_memory_per_multiprocessor(
+        device_property.sharedMemPerMultiprocessor);
+    device_property_proto->set_shared_memory_per_block_optin(
+        device_property.sharedMemPerBlockOptin);
+#endif
+  }
+}
+#endif
 
 void SerializationLogger::LogNodeTrees(const NodeTrees& node_trees) {
   // dump the whole tree into file
@@ -271,6 +302,9 @@ void SerializationLogger::HandleTypeKernel(
   kernel_info->set_queued(info.queued);
   kernel_info->set_submitted(info.submitted);
   kernel_info->set_completed(info.completed);
+  kernel_info->set_blocks_per_sm(info.blocks_per_sm);
+  kernel_info->set_warps_per_sm(info.warps_per_sm);
+  kernel_info->set_occupancy(info.occupancy);
   // binding
   device_trace_event->set_allocated_kernel_info(kernel_info);
   current_device_trace_event_node_proto_->set_allocated_device_event(
@@ -328,13 +362,19 @@ void SerializationLogger::HandleTypeMemset(
       device_trace_event);
 }
 
-void SerializationLogger::LogMetaInfo(
+void SerializationLogger::LogExtraInfo(
     const std::unordered_map<std::string, std::string> extra_info) {
   for (const auto& kv : extra_info) {
     ExtraInfoMap* extra_info_map = node_trees_proto_->add_extra_info();
     extra_info_map->set_key(kv.first);
     extra_info_map->set_value(kv.second);
   }
+}
+
+void SerializationLogger::LogMetaInfo(const std::string& version,
+                                      uint32_t span_indx) {
+  node_trees_proto_->set_version(version);
+  node_trees_proto_->set_span_indx(span_indx);
 }
 
 SerializationLogger::SerializationLogger(const std::string& filename) {

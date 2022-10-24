@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 import copy
 import functools
@@ -25,22 +23,44 @@ import types
 
 import numpy
 import six
+import builtins
 
 from paddle.fluid.dygraph.container import Sequential
-from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len, convert_zip
-from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_range, convert_enumerate
-from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_len,
+    convert_zip,
+)
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import (
+    convert_range,
+    convert_enumerate,
+)
+from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
+    TranslatorLogger,
+)
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    StaticFunction,
+)
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    convert_to_static,
+)
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    unwrap_decorators,
+)
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func, unwrap
 from paddle.fluid.dygraph.layers import Layer
 
 __all__ = ["convert_call"]
 
 # TODO(liym27): A better way to do this.
 BUILTIN_LIKELY_MODULES = [
-    collections, pdb, copy, inspect, re, six, numpy, logging
+    collections,
+    pdb,
+    copy,
+    inspect,
+    re,
+    six,
+    numpy,
+    logging,
 ]
 # The api(s) should be considered as plain function and convert
 # them into static layer code.
@@ -66,8 +86,8 @@ class ConversionOptions(object):
 
 
 def is_builtin(func, name=None):
-    """ predict whether a function is a builtin function with name={name}.
-        if name == None, then any builtin function will return True
+    """predict whether a function is a builtin function with name={name}.
+    if name == None, then any builtin function will return True
     """
 
     def name_judge():
@@ -75,7 +95,7 @@ def is_builtin(func, name=None):
 
     if isinstance(func, types.BuiltinFunctionType) and name_judge():
         return True
-    elif func in six.moves.builtins.__dict__.values() and name_judge():
+    elif func in builtins.__dict__.values() and name_judge():
         return True
     else:
         return False
@@ -94,8 +114,10 @@ def is_unsupported(func):
             if func_in_dict:
                 translator_logger.log(
                     2,
-                    "Whitelist: {} is part of built-in module and does not have to be transformed."
-                    .format(func))
+                    "Whitelist: {} is part of built-in module and does not have to be transformed.".format(
+                        func
+                    ),
+                )
                 return True
 
     # NOTE: should be placed before `is_paddle_func`
@@ -105,8 +127,10 @@ def is_unsupported(func):
     if is_paddle_func(func):
         translator_logger.log(
             2,
-            "Whitelist: {} is part of Paddle module and does not have to be transformed."
-            .format(func))
+            "Whitelist: {} is part of Paddle module and does not have to be transformed.".format(
+                func
+            ),
+        )
         return True
 
 
@@ -146,8 +170,9 @@ def convert_call(func):
             #  [1. 1. 1.]]
 
     """
-    translator_logger.log(1,
-                          "Convert callable object: convert {}.".format(func))
+    translator_logger.log(
+        1, "Convert callable object: convert {}.".format(func)
+    )
     func_self = None
     converted_call = None
 
@@ -159,8 +184,10 @@ def convert_call(func):
     if options is not None and options.not_convert:
         translator_logger.log(
             2,
-            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'."
-            .format(func))
+            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'.".format(
+                func
+            ),
+        )
         return func
 
     if is_builtin(func, "len"):
@@ -184,9 +211,15 @@ def convert_call(func):
         # occasion.
         number_of_stars = 30
         translator_logger.warn(
-            "\n\n" + "*" * number_of_stars +
-            "\nYour function:`{}` doesn't support to transform to static function because it is a generator function, it will be run as-is."
-            .format(func.__name__) + "\n" + "*" * number_of_stars + "\n\n")
+            "\n\n"
+            + "*" * number_of_stars
+            + "\nYour function:`{}` doesn't support to transform to static function because it is a generator function, it will be run as-is.".format(
+                func.__name__
+            )
+            + "\n"
+            + "*" * number_of_stars
+            + "\n\n"
+        )
         return func
 
     if inspect.isfunction(func):
@@ -206,13 +239,21 @@ def convert_call(func):
             # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
             # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
             # `foo` function. So `isinstance(fn, StaticFunction)` is added here.
+            _origfunc = unwrap(func)
             global_functions = set()
-            for fn in func.__globals__.values():
+            for fn in _origfunc.__globals__.values():
                 if inspect.isfunction(fn):
                     global_functions.add(fn)
                 elif isinstance(fn, StaticFunction):
                     _, fn = unwrap_decorators(fn)
                     global_functions.add(fn)
+                elif inspect.isclass(fn):
+                    if isinstance(
+                        fn.__dict__.get(func.__name__, None), staticmethod
+                    ):
+                        global_functions.add(
+                            func
+                        )  # Add func to ensure that we will convert
 
             if func in global_functions:
                 converted_call = convert_to_static(func)
@@ -222,8 +263,10 @@ def convert_call(func):
                 # If func is not in __globals__, it does not need to be transformed
                 # because it has been transformed before.
                 translator_logger.warn(
-                    "{} doesn't have to be transformed to static function because it has been transformed before, it will be run as-is."
-                    .format(func))
+                    "{} doesn't have to be transformed to static function because it has been transformed before, it will be run as-is.".format(
+                        func
+                    )
+                )
                 converted_call = func
         except AttributeError:
             # NOTE:
@@ -269,12 +312,15 @@ def convert_call(func):
                 func_self = None if func_self else func_self
     else:
         raise NotImplementedError(
-            "Callable {} can not be transformed at present.".format(func))
+            "Callable {} can not be transformed at present.".format(func)
+        )
 
     if converted_call is None:
         translator_logger.warn(
-            "{} doesn't have to be transformed to static function, and it will be run as-is."
-            .format(func))
+            "{} doesn't have to be transformed to static function, and it will be run as-is.".format(
+                func
+            )
+        )
         return func
 
     if func_self:

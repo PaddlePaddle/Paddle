@@ -24,7 +24,7 @@
 #include "paddle/phi/kernels/cpu/graph_send_ue_recv_funcs.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/impl/graph_messaage_passing_impl.h"
+#include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
@@ -73,7 +73,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
@@ -131,7 +131,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
@@ -166,7 +166,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
@@ -220,7 +220,7 @@ void CalculateXGrad(const Context& ctx,
         DenseTensor x_grad_out = phi::Sum<T, Context>(
             ctx,
             x_grad_v2,
-            reduce_idx,
+            phi::IntArray(reduce_idx),
             paddle::experimental::CppTypeToDataType<T>::Type(),
             true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));

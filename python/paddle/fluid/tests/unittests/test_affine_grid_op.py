@@ -26,12 +26,21 @@ def AffineGrid4D(theta, size, align_corners):
     if not align_corners:
         h_factor = (h - 1) / float(h)
         w_factor = (w - 1) / float(w)
-    h_idx = np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w,
-                      axis=0).T[:, :, np.newaxis] * h_factor
-    w_idx = np.repeat(np.linspace(-1, 1, w)[np.newaxis, :], h,
-                      axis=0)[:, :, np.newaxis] * w_factor
-    grid = np.concatenate([w_idx, h_idx, np.ones([h, w, 1])],
-                          axis=2)  # h * w * 3
+    h_idx = (
+        np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w, axis=0).T[
+            :, :, np.newaxis
+        ]
+        * h_factor
+    )
+    w_idx = (
+        np.repeat(np.linspace(-1, 1, w)[np.newaxis, :], h, axis=0)[
+            :, :, np.newaxis
+        ]
+        * w_factor
+    )
+    grid = np.concatenate(
+        [w_idx, h_idx, np.ones([h, w, 1])], axis=2
+    )  # h * w * 3
     grid = np.repeat(grid[np.newaxis, :], size[0], axis=0)  # n * h * w *3
 
     ret = np.zeros([n, h * w, 2])
@@ -51,20 +60,39 @@ def AffineGrid5D(theta, size, align_corners):
         d_factor = (d - 1) / float(d)
         h_factor = (h - 1) / float(h)
         w_factor = (w - 1) / float(w)
-    d_idx = np.repeat(np.repeat(
-        np.linspace(-1, 1, d)[:, np.newaxis, np.newaxis], h, axis=1),
-                      w,
-                      axis=2)[:, :, :, np.newaxis] * d_factor
-    h_idx = np.repeat(np.repeat(
-        np.linspace(-1, 1, h)[np.newaxis, :, np.newaxis], w, axis=2),
-                      d,
-                      axis=0)[:, :, :, np.newaxis] * h_factor
-    w_idx = np.repeat(np.repeat(
-        np.linspace(-1, 1, w)[np.newaxis, np.newaxis, :], h, axis=1),
-                      d,
-                      axis=0)[:, :, :, np.newaxis] * w_factor
+    d_idx = (
+        np.repeat(
+            np.repeat(
+                np.linspace(-1, 1, d)[:, np.newaxis, np.newaxis], h, axis=1
+            ),
+            w,
+            axis=2,
+        )[:, :, :, np.newaxis]
+        * d_factor
+    )
+    h_idx = (
+        np.repeat(
+            np.repeat(
+                np.linspace(-1, 1, h)[np.newaxis, :, np.newaxis], w, axis=2
+            ),
+            d,
+            axis=0,
+        )[:, :, :, np.newaxis]
+        * h_factor
+    )
+    w_idx = (
+        np.repeat(
+            np.repeat(
+                np.linspace(-1, 1, w)[np.newaxis, np.newaxis, :], h, axis=1
+            ),
+            d,
+            axis=0,
+        )[:, :, :, np.newaxis]
+        * w_factor
+    )
     grid = np.concatenate(
-        [w_idx, h_idx, d_idx, np.ones([d, h, w, 1])], axis=3)  # d * h * w * 4
+        [w_idx, h_idx, d_idx, np.ones([d, h, w, 1])], axis=3
+    )  # d * h * w * 4
     grid = np.repeat(grid[np.newaxis, :], size[0], axis=0)  # n * d * h * w * 4
 
     ret = np.zeros([n, d * h * w, 3])
@@ -75,7 +103,6 @@ def AffineGrid5D(theta, size, align_corners):
 
 
 class TestAffineGridOp(OpTest):
-
     def setUp(self):
         self.initTestCase()
         self.op_type = "affine_grid"
@@ -84,31 +111,32 @@ class TestAffineGridOp(OpTest):
         self.inputs = {'Theta': theta}
         self.attrs = {
             "use_cudnn": self.use_cudnn,
-            "align_corners": self.align_corners
+            "align_corners": self.align_corners,
         }
         if self.dynamic_shape:
             self.inputs['OutputShape'] = self.output_shape
         else:
             self.attrs['output_shape'] = self.output_shape
-        if (self.theta_shape[1] == 2 and self.theta_shape[2] == 3):
+        if self.theta_shape[1] == 2 and self.theta_shape[2] == 3:
             self.outputs = {
-                'Output': AffineGrid4D(theta, self.output_shape,
-                                       self.align_corners)
+                'Output': AffineGrid4D(
+                    theta, self.output_shape, self.align_corners
+                )
             }
         else:
             self.outputs = {
-                'Output': AffineGrid5D(theta, self.output_shape,
-                                       self.align_corners)
+                'Output': AffineGrid5D(
+                    theta, self.output_shape, self.align_corners
+                )
             }
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['Theta'],
-                        'Output',
-                        no_grad_set=['OutputShape'],
-                        check_eager=True)
+        self.check_grad(
+            ['Theta'], 'Output', no_grad_set=['OutputShape'], check_eager=True
+        )
 
     def initTestCase(self):
         self.theta_shape = (17, 2, 3)
@@ -119,19 +147,19 @@ class TestAffineGridOp(OpTest):
 
 
 class TestAffineGridOpCase1(TestAffineGridOp):
-
     def initTestCase(self):
         self.theta_shape = (20, 2, 3)
         self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
         self.dynamic_shape = True
         self.use_cudnn = True
         if paddle.fluid.core.is_compiled_with_rocm():
-            self.use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid
+            self.use_cudnn = (
+                False  # ROCM platform do not have MIOPEN kernel for affine_grid
+            )
         self.align_corners = True
 
 
 class TestAffineGridOpCase2(TestAffineGridOp):
-
     def initTestCase(self):
         self.theta_shape = (20, 2, 3)
         self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
@@ -141,7 +169,6 @@ class TestAffineGridOpCase2(TestAffineGridOp):
 
 
 class TestAffineGridOpCase3(TestAffineGridOp):
-
     def initTestCase(self):
         self.theta_shape = (20, 2, 3)
         self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
@@ -151,7 +178,6 @@ class TestAffineGridOpCase3(TestAffineGridOp):
 
 
 class TestAffineGridOpCase4(TestAffineGridOp):
-
     def initTestCase(self):
         self.theta_shape = (25, 2, 3)
         self.output_shape = np.array([25, 2, 5, 6]).astype("int32")
@@ -161,7 +187,6 @@ class TestAffineGridOpCase4(TestAffineGridOp):
 
 
 class TestAffineGridOp5DCase1(TestAffineGridOp):
-
     def initTestCase(self):
         self.theta_shape = (20, 3, 4)
         self.output_shape = np.array([20, 1, 2, 5, 7]).astype("int32")
@@ -171,7 +196,6 @@ class TestAffineGridOp5DCase1(TestAffineGridOp):
 
 
 class TestAffineGridOp5DCase2(TestAffineGridOp):
-
     def initTestCase(self):
         self.theta_shape = (20, 3, 4)
         self.output_shape = np.array([20, 1, 2, 5, 7]).astype("int32")
@@ -181,7 +205,6 @@ class TestAffineGridOp5DCase2(TestAffineGridOp):
 
 
 class TestAffineGridOp5DCase3(TestAffineGridOp):
-
     def initTestCase(self):
         self.theta_shape = (20, 3, 4)
         self.output_shape = np.array([20, 1, 2, 5, 7]).astype("int32")
@@ -191,7 +214,6 @@ class TestAffineGridOp5DCase3(TestAffineGridOp):
 
 
 class TestAffineGridOp5DCase4(TestAffineGridOp):
-
     def initTestCase(self):
         self.theta_shape = (25, 3, 4)
         self.output_shape = np.array([25, 1, 2, 5, 6]).astype("int32")

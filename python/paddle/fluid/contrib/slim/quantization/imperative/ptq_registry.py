@@ -48,10 +48,15 @@ PTQ_LAYERS_INFO = [
 ]
 
 QUANT_LAYERS_INFO = [
-    LayerInfo(paddle.nn.quant.quant_layers.QuantizedConv2D, ['Input'],
-              ['Filter'], ['Output']),
-    LayerInfo(paddle.nn.quant.quant_layers.QuantizedLinear, ['X'], ['Y'],
-              ['Out']),
+    LayerInfo(
+        paddle.nn.quant.quant_layers.QuantizedConv2D,
+        ['Input'],
+        ['Filter'],
+        ['Output'],
+    ),
+    LayerInfo(
+        paddle.nn.quant.quant_layers.QuantizedLinear, ['X'], ['Y'], ['Out']
+    ),
 ]
 
 SIMULATED_LAYERS = [paddle.nn.Conv2D, paddle.nn.Linear]
@@ -61,6 +66,7 @@ class PTQRegistry(object):
     """
     Register the supported layers for PTQ and provide layers info.
     """
+
     supported_layers_map = {}
     registered_layers_map = {}
     is_inited = False
@@ -89,8 +95,9 @@ class PTQRegistry(object):
             flag(bool): Whther the layer is supported.
         """
         cls._init()
-        return layer in cls.supported_layers_map or \
-            isinstance(layer, tuple(cls.supported_layers_map.keys()))
+        return layer in cls.supported_layers_map or isinstance(
+            layer, tuple(cls.supported_layers_map.keys())
+        )
 
     @classmethod
     def is_registered_layer(cls, layer):
@@ -102,8 +109,9 @@ class PTQRegistry(object):
             flag(bool): Wether the layer is register layer_info.
         """
         cls._init()
-        return layer in cls.registered_layers_map or \
-            isinstance(layer, tuple(cls.registered_layers_map.keys()))
+        return layer in cls.registered_layers_map or isinstance(
+            layer, tuple(cls.registered_layers_map.keys())
+        )
 
     @classmethod
     def is_simulated_quant_layer(cls, layer):
@@ -114,8 +122,9 @@ class PTQRegistry(object):
         Returns:
             flag(bool): Whther the layer is supported.
         """
-        return layer in SIMULATED_LAYERS or \
-            isinstance(layer, tuple(SIMULATED_LAYERS))
+        return layer in SIMULATED_LAYERS or isinstance(
+            layer, tuple(SIMULATED_LAYERS)
+        )
 
     @classmethod
     def layer_info(cls, layer):
@@ -126,8 +135,9 @@ class PTQRegistry(object):
         Returns:
             layer_info(LayerInfo): The layer info of the input layer.
         """
-        assert cls.is_registered_layer(layer), \
-            "The input layer is not register."
+        assert cls.is_registered_layer(
+            layer
+        ), "The input layer is not register."
 
         for layer_key, layer_info in cls.registered_layers_map.items():
             if layer == layer_key or isinstance(layer, layer_key):

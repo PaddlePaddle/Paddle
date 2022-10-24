@@ -174,7 +174,7 @@ namespace fusion_group = paddle::framework::ir::fusion_group;
 template <typename T>
 void TestMainImpl(std::string func_name,
                   std::string code_str,
-                  std::vector<paddle::framework::LoDTensor> cpu_tensors,
+                  std::vector<phi::DenseTensor> cpu_tensors,
                   int n,
                   std::vector<int> input_ids,
                   std::vector<int> output_ids) {
@@ -189,8 +189,8 @@ void TestMainImpl(std::string func_name,
   device_code.Compile(is_float16);
 #endif
 
-  std::vector<paddle::framework::LoDTensor> gpu_tensors(cpu_tensors.size());
-  std::vector<paddle::framework::LoDTensor> tmp_cpu_tensors(cpu_tensors.size());
+  std::vector<phi::DenseTensor> gpu_tensors(cpu_tensors.size());
+  std::vector<phi::DenseTensor> tmp_cpu_tensors(cpu_tensors.size());
 
   std::vector<T*> gpu_ptrs(gpu_tensors.size());
   std::vector<void*> args;
@@ -270,7 +270,7 @@ void TestElementwiseMain(
   }
 
   // Prepare CPU tensors which always hold float.
-  std::vector<paddle::framework::LoDTensor> cpu_tensors(ids.size());
+  std::vector<phi::DenseTensor> cpu_tensors(ids.size());
   auto dims =
       phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   for (size_t i = 0; i < cpu_tensors.size(); ++i) {

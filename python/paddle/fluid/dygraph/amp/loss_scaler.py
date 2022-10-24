@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from paddle.fluid import core
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _varbase_creator, _dygraph_tracer, dygraph_only
+from paddle.fluid.framework import (
+    _varbase_creator,
+    _dygraph_tracer,
+    dygraph_only,
+)
 from paddle.fluid.data_feeder import check_type
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import warnings
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from collections import defaultdict
 from enum import Enum
 
@@ -49,19 +52,19 @@ class AmpScaler(object):
     `unscale_()` is used to unscale the gradients of parameters, multiplies the gradients of parameters by 1/(scale ratio)
     `minimize()` is similar as `optimizer.minimize()`, performs parameters updating, and it will update the loss_scaling.
 
-    Commonly, it is used together with `amp_guard` to achieve Auto-Mixed-Precision in 
+    Commonly, it is used together with `amp_guard` to achieve Auto-Mixed-Precision in
     imperative mode.
 
     Args:
         enable(bool, optional): Enable loss scaling or not. Default is True.
         init_loss_scaling (float, optional): The initial loss scaling factor. Default is 2**15.
-        incr_ratio(float, optional): The multiplier to use when increasing the loss 
+        incr_ratio(float, optional): The multiplier to use when increasing the loss
                         scaling. Default is 2.0.
-        decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing 
+        decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing
                         the loss scaling. Default is 0.5.
-        incr_every_n_steps(int, optional): Increases loss scaling every n consecutive 
+        incr_every_n_steps(int, optional): Increases loss scaling every n consecutive
                                 steps with finite gradients. Default is 1000.
-        decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n 
+        decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n
                                     accumulated steps with nan or inf gradients. Default is 2.
         use_dynamic_loss_scaling(bool, optional): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
     Returns:
@@ -86,32 +89,38 @@ class AmpScaler(object):
                 loss = fluid.layers.reduce_mean(conv)
                 scaled = scaler.scale(loss)
                 scaled.backward()
-                scaler.minimize(optimizer, scaled)         
+                scaler.minimize(optimizer, scaled)
     """
 
     @dygraph_only
-    def __init__(self,
-                 enable=True,
-                 init_loss_scaling=2.**15,
-                 incr_ratio=2.0,
-                 decr_ratio=0.5,
-                 incr_every_n_steps=1000,
-                 decr_every_n_nan_or_inf=1,
-                 use_dynamic_loss_scaling=True):
+    def __init__(
+        self,
+        enable=True,
+        init_loss_scaling=2.0**15,
+        incr_ratio=2.0,
+        decr_ratio=0.5,
+        incr_every_n_steps=1000,
+        decr_every_n_nan_or_inf=1,
+        use_dynamic_loss_scaling=True,
+    ):
 
         tracer = _dygraph_tracer()
         if not tracer:
             raise ValueError(
-                "current_tracer is None, maybe it is not in imperative mode.")
+                "current_tracer is None, maybe it is not in imperative mode."
+            )
 
-        if enable and not (tracer._expected_place.is_gpu_place()
-                           or tracer._expected_place.is_xpu_place()
-                           or tracer._expected_place.is_mlu_place()
-                           or tracer._expected_place.is_npu_place()
-                           or tracer._expected_place.is_custom_place()):
+        if enable and not (
+            tracer._expected_place.is_gpu_place()
+            or tracer._expected_place.is_xpu_place()
+            or tracer._expected_place.is_mlu_place()
+            or tracer._expected_place.is_npu_place()
+            or tracer._expected_place.is_custom_place()
+        ):
             warnings.warn(
                 'AmpScaler can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace and CustomPlace, current place is %s, so it makes no effect.'
-                % tracer._expected_place)
+                % tracer._expected_place
+            )
             enable = False
 
         self._enable = enable
@@ -131,24 +140,30 @@ class AmpScaler(object):
 
             self._found_inf = to_variable(np.array([0]).astype(np.bool_))
             self._temp_found_inf_fp16 = to_variable(
-                np.array([0]).astype(np.bool_))
+                np.array([0]).astype(np.bool_)
+            )
+            self._temp_found_inf_bf16 = to_variable(
+                np.array([0]).astype(np.bool_)
+            )
             self._temp_found_inf_fp32 = to_variable(
-                np.array([0]).astype(np.bool_))
+                np.array([0]).astype(np.bool_)
+            )
             self._scale = to_variable(
-                np.array([self._init_loss_scaling]).astype(np.float32))
+                np.array([self._init_loss_scaling]).astype(np.float32)
+            )
             self._cache_founf_inf = None
             self._optimizer_states = defaultdict(_refresh_optimizer_state)
 
     def scale(self, var):
         """
-        Multiplies a variable(Tensor) by the scale factor and returns scaled outputs.  
+        Multiplies a variable(Tensor) by the scale factor and returns scaled outputs.
         If this instance of :class:`AmpScaler` is not enabled, output are returned unmodified.
 
         Args:
             var (Variable):  The variable to scale.
         Returns:
             The scaled variable or original variable.
-        
+
         Examples:
 
             .. code-block:: python
@@ -168,7 +183,7 @@ class AmpScaler(object):
                         loss = fluid.layers.reduce_mean(conv)
                         scaled = scaler.scale(loss)
                         scaled.backward()
-                        scaler.minimize(optimizer, scaled) 
+                        scaler.minimize(optimizer, scaled)
         """
         check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
 
@@ -180,7 +195,7 @@ class AmpScaler(object):
     def minimize(self, optimizer, *args, **kwargs):
         """
         This function is similar as `Optimizer.minimize()`, which performs parameters updating.
-        
+
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
         Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
@@ -210,7 +225,7 @@ class AmpScaler(object):
                         loss = fluid.layers.reduce_mean(conv)
                         scaled = scaler.scale(loss)
                         scaled.backward()
-                        scaler.minimize(optimizer, scaled) 
+                        scaler.minimize(optimizer, scaled)
         """
         if not self._enable:
             return optimizer.minimize(*args, **kwargs)
@@ -239,7 +254,7 @@ class AmpScaler(object):
 
     def _unscale(self, optimizer):
         """
-        Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).  
+        Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).
         If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
         Args:
             optimizer(Optimizer):  The optimizer used to update parameters.
@@ -259,62 +274,105 @@ class AmpScaler(object):
             raise RuntimeError("unscale_() is being called after step().")
 
         if getattr(optimizer, '_param_groups', None) and isinstance(
-                optimizer._param_groups[0], dict):
+            optimizer._param_groups[0], dict
+        ):
             param_grads = []
             param_grads_fp16 = []
+            param_grads_bf16 = []
             param_grads_fp32 = []
             for group in optimizer._param_groups:
                 for param in group['params']:
                     if param._grad_ivar() is not None:
                         param_grads.append(param._grad_ivar())
-                        if param._grad_ivar(
-                        ).dtype == core.VarDesc.VarType.FP16:
+                        if (
+                            param._grad_ivar().dtype
+                            == core.VarDesc.VarType.FP16
+                        ):
                             param_grads_fp16.append(param._grad_ivar())
+                        elif (
+                            param._grad_ivar().dtype
+                            == core.VarDesc.VarType.BF16
+                        ):
+                            param_grads_bf16.append(param._grad_ivar())
                         else:
                             param_grads_fp32.append(param._grad_ivar())
         else:
             param_grads = [
-                param._grad_ivar() for param in optimizer._parameter_list
+                param._grad_ivar()
+                for param in optimizer._parameter_list
                 if param._grad_ivar() is not None
             ]
             param_grads_fp16 = [
-                param._grad_ivar() for param in optimizer._parameter_list
-                if (param._grad_ivar() is not None) and (
-                    param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
+                param
+                for param in param_grads
+                if param.dtype == core.VarDesc.VarType.FP16
+            ]
+            param_grads_bf16 = [
+                param
+                for param in param_grads
+                if param.dtype == core.VarDesc.VarType.BF16
             ]
             param_grads_fp32 = [
-                param._grad_ivar() for param in optimizer._parameter_list
-                if (param._grad_ivar() is not None) and (
-                    param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
+                param
+                for param in param_grads
+                if param.dtype == core.VarDesc.VarType.FP32
             ]
         if core.is_compiled_with_npu():
-            float_status = _C_ops.alloc_float_status()
-            _C_ops.clear_float_status(float_status, float_status)
+            float_status = _legacy_C_ops.alloc_float_status()
+            _legacy_C_ops.clear_float_status(float_status, float_status)
 
             if len(param_grads_fp16):
-                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                                float_status, param_grads_fp16,
-                                                self._temp_found_inf_fp16)
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp16,
+                    self._scale,
+                    float_status,
+                    param_grads_fp16,
+                    self._temp_found_inf_fp16,
+                )
+            if len(param_grads_bf16):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_bf16,
+                    self._scale,
+                    float_status,
+                    param_grads_bf16,
+                    self._temp_found_inf_bf16,
+                )
             if len(param_grads_fp32):
-                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                                float_status, param_grads_fp32,
-                                                self._temp_found_inf_fp32)
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp32,
+                    self._scale,
+                    float_status,
+                    param_grads_fp32,
+                    self._temp_found_inf_fp32,
+                )
         else:
             if len(param_grads_fp16):
-                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
-                                                param_grads_fp16,
-                                                self._temp_found_inf_fp16)
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp16,
+                    self._scale,
+                    param_grads_fp16,
+                    self._temp_found_inf_fp16,
+                )
+            if len(param_grads_bf16):
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_bf16,
+                    self._scale,
+                    param_grads_bf16,
+                    self._temp_found_inf_bf16,
+                )
             if len(param_grads_fp32):
-                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
-                                                param_grads_fp32,
-                                                self._temp_found_inf_fp32)
+                _legacy_C_ops.check_finite_and_unscale(
+                    param_grads_fp32,
+                    self._scale,
+                    param_grads_fp32,
+                    self._temp_found_inf_fp32,
+                )
 
-        if len(param_grads_fp16) and len(param_grads_fp32):
-            self._found_inf = self._temp_found_inf_fp16 or self._temp_found_inf_fp32
-        elif len(param_grads_fp16):
-            self._found_inf = self._temp_found_inf_fp16
-        else:
-            self._found_inf = self._temp_found_inf_fp32
+        self._found_inf = (
+            self._temp_found_inf_fp16
+            or self._temp_found_inf_bf16
+            or self._temp_found_inf_fp32
+        )
 
         optimizer_state["state"] = OptimizerState.UNSCALED
 
@@ -330,9 +388,12 @@ class AmpScaler(object):
             self._decr_count = self._decr_count + 1
             if self._decr_count == self._decr_every_n_nan_or_inf:
                 print(
-                    'Found inf or nan, current scale is: {}, decrease to: {}*{}'
-                    .format(float(self._scale), float(self._scale),
-                            float(self._decr_ratio)))
+                    'Found inf or nan, current scale is: {}, decrease to: {}*{}'.format(
+                        float(self._scale),
+                        float(self._scale),
+                        float(self._decr_ratio),
+                    )
+                )
                 self._scale = self._scale * self._decr_ratio
                 self._decr_count = 0
         else:
@@ -380,7 +441,8 @@ class AmpScaler(object):
         """
         self._init_loss_scaling = new_init_loss_scaling
         self._scale = to_variable(
-            np.array([self._init_loss_scaling]).astype(np.float32))
+            np.array([self._init_loss_scaling]).astype(np.float32)
+        )
 
     def get_incr_ratio(self):
         """
@@ -471,21 +533,25 @@ class AmpScaler(object):
             decr_count(int): The number of recent consecutive skipped steps.
             use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling. If False, fixed loss_scaling is used. If True, the loss scaling is updated dynamicly. Default is True.
         """
-        return {
-            "scale": self._scale.numpy(),
-            "incr_ratio": self._incr_ratio,
-            "decr_ratio": self._decr_ratio,
-            "incr_every_n_steps": self._incr_every_n_steps,
-            "decr_every_n_nan_or_inf": self._decr_every_n_nan_or_inf,
-            "incr_count": self._incr_count,
-            "decr_count": self._decr_count,
-            "use_dynamic_loss_scaling": self._use_dynamic_loss_scaling
-        } if self._enable else {}
+        return (
+            {
+                "scale": self._scale.numpy(),
+                "incr_ratio": self._incr_ratio,
+                "decr_ratio": self._decr_ratio,
+                "incr_every_n_steps": self._incr_every_n_steps,
+                "decr_every_n_nan_or_inf": self._decr_every_n_nan_or_inf,
+                "incr_count": self._incr_count,
+                "decr_count": self._decr_count,
+                "use_dynamic_loss_scaling": self._use_dynamic_loss_scaling,
+            }
+            if self._enable
+            else {}
+        )
 
     def load_state_dict(self, state_dict):
         """
         Loads the scaler state.
-        
+
         Args:
            state_dict(dict): scaler state.  Should be an object returned from a call to `AmpScaler.state_dict()`.
         """
@@ -495,11 +561,13 @@ class AmpScaler(object):
         if len(state_dict) == 0:
             raise RuntimeError(
                 "The input state dict is empty, possibly because it was saved "
-                "from a disabled instance of GradScaler.")
+                "from a disabled instance of GradScaler."
+            )
 
         self._init_loss_scaling = state_dict["scale"][0]
         self._scale = to_variable(
-            np.array([self._init_loss_scaling]).astype(np.float32))
+            np.array([self._init_loss_scaling]).astype(np.float32)
+        )
         self._incr_ratio = state_dict["incr_ratio"]
         self._decr_ratio = state_dict["decr_ratio"]
         self._incr_every_n_steps = state_dict["incr_every_n_steps"]

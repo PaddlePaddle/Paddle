@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import math
@@ -54,13 +52,12 @@ def common_setup(self, index_num, nshards, shard_id, ignore_value):
         'index_num': index_num,
         'nshards': nshards,
         'shard_id': shard_id,
-        'ignore_value': ignore_value
+        'ignore_value': ignore_value,
     }
     self.outputs = {'Out': (out, x_lod)}
 
 
 class TestShardIndexShardId0Op(OpTest):
-
     def setUp(self):
         common_setup(self, 20, 2, 0, -1)
 
@@ -69,19 +66,16 @@ class TestShardIndexShardId0Op(OpTest):
 
 
 class TestShardIndexShardId1Op(TestShardIndexShardId0Op):
-
     def setUp(self):
         common_setup(self, 20, 2, 1, -1)
 
 
 class TestShardIndexIgnoreValueOp(TestShardIndexShardId0Op):
-
     def setUp(self):
         common_setup(self, 20, 2, 0, -2)
 
 
 class TestShardIndexNotEvenlyDividedOp(TestShardIndexShardId0Op):
-
     def setUp(self):
         common_setup(self, 15, 2, 1, -1)
 

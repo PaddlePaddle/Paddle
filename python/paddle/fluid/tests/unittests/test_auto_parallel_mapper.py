@@ -12,45 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import tempfile
 import unittest
 import os
 import json
-import collections
-import math
 import numpy as np
 
 import paddle
 import paddle.nn as nn
 import paddle.fluid as fluid
 import paddle.nn.functional as F
-import paddle.tensor as tensor
 import paddle.utils as utils
 import paddle.static as static
 from paddle.fluid import core
 from paddle.fluid import layers
-from paddle.fluid.framework import _non_static_mode
-from paddle.nn.layer.transformer import _convert_param_attr_to_list
-from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
+from paddle.fluid.initializer import NumpyArrayInitializer
 from paddle.distributed import fleet
 
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.parallelizer import AutoParallelizer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.process_group import get_all_process_groups
-from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.cluster import Cluster
-from paddle.distributed.auto_parallel.cluster import DeviceType
-from paddle.distributed.auto_parallel.cluster import LinkType
-from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
-from paddle.distributed.auto_parallel.mapper import build_process_graph
-from paddle.distributed.auto_parallel.mapper import build_cluster_graph
 from paddle.distributed.auto_parallel.mapper import mapping
 from paddle.distributed.auto_parallel.mapper import get_dtype_bytes
 from paddle.distributed.auto_parallel.mapper import get_comm_volume
@@ -136,7 +121,7 @@ cluster_json = """
           "source_global_id": 0,
           "target_global_id": 4,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 1,
@@ -160,7 +145,7 @@ cluster_json = """
           "source_global_id": 1,
           "target_global_id": 4,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 2,
@@ -208,13 +193,13 @@ cluster_json = """
           "source_global_id": 3,
           "target_global_id": 4,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 4,
           "target_global_id": 9,
           "type": "NET",
-          "bandwidth": 1 
+          "bandwidth": 1
         }
       ]
     },
@@ -288,7 +273,7 @@ cluster_json = """
           "source_global_id": 5,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 6,
@@ -312,7 +297,7 @@ cluster_json = """
           "source_global_id": 6,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 7,
@@ -336,7 +321,7 @@ cluster_json = """
           "source_global_id": 7,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 8,
@@ -360,27 +345,25 @@ cluster_json = """
           "source_global_id": 8,
           "target_global_id": 9,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 9,
           "target_global_id": 4,
           "type": "NET",
-          "bandwidth": 1 
+          "bandwidth": 1
         }
       ]
-    } 
+    }
   ]
 }
 """
 
 
 class MLPLayer(nn.Layer):
-
-    def __init__(self,
-                 hidden_size=64,
-                 intermediate_size=4 * 64,
-                 initializer_range=0.02):
+    def __init__(
+        self, hidden_size=64, intermediate_size=4 * 64, initializer_range=0.02
+    ):
         super(MLPLayer, self).__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
@@ -394,57 +377,45 @@ class MLPLayer(nn.Layer):
         weight_attr2 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr2))
         weight_attr3 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr3))
         bias_attr = None
-        self.linear0 = nn.Linear(d_model,
-                                 dim_feedforward,
-                                 weight_attr0,
-                                 bias_attr=bias_attr)
-        self.linear1 = nn.Linear(dim_feedforward,
-                                 d_model,
-                                 weight_attr1,
-                                 bias_attr=bias_attr)
+        self.linear0 = nn.Linear(
+            d_model, dim_feedforward, weight_attr0, bias_attr=bias_attr
+        )
+        self.linear1 = nn.Linear(
+            dim_feedforward, d_model, weight_attr1, bias_attr=bias_attr
+        )
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
-        self.linear2 = nn.Linear(d_model,
-                                 dim_feedforward,
-                                 weight_attr2,
-                                 bias_attr=bias_attr)
-        self.linear3 = nn.Linear(dim_feedforward,
-                                 d_model,
-                                 weight_attr3,
-                                 bias_attr=bias_attr)
+        self.linear2 = nn.Linear(
+            d_model, dim_feedforward, weight_attr2, bias_attr=bias_attr
+        )
+        self.linear3 = nn.Linear(
+            dim_feedforward, d_model, weight_attr3, bias_attr=bias_attr
+        )
 
     def forward(self, input):
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(self.linear0.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[0],
-                                  "dims_mapping": [-1, 1]
-                              })
-            auto.shard_tensor(self.linear1.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[0],
-                                  "dims_mapping": [1, -1]
-                              })
-            auto.shard_tensor(self.linear2.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[1],
-                                  "dims_mapping": [-1, 1]
-                              })
-            auto.shard_tensor(self.linear3.weight,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[1],
-                                  "dims_mapping": [1, -1]
-                              })
+            auto.shard_tensor(
+                self.linear0.weight, _global_process_mesh[0], [None, "y"]
+            )
+
+            auto.shard_tensor(
+                self.linear1.weight, _global_process_mesh[0], ["y", None]
+            )
+
+            auto.shard_tensor(
+                self.linear2.weight, _global_process_mesh[1], [None, "y"]
+            )
+
+            auto.shard_tensor(
+                self.linear3.weight, _global_process_mesh[1], ["y", None]
+            )
 
         out = self.norm(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = self.linear1(out)
 
-        auto.shard_tensor(out,
-                          dist_attr={
-                              "process_mesh": _global_process_mesh[1],
-                              "dims_mapping": [0, -1]
-                          })
+        auto.shard_tensor(out, _global_process_mesh[1], ["x", None])
+
         out = self.linear2(out)
         out = F.gelu(out, approximate=True)
         out = self.linear3(out)
@@ -452,26 +423,25 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_forward(train_program, start_program):
-    with static.program_guard(train_program,start_program), \
-        utils.unique_name.guard():
+    with static.program_guard(
+        train_program, start_program
+    ), utils.unique_name.guard():
         batch_size = 4
         hidden_size = 64
-        input = static.data(name="input",
-                            shape=[batch_size, hidden_size],
-                            dtype='float32')
-        label = static.data(name="label",
-                            shape=[batch_size, 1],
-                            dtype='float32')
+        input = static.data(
+            name="input", shape=[batch_size, hidden_size], dtype='float32'
+        )
+        label = static.data(
+            name="label", shape=[batch_size, 1], dtype='float32'
+        )
 
         if _global_parallel_strategy == "dp_mp_pp":
-            auto.shard_tensor(input,
-                              dist_attr={
-                                  "process_mesh": _global_process_mesh[0],
-                                  "dims_mapping": [0, -1]
-                              })
-        mlp = MLPLayer(hidden_size=hidden_size,
-                       intermediate_size=4 * hidden_size,
-                       initializer_range=0.02)
+            auto.shard_tensor(input, _global_process_mesh[0], ["x", None])
+        mlp = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            initializer_range=0.02,
+        )
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
         loss = paddle.mean(error_cost)
@@ -479,8 +449,9 @@ def mlp_forward(train_program, start_program):
 
 
 def get_dist_prog(train_program, startup_program, dist_context, rank_id):
-    loss, train_program, startup_program = mlp_forward(train_program,
-                                                       startup_program)
+    loss, train_program, startup_program = mlp_forward(
+        train_program, startup_program
+    )
 
     fleet._user_defined_strategy = fleet.DistributedStrategy()
     fleet.user_defined_optimizer = paddle.fluid.optimizer.AdamOptimizer()
@@ -490,24 +461,38 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     # auto completion
     completer = Completer(dist_context)
     complete_train_program = completer.complete_forward_annotation(
-        train_program)
+        train_program
+    )
     dist_context.block_state.parse_forward_blocks(complete_train_program)
-    params_grads = parallelizer._generate_backward(complete_train_program,
-                                                   startup_program,
-                                                   loss,
-                                                   parameter_list=None,
-                                                   no_grad_set=None,
-                                                   callbacks=None)
+    params_grads = parallelizer._generate_backward(
+        complete_train_program,
+        startup_program,
+        loss,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None,
+    )
 
     partitioner = Partitioner(dist_context, rank_id)
-    dist_train_program, dist_startup_prog, dist_params_grads = partitioner.partition(
-        complete_train_program, startup_program, params_grads)
+    (
+        dist_train_program,
+        dist_startup_prog,
+        dist_params_grads,
+    ) = partitioner.partition(
+        complete_train_program, startup_program, params_grads
+    )
 
     partitioned_optimize_ops = parallelizer._apply_optimize(
-        dist_train_program, dist_startup_prog, dist_params_grads)
+        dist_train_program, dist_startup_prog, dist_params_grads
+    )
 
-    resharder = Resharder(dist_train_program, dist_startup_prog, rank_id,
-                          dist_context, dist_params_grads)
+    resharder = Resharder(
+        dist_train_program,
+        dist_startup_prog,
+        rank_id,
+        dist_context,
+        dist_params_grads,
+    )
     resharder.reshard()
     return dist_train_program, dist_startup_prog
 
@@ -527,7 +512,6 @@ def get_device_local_ids(machine):
 
 
 class TestAutoParallelMapper(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -535,8 +519,9 @@ class TestAutoParallelMapper(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_mapper_dp_mp_pp(self):
-        cluster_json_path = os.path.join(self.temp_dir.name,
-                                         "auto_parallel_cluster.json")
+        cluster_json_path = os.path.join(
+            self.temp_dir.name, "auto_parallel_cluster.json"
+        )
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -548,7 +533,10 @@ class TestAutoParallelMapper(unittest.TestCase):
         global _global_num_stages
         _global_num_stages = 2
         global _global_process_mesh
-        _global_process_mesh = [[[0, 1], [2, 3]], [[4, 5], [6, 7]]]
+        _global_process_mesh = [
+            auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"]),
+            auto.ProcessMesh([[4, 5], [6, 7]], dim_names=["x", "y"]),
+        ]
         processes = [0, 1, 2, 3, 4, 5, 6, 7]
 
         dist_programs = {}
@@ -557,7 +545,8 @@ class TestAutoParallelMapper(unittest.TestCase):
             startup_program = static.Program()
             dist_context = DistributedContext()
             dist_train_program, dist_startup_prog = get_dist_prog(
-                train_program, startup_program, dist_context, rank_id)
+                train_program, startup_program, dist_context, rank_id
+            )
             # if rank_id == 0:
             #   print_program_with_dist_attr(dist_train_program, dist_context)
             dist_programs[rank_id] = [dist_train_program, None]
@@ -575,8 +564,9 @@ class TestAutoParallelMapper(unittest.TestCase):
                 self.assertTrue(is_in_machine(device_ids[0], machine))
                 machine_mapped_ranks.add(rank)
                 machine_mapped_device_local_ids.add(device_ids[0])
-            self.assertEqual(len(machine_mapped_ranks),
-                             len(machine_mapped_device_local_ids))
+            self.assertEqual(
+                len(machine_mapped_ranks), len(machine_mapped_device_local_ids)
+            )
             all_mapped_ranks.update(machine_mapped_ranks)
         self.assertEqual(set(processes), all_mapped_ranks)
 
@@ -603,35 +593,30 @@ class TestAutoParallelMapper(unittest.TestCase):
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
-                stop_gradient=False)
+                stop_gradient=False,
+            )
             broadcast_op = train_program.global_block().append_op(
                 type="c_broadcast",
                 inputs={'X': input},
-                attrs={
-                    'ring_id': ring_id,
-                    'root': root_id
-                },
-                outputs={'Out': output})
+                attrs={'ring_id': ring_id, 'root': root_id},
+                outputs={'Out': output},
+            )
             self.assertEqual(get_comm_volume(broadcast_op, 0, 1), 400)
             self.assertEqual(get_comm_volume(broadcast_op, 1, 0), None)
             allgather_op = train_program.global_block().append_op(
                 type="c_allgather",
                 inputs={'X': input},
-                attrs={
-                    'ring_id': ring_id,
-                    'nranks': nranks
-                },
-                outputs={'Out': output})
+                attrs={'ring_id': ring_id, 'nranks': nranks},
+                outputs={'Out': output},
+            )
             self.assertEqual(get_comm_volume(allgather_op, 0, 1), 400)
             self.assertEqual(get_comm_volume(allgather_op, 0, 0), None)
             reduce_op = train_program.global_block().append_op(
                 type="c_reduce_sum",
                 inputs={'X': input},
-                attrs={
-                    'ring_id': ring_id,
-                    'root_id': root_id
-                },
-                outputs={'Out': output})
+                attrs={'ring_id': ring_id, 'root_id': root_id},
+                outputs={'Out': output},
+            )
             self.assertEqual(get_comm_volume(reduce_op, 0, 1), None)
             self.assertEqual(get_comm_volume(reduce_op, 1, 0), 400)
             cast_op = train_program.global_block().append_op(
@@ -640,8 +625,9 @@ class TestAutoParallelMapper(unittest.TestCase):
                 outputs={"Out": output},
                 attrs={
                     "in_dtype": fluid.core.VarDesc.VarType.FP32,
-                    "out_dtype": fluid.core.VarDesc.VarType.FP32
-                })
+                    "out_dtype": fluid.core.VarDesc.VarType.FP32,
+                },
+            )
             self.assertRaises(ValueError, get_comm_volume, cast_op, 0, 1)
 
 

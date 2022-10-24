@@ -295,8 +295,7 @@ void SyncBatchNormGradFunctor(
     DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
-  const DataLayout layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout layout = phi::StringToDataLayout(data_layout_str);
 
   const auto *d_y = &y_grad;
 
@@ -365,7 +364,10 @@ void SyncBatchNormGradFunctor(
   const auto *saved_inv_var =
       saved_variance.template data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-  auto alloc_ptr = paddle::memory::Alloc(ctx, bytes);
+  auto alloc_ptr = paddle::memory::Alloc(
+      ctx.GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
 
   const int block = 512;

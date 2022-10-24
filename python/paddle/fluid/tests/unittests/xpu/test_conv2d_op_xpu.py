@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
@@ -20,29 +19,36 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 from op_test_xpu import XPUOpTest
 import paddle
-from paddle.fluid import Program, program_guard
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 
-def conv2d_forward_naive(input,
-                         filter,
-                         group,
-                         conv_param,
-                         padding_algorithm='EXPLICIT',
-                         data_format='NCHW'):
+def conv2d_forward_naive(
+    input,
+    filter,
+    group,
+    conv_param,
+    padding_algorithm='EXPLICIT',
+    data_format='NCHW',
+):
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
-        raise ValueError("Unknown Attr(padding_algorithm): '%s'. "
-                         "It can only be 'SAME' or 'VALID'." %
-                         str(padding_algorithm))
+        raise ValueError(
+            "Unknown Attr(padding_algorithm): '%s'. "
+            "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+        )
 
     if data_format not in ["NCHW", "NHWC"]:
-        raise ValueError("Unknown Attr(data_format): '%s' ."
-                         "It can only be 'NCHW' or 'NHWC'." % str(data_format))
+        raise ValueError(
+            "Unknown Attr(data_format): '%s' ."
+            "It can only be 'NCHW' or 'NHWC'." % str(data_format)
+        )
 
-    channel_last = (data_format == "NHWC")
+    channel_last = data_format == "NHWC"
     if channel_last:
         input = np.transpose(input, [0, 3, 1, 2])
 
@@ -55,17 +61,22 @@ def conv2d_forward_naive(input,
     sub_out_c = out_c // group
     sub_f_n = f_n // group
 
-    stride, pad, dilation = conv_param['stride'], conv_param['pad'], conv_param[
-        'dilation']
+    stride, pad, dilation = (
+        conv_param['stride'],
+        conv_param['pad'],
+        conv_param['dilation'],
+    )
 
     # update pad and dilation
     def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
         padding = []
-        for input_size, filter_size, stride_size in zip(input_shape, pool_size,
-                                                        pool_stride):
+        for input_size, filter_size, stride_size in zip(
+            input_shape, pool_size, pool_stride
+        ):
             out_size = int((input_size + stride_size - 1) / stride_size)
             pad_sum = np.max(
-                ((out_size - 1) * stride_size + filter_size - input_size, 0))
+                ((out_size - 1) * stride_size + filter_size - input_size, 0)
+            )
             pad_0 = int(pad_sum / 2)
             pad_1 = int(pad_sum - pad_0)
             padding.append(pad_0)
@@ -85,39 +96,52 @@ def conv2d_forward_naive(input,
     if len(pad) == 4:
         pad_h_0, pad_h_1 = pad[0], pad[1]
         pad_w_0, pad_w_1 = pad[2], pad[3]
-    out_h = 1 + (in_h + pad_h_0 + pad_h_1 - (dilation[0] *
-                                             (f_h - 1) + 1)) // stride[0]
-    out_w = 1 + (in_w + pad_w_0 + pad_w_1 - (dilation[1] *
-                                             (f_w - 1) + 1)) // stride[1]
+    out_h = (
+        1
+        + (in_h + pad_h_0 + pad_h_1 - (dilation[0] * (f_h - 1) + 1))
+        // stride[0]
+    )
+    out_w = (
+        1
+        + (in_w + pad_w_0 + pad_w_1 - (dilation[1] * (f_w - 1) + 1))
+        // stride[1]
+    )
     out = np.zeros((out_n, out_c, out_h, out_w))
 
-    d_bolck_h = (dilation[0] * (f_h - 1) + 1)
-    d_bolck_w = (dilation[1] * (f_w - 1) + 1)
+    d_bolck_h = dilation[0] * (f_h - 1) + 1
+    d_bolck_w = dilation[1] * (f_w - 1) + 1
 
-    input_pad = np.pad(input,
-                       ((0, 0), (0, 0), (pad_h_0, pad_h_1), (pad_w_0, pad_w_1)),
-                       mode='constant',
-                       constant_values=0)
+    input_pad = np.pad(
+        input,
+        ((0, 0), (0, 0), (pad_h_0, pad_h_1), (pad_w_0, pad_w_1)),
+        mode='constant',
+        constant_values=0,
+    )
 
     filter_dilation = np.zeros((f_n, f_c, d_bolck_h, d_bolck_w))
-    filter_dilation[:, :, 0:d_bolck_h:dilation[0],
-                    0:d_bolck_w:dilation[1]] = filter
+    filter_dilation[
+        :, :, 0 : d_bolck_h : dilation[0], 0 : d_bolck_w : dilation[1]
+    ] = filter
 
     for i in range(out_h):
         for j in range(out_w):
             for g in range(group):
-                input_pad_masked = \
-                    input_pad[:, g * f_c:(g + 1) * f_c,
-                    i * stride[0]:i * stride[0] + d_bolck_h,
-                    j * stride[1]:j * stride[1] + d_bolck_w]
+                input_pad_masked = input_pad[
+                    :,
+                    g * f_c : (g + 1) * f_c,
+                    i * stride[0] : i * stride[0] + d_bolck_h,
+                    j * stride[1] : j * stride[1] + d_bolck_w,
+                ]
 
-                f_sub = filter_dilation[g * sub_f_n:(g + 1) * sub_f_n, :, :, :]
+                f_sub = filter_dilation[
+                    g * sub_f_n : (g + 1) * sub_f_n, :, :, :
+                ]
                 # sub_f_n == sub_out_c
                 for k in range(sub_out_c):
                     # Multiplication of Corresponding Elements, then sum all
-                    out[:, g * sub_out_c + k, i, j] = \
-                        np.sum(input_pad_masked * f_sub[k, :, :, :],
-                               axis=(1, 2, 3))
+                    out[:, g * sub_out_c + k, i, j] = np.sum(
+                        input_pad_masked * f_sub[k, :, :, :], axis=(1, 2, 3)
+                    )
 
     if channel_last:
         out = np.transpose(out, [0, 2, 3, 1])
@@ -126,9 +150,7 @@ def conv2d_forward_naive(input,
 
 
 def create_test_channel_last_class(parent):
-
     class TestChannelLastCase(parent):
-
         def init_data_format(self):
             self.data_format = "NHWC"
 
@@ -142,9 +164,7 @@ def create_test_channel_last_class(parent):
 
 
 def create_test_padding_SAME_class(parent):
-
     class TestPaddingSMAECase(parent):
-
         def init_paddings(self):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
@@ -155,9 +175,7 @@ def create_test_padding_SAME_class(parent):
 
 
 def create_test_padding_VALID_class(parent):
-
     class TestPaddingVALIDCase(parent):
-
         def init_paddings(self):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
@@ -168,13 +186,11 @@ def create_test_padding_VALID_class(parent):
 
 
 class XPUTestConv2DOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'conv2d'
         self.use_dynamic_create_class = False
 
     class TestConv2DOp(XPUOpTest):
-
         def setUp(self):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
@@ -193,7 +209,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
             conv2d_param = {
                 'stride': self.stride,
                 'pad': self.pad,
-                'dilation': self.dilations
+                'dilation': self.dilations,
             }
 
             np.random.seed(100)
@@ -208,16 +224,18 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
             else:
                 input2 = input
             np.random.seed(1)
-            filter = np.random.uniform(-1, 1,
-                                       self.filter_size).astype(self.dtype)
+            filter = np.random.uniform(-1, 1, self.filter_size).astype(
+                self.dtype
+            )
 
-            output, _, _, _, _ = conv2d_forward_naive(input2, filter,
-                                                      self.groups, conv2d_param)
+            output, _, _, _, _ = conv2d_forward_naive(
+                input2, filter, self.groups, conv2d_param
+            )
             output = output.astype(self.dtype)
 
             self.inputs = {
                 'Input': XPUOpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': XPUOpTest.np_dtype_to_fluid_dtype(filter)
+                'Filter': XPUOpTest.np_dtype_to_fluid_dtype(filter),
             }
             self.attrs = {
                 'strides': self.stride,
@@ -227,15 +245,15 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
                 'use_cudnn': self.use_cudnn,
                 'use_mkldnn': self.use_mkldnn,
                 'data_format': self.data_format,
-                'fuse_relu_before_depthwise_conv':
-                self.fuse_relu_before_depthwise_conv,
-                'exhaustive_search': self.exhaustive_search
+                'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
+                'exhaustive_search': self.exhaustive_search,
             }
             self.outputs = {'Output': output}
 
         def has_cuda(self):
-            return core.is_compiled_with_cuda() and (self.use_cudnn
-                                                     or self.use_cuda)
+            return core.is_compiled_with_cuda() and (
+                self.use_cudnn or self.use_cuda
+            )
 
         def test_check_output(self):
             if core.is_compiled_with_xpu():
@@ -243,33 +261,40 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
                 self.check_output_with_place(self.place)
 
         def test_check_grad(self):
-            if (hasattr(self, "no_need_check_grad")
-                    and self.no_need_check_grad == True):
+            if (
+                hasattr(self, "no_need_check_grad")
+                and self.no_need_check_grad == True
+            ):
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
-                self.check_grad_with_place(self.place, {'Input', 'Filter'},
-                                           'Output')
+                self.check_grad_with_place(
+                    self.place, {'Input', 'Filter'}, 'Output'
+                )
 
         def test_check_grad_no_filter(self):
-            if (hasattr(self, "no_need_check_grad")
-                    and self.no_need_check_grad == True):
+            if (
+                hasattr(self, "no_need_check_grad")
+                and self.no_need_check_grad == True
+            ):
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
-                self.check_grad_with_place(self.place, ['Input'],
-                                           'Output',
-                                           no_grad_set=set(['Filter']))
+                self.check_grad_with_place(
+                    self.place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                )
 
         def test_check_grad_no_input(self):
-            if (hasattr(self, "no_need_check_grad")
-                    and self.no_need_check_grad == True):
+            if (
+                hasattr(self, "no_need_check_grad")
+                and self.no_need_check_grad == True
+            ):
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
-                self.check_grad_with_place(self.place, ['Filter'],
-                                           'Output',
-                                           no_grad_set=set(['Input']))
+                self.check_grad_with_place(
+                    self.place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                )
 
         def init_test_case(self):
             self.pad = [0, 0]
@@ -292,7 +317,6 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
             pass
 
     class TestWithPad(TestConv2DOp):
-
         def init_test_case(self):
             self.pad = [1, 1]
             self.stride = [1, 1]
@@ -302,7 +326,6 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
             self.filter_size = [6, f_c, 3, 3]
 
     class TestWithStride(TestConv2DOp):
-
         def init_test_case(self):
             self.pad = [1, 1]
             self.stride = [2, 2]
@@ -312,7 +335,6 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
             self.filter_size = [6, f_c, 3, 3]
 
     class TestWith1x1(TestConv2DOp):
-
         def init_test_case(self):
             self.pad = [0, 0]
             self.stride = [1, 1]
@@ -327,13 +349,11 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
 
 # ---- test asymmetric padding ----
 class XPUTestConv2DOp_v2(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'conv2d'
         self.use_dynamic_create_class = False
 
     class TestConv2DOp_v2(XPUOpTest):
-
         def setUp(self):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
@@ -354,7 +374,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             conv2d_param = {
                 'stride': self.stride,
                 'pad': self.pad,
-                'dilation': self.dilations
+                'dilation': self.dilations,
             }
 
             np.random.seed(100)
@@ -369,17 +389,22 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             else:
                 input2 = input
             np.random.seed(8)
-            filter = np.random.uniform(-1, 1,
-                                       self.filter_size).astype(self.dtype)
-            output, _, _, _, _ = conv2d_forward_naive(input2, filter,
-                                                      self.groups, conv2d_param,
-                                                      self.padding_algorithm,
-                                                      self.data_format)
+            filter = np.random.uniform(-1, 1, self.filter_size).astype(
+                self.dtype
+            )
+            output, _, _, _, _ = conv2d_forward_naive(
+                input2,
+                filter,
+                self.groups,
+                conv2d_param,
+                self.padding_algorithm,
+                self.data_format,
+            )
             output = output.astype(self.dtype)
 
             self.inputs = {
                 'Input': XPUOpTest.np_dtype_to_fluid_dtype(input),
-                'Filter': XPUOpTest.np_dtype_to_fluid_dtype(filter)
+                'Filter': XPUOpTest.np_dtype_to_fluid_dtype(filter),
             }
             self.attrs = {
                 'strides': self.stride,
@@ -390,15 +415,15 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
                 'use_cudnn': self.use_cudnn,
                 'use_mkldnn': self.use_mkldnn,
                 'data_format': self.data_format,
-                'fuse_relu_before_depthwise_conv':
-                self.fuse_relu_before_depthwise_conv,
-                'exhaustive_search': self.exhaustive_search
+                'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
+                'exhaustive_search': self.exhaustive_search,
             }
             self.outputs = {'Output': output}
 
         def has_cuda(self):
-            return core.is_compiled_with_cuda() and (self.use_cudnn
-                                                     or self.use_cuda)
+            return core.is_compiled_with_cuda() and (
+                self.use_cudnn or self.use_cuda
+            )
 
         def test_check_output(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -408,35 +433,42 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
 
         def test_check_grad(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
-            if (hasattr(self, "no_need_check_grad")
-                    and self.no_need_check_grad == True):
+            if (
+                hasattr(self, "no_need_check_grad")
+                and self.no_need_check_grad == True
+            ):
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
-                self.check_grad_with_place(self.place, {'Input', 'Filter'},
-                                           'Output')
+                self.check_grad_with_place(
+                    self.place, {'Input', 'Filter'}, 'Output'
+                )
 
         def test_check_grad_no_filter(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
-            if (hasattr(self, "no_need_check_grad")
-                    and self.no_need_check_grad == True):
+            if (
+                hasattr(self, "no_need_check_grad")
+                and self.no_need_check_grad == True
+            ):
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
-                self.check_grad_with_place(self.place, ['Input'],
-                                           'Output',
-                                           no_grad_set=set(['Filter']))
+                self.check_grad_with_place(
+                    self.place, ['Input'], 'Output', no_grad_set=set(['Filter'])
+                )
 
         def test_check_grad_no_input(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
-            if (hasattr(self, "no_need_check_grad")
-                    and self.no_need_check_grad == True):
+            if (
+                hasattr(self, "no_need_check_grad")
+                and self.no_need_check_grad == True
+            ):
                 return
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
-                self.check_grad_with_place(self.place, ['Filter'],
-                                           'Output',
-                                           no_grad_set=set(['Input']))
+                self.check_grad_with_place(
+                    self.place, ['Filter'], 'Output', no_grad_set=set(['Input'])
+                )
 
         def init_test_case(self):
             self.pad = [0, 0]
@@ -466,13 +498,11 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             pass
 
     class TestConv2DOp_AsyPadding(TestConv2DOp_v2):
-
         def init_paddings(self):
             self.pad = [0, 0, 0, 0]
             self.padding_algorithm = "EXPLICIT"
 
     class TestWithPad_AsyPadding(TestConv2DOp_v2):
-
         def init_test_case(self):
             self.stride = [1, 1]
             self.input_size = [2, 3, 5, 5]  # NCHW
@@ -485,7 +515,6 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             self.padding_algorithm = "EXPLICIT"
 
     class TestWithStride_AsyPadding(TestConv2DOp_v2):
-
         def init_test_case(self):
             self.stride = [2, 2]
             self.input_size = [2, 3, 6, 6]  # NCHW
@@ -499,14 +528,13 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
 
 
 class XPUTestConv2DOp_NHWC(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'conv2d'
         self.use_dynamic_create_class = False
 
     class TestConv2DOp_AsyPadding_NHWC(
-            XPUTestConv2DOp_v2.TestConv2DOp_AsyPadding):
-
+        XPUTestConv2DOp_v2.TestConv2DOp_AsyPadding
+    ):
         def init_data_format(self):
             self.data_format = "NHWC"
 
@@ -514,9 +542,9 @@ class XPUTestConv2DOp_NHWC(XPUOpTestWrapper):
             N, C, H, W = self.input_size
             self.input_size = [N, H, W, C]
 
-    class TestWithPad_AsyPadding_NHWC(XPUTestConv2DOp_v2.TestWithPad_AsyPadding
-                                      ):
-
+    class TestWithPad_AsyPadding_NHWC(
+        XPUTestConv2DOp_v2.TestWithPad_AsyPadding
+    ):
         def init_data_format(self):
             self.data_format = "NHWC"
 
@@ -529,19 +557,21 @@ support_types = get_xpu_op_support_types('conv2d')
 for stype in ['float32']:
     create_test_class(globals(), XPUTestConv2DOp, stype)
     create_test_class(globals(), XPUTestConv2DOp_v2, stype)
-    create_test_class(globals(),
-                      XPUTestConv2DOp_NHWC,
-                      stype,
-                      ignore_device_version=[core.XPUVersion.XPU1])
+    create_test_class(
+        globals(),
+        XPUTestConv2DOp_NHWC,
+        stype,
+        ignore_device_version=[core.XPUVersion.XPU1],
+    )
 
-#---------- test SAME VALID -----------
-#create_test_padding_SAME_class(TestConv2DOp_AsyPadding)
-#create_test_padding_SAME_class(TestWithPad_AsyPadding)
-#create_test_padding_SAME_class(TestWithStride_AsyPadding)
+# ---------- test SAME VALID -----------
+# create_test_padding_SAME_class(TestConv2DOp_AsyPadding)
+# create_test_padding_SAME_class(TestWithPad_AsyPadding)
+# create_test_padding_SAME_class(TestWithStride_AsyPadding)
 
-#create_test_padding_VALID_class(TestConv2DOp_AsyPadding)
-#create_test_padding_VALID_class(TestWithPad_AsyPadding)
-#create_test_padding_VALID_class(TestWithStride_AsyPadding)
+# create_test_padding_VALID_class(TestConv2DOp_AsyPadding)
+# create_test_padding_VALID_class(TestWithPad_AsyPadding)
+# create_test_padding_VALID_class(TestWithStride_AsyPadding)
 
 if __name__ == '__main__':
     unittest.main()

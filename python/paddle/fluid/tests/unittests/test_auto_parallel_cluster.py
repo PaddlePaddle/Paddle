@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import tempfile
 import unittest
 import os
@@ -82,7 +80,7 @@ cluster_json = """
           "source_global_id": 1,
           "target_global_id": 2,
           "type": "PHB",
-          "bandwidth": 12 
+          "bandwidth": 12
         },
         {
           "source_global_id": 0,
@@ -201,7 +199,6 @@ cluster_json = """
 
 
 class TestAutoParallelCluster(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -209,8 +206,9 @@ class TestAutoParallelCluster(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_cluster(self):
-        cluster_json_path = os.path.join(self.temp_dir.name,
-                                         "auto_parallel_cluster.json")
+        cluster_json_path = os.path.join(
+            self.temp_dir.name, "auto_parallel_cluster.json"
+        )
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -297,8 +295,9 @@ class TestAutoParallelCluster(unittest.TestCase):
         self.assertEqual(device2_machine0.global_id, 2)
         self.assertEqual(device2_machine0.local_id, 0)
         self.assertEqual(device2_machine0.type, DeviceType.CPU)
-        self.assertEqual(device2_machine0.model,
-                         "Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GH")
+        self.assertEqual(
+            device2_machine0.model, "Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GH"
+        )
         self.assertAlmostEqual(device2_machine0.sp_gflops, 150)
         self.assertAlmostEqual(device2_machine0.dp_gflops, 75)
         self.assertAlmostEqual(device2_machine0.memory, 1510)
@@ -403,8 +402,9 @@ class TestAutoParallelCluster(unittest.TestCase):
         self.assertEqual(device6_machine1.global_id, 6)
         self.assertEqual(device6_machine1.local_id, 0)
         self.assertEqual(device6_machine1.type, DeviceType.CPU)
-        self.assertEqual(device6_machine1.model,
-                         "Intel(R) Xeon(R) Gold 6271C CPU @ 2.60G")
+        self.assertEqual(
+            device6_machine1.model, "Intel(R) Xeon(R) Gold 6271C CPU @ 2.60G"
+        )
         self.assertAlmostEqual(device6_machine1.sp_gflops, 150)
         self.assertAlmostEqual(device6_machine1.dp_gflops, 75)
         self.assertAlmostEqual(device6_machine1.memory, 503)

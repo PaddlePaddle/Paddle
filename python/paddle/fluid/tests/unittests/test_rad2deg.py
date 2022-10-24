@@ -12,25 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-from op_test import OpTest
 
 paddle.enable_static()
 
 
 class TestRad2degAPI(unittest.TestCase):
-
     def setUp(self):
         self.x_dtype = 'float64'
-        self.x_np = np.array([3.142, -3.142, 6.283, -6.283, 1.570,
-                              -1.570]).astype(np.float64)
+        self.x_np = np.array(
+            [3.142, -3.142, 6.283, -6.283, 1.570, -1.570]
+        ).astype(np.float64)
         self.x_shape = [6]
         self.out_np = np.rad2deg(self.x_np)
 
@@ -41,25 +37,29 @@ class TestRad2degAPI(unittest.TestCase):
             x = fluid.data(name='input', dtype=self.x_dtype, shape=self.x_shape)
             out = paddle.rad2deg(x)
 
-            place = fluid.CUDAPlace(
-                0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
             exe = fluid.Executor(place)
-            res = exe.run(fluid.default_main_program(),
-                          feed={'input': self.x_np},
-                          fetch_list=[out])
+            res = exe.run(
+                fluid.default_main_program(),
+                feed={'input': self.x_np},
+                fetch_list=[out],
+            )
             self.assertTrue((np.array(out[0]) == self.out_np).all())
 
     def test_dygraph(self):
         paddle.disable_static()
         x1 = paddle.to_tensor([3.142, -3.142, 6.283, -6.283, 1.570, -1.570])
         result1 = paddle.rad2deg(x1)
-        self.assertEqual(np.allclose(self.out_np, result1.numpy()), True)
+        np.testing.assert_allclose(self.out_np, result1.numpy(), rtol=1e-05)
 
         paddle.enable_static()
 
 
 class TestRad2degAPI2(TestRad2degAPI):
-
     def setUp(self):
         self.x_np = np.pi / 2
         self.x_shape = [1]
@@ -71,7 +71,7 @@ class TestRad2degAPI2(TestRad2degAPI):
 
         x2 = paddle.to_tensor(np.pi / 2)
         result2 = paddle.rad2deg(x2)
-        self.assertEqual(np.allclose(90, result2.numpy()), True)
+        np.testing.assert_allclose(90, result2.numpy(), rtol=1e-05)
 
         paddle.enable_static()
 
@@ -89,6 +89,6 @@ class TestRad2degAPI3(TestRad2degAPI):
 
         x2 = paddle.to_tensor(1)
         result2 = paddle.rad2deg(x2)
-        self.assertEqual(np.allclose(180 / np.pi, result2.numpy()), True)
+        np.testing.assert_allclose(180 / np.pi, result2.numpy(), rtol=1e-05)
 
         paddle.enable_static()

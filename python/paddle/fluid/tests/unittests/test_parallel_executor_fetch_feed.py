@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import math
 import paddle
 import paddle.fluid as fluid
@@ -39,24 +37,25 @@ def Lenet(data, class_dim):
 
 
 class TestFetchAndFeed(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
 
-    def parallel_exe(self,
-                     use_cuda,
-                     run_parallel_exe,
-                     use_faster_executor=False,
-                     num_threads=4,
-                     seed=1):
+    def parallel_exe(
+        self,
+        use_cuda,
+        run_parallel_exe,
+        use_faster_executor=False,
+        num_threads=4,
+        seed=1,
+    ):
         main_program = fluid.Program()
         startup = fluid.Program()
         startup.random_seed = seed
         with fluid.program_guard(main_program, startup):
-            data = fluid.layers.data(name='image',
-                                     shape=[3, 224, 224],
-                                     dtype='float32')
+            data = fluid.layers.data(
+                name='image', shape=[3, 224, 224], dtype='float32'
+            )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = Lenet(data, class_dim=102)
             loss = fluid.layers.cross_entropy(input=out, label=label)
@@ -64,14 +63,15 @@ class TestFetchAndFeed(unittest.TestCase):
             opt = fluid.optimizer.Momentum(
                 learning_rate=0.1,
                 momentum=0.9,
-                regularization=fluid.regularizer.L2Decay(1e-4))
+                regularization=fluid.regularizer.L2Decay(1e-4),
+            )
             opt.minimize(loss)
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup)
 
-        #FIXME force disable enable_inplace and memory_optimize to pass the unittest
+        # FIXME force disable enable_inplace and memory_optimize to pass the unittest
         build_strategy = fluid.BuildStrategy()
         build_strategy.enable_inplace = False
         build_strategy.memory_optimize = False
@@ -81,56 +81,66 @@ class TestFetchAndFeed(unittest.TestCase):
         train_cp = compiler.CompiledProgram(main_program).with_data_parallel(
             loss_name=loss.name,
             build_strategy=build_strategy,
-            exec_strategy=exec_strategy)
+            exec_strategy=exec_strategy,
+        )
 
         run_parallel_exe(train_cp, exe, use_cuda, data, label, loss)
 
-    def run_parallel_exe_with_fetch(self, compiled_program, exe, use_cuda, data,
-                                    label, loss):
-
+    def run_parallel_exe_with_fetch(
+        self, compiled_program, exe, use_cuda, data, label, loss
+    ):
         def get_data(batch_size=8):
             np.random.seed(5)
             while True:
                 img = np.random.random(size=[batch_size, 3, 224, 224]).astype(
-                    np.float32)
+                    np.float32
+                )
                 l = (np.random.random(size=[batch_size, 1]) * 10).astype(
-                    np.int64)
+                    np.int64
+                )
                 yield img, l
 
         fetch_list = []
         all_vars = compiled_program._program.global_block().vars
 
         for k, v in all_vars.items():
-            if ('tmp' not in k) and (
-                    k[0] is not '_' or v.persistable
-            ) and v.type == core.VarDesc.VarType.LOD_TENSOR:
+            if (
+                ('tmp' not in k)
+                and (k[0] != '_' or v.persistable)
+                and v.type == core.VarDesc.VarType.LOD_TENSOR
+            ):
                 fetch_list.append(k)
 
         for batch_id, img_label in enumerate(get_data()):
             img, l = img_label
             train_inputs = {data.name: img, label.name: l}
-            ret = exe.run(compiled_program,
-                          fetch_list=fetch_list,
-                          feed=train_inputs,
-                          return_numpy=True)
+            ret = exe.run(
+                compiled_program,
+                fetch_list=fetch_list,
+                feed=train_inputs,
+                return_numpy=True,
+            )
             for i in range(len(fetch_list)):
-                assert not math.isnan(np.sum(ret[i])) and \
-                       not math.isinf(np.sum(ret[i]))
+                assert not math.isnan(np.sum(ret[i])) and not math.isinf(
+                    np.sum(ret[i])
+                )
             if batch_id == 2:
                 break
 
-    def run_parallel_exe_with_feed(self, compiled_program, exe, use_cuda, data,
-                                   label, loss):
-
+    def run_parallel_exe_with_feed(
+        self, compiled_program, exe, use_cuda, data, label, loss
+    ):
         def get_data(batch_size=8):
             np.random.seed(5)
             while True:
                 train_data = []
                 for _ in range(batch_size):
                     img = np.random.random(size=[1, 3, 224, 224]).astype(
-                        np.float32)
+                        np.float32
+                    )
                     label = (np.random.random(size=[1, 1]) * 10).astype(
-                        np.int64)
+                        np.int64
+                    )
                     train_data.append([img, label])
                 yield train_data
 
@@ -139,37 +149,45 @@ class TestFetchAndFeed(unittest.TestCase):
         reader = feeder.decorate_reader(get_data, multi_devices=True)
 
         for batch_id, data in enumerate(reader()):
-            loss_np = exe.run(compiled_program,
-                              feed=data,
-                              fetch_list=[loss.name])[0]
+            loss_np = exe.run(
+                compiled_program, feed=data, fetch_list=[loss.name]
+            )[0]
             print(batch_id, loss_np)
             if batch_id == 2:
                 break
 
     def check_executor(self, use_faster_executor=False, num_threads=4):
         if core.is_compiled_with_cuda():
-            self.parallel_exe(use_cuda=True,
-                              run_parallel_exe=self.run_parallel_exe_with_fetch,
-                              use_faster_executor=use_faster_executor,
-                              num_threads=num_threads)
-        self.parallel_exe(use_cuda=False,
-                          run_parallel_exe=self.run_parallel_exe_with_fetch,
-                          use_faster_executor=use_faster_executor,
-                          num_threads=num_threads)
+            self.parallel_exe(
+                use_cuda=True,
+                run_parallel_exe=self.run_parallel_exe_with_fetch,
+                use_faster_executor=use_faster_executor,
+                num_threads=num_threads,
+            )
+        self.parallel_exe(
+            use_cuda=False,
+            run_parallel_exe=self.run_parallel_exe_with_fetch,
+            use_faster_executor=use_faster_executor,
+            num_threads=num_threads,
+        )
 
     def test_fetch(self):
         for use_faster_executor in {True, False}:
-            self.check_executor(use_faster_executor=use_faster_executor,
-                                num_threads=4)
-            self.check_executor(use_faster_executor=use_faster_executor,
-                                num_threads=1)
+            self.check_executor(
+                use_faster_executor=use_faster_executor, num_threads=4
+            )
+            self.check_executor(
+                use_faster_executor=use_faster_executor, num_threads=1
+            )
 
     def test_feed(self):
         if core.is_compiled_with_cuda():
-            self.parallel_exe(use_cuda=True,
-                              run_parallel_exe=self.run_parallel_exe_with_feed)
-        self.parallel_exe(use_cuda=False,
-                          run_parallel_exe=self.run_parallel_exe_with_feed)
+            self.parallel_exe(
+                use_cuda=True, run_parallel_exe=self.run_parallel_exe_with_feed
+            )
+        self.parallel_exe(
+            use_cuda=False, run_parallel_exe=self.run_parallel_exe_with_feed
+        )
 
 
 if __name__ == '__main__':

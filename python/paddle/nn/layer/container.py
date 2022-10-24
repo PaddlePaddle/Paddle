@@ -22,7 +22,7 @@ __all__ = []
 class LayerDict(Layer):
     """
     LayerDict holds sublayers in the ordered dictionary, and sublayers it contains are properly registered.
-    Holded sublayers can be accessed like a regular ordered python dictionary. 
+    Holded sublayers can be accessed like a regular ordered python dictionary.
 
     Parameters:
         sublayers (LayerDict|OrderedDict|list[(key,Layer)...], optional): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
@@ -155,7 +155,7 @@ class LayerDict(Layer):
 
         Parameters:
             None.
-        
+
         Examples:
             .. code-block:: python
 
@@ -171,7 +171,7 @@ class LayerDict(Layer):
                 layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
                 for k in layer_dict.keys():
                     print(k)
-                
+
                 #conv1d
                 #conv2d
                 #conv3d
@@ -185,7 +185,7 @@ class LayerDict(Layer):
 
         Parameters:
             None.
-        
+
         Examples:
             .. code-block:: python
 
@@ -215,7 +215,7 @@ class LayerDict(Layer):
 
         Parameters:
             None.
-        
+
         Examples:
             .. code-block:: python
 
@@ -245,7 +245,7 @@ class LayerDict(Layer):
 
         Parameters:
             sublayers (LayerDict|OrderedDict|list[(key,Layer)...]): iterable of key/value pairs, the type of value is 'paddle.nn.Layer' .
-        
+
         Examples:
             .. code-block:: python
 
@@ -265,7 +265,7 @@ class LayerDict(Layer):
                 layer_dict = paddle.nn.LayerDict(sublayers=sublayers)
 
                 layer_dict.update(new_sublayers)
-                
+
                 for k, v in layer_dict.items():
                     print(k, ":", v)
                 #conv1d : Conv1D(3, 2, kernel_size=[3], data_format=NCL)
@@ -275,10 +275,10 @@ class LayerDict(Layer):
 
         """
 
-        assert isinstance(
-            sublayers, Iterable
-        ), "The type of sublayers is not iterable of key/value pairs, the type of sublayers is " + type(
-            sublayers).__name__
+        assert isinstance(sublayers, Iterable), (
+            "The type of sublayers is not iterable of key/value pairs, the type of sublayers is "
+            + type(sublayers).__name__
+        )
 
         if isinstance(sublayers, (OrderedDict, LayerDict, Mapping)):
             for key, layer in sublayers.items():
@@ -287,7 +287,11 @@ class LayerDict(Layer):
             # handle this format [(key1, layer1), (key2, layer2)...]
             for i, kv in enumerate(sublayers):
                 if len(kv) != 2:
-                    raise ValueError("The length of the " + str(i) +
-                                     "'s element in sublayers is " +
-                                     str(len(kv)) + ", which must be 2.")
+                    raise ValueError(
+                        "The length of the "
+                        + str(i)
+                        + "'s element in sublayers is "
+                        + str(len(kv))
+                        + ", which must be 2."
+                    )
                 self.add_sublayer(kv[0], kv[1])

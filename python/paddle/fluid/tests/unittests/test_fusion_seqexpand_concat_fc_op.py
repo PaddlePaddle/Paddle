@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -47,7 +45,6 @@ def fusion_seqexpand_concat_fc(xs, lod, w, b, fc_act):
 
 
 class TestFusionSeqExpandConcatFCOp(OpTest):
-
     def set_conf(self):
         pass
 
@@ -67,19 +64,24 @@ class TestFusionSeqExpandConcatFCOp(OpTest):
         x0 = np.random.normal(size=(T, self.inputs_M[0])).astype('float32')
         xs = [x0]
         for i in range(num_inputs - 1):
-            xi = np.random.normal(size=(bs,
-                                        self.inputs_M[i + 1])).astype('float32')
+            xi = np.random.normal(size=(bs, self.inputs_M[i + 1])).astype(
+                'float32'
+            )
             xs.append(xi)
 
         # fc weight and bias
-        w = np.random.normal(size=(sum(self.inputs_M),
-                                   self.D)).astype('float32')
-        b = np.random.normal(
-            size=(1, self.D)).astype('float32') if self.with_bias else np.zeros(
-                (1, self.D)).astype('float32')
+        w = np.random.normal(size=(sum(self.inputs_M), self.D)).astype(
+            'float32'
+        )
+        b = (
+            np.random.normal(size=(1, self.D)).astype('float32')
+            if self.with_bias
+            else np.zeros((1, self.D)).astype('float32')
+        )
 
-        out = fusion_seqexpand_concat_fc(xs, self.lod, w, b,
-                                         ACTIVATION[self.fc_act])
+        out = fusion_seqexpand_concat_fc(
+            xs, self.lod, w, b, ACTIVATION[self.fc_act]
+        )
 
         self.inputs = {'X': [('x0', (x0, self.lod))], 'FCWeight': w}
         normal_lod = [[1] * bs]
@@ -97,47 +99,40 @@ class TestFusionSeqExpandConcatFCOp(OpTest):
 
 
 class TestFusionSECFCOpNonBias(TestFusionSeqExpandConcatFCOp):
-
     def set_conf(self):
         self.with_bias = False
 
 
 class TestFusionSECFCOpNonAct(TestFusionSeqExpandConcatFCOp):
-
     def set_conf(self):
         self.fc_act = 'identity'
 
 
 class TestFusionSECFCOpMD1(TestFusionSeqExpandConcatFCOp):
-
     def set_conf(self):
         self.inputs_M = [3, 4, 2, 1, 5]
         self.D = 8
 
 
 class TestFusionSECFCOpMD2(TestFusionSeqExpandConcatFCOp):
-
     def set_conf(self):
         self.lod = [[5, 6]]
         self.inputs_M = [1, 1]
 
 
 class TestFusionSECFCOpBS1_1(TestFusionSeqExpandConcatFCOp):
-
     def set_conf(self):
         self.lod = [[1]]
         self.inputs_M = [3, 4, 2]
 
 
 class TestFusionSECFCOpBS1_2(TestFusionSeqExpandConcatFCOp):
-
     def set_conf(self):
         self.lod = [[1]]
         self.inputs_M = [3, 4]
 
 
 class TestFusionSECFCOpBS1_3(TestFusionSeqExpandConcatFCOp):
-
     def set_conf(self):
         self.lod = [[5]]
         self.inputs_M = [6, 3]

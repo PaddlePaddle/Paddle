@@ -14,13 +14,10 @@
 
 import unittest
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle
 
 
 class TestIdentityAPI(unittest.TestCase):
-
     def setUp(self):
         self.shape = [4, 4]
         self.x = np.random.random((4, 4)).astype(np.float32)
@@ -37,7 +34,7 @@ class TestIdentityAPI(unittest.TestCase):
 
         out_ref = self.x
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-08), True)
+            np.testing.assert_allclose(out, out_ref, rtol=1e-08)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
@@ -46,7 +43,7 @@ class TestIdentityAPI(unittest.TestCase):
         out = id_layer(x_tensor)
 
         out_ref = self.x
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
 
 

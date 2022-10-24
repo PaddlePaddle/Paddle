@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
@@ -22,10 +20,12 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.static import Program, program_guard
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 
 class TestScaleOp(OpTest):
-
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -48,7 +48,6 @@ class TestScaleOp(OpTest):
 
 
 class TestScaleOpScaleVariable(OpTest):
-
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -57,7 +56,7 @@ class TestScaleOpScaleVariable(OpTest):
         self.scale = -2.3
         self.inputs = {
             'X': np.random.random((10, 10)).astype(self.dtype),
-            'ScaleTensor': np.array([self.scale]).astype('float64')
+            'ScaleTensor': np.array([self.scale]).astype('float64'),
         }
         self.attrs = {}
         self.outputs = {'Out': self.inputs['X'] * self.dtype(self.scale)}
@@ -73,7 +72,6 @@ class TestScaleOpScaleVariable(OpTest):
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
-
     def init_dtype_type(self):
         pass
 
@@ -92,8 +90,9 @@ class TestScaleOpSelectedRows(unittest.TestCase):
         in_selected_rows = scope.var(in_name).get_selected_rows()
         in_selected_rows.set_height(in_height)
         in_selected_rows.set_rows(in_rows)
-        in_array = np.random.random(
-            (len(in_rows), in_row_numel)).astype(self.dtype)
+        in_array = np.random.random((len(in_rows), in_row_numel)).astype(
+            self.dtype
+        )
 
         in_tensor = in_selected_rows.get_tensor()
         in_tensor.set(in_array, place)
@@ -132,9 +131,7 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_type():
             fluid.layers.scale([10])
 
@@ -142,10 +139,10 @@ class TestScaleRaiseError(unittest.TestCase):
 
 
 # Add FP16 test
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestScaleFp16Op(TestScaleOp):
-
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -157,14 +154,12 @@ class TestScaleFp16Op(TestScaleOp):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_grad_with_place(place, ["X"],
-                                       "Out",
-                                       max_relative_error=0.05,
-                                       check_eager=True)
+            self.check_grad_with_place(
+                place, ["X"], "Out", max_relative_error=0.05, check_eager=True
+            )
 
 
 class TestScaleBF16Op(OpTest):
-
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
@@ -182,10 +177,10 @@ class TestScaleBF16Op(OpTest):
         self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_eager=True)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
-
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -201,7 +196,6 @@ class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
 
 
 class TestScaleApiStatic(unittest.TestCase):
-
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -219,13 +213,11 @@ class TestScaleApiStatic(unittest.TestCase):
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
-
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
 
 class TestScaleApiDygraph(unittest.TestCase):
-
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -239,9 +231,72 @@ class TestScaleApiDygraph(unittest.TestCase):
 
 
 class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
-
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
+
+
+class TestScaleDoubleGradCheck(unittest.TestCase):
+    def scale_wrapper(self, x):
+        return paddle.scale(x[0], scale=2.0)
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [2, 3], False, dtype)
+        data.persistable = True
+        out = paddle.scale(data, 2.0)
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.scale_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestScaleTripleGradCheck(unittest.TestCase):
+    def scale_wrapper(self, x):
+        return paddle.scale(x[0], scale=2.0)
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [2, 3], False, dtype)
+        data.persistable = True
+        out = paddle.scale(data, 2.0)
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.scale_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == "__main__":

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 from numpy import linalg as LA
@@ -22,14 +20,13 @@ import sys
 sys.path.append('..')
 from op_test import OpTest
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 paddle.enable_static()
 
 
 class TestL2LossOp(OpTest):
-    """Test squared_l2_norm
-    """
+    """Test squared_l2_norm"""
 
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
@@ -46,19 +43,18 @@ class TestL2LossOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'],
-                                   'Out',
-                                   max_relative_error=self.max_relative_error)
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', max_relative_error=self.max_relative_error
+        )
 
 
 class TestL2LossDeterministic(unittest.TestCase):
-
     def check_place(self, place):
         with paddle.fluid.dygraph.guard(place):
             x_np = np.random.rand(5, 11, 13).astype('float32')
             x = paddle.to_tensor(x_np)
-            y1 = _C_ops.squared_l2_norm(x)
-            y2 = _C_ops.squared_l2_norm(x)
+            y1 = _legacy_C_ops.squared_l2_norm(x)
+            y2 = _legacy_C_ops.squared_l2_norm(x)
             np.testing.assert_allclose(y1.numpy(), y2.numpy())
 
     def test_main(self):

@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 from .. import framework
 
 __all__ = [
-    "Dataset", "IterableDataset", "TensorDataset", "ComposeDataset",
-    "ChainDataset", "random_split", "Subset"
+    "Dataset",
+    "IterableDataset",
+    "TensorDataset",
+    "ComposeDataset",
+    "ChainDataset",
+    "random_split",
+    "Subset",
 ]
 
 
@@ -40,25 +43,25 @@ class Dataset(object):
     see :code:`paddle.io.DataLoader`.
 
     Examples:
-        
+
         .. code-block:: python
 
             import numpy as np
             from paddle.io import Dataset
-            
+
             # define a random dataset
             class RandomDataset(Dataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
-            
+
                 def __getitem__(self, idx):
                     image = np.random.random([784]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
-                
+
                 def __len__(self):
                     return self.num_samples
-            
+
             dataset = RandomDataset(10)
             for i in range(len(dataset)):
                 print(dataset[i])
@@ -69,12 +72,16 @@ class Dataset(object):
         pass
 
     def __getitem__(self, idx):
-        raise NotImplementedError("'{}' not implement in class "\
-                "{}".format('__getitem__', self.__class__.__name__))
+        raise NotImplementedError(
+            "'{}' not implement in class "
+            "{}".format('__getitem__', self.__class__.__name__)
+        )
 
     def __len__(self):
-        raise NotImplementedError("'{}' not implement in class "\
-                "{}".format('__len__', self.__class__.__name__))
+        raise NotImplementedError(
+            "'{}' not implement in class "
+            "{}".format('__len__', self.__class__.__name__)
+        )
 
 
 class IterableDataset(Dataset):
@@ -93,23 +100,23 @@ class IterableDataset(Dataset):
     see :code:`paddle.io.DataLoader`.
 
     Examples:
-        
+
         .. code-block:: python
 
             import numpy as np
             from paddle.io import IterableDataset
-            
+
             # define a random dataset
             class RandomDataset(IterableDataset):
                 def __init__(self, num_samples):
                     self.num_samples = num_samples
-            
+
                 def __iter__(self):
                     for i in range(self.num_samples):
                         image = np.random.random([784]).astype('float32')
                         label = np.random.randint(0, 9, (1, )).astype('int64')
                         yield image, label
-            
+
             dataset = RandomDataset(10)
             for img, lbl in dataset:
                 print(img, lbl)
@@ -203,7 +210,7 @@ class IterableDataset(Dataset):
                 worker_init_fn=worker_init_fn)
 
             for data in dataloader:
-                print(data) 
+                print(data)
             # outputs: [2, 5, 3, 6, 4, 7]
 
     """
@@ -212,16 +219,22 @@ class IterableDataset(Dataset):
         pass
 
     def __iter__(self):
-        raise NotImplementedError("'{}' not implement in class "\
-                "{}".format('__iter__', self.__class__.__name__))
+        raise NotImplementedError(
+            "'{}' not implement in class "
+            "{}".format('__iter__', self.__class__.__name__)
+        )
 
     def __getitem__(self, idx):
-        raise RuntimeError("'{}' should not be called for IterableDataset" \
-                "{}".format('__getitem__', self.__class__.__name__))
+        raise RuntimeError(
+            "'{}' should not be called for IterableDataset"
+            "{}".format('__getitem__', self.__class__.__name__)
+        )
 
     def __len__(self):
-        raise RuntimeError("'{}' should not be called for IterableDataset" \
-                "{}".format('__len__', self.__class__.__name__))
+        raise RuntimeError(
+            "'{}' should not be called for IterableDataset"
+            "{}".format('__len__', self.__class__.__name__)
+        )
 
 
 class TensorDataset(Dataset):
@@ -241,7 +254,7 @@ class TensorDataset(Dataset):
     Examples:
 
         .. code-block:: python
-        
+
             import numpy as np
             import paddle
             from paddle.io import TensorDataset
@@ -263,9 +276,11 @@ class TensorDataset(Dataset):
     def __init__(self, tensors):
         if not framework._non_static_mode():
             raise RuntimeError(
-                "TensorDataset con only be used in imperative mode")
-        assert all([tensor.shape[0] == tensors[0].shape[0] for tensor in tensors]), \
-                "tensors not have same shape of the 1st dimension"
+                "TensorDataset con only be used in imperative mode"
+            )
+        assert all(
+            [tensor.shape[0] == tensors[0].shape[0] for tensor in tensors]
+        ), "tensors not have same shape of the 1st dimension"
         self.tensors = tensors
 
     def __getitem__(self, index):
@@ -299,7 +314,7 @@ class ComposeDataset(Dataset):
     Examples:
 
         .. code-block:: python
-        
+
             import numpy as np
             import paddle
             from paddle.io import Dataset, ComposeDataset
@@ -314,7 +329,7 @@ class ComposeDataset(Dataset):
                     image = np.random.random([32]).astype('float32')
                     label = np.random.randint(0, 9, (1, )).astype('int64')
                     return image, label
-                
+
                 def __len__(self):
                     return self.num_samples
 
@@ -325,20 +340,23 @@ class ComposeDataset(Dataset):
                 print(label1)
                 print(image2)
                 print(label2)
-            
+
     """
 
     def __init__(self, datasets):
         self.datasets = list(datasets)
         assert len(self.datasets) > 0, "input datasets shoule not be empty"
         for i, dataset in enumerate(self.datasets):
-            assert isinstance(dataset, Dataset), \
-                    "each input dataset should be paddle.io.Dataset"
-            assert not isinstance(dataset, IterableDataset), \
-                    "paddle.io.IterableDataset not supported"
+            assert isinstance(
+                dataset, Dataset
+            ), "each input dataset should be paddle.io.Dataset"
+            assert not isinstance(
+                dataset, IterableDataset
+            ), "paddle.io.IterableDataset not supported"
             if i > 0:
-                assert len(dataset) == len(self.datasets[i-1]), \
-                        "lengths of datasets should be same"
+                assert len(dataset) == len(
+                    self.datasets[i - 1]
+                ), "lengths of datasets should be same"
 
     def __len__(self):
         return len(self.datasets[0])
@@ -366,7 +384,7 @@ class ChainDataset(IterableDataset):
     Examples:
 
         .. code-block:: python
-        
+
             import numpy as np
             import paddle
             from paddle.io import IterableDataset, ChainDataset
@@ -382,19 +400,20 @@ class ChainDataset(IterableDataset):
                         image = np.random.random([32]).astype('float32')
                         label = np.random.randint(0, 9, (1, )).astype('int64')
                         yield image, label
-                
+
             dataset = ChainDataset([RandomDataset(10), RandomDataset(10)])
             for image, label in iter(dataset):
                 print(image, label)
-            
+
     """
 
     def __init__(self, datasets):
         self.datasets = list(datasets)
         assert len(self.datasets) > 0, "input datasets shoule not be empty"
         for i, dataset in enumerate(self.datasets):
-            assert isinstance(dataset, IterableDataset), \
-                    "ChainDataset only support paddle.io.IterableDataset"
+            assert isinstance(
+                dataset, IterableDataset
+            ), "ChainDataset only support paddle.io.IterableDataset"
 
     def __iter__(self):
         for dataset in self.datasets:
@@ -405,14 +424,14 @@ class ChainDataset(IterableDataset):
 class Subset(Dataset):
     """
     Subset of a dataset at specified indices.
-    
+
     Args:
         dataset (Dataset): The whole Dataset.
         indices (sequence): Indices in the whole set selected for subset.
 
     Returns:
-        Dataset: A Dataset which is the subset of the original dataset.
-    
+        List[Dataset]: A Dataset which is the subset of the original dataset.
+
     Examples:
 
         .. code-block:: python
@@ -463,7 +482,7 @@ def random_split(dataset, lengths, generator=None):
             from paddle.io import random_split
 
             a_list = paddle.io.random_split(range(10), [3, 7])
-            print(len(a_list)) 
+            print(len(a_list))
             # 2
 
             for idx, v in enumerate(a_list[0]):
@@ -494,7 +513,7 @@ def random_split(dataset, lengths, generator=None):
     # For example var.item() and var.tolist()
     indices = paddle.randperm(sum(lengths)).numpy().tolist()
     return [
-        Subset(dataset, indices[offset - length:offset])
+        Subset(dataset, indices[offset - length : offset])
         for offset, length in zip(_accumulate(lengths), lengths)
     ]
 
@@ -502,7 +521,7 @@ def random_split(dataset, lengths, generator=None):
 def _accumulate(iterable, fn=lambda x, y: x + y):
     """
     Return running totals
-    
+
     Args:
         iterable: any iterable object for example dataset.
         y (x): one element in the iterable object.
@@ -512,9 +531,9 @@ def _accumulate(iterable, fn=lambda x, y: x + y):
         yields total from beginning iterator to current iterator.
 
     Example code:
-    
+
         .. code-block:: python
-        
+
             _accumulate([1,2,3,4,5]) --> 1 3 6 10 15
             _accumulate([1,2,3,4,5], operator.mul) --> 1 2 6 24 120
     """

@@ -18,7 +18,6 @@ import unittest
 
 
 class TestBF16DataType(unittest.TestCase):
-
     def test_matmul(self):
         a_bf16 = np.random.random((6, 7)).astype(bfloat16)
         b_bf16 = np.random.random((7, 8)).astype(bfloat16)
@@ -28,7 +27,7 @@ class TestBF16DataType(unittest.TestCase):
         b_fp32 = b_bf16.astype(np.float32)
         c_fp32 = np.matmul(a_fp32, b_fp32)
 
-        self.assertTrue(np.allclose(c_bf16, c_fp32))
+        np.testing.assert_allclose(c_bf16, c_fp32, rtol=1e-05)
 
 
 if __name__ == "__main__":

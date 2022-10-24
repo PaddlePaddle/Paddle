@@ -241,7 +241,7 @@ inline static void InferLabelShape(const std::vector<std::string>& op_labels,
       } else if (labelshape->is_default(c) || (*labelshape)[c] == -1) {
         (*labelshape)[c] = op_dim[dim_ptr];
         dim_ptr++;
-      } else {
+      } else if (op_dim[dim_ptr] != -1) {
         PADDLE_ENFORCE_EQ(
             (*labelshape)[c],
             op_dim[dim_ptr],
@@ -383,7 +383,8 @@ DenseTensor PerformReduction(const Context& dev_ctx,
   VLOG(5) << "call PerformReduction: with axis: "
           << paddle::string::join_strings(indices, ",");
   if (indices.size() == 0) return tensor;
-  return Sum<T, Context>(dev_ctx, tensor, indices, tensor.dtype(), true);
+  return Sum<T, Context>(
+      dev_ctx, tensor, phi::IntArray(indices), tensor.dtype(), true);
 }
 
 inline bool is_no_need_transpose(const std::vector<int>& axis) {

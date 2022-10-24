@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import unittest
 import os
@@ -41,10 +40,10 @@ def DataTypeCast(date_type):
 
 
 class TestCollectiveAPIRunnerBase(object):
-
     def get_model(self, train_prog, startup_prog, rank, indata=None):
         raise NotImplementedError(
-            "get model should be implemented by child class.")
+            "get model should be implemented by child class."
+        )
 
     def run_trainer(self, args):
         train_prog = fluid.Program()
@@ -66,12 +65,12 @@ class TestCollectiveAPIRunnerBase(object):
             fetch_list = []
             for elem in result:
                 fetch_list.append(elem.name)
-            out = exe.run(train_prog,
-                          feed={'tindata': indata},
-                          fetch_list=fetch_list)
+            out = exe.run(
+                train_prog, feed={'tindata': indata}, fetch_list=fetch_list
+            )
         else:
             out = self.get_model(train_prog, startup_prog, rank, indata)
-            #print(out, sys.stderr)
+            # print(out, sys.stderr)
         sys.stdout.buffer.write(pickle.dumps(out))
 
 
@@ -96,19 +95,20 @@ from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
-
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
         self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-            self._find_free_port(), self._find_free_port())
+            self._find_free_port(),
+            self._find_free_port(),
+        )
         self._python_interp = sys.executable
 
     def _find_free_port(self):
-
         def __free_port():
-            with closing(socket.socket(socket.AF_INET,
-                                       socket.SOCK_STREAM)) as s:
+            with closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ) as s:
                 s.bind(('', 0))
                 return s.getsockname()[1]
 
@@ -121,13 +121,13 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster(self, model_file, envs):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
-        #print("w0_ep:",w0_ep," w1_ep:",w1_ep)
+        # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
         env0 = {
             "FLAGS_selected_mlus": "0",
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-            "PADDLE_CURRENT_ENDPOINT": w0_ep
+            "PADDLE_CURRENT_ENDPOINT": w0_ep,
         }
 
         env1 = {
@@ -135,9 +135,9 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_TRAINER_ID": "1",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-            "PADDLE_CURRENT_ENDPOINT": w1_ep
+            "PADDLE_CURRENT_ENDPOINT": w1_ep,
         }
-        #update environment
+        # update environment
         env0.update(envs)
         env1.update(envs)
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
@@ -148,16 +148,20 @@ class TestDistBase(unittest.TestCase):
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         tr0_pipe = open("/tmp/tr0_err_%d.log" % os.getpid(), "w")
         tr1_pipe = open("/tmp/tr1_err_%d.log" % os.getpid(), "w")
-        #print(tr0_cmd)
-        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
-                                    stdout=subprocess.PIPE,
-                                    stderr=tr0_pipe,
-                                    env=env0)
+        # print(tr0_cmd)
+        tr0_proc = subprocess.Popen(
+            tr0_cmd.strip().split(),
+            stdout=subprocess.PIPE,
+            stderr=tr0_pipe,
+            env=env0,
+        )
 
-        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
-                                    stdout=subprocess.PIPE,
-                                    stderr=tr1_pipe,
-                                    env=env1)
+        tr1_proc = subprocess.Popen(
+            tr0_cmd.strip().split(),
+            stdout=subprocess.PIPE,
+            stderr=tr1_pipe,
+            env=env1,
+        )
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -170,17 +174,23 @@ class TestDistBase(unittest.TestCase):
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
         with open("/tmp/tr1_err_%d.log" % os.getpid(), "r") as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
-        return pickle.loads(tr0_out), pickle.loads(
-            tr1_out), tr0_proc.pid, tr1_proc.pid
+        return (
+            pickle.loads(tr0_out),
+            pickle.loads(tr1_out),
+            tr0_proc.pid,
+            tr1_proc.pid,
+        )
 
-    def check_with_place(self,
-                         model_file,
-                         col_type,
-                         data_type,
-                         path_id="0",
-                         static_mode="1",
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self,
+        model_file,
+        col_type,
+        data_type,
+        path_id="0",
+        static_mode="1",
+        check_error_log=False,
+        need_envs={},
+    ):
         required_envs = {
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_eager_delete_tensor_gb": "0.0",
@@ -194,7 +204,7 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_WITH_GLOO": '0',
             "BACKEND": "cncl",
             "PATH_ID": path_id,
-            "DATA_TYPE": data_type
+            "DATA_TYPE": data_type,
         }
         required_envs.update(need_envs)
         if check_error_log:
@@ -202,7 +212,8 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_logtostderr"] = "1"
             required_envs["GLOO_LOG_LEVEL"] = "TRACE"
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
-            model_file, required_envs)
+            model_file, required_envs
+        )
         np_data_type = DataTypeCast(data_type)
         np.random.seed(pid0)
         input1 = np.random.random((10, 1000)).astype(np_data_type)
@@ -210,21 +221,19 @@ class TestDistBase(unittest.TestCase):
         input2 = np.random.random((10, 1000)).astype(np_data_type)
         if col_type == "broadcast":
             need_result = input2
-            np.testing.assert_allclose(tr0_out, need_result)
-            np.testing.assert_allclose(tr1_out, need_result)
+            np.testing.assert_allclose(tr0_out[0], need_result)
+            np.testing.assert_allclose(tr1_out[0], need_result)
         elif col_type == "allreduce":
             need_result = input1 + input2
-            np.testing.assert_allclose(tr0_out,
-                                       need_result,
-                                       rtol=1e-05,
-                                       atol=1e-05)
-            np.testing.assert_allclose(tr1_out,
-                                       need_result,
-                                       rtol=1e-05,
-                                       atol=1e-05)
+            np.testing.assert_allclose(
+                tr0_out[0], need_result, rtol=1e-05, atol=1e-05
+            )
+            np.testing.assert_allclose(
+                tr1_out[0], need_result, rtol=1e-05, atol=1e-05
+            )
         elif col_type == "reduce":
             need_result = input1 + input2
-            np.testing.assert_allclose(tr0_out, need_result)
+            np.testing.assert_allclose(tr0_out[0], need_result)
         elif col_type == "allgather":
             need_result = np.vstack((input1, input2))
             tr_out0 = np.vstack((tr0_out[0], tr0_out[1]))

@@ -12,24 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import random
-import six
 import functools
 import subprocess
 import logging
 
 
 def crepr(v):
-    if isinstance(v, six.string_types):
+    if isinstance(v, str):
         return '"%s"' % v
     return str(v)
 
 
 class Rank(object):
-
     def __init__(self, kind, name, priority):
         '''
         kind: str
@@ -45,8 +41,12 @@ class Rank(object):
         if not self.nodes:
             return ''
 
-        return '{' + 'rank={};'.format(self.kind) + \
-               ','.join([node.name for node in self.nodes]) + '}'
+        return (
+            '{'
+            + 'rank={};'.format(self.kind)
+            + ','.join([node.name for node in self.nodes])
+            + '}'
+        )
 
 
 class Graph(object):
@@ -87,28 +87,36 @@ class Graph(object):
     def compile(self, dot_path):
         file = open(dot_path, 'w')
         file.write(self.__str__())
-        image_path = os.path.join(os.path.dirname(dot_path),
-                                  dot_path[:-3] + "pdf")
+        image_path = os.path.join(
+            os.path.dirname(dot_path), dot_path[:-3] + "pdf"
+        )
         cmd = ["dot", "-Tpdf", dot_path, "-o", image_path]
-        subprocess.Popen(cmd,
-                         stdin=subprocess.PIPE,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
+        subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         logging.warning("write block debug graph to {}".format(image_path))
         return image_path
 
     def show(self, dot_path):
         image = self.compile(dot_path)
         cmd = ["open", image]
-        subprocess.Popen(cmd,
-                         stdin=subprocess.PIPE,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
+        subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
 
     def _rank_repr(self):
-        ranks = sorted(six.iteritems(self.rank_groups),
-                       key=functools.cmp_to_key(
-                           lambda a, b: a[1].priority > b[1].priority))
+        ranks = sorted(
+            self.rank_groups.items(),
+            key=functools.cmp_to_key(
+                lambda a, b: a[1].priority > b[1].priority
+            ),
+        )
         repr = []
         for x in ranks:
             repr.append(str(x[1]))
@@ -121,8 +129,9 @@ class Graph(object):
         ]
 
         for attr in self.attrs:
-            reprs.append("{key}={value};".format(key=attr,
-                                                 value=crepr(self.attrs[attr])))
+            reprs.append(
+                "{key}={value};".format(key=attr, value=crepr(self.attrs[attr]))
+            )
 
         reprs.append(self._rank_repr())
 
@@ -150,14 +159,18 @@ class Node(object):
         reprs = '{name} [label={label} {extra} ];'.format(
             name=self.name,
             label=self.label,
-            extra=',' + ','.join("%s=%s" % (key, crepr(value))
-                                 for key, value in six.iteritems(self.attrs))
-            if self.attrs else "")
+            extra=','
+            + ','.join(
+                "%s=%s" % (key, crepr(value))
+                for key, value in self.attrs.items()
+            )
+            if self.attrs
+            else "",
+        )
         return reprs
 
 
 class Edge(object):
-
     def __init__(self, source, target, **attrs):
         '''
         Link source to target.
@@ -174,9 +187,15 @@ class Edge(object):
         repr = "{source} -> {target} {extra}".format(
             source=self.source.name,
             target=self.target.name,
-            extra="" if not self.attrs else "[" +
-            ','.join("{}={}".format(attr[0], crepr(attr[1]))
-                     for attr in six.iteritems(self.attrs)) + "]")
+            extra=""
+            if not self.attrs
+            else "["
+            + ','.join(
+                "{}={}".format(attr[0], crepr(attr[1]))
+                for attr in self.attrs.items()
+            )
+            + "]",
+        )
         return repr
 
 
@@ -205,31 +224,34 @@ class GraphPreviewGenerator(object):
             self.graph.show(path)
 
     def add_param(self, name, data_type, highlight=False):
-        label = '\n'.join([
-            '<<table cellpadding="5">',
-            '  <tr>',
-            '    <td bgcolor="#2b787e">',
-            '    <b>',
-            name,
-            '    </b>',
-            '    </td>',
-            '  </tr>',
-            '  <tr>',
-            '    <td>',
-            str(data_type),
-            '    </td>'
-            '  </tr>',
-            '</table>>',
-        ])
-        return self.graph.node(label,
-                               prefix="param",
-                               description=name,
-                               shape="none",
-                               style="rounded,filled,bold",
-                               width="1.3",
-                               color="#148b97" if not highlight else "orange",
-                               fontcolor="#ffffff",
-                               fontname="Arial")
+        label = '\n'.join(
+            [
+                '<<table cellpadding="5">',
+                '  <tr>',
+                '    <td bgcolor="#2b787e">',
+                '    <b>',
+                name,
+                '    </b>',
+                '    </td>',
+                '  </tr>',
+                '  <tr>',
+                '    <td>',
+                str(data_type),
+                '    </td>' '  </tr>',
+                '</table>>',
+            ]
+        )
+        return self.graph.node(
+            label,
+            prefix="param",
+            description=name,
+            shape="none",
+            style="rounded,filled,bold",
+            width="1.3",
+            color="#148b97" if not highlight else "orange",
+            fontcolor="#ffffff",
+            fontname="Arial",
+        )
 
     def add_op(self, opType, **kwargs):
         highlight = False
@@ -250,21 +272,25 @@ class GraphPreviewGenerator(object):
         )
 
     def add_arg(self, name, highlight=False):
-        return self.graph.node(crepr(name),
-                               prefix="arg",
-                               description=name,
-                               shape="box",
-                               style="rounded,filled,bold",
-                               fontname="Arial",
-                               fontcolor="#999999",
-                               color="#dddddd" if not highlight else "orange")
+        return self.graph.node(
+            crepr(name),
+            prefix="arg",
+            description=name,
+            shape="box",
+            style="rounded,filled,bold",
+            fontname="Arial",
+            fontcolor="#999999",
+            color="#dddddd" if not highlight else "orange",
+        )
 
     def add_edge(self, source, target, **kwargs):
         highlight = False
         if 'highlight' in kwargs:
             highlight = kwargs['highlight']
             del kwargs['highlight']
-        return self.graph.edge(source,
-                               target,
-                               color="#00000" if not highlight else "orange",
-                               **kwargs)
+        return self.graph.edge(
+            source,
+            target,
+            color="#00000" if not highlight else "orange",
+            **kwargs
+        )

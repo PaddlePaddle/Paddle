@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 from paddle.fluid import core
 
 
 class TestCudnnVersion(unittest.TestCase):
-
     def test_no_cudnn(self):
         cudnn_version = paddle.get_cudnn_version()
         if not core.is_compiled_with_cuda():

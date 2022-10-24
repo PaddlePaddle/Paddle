@@ -12,20 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
-import paddle.fluid as fluid
 from benchmark import BenchmarkSuite
-from op_test import OpTest
 
 # This is a demo op test case for operator benchmarking and high resolution number stability alignment.
 
 
 class TestSumOp(BenchmarkSuite):
-
     def setUp(self):
         self.op_type = "sum"
         self.customize_testcase()

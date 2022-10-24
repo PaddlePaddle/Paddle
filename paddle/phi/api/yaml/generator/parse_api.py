@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import argparse
-from pathlib import Path
 
 import yaml
 
@@ -27,7 +26,7 @@ def main(api_yaml_path, output_path, backward):
             apis = []
         else:
             apis = [
-                parse_api_entry(api, "backward_api" if backward else "api")
+                parse_api_entry(api, "backward_op" if backward else "op")
                 for api in apis
             ]
 
@@ -37,11 +36,12 @@ def main(api_yaml_path, output_path, backward):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Parse api yaml into canonical format.")
+        description="Parse api yaml into canonical format."
+    )
     parser.add_argument('--api_yaml_path', type=str, help="api yaml file.")
-    parser.add_argument("--output_path",
-                        type=str,
-                        help="path to save parsed yaml file.")
+    parser.add_argument(
+        "--output_path", type=str, help="path to save parsed yaml file."
+    )
     parser.add_argument("--backward", action="store_true", default=False)
 
     args = parser.parse_args()

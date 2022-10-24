@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 
 os.environ['CPU_NUM'] = '2'
@@ -23,7 +21,6 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 import paddle.fluid.core as core
-from paddle.fluid.backward import append_backward
 import paddle.fluid.compiler as compiler
 import numpy
 import multiprocessing
@@ -35,7 +32,6 @@ fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 class TestEagerDeletionWhileOpBase(unittest.TestCase):
-
     def test_main(self):
         places = [
             core.CPUPlace(),
@@ -54,29 +50,30 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         self.with_data_parallel = with_data_parallel
 
         if not core.is_compiled_with_cuda() and isinstance(
-                self.place, core.CUDAPlace):
+            self.place, core.CUDAPlace
+        ):
             return
 
         if isinstance(self.place, core.CUDAPlace):
-            device_cnt = core.get_cuda_device_count(
-            ) if self.with_data_parallel else 1
+            device_cnt = (
+                core.get_cuda_device_count() if self.with_data_parallel else 1
+            )
         else:
-            device_cnt = int(
-                os.environ.get('CPU_NUM', multiprocessing.cpu_count())
-            ) if self.with_data_parallel else 1
+            device_cnt = (
+                int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+                if self.with_data_parallel
+                else 1
+            )
 
-        d0 = layers.data("d0",
-                         shape=[10],
-                         append_batch_size=False,
-                         dtype='float32')
-        d1 = layers.data("d1",
-                         shape=[10],
-                         append_batch_size=False,
-                         dtype='float32')
-        d2 = layers.data("d2",
-                         shape=[10],
-                         append_batch_size=False,
-                         dtype='float32')
+        d0 = layers.data(
+            "d0", shape=[10], append_batch_size=False, dtype='float32'
+        )
+        d1 = layers.data(
+            "d1", shape=[10], append_batch_size=False, dtype='float32'
+        )
+        d2 = layers.data(
+            "d2", shape=[10], append_batch_size=False, dtype='float32'
+        )
 
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
@@ -139,7 +136,8 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         optim.minimize(loss)
 
         gc_vars = core._get_eager_deletion_vars(
-            fluid.default_main_program().desc, [loss.name])
+            fluid.default_main_program().desc, [loss.name]
+        )
         self.assertEqual(len(gc_vars), 5)
 
         exe = Executor(self.place)
@@ -148,8 +146,8 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         prog = fluid.default_main_program()
         if self.with_data_parallel:
             prog = compiler.CompiledProgram(
-                fluid.default_main_program()).with_data_parallel(
-                    loss_name=loss.name)
+                fluid.default_main_program()
+            ).with_data_parallel(loss_name=loss.name)
 
         for _ in range(5):
             d = []
@@ -160,13 +158,11 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
                 else:
                     d.append(numpy.array([tmp] * device_cnt))
 
-            outs = exe.run(program=prog,
-                           feed={
-                               'd0': d[0],
-                               'd1': d[1],
-                               'd2': d[2]
-                           },
-                           fetch_list=[sum_result])
+            outs = exe.run(
+                program=prog,
+                feed={'d0': d[0], 'd1': d[1], 'd2': d[2]},
+                fetch_list=[sum_result],
+            )
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
 

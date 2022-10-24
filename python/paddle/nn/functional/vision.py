@@ -16,12 +16,10 @@ from ...device import get_cudnn_version
 from ...static import Variable
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid import dygraph_utils
-import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 from ...device import is_compiled_with_rocm
 from paddle import in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 from paddle.framework import _non_static_mode
 
 __all__ = []
@@ -37,7 +35,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     Args:
         theta (Tensor) - A tensor with shape [N, 2, 3] or [N, 3, 4]. It contains a batch of affine transform parameters.
                            The data type can be float32 or float64.
-        out_shape (Tensor | list | tuple): Type can be a 1-D Tensor, list, or tuple. It is used to represent the shape of the output in an affine transformation, in the format ``[N, C, H, W]`` or ``[N, C, D, H, W]``. 
+        out_shape (Tensor | list | tuple): Type can be a 1-D Tensor, list, or tuple. It is used to represent the shape of the output in an affine transformation, in the format ``[N, C, H, W]`` or ``[N, C, D, H, W]``.
                                            When the format is ``[N, C, H, W]``, it represents the batch size, number of channels, height and width. When the format is ``[N, C, D, H, W]``, it represents the batch size, number of channels, depth, height and width.
                                            The data type must be int32.
         align_corners(bool, optional): if True, aligns the centers of the 4 (4D) or 8 (5D) corner pixels of the input and output tensors, and preserves the value of the corner pixels. Default: True
@@ -60,7 +58,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                     [1, 2, 3, 3],
                     align_corners=False)
             print(y_t)
-            
+
             #[[[[ 1.0333333   0.76666665]
             #   [ 0.76666665  1.0999999 ]
             #   [ 0.5         1.4333333 ]]
@@ -84,63 +82,82 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
     if theta.shape[1] == 3:
         use_cudnn = False
     if is_compiled_with_rocm():
-        use_cudnn = False  # ROCM platform do not have MIOPEN kernel for affine_grid
+        use_cudnn = (
+            False  # ROCM platform do not have MIOPEN kernel for affine_grid
+        )
 
     if in_dygraph_mode():
-        _out_shape = out_shape.numpy().tolist() if isinstance(
-            out_shape, Variable) else out_shape
-        return _C_ops.final_state_affine_grid(theta, _out_shape, use_cudnn,
-                                              align_corners)
+        _out_shape = (
+            out_shape.numpy().tolist()
+            if isinstance(out_shape, Variable)
+            else out_shape
+        )
+        return _C_ops.affine_grid(theta, _out_shape, use_cudnn, align_corners)
     elif in_dynamic_mode():
-        _out_shape = out_shape.numpy().tolist() if isinstance(
-            out_shape, Variable) else out_shape
-        return _C_ops.affine_grid(theta, "output_shape", _out_shape,
-                                  "align_corners", align_corners, "use_cudnn",
-                                  use_cudnn)
+        _out_shape = (
+            out_shape.numpy().tolist()
+            if isinstance(out_shape, Variable)
+            else out_shape
+        )
+        return _legacy_C_ops.affine_grid(
+            theta,
+            "output_shape",
+            _out_shape,
+            "align_corners",
+            align_corners,
+            "use_cudnn",
+            use_cudnn,
+        )
 
     helper = LayerHelper('affine_grid')
-    check_variable_and_dtype(theta, 'theta', ['float32', 'float64'],
-                             'affine_grid')
+    check_variable_and_dtype(
+        theta, 'theta', ['float32', 'float64'], 'affine_grid'
+    )
     out = helper.create_variable_for_type_inference(theta.dtype)
     ipts = {'Theta': theta}
     attrs = {"align_corners": align_corners, "use_cudnn": use_cudnn}
     if isinstance(out_shape, Variable):
         ipts['OutputShape'] = out_shape
-        check_variable_and_dtype(out_shape, 'out_shape', ['int32'],
-                                 'affine_grid')
+        check_variable_and_dtype(
+            out_shape, 'out_shape', ['int32'], 'affine_grid'
+        )
     else:
         attrs['output_shape'] = out_shape
 
-    helper.append_op(type='affine_grid',
-                     inputs=ipts,
-                     outputs={'Output': out},
-                     attrs=None if len(attrs) == 0 else attrs)
+    helper.append_op(
+        type='affine_grid',
+        inputs=ipts,
+        outputs={'Output': out},
+        attrs=None if len(attrs) == 0 else attrs,
+    )
     return out
 
 
-def grid_sample(x,
-                grid,
-                mode='bilinear',
-                padding_mode='zeros',
-                align_corners=True,
-                name=None):
+def grid_sample(
+    x,
+    grid,
+    mode='bilinear',
+    padding_mode='zeros',
+    align_corners=True,
+    name=None,
+):
     """
-    This operation samples input X by using bilinear interpolation or
+    Sample input X by using bilinear interpolation or
     nearest interpolation based on flow field grid, which is usually
-    generated by :code:`affine_grid` . When the input X is 4-D Tensor, 
-    the grid of shape [N, H, W, 2] is the concatenation of (x, y) 
-    coordinates with shape [N, H, W] each, where x is indexing the 4th 
-    dimension (in width dimension) of input data x and y is indexing 
-    the 3rd dimension (in height dimension), finally results is the 
+    generated by :code:`affine_grid` . When the input X is 4-D Tensor,
+    the grid of shape [N, H, W, 2] is the concatenation of (x, y)
+    coordinates with shape [N, H, W] each, where x is indexing the 4th
+    dimension (in width dimension) of input data x and y is indexing
+    the 3rd dimension (in height dimension), finally results is the
     bilinear interpolation or nearest value of 4 nearest corner
-    points. The output tensor shape will be [N, C, H, W]. When the input X 
-    is 5-D Tensor, the grid of shape [N, D, H, W, 3] is the concatenation 
-    of (x, y, z) coordinates with shape [N, D, H, W] each, where x is 
-    indexing the 5th dimension (in width dimension) of input data x, y is 
-    indexing the 4th dimension (in height dimension) and z is indexing the 
-    3rd dimension (in depth dimension) finally results is the bilinear 
-    interpolation or nearest value of 8 nearest cornerpoints. The output 
-    tensor shape will be [N, C, D, H, W]. 
+    points. The output tensor shape will be [N, C, H, W]. When the input X
+    is 5-D Tensor, the grid of shape [N, D, H, W, 3] is the concatenation
+    of (x, y, z) coordinates with shape [N, D, H, W] each, where x is
+    indexing the 5th dimension (in width dimension) of input data x, y is
+    indexing the 4th dimension (in height dimension) and z is indexing the
+    3rd dimension (in depth dimension) finally results is the bilinear
+    interpolation or nearest value of 8 nearest cornerpoints. The output
+    tensor shape will be [N, C, D, H, W].
 
 
 
@@ -154,7 +171,7 @@ def grid_sample(x,
         grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
 
     Step 2:
-    
+
     Indices input data X with grid (x, y) in each [H, W] area, and bilinear
     interpolate point value by 4 nearest points or nearest interpolate point value
     by nearest point.
@@ -190,12 +207,12 @@ def grid_sample(x,
 
     Args:
         x(Tensor): The input tensor, which is a 4-d tensor with shape
-                     [N, C, H, W] or a 5-d tensor with shape [N, C, D, H, W], 
-                     N is the batch size, C is the channel number, 
+                     [N, C, H, W] or a 5-d tensor with shape [N, C, D, H, W],
+                     N is the batch size, C is the channel number,
                      D, H and W is the feature depth, height and width.
                      The data type is float32 or float64.
-        grid(Tensor): Input grid tensor, which is a 4-d tensor with shape [N, grid_H, 
-                        grid_W, 2] or a 5-d tensor with shape [N, grid_D, grid_H, 
+        grid(Tensor): Input grid tensor, which is a 4-d tensor with shape [N, grid_H,
+                        grid_W, 2] or a 5-d tensor with shape [N, grid_D, grid_H,
                         grid_W, 3]. The data type is float32 or float64.
         mode(str, optional): The interpolation method which can be 'bilinear' or 'nearest'.
                          Default: 'bilinear'.
@@ -210,17 +227,18 @@ def grid_sample(x,
                              None by default.
 
     Returns:
-        Tensor, The shape of output is [N, C, grid_H, grid_W] or [N, C, grid_D, grid_H, grid_W] in which `grid_D` is the depth of grid, 
+
+        Tensor, The shape of output is [N, C, grid_H, grid_W] or [N, C, grid_D, grid_H, grid_W] in which `grid_D` is the depth of grid,
                 `grid_H` is the height of grid and `grid_W` is the width of grid. The data type is same as input tensor.
 
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn.functional as F
-            
-            # x shape=[1, 1, 3, 3]           
+
+            # x shape=[1, 1, 3, 3]
             x = paddle.to_tensor([[[[-0.6,  0.8, -0.5],
                                     [-0.5,  0.2,  1.2],
                                     [ 1.4,  0.3, -0.2]]]],dtype='float64')
@@ -244,7 +262,7 @@ def grid_sample(x,
                 padding_mode='border',
                 align_corners=True)
             print(y_t)
-            
+
             # output shape = [1, 1, 3, 4]
             # [[[[ 0.34   0.016  0.086 -0.448]
             #    [ 0.55  -0.076  0.35   0.59 ]
@@ -255,51 +273,75 @@ def grid_sample(x,
     _padding_modes = ['zeros', 'reflection', 'border']
     if mode not in _modes:
         raise ValueError(
-            "The mode of grid sample function should be in {}, but got: {}".
-            format(_modes, mode))
+            "The mode of grid sample function should be in {}, but got: {}".format(
+                _modes, mode
+            )
+        )
     if padding_mode not in _padding_modes:
         raise ValueError(
-            "The padding mode of grid sample function should be in {}, but got: {}"
-            .format(_padding_modes, padding_mode))
+            "The padding mode of grid sample function should be in {}, but got: {}".format(
+                _padding_modes, padding_mode
+            )
+        )
 
     if not isinstance(align_corners, bool):
-        raise ValueError("The align corners should be bool, but got: {}".format(
-            align_corners))
+        raise ValueError(
+            "The align corners should be bool, but got: {}".format(
+                align_corners
+            )
+        )
 
     cudnn_version = get_cudnn_version()
     use_cudnn = False
-    if not is_compiled_with_rocm() and (
-            cudnn_version is not None
-    ) and align_corners and mode == 'bilinear' and padding_mode == 'zeros':
+    if (
+        not is_compiled_with_rocm()
+        and (cudnn_version is not None)
+        and align_corners
+        and mode == 'bilinear'
+        and padding_mode == 'zeros'
+    ):
         use_cudnn = True
         # CUDNN always computes gradients for all inputs
         x.stop_gradient = False
         grid.stop_gradient = False
 
+    if len(grid.shape) == 5:
+        use_cudnn = False
+
     if in_dygraph_mode():
-        return _C_ops.final_state_grid_sample(x, grid, mode, padding_mode,
-                                              align_corners)
+        return _C_ops.grid_sample(x, grid, mode, padding_mode, align_corners)
     elif in_dynamic_mode():
-        attrs = ('mode', mode, 'padding_mode', padding_mode, 'align_corners',
-                 align_corners, 'use_cudnn', use_cudnn)
-        out = getattr(_C_ops, 'grid_sampler')(x, grid, *attrs)
+        attrs = (
+            'mode',
+            mode,
+            'padding_mode',
+            padding_mode,
+            'align_corners',
+            align_corners,
+            'use_cudnn',
+            use_cudnn,
+        )
+        out = getattr(_legacy_C_ops, 'grid_sampler')(x, grid, *attrs)
     else:
         helper = LayerHelper("grid_sample", **locals())
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sample')
-        check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
-                                 'grid_sample')
+        check_variable_and_dtype(
+            grid, 'grid', ['float32', 'float64'], 'grid_sample'
+        )
         ipts = {'X': x, 'Grid': grid}
         attrs = {
             'mode': mode,
             'padding_mode': padding_mode,
             'align_corners': align_corners,
-            'use_cudnn': use_cudnn
+            'use_cudnn': use_cudnn,
         }
         out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(type='grid_sampler',
-                         inputs=ipts,
-                         attrs=attrs,
-                         outputs={'Output': out})
+        helper.append_op(
+            type='grid_sampler',
+            inputs=ipts,
+            attrs=attrs,
+            outputs={'Output': out},
+        )
     return out
 
 
@@ -307,25 +349,27 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     """
     This API implements pixel shuffle operation.
     See more details in :ref:`api_nn_vision_PixelShuffle` .
+
+
     Parameters:
         x(Tensor): 4-D tensor, the data type should be float32 or float64.
         upscale_factor(int): factor to increase spatial resolution.
-        data_format (str): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string from: "NCHW", "NHWC". The default is "NCHW". When it is "NCHW", the data is stored in the order of: [batch_size, input_channels, input_height, input_width].
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+
     Returns:
         Out(tensor): Reshaped tensor according to the new dimension.
-    Raises:
-        ValueError: If the square of upscale_factor cannot divide the channels of input.
+
     Examples:
         .. code-block:: python
 
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
-            x = np.random.randn(2, 9, 4, 4).astype(np.float32)
-            x_var = paddle.to_tensor(x)
-            out_var = F.pixel_shuffle(x_var, 3)
+
+            x = paddle.randn(shape=[2,9,4,4])
+            out_var = F.pixel_shuffle(x, 3)
             out = out_var.numpy()
+            print(out.shape)
             # (2, 1, 12, 12)
     """
     if not isinstance(upscale_factor, int):
@@ -334,22 +378,25 @@ def pixel_shuffle(x, upscale_factor, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format))
+            "But recevie Attr(data_format): {} ".format(data_format)
+        )
+    if in_dygraph_mode():
+        return _C_ops.pixel_shuffle(x, upscale_factor, data_format)
 
-    if in_dynamic_mode():
-        return _C_ops.pixel_shuffle(x, "upscale_factor", upscale_factor,
-                                    "data_format", data_format)
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.pixel_shuffle(
+            x, "upscale_factor", upscale_factor, "data_format", data_format
+        )
 
     helper = LayerHelper("pixel_shuffle", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_shuffle')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="pixel_shuffle",
-                     inputs={"X": x},
-                     outputs={"Out": out},
-                     attrs={
-                         "upscale_factor": upscale_factor,
-                         "data_format": data_format
-                     })
+    helper.append_op(
+        type="pixel_shuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"upscale_factor": upscale_factor, "data_format": data_format},
+    )
     return out
 
 
@@ -361,7 +408,7 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     Parameters:
         x (Tensor): 4-D tensor, the data type should be float32 or float64.
         downscale_factor (int): Factor to decrease spatial resolution.
-        data_format (str): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
+        data_format (str, optional): The data format of the input and output data. An optional string of NCHW or NHWC. The default is NCHW. When it is NCHW, the data is stored in the order of [batch_size, input_channels, input_height, input_width].
         name (str, optional): Name for the operation (optional, default is None). Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -374,12 +421,15 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
             import paddle.nn.functional as F
             x = paddle.randn([2, 1, 12, 12])
             out = F.pixel_unshuffle(x, 3)
-            # out.shape = [2, 9, 4, 4]
+            print(out.shape)
+            # [2, 9, 4, 4]
     """
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".
-            format(x.shape))
+            "Input x should be 4D tensor, but received x with the shape of {}".format(
+                x.shape
+            )
+        )
 
     if not isinstance(downscale_factor, int):
         raise TypeError("Downscale factor must be int type")
@@ -390,22 +440,26 @@ def pixel_unshuffle(x, downscale_factor, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format))
+            "But recevie Attr(data_format): {} ".format(data_format)
+        )
 
     if _non_static_mode():
-        return _C_ops.pixel_unshuffle(x, "downscale_factor", downscale_factor,
-                                      "data_format", data_format)
+        return _legacy_C_ops.pixel_unshuffle(
+            x, "downscale_factor", downscale_factor, "data_format", data_format
+        )
 
     helper = LayerHelper("pixel_unshuffle", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pixel_unshuffle')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="pixel_unshuffle",
-                     inputs={"X": x},
-                     outputs={"Out": out},
-                     attrs={
-                         "downscale_factor": downscale_factor,
-                         "data_format": data_format
-                     })
+    helper.append_op(
+        type="pixel_unshuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={
+            "downscale_factor": downscale_factor,
+            "data_format": data_format,
+        },
+    )
     return out
 
 
@@ -446,8 +500,10 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
     """
     if len(x.shape) != 4:
         raise ValueError(
-            "Input x should be 4D tensor, but received x with the shape of {}".
-            format(x.shape))
+            "Input x should be 4D tensor, but received x with the shape of {}".format(
+                x.shape
+            )
+        )
 
     if not isinstance(groups, int):
         raise TypeError("groups must be int type")
@@ -458,20 +514,21 @@ def channel_shuffle(x, groups, data_format="NCHW", name=None):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'."
-            "But recevie Attr(data_format): {} ".format(data_format))
+            "But recevie Attr(data_format): {} ".format(data_format)
+        )
 
     if _non_static_mode():
-        return _C_ops.channel_shuffle(x, "groups", groups, "data_format",
-                                      data_format)
+        return _legacy_C_ops.channel_shuffle(
+            x, "groups", groups, "data_format", data_format
+        )
 
     helper = LayerHelper("channel_shuffle", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'channel_shuffle')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="channel_shuffle",
-                     inputs={"X": x},
-                     outputs={"Out": out},
-                     attrs={
-                         "groups": groups,
-                         "data_format": data_format
-                     })
+    helper.append_op(
+        type="channel_shuffle",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"groups": groups, "data_format": data_format},
+    )
     return out

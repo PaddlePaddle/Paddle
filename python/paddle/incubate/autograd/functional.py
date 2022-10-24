@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import typing
 
 import paddle
@@ -39,7 +38,7 @@ def vjp(func, xs, v=None):
 
     Returns:
         output(tuple):
-        
+
             - func_out(Tensor|tuple[Tensor]): The output of ``func(xs)`` .
             - vjp(Tensor|tuple[Tensor]): The vjp result.
 
@@ -94,7 +93,7 @@ def jvp(func, xs, v=None):
             Sequence of Tensors.
         v(Tensor|Sequence[Tensor]|None, Optional): The tangent vector invovled
             in the JVP computation. The ``v`` matches the size and shape of
-            ``xs`` . Default value is None and in this case is equivalent to 
+            ``xs`` . Default value is None and in this case is equivalent to
             all ones the same size of ``xs`` .
 
     Returns:
@@ -154,7 +153,7 @@ def _double_backward_trick(ys, xs, v):
 
 
 def _zeros_like_with_grad(xs):
-    """Create a zero or zeros sequence Tensor like ``xs`` with a flag 
+    """Create a zero or zeros sequence Tensor like ``xs`` with a flag
     ``stop_graident=False`` .
     """
     if not isinstance(xs, typing.Sequence):
@@ -173,17 +172,17 @@ class Jacobian(object):
     r"""
     Computes the Jacobian matrix of a given function.
 
-    If the function has multiple inputs and multiple outputs, during internal 
-    implementation, all input tensors are concatenated after being flatten, 
-    the batch dimension is retained, and the output is subject to the same 
+    If the function has multiple inputs and multiple outputs, during internal
+    implementation, all input tensors are concatenated after being flatten,
+    the batch dimension is retained, and the output is subject to the same
     processing rules.
 
-    Once the Jacobian ``J`` is constructed, you can use a multidimensional index 
-    to retrieve the submatrix of ``J``, as same as slicing a Tensor. The 
-    submatrix is lazily evaluated along row axis, and will be cached once 
+    Once the Jacobian ``J`` is constructed, you can use a multidimensional index
+    to retrieve the submatrix of ``J``, as same as slicing a Tensor. The
+    submatrix is lazily evaluated along row axis, and will be cached once
     evaluated.
 
-    For examples, supposing ``is_batched=True``, you can retrieve the submatrix 
+    For examples, supposing ``is_batched=True``, you can retrieve the submatrix
     by following methods:
 
         * J[:], retrieving the full matrix.
@@ -203,11 +202,11 @@ class Jacobian(object):
 
     Args:
 
-        func (Callable): A python function that takes a Tensor or a sequence of 
+        func (Callable): A python function that takes a Tensor or a sequence of
             Tensors as inputs(the first dimension is batch size) and
             returns a Tensor  a sequence of Tensors.
         xs (Tensor|Sequence[Tensor]): The input to the function ``func`` .
-        is_batched (bool): If true, the first axis is batch axis. Defaults to 
+        is_batched (bool): If true, the first axis is batch axis. Defaults to
             False.
 
     Returns:
@@ -254,8 +253,7 @@ class Jacobian(object):
 
     @property
     def shape(self):
-        """The shape of flattened Jacobian matrix.
-        """
+        """The shape of flattened Jacobian matrix."""
         return self._jacobian.shape
 
 
@@ -263,11 +261,11 @@ class Hessian(object):
     """
     Computes the Hessian matrix  with a given ``func`` with respect to ``xs`` .
 
-    If the function has multiple inputs, during internal implementation, 
-    all input tensors are concatenated after being flatten, the batch dimension 
+    If the function has multiple inputs, during internal implementation,
+    all input tensors are concatenated after being flatten, the batch dimension
     is retained.
 
-    The Hessian submatrix is lazily evaluated, and can be retrieved with a 
+    The Hessian submatrix is lazily evaluated, and can be retrieved with a
     multidimensional indexes. See details ``Jacobian`` .
 
     Warning:
@@ -275,11 +273,11 @@ class Hessian(object):
 
     Args:
         func (Callable): A python function that takes a Tensor or a Tensor
-            sequence as inputs and returns a Tensor with shape 
+            sequence as inputs and returns a Tensor with shape
             ``[batch_size, 1]`` with batch or ``[1]`` without batch.
-        xs (Tensor|Sequence(Tensor)): The input Tensor or Tensor sequence of 
+        xs (Tensor|Sequence(Tensor)): The input Tensor or Tensor sequence of
             the function ``func``.
-        is_batched (bool): If true, the first axis is batch axis. Defaults to 
+        is_batched (bool): If true, the first axis is batch axis. Defaults to
             False.
 
     Returns:
@@ -309,11 +307,11 @@ class Hessian(object):
     """
 
     def __init__(self, func, xs, is_batched=False):
-
         def _jac_func(*xs):
             jac = Jacobian(func, xs, is_batched=is_batched)
-            if (is_batched and jac.shape[1] != 1) or (not is_batched
-                                                      and jac.shape[0] != 1):
+            if (is_batched and jac.shape[1] != 1) or (
+                not is_batched and jac.shape[0] != 1
+            ):
                 raise RuntimeError(
                     "The function given to Hessian shoud return as single element Tensor or batched single element Tensor."
                 )
@@ -326,28 +324,27 @@ class Hessian(object):
 
     @property
     def shape(self):
-        """The shape of flattened Hessian matrix.
-        """
+        """The shape of flattened Hessian matrix."""
         return self.symbolic.shape
 
 
 class _Jacobian(object):
     """The base class for computing Jacobian matrix.
 
-    ``_Jacobian`` implementes the core logic of multidimensional index and lazy 
-    evaluation for Jacobian matrix, subclass only need to overwrite following 
+    ``_Jacobian`` implementes the core logic of multidimensional index and lazy
+    evaluation for Jacobian matrix, subclass only need to overwrite following
     methods:
 
-        * ``_lazy_axis()``,  return the axis along which will be lazy 
+        * ``_lazy_axis()``,  return the axis along which will be lazy
             evaluating.
         * ``_flatten(xs)``, flattens the inputs ``xs``.
         * ``_evaluate(index)``, evaluates one slice along ``_lazy_axis`` .
 
     Notes:
 
-        Because currently PaddlePaddle only support reverse differentiation by 
-        ``paddle.grad``, so lazy evaluation is only supported along the row of 
-        Jacobian matrix, which means that slicing along row will get better 
+        Because currently PaddlePaddle only support reverse differentiation by
+        ``paddle.grad``, so lazy evaluation is only supported along the row of
+        Jacobian matrix, which means that slicing along row will get better
         performance.
 
     """
@@ -370,32 +367,41 @@ class _Jacobian(object):
 
     @property
     def _lazy_axis(self):
-        """"The axis of lazily evaluated."""
+        """ "The axis of lazily evaluated."""
         raise NotImplementedError
 
     def _lazy_indexes(self, indexes):
         idx = indexes[self._lazy_axis]
-        return (idx, ) if isinstance(idx, int) else tuple(
-            range(idx.start, idx.stop, idx.step))
+        return (
+            (idx,)
+            if isinstance(idx, int)
+            else tuple(range(idx.start, idx.stop, idx.step))
+        )
 
     def _flatten(self, xs):
         raise NotImplementedError
 
     def _shifted_indexes(self, indexes, lazy_axis_size=0):
         idx = indexes[self._lazy_axis]
-        shifted_lazy_axis_idx = 0 if isinstance(idx, int) else slice(
-            0, lazy_axis_size, 1)
-        return indexes[:self._lazy_axis] + (
-            shifted_lazy_axis_idx, ) + indexes[self._lazy_axis + 1:]
+        shifted_lazy_axis_idx = (
+            0 if isinstance(idx, int) else slice(0, lazy_axis_size, 1)
+        )
+        return (
+            indexes[: self._lazy_axis]
+            + (shifted_lazy_axis_idx,)
+            + indexes[self._lazy_axis + 1 :]
+        )
 
     def __getitem__(self, indexes):
         indexes = _multi_index(indexes, self.shape)
 
         if isinstance(indexes[self._lazy_axis], int):
-            other_indexes = indexes[:self._lazy_axis] + \
-                indexes[self._lazy_axis+1:]
-            return self._cached_evaluate(
-                indexes[self._lazy_axis])[other_indexes]
+            other_indexes = (
+                indexes[: self._lazy_axis] + indexes[self._lazy_axis + 1 :]
+            )
+            return self._cached_evaluate(indexes[self._lazy_axis])[
+                other_indexes
+            ]
         lazy_indexes = self._lazy_indexes(indexes)
         # Using concat and reshape to replace stack operator temporarily, as
         # it is not a primitive operator.
@@ -403,7 +409,8 @@ class _Jacobian(object):
         shape[self._lazy_axis] = len(lazy_indexes)
         part_jac = paddle.concat(
             [self._cached_evaluate(i) for i in lazy_indexes],
-            axis=self._lazy_axis).reshape(shape)
+            axis=self._lazy_axis,
+        ).reshape(shape)
         return part_jac[self._shifted_indexes(indexes, len(lazy_indexes))]
 
     def _cached_evaluate(self, k):
@@ -420,7 +427,7 @@ class _Jacobian(object):
 
 class _JacobianNoBatch(_Jacobian):
     """Compute Jacobian matrix without batch dimension.
-    Suppose the mapping is :math:`f: R^M \to R^N`, the output shape is 
+    Suppose the mapping is :math:`f: R^M \to R^N`, the output shape is
     ``(N, M)`` .
     """
 
@@ -436,18 +443,20 @@ class _JacobianNoBatch(_Jacobian):
         return 0
 
     def _flatten(self, xs):
-        return paddle.concat(tuple(x.reshape((-1, )) for x in xs))
+        return paddle.concat(tuple(x.reshape((-1,)) for x in xs))
 
     def _evaluate(self, row_index):
-        return self._flatten(_grad(
-            self._flatten_ys[row_index],
-            self._xs,
-        ))
+        return self._flatten(
+            _grad(
+                self._flatten_ys[row_index],
+                self._xs,
+            )
+        )
 
 
 class _JacobianBatchFirst(_Jacobian):
     """Compute Jacobian matrix with batch at first axis.
-    Suppose the mapping is :math:`f: R^{B,M} \to R^{B,N}`, the output shape is 
+    Suppose the mapping is :math:`f: R^{B,M} \to R^{B,N}`, the output shape is
     ``(B, N, M)`` .
     """
 
@@ -456,8 +465,11 @@ class _JacobianBatchFirst(_Jacobian):
 
     @property
     def shape(self):
-        return (self._flatten_xs.shape[0], self._flatten_ys.shape[1],
-                self._flatten_xs.shape[1])
+        return (
+            self._flatten_xs.shape[0],
+            self._flatten_ys.shape[1],
+            self._flatten_xs.shape[1],
+        )
 
     @property
     def _lazy_axis(self):
@@ -465,7 +477,8 @@ class _JacobianBatchFirst(_Jacobian):
 
     def _flatten(self, xs):
         return paddle.concat(
-            tuple(x.reshape((x.shape[0], -1)) for x in utils.as_tensors(xs)), 1)
+            tuple(x.reshape((x.shape[0], -1)) for x in utils.as_tensors(xs)), 1
+        )
 
     def _evaluate(self, row_index):
         return self._flatten(_grad(self._flatten_ys[:, row_index], self._xs))
@@ -475,13 +488,13 @@ def _multi_index(indexes, shape):
     """A tool for parsing N-dimensional index into a standard format.
 
     Currently supporting following input format:
-        * ([positive|negative|slice], ...), the right-most elements can be 
+        * ([positive|negative|slice], ...), the right-most elements can be
             omited.
 
     The standard format after converted is slice tuple which contains N elements:
         * ([positive|slice], ..., [positive|slice])
 
-    Notes: 
+    Notes:
         Ellipsis indexes such as ``(..., i), (i, ...)`` is not supported.
 
     Args:
@@ -491,24 +504,27 @@ def _multi_index(indexes, shape):
     Returns:
         tuple: The standard format index as the above description.
     """
-    indexes = indexes if isinstance(indexes, typing.Sequence) else (indexes, )
+    indexes = indexes if isinstance(indexes, typing.Sequence) else (indexes,)
     if any(isinstance(i, type(Ellipsis)) for i in indexes):
         raise IndexError('Ellipsis index currently is not supported.')
     # Fill the right-most elements.
-    indexes = indexes + (slice(0, None, None), ) * (len(shape) - len(indexes))
+    indexes = indexes + (slice(0, None, None),) * (len(shape) - len(indexes))
     # Convert to positive index.
     positive_indexes = []
     for i, index in enumerate(indexes):
         if isinstance(index, slice):
-            index = slice(index.start or 0, index.stop or shape[i], index.step
-                          or 1)
+            index = slice(
+                index.start or 0, index.stop or shape[i], index.step or 1
+            )
             positive_indexes.append(
                 slice(
                     index.start + shape[i] if index.start < 0 else index.start,
                     index.stop + shape[i] if index.stop < 0 else index.stop,
                     # Negative step means index backward, no need to convert to
                     # positive interger.
-                    index.step))
+                    index.step,
+                )
+            )
         elif isinstance(index, int):
             positive_indexes.append(index + shape[i] if index < 0 else index)
         else:
@@ -523,8 +539,8 @@ def _replace_none_with_zero_tensor(xs, refs):
         return xs
     elif isinstance(xs, typing.Sequence):
         return tuple(
-            _replace_none_with_zero_tensor(x, refs[i])
-            for i, x in enumerate(xs))
+            _replace_none_with_zero_tensor(x, refs[i]) for i, x in enumerate(xs)
+        )
     else:
         return xs
 
@@ -539,8 +555,8 @@ def _grad(ys, xs, v=None):
         none in outputs will be replaced by zero tensor.
     * The ``create_graph`` flag is removed and set defaults to true internally,
         only makes sense in dynamic graph.
-    * When xs is a single Tensor, ``paddle.grad`` returns a list which only 
-        contains one Tensor. It may confuse users, thus in this case we improve 
+    * When xs is a single Tensor, ``paddle.grad`` returns a list which only
+        contains one Tensor. It may confuse users, thus in this case we improve
         to return a single Tensor in _grad interface.
 
     Args:
@@ -559,9 +575,9 @@ def _grad(ys, xs, v=None):
             grad_outputs is a Tensor. Default None.
 
     Returns:
-        Tensor|tuple[Tensor]: Tensor or a tuple of Tensors, whose length is the 
-            same as the Tensor number inside inputs, and the i-th returned 
-            Tensor is the sum of gradients of outputs with respect to the i-th 
+        Tensor|tuple[Tensor]: Tensor or a tuple of Tensors, whose length is the
+            same as the Tensor number inside inputs, and the i-th returned
+            Tensor is the sum of gradients of outputs with respect to the i-th
             inputs.
     """
     if paddle.fluid._non_static_mode():
@@ -569,8 +585,11 @@ def _grad(ys, xs, v=None):
         # follow code snippet fixes the problem by return the first element of
         # xs_grad when the xs is a signle Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
-        if isinstance(xs, paddle.fluid.framework.Variable) and isinstance(
-                xs_grad, typing.Sequence) and len(xs_grad) > 0:
+        if (
+            isinstance(xs, paddle.fluid.framework.Variable)
+            and isinstance(xs_grad, typing.Sequence)
+            and len(xs_grad) > 0
+        ):
             xs_grad = xs_grad[0]
     else:
         xs_grad = paddle.incubate.autograd.grad(ys, xs, v)
@@ -579,21 +598,21 @@ def _grad(ys, xs, v=None):
 
 def _separate(xs):
     """
-    ``_separate`` separates ``xs`` from the computation graph through ``clone`` 
+    ``_separate`` separates ``xs`` from the computation graph through ``clone``
     or ``deteach`` .
 
-    Interally, ``paddle.grad(xs, ys)`` is stateful API implemented based on 
+    Interally, ``paddle.grad(xs, ys)`` is stateful API implemented based on
     computional graph, which will reduce gradients along all path from ys to xs.
 
-    However, funcional autograd API such as ``vjp``, ``jvp`` is stateless, and 
+    However, funcional autograd API such as ``vjp``, ``jvp`` is stateless, and
     only compute gradients with a given ``func`` .
 
     For example, given a ``func`` :math:`y0=f(x0)`, supposing forward path is:
     ``x0 -> y0``, ``x0 -> x1 -> y0`` .
-    ``paddle.grad(y0, x0)`` will reduce gradients along ``y0->x0`` and 
+    ``paddle.grad(y0, x0)`` will reduce gradients along ``y0->x0`` and
     ``y0->x1->x0``, and ``vjp`` only need reduce along ``y0->x0``.
 
-    So, it's needed to clone or detach xs for breaking the dependencies with 
+    So, it's needed to clone or detach xs for breaking the dependencies with
     other variables.
 
     Examples:
@@ -633,7 +652,7 @@ def _single_separate(x):
     if x is None:  # x maybe none because grad input's v defaults to none.
         return x
     if not x.stop_gradient:
-        return paddle.clone(x)
+        return paddle.assign(x)
     else:  # use detach to share memory when no need gradients.
         x = x.detach()
         x.stop_gradient = False
@@ -646,18 +665,23 @@ def _check_inputs(func, xs, v=None):
         raise TypeError(f"Expected 'fun' is Callable, but got {type(func)}.")
 
     if not isinstance(xs, (framework.Variable, typing.Sequence)):
-        raise TypeError(f"Expected 'xs' is a Tensor|Sequence[Tensor],"
-                        f"but got {type(xs)}.")
+        raise TypeError(
+            f"Expected 'xs' is a Tensor|Sequence[Tensor],"
+            f"but got {type(xs)}."
+        )
     if isinstance(xs, typing.Sequence) and not all(
-            isinstance(x, framework.Variable) for x in xs):
+        isinstance(x, framework.Variable) for x in xs
+    ):
         raise TypeError("All elements of 'xs' shoule be Tensor.")
 
     if not isinstance(v, (framework.Variable, typing.Sequence, type(None))):
         raise TypeError(
-            f"Expected 'v' is Tensor|Sequence[Tensor]|None, but got {type(v)}.")
+            f"Expected 'v' is Tensor|Sequence[Tensor]|None, but got {type(v)}."
+        )
 
     if isinstance(v, typing.Sequence) and not all(
-            isinstance(e, framework.Variable) for e in v):
+        isinstance(e, framework.Variable) for e in v
+    ):
         raise TypeError("All elements of 'xs' shoule be Tensor.")
 
 
@@ -667,11 +691,14 @@ def _check_v_shape(v, refs):
 
     v, refs = utils.as_tensors(v), utils.as_tensors(refs)
     if len(refs) != len(v):
-        raise RuntimeError(f"The argument v is a tuple of invalid length:"
-                           f"should be {len(refs)} but got {len(v)}.")
+        raise RuntimeError(
+            f"The argument v is a tuple of invalid length:"
+            f"should be {len(refs)} but got {len(v)}."
+        )
 
     for index, (element_v, element_ref) in enumerate(zip(v, refs)):
         if element_v.shape != element_ref.shape:
             raise RuntimeError(
                 f"The v[{index}] has invalid shape: should "
-                f"be {element_ref.shape} but got {element_v.shape}.")
+                f"be {element_ref.shape} but got {element_v.shape}."
+            )

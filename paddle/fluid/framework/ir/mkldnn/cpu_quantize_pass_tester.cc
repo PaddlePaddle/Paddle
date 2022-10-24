@@ -66,7 +66,7 @@ void SetOp(ProgramDesc* prog,
              type == "nearest_interp" || type == "nearest_interp_v2") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
-  } else if (type == "slice" || type == "shape") {
+  } else if (type == "slice") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
   } else if (type == "dropout") {
@@ -90,6 +90,7 @@ void SetOp(ProgramDesc* prog,
   } else if (type == "matmul") {
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
+    if (inputs.size() > 2) op->SetInput("ResidualData", {inputs[2]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("Scale_x", 1.0f);
     op->SetAttr("Scale_y", 1.0f);
@@ -180,6 +181,11 @@ void CheckScales(const OpDesc* op, float scale, float shift) {
     scale_names.push_back("Scale_x");
     scale_names.push_back("Scale_y");
     scale_names.push_back("Scale_out");
+    if (type == "matmul") {
+      auto const& names = op->InputNames();
+      if (std::find(names.begin(), names.end(), "ResidualData") != names.end())
+        scale_names.push_back("Scale_in_eltwise");
+    }
   } else if (type == "fusion_gru" || type == "fusion_lstm") {
     EXPECT_EQ(op->GetAttrIfExists<float>("Shift_data"), shift);
     EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
@@ -461,7 +467,7 @@ static const std::initializer_list<std::string> variable_names_immutable_ops = {
 void TestImmutableOp(const std::string tested_op) {
   ProgramDesc prog;
   for (auto& v : variable_names_immutable_ops) {
-    prog.MutableBlock(0)->Var(v);
+    prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
   SetOp(&prog, tested_op, tested_op, {"b"}, {"c"}, true, "int8");
@@ -514,7 +520,7 @@ void TestImmutableOpBetweenNonQuantizedOp(const std::string tested_op) {
 void TestImmutableOpWithManyOutputs(const std::string tested_op) {
   ProgramDesc prog;
   for (auto& v : variable_names_immutable_ops) {
-    prog.MutableBlock(0)->Var(v);
+    prog.MutableBlock(0)->Var(v)->SetDataType(proto::VarType::FP32);
   }
 
   SetOp(&prog, "dropout", "Dropout1", {"a"}, {"b"}, true, "float32");
@@ -550,12 +556,8 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
            SCALE * S8_MAX);
 }
 
-const std::vector<std::string> immutables = {"reshape2",
-                                             "transpose2",
-                                             "slice",
-                                             "shape",
-                                             "nearest_interp",
-                                             "nearest_interp_v2"};
+const std::vector<std::string> immutables = {
+    "reshape2", "transpose2", "slice", "nearest_interp", "nearest_interp_v2"};
 
 class TestImmutables : public testing::TestWithParam<std::string> {};
 
@@ -579,7 +581,7 @@ INSTANTIATE_TEST_CASE_P(
     });
 
 static const std::initializer_list<std::string> variable_names_matmul = {
-    "a", "b", "c", "d", "e", "f"};
+    "a", "b", "c", "d", "e", "f", "g", "h"};
 
 ProgramDesc BuildProgramDescMatmul() {
   ProgramDesc prog;
@@ -599,10 +601,24 @@ ProgramDesc BuildProgramDescMatmulNotQuantized() {
   for (auto& v : variable_names_matmul) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, false);
-  SetOp(&prog, "dequantize", "Dequantize", {"c"}, {"d"}, true);
+  SetOp(&prog, "dropout", "Dropout1", {"a"}, {"b"}, false);
+  SetOp(&prog, "dropout", "Dropout2", {"c"}, {"d"}, false);
   SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, "int8");
   SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, "float32");
+
+  return prog;
+}
+
+ProgramDesc BuildProgramDescMatmulResidual() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_matmul) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
+  SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
+  SetOp(&prog, "dequantize", "Dequantize3", {"e"}, {"f"}, true);
+  SetOp(&prog, "matmul", "Matmul", {"b", "d", "f"}, {"g"}, true, "int8");
+  SetOp(&prog, "dropout", "Dropout", {"g"}, {"h"}, true, "float32");
 
   return prog;
 }
@@ -623,12 +639,24 @@ TEST(CpuQuantizePass, matmul_not_quantized) {
   // nothing change
   int added_nodes = 0;
   std::unordered_map<std::string, int> expected_operators = {
-      {"matmul", 1}, {"quantize", 0}, {"dequantize", 1}};
+      {"matmul", 1}, {"quantize", 0}, {"dequantize", 0}};
   MainTest(BuildProgramDescMatmulNotQuantized(),
            variable_names_matmul,
            expected_operators,
            added_nodes,
            1.0f);
+}
+
+TEST(CpuQuantizePass, matmul_residual) {
+  // 3 Quant + 3 IN + 1 DeQuant + 1 OUT
+  int added_nodes = 8;
+  std::unordered_map<std::string, int> expected_operators = {
+      {"matmul", 1}, {"quantize", 3}, {"dequantize", 4}};
+  MainTest(BuildProgramDescMatmulResidual(),
+           variable_names_matmul,
+           expected_operators,
+           added_nodes,
+           SCALE * S8_MAX);
 }
 
 static const std::initializer_list<std::string> variable_names_elementwise = {

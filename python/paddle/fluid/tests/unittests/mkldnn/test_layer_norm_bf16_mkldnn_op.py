@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # from paddle.fluid.tests.unittests.test_layer_norm_op import *
-from __future__ import print_function
 import unittest
 import numpy as np
 
@@ -23,9 +22,13 @@ import paddle.fluid as fluid
 from paddle import enable_static
 from functools import reduce
 
-from paddle.fluid.tests.unittests.mkldnn.test_layer_norm_mkldnn_op import TestLayerNormMKLDNNOp
-from paddle.fluid.tests.unittests.mkldnn.test_layer_norm_mkldnn_op import _reference_layer_norm_naive
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.mkldnn.test_layer_norm_mkldnn_op import (
+    TestLayerNormMKLDNNOp,
+)
+from paddle.fluid.tests.unittests.mkldnn.test_layer_norm_mkldnn_op import (
+    _reference_layer_norm_naive,
+)
+from paddle.fluid.tests.unittests.op_test import convert_float_to_uint16
 from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
 
 np.random.random(123)
@@ -33,23 +36,22 @@ np.random.random(123)
 _set_use_system_allocator(True)
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
-
     def __assert_close(self, tensor, np_array, msg, rtol=2e-02, atol=2):
-        self.assertTrue(
-            np.allclose(np.array(tensor), np_array, rtol=rtol, atol=atol), msg)
+        np.testing.assert_allclose(
+            np.array(tensor), np_array, rtol=rtol, atol=atol, err_msg=msg
+        )
 
-    def check_forward(self,
-                      shape,
-                      begin_norm_axis,
-                      with_scale_bias=True,
-                      with_is_test=False):
+    def check_forward(
+        self, shape, begin_norm_axis, with_scale_bias=True, with_is_test=False
+    ):
         # attr
         epsilon = 0.00001
         x_shape = shape
-        D = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
+        D = reduce(mul, x_shape[begin_norm_axis : len(x_shape)], 1)
         scale_shape = [D]
 
         np.random.seed(123)
@@ -64,8 +66,9 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
             bias = np.array([])
 
         # reference forward & backward
-        y, mean, variance = _reference_layer_norm_naive(x, scale, bias, epsilon,
-                                                        begin_norm_axis)
+        y, mean, variance = _reference_layer_norm_naive(
+            x, scale, bias, epsilon, begin_norm_axis
+        )
 
         y_bf16 = convert_float_to_uint16(y)
 
@@ -83,13 +86,17 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
             # scale and bias are fp32 and other vars are of bf16
             for name in ground_truth:
                 if name == 'x_bf16' or name == 'y_bf16':
-                    block.create_var(name=name,
-                                     dtype='uint16',
-                                     shape=ground_truth[name].shape)
+                    block.create_var(
+                        name=name,
+                        dtype='uint16',
+                        shape=ground_truth[name].shape,
+                    )
                 else:
-                    block.create_var(name=name,
-                                     dtype='float32',
-                                     shape=ground_truth[name].shape)
+                    block.create_var(
+                        name=name,
+                        dtype='float32',
+                        shape=ground_truth[name].shape,
+                    )
 
             inputs = {"X": block.var('x_bf16')}
             if with_scale_bias:
@@ -108,8 +115,9 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                     "epsilon": epsilon,
                     "begin_norm_axis": begin_norm_axis,
                     "use_mkldnn": True,
-                    "is_test": with_is_test
-                })
+                    "is_test": with_is_test,
+                },
+            )
 
             exe = fluid.Executor(core.CPUPlace())
 
@@ -118,19 +126,20 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                 input_list.append('scale')
                 input_list.append('bias')
 
-            out = exe.run(program,
-                          feed={name: var_dict[name]
-                                for name in input_list},
-                          fetch_list=['y_bf16', 'mean', 'variance'])
+            out = exe.run(
+                program,
+                feed={name: var_dict[name] for name in input_list},
+                fetch_list=['y_bf16', 'mean', 'variance'],
+            )
             self.__assert_close(y_bf16, out[0], "y_bf16", 2)
             if not with_is_test:
                 self.__assert_close(mean, out[1], "mean")
                 self.__assert_close(variance, out[2], "variance", 1e-3)
 
     def test_check_forward_with_is_test(self):
-        self.check_forward(shape=[2, 3, 4, 5],
-                           begin_norm_axis=3,
-                           with_is_test=True)
+        self.check_forward(
+            shape=[2, 3, 4, 5], begin_norm_axis=3, with_is_test=True
+        )
 
     # TODO (jczaja): Enable those to test when enabling training using bf16
     def test_check_forward_with_scale_and_bias(self):

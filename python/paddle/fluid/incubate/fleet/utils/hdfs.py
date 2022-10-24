@@ -24,9 +24,17 @@ import copy
 import errno
 import time
 import logging
-import six
-#from . import fs
-from paddle.distributed.fleet.utils.fs import FS, LocalFS, FSFileExistsError, FSFileNotExistsError, ExecuteError, FSTimeOut, FSShellCmdAborted
+
+# from . import fs
+from paddle.distributed.fleet.utils.fs import (
+    FS,
+    LocalFS,
+    FSFileExistsError,
+    FSFileNotExistsError,
+    ExecuteError,
+    FSTimeOut,
+    FSShellCmdAborted,
+)
 from paddle.fluid import core
 import functools
 
@@ -36,9 +44,7 @@ __all__ = ["HDFSClient"]
 
 
 def _handle_errors(max_time_out=None):
-
     def decorator(f):
-
         @functools.wraps(f)
         def handler(*args, **kwargs):
             o = args[0]
@@ -54,19 +60,23 @@ def _handle_errors(max_time_out=None):
             while True:
                 try:
                     return f(*args, **kwargs)
-                #important: only ExecuteError need to retry
+                # important: only ExecuteError need to retry
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
-                        raise FSTimeOut("args:{} timeout:{}".format(
-                            args,
-                            time.time() - start))
+                        raise FSTimeOut(
+                            "args:{} timeout:{}".format(
+                                args, time.time() - start
+                            )
+                        )
 
                     time.sleep(inter)
 
                 if time.time() - last_print_time > 30:
-                    print("hadoop operator timeout:args:{} timeout:{}".format(
-                        args,
-                        time.time() - start))
+                    print(
+                        "hadoop operator timeout:args:{} timeout:{}".format(
+                            args, time.time() - start
+                        )
+                    )
                     last_print_time = time.time()
 
         return handler
@@ -75,13 +85,13 @@ def _handle_errors(max_time_out=None):
 
 
 class HDFSClient(FS):
-
     def __init__(
-            self,
-            hadoop_home,
-            configs,
-            time_out=5 * 60 * 1000,  #ms
-            sleep_inter=1000):  #ms
+        self,
+        hadoop_home,
+        configs,
+        time_out=5 * 60 * 1000,  # ms
+        sleep_inter=1000,
+    ):  # ms
         # Raise exception if JAVA_HOME not exists.
 
         self.pre_commands = []
@@ -91,7 +101,7 @@ class HDFSClient(FS):
         self.pre_commands.append(dfs)
 
         if configs:
-            for k, v in six.iteritems(configs):
+            for k, v in configs.items():
                 config_command = '-D%s=%s' % (k, v)
                 self.pre_commands.append(config_command)
 
@@ -99,7 +109,8 @@ class HDFSClient(FS):
         self._sleep_inter = sleep_inter
         self._base_cmd = " ".join(self.pre_commands)
         self._bd_err_re = re.compile(
-            r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:')
+            r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:'
+        )
 
     def _run_cmd(self, cmd, redirect_stderr=False):
         exe_cmd = "{} -{}".format(self._base_cmd, cmd)
@@ -119,8 +130,8 @@ class HDFSClient(FS):
 
     @_handle_errors()
     def ls_dir(self, fs_path):
-        """	
-        list directory under fs_path, and only give the pure name, not include the fs_path	
+        """
+        list directory under fs_path, and only give the pure name, not include the fs_path
         """
         if not self.is_exist(fs_path):
             return [], []
@@ -270,7 +281,8 @@ class HDFSClient(FS):
         if test_exists:
             if not self.is_exist(fs_src_path):
                 raise FSFileNotExistsError(
-                    "{} is not exists".format(fs_src_path))
+                    "{} is not exists".format(fs_src_path)
+                )
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))
@@ -286,8 +298,7 @@ class HDFSClient(FS):
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
-            if not self.is_exist(fs_src_path) and \
-                    self.is_exist(fs_dst_path):
+            if not self.is_exist(fs_src_path) and self.is_exist(fs_dst_path):
                 return
             raise e
 

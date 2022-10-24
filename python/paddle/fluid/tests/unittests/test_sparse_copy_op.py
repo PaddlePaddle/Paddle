@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-from paddle import _C_ops
-from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
 
 
 class TestSparseCopy(unittest.TestCase):
-
     def test_copy_sparse_coo(self):
         with _test_eager_guard():
             np_x = [[0, 1.0, 0], [2.0, 0, 0], [0, 3.0, 0]]

@@ -15,12 +15,12 @@
 import unittest
 import paddle
 import paddle.fluid.core as core
+from paddle.distributed.fleet.fleet_executor_utils import TaskNode
 
 paddle.enable_static()
 
 
 class TestFleetExecutorTaskNode(unittest.TestCase):
-
     def test_task_node(self):
         program = paddle.static.Program()
         task_node_0 = core.TaskNode(program.desc, 0, 1, 1)
@@ -30,8 +30,20 @@ class TestFleetExecutorTaskNode(unittest.TestCase):
         self.assertEqual(task_node_1.task_id(), 1)
         self.assertEqual(task_node_2.task_id(), 2)
         self.assertTrue(
-            task_node_0.add_downstream_task(task_node_1.task_id(), 1))
+            task_node_0.add_downstream_task(task_node_1.task_id(), 1)
+        )
         self.assertTrue(task_node_1.add_upstream_task(task_node_0.task_id(), 1))
+
+    def test_lazy_task_node(self):
+        program = paddle.static.Program()
+        task = TaskNode(
+            program=program,
+            rank=0,
+            max_run_times=1,
+            max_slot_times=1,
+            lazy_initialize=True,
+        )
+        task_node = task.task_node()
 
 
 if __name__ == "__main__":

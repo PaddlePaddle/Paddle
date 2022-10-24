@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -24,7 +22,6 @@ np.random.seed(SEED)
 
 
 class SimpleNet(paddle.nn.Layer):
-
     def __init__(self):
         super(SimpleNet, self).__init__()
         self.linear1 = paddle.nn.Linear(10, 3)
@@ -34,26 +31,30 @@ class SimpleNet(paddle.nn.Layer):
         out1 = self.linear1(x)
         out2 = self.linear2(out1)
         return [out1, out2]  # 梯度为0
-        #return [out1]        # 梯度正常
-        #return [out2, out1] # 梯度正常
+        # return [out1]        # 梯度正常
+        # return [out2, out1] # 梯度正常
 
 
 class TestGradientAggregationInDy2Static(unittest.TestCase):
-
     def test_to_static(self):
-
         def simplenet_grad(inp, to_static=False):
             net = SimpleNet()
-            if to_static: net = paddle.jit.to_static(net)
+            if to_static:
+                net = paddle.jit.to_static(net)
             loss = net(inp)
             loss[0].backward()
             return net.linear1.weight.grad
 
-        inp = paddle.to_tensor(np.random.randn(10, )).astype("float32")
-        self.assertTrue(
-            np.allclose(
-                simplenet_grad(inp, True).numpy(),
-                simplenet_grad(inp, False).numpy()))
+        inp = paddle.to_tensor(
+            np.random.randn(
+                10,
+            )
+        ).astype("float32")
+        np.testing.assert_allclose(
+            simplenet_grad(inp, True).numpy(),
+            simplenet_grad(inp, False).numpy(),
+            rtol=1e-05,
+        )
 
 
 if __name__ == '__main__':

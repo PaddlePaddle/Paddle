@@ -12,31 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.fluid.clip import ClipGradBase, _squared_l2_norm
 from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid import core, layers, framework
+from paddle.fluid import core, layers
 from paddle.distributed import collective
-import six
-import warnings
-import copy
 
 
 class ClipGradForMOEByGlobalNorm(ClipGradBase):
     r"""
     The Algrithm is the same as paddle.fluid.clip.ClipGradByGlobalNorm
-    Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in 
+    Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in
     :math:`t\_list` , and limit it to ``clip_norm`` .
-    
+
     - If the global norm is greater than ``clip_norm`` , all elements of :math:`t\_list` will be compressed by a ratio.
-    
+
     - If the global norm is less than or equal to ``clip_norm`` , nothing will be done.
-    
+
     The list of Tensor :math:`t\_list` is not passed from this class, but the gradients of all parameters set in ``optimizer``.
     If ``need_clip`` of specific param is ``False`` in its ``ParamAttr``, then the gradients of this param will not be clipped.
-    
-    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
+
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer``
     (for example: :ref:`api_paddle_optimizer_SGD`).
 
     The clipping formula is:
@@ -52,7 +47,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         global\_norm = \sqrt{\sum_{i=0}^{N-1}(l2norm(t\_list[i]))^2}
 
     Note:
-        ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0. 
+        ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
 
     Reference:
@@ -68,12 +63,12 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
 
             x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10, 
-                                      weight_attr=paddle.ParamAttr(need_clip=True), 
+            linear = paddle.nn.Linear(in_features=10, out_features=10,
+                                      weight_attr=paddle.ParamAttr(need_clip=True),
                                       bias_attr=paddle.ParamAttr(need_clip=False))
             out = linear(x)
             loss = paddle.mean(out)
@@ -85,18 +80,21 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             sdg.step()
     """
 
-    def __init__(self,
-                 clip_norm,
-                 is_expert_param_func=None,
-                 moe_group=None,
-                 group_name="default_moe_group"):
+    def __init__(
+        self,
+        clip_norm,
+        is_expert_param_func=None,
+        moe_group=None,
+        group_name="default_moe_group",
+    ):
         super(ClipGradForMOEByGlobalNorm, self).__init__()
         self.clip_norm = float(clip_norm)
         self.group_name = group_name
         self.moe_group = moe_group
         if moe_group is not None and moe_group.nranks > 1:
-            assert is_expert_param_func is not None, \
-                "When moe group size > 1, a function for selecting expert params must be specified."
+            assert (
+                is_expert_param_func is not None
+            ), "When moe group size > 1, a function for selecting expert params must be specified."
         self.is_expert_param_func = is_expert_param_func
 
     def __str__(self):
@@ -125,11 +123,18 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
                 sum_square_list.append(sum_square)
 
         # all parameters have been filterd out
-        if len(sum_square_list) + len(sum_square_list_fp16) + len(
-                sum_square_list_fp32) == 0:
+        if (
+            len(sum_square_list)
+            + len(sum_square_list_fp16)
+            + len(sum_square_list_fp32)
+            == 0
+        ):
             return None, None
-        assert sum_dtype in ["float64", "float32", None], \
-            "sum's type must be float64/ float32 / None"
+        assert sum_dtype in [
+            "float64",
+            "float32",
+            None,
+        ], "sum's type must be float64/ float32 / None"
         if sum_dtype != "float64":
             sum_dtype = 'float64' if len(sum_square_list) > 0 else "float32"
 
@@ -171,16 +176,20 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         # why to return sum_dtype?
         # we will call `get_l2_norm_pow` twice and the precisions may be different.
         # For convenience and simplification, we use sum_dtype directly instead of global_norm_var_normal.dtype
-        global_norm_var_normal, sum_dtype \
-            = self.get_l2_norm_pow(normal_params_grads)
+        global_norm_var_normal, sum_dtype = self.get_l2_norm_pow(
+            normal_params_grads
+        )
         global_norm_var_moe = None
         if len(moe_params_grads) > 0:
-            global_norm_var_moe, _ \
-                = self.get_l2_norm_pow(moe_params_grads, sum_dtype)
+            global_norm_var_moe, _ = self.get_l2_norm_pow(
+                moe_params_grads, sum_dtype
+            )
             if global_norm_var_moe is not None:
-                collective.all_reduce(global_norm_var_moe,
-                                      op=collective.ReduceOp.SUM,
-                                      group=self.moe_group)
+                collective.all_reduce(
+                    global_norm_var_moe,
+                    op=collective.ReduceOp.SUM,
+                    group=self.moe_group,
+                )
 
         if global_norm_var_normal is None and global_norm_var_moe is None:
             return params_grads
@@ -192,19 +201,20 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             if global_norm_var_normal.dtype != global_norm_var_moe.dtype:
                 # compared with normal norm, moe norm is the later one,
                 # so its precision is no lower than normal norm
-                global_norm_var_normal = \
-                    global_norm_var_normal.astype(global_norm_var_moe.dtype)
+                global_norm_var_normal = global_norm_var_normal.astype(
+                    global_norm_var_moe.dtype
+                )
             global_norm_var = global_norm_var_normal + global_norm_var_moe
 
         params_and_grads = []
         global_norm_var = layers.sqrt(global_norm_var)
-        max_global_norm = layers.fill_constant(shape=[1],
-                                               dtype=global_norm_var.dtype,
-                                               value=self.clip_norm)
-        clip_var = layers.elementwise_div(x=max_global_norm,
-                                          y=layers.elementwise_max(
-                                              x=global_norm_var,
-                                              y=max_global_norm))
+        max_global_norm = layers.fill_constant(
+            shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
+        )
+        clip_var = layers.elementwise_div(
+            x=max_global_norm,
+            y=layers.elementwise_max(x=global_norm_var, y=max_global_norm),
+        )
         for p, g in params_grads:
             if g is None:
                 continue
@@ -212,8 +222,11 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
                 params_and_grads.append((p, g))
                 continue
             # TODO(wangxi): use inplace elementwise_mul
-            clip_input = (clip_var.astype('float16')
-                          if g.dtype == core.VarDesc.VarType.FP16 else clip_var)
+            clip_input = (
+                clip_var.astype('float16')
+                if g.dtype == core.VarDesc.VarType.FP16
+                else clip_var
+            )
             new_grad = layers.elementwise_mul(x=g, y=clip_input)
             params_and_grads.append((p, new_grad))
         return params_and_grads

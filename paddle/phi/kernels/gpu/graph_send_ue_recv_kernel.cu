@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/graph_send_ue_recv_kernel.h"
 #include "paddle/phi/kernels/gpu/graph_send_recv_funcs.h"
 #include "paddle/phi/kernels/gpu/graph_send_ue_recv_funcs.h"
-#include "paddle/phi/kernels/impl/graph_messaage_passing_impl.h"
+#include "paddle/phi/kernels/impl/graph_message_passing_impl.h"
 
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
@@ -81,6 +81,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
   if (index_size == 0) return;
 
   const auto& bcast_info = phi::CalcBCastInfo(x.dims(), e.dims());
+
   const T* x_data = x.data<T>();
   const T* e_data = e.data<T>();
   const IndexT* s_index = src_index.data<IndexT>();
@@ -95,7 +96,7 @@ void GraphSendUERecvOpCUDAKernelLaunchHelper(const Context& ctx,
   const int ntx = FindNumThreads(out_len, ctx.GetMaxThreadsPerBlock());
   const int nty = ctx.GetMaxThreadsPerBlock() / ntx;
   const int nbx = (out_len + ntx - 1) / ntx;
-  const int nby = (index_size + nty - 1) / nty;
+  const int nby = FindNumBlocks('y', (index_size + nty - 1) / nty);
   const dim3 grid(nbx, nby);
   const dim3 block(ntx, nty);
   int64_t input_size = x.dims()[0];

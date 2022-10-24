@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
 import numpy as np
 import inspect
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMathOpPatchesVarBase(unittest.TestCase):
-
     def setUp(self):
         self.shape = [10, 1024]
         self.dtype = np.float32
@@ -77,8 +74,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
             res = a / b
-            #NOTE: Not sure why array_equal fails on windows, allclose is acceptable
-            self.assertTrue(np.allclose(res.numpy(), a_np / b_np))
+            # NOTE: Not sure why array_equal fails on windows, allclose is acceptable
+            np.testing.assert_allclose(res.numpy(), a_np / b_np, rtol=1e-05)
 
     def test_div(self):
         with _test_eager_guard():
@@ -157,7 +154,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             b = 0.1
             res = a / b
-            self.assertTrue(np.allclose(res.numpy(), a_np / b))
+            np.testing.assert_allclose(res.numpy(), a_np / b, rtol=1e-05)
 
     def test_div_scalar(self):
         with _test_eager_guard():
@@ -172,7 +169,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
             res = a**b
-            self.assertTrue(np.allclose(res.numpy(), a_np**b_np))
+            np.testing.assert_allclose(res.numpy(), a_np**b_np, rtol=1e-05)
 
     def test_pow(self):
         with _test_eager_guard():
@@ -246,8 +243,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
             c = fluid.dygraph.to_variable(c_np)
-            res1 = (a == b)
-            res2 = (a == c)
+            res1 = a == b
+            res2 = a == c
             np.testing.assert_array_equal(res1.numpy(), a_np == b_np)
             np.testing.assert_array_equal(res2.numpy(), a_np == c_np)
 
@@ -264,8 +261,8 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
             c = fluid.dygraph.to_variable(c_np)
-            res1 = (a != b)
-            res2 = (a != c)
+            res1 = a != b
+            res2 = a != c
             np.testing.assert_array_equal(res1.numpy(), a_np != b_np)
             np.testing.assert_array_equal(res2.numpy(), a_np != c_np)
 
@@ -280,7 +277,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
-            res = (a < b)
+            res = a < b
             np.testing.assert_array_equal(res.numpy(), a_np < b_np)
 
     def test_less_than(self):
@@ -294,7 +291,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
-            res = (a <= b)
+            res = a <= b
             np.testing.assert_array_equal(res.numpy(), a_np <= b_np)
 
     def test_less_equal(self):
@@ -308,7 +305,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
-            res = (a > b)
+            res = a > b
             np.testing.assert_array_equal(res.numpy(), a_np > b_np)
 
     def test_greater_than(self):
@@ -322,7 +319,7 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
-            res = (a >= b)
+            res = a >= b
             np.testing.assert_array_equal(res.numpy(), a_np >= b_np)
 
     def test_greater_equal(self):
@@ -388,11 +385,12 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             x = fluid.layers.ones((2, 2), dtype="float32")
             y = t * x
 
-            self.assertTrue(
-                np.allclose(y.numpy(),
-                            t * np.ones((2, 2), dtype="float32"),
-                            rtol=1e-05,
-                            atol=0.0))
+            np.testing.assert_allclose(
+                y.numpy(),
+                t * np.ones((2, 2), dtype='float32'),
+                rtol=1e-05,
+                atol=0.0,
+            )
 
     def test_np_left_mul(self):
         with _test_eager_guard():
@@ -486,92 +484,112 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         np.testing.assert_array_equal(x.abs().numpy(), paddle.abs(x).numpy())
         m = x.abs()
         np.testing.assert_array_equal(m.sqrt().numpy(), paddle.sqrt(m).numpy())
-        np.testing.assert_array_equal(m.rsqrt().numpy(),
-                                      paddle.rsqrt(m).numpy())
+        np.testing.assert_array_equal(
+            m.rsqrt().numpy(), paddle.rsqrt(m).numpy()
+        )
         np.testing.assert_array_equal(x.ceil().numpy(), paddle.ceil(x).numpy())
-        np.testing.assert_array_equal(x.floor().numpy(),
-                                      paddle.floor(x).numpy())
+        np.testing.assert_array_equal(
+            x.floor().numpy(), paddle.floor(x).numpy()
+        )
         np.testing.assert_array_equal(x.cos().numpy(), paddle.cos(x).numpy())
         np.testing.assert_array_equal(x.acos().numpy(), paddle.acos(x).numpy())
         np.testing.assert_array_equal(x.asin().numpy(), paddle.asin(x).numpy())
         np.testing.assert_array_equal(x.sin().numpy(), paddle.sin(x).numpy())
         np.testing.assert_array_equal(x.sinh().numpy(), paddle.sinh(x).numpy())
         np.testing.assert_array_equal(x.cosh().numpy(), paddle.cosh(x).numpy())
-        np.testing.assert_array_equal(x.round().numpy(),
-                                      paddle.round(x).numpy())
-        np.testing.assert_array_equal(x.reciprocal().numpy(),
-                                      paddle.reciprocal(x).numpy())
-        np.testing.assert_array_equal(x.square().numpy(),
-                                      paddle.square(x).numpy())
+        np.testing.assert_array_equal(
+            x.round().numpy(), paddle.round(x).numpy()
+        )
+        np.testing.assert_array_equal(
+            x.reciprocal().numpy(), paddle.reciprocal(x).numpy()
+        )
+        np.testing.assert_array_equal(
+            x.square().numpy(), paddle.square(x).numpy()
+        )
         np.testing.assert_array_equal(x.rank().numpy(), paddle.rank(x).numpy())
         np.testing.assert_array_equal(x[0].t().numpy(), paddle.t(x[0]).numpy())
-        np.testing.assert_array_equal(x.asinh().numpy(),
-                                      paddle.asinh(x).numpy())
+        np.testing.assert_array_equal(
+            x.asinh().numpy(), paddle.asinh(x).numpy()
+        )
         ### acosh(x) = nan, need to change input
         t_np = np.random.uniform(1, 2, [2, 3]).astype(self.dtype)
         t = paddle.to_tensor(t_np)
-        np.testing.assert_array_equal(t.acosh().numpy(),
-                                      paddle.acosh(t).numpy())
-        np.testing.assert_array_equal(x.atanh().numpy(),
-                                      paddle.atanh(x).numpy())
-        d = paddle.to_tensor([[1.2285208, 1.3491015, 1.4899898],
-                              [1.30058, 1.0688717, 1.4928783],
-                              [1.0958099, 1.3724753, 1.8926544]])
+        np.testing.assert_array_equal(
+            t.acosh().numpy(), paddle.acosh(t).numpy()
+        )
+        np.testing.assert_array_equal(
+            x.atanh().numpy(), paddle.atanh(x).numpy()
+        )
+        d = paddle.to_tensor(
+            [
+                [1.2285208, 1.3491015, 1.4899898],
+                [1.30058, 1.0688717, 1.4928783],
+                [1.0958099, 1.3724753, 1.8926544],
+            ]
+        )
         d = d.matmul(d.t())
         # ROCM not support cholesky
         if not fluid.core.is_compiled_with_rocm():
-            np.testing.assert_array_equal(d.cholesky().numpy(),
-                                          paddle.cholesky(d).numpy())
+            np.testing.assert_array_equal(
+                d.cholesky().numpy(), paddle.cholesky(d).numpy()
+            )
 
-        np.testing.assert_array_equal(x.is_empty().numpy(),
-                                      paddle.is_empty(x).numpy())
-        np.testing.assert_array_equal(x.isfinite().numpy(),
-                                      paddle.isfinite(x).numpy())
         np.testing.assert_array_equal(
-            x.cast('int32').numpy(),
-            paddle.cast(x, 'int32').numpy())
+            x.is_empty().numpy(), paddle.is_empty(x).numpy()
+        )
         np.testing.assert_array_equal(
-            x.expand([3, 2, 3]).numpy(),
-            paddle.expand(x, [3, 2, 3]).numpy())
+            x.isfinite().numpy(), paddle.isfinite(x).numpy()
+        )
         np.testing.assert_array_equal(
-            x.tile([2, 2]).numpy(),
-            paddle.tile(x, [2, 2]).numpy())
-        np.testing.assert_array_equal(x.flatten().numpy(),
-                                      paddle.flatten(x).numpy())
+            x.cast('int32').numpy(), paddle.cast(x, 'int32').numpy()
+        )
+        np.testing.assert_array_equal(
+            x.expand([3, 2, 3]).numpy(), paddle.expand(x, [3, 2, 3]).numpy()
+        )
+        np.testing.assert_array_equal(
+            x.tile([2, 2]).numpy(), paddle.tile(x, [2, 2]).numpy()
+        )
+        np.testing.assert_array_equal(
+            x.flatten().numpy(), paddle.flatten(x).numpy()
+        )
         index = paddle.to_tensor([0, 1])
         np.testing.assert_array_equal(
-            x.gather(index).numpy(),
-            paddle.gather(x, index).numpy())
+            x.gather(index).numpy(), paddle.gather(x, index).numpy()
+        )
         index = paddle.to_tensor([[0, 1], [1, 2]])
         np.testing.assert_array_equal(
-            x.gather_nd(index).numpy(),
-            paddle.gather_nd(x, index).numpy())
+            x.gather_nd(index).numpy(), paddle.gather_nd(x, index).numpy()
+        )
         np.testing.assert_array_equal(
-            x.reverse([0, 1]).numpy(),
-            paddle.reverse(x, [0, 1]).numpy())
+            x.reverse([0, 1]).numpy(), paddle.reverse(x, [0, 1]).numpy()
+        )
         np.testing.assert_array_equal(
-            a.reshape([3, 2]).numpy(),
-            paddle.reshape(a, [3, 2]).numpy())
+            a.reshape([3, 2]).numpy(), paddle.reshape(a, [3, 2]).numpy()
+        )
         np.testing.assert_array_equal(
             x.slice([0, 1], [0, 0], [1, 2]).numpy(),
-            paddle.slice(x, [0, 1], [0, 0], [1, 2]).numpy())
+            paddle.slice(x, [0, 1], [0, 0], [1, 2]).numpy(),
+        )
         np.testing.assert_array_equal(
-            x.split(2)[0].numpy(),
-            paddle.split(x, 2)[0].numpy())
+            x.split(2)[0].numpy(), paddle.split(x, 2)[0].numpy()
+        )
         m = paddle.to_tensor(
-            np.random.uniform(-1, 1, [1, 6, 1, 1]).astype(self.dtype))
+            np.random.uniform(-1, 1, [1, 6, 1, 1]).astype(self.dtype)
+        )
         np.testing.assert_array_equal(
-            m.squeeze([]).numpy(),
-            paddle.squeeze(m, []).numpy())
+            m.squeeze([]).numpy(), paddle.squeeze(m, []).numpy()
+        )
         np.testing.assert_array_equal(
-            m.squeeze([1, 2]).numpy(),
-            paddle.squeeze(m, [1, 2]).numpy())
+            m.squeeze([1, 2]).numpy(), paddle.squeeze(m, [1, 2]).numpy()
+        )
         m = paddle.to_tensor([2, 3, 3, 1, 5, 3], 'float32')
-        np.testing.assert_array_equal(m.unique()[0].numpy(),
-                                      paddle.unique(m)[0].numpy())
+        np.testing.assert_array_equal(
+            m.unique()[0].numpy(), paddle.unique(m)[0].numpy()
+        )
         np.testing.assert_array_equal(
             m.unique(return_counts=True)[1],
-            paddle.unique(m, return_counts=True)[1])
+            paddle.unique(m, return_counts=True)[1],
+        )
         np.testing.assert_array_equal(x.flip([0]), paddle.flip(x, [0]))
         np.testing.assert_array_equal(x.unbind(0), paddle.unbind(x, 0))
         np.testing.assert_array_equal(x.roll(1), paddle.roll(x, 1))
@@ -585,84 +603,86 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
 
         # 2. Binary operation
         np.testing.assert_array_equal(
-            x.divide(y).numpy(),
-            paddle.divide(x, y).numpy())
+            x.divide(y).numpy(), paddle.divide(x, y).numpy()
+        )
         np.testing.assert_array_equal(
             x.matmul(y, True, False).numpy(),
-            paddle.matmul(x, y, True, False).numpy())
+            paddle.matmul(x, y, True, False).numpy(),
+        )
         np.testing.assert_array_equal(
             x.norm(p='fro', axis=[0, 1]).numpy(),
-            paddle.norm(x, p='fro', axis=[0, 1]).numpy())
+            paddle.norm(x, p='fro', axis=[0, 1]).numpy(),
+        )
         np.testing.assert_array_equal(
-            x.dist(y).numpy(),
-            paddle.dist(x, y).numpy())
+            x.dist(y).numpy(), paddle.dist(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.cross(y).numpy(),
-            paddle.cross(x, y).numpy())
+            x.cross(y).numpy(), paddle.cross(x, y).numpy()
+        )
         m = x.expand([2, 2, 3])
         n = y.expand([2, 2, 3]).transpose([0, 2, 1])
         np.testing.assert_array_equal(
-            m.bmm(n).numpy(),
-            paddle.bmm(m, n).numpy())
+            m.bmm(n).numpy(), paddle.bmm(m, n).numpy()
+        )
         np.testing.assert_array_equal(
-            x.histogram(5, -1, 1).numpy(),
-            paddle.histogram(x, 5, -1, 1).numpy())
+            x.histogram(5, -1, 1).numpy(), paddle.histogram(x, 5, -1, 1).numpy()
+        )
         np.testing.assert_array_equal(
-            x.equal(y).numpy(),
-            paddle.equal(x, y).numpy())
+            x.equal(y).numpy(), paddle.equal(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.greater_equal(y).numpy(),
-            paddle.greater_equal(x, y).numpy())
+            x.greater_equal(y).numpy(), paddle.greater_equal(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.greater_than(y).numpy(),
-            paddle.greater_than(x, y).numpy())
+            x.greater_than(y).numpy(), paddle.greater_than(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.less_equal(y).numpy(),
-            paddle.less_equal(x, y).numpy())
+            x.less_equal(y).numpy(), paddle.less_equal(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.less_than(y).numpy(),
-            paddle.less_than(x, y).numpy())
+            x.less_than(y).numpy(), paddle.less_than(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.not_equal(y).numpy(),
-            paddle.not_equal(x, y).numpy())
+            x.not_equal(y).numpy(), paddle.not_equal(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.equal_all(y).numpy(),
-            paddle.equal_all(x, y).numpy())
+            x.equal_all(y).numpy(), paddle.equal_all(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.allclose(y).numpy(),
-            paddle.allclose(x, y).numpy())
+            x.allclose(y).numpy(), paddle.allclose(x, y).numpy()
+        )
         m = x.expand([2, 2, 3])
         np.testing.assert_array_equal(
-            x.expand_as(m).numpy(),
-            paddle.expand_as(x, m).numpy())
+            x.expand_as(m).numpy(), paddle.expand_as(x, m).numpy()
+        )
         index = paddle.to_tensor([2, 1, 0])
         np.testing.assert_array_equal(
-            a.scatter(index, b).numpy(),
-            paddle.scatter(a, index, b).numpy())
+            a.scatter(index, b).numpy(), paddle.scatter(a, index, b).numpy()
+        )
 
         # 3. Bool tensor operation
         x = paddle.to_tensor([[True, False], [True, False]])
         y = paddle.to_tensor([[False, False], [False, True]])
         np.testing.assert_array_equal(
-            x.logical_and(y).numpy(),
-            paddle.logical_and(x, y).numpy())
+            x.logical_and(y).numpy(), paddle.logical_and(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.logical_not(y).numpy(),
-            paddle.logical_not(x, y).numpy())
+            x.logical_not(y).numpy(), paddle.logical_not(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.logical_or(y).numpy(),
-            paddle.logical_or(x, y).numpy())
+            x.logical_or(y).numpy(), paddle.logical_or(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.logical_xor(y).numpy(),
-            paddle.logical_xor(x, y).numpy())
+            x.logical_xor(y).numpy(), paddle.logical_xor(x, y).numpy()
+        )
         np.testing.assert_array_equal(
-            x.logical_and(y).numpy(),
-            paddle.logical_and(x, y).numpy())
+            x.logical_and(y).numpy(), paddle.logical_and(x, y).numpy()
+        )
         a = paddle.to_tensor([[1, 2], [3, 4]])
         b = paddle.to_tensor([[4, 3], [2, 1]])
         np.testing.assert_array_equal(
-            x.where(a, b).numpy(),
-            paddle.where(x, a, b).numpy())
+            x.where(a, b).numpy(), paddle.where(x, a, b).numpy()
+        )
 
         x_np = np.random.randn(3, 6, 9, 7)
         x = paddle.to_tensor(x_np)
@@ -727,13 +747,29 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
-            res = 1J * a
+            res = 1j * a
             np.testing.assert_array_equal(res.numpy(), 1j * a_np)
 
     def test_complex_scalar(self):
         with _test_eager_guard():
             self.func_test_complex_scalar()
         self.func_test_complex_scalar()
+
+    def func_test_matmul(self):
+        x_np = np.random.uniform(-1, 1, [2, 3]).astype(self.dtype)
+        y_np = np.random.uniform(-1, 1, [3, 2]).astype(self.dtype)
+        except_out = x_np @ y_np
+
+        with fluid.dygraph.guard():
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            out = x @ y
+            np.testing.assert_allclose(out.numpy(), except_out, atol=1e-03)
+
+    def test_matmul(self):
+        with _test_eager_guard():
+            self.func_test_matmul()
+        self.func_test_matmul()
 
 
 if __name__ == '__main__':

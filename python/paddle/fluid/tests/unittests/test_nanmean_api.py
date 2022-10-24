@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 
@@ -31,10 +27,14 @@ class TestNanmeanAPI(unittest.TestCase):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
         self.x[0, :, :, :] = np.nan
-        self.x_grad = np.array([[np.nan, np.nan, 3.], [0., np.nan,
-                                                       2.]]).astype(np.float32)
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.x_grad = np.array(
+            [[np.nan, np.nan, 3.0], [0.0, np.nan, 2.0]]
+        ).astype(np.float32)
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def test_api_static(self):
         paddle.enable_static()
@@ -47,11 +47,12 @@ class TestNanmeanAPI(unittest.TestCase):
             out4 = paddle.nanmean(x, axis)
             out5 = paddle.nanmean(x, tuple(axis))
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x},
-                          fetch_list=[out1, out2, out3, out4, out5])
+            res = exe.run(
+                feed={'X': self.x}, fetch_list=[out1, out2, out3, out4, out5]
+            )
         out_ref = np.nanmean(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-04), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.0001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
@@ -70,10 +71,9 @@ class TestNanmeanAPI(unittest.TestCase):
                 out_ref[nan_mask] = 0
                 out_np = out.numpy()
                 out_np[nan_mask] = 0
-                self.assertEqual(np.allclose(out_np, out_ref, rtol=1e-04), True)
+                np.testing.assert_allclose(out_np, out_ref, rtol=0.0001)
             else:
-                self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-04),
-                                 True)
+                np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.0001)
 
         test_case(self.x)
         test_case(self.x, [])
@@ -105,13 +105,13 @@ class TestNanmeanAPI(unittest.TestCase):
             sum_dx_ref = np.prod(y.shape)
             if np.isnan(y.numpy()).sum():
                 sum_dx_ref -= np.isnan(y.numpy()).sum()
-            cnt = paddle.sum(~paddle.isnan(x_tensor),
-                             axis=axis,
-                             keepdim=keepdim)
+            cnt = paddle.sum(
+                ~paddle.isnan(x_tensor), axis=axis, keepdim=keepdim
+            )
             if (cnt == 0).sum():
                 dx[np.isnan(dx)] = 0
             sum_dx = dx.sum()
-            self.assertEqual(np.allclose(sum_dx, sum_dx_ref, rtol=1e-04), True)
+            np.testing.assert_allclose(sum_dx, sum_dx_ref, rtol=0.0001)
 
         test_case(self.x)
         test_case(self.x, [])

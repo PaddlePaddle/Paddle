@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 
@@ -21,24 +19,20 @@ DELTA = 0.00001
 
 
 class TestIsTensorApi(unittest.TestCase):
-
     def test_is_tensor_real(self, dtype="float32"):
-        """Test is_tensor api with a real tensor
-        """
+        """Test is_tensor api with a real tensor"""
         paddle.disable_static()
         x = paddle.rand([3, 2, 4], dtype=dtype)
         self.assertTrue(paddle.is_tensor(x))
 
     def test_is_tensor_list(self, dtype="float32"):
-        """Test is_tensor api with a list
-        """
+        """Test is_tensor api with a list"""
         paddle.disable_static()
         x = [1, 2, 3]
         self.assertFalse(paddle.is_tensor(x))
 
     def test_is_tensor_number(self, dtype="float32"):
-        """Test is_tensor api with a number
-        """
+        """Test is_tensor api with a number"""
         paddle.disable_static()
         x = 5
         self.assertFalse(paddle.is_tensor(x))
