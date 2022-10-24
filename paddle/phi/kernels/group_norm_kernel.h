@@ -18,9 +18,10 @@
 
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+
 
 namespace phi {
-
 template <typename T, typename Context>
 void GroupNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,

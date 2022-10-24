@@ -21,8 +21,22 @@
 #include "paddle/phi/kernels/gpu/group_norm_utils.h"
 
 namespace phi {
+#define CHECK_CASE(i, flags, kernel_name, ...)                              \
+  if (i == flags) {                                                         \
+    kernel_name<T, i><<<grid, threads, 0, dev_ctx.stream()>>>(__VA_ARGS__); \
+  }
 
-template <typename T>
+// 0 for no scale, no bias
+// 1 for has scale, no bias
+// 2 for no scale, has bias
+// 3 for has scale, has bias
+#define UNROLL_ALL_CASES(flags, kernel_name, ...) \
+  CHECK_CASE(0, flags, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE(1, flags, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE(2, flags, kernel_name, __VA_ARGS__)  \
+  CHECK_CASE(3, flags, kernel_name, __VA_ARGS__)
+
+template <typename T, typename U>
 __global__ void GroupNormForwardGetMeanAndVar(const T* x,
                                               int N,
                                               int C,
@@ -39,21 +53,23 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x,
   int number = min(group_size, static_cast<int>(C - gid * group_size));
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
-  T x_mean = 0, x_var = 0;
+  U x_mean = static_cast<U>(0);
+  U x_var = static_cast<U>(0);
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
     T val;
     int hid = imid / W;
     int wid = imid % W;
     val = x[(bid * H + hid) * W * C + wid * C + ccid];
 
-    x_mean += val;
-    x_var += val * val;
+    x_mean += static_cast<U>(val);
+    x_var += static_cast<U>(val * val);
   }
   x_mean /= number * imsize;
   x_var /= number * imsize;
   CudaAtomicAddWithWarp(&mean[bid * groups + gid], x_mean);
   CudaAtomicAddWithWarp(&var[bid * groups + gid], x_var);
 }
+
 
 template <typename T, int flags>
 __global__ void GroupNormForward(const T* x,
@@ -67,10 +83,11 @@ __global__ void GroupNormForward(const T* x,
                                  int imsize,
                                  int groups,
                                  int group_size,
-                                 T epsilon,
+                                 float epsilon,
                                  T* y,
                                  T* real_var,
                                  const DataLayout data_layout) {
+  using AccT = typename kps::details::MPTypeTrait<T>::Type;
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
@@ -78,10 +95,10 @@ __global__ void GroupNormForward(const T* x,
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
   auto ng = bid * groups + gid;
-  T x_mean = mean[ng];
-  T x_var = var[ng];
+  AccT x_mean = static_cast<AccT>(mean[ng]);
+  AccT x_var = static_cast<AccT>(var[ng]);
   x_var = x_var - x_mean * x_mean;
-  T var_inv = rsqrt(x_var + epsilon);
+  AccT var_inv = rsqrt(x_var + epsilon);
   if (cid == 0 && threadIdx.x == 0) {
     real_var[ng] = x_var;
   }
@@ -96,7 +113,7 @@ __global__ void GroupNormForward(const T* x,
       wid = imid % W;
       val = x[(bid * H + hid) * W * C + wid * C + ccid];
     }
-    val = (val - x_mean) * var_inv;
+    val = static_cast<T>((static_cast<AccT>(val) - x_mean) * var_inv);
     if (flags & kHasScale) {
       val *= scale[ccid];
     }
@@ -171,8 +188,8 @@ void GroupNormKernel(const Context& dev_ctx,
 
   dim3 grid(group_size, groups, x_dims[0]);
   dim3 threads(block_size, 1, 1);
+  using AccT = typename kps::details::MPTypeTrait<T>::Type;
   if (data_layout == DataLayout::kNCHW) {
-    using AccT = typename kps::details::MPTypeTrait<T>::Type;
     constexpr int vec_size = sizeof(float4) / sizeof(T);
     int size = group_size * imsize;
     const int max_num_threads = 1024;
@@ -185,7 +202,7 @@ void GroupNormKernel(const Context& dev_ctx,
     dim3 grids(x_dims[0] * groups);
     dim3 blocks(block_size_nchw);
     if (size < vec_size * block_size_nchw) {
-      ScalarGetMeanAndVarNCHW<T><<<grids, blocks, 0, dev_ctx.stream()>>>(
+      ScalarGetMeanAndVarNCHW<T, AccT><<<grids, blocks, 0, dev_ctx.stream()>>>(
           x_data, mean_data, temp_var_data, size);
     } else {
       VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
@@ -195,7 +212,7 @@ void GroupNormKernel(const Context& dev_ctx,
   } else {
     set_zero(dev_ctx, mean, static_cast<T>(0));
     set_zero(dev_ctx, &temp_var, static_cast<T>(0));
-    GroupNormForwardGetMeanAndVar<T>
+    GroupNormForwardGetMeanAndVar<T, AccT>
         <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,
                                                  x_dims[0],
                                                  C,
@@ -267,8 +284,8 @@ void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
 #endif
   dim3 grid(group_size, groups, input_ddim[0]);
   dim3 threads(block_size, 1, 1);
+  using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
   if (data_layout == DataLayout::kNCHW) {
-    using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
     constexpr int vec_size = sizeof(float4) / sizeof(float);
     int size = group_size * image_size;  // group element size
     const int max_num_threads = 1024;
@@ -283,14 +300,15 @@ void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
     dim3 blocks(block_size_nchw);
 
     if (size < vec_size * block_size_nchw) {
-      phi::ScalarGetMeanAndVarNCHW<T>
+      phi::ScalarGetMeanAndVarNCHW<T,AccT>
           <<<grids, blocks, 0, stream>>>(input, temp_mean, temp_variance, size);
     } else {
       phi::VectorizedGetMeanAndVarNCHW<T, AccT, vec_size>
           <<<grids, blocks, 0, stream>>>(input, temp_mean, temp_variance, size);
     }
   } else {
-    phi::GroupNormForwardGetMeanAndVar<T>
+    
+    phi::GroupNormForwardGetMeanAndVar<T,AccT>
         <<<grid, threads, 0, stream>>>(input,
                                        input_ddim[0],
                                        C,
@@ -301,6 +319,8 @@ void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                        temp_mean,
                                        temp_variance);
   }
+  using AccT = typename phi::kps::details::MPTypeTrait<float>::Type;
+
   GroupNormForward<T, 3><<<grid, threads, 0, stream>>>(
       input,
       temp_mean,
@@ -322,4 +342,4 @@ template class GroupNormDirectCUDAFunctor<float>;
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    group_norm, GPU, ALL_LAYOUT, phi::GroupNormKernel, float, double) {}
+    group_norm, GPU, ALL_LAYOUT, phi::GroupNormKernel, float, double,phi::dtype::float16) {}
