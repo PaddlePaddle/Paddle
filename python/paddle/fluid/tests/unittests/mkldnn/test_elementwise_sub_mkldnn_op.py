@@ -15,15 +15,20 @@
 import unittest
 import numpy as np
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 from paddle.fluid.framework import _current_expected_place
 import paddle.fluid.core as core
 
 
-@OpTestTool.skip_if(not (isinstance(_current_expected_place(), core.CPUPlace)),
-                    "GPU is not supported")
+@OpTestTool.skip_if(
+    not (isinstance(_current_expected_place(), core.CPUPlace)),
+    "GPU is not supported",
+)
 class TestMKLDNNElementwiseSubOp(OpTest):
-
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.init_dtype()
@@ -32,7 +37,7 @@ class TestMKLDNNElementwiseSubOp(OpTest):
         self.init_axis()
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -65,15 +70,13 @@ class TestMKLDNNElementwiseSubOp(OpTest):
 
 
 class TestMKLDNNElementwiseSubOp2(TestMKLDNNElementwiseSubOp):
-
     def init_input_output(self):
-        self.x = np.random.random((100, )).astype(self.dtype)
-        self.y = np.random.random((100, )).astype(self.dtype)
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
 
 class TestMKLDNNElementwiseSubOp3(TestMKLDNNElementwiseSubOp):
-
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
@@ -81,7 +84,6 @@ class TestMKLDNNElementwiseSubOp3(TestMKLDNNElementwiseSubOp):
 
 
 class TestMKLDNNElementwiseSubOp4(TestMKLDNNElementwiseSubOp):
-
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
@@ -89,7 +91,6 @@ class TestMKLDNNElementwiseSubOp4(TestMKLDNNElementwiseSubOp):
 
 
 class TestMKLDNNElementwiseSubOp40(TestMKLDNNElementwiseSubOp):
-
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 2, [180, 1]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [1, 256]).astype(self.dtype)
@@ -106,7 +107,6 @@ class TestMKLDNNElementwiseSubOp40(TestMKLDNNElementwiseSubOp):
 
 
 class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
-
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
@@ -114,7 +114,6 @@ class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
 
 
 class TestMKLDNNElementwiseSubOp_broadcast(TestMKLDNNElementwiseSubOp):
-
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -125,7 +124,6 @@ class TestMKLDNNElementwiseSubOp_broadcast(TestMKLDNNElementwiseSubOp):
 
 
 class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
-
     def init_input_output(self):
         self.x = np.random.rand(10, 12).astype(self.dtype)
         self.y = np.random.rand(2, 2, 10, 12).astype(self.dtype)
@@ -146,7 +144,6 @@ class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestBf16(TestMKLDNNElementwiseSubOp):
-
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.init_dtype()
@@ -165,34 +162,46 @@ class TestBf16(TestMKLDNNElementwiseSubOp):
         self.mkldnn_data_type = "bfloat16"
 
     def init_input_output(self):
-        self.x = np.random.random(100, ).astype(self.dtype)
-        self.y = np.random.random(100, ).astype(self.dtype)
+        self.x = np.random.random(
+            100,
+        ).astype(self.dtype)
+        self.y = np.random.random(
+            100,
+        ).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(core.CPUPlace(), ["X", "Y"],
-                                   "Out",
-                                   user_defined_grads=[self.x, -self.x],
-                                   user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["X", "Y"],
+            "Out",
+            user_defined_grads=[self.x, -self.x],
+            user_defined_grad_outputs=[self.x_bf16],
+        )
 
     def test_check_grad_ignore_x(self):
-        self.check_grad_with_place(core.CPUPlace(), ["Y"],
-                                   "Out",
-                                   user_defined_grads=[-self.y],
-                                   user_defined_grad_outputs=[self.y_bf16])
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["Y"],
+            "Out",
+            user_defined_grads=[-self.y],
+            user_defined_grad_outputs=[self.y_bf16],
+        )
 
     def test_check_grad_ignore_y(self):
-        self.check_grad_with_place(core.CPUPlace(), ["X"],
-                                   "Out",
-                                   user_defined_grads=[self.x],
-                                   user_defined_grad_outputs=[self.x_bf16])
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["X"],
+            "Out",
+            user_defined_grads=[self.x],
+            user_defined_grad_outputs=[self.x_bf16],
+        )
 
 
 class TestBf16Broadcasting(TestBf16):
-
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
@@ -206,22 +215,24 @@ class TestBf16Broadcasting(TestBf16):
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            core.CPUPlace(), ["X", "Y"],
+            core.CPUPlace(),
+            ["X", "Y"],
             "Out",
-            user_defined_grads=[self.x,
-                                self.compute_reduced_gradients(self.x)],
-            user_defined_grad_outputs=[self.x_bf16])
+            user_defined_grads=[self.x, self.compute_reduced_gradients(self.x)],
+            user_defined_grad_outputs=[self.x_bf16],
+        )
 
     def test_check_grad_ignore_x(self):
         self.check_grad_with_place(
-            core.CPUPlace(), ["Y"],
+            core.CPUPlace(),
+            ["Y"],
             "Out",
             user_defined_grads=[self.compute_reduced_gradients(self.x)],
-            user_defined_grad_outputs=[self.x_bf16])
+            user_defined_grad_outputs=[self.x_bf16],
+        )
 
 
 class TestInt8(TestMKLDNNElementwiseSubOp):
-
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True

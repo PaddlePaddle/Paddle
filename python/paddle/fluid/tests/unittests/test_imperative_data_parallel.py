@@ -23,7 +23,6 @@ import paddle.fluid.core as core
 
 
 class MLP(fluid.Layer):
-
     def __init__(self, param_attr=None, bias_attr=None):
         super(MLP, self).__init__()
 
@@ -37,7 +36,6 @@ class MLP(fluid.Layer):
 
 
 class TestDataParallelStateDict(unittest.TestCase):
-
     def test_data_parallel_state_dict(self):
         with fluid.dygraph.guard():
             strategy = dygraph.parallel.prepare_context()
@@ -48,13 +46,17 @@ class TestDataParallelStateDict(unittest.TestCase):
             parallel_state = parallel_mlp.state_dict()
 
             base_para = {}
-            place = fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+            place = (
+                fluid.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else fluid.CUDAPlace(0)
+            )
             for k, v in single_state.items():
                 self.assertTrue(k in parallel_state)
 
-                np.testing.assert_array_equal(v.numpy(),
-                                              parallel_state[k].numpy())
+                np.testing.assert_array_equal(
+                    v.numpy(), parallel_state[k].numpy()
+                )
 
                 base_para[k] = v.numpy()
 

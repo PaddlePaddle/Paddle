@@ -23,10 +23,10 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexVariable(unittest.TestCase):
-
     def compare(self):
-        a = np.array([[1.0 + 1.0j, 2.0 + 1.0j],
-                      [3.0 + 1.0j, 4.0 + 1.0j]]).astype(self._dtype)
+        a = np.array(
+            [[1.0 + 1.0j, 2.0 + 1.0j], [3.0 + 1.0j, 4.0 + 1.0j]]
+        ).astype(self._dtype)
         b = np.array([[1.0 + 1.0j, 1.0 + 1.0j]]).astype(self._dtype)
 
         with dg.guard():
@@ -46,16 +46,22 @@ class TestComplexVariable(unittest.TestCase):
         self.compare()
 
     def test_convert_np_dtype_to_dtype(self):
-        self.assertEqual(convert_np_dtype_to_dtype_(np.complex64),
-                         core.VarDesc.VarType.COMPLEX64)
-        self.assertEqual(convert_np_dtype_to_dtype_(np.complex64),
-                         core.VarDesc.VarType.COMPLEX64)
+        self.assertEqual(
+            convert_np_dtype_to_dtype_(np.complex64),
+            core.VarDesc.VarType.COMPLEX64,
+        )
+        self.assertEqual(
+            convert_np_dtype_to_dtype_(np.complex64),
+            core.VarDesc.VarType.COMPLEX64,
+        )
 
     def test_convert_dtype(self):
-        self.assertEqual(convert_dtype(core.VarDesc.VarType.COMPLEX64),
-                         "complex64")
-        self.assertEqual(convert_dtype(core.VarDesc.VarType.COMPLEX128),
-                         "complex128")
+        self.assertEqual(
+            convert_dtype(core.VarDesc.VarType.COMPLEX64), "complex64"
+        )
+        self.assertEqual(
+            convert_dtype(core.VarDesc.VarType.COMPLEX128), "complex128"
+        )
 
     def test_eager(self):
         with _test_eager_guard():

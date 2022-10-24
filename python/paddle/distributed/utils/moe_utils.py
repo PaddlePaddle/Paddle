@@ -18,11 +18,9 @@ from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _legacy_C_ops
 
 
-def global_scatter(x,
-                   local_count,
-                   global_count,
-                   group=None,
-                   use_calc_stream=True):
+def global_scatter(
+    x, local_count, global_count, group=None, use_calc_stream=True
+):
     """
     The global_scatter operator distributes the data of x to n_expert * world_size experts according to local_count,
     and then receives data according to global_count. The expert refers to a user-defined expert network,
@@ -110,42 +108,49 @@ def global_scatter(x,
 
     ring_id = 0 if group is None else group.id
     if _non_static_mode():
-        return _legacy_C_ops.global_scatter(x, local_count, \
-                                    global_count,  \
-                                    'use_calc_stream', use_calc_stream, \
-                                    'ring_id', ring_id)
+        return _legacy_C_ops.global_scatter(
+            x,
+            local_count,
+            global_count,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+        )
     else:
         op_type = 'global_scatter'
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
-            'global_scatter')
-        check_variable_and_dtype(local_count, 'local_count', ['int64'],
-                                 'global_scatter')
-        check_variable_and_dtype(global_count, 'global_count', ['int64'],
-                                 'global_scatter')
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'global_scatter',
+        )
+        check_variable_and_dtype(
+            local_count, 'local_count', ['int64'], 'global_scatter'
+        )
+        check_variable_and_dtype(
+            global_count, 'global_count', ['int64'], 'global_scatter'
+        )
 
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-        helper.append_op(type=op_type,
-                         inputs={
-                             'X': [x],
-                             'local_count': [local_count],
-                             'global_count': [global_count],
-                         },
-                         outputs={'Out': [out]},
-                         attrs={
-                             'ring_id': ring_id,
-                             'use_calc_stream': use_calc_stream
-                         })
+        helper.append_op(
+            type=op_type,
+            inputs={
+                'X': [x],
+                'local_count': [local_count],
+                'global_count': [global_count],
+            },
+            outputs={'Out': [out]},
+            attrs={'ring_id': ring_id, 'use_calc_stream': use_calc_stream},
+        )
         return out
 
 
-def global_gather(x,
-                  local_count,
-                  global_count,
-                  group=None,
-                  use_calc_stream=True):
+def global_gather(
+    x, local_count, global_count, group=None, use_calc_stream=True
+):
     """
     The global_gather operator gathers the data of x into n_expert * world_size experts according to global_count, and then receives data according to local_count.
     The expert refers to a user-defined expert network, n_expert refers to the number of expert networks owned by each card, and world_size refers to the number of graphics cards running the network.
@@ -223,33 +228,45 @@ def global_gather(x,
 
     ring_id = 0 if group is None else group.id
     if _non_static_mode():
-        return _legacy_C_ops.global_gather(x, local_count, \
-                                    global_count, \
-                                    'use_calc_stream', use_calc_stream, \
-                                    'ring_id', ring_id)
+        return _legacy_C_ops.global_gather(
+            x,
+            local_count,
+            global_count,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+        )
     else:
         op_type = 'global_gather'
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
-            'global_gather')
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'global_gather',
+        )
 
-        check_variable_and_dtype(local_count, 'local_count', ['int64'],
-                                 'global_gather')
+        check_variable_and_dtype(
+            local_count, 'local_count', ['int64'], 'global_gather'
+        )
 
-        check_variable_and_dtype(global_count, 'global_count', ['int64'],
-                                 'global_gather')
+        check_variable_and_dtype(
+            global_count, 'global_count', ['int64'], 'global_gather'
+        )
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-        helper.append_op(type=op_type,
-                         inputs={
-                             'X': [x],
-                             'local_count': [local_count],
-                             'global_count': [global_count]
-                         },
-                         outputs={'Out': [out]},
-                         attrs={
-                             'ring_id': group,
-                             'use_calc_stream': use_calc_stream,
-                         })
+        helper.append_op(
+            type=op_type,
+            inputs={
+                'X': [x],
+                'local_count': [local_count],
+                'global_count': [global_count],
+            },
+            outputs={'Out': [out]},
+            attrs={
+                'ring_id': group,
+                'use_calc_stream': use_calc_stream,
+            },
+        )
         return out

@@ -31,6 +31,7 @@ class AlgorithmBase(ABC):
     In another word, the key "algorithm" for this class is the
     search space pruning rules specific for the given optimization scenario.
     """
+
     _REGISTERED_ALGORITHMS = {}
 
     name = None
@@ -88,7 +89,6 @@ class AlgorithmBase(ABC):
 
 
 def register_algor(name):
-
     def impl(cls):
         AlgorithmBase._register(name, cls)
         cls.name = name
@@ -121,7 +121,8 @@ class ShardingStageAlgorithm(AlgorithmBase):
             assert set(stage_range).issubset(
                 set([0, 1, 2, 3])
             ), "Sharding Stage should belong into range within 0 - 3 but got {}.".format(
-                stage_range)
+                stage_range
+            )
             stage_range.sort(reverse=True)
         else:
             stage_range = list(range(self._max_stage + 1)).sort(reverse=True)

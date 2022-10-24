@@ -20,7 +20,6 @@ from paddle.jit import to_static, ProgramTranslator
 
 
 class NetWithParameterList(paddle.nn.Layer):
-
     def __init__(self, in_size, out_size):
         super(NetWithParameterList, self).__init__()
         weight = self.create_parameter([in_size, out_size])
@@ -36,7 +35,6 @@ class NetWithParameterList(paddle.nn.Layer):
 
 
 class NetWithParameterListIter(NetWithParameterList):
-
     def __init__(self, in_size, out_size):
         super(NetWithParameterListIter, self).__init__(in_size, out_size)
 
@@ -51,7 +49,6 @@ class NetWithParameterListIter(NetWithParameterList):
 
 
 class TestParameterList(unittest.TestCase):
-
     def setUp(self):
         self.seed = 2021
         self.iter_num = 5
@@ -89,13 +86,14 @@ class TestParameterList(unittest.TestCase):
 
 
 class NetWithRawParamList(paddle.nn.Layer):
-
     def __init__(self, in_size, out_size):
         super(NetWithRawParamList, self).__init__()
-        weight = self.add_parameter('w',
-                                    self.create_parameter([in_size, out_size]))
+        weight = self.add_parameter(
+            'w', self.create_parameter([in_size, out_size])
+        )
         bias = self.add_parameter(
-            'b', self.create_parameter([out_size], is_bias=True))
+            'b', self.create_parameter([out_size], is_bias=True)
+        )
         self.params = [weight]
         self.bias_dict = {'b': bias}
 
@@ -108,7 +106,6 @@ class NetWithRawParamList(paddle.nn.Layer):
 
 
 class TestRawParameterList(unittest.TestCase):
-
     def setUp(self):
         self.seed = 2021
         self.iter_num = 5
@@ -142,7 +139,6 @@ class TestRawParameterList(unittest.TestCase):
 
 
 class NetWithSubLayerParamList(paddle.nn.Layer):
-
     def __init__(self, sub_layer):
         super(NetWithSubLayerParamList, self).__init__()
         self.sub_layer = sub_layer
@@ -158,7 +154,6 @@ class NetWithSubLayerParamList(paddle.nn.Layer):
 
 
 class TestSubLayerParameterList(TestRawParameterList):
-
     def init_net(self):
         fc = paddle.nn.Linear(10, 3)
         self.net = NetWithSubLayerParamList(fc)

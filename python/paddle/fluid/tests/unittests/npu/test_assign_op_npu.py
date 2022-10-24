@@ -27,7 +27,6 @@ SEED = 2021
 
 
 class TestAssign(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)

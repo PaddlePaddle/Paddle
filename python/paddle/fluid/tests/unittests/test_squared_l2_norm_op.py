@@ -29,8 +29,7 @@ def test_squared_l2_norm(x):
 
 
 class TestL2LossOp(OpTest):
-    """Test squared_l2_norm
-    """
+    """Test squared_l2_norm"""
 
     def setUp(self):
         self.python_api = test_squared_l2_norm
@@ -46,14 +45,15 @@ class TestL2LossOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'],
-                        'Out',
-                        max_relative_error=self.max_relative_error,
-                        check_eager=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            max_relative_error=self.max_relative_error,
+            check_eager=True,
+        )
 
 
 class TestL2LossDeterministic(unittest.TestCase):
-
     def check_place(self, place):
         with paddle.fluid.dygraph.guard(place):
             x_np = np.random.rand(5, 11, 13).astype('float32')

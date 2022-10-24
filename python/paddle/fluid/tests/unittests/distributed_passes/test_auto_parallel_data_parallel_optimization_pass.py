@@ -19,7 +19,9 @@ import numpy as np
 import unittest
 import paddle
 import paddle.distributed.fleet as fleet
-from paddle.distributed.auto_parallel.dist_context import get_default_distributed_context
+from paddle.distributed.auto_parallel.dist_context import (
+    get_default_distributed_context,
+)
 from paddle.distributed.passes import PassContext, new_pass
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
@@ -27,7 +29,6 @@ sys.path.append("..")
 
 
 class TestDataParallelPassWithScale1(AutoPallelPassTestBase):
-
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
@@ -55,24 +56,29 @@ class TestDataParallelPassWithScale1(AutoPallelPassTestBase):
         self._apply_pass = False
 
     def test_bs_8(self):
-        self.check_main(gpus=[0, 1],
-                        batch_size=8,
-                        sequence_len=512,
-                        vocab_size=1000)
+        self.check_main(
+            gpus=[0, 1], batch_size=8, sequence_len=512, vocab_size=1000
+        )
 
     # test scaling with fillconstant
     def get_model(self, place, batch_size, sequence_len, vocab_size):
 
-        dist_main_prog, dist_startup_prog, data_holder, [
-            loss
-        ], gen_data = self.get_gpt_model('dp', place, batch_size, sequence_len,
-                                         vocab_size)
+        (
+            dist_main_prog,
+            dist_startup_prog,
+            data_holder,
+            [loss],
+            gen_data,
+        ) = self.get_gpt_model(
+            'dp', place, batch_size, sequence_len, vocab_size
+        )
         if self._apply_pass:
             config = {}
             config["dist_context"] = get_default_distributed_context()
             config["global_rank"] = paddle.distributed.get_rank()
-            dp_pass = new_pass("auto_parallel_data_parallel_optimization",
-                               config)
+            dp_pass = new_pass(
+                "auto_parallel_data_parallel_optimization", config
+            )
             dp_pass.apply([dist_main_prog], [dist_startup_prog], PassContext())
 
         return dist_main_prog, dist_startup_prog, data_holder, [loss], gen_data
@@ -83,20 +89,27 @@ class TestDataParallelPassWithScale2(TestDataParallelPassWithScale1):
     # test scaling with optimizer rescale_grad
     def get_model(self, place, batch_size, sequence_len, vocab_size):
 
-        dist_main_prog, dist_startup_prog, data_holder, [
-            loss
-        ], gen_data = self.get_gpt_model('dp',
-                                         place,
-                                         batch_size,
-                                         sequence_len,
-                                         vocab_size,
-                                         optimizer='LarsMomentum')
+        (
+            dist_main_prog,
+            dist_startup_prog,
+            data_holder,
+            [loss],
+            gen_data,
+        ) = self.get_gpt_model(
+            'dp',
+            place,
+            batch_size,
+            sequence_len,
+            vocab_size,
+            optimizer='LarsMomentum',
+        )
         if self._apply_pass:
             config = {}
             config["dist_context"] = get_default_distributed_context()
             config["global_rank"] = paddle.distributed.get_rank()
-            dp_pass = new_pass("auto_parallel_data_parallel_optimization",
-                               config)
+            dp_pass = new_pass(
+                "auto_parallel_data_parallel_optimization", config
+            )
             dp_pass.apply([dist_main_prog], [dist_startup_prog], PassContext())
 
         return dist_main_prog, dist_startup_prog, data_holder, [loss], gen_data

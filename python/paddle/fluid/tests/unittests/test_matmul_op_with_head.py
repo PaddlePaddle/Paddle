@@ -59,16 +59,18 @@ def matmul_head(X, Y, head_number=1):
     sub_y_height = Y.shape[-2] // head_number
     if np.ndim(X) == 2:
         for i in range(0, head_number):
-            x.append(X[:, i * sub_x_width:i * sub_x_width + sub_x_width])
-            y.append(Y[i * sub_y_height:i * sub_y_height + sub_y_height, :])
+            x.append(X[:, i * sub_x_width : i * sub_x_width + sub_x_width])
+            y.append(Y[i * sub_y_height : i * sub_y_height + sub_y_height, :])
         for i in range(0, head_number):
             z.append(np.matmul(x[i], y[i]))
         Z = np.concatenate((z), axis=1)
 
     elif np.ndim(X) == 3:
         for i in range(0, head_number):
-            x.append(X[:, :, i * sub_x_width:i * sub_x_width + sub_x_width])
-            y.append(Y[:, i * sub_y_height:i * sub_y_height + sub_y_height, :])
+            x.append(X[:, :, i * sub_x_width : i * sub_x_width + sub_x_width])
+            y.append(
+                Y[:, i * sub_y_height : i * sub_y_height + sub_y_height, :]
+            )
         for i in range(0, head_number):
             z.append(np.matmul(x[i], y[i]))
         Z = np.concatenate((z), axis=2)
@@ -87,11 +89,9 @@ def transpose_mat(X):
     return X
 
 
-def reference_matmul_mul_head(X,
-                              Y,
-                              head_number=1,
-                              transpose_X=False,
-                              transpose_Y=False):
+def reference_matmul_mul_head(
+    X, Y, head_number=1, transpose_X=False, transpose_Y=False
+):
     """Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
     # transpose X and Y appropriately.
@@ -112,19 +112,19 @@ def reference_matmul_mul_head(X,
 
 # Generator for multiple head
 class GeneratorMulHead(object):
-
     def setUp(self):
         self.op_type = "matmul"
         X = np.random.random(self.shape_X).astype("float32")
         Y = np.random.random(self.shape_Y).astype("float32")
-        Out = reference_matmul_mul_head(X, Y, 4, self.transpose_X,
-                                        self.transpose_Y)
+        Out = reference_matmul_mul_head(
+            X, Y, 4, self.transpose_X, self.transpose_Y
+        )
 
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {
             'transpose_X': self.transpose_X,
             'transpose_Y': self.transpose_Y,
-            'head_number': self.head_number
+            'head_number': self.head_number,
         }
         self.outputs = {'Out': Out}
 
@@ -135,17 +135,23 @@ class GeneratorMulHead(object):
 def inject_test_multiple_head(dim_x, dim_y, trans_x, trans_y, head_number):
     test_name = (
         'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_head_{}'.format(
-            dim_x, dim_y, trans_x, trans_y, head_number))
+            dim_x, dim_y, trans_x, trans_y, head_number
+        )
+    )
     shape_x, shape_y = generate_compatible_shapes_mul_head(
-        dim_x, dim_y, trans_x, trans_y)
+        dim_x, dim_y, trans_x, trans_y
+    )
     globals()[test_name] = type(
-        test_name, (GeneratorMulHead, OpTest), {
+        test_name,
+        (GeneratorMulHead, OpTest),
+        {
             'shape_X': shape_x,
             'shape_Y': shape_y,
             'transpose_X': trans_x,
             'transpose_Y': trans_y,
-            'head_number': head_number
-        })
+            'head_number': head_number,
+        },
+    )
 
 
 def matmul_head2(X, Y, head_number=1):
@@ -154,20 +160,21 @@ def matmul_head2(X, Y, head_number=1):
     z = []
     sub_x_width = X.shape[-1] // head_number
     sub_y_width = Y.shape[-1] // head_number
-    assert (sub_x_width == Y.shape[-2]
-            ), "Error: incompatible head number or matrix size!"
+    assert (
+        sub_x_width == Y.shape[-2]
+    ), "Error: incompatible head number or matrix size!"
     if np.ndim(X) == 2:
         for i in range(0, head_number):
-            x.append(X[:, i * sub_x_width:i * sub_x_width + sub_x_width])
-            y.append(Y[:, i * sub_y_width:i * sub_y_width + sub_y_width])
+            x.append(X[:, i * sub_x_width : i * sub_x_width + sub_x_width])
+            y.append(Y[:, i * sub_y_width : i * sub_y_width + sub_y_width])
         for i in range(0, head_number):
             z.append(np.matmul(x[i], y[i]))
         Z = np.concatenate((z), axis=1)
 
     elif np.ndim(X) == 3:
         for i in range(0, head_number):
-            x.append(X[:, :, i * sub_x_width:i * sub_x_width + sub_x_width])
-            y.append(Y[:, :, i * sub_y_width:i * sub_y_width + sub_y_width])
+            x.append(X[:, :, i * sub_x_width : i * sub_x_width + sub_x_width])
+            y.append(Y[:, :, i * sub_y_width : i * sub_y_width + sub_y_width])
         for i in range(0, head_number):
             z.append(np.matmul(x[i], y[i]))
         Z = np.concatenate((z), axis=2)
@@ -176,11 +183,9 @@ def matmul_head2(X, Y, head_number=1):
     return Z
 
 
-def reference_matmul_mul_head2(X,
-                               Y,
-                               head_number=1,
-                               transpose_X=False,
-                               transpose_Y=False):
+def reference_matmul_mul_head2(
+    X, Y, head_number=1, transpose_X=False, transpose_Y=False
+):
     """Reference forward implementation using np.matmul."""
     # np.matmul does not support the transpose flags, so we manually
     # transpose X and Y appropriately.
@@ -199,8 +204,9 @@ def reference_matmul_mul_head2(X,
     return Out
 
 
-def generate_compatible_shapes_mul_head2(dim_X, dim_Y, transpose_X,
-                                         transpose_Y):
+def generate_compatible_shapes_mul_head2(
+    dim_X, dim_Y, transpose_X, transpose_Y
+):
     BATCH_SIZE = 2
     # Assume head number H is 4. We need make sure K1/H = M2
     M1 = 3
@@ -227,38 +233,36 @@ def generate_compatible_shapes_mul_head2(dim_X, dim_Y, transpose_X,
 
 # Generator for multiple head, case 2 when width of X is not same as height of Y
 class GeneratorMulHead2(object):
-
     def setUp(self):
         self.op_type = "matmul"
 
         X = np.zeros(self.shape_X)
         Y = np.zeros(self.shape_Y)
         if len(self.shape_X) == 2:
-            X = np.arange(0,
-                          self.shape_X[-1] * self.shape_X[-2],
-                          dtype=np.float32).reshape(self.shape_X)
-            Y = np.arange(0,
-                          self.shape_Y[-1] * self.shape_Y[-2],
-                          dtype=np.float32).reshape(self.shape_Y)
+            X = np.arange(
+                0, self.shape_X[-1] * self.shape_X[-2], dtype=np.float32
+            ).reshape(self.shape_X)
+            Y = np.arange(
+                0, self.shape_Y[-1] * self.shape_Y[-2], dtype=np.float32
+            ).reshape(self.shape_Y)
         else:
             for i in range(0, len(self.shape_X) - 1):
-                X[i, :, :] = np.arange(0,
-                                       self.shape_X[-1] * self.shape_X[-2],
-                                       dtype=np.float32).reshape(
-                                           list(self.shape_X)[-2:])
-                Y[i, :, :] = np.arange(0,
-                                       self.shape_Y[-1] * self.shape_Y[-2],
-                                       dtype=np.float32).reshape(
-                                           list(self.shape_Y)[-2:])
+                X[i, :, :] = np.arange(
+                    0, self.shape_X[-1] * self.shape_X[-2], dtype=np.float32
+                ).reshape(list(self.shape_X)[-2:])
+                Y[i, :, :] = np.arange(
+                    0, self.shape_Y[-1] * self.shape_Y[-2], dtype=np.float32
+                ).reshape(list(self.shape_Y)[-2:])
 
-        Out = reference_matmul_mul_head2(X, Y, 4, self.transpose_X,
-                                         self.transpose_Y)
+        Out = reference_matmul_mul_head2(
+            X, Y, 4, self.transpose_X, self.transpose_Y
+        )
 
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {
             'transpose_X': self.transpose_X,
             'transpose_Y': self.transpose_Y,
-            'head_number': self.head_number
+            'head_number': self.head_number,
         }
         self.outputs = {'Out': Out}
 
@@ -269,26 +273,32 @@ class GeneratorMulHead2(object):
 def inject_test_multiple_head2(dim_x, dim_y, trans_x, trans_y, head_number):
     test_name = (
         'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_head2_{}'.format(
-            dim_x, dim_y, trans_x, trans_y, head_number))
+            dim_x, dim_y, trans_x, trans_y, head_number
+        )
+    )
     shape_x, shape_y = generate_compatible_shapes_mul_head2(
-        dim_x, dim_y, trans_x, trans_y)
+        dim_x, dim_y, trans_x, trans_y
+    )
     globals()[test_name] = type(
-        test_name, (GeneratorMulHead2, OpTest), {
+        test_name,
+        (GeneratorMulHead2, OpTest),
+        {
             'shape_X': shape_x,
             'shape_Y': shape_y,
             'transpose_X': trans_x,
             'transpose_Y': trans_y,
-            'head_number': head_number
-        })
+            'head_number': head_number,
+        },
+    )
 
 
-#test case for multiple head
+# test case for multiple head
 for dim in (2, 3):
     for transose_x in (False, True):
         for transose_y in (False, True):
             inject_test_multiple_head(dim, dim, transose_x, transose_y, 4)
 
-#test case for multiple head when X.width != Y.height
+# test case for multiple head when X.width != Y.height
 for dim in (2, 3):
     for transose_x in (False, True):
         for transose_y in (False, True):

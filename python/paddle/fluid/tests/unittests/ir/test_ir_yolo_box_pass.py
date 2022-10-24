@@ -20,15 +20,17 @@ from paddle.fluid.layer_helper import LayerHelper
 paddle.enable_static()
 
 
-def multiclass_nms(bboxes,
-                   scores,
-                   score_threshold,
-                   nms_top_k,
-                   keep_top_k,
-                   nms_threshold=0.3,
-                   normalized=True,
-                   nms_eta=1.,
-                   background_label=-1):
+def multiclass_nms(
+    bboxes,
+    scores,
+    score_threshold,
+    nms_top_k,
+    keep_top_k,
+    nms_threshold=0.3,
+    normalized=True,
+    nms_eta=1.0,
+    background_label=-1,
+):
     helper = LayerHelper('multiclass_nms3', **locals())
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     index = helper.create_variable_for_type_inference(dtype='int32')
@@ -36,18 +38,20 @@ def multiclass_nms(bboxes,
     inputs = {'BBoxes': bboxes, 'Scores': scores}
     outputs = {'Out': output, 'Index': index, 'NmsRoisNum': nms_rois_num}
 
-    helper.append_op(type="multiclass_nms3",
-                     inputs=inputs,
-                     attrs={
-                         'background_label': background_label,
-                         'score_threshold': score_threshold,
-                         'nms_top_k': nms_top_k,
-                         'nms_threshold': nms_threshold,
-                         'keep_top_k': keep_top_k,
-                         'nms_eta': nms_eta,
-                         'normalized': normalized
-                     },
-                     outputs=outputs)
+    helper.append_op(
+        type="multiclass_nms3",
+        inputs=inputs,
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'keep_top_k': keep_top_k,
+            'nms_eta': nms_eta,
+            'normalized': normalized,
+        },
+        outputs=outputs,
+    )
     output.stop_gradient = True
     index.stop_gradient = True
 
@@ -55,7 +59,6 @@ def multiclass_nms(bboxes,
 
 
 class TestYoloBoxPass(unittest.TestCase):
-
     def test_yolo_box_pass(self):
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
@@ -67,18 +70,22 @@ class TestYoloBoxPass(unittest.TestCase):
             div = paddle.divide(im_shape, im_scale)
             cast = paddle.cast(div, "int32")
             boxes0, scores0 = paddle.vision.ops.yolo_box(
-                yolo_box0_x, cast, [116, 90, 156, 198, 373, 326], 80, 0.005, 32)
+                yolo_box0_x, cast, [116, 90, 156, 198, 373, 326], 80, 0.005, 32
+            )
             boxes1, scores1 = paddle.vision.ops.yolo_box(
-                yolo_box1_x, cast, [30, 61, 62, 45, 59, 119], 80, 0.005, 16)
+                yolo_box1_x, cast, [30, 61, 62, 45, 59, 119], 80, 0.005, 16
+            )
             boxes2, scores2 = paddle.vision.ops.yolo_box(
-                yolo_box2_x, cast, [10, 13, 16, 30, 33, 23], 80, 0.005, 8)
+                yolo_box2_x, cast, [10, 13, 16, 30, 33, 23], 80, 0.005, 8
+            )
             transpose0 = paddle.transpose(scores0, [0, 2, 1])
             transpose1 = paddle.transpose(scores1, [0, 2, 1])
             transpose2 = paddle.transpose(scores2, [0, 2, 1])
             concat0 = paddle.concat([boxes0, boxes1, boxes2], 1)
             concat1 = paddle.concat([transpose0, transpose1, transpose2], 2)
-            out0, out1, out2 = multiclass_nms(concat0, concat1, 0.01, 1000, 100,
-                                              0.45, True, 1., 80)
+            out0, out1, out2 = multiclass_nms(
+                concat0, concat1, 0.01, 1000, 100, 0.45, True, 1.0, 80
+            )
         graph = core.Graph(program.desc)
         core.get_pass("yolo_box_fuse_pass").apply(graph)
         graph = paddle.fluid.framework.IrGraph(graph)

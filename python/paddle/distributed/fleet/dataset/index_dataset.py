@@ -17,13 +17,11 @@ __all__ = []
 
 
 class Index(object):
-
     def __init__(self, name):
         self._name = name
 
 
 class TreeIndex(Index):
-
     def __init__(self, name, path):
         super(TreeIndex, self).__init__(name)
         self._wrapper = core.IndexWrapper()
@@ -67,7 +65,7 @@ class TreeIndex(Index):
 
     def get_travel_path(self, child, ancestor):
         res = []
-        while (child > ancestor):
+        while child > ancestor:
             res.append(child)
             child = int((child - 1) / self._branch)
         return res
@@ -76,17 +74,18 @@ class TreeIndex(Index):
         codes = self.get_ancestor_codes(ids, level)
         return dict(zip(ids, codes))
 
-    def init_layerwise_sampler(self,
-                               layer_sample_counts,
-                               start_sample_layer=1,
-                               seed=0):
+    def init_layerwise_sampler(
+        self, layer_sample_counts, start_sample_layer=1, seed=0
+    ):
         assert self._layerwise_sampler is None
         self._layerwise_sampler = core.IndexSampler("by_layerwise", self._name)
-        self._layerwise_sampler.init_layerwise_conf(layer_sample_counts,
-                                                    start_sample_layer, seed)
+        self._layerwise_sampler.init_layerwise_conf(
+            layer_sample_counts, start_sample_layer, seed
+        )
 
     def layerwise_sample(self, user_input, index_input, with_hierarchy=False):
         if self._layerwise_sampler is None:
             raise ValueError("please init layerwise_sampler first.")
-        return self._layerwise_sampler.sample(user_input, index_input,
-                                              with_hierarchy)
+        return self._layerwise_sampler.sample(
+            user_input, index_input, with_hierarchy
+        )

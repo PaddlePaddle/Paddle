@@ -27,7 +27,7 @@ def log(ctx):
 
 def process_args(ctx):
     # reset device by args
-    #argdev = ctx.args.gpus or ctx.args.xpus or ctx.args.npus
+    # argdev = ctx.args.gpus or ctx.args.xpus or ctx.args.npus
     argdev = ctx.args.devices
     if argdev:
         for d in argdev.split(','):
@@ -49,7 +49,8 @@ def collective_compatible(ctx):
         ctx.args.master = eps[0] if ':' in eps[0] else '{}:6768'.format(eps[0])
         ctx.args.nnodes = len(hosts)
         ctx.logger.info(
-            'args reset by env PADDLE_TRAINER_ENDPOINTS\n{}'.format(eps))
+            'args reset by env PADDLE_TRAINER_ENDPOINTS\n{}'.format(eps)
+        )
 
     if 'DISTRIBUTED_TRAINER_ENDPOINTS' in ctx.envs:
         eps = ctx.envs['DISTRIBUTED_TRAINER_ENDPOINTS'].split(',')
@@ -57,7 +58,8 @@ def collective_compatible(ctx):
         ctx.args.master = eps[0]
         ctx.args.nnodes = len(hosts)
         ctx.logger.info(
-            'args reset by env DISTRIBUTED_TRAINER_ENDPOINTS\n{}'.format(eps))
+            'args reset by env DISTRIBUTED_TRAINER_ENDPOINTS\n{}'.format(eps)
+        )
 
 
 def rewrite_host_ip(ctx):
@@ -72,9 +74,13 @@ def test_mode(ctx):
         if int(ctx.args.nnodes) < 2:
             ctx.args.nnodes = 2
         ctx.args.training_script = '{}/test.py'.format(
-            os.path.dirname(__file__))
+            os.path.dirname(__file__)
+        )
 
 
 enabled_plugins = [
-    test_mode, collective_compatible, rewrite_host_ip, process_args
+    test_mode,
+    collective_compatible,
+    rewrite_host_ip,
+    process_args,
 ]

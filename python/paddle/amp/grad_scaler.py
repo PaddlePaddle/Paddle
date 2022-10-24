@@ -75,18 +75,25 @@ class GradScaler(AmpScaler):
             optimizer.clear_grad()
     """
 
-    def __init__(self,
-                 enable=True,
-                 init_loss_scaling=2.**15,
-                 incr_ratio=2.0,
-                 decr_ratio=0.5,
-                 incr_every_n_steps=1000,
-                 decr_every_n_nan_or_inf=2,
-                 use_dynamic_loss_scaling=True):
-        super(GradScaler,
-              self).__init__(enable, init_loss_scaling, incr_ratio, decr_ratio,
-                             incr_every_n_steps, decr_every_n_nan_or_inf,
-                             use_dynamic_loss_scaling)
+    def __init__(
+        self,
+        enable=True,
+        init_loss_scaling=2.0**15,
+        incr_ratio=2.0,
+        decr_ratio=0.5,
+        incr_every_n_steps=1000,
+        decr_every_n_nan_or_inf=2,
+        use_dynamic_loss_scaling=True,
+    ):
+        super(GradScaler, self).__init__(
+            enable,
+            init_loss_scaling,
+            incr_ratio,
+            decr_ratio,
+            incr_every_n_steps,
+            decr_every_n_nan_or_inf,
+            use_dynamic_loss_scaling,
+        )
 
     def scale(self, var):
         """
@@ -192,7 +199,8 @@ class GradScaler(AmpScaler):
         optimizer_state = self._optimizer_states[id(optimizer)]
         if optimizer_state["state"] is OptimizerState.STEPPED:
             raise RuntimeError(
-                "step() has already been called since the last update().")
+                "step() has already been called since the last update()."
+            )
 
         #  unscale the grad
         if optimizer_state["state"] is OptimizerState.INIT:
@@ -570,8 +578,9 @@ class GradScaler(AmpScaler):
                 scaler.set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
                 print(scaler.get_decr_every_n_nan_or_inf()) # 3
         """
-        super(GradScaler,
-              self).set_decr_every_n_nan_or_inf(new_decr_every_n_nan_or_inf)
+        super(GradScaler, self).set_decr_every_n_nan_or_inf(
+            new_decr_every_n_nan_or_inf
+        )
 
     def state_dict(self):
         """

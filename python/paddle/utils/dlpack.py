@@ -51,7 +51,8 @@ def to_dlpack(x):
         if not isinstance(x, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
             raise TypeError(
                 "The type of 'x' in to_dlpack must be paddle.Tensor,"
-                " but received {}.".format(type(x)))
+                " but received {}.".format(type(x))
+            )
 
         return x.value().get_tensor()._to_dlpack()
 
@@ -87,11 +88,12 @@ def from_dlpack(dlpack):
     """
 
     t = type(dlpack)
-    dlpack_flag = (t.__module__ == 'builtins' and t.__name__ == 'PyCapsule')
+    dlpack_flag = t.__module__ == 'builtins' and t.__name__ == 'PyCapsule'
     if not dlpack_flag:
         raise TypeError(
             "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
-            " but received {}.".format(type(dlpack)))
+            " but received {}.".format(type(dlpack))
+        )
 
     if _non_static_mode():
         out = paddle.fluid.core.from_dlpack(dlpack)
