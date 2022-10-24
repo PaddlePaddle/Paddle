@@ -17,6 +17,7 @@ from typing import Optional
 import numpy as np
 import paddle
 import paddle.fluid.core as core
+
 # from op_test import OpTest
 
 
@@ -32,7 +33,6 @@ def np_nan_to_num_op(x: np.ndarray, nan: float, replace_posinf_with_max: bool,
                      neginf: float) -> np.ndarray:
     if replace_posinf_with_max:
         posinf = None
-
     if replace_neginf_with_min:
         neginf = None
     return np.nan_to_num(x, True, nan=nan, posinf=posinf, neginf=neginf)
@@ -71,16 +71,6 @@ class TestNanToNum(unittest.TestCase):
         self.assertTrue(np.allclose(out2_np, res[1]))
         self.assertTrue(np.allclose(out3_np, res[2]))
         self.assertTrue(np.allclose(out4_np, res[3]))
-
-    def test_errors(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
-
-            def test_dtype():
-                x = paddle.fluid.data('X2', [10, 12], 'bool')
-                paddle.nan_to_num(x)
-
-            self.assertRaises(TypeError, test_dtype)
 
     def test_dygraph(self):
 
