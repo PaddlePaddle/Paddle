@@ -464,7 +464,6 @@ def monkey_patch_math_varbase():
         ('size', _size_),
         ('T', _T_),
         # for logical compare
-        ('__eq__', _binary_creator_('__eq__', 'equal', False, None, True)),
         ('__array_ufunc__', None),
     ]
 
@@ -488,7 +487,7 @@ def monkey_patch_math_varbase():
         '__floordiv__',
         '__pow__',
         '__rpow__',
-        '__ne__',
+        '__eq__' '__ne__',
     ]
 
     global _already_patch_varbase

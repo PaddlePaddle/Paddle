@@ -1017,6 +1017,9 @@ def monkey_patch_varbase():
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
+    def __hash__(self):
+        return hash(id(self))
+
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
@@ -1060,6 +1063,7 @@ def monkey_patch_varbase():
         setattr(core.eager.Tensor, "_numel", _numel)
         setattr(core.eager.Tensor, "_uva", _uva)
         setattr(core.eager.Tensor, "_clear_data", _clear_data)
+        setattr(core.eager.Tensor, "__hash__", __hash__)
     else:
         setattr(core.VarBase, "__name__", "Tensor")
         setattr(core.VarBase, "grad", grad)

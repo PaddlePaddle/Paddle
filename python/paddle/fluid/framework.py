@@ -7220,6 +7220,9 @@ class EagerParamBase(_core_eager_eagertensor):
             tensor=super(EagerParamBase, self).__str__()
         )
 
+    def __hash__(self):
+        return hash(id(self))
+
     def __deepcopy__(self, memo):
         """
         Deep copy parameter, it will always performs Tensor copy.
