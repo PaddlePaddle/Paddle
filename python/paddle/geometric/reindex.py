@@ -63,13 +63,11 @@ def reindex_graph(
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        reindex_src (Tensor): The source node index of graph edges after reindex.
+        - reindex_src (Tensor): The source node index of graph edges after reindex.
 
-        reindex_dst (Tensor): The destination node index of graph edges after reindex.
+        - reindex_dst (Tensor): The destination node index of graph edges after reindex.
 
-        out_nodes (Tensor): The index of unique input nodes and neighbors before reindex,
-                            where we put the input nodes `x` in the front, and put neighbor
-                            nodes in the back.
+        - out_nodes (Tensor): The index of unique input nodes and neighbors before reindex, where we put the input nodes `x` in the front, and put neighbor nodes in the back.
 
     Examples:
         .. code-block:: python
@@ -183,13 +181,13 @@ def reindex_heter_graph(
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        reindex_src (Tensor): The source node index of graph edges after reindex.
+        - reindex_src (Tensor): The source node index of graph edges after reindex.
 
-        reindex_dst (Tensor): The destination node index of graph edges after reindex.
+        - reindex_dst (Tensor): The destination node index of graph edges after reindex.
 
-        out_nodes (Tensor): The index of unique input nodes and neighbors before reindex,
-                            where we put the input nodes `x` in the front, and put neighbor
-                            nodes in the back.
+        - out_nodes (Tensor): The index of unique input nodes and neighbors before reindex,
+                              where we put the input nodes `x` in the front, and put neighbor
+                              nodes in the back.
 
     Examples:
         .. code-block:: python
