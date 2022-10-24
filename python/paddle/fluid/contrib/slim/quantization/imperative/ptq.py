@@ -106,7 +106,9 @@ class ImperativePTQ(object):
 
         return model
 
-    def save_quantized_model(self, model, path, input_spec=None, **config):
+    def save_quantized_model(
+        self, model, path, input_spec=None, postprocess=True, **config
+    ):
         """
         1. Convert the quantized model
         2. Call jit.save to save the inference model
@@ -121,7 +123,7 @@ class ImperativePTQ(object):
                 InputSpec or example Tensor. If None, all input variables of
                 the original Layer's forward method would be the inputs of
                 the saved model. Default None.
-            **configs (dict, optional): Other save configuration options for
+            **config (dict, optional): Other save configuration options for
                 compatibility. We do not recommend using these configurations,
                 they may be removed in the future. If not necessary, DO NOT use
                 them. Default None.
@@ -140,11 +142,15 @@ class ImperativePTQ(object):
         assert isinstance(
             model, paddle.nn.Layer
         ), "The model must be the instance of paddle.nn.Layer."
+        is_postprocess = config.get('postprocess', False)
+        config.pop('postprocess', None)
 
         # Convert and save dygraph quantized model
         self._convert(model)
 
         paddle.jit.save(layer=model, path=path, input_spec=input_spec, **config)
+        if not is_postprocess:
+            return
 
         # Load inference program
         is_dynamic_mode = False
@@ -272,10 +278,16 @@ class ImperativePTQ(object):
         output_names = layer_info.output_names
         output_thresholds = quant_config.out_act_quantizer.thresholds
         assert len(output_names) == 1
-        assert len(output_thresholds) == 1
-        save_name = output_names[0] + str(0) + "_threshold"
-        sub_layer._set_op_attrs({save_name: output_thresholds[0]})
-        sub_layer._set_op_attrs({"out_threshold": output_thresholds[0]})
+        if len(output_thresholds) == 1:
+            save_name = output_names[0] + str(0) + "_threshold"
+            sub_layer._set_op_attrs({save_name: output_thresholds[0]})
+            sub_layer._set_op_attrs({"out_threshold": output_thresholds[0]})
+        else:
+            _logger.warning(
+                "output_thresholds shape of {} need to be 1, but received {}".format(
+                    output_names[0], len(output_thresholds)
+                )
+            )
 
     def _wrap_simulated_layers(self, model):
         """
@@ -326,11 +338,13 @@ class ImperativePTQ(object):
                 # save the input thresholds
                 assert hasattr(quant_layer, "_fake_quant_input")
                 assert hasattr(quant_layer._fake_quant_input, "_scale")
-                assert len(in_act_quantizer.thresholds) == 1
-                input_threshold = np.array(
-                    [in_act_quantizer.thresholds[0]], dtype=np.float32
-                )
-                quant_layer._fake_quant_input._scale.set_value(input_threshold)
+                if len(in_act_quantizer.thresholds) == 1:
+                    input_threshold = np.array(
+                        [in_act_quantizer.thresholds[0]], dtype=np.float32
+                    )
+                    quant_layer._fake_quant_input._scale.set_value(
+                        input_threshold
+                    )
 
                 assert hasattr(quant_layer, "_fake_quant_weight")
                 assert hasattr(quant_layer._fake_quant_weight, "_scale")

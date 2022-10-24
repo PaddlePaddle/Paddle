@@ -41,6 +41,7 @@ PTQ_LAYERS_INFO = [
     LayerInfo(paddle.nn.ReLU, ['X'], [], ['Out']),
     LayerInfo(paddle.nn.ReLU6, ['X'], [], ['Out']),
     LayerInfo(paddle.nn.Hardswish, ['X'], [], ['Out']),
+    LayerInfo(paddle.nn.Swish, ['X'], [], ['Out']),
     LayerInfo(paddle.nn.Sigmoid, ['X'], [], ['Out']),
     LayerInfo(paddle.nn.Softmax, ['X'], [], ['Out']),
     LayerInfo(paddle.nn.Tanh, ['X'], [], ['Out']),
