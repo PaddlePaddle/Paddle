@@ -1433,6 +1433,15 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
     IR_NODE_LINK_TO(fill_const_op, cache_kv);
     IR_NODE_LINK_TO(cache_kv, fused_multi_transformer);
 
+    IR_NODE_LINK_TO(matmul_linear_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(eltadd_linear_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_scale, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_bias, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul0_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd0_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul1_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd1_b, fused_multi_transformer);
+
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
 
     // rewrite while OP input
@@ -1742,8 +1751,6 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
                  ffn_output);
 
     std::unordered_set<const Node*> marked_nodes({layer_norm,
-                                                  layer_norm_scale,
-                                                  layer_norm_bias,
                                                   layer_norm_mean,
                                                   layer_norm_variance,
                                                   layer_norm_out,
@@ -1787,17 +1794,13 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
                                                   transpose2_qkv,
                                                   transpose2_qkv_out,
                                                   matmul_linear,
-                                                  matmul_linear_w,
                                                   matmul_linear_out,
                                                   eltadd_linear,
-                                                  eltadd_linear_b,
                                                   eltadd_linear_out,
                                                   dropout_linear,
                                                   dropout_linear_out,
                                                   eltadd_out,
                                                   ffn_layer_norm,
-                                                  ffn_layer_norm_scale,
-                                                  ffn_layer_norm_bias,
                                                   ffn_layer_norm_mean,
                                                   ffn_layer_norm_variance,
                                                   ffn_layer_norm_out,
@@ -2162,6 +2165,15 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     IR_NODE_LINK_TO(fill_const_op, cache_kv);
     IR_NODE_LINK_TO(cache_kv, fused_multi_transformer);
 
+    IR_NODE_LINK_TO(matmul_linear_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(eltadd_linear_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_scale, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_bias, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul0_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd0_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul1_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd1_b, fused_multi_transformer);
+
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
 
     // rewrite while OP input
@@ -2435,8 +2447,6 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                  ffn_output);
 
     std::unordered_set<const Node*> marked_nodes({layer_norm,
-                                                  layer_norm_scale,
-                                                  layer_norm_bias,
                                                   layer_norm_mean,
                                                   layer_norm_variance,
                                                   layer_norm_out,
@@ -2468,17 +2478,13 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                                                   transpose2_qkv,
                                                   transpose2_qkv_out,
                                                   matmul_linear,
-                                                  matmul_linear_w,
                                                   matmul_linear_out,
                                                   eltadd_linear,
-                                                  eltadd_linear_b,
                                                   eltadd_linear_out,
                                                   dropout_linear,
                                                   dropout_linear_out,
                                                   eltadd_out,
                                                   ffn_layer_norm,
-                                                  ffn_layer_norm_scale,
-                                                  ffn_layer_norm_bias,
                                                   ffn_layer_norm_mean,
                                                   ffn_layer_norm_variance,
                                                   ffn_layer_norm_out,
@@ -2852,6 +2858,15 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     IR_NODE_LINK_TO(fill_const_op, cache_kv);
     IR_NODE_LINK_TO(cache_kv, fused_multi_transformer);
 
+    IR_NODE_LINK_TO(matmul_linear_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(eltadd_linear_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_scale, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_layer_norm_bias, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul0_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd0_b, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_matmul1_w, fused_multi_transformer);
+    IR_NODE_LINK_TO(ffn_eltadd1_b, fused_multi_transformer);
+
     IR_NODE_LINK_TO(fused_multi_transformer, ffn_output);
 
     // rewrite while OP input
@@ -3151,8 +3166,6 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                  ffn_output);
 
     std::unordered_set<const Node*> marked_nodes({layer_norm,
-                                                  layer_norm_scale,
-                                                  layer_norm_bias,
                                                   layer_norm_mean,
                                                   layer_norm_variance,
                                                   layer_norm_out,
@@ -3186,19 +3199,15 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
                                                   transpose2_qkv,
                                                   transpose2_qkv_out,
                                                   matmul_linear,
-                                                  matmul_linear_w,
                                                   matmul_linear_out,
                                                   c_allreduce_sum,
                                                   c_allreduce_sum_out,
                                                   eltadd_linear,
-                                                  eltadd_linear_b,
                                                   eltadd_linear_out,
                                                   dropout_linear,
                                                   dropout_linear_out,
                                                   eltadd_out,
                                                   ffn_layer_norm,
-                                                  ffn_layer_norm_scale,
-                                                  ffn_layer_norm_bias,
                                                   ffn_layer_norm_mean,
                                                   ffn_layer_norm_variance,
                                                   ffn_layer_norm_out,
