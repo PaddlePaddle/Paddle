@@ -46,7 +46,7 @@ class RunCustomOpNode : public GradNodeBase {
       bool is_new_grad = false)  // NOLINT
       override;
 
-  std::string name() {
+  std::string name() override {
     return paddle::string::Sprintf("RunCustomOpNode: %s_grad", op_type_);
   }
 
@@ -116,7 +116,7 @@ class RunCustomOpDoubleGradNode : public GradNodeBase {
       bool is_new_grad = false)  // NOLINT
       override;
 
-  std::string name() {
+  std::string name() override {
     return paddle::string::Sprintf("RunCustomOpDoubleGradNode: %s_grad_grad",
                                    op_type_);
   }

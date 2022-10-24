@@ -18,7 +18,6 @@ import os
 
 
 class TestTCPStore(unittest.TestCase):
-
     def test_tcp_store(self):
         dist_port = int(os.getenv("PADDLE_DIST_UT_PORT", 6170))
         print("get dist_port:", dist_port)

@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 using DDim = framework::DDim;
 using fp16 = paddle::platform::float16;
 
@@ -499,8 +499,7 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
                           "NPU Interpolate Kernel only support 4-D Tensor."));
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
     phi::funcs::ExtractNCDWH(
         input_dims, data_layout, &n, &c, &in_d, &in_h, &in_w);
@@ -652,8 +651,7 @@ class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
         ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_layout_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
     phi::funcs::ExtractNCDWH(
         input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);

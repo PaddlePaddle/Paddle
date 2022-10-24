@@ -20,18 +20,20 @@ sys.path.append("..")
 
 import paddle
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestReduceAllOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'reduce_all'
 
     class XPUTestReduceAllBase(XPUOpTest):
-
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.set_case()
@@ -42,11 +44,12 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
                 'use_xpu': True,
                 'reduce_all': True,
                 'keep_dim': True,
-                'dim': (3, 5, 4)
+                'dim': (3, 5, 4),
             }
             self.inputs = {
-                'X':
-                np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+                'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
+                    "bool"
+                )
             }
             self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
@@ -57,14 +60,13 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
             pass
 
     class XPUTestReduceAllCase1(XPUTestReduceAllBase):
-
         def set_case(self):
             self.op_type = 'reduce_all'
             self.attrs = {
                 'use_xpu': True,
                 'reduce_all': True,
                 'keep_dim': True,
-                'dim': [1]
+                'dim': [1],
             }
             self.inputs = {
                 'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")
@@ -72,23 +74,22 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'].all()}
 
     class XPUTestReduceAllCase2(XPUTestReduceAllBase):
-
         def set_case(self):
             self.op_type = 'reduce_all'
             self.attrs = {
                 'use_xpu': True,
                 'reduce_all': True,
                 'keep_dim': False,
-                'dim': (3, 6)
+                'dim': (3, 6),
             }
             self.inputs = {
-                'X':
-                np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+                'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
+                    "bool"
+                )
             }
             self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
     class XPUTestReduceAllCase3(XPUTestReduceAllBase):
-
         def set_case(self):
             self.op_type = 'reduce_all'
             self.attrs = {

@@ -26,7 +26,6 @@ paddle.enable_static()
 
 
 class TestFillAnyLikeNPUOp(OpTest):
-
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -52,47 +51,40 @@ class TestFillAnyLikeNPUOp(OpTest):
 
 
 class TestFillAnyLikeNPUOpInt32(TestFillAnyLikeNPUOp):
-
     def init(self):
         self.dtype = np.int32
         self.value = -1
 
 
 class TestFillAnyLikeNPUOpInt64(TestFillAnyLikeNPUOp):
-
     def init(self):
         self.dtype = np.int64
         self.value = -1
 
 
 class TestFillAnyLikeNPUOpFloat32(TestFillAnyLikeNPUOp):
-
     def init(self):
         self.dtype = np.float32
         self.value = 0.09
 
 
 class TestFillAnyLikeNPUOpFloat16(TestFillAnyLikeNPUOp):
-
     def init(self):
         self.dtype = np.float16
         self.value = 0.05
 
 
 class TestFillAnyLikeNPUOpValue1(TestFillAnyLikeNPUOp):
-
     def init(self):
         self.value = 1.0
 
 
 class TestFillAnyLikeNPUOpValue2(TestFillAnyLikeNPUOp):
-
     def init(self):
         self.value = 1e-9
 
 
 class TestFillAnyLikeNPUOpShape(TestFillAnyLikeNPUOp):
-
     def init(self):
         self.shape = [12, 10]
 

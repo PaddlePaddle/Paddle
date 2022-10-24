@@ -30,7 +30,8 @@ def convert_uint16_to_float(in_list):
         in_list = np.asarray(in_list)
         out = np.vectorize(
             lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
-            otypes=[np.float32])(in_list.flat)
+            otypes=[np.float32],
+        )(in_list.flat)
         return np.reshape(out, in_list.shape)
     else:
         return in_list
@@ -39,10 +40,10 @@ def convert_uint16_to_float(in_list):
 cutf = convert_uint16_to_float
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestModelCastBF16(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.seed = 111
@@ -67,25 +68,24 @@ class TestModelCastBF16(unittest.TestCase):
             with fluid.program_guard(prog, startup_prog):
                 yield
 
-    def get_static_graph_result(self,
-                                feed,
-                                fetch_list,
-                                amp_fun,
-                                with_lod=False,
-                                startup_prog=None):
+    def get_static_graph_result(
+        self, feed, fetch_list, amp_fun, with_lod=False, startup_prog=None
+    ):
         exe = fluid.Executor(core.CPUPlace())
-        exe.run(fluid.default_startup_program(
-        ) if startup_prog is None else startup_prog)
+        exe.run(
+            fluid.default_startup_program()
+            if startup_prog is None
+            else startup_prog
+        )
         prog = fluid.default_main_program()
         if amp_fun is not None:
             if startup_prog is not None:
                 amp_fun(prog, startup_prog)
             else:
                 amp_fun(prog)
-        return exe.run(prog,
-                       feed=feed,
-                       fetch_list=fetch_list,
-                       return_numpy=(not with_lod))
+        return exe.run(
+            prog, feed=feed, fetch_list=fetch_list, return_numpy=(not with_lod)
+        )
 
     def _graph_common(self, _amp_fun, startup_prog=None):
         size = 3
@@ -96,12 +96,12 @@ class TestModelCastBF16(unittest.TestCase):
         nn_bf16 = amp.bf16.convert_float_to_uint16(nn)
 
         with self.static_graph():
-            t_bf16 = layers.data(name='t_bf16',
-                                 shape=[size, size],
-                                 dtype=np.uint16)
-            tt_bf16 = layers.data(name='tt_bf16',
-                                  shape=[size, size],
-                                  dtype=np.uint16)
+            t_bf16 = layers.data(
+                name='t_bf16', shape=[size, size], dtype=np.uint16
+            )
+            tt_bf16 = layers.data(
+                name='tt_bf16', shape=[size, size], dtype=np.uint16
+            )
             t = layers.data(name='t', shape=[size, size], dtype='float32')
             tt = layers.data(name='tt', shape=[size, size], dtype='float32')
 
@@ -119,7 +119,11 @@ class TestModelCastBF16(unittest.TestCase):
                 ret_fp32bf16 = layers.elementwise_mul(ret_fp32bf16, t)
                 ret_fp32bf16 = layers.reshape(ret_fp32bf16, [0, 0])
 
-            static_ret_bf16, static_ret, ret_fp32bf16 = self.get_static_graph_result(
+            (
+                static_ret_bf16,
+                static_ret,
+                ret_fp32bf16,
+            ) = self.get_static_graph_result(
                 feed={
                     't': n,
                     'tt': nn,
@@ -128,14 +132,15 @@ class TestModelCastBF16(unittest.TestCase):
                 },
                 fetch_list=[ret_bf16, ret, ret_fp32bf16],
                 amp_fun=_amp_fun,
-                startup_prog=startup_prog)
+                startup_prog=startup_prog,
+            )
 
-        np.testing.assert_allclose(cutf(static_ret_bf16),
-                                   cutf(static_ret),
-                                   rtol=0.01)
-        np.testing.assert_allclose(cutf(static_ret_bf16),
-                                   cutf(ret_fp32bf16),
-                                   rtol=0.01)
+        np.testing.assert_allclose(
+            cutf(static_ret_bf16), cutf(static_ret), rtol=0.01
+        )
+        np.testing.assert_allclose(
+            cutf(static_ret_bf16), cutf(ret_fp32bf16), rtol=0.01
+        )
 
         with self.static_graph():
             t = layers.data(name='t', shape=[size, size], dtype='float32')
@@ -147,22 +152,26 @@ class TestModelCastBF16(unittest.TestCase):
                 ret = layers.elementwise_mul(ret, t)
             ret = layers.elementwise_add(ret, tt)
 
-            static_ret_bf16 = \
-                self.get_static_graph_result(
-                    feed={'t': n, 'tt': nn},
-                    fetch_list=[ret],
-                    amp_fun=_amp_fun,
-                    startup_prog=startup_prog
-                )
-        self.assertTrue(static_ret_bf16,
-                        np.ones([size, size], dtype='float32') * -1.1)
+            static_ret_bf16 = self.get_static_graph_result(
+                feed={'t': n, 'tt': nn},
+                fetch_list=[ret],
+                amp_fun=_amp_fun,
+                startup_prog=startup_prog,
+            )
+        self.assertTrue(
+            static_ret_bf16, np.ones([size, size], dtype='float32') * -1.1
+        )
 
     def test_graph_rewrite(self):
-        self._graph_common(lambda prog: amp.bf16.rewrite_program_bf16(
-            prog,
-            amp.bf16.AutoMixedPrecisionListsBF16(
-                custom_bf16_list={'elementwise_add'},
-                custom_fp32_varnames={'elementwise_add_0.tmp_0'})))
+        self._graph_common(
+            lambda prog: amp.bf16.rewrite_program_bf16(
+                prog,
+                amp.bf16.AutoMixedPrecisionListsBF16(
+                    custom_bf16_list={'elementwise_add'},
+                    custom_fp32_varnames={'elementwise_add_0.tmp_0'},
+                ),
+            )
+        )
 
     def test_graph_cast(self):
         self._graph_common(
@@ -171,9 +180,12 @@ class TestModelCastBF16(unittest.TestCase):
                 startup_prog,
                 amp.bf16.AutoMixedPrecisionListsBF16(
                     custom_bf16_list={'elementwise_add'},
-                    custom_fp32_list={'elementwise_mul'}),
-                use_bf16_guard=True),
-            startup_prog=fluid.default_startup_program())
+                    custom_fp32_list={'elementwise_mul'},
+                ),
+                use_bf16_guard=True,
+            ),
+            startup_prog=fluid.default_startup_program(),
+        )
 
 
 if __name__ == '__main__':

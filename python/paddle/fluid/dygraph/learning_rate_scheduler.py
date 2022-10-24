@@ -20,9 +20,18 @@ from ..framework import Variable
 from ..data_feeder import check_type
 
 __all__ = [
-    'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
-    'InverseTimeDecay', 'PolynomialDecay', 'CosineDecay', 'LinearLrWarmup',
-    'ReduceLROnPlateau', 'StepDecay', 'MultiStepDecay', 'LambdaDecay'
+    'NoamDecay',
+    'PiecewiseDecay',
+    'NaturalExpDecay',
+    'ExponentialDecay',
+    'InverseTimeDecay',
+    'PolynomialDecay',
+    'CosineDecay',
+    'LinearLrWarmup',
+    'ReduceLROnPlateau',
+    'StepDecay',
+    'MultiStepDecay',
+    'LambdaDecay',
 ]
 
 
@@ -57,12 +66,14 @@ class LearningRateDecay(object):
             learning rate variable
         """
         from .. import layers
+
         lr = layers.create_global_var(
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(lr),
             dtype=self.dtype,
-            persistable=False)
+            persistable=False,
+        )
         return lr
 
     # Note: If you want to change what optimizer.state_dict stores, just overwrite this functions,
@@ -83,7 +94,8 @@ class LearningRateDecay(object):
                 assert value.shape == [
                     1
                 ], "shape of Variable in state_dict must be [1] {}".format(
-                    value.shape)
+                    value.shape
+                )
                 value = value.numpy()[0]
             state_dict[key] = value
 
@@ -105,8 +117,10 @@ class LearningRateDecay(object):
                 self.__dict__[key] = state_dict[key]
             else:
                 raise RuntimeError(
-                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict"
-                    .format(key))
+                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict".format(
+                        key
+                    )
+                )
         if len(state_dict) > len(self.keys):
             warnings.warn(
                 "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
@@ -238,14 +252,16 @@ class NaturalExpDecay(LearningRateDecay):
 
     """
 
-    def __init__(self,
-                 learning_rate,
-                 decay_steps,
-                 decay_rate,
-                 staircase=False,
-                 begin=0,
-                 step=1,
-                 dtype='float32'):
+    def __init__(
+        self,
+        learning_rate,
+        decay_steps,
+        decay_rate,
+        staircase=False,
+        begin=0,
+        step=1,
+        dtype='float32',
+    ):
         super(NaturalExpDecay, self).__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.decay_steps = decay_steps
@@ -254,11 +270,13 @@ class NaturalExpDecay(LearningRateDecay):
 
     def step(self):
         from .. import layers
+
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
             div_res = layers.floor(div_res)
         decayed_lr = self.learning_rate * layers.exp(
-            -1 * self.decay_rate * div_res)
+            -1 * self.decay_rate * div_res
+        )
 
         return decayed_lr
 
@@ -312,22 +330,24 @@ class ExponentialDecay(LearningRateDecay):
           base_lr = 0.1
           with fluid.dygraph.guard():
               sgd_optimizer = fluid.optimizer.SGD(
-    	            learning_rate=fluid.dygraph.ExponentialDecay(
-		        learning_rate=base_lr,
-    		        decay_steps=10000,
-		        decay_rate=0.5,
-		        staircase=True))
+                    learning_rate=fluid.dygraph.ExponentialDecay(
+                        learning_rate=base_lr,
+                        decay_steps=10000,
+                        decay_rate=0.5,
+                        staircase=True))
 
     """
 
-    def __init__(self,
-                 learning_rate,
-                 decay_steps,
-                 decay_rate,
-                 staircase=False,
-                 begin=0,
-                 step=1,
-                 dtype='float32'):
+    def __init__(
+        self,
+        learning_rate,
+        decay_steps,
+        decay_rate,
+        staircase=False,
+        begin=0,
+        step=1,
+        dtype='float32',
+    ):
         super(ExponentialDecay, self).__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.decay_steps = decay_steps
@@ -336,6 +356,7 @@ class ExponentialDecay(LearningRateDecay):
 
     def step(self):
         from .. import layers
+
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
             div_res = layers.floor(div_res)
@@ -389,23 +410,25 @@ class InverseTimeDecay(LearningRateDecay):
           with fluid.dygraph.guard():
               emb = fluid.dygraph.Embedding([10, 10])
               sgd_optimizer = fluid.optimizer.SGD(
-	          learning_rate=fluid.dygraph.InverseTimeDecay(
-		        learning_rate=base_lr,
-		        decay_steps=10000,
-		        decay_rate=0.5,
-		        staircase=True),
+                  learning_rate=fluid.dygraph.InverseTimeDecay(
+                        learning_rate=base_lr,
+                        decay_steps=10000,
+                        decay_rate=0.5,
+                        staircase=True),
                   parameter_list = emb.parameters())
 
     """
 
-    def __init__(self,
-                 learning_rate,
-                 decay_steps,
-                 decay_rate,
-                 staircase=False,
-                 begin=0,
-                 step=1,
-                 dtype='float32'):
+    def __init__(
+        self,
+        learning_rate,
+        decay_steps,
+        decay_rate,
+        staircase=False,
+        begin=0,
+        step=1,
+        dtype='float32',
+    ):
         super(InverseTimeDecay, self).__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.decay_steps = decay_steps
@@ -414,6 +437,7 @@ class InverseTimeDecay(LearningRateDecay):
 
     def step(self):
         from .. import layers
+
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
             div_res = layers.floor(div_res)
@@ -480,15 +504,17 @@ class PolynomialDecay(LearningRateDecay):
 
     """
 
-    def __init__(self,
-                 learning_rate,
-                 decay_steps,
-                 end_learning_rate=0.0001,
-                 power=1.0,
-                 cycle=False,
-                 begin=0,
-                 step=1,
-                 dtype='float32'):
+    def __init__(
+        self,
+        learning_rate,
+        decay_steps,
+        end_learning_rate=0.0001,
+        power=1.0,
+        cycle=False,
+        begin=0,
+        step=1,
+        dtype='float32',
+    ):
         super(PolynomialDecay, self).__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.decay_steps = decay_steps
@@ -498,22 +524,27 @@ class PolynomialDecay(LearningRateDecay):
 
     def step(self):
         from .. import layers
+
         tmp_step_num = self.step_num
         tmp_decay_steps = self.decay_steps
         if self.cycle:
             div_res = layers.ceil(
-                self.create_lr_var(tmp_step_num / float(self.decay_steps)))
+                self.create_lr_var(tmp_step_num / float(self.decay_steps))
+            )
 
             if tmp_step_num == 0:
                 div_res = self.create_lr_var(1.0)
             tmp_decay_steps = self.decay_steps * div_res
         else:
             tmp_step_num = self.create_lr_var(
-                tmp_step_num if tmp_step_num < self.decay_steps else self.
-                decay_steps)
+                tmp_step_num
+                if tmp_step_num < self.decay_steps
+                else self.decay_steps
+            )
 
-        decayed_lr = (self.learning_rate - self.end_learning_rate) * \
-            ((1 - tmp_step_num / tmp_decay_steps) ** self.power) + self.end_learning_rate
+        decayed_lr = (self.learning_rate - self.end_learning_rate) * (
+            (1 - tmp_step_num / tmp_decay_steps) ** self.power
+        ) + self.end_learning_rate
         return decayed_lr
 
 
@@ -545,22 +576,24 @@ class CosineDecay(LearningRateDecay):
         None.
 
     Examples:
-	.. code-block:: python
+        .. code-block:: python
 
-  	    base_lr = 0.1
+            base_lr = 0.1
             with fluid.dygraph.guard():
                 optimizer  = fluid.optimizer.SGD(
-        	    learning_rate = fluid.dygraph.CosineDecay(
-	                    base_lr, 10000, 120) )
+                    learning_rate = fluid.dygraph.CosineDecay(
+                            base_lr, 10000, 120) )
     """
 
-    def __init__(self,
-                 learning_rate,
-                 step_each_epoch,
-                 epochs,
-                 begin=0,
-                 step=1,
-                 dtype='float32'):
+    def __init__(
+        self,
+        learning_rate,
+        step_each_epoch,
+        epochs,
+        begin=0,
+        step=1,
+        dtype='float32',
+    ):
         super(CosineDecay, self).__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.step_each_epoch = step_each_epoch
@@ -568,10 +601,15 @@ class CosineDecay(LearningRateDecay):
 
     def step(self):
         from .. import layers
+
         cur_epoch = layers.floor(
-            self.create_lr_var(self.step_num / self.step_each_epoch))
-        decayed_lr = self.learning_rate * 0.5 * (
-            layers.cos(cur_epoch * math.pi / self.epochs) + 1)
+            self.create_lr_var(self.step_num / self.step_each_epoch)
+        )
+        decayed_lr = (
+            self.learning_rate
+            * 0.5
+            * (layers.cos(cur_epoch * math.pi / self.epochs) + 1)
+        )
         return decayed_lr
 
 
@@ -621,13 +659,15 @@ class NoamDecay(LearningRateDecay):
                   parameter_list = emb.parameters())
     """
 
-    def __init__(self,
-                 d_model,
-                 warmup_steps,
-                 begin=1,
-                 step=1,
-                 dtype='float32',
-                 learning_rate=1.0):
+    def __init__(
+        self,
+        d_model,
+        warmup_steps,
+        begin=1,
+        step=1,
+        dtype='float32',
+        learning_rate=1.0,
+    ):
         super(NoamDecay, self).__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.d_model = d_model
@@ -635,10 +675,14 @@ class NoamDecay(LearningRateDecay):
 
     def step(self):
         from .. import layers
+
         a = self.create_lr_var(self.step_num**-0.5)
         b = self.create_lr_var((self.warmup_steps**-1.5) * self.step_num)
-        lr_value = self.learning_rate * (self.d_model**
-                                         -0.5) * layers.elementwise_min(a, b)
+        lr_value = (
+            self.learning_rate
+            * (self.d_model**-0.5)
+            * layers.elementwise_min(a, b)
+        )
         return lr_value
 
 
@@ -698,28 +742,37 @@ class LinearLrWarmup(LearningRateDecay):
 
     """
 
-    def __init__(self,
-                 learning_rate,
-                 warmup_steps,
-                 start_lr,
-                 end_lr,
-                 begin=1,
-                 step=1,
-                 dtype='float32'):
+    def __init__(
+        self,
+        learning_rate,
+        warmup_steps,
+        start_lr,
+        end_lr,
+        begin=1,
+        step=1,
+        dtype='float32',
+    ):
         super(LinearLrWarmup, self).__init__(begin, step, dtype)
-        type_check = isinstance(learning_rate, float) or isinstance(
-            learning_rate, int) or isinstance(learning_rate, LearningRateDecay)
+        type_check = (
+            isinstance(learning_rate, float)
+            or isinstance(learning_rate, int)
+            or isinstance(learning_rate, LearningRateDecay)
+        )
         if not type_check:
             raise TypeError(
-                "the type of learning_rate should be [int, float or LearningRateDecay], the current type is {}"
-                .format(learning_rate))
+                "the type of learning_rate should be [int, float or LearningRateDecay], the current type is {}".format(
+                    learning_rate
+                )
+            )
         self.learning_rate = learning_rate
         self.warmup_steps = warmup_steps
         self.start_lr = start_lr
-        assert end_lr > start_lr, "end_lr {} must be greater than start_lr {}".format(
-            end_lr, start_lr)
-        self.lr_ratio_before_warmup = (float(end_lr) -
-                                       float(start_lr)) / float(warmup_steps)
+        assert (
+            end_lr > start_lr
+        ), "end_lr {} must be greater than start_lr {}".format(end_lr, start_lr)
+        self.lr_ratio_before_warmup = (float(end_lr) - float(start_lr)) / float(
+            warmup_steps
+        )
 
     def step(self):
         base_lr = self.learning_rate
@@ -727,6 +780,7 @@ class LinearLrWarmup(LearningRateDecay):
             base_lr = base_lr()
 
         from .. import layers
+
         if self.step_num < self.warmup_steps:
             return self.lr_ratio_before_warmup * self.step_num + self.start_lr
         else:
@@ -812,18 +866,20 @@ class ReduceLROnPlateau(LearningRateDecay):
 
     """
 
-    def __init__(self,
-                 learning_rate,
-                 mode='min',
-                 decay_rate=0.1,
-                 patience=10,
-                 verbose=False,
-                 threshold=1e-4,
-                 threshold_mode='rel',
-                 cooldown=0,
-                 min_lr=0,
-                 eps=1e-8,
-                 dtype='float32'):
+    def __init__(
+        self,
+        learning_rate,
+        mode='min',
+        decay_rate=0.1,
+        patience=10,
+        verbose=False,
+        threshold=1e-4,
+        threshold_mode='rel',
+        cooldown=0,
+        min_lr=0,
+        eps=1e-8,
+        dtype='float32',
+    ):
         super(ReduceLROnPlateau, self).__init__(dtype=dtype)
         mode = mode.lower()
         if mode not in ['min', 'max']:
@@ -838,15 +894,21 @@ class ReduceLROnPlateau(LearningRateDecay):
 
         threshold_mode = threshold_mode.lower()
         if threshold_mode not in ['rel', 'abs']:
-            raise ValueError('threshold mode ' + threshold_mode +
-                             ' is unknown!')
+            raise ValueError(
+                'threshold mode ' + threshold_mode + ' is unknown!'
+            )
         self.threshold_mode = threshold_mode
-        check_type(learning_rate, 'learning_rate', (float, int, Variable),
-                   'ReduceLROnPlateau')
+        check_type(
+            learning_rate,
+            'learning_rate',
+            (float, int, Variable),
+            'ReduceLROnPlateau',
+        )
         if not isinstance(learning_rate, (float, int, Variable)):
             raise TypeError(
                 "The type of 'learning_rate' in 'ReduceLROnPlateau' must be 'float, int, Variable', but received %s."
-                % type(learning_rate))
+                % type(learning_rate)
+            )
 
         self.learning_rate = learning_rate
         self.verbose = verbose
@@ -865,8 +927,11 @@ class ReduceLROnPlateau(LearningRateDecay):
     # "cooldown_counter / best_loss / num_bad_epochs / epoch_num / learning_rate" will be stored.
     def _state_keys(self):
         self.keys = [
-            'cooldown_counter', 'best_loss', 'num_bad_epochs', 'epoch_num',
-            'learning_rate'
+            'cooldown_counter',
+            'best_loss',
+            'num_bad_epochs',
+            'epoch_num',
+            'learning_rate',
         ]
 
     def __call__(self):
@@ -893,9 +958,13 @@ class ReduceLROnPlateau(LearningRateDecay):
 
         # loss must be 1-D Tensor with shape [1]
         check_type(loss, 'loss', Variable, 'ReduceLROnPlateau.step')
-        assert len(loss.shape) == 1 and loss.shape[0] == 1, "the loss.shape " \
-            "should be (1L,), but the current loss.shape is {}. Maybe that "  \
-            "you should call paddle.mean to process it first.".format(loss.shape)
+        assert len(loss.shape) == 1 and loss.shape[0] == 1, (
+            "the loss.shape "
+            "should be (1L,), but the current loss.shape is {}. Maybe that "
+            "you should call paddle.mean to process it first.".format(
+                loss.shape
+            )
+        )
 
         self.epoch_num += 1
         if self.cooldown_counter > 0:
@@ -909,18 +978,24 @@ class ReduceLROnPlateau(LearningRateDecay):
 
             if self.num_bad_epochs > self.patience:
                 from .. import layers
+
                 self.cooldown_counter = self.cooldown
                 self.num_bad_epochs = 0
                 new_lr = layers.elementwise_max(
-                    self.learning_rate * self.decay_rate, self.min_lr)
+                    self.learning_rate * self.decay_rate, self.min_lr
+                )
                 if self.learning_rate - new_lr > self.eps:
                     if self.verbose:
-                        old_lr = self.learning_rate.numpy()[0] if isinstance(
-                            self.learning_rate,
-                            Variable) else self.learning_rate
-                        print('Epoch {}: reducing learning rate from {} to {}.'.
-                              format(self.epoch_num, old_lr,
-                                     new_lr.numpy()[0]))
+                        old_lr = (
+                            self.learning_rate.numpy()[0]
+                            if isinstance(self.learning_rate, Variable)
+                            else self.learning_rate
+                        )
+                        print(
+                            'Epoch {}: reducing learning rate from {} to {}.'.format(
+                                self.epoch_num, old_lr, new_lr.numpy()[0]
+                            )
+                        )
                     self.learning_rate = new_lr
 
     def _is_better(self, current, best):
@@ -952,7 +1027,8 @@ class _LearningRateEpochDecay(LearningRateDecay):
         if not isinstance(learning_rate, (float, int)):
             raise TypeError(
                 "The type of 'learning_rate' must be 'float, int', but received %s."
-                % type(learning_rate))
+                % type(learning_rate)
+            )
         if learning_rate < 0:
             raise ValueError("Invalid learning rate: {}".format(learning_rate))
 
@@ -1057,8 +1133,9 @@ class StepDecay(_LearningRateEpochDecay):
     def __init__(self, learning_rate, step_size, decay_rate=0.1):
         if not isinstance(step_size, int):
             raise TypeError(
-                "The type of 'step_size' must be 'int', but received %s." %
-                type(step_size))
+                "The type of 'step_size' must be 'int', but received %s."
+                % type(step_size)
+            )
         if decay_rate >= 1.0:
             raise ValueError('decay_rate should be < 1.0.')
 
@@ -1134,12 +1211,15 @@ class MultiStepDecay(_LearningRateEpochDecay):
         if not isinstance(milestones, (tuple, list)):
             raise TypeError(
                 "The type of 'milestones' in 'MultiStepDecay' must be 'tuple, list', but received %s."
-                % type(milestones))
+                % type(milestones)
+            )
 
-        if not all([
+        if not all(
+            [
                 milestones[i] < milestones[i + 1]
                 for i in range(len(milestones) - 1)
-        ]):
+            ]
+        ):
             raise ValueError('The elements of milestones must be incremented')
         if decay_rate >= 1.0:
             raise ValueError('decay_rate should be < 1.0.')
@@ -1154,7 +1234,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
             if self.epoch_num < self.milestones[i]:
                 return self.base_lr * (decay_rate**i)
 
-        return self.base_lr * (decay_rate**len(self.milestones))
+        return self.base_lr * (decay_rate ** len(self.milestones))
 
 
 class LambdaDecay(_LearningRateEpochDecay):
@@ -1213,7 +1293,8 @@ class LambdaDecay(_LearningRateEpochDecay):
         if not callable(lr_lambda):
             raise TypeError(
                 "The type of 'lr_lambda' in 'LambdaDecay' must be 'function', but received %s."
-                % type(lr_lambda))
+                % type(lr_lambda)
+            )
 
         self.lr_lambda = lr_lambda
         super(LambdaDecay, self).__init__(learning_rate)

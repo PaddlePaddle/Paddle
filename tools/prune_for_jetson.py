@@ -17,7 +17,6 @@ when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction li
 """
 
 import os
-import sys
 import re
 import glob
 
@@ -54,16 +53,20 @@ def find_kernel(content, pattern):
 def prune_phi_kernels():
     tool_dir = os.path.dirname(os.path.abspath(__file__))
 
-    all_op = glob.glob(os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cc'),
-                       recursive=True)
-    all_op += glob.glob(os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cu'),
-                        recursive=True)
+    all_op = glob.glob(
+        os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cc'), recursive=True
+    )
+    all_op += glob.glob(
+        os.path.join(tool_dir, '../paddle/phi/kernels/**/*.cu'), recursive=True
+    )
 
     register_op_count = 0
     for op_file in all_op:
         need_continue = False
         file_blacklist = [
-            "kernels/empty_kernel.cc", "/cast_kernel.c", "/batch_norm_kernel.c"
+            "kernels/empty_kernel.cc",
+            "/cast_kernel.c",
+            "/batch_norm_kernel.c",
         ]
         for bname in file_blacklist:
             if op_file.find(bname) >= 0:
@@ -78,7 +81,7 @@ def prune_phi_kernels():
         all_matches = []
         with open(op_file, 'r', encoding='utf-8') as f:
             content = ''.join(f.readlines())
-            op_pattern = 'PD_REGISTER_KERNEL\(.*?\).*?\{.*?\}'
+            op_pattern = r'PD_REGISTER_KERNEL\(.*?\).*?\{.*?\}'
             op, op_count = find_kernel(content, op_pattern)
             register_op_count += op_count
             all_matches.extend(op)
@@ -100,19 +103,25 @@ def apply_patches():
     ret = os.system(
         "cd %s && rm -f paddle/fluid/inference/api/tensorrt_predictor.* "
         " && rm -f paddle/fluid/inference/api/paddle_tensorrt_predictor.h "
-        " && git apply tools/infer_prune_patches/*.patch && cd -" % work_path)
+        " && git apply tools/infer_prune_patches/*.patch && cd -" % work_path
+    )
     return ret == 0
 
 
 def append_fluid_kernels():
     op_white_list = ["load", "load_combine"]
 
-    #1. add to makefile
-    file_name = os.path.dirname(os.path.abspath(__file__)) \
-                  + "/../paddle/fluid/inference/tensorrt/CMakeLists.txt"
+    # 1. add to makefile
+    file_name = (
+        os.path.dirname(os.path.abspath(__file__))
+        + "/../paddle/fluid/inference/tensorrt/CMakeLists.txt"
+    )
     append_str = "\nfile(APPEND ${pybind_file} \"USE_NO_KERNEL_OP__(tensorrt_engine);\\n\")\n"
     for op in op_white_list:
-        append_str = append_str + "file(APPEND ${pybind_file} \"USE_OP__(%s);\\n\")\n" % op
+        append_str = (
+            append_str
+            + "file(APPEND ${pybind_file} \"USE_OP__(%s);\\n\")\n" % op
+        )
 
     with open(file_name, 'r', encoding='utf-8') as f:
         content = ''.join(f.readlines())
@@ -121,22 +130,26 @@ def append_fluid_kernels():
     new_content = content.replace(location_str, location_str + append_str)
 
     if new_content == content:
-        print("ERROR: can not find \"%s\" in file \"%s\"" %
-              (location_str, file_name))
+        print(
+            "ERROR: can not find \"%s\" in file \"%s\""
+            % (location_str, file_name)
+        )
         return False
 
     with open(file_name, 'w', encoding='utf-8') as f:
         f.write(u'{}'.format(new_content))
 
-    #2. add op and kernel register
+    # 2. add op and kernel register
     op_white_list.append("tensorrt_engine")
     tool_dir = os.path.dirname(os.path.abspath(__file__))
-    all_op = glob.glob(os.path.join(tool_dir,
-                                    '../paddle/fluid/operators/**/*.cc'),
-                       recursive=True)
-    all_op += glob.glob(os.path.join(tool_dir,
-                                     '../paddle/fluid/operators/**/*.cu'),
-                        recursive=True)
+    all_op = glob.glob(
+        os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cc'),
+        recursive=True,
+    )
+    all_op += glob.glob(
+        os.path.join(tool_dir, '../paddle/fluid/operators/**/*.cu'),
+        recursive=True,
+    )
 
     for op_file in all_op:
         with open(op_file, 'r', encoding='utf-8') as f:
@@ -144,17 +157,18 @@ def append_fluid_kernels():
 
         for op in op_white_list:
             patterns = {
-                "REGISTER_OPERATOR": "REGISTER_OPERATOR\(\s*%s\s*," % op,
-                "REGISTER_OP_CPU_KERNEL":
-                "REGISTER_OP_CPU_KERNEL\(\s*%s\s*," % op,
-                "REGISTER_OP_CUDA_KERNEL":
-                "REGISTER_OP_CUDA_KERNEL\(\s*%s\s*," % op
+                "REGISTER_OPERATOR": r"REGISTER_OPERATOR\(\s*%s\s*," % op,
+                "REGISTER_OP_CPU_KERNEL": r"REGISTER_OP_CPU_KERNEL\(\s*%s\s*,"
+                % op,
+                "REGISTER_OP_CUDA_KERNEL": r"REGISTER_OP_CUDA_KERNEL\(\s*%s\s*,"
+                % op,
             }
             for k, p in patterns.items():
                 matches = re.findall(p, content, flags=re.DOTALL)
                 if len(matches) > 0:
-                    content = content.replace(matches[0],
-                                              matches[0].replace(k, k + "__"))
+                    content = content.replace(
+                        matches[0], matches[0].replace(k, k + "__")
+                    )
                     with open(op_file, 'w', encoding='utf-8') as f:
                         f.write(u'{}'.format(content))
 
@@ -164,13 +178,13 @@ def append_fluid_kernels():
 if __name__ == '__main__':
 
     print("================ step 1: apply patches =======================")
-    assert (apply_patches())
+    assert apply_patches()
     print("==============================================================\n")
 
     print("================ step 2: append fluid op/kernels==============")
-    assert (append_fluid_kernels())
+    assert append_fluid_kernels()
     print("==============================================================\n")
 
     print("================ step 3:prune phi kernels ====================")
-    assert (prune_phi_kernels())
+    assert prune_phi_kernels()
     print("==============================================================\n")

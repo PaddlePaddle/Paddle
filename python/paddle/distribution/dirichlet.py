@@ -73,11 +73,13 @@ class Dirichlet(exponential_family.ExponentialFamily):
     def __init__(self, concentration):
         if concentration.dim() < 1:
             raise ValueError(
-                "`concentration` parameter must be at least one dimensional")
+                "`concentration` parameter must be at least one dimensional"
+            )
 
         self.concentration = concentration
-        super(Dirichlet, self).__init__(concentration.shape[:-1],
-                                        concentration.shape[-1:])
+        super(Dirichlet, self).__init__(
+            concentration.shape[:-1], concentration.shape[-1:]
+        )
 
     @property
     def mean(self):
@@ -97,7 +99,8 @@ class Dirichlet(exponential_family.ExponentialFamily):
         """
         concentration0 = self.concentration.sum(-1, keepdim=True)
         return (self.concentration * (concentration0 - self.concentration)) / (
-            concentration0.pow(2) * (concentration0 + 1))
+            concentration0.pow(2) * (concentration0 + 1)
+        )
 
     def sample(self, shape=()):
         """Sample from dirichlet distribution.
@@ -125,9 +128,11 @@ class Dirichlet(exponential_family.ExponentialFamily):
         Args:
             value (Tensor): Value to be evaluated.
         """
-        return ((paddle.log(value) * (self.concentration - 1.0)).sum(-1) +
-                paddle.lgamma(self.concentration.sum(-1)) -
-                paddle.lgamma(self.concentration).sum(-1))
+        return (
+            (paddle.log(value) * (self.concentration - 1.0)).sum(-1)
+            + paddle.lgamma(self.concentration.sum(-1))
+            - paddle.lgamma(self.concentration).sum(-1)
+        )
 
     def entropy(self):
         """Entropy of Dirichlet distribution.
@@ -137,15 +142,18 @@ class Dirichlet(exponential_family.ExponentialFamily):
         """
         concentration0 = self.concentration.sum(-1)
         k = self.concentration.shape[-1]
-        return (paddle.lgamma(self.concentration).sum(-1) -
-                paddle.lgamma(concentration0) -
-                (k - concentration0) * paddle.digamma(concentration0) -
-                ((self.concentration - 1.0) *
-                 paddle.digamma(self.concentration)).sum(-1))
+        return (
+            paddle.lgamma(self.concentration).sum(-1)
+            - paddle.lgamma(concentration0)
+            - (k - concentration0) * paddle.digamma(concentration0)
+            - (
+                (self.concentration - 1.0) * paddle.digamma(self.concentration)
+            ).sum(-1)
+        )
 
     @property
     def _natural_parameters(self):
-        return (self.concentration, )
+        return (self.concentration,)
 
     def _log_normalizer(self, x):
         return x.lgamma().sum(-1) - paddle.lgamma(x.sum(-1))
@@ -154,8 +162,9 @@ class Dirichlet(exponential_family.ExponentialFamily):
 def _dirichlet(concentration, name=None):
     op_type = 'dirichlet'
 
-    check_variable_and_dtype(concentration, 'concentration',
-                             ['float32', 'float64'], op_type)
+    check_variable_and_dtype(
+        concentration, 'concentration', ['float32', 'float64'], op_type
+    )
 
     if in_dygraph_mode():
         return paddle._C_ops.dirichlet(concentration)
@@ -164,9 +173,12 @@ def _dirichlet(concentration, name=None):
     else:
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(
-            dtype=concentration.dtype)
-        helper.append_op(type=op_type,
-                         inputs={"Alpha": concentration},
-                         outputs={'Out': out},
-                         attrs={})
+            dtype=concentration.dtype
+        )
+        helper.append_op(
+            type=op_type,
+            inputs={"Alpha": concentration},
+            outputs={'Out': out},
+            attrs={},
+        )
         return out

@@ -79,7 +79,7 @@
 #include "paddle/fluid/inference/api/onnxruntime_predictor.h"
 #endif
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
@@ -92,7 +92,7 @@
 namespace paddle {
 
 using inference::Singleton;
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
 using inference::tensorrt::TRTInt8Calibrator;
@@ -129,17 +129,19 @@ phi::DataType ConvertPrecision(AnalysisConfig::Precision precision) {
   }
 }
 
-phi::Backend ConvertBackend(AnalysisConfig::Backend backend) {
+phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
   switch (backend) {
-    case AnalysisConfig::Backend::kGPU:
+    case paddle_infer::PlaceType::kGPU:
       // NOTE: phi also support phi::Backend::GPUDNN.
       return phi::Backend::GPU;
-    case AnalysisConfig::Backend::kNPU:
+    case paddle_infer::PlaceType::kNPU:
       return phi::Backend::NPU;
-    case AnalysisConfig::Backend::kXPU:
+    case paddle_infer::PlaceType::kXPU:
       return phi::Backend::XPU;
-    case AnalysisConfig::Backend::kCPU:
+    case paddle_infer::PlaceType::kCPU:
       return phi::Backend::CPU;
+    case paddle_infer::PlaceType::kIPU:
+      return phi::Backend::IPU;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU, "
@@ -1269,7 +1271,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       [](framework::ProgramDesc *prog) {
 // Note, please do NOT use any member variables, because member variables may
 // have been destructed in multiple threads.
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
         auto &block = prog->Block(0);
         for (auto &op_desc : block.AllOps()) {
           if (op_desc->Type() == "tensorrt_engine") {
@@ -1364,6 +1366,17 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       } else {
         process_level_allocator_enabled = true;
       }
+
+      // support set flags from enviorment.
+      const platform::ExportedFlagInfoMap &env_map =
+          platform::GetExportedFlagInfoMap();
+      std::ostringstream os;
+      os << "--tryfromenv=";
+      for (auto &pair : env_map) {
+        os << pair.second.name << ",";
+      }
+      auto tryfromenv_str = os.str();
+      gflags.push_back(os.str().substr(0, tryfromenv_str.size() - 1));
 
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
@@ -1975,7 +1988,7 @@ void AnalysisPredictor::ClearIntermediateTensor() {
   }
 }
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE_EQ(config_.tensorrt_engine_enabled(),
                     true,
@@ -2031,7 +2044,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
 #endif
 
 AnalysisPredictor::~AnalysisPredictor() {
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled() &&
       config_.tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8 &&
       Singleton<TRTCalibratorEngineManager>::Global().Has()) {
@@ -2155,11 +2168,13 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
 
 }  // namespace paddle
 
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 USE_TRT_CONVERTER(elementwise_add_weight);
 USE_TRT_CONVERTER(elementwise_sub_weight);
 USE_TRT_CONVERTER(elementwise_mul_weight);
 USE_TRT_CONVERTER(elementwise_div_weight);
+USE_TRT_CONVERTER(elementwise_min_weight);
+USE_TRT_CONVERTER(elementwise_max_weight);
 USE_TRT_CONVERTER(elementwise_pow_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
@@ -2174,6 +2189,7 @@ USE_TRT_CONVERTER(flatten);
 USE_TRT_CONVERTER(flatten_contiguous_range);
 USE_TRT_CONVERTER(matmul);
 USE_TRT_CONVERTER(matmul_v2);
+USE_TRT_CONVERTER(bmm);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
 USE_TRT_CONVERTER(exp);
@@ -2255,9 +2271,11 @@ USE_TRT_CONVERTER(shape)
 USE_TRT_CONVERTER(fill_constant)
 USE_TRT_CONVERTER(fused_token_prune)
 USE_TRT_CONVERTER(layernorm_shift_partition)
+USE_TRT_CONVERTER(merge_layernorm)
 USE_TRT_CONVERTER(generic_plugin_creater)
 USE_TRT_CONVERTER(custom_plugin_creater)
 USE_TRT_CONVERTER(lookup_table)
+USE_TRT_CONVERTER(expand_v2)
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
@@ -2377,7 +2395,7 @@ void ConvertToMixedPrecision(const std::string &model_file,
                              const std::string &mixed_model_file,
                              const std::string &mixed_params_file,
                              PrecisionType mixed_precision,
-                             BackendType backend,
+                             paddle_infer::PlaceType backend,
                              bool keep_io_types,
                              std::unordered_set<std::string> black_list) {
   auto phi_backend = paddle::ConvertBackend(backend);

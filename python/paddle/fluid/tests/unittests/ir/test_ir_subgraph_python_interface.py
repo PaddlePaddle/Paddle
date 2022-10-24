@@ -15,7 +15,6 @@
 import unittest
 import paddle
 import paddle.fluid as fluid
-import six
 
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.tests.unittests.op_test import OpTestTool
@@ -28,16 +27,14 @@ paddle.enable_static()
 
 
 class TestQuantizationSubGraph(unittest.TestCase):
-
     def build_graph_with_sub_graph(self):
-
         def linear_fc(num):
-            data = fluid.layers.data(name='image',
-                                     shape=[1, 32, 32],
-                                     dtype='float32')
+            data = fluid.layers.data(
+                name='image', shape=[1, 32, 32], dtype='float32'
+            )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             hidden = data
-            for _ in six.moves.xrange(num):
+            for _ in range(num):
                 hidden = fluid.layers.fc(hidden, size=128, act='relu')
             loss = fluid.layers.cross_entropy(input=hidden, label=label)
             loss = paddle.mean(loss)
@@ -64,7 +61,8 @@ class TestQuantizationSubGraph(unittest.TestCase):
         graph = IrGraph(core_graph, for_test=True)
         sub_graph = graph.get_sub_graph(0)
         all_sub_graphs = graph.all_sub_graphs(
-            for_test=True)  # same reason for subgraph
+            for_test=True
+        )  # same reason for subgraph
         # Should return graph and sub_graphs at the same time. If only return sub_graph, the graph will
         # be destructed and the sub_graphs will be empty.
         return graph, all_sub_graphs
@@ -76,7 +74,8 @@ class TestQuantizationSubGraph(unittest.TestCase):
             scope=fluid.global_scope(),
             place=place,
             activation_quantize_type='abs_max',
-            weight_quantize_type='range_abs_max')
+            weight_quantize_type='range_abs_max',
+        )
         Find_inserted_quant_op = False
         for sub_graph in sub_graphs:
             transform_pass.apply(sub_graph)
@@ -88,8 +87,9 @@ class TestQuantizationSubGraph(unittest.TestCase):
     def test_quant_sub_graphs_cpu(self):
         self.test_quant_sub_graphs(use_cuda=False)
 
-    @OpTestTool.skip_if(not paddle.is_compiled_with_cuda(),
-                        "Not GPU version paddle")
+    @OpTestTool.skip_if(
+        not paddle.is_compiled_with_cuda(), "Not GPU version paddle"
+    )
     def test_quant_sub_graphs_gpu(self):
         self.test_quant_sub_graphs(use_cuda=True)
 

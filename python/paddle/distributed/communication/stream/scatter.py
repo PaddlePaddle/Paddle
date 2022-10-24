@@ -28,15 +28,18 @@ def _check_tensor_shape(tensor, shape, nranks=1):
 def _check_tensor_list_shape(tensor_list, shape, nranks=1):
     if len(tensor_list) != nranks:
         raise RuntimeError(
-            f"The tensor_list for scatter is not correctly-sized.")
+            "The tensor_list for scatter is not correctly-sized."
+        )
     for tensor in tensor_list:
         if tensor.shape != shape:
             raise RuntimeError(
-                f"The tensor_list for scatter is not correctly-sized.")
+                "The tensor_list for scatter is not correctly-sized."
+            )
 
 
-def _scatter_tensor_in_dygraph(out_tensor, in_tensor, src, group, sync_op,
-                               use_calc_stream):
+def _scatter_tensor_in_dygraph(
+    out_tensor, in_tensor, src, group, sync_op, use_calc_stream
+):
     group = collective._get_default_group() if group is None else group
 
     src_rank = group.get_group_rank(src)
@@ -50,18 +53,21 @@ def _scatter_tensor_in_dygraph(out_tensor, in_tensor, src, group, sync_op,
 
     if use_calc_stream:
         return group.process_group.scatter_tensor_on_calc_stream(
-            in_tensor, out_tensor, src)
+            in_tensor, out_tensor, src
+        )
 
-    task = group.process_group.scatter_tensor(in_tensor, out_tensor, src,
-                                              sync_op)
+    task = group.process_group.scatter_tensor(
+        in_tensor, out_tensor, src, sync_op
+    )
     if sync_op:
         task.wait()
 
     return task
 
 
-def _scatter_in_dygraph(tensor, tensor_list, src, group, sync_op,
-                        use_calc_stream):
+def _scatter_in_dygraph(
+    tensor, tensor_list, src, group, sync_op, use_calc_stream
+):
     group = collective._get_default_group() if group is None else group
 
     src_rank = group.get_group_rank(src)
@@ -73,14 +79,16 @@ def _scatter_in_dygraph(tensor, tensor_list, src, group, sync_op,
     if rank == src_rank:
         if len(tensor_list) == 0:
             raise RuntimeError(
-                "The tensor_list should not be empty on src rank.")
+                "The tensor_list should not be empty on src rank."
+            )
         _check_tensor_list_shape(tensor_list, tensor.shape, nranks)
     else:
         tensor_list = [tensor for _ in range(nranks)]
 
     if use_calc_stream:
         return group.process_group.scatter_on_calc_stream(
-            tensor_list, tensor, src)
+            tensor_list, tensor, src
+        )
 
     task = group.process_group.scatter(tensor_list, tensor, src, sync_op)
     if sync_op:
@@ -89,12 +97,14 @@ def _scatter_in_dygraph(tensor, tensor_list, src, group, sync_op,
     return task
 
 
-def scatter(tensor,
-            tensor_or_tensor_list=None,
-            src=0,
-            group=None,
-            sync_op=True,
-            use_calc_stream=False):
+def scatter(
+    tensor,
+    tensor_or_tensor_list=None,
+    src=0,
+    group=None,
+    sync_op=True,
+    use_calc_stream=False,
+):
     """
 
     Scatter a tensor (or a tensor list) across devices.
@@ -143,19 +153,31 @@ def scatter(tensor,
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be true in sync op behavior."
+        )
 
     if tensor_or_tensor_list is None:
         raise RuntimeError("The input should be specified.")
 
     if framework.in_dygraph_mode():
         if paddle.is_tensor(tensor_or_tensor_list):
-            return _scatter_tensor_in_dygraph(tensor, tensor_or_tensor_list,
-                                              src, group, sync_op,
-                                              use_calc_stream)
+            return _scatter_tensor_in_dygraph(
+                tensor,
+                tensor_or_tensor_list,
+                src,
+                group,
+                sync_op,
+                use_calc_stream,
+            )
         else:
-            return _scatter_in_dygraph(tensor, tensor_or_tensor_list, src,
-                                       group, sync_op, use_calc_stream)
+            return _scatter_in_dygraph(
+                tensor,
+                tensor_or_tensor_list,
+                src,
+                group,
+                sync_op,
+                use_calc_stream,
+            )
 
     raise RuntimeError(
         "paddle.distributed.stream.scatter is only supported in dygraph mode now."

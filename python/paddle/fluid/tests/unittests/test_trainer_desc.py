@@ -21,7 +21,7 @@ import unittest
 
 
 class TestTrainerDesc(unittest.TestCase):
-    """  TestCases for TrainerDesc. """
+    """TestCases for TrainerDesc."""
 
     def test_config(self):
         """

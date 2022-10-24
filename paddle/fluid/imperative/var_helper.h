@@ -65,11 +65,10 @@ template <typename VarType>
 framework::proto::VarType::Type GetDataType(std::shared_ptr<VarType> var);
 
 template <typename VarType>
-paddle::experimental::DataLayout GetDataLayout(std::shared_ptr<VarType> var);
+phi::DataLayout GetDataLayout(std::shared_ptr<VarType> var);
 
 template <typename VarType>
-void SetDataLayout(std::shared_ptr<VarType> var,
-                   const paddle::experimental::DataLayout layout);
+void SetDataLayout(std::shared_ptr<VarType> var, const phi::DataLayout layout);
 
 template <typename VarType>
 const std::shared_ptr<VariableWrapper>& GetVariableWrapper(

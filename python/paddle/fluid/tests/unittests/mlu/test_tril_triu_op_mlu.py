@@ -27,14 +27,15 @@ paddle.enable_static()
 
 
 class TrilTriuOpDefaultTest(OpTest):
-    """ the base class of other op testcases
-    """
+    """the base class of other op testcases"""
 
     def setUp(self):
         self.initTestCase()
         self.__class__.use_mlu = True
         self.place = paddle.device.MLUPlace(0)
-        self.python_api = paddle.tril if self.real_op_type == 'tril' else paddle.triu
+        self.python_api = (
+            paddle.tril if self.real_op_type == 'tril' else paddle.triu
+        )
         self.real_np_op = getattr(np, self.real_op_type)
 
         self.op_type = "tril_triu"
@@ -44,9 +45,9 @@ class TrilTriuOpDefaultTest(OpTest):
             'lower': True if self.real_op_type == 'tril' else False,
         }
         self.outputs = {
-            'Out':
-            self.real_np_op(self.X, self.diagonal)
-            if self.diagonal else self.real_np_op(self.X)
+            'Out': self.real_np_op(self.X, self.diagonal)
+            if self.diagonal
+            else self.real_np_op(self.X)
         }
 
     def test_check_output(self):
@@ -64,27 +65,29 @@ def case_generator(op_type, Xshape, diagonal, expected):
     If arg`expercted` is 'success', it will register an Optest case and expect to pass.
     Otherwise, it will register an API case and check the expect failure.
     """
-    cls_name = "{0}_{1}_shape_{2}_diag_{3}".format(expected, op_type, Xshape,
-                                                   diagonal)
+    cls_name = "{0}_{1}_shape_{2}_diag_{3}".format(
+        expected, op_type, Xshape, diagonal
+    )
     errmsg = {
-        "diagonal: TypeError":
-        "diagonal in {} must be a python Int".format(op_type),
-        "input: ValueError":
-        "x shape in {} must be at least 2-D".format(op_type),
+        "diagonal: TypeError": "diagonal in {} must be a python Int".format(
+            op_type
+        ),
+        "input: ValueError": "x shape in {} must be at least 2-D".format(
+            op_type
+        ),
     }
 
     class FailureCase(unittest.TestCase):
-
         def test_failure(self):
             paddle.enable_static()
 
             data = fluid.data(shape=Xshape, dtype='float64', name=cls_name)
-            with self.assertRaisesRegexp(eval(expected.split(':')[-1]),
-                                         errmsg[expected]):
+            with self.assertRaisesRegexp(
+                eval(expected.split(':')[-1]), errmsg[expected]
+            ):
                 getattr(tensor, op_type)(x=data, diagonal=diagonal)
 
     class SuccessCase(TrilTriuOpDefaultTest):
-
         def initTestCase(self):
             paddle.enable_static()
 
@@ -109,15 +112,13 @@ cases = {
         (20, 20): [
             '2020',
             [20],
-            {
-                20: 20
-            },
+            {20: 20},
             (20, 20),
             20.20,
         ],  # str, list, dict, tuple, float
     },
     'input: ValueError': {
-        (2020, ): [None],
+        (2020,): [None],
     },
 }
 for _op_type in ['tril', 'triu']:
@@ -126,12 +127,15 @@ for _op_type in ['tril', 'triu']:
             list(
                 map(
                     lambda _diagonal: case_generator(
-                        _op_type, _Xshape, _diagonal, _expected), _diaglist))
+                        _op_type, _Xshape, _diagonal, _expected
+                    ),
+                    _diaglist,
+                )
+            )
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):
-    """ test case by using API and has -1 dimension
-    """
+    """test case by using API and has -1 dimension"""
 
     def test_api(self):
         paddle.enable_static()
@@ -163,8 +167,10 @@ class TestTrilTriuOpAPI(unittest.TestCase):
             with fluid.dygraph.guard():
                 data = np.random.random([1, 9, 9, 4]).astype(dtype)
                 x = fluid.dygraph.to_variable(data)
-                tril_out, triu_out = tensor.tril(x).numpy(), tensor.triu(
-                    x).numpy()
+                tril_out, triu_out = (
+                    tensor.tril(x).numpy(),
+                    tensor.triu(x).numpy(),
+                )
                 np.testing.assert_allclose(tril_out, np.tril(data))
                 np.testing.assert_allclose(triu_out, np.triu(data))
 
@@ -182,9 +188,11 @@ class TestTrilTriuOpAPI(unittest.TestCase):
 
                 place = fluid.MLUPlace(0)
                 exe = fluid.Executor(place)
-                triu_out = exe.run(fluid.default_main_program(),
-                                   feed={"x": data},
-                                   fetch_list=[triu_out])
+                triu_out = exe.run(
+                    fluid.default_main_program(),
+                    feed={"x": data},
+                    fetch_list=[triu_out],
+                )
 
 
 if __name__ == '__main__':
