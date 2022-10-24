@@ -69,10 +69,15 @@ static std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
 template <typename HandleT, typename DataT>
 struct ConvArgsBase {
   HandleT handle;
-  paddle::platform::TensorDescriptor idesc, odesc;
+  paddle::platform::TensorDescriptor idesc;
+  paddle::platform::TensorDescriptor odesc;
   paddle::platform::FilterDescriptor wdesc;
   paddle::platform::ConvolutionDescriptor cdesc;
-  const phi::DenseTensor *x, *w, *o;
+
+  const phi::DenseTensor* x = nullptr;
+  const phi::DenseTensor* w = nullptr;
+  const phi::DenseTensor* o = nullptr;
+
   DataT cudnn_dtype;
 
   // strides
@@ -88,7 +93,8 @@ struct ConvArgsBase {
   // data foramt
   GPUDNNDataLayout data_layout;
 
-  ConvArgsBase(const phi::DenseTensor* x,
+  ConvArgsBase(const HandleT& h,
+               const phi::DenseTensor* x,
                const phi::DenseTensor* w,
                const phi::DenseTensor* o,
                const std::vector<int> s,
@@ -97,7 +103,8 @@ struct ConvArgsBase {
                DataT dtype,
                int g,
                GPUDNNDataLayout layout)
-      : x(x),
+      : handle(h),
+        x(x),
         w(w),
         o(o),
         s(s),
@@ -108,7 +115,7 @@ struct ConvArgsBase {
         data_layout(layout) {}
 
   template <typename T>
-  phi::autotune::ConvCacheKey Convert2ConvCacheKey() const {
+  phi::autotune::ConvCacheKey ConvertToConvCacheKey() const {
     auto x_shape = phi::vectorize(x->dims());
     auto w_shape = phi::vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape

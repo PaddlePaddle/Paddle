@@ -199,7 +199,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
 
   auto dtype = paddle::platform::CudnnDataType<T>::type;
   // ------------------- cudnn descriptors ---------------------
-  ConvArgs args{&transformed_out,
+  ConvArgs args{handle,
+                &transformed_out,
                 &filter,
                 &transformed_x,
                 strides,
@@ -208,7 +209,6 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
                 dtype,
                 groups,
                 data_layout};
-  args.handle = handle;
   args.idesc.set(transformed_out, iwo_groups);
   args.wdesc.set(filter, layout_tensor, iwo_groups);
   args.odesc.set(transformed_x, iwo_groups);
