@@ -21,7 +21,6 @@ def my_import(name, globals=None, locals=None, fromlist=(), level=0):
 
 
 class importTest(unittest.TestCase):
-
     def test_import(self):
         testOsName = 'nt'
         old_import = builtins.__import__

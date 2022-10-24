@@ -18,7 +18,13 @@ import os
 import multiprocessing
 import warnings
 
-from .framework import Variable, default_main_program, _current_expected_place, _non_static_mode, _in_eager_without_dygraph_check
+from .framework import (
+    Variable,
+    default_main_program,
+    _current_expected_place,
+    _non_static_mode,
+    _in_eager_without_dygraph_check,
+)
 from .framework import _cpu_num, _cuda_ids
 
 __all__ = ['DataFeeder']
@@ -45,18 +51,46 @@ def convert_dtype(dtype):
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
         if dtype in [
-                bool, np.float16, np.uint16, np.float32, np.float64, np.int8,
-                np.int16, np.int32, np.int64, np.uint8, np.complex64,
-                np.complex128
+            bool,
+            np.float16,
+            np.uint16,
+            np.float32,
+            np.float64,
+            np.int8,
+            np.int16,
+            np.int32,
+            np.int64,
+            np.uint8,
+            np.complex64,
+            np.complex128,
         ]:
             return dtype.__name__
     else:
         if dtype in [
-                'bool', 'float16', 'uint16', 'float32', 'float64', 'int8',
-                'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128',
-                u'bool', u'float16', u'uint16', u'float32', u'float64', u'int8',
-                u'int16', u'int32', u'int64', u'uint8', u'complex64',
-                u'complex128'
+            'bool',
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+            'complex64',
+            'complex128',
+            u'bool',
+            u'float16',
+            u'uint16',
+            u'float32',
+            u'float64',
+            u'int8',
+            u'int16',
+            u'int32',
+            u'int64',
+            u'uint8',
+            u'complex64',
+            u'complex128',
         ]:
             # this code is a little bit dangerous, since error could happen
             # when casting no-ascii code to str in python2.
@@ -70,14 +104,13 @@ def convert_dtype(dtype):
 
     raise TypeError(
         "dtype must be any of [bool, float16, uint16, float32, float64, int8, int16, "
-        "int32, int64, uint8, complex64, complex128], but received %s" % dtype)
+        "int32, int64, uint8, complex64, complex128], but received %s" % dtype
+    )
 
 
-def check_variable_and_dtype(input,
-                             input_name,
-                             expected_dtype,
-                             op_name,
-                             extra_message=''):
+def check_variable_and_dtype(
+    input, input_name, expected_dtype, op_name, extra_message=''
+):
     check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
@@ -97,60 +130,76 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     # @declarative in transformation from dygrah to static layer. We add VarBase in
     # expected_type to skip checking because varBase may be created and used in unusual way.
     from .dygraph.base import in_declarative_mode
+
     # Need a better design to be fix this.
     if in_declarative_mode():
         if not isinstance(expected_type, tuple):
-            expected_type = (expected_type, )
-        expected_type += (core.VarBase, )
+            expected_type = (expected_type,)
+        expected_type += (core.VarBase,)
         if _in_eager_without_dygraph_check():
-            expected_type += (core.eager.Tensor, )
+            expected_type += (core.eager.Tensor,)
     elif isinstance(input, core.VarBase):
         raise TypeError(
             "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
             "Because received '{}' in {} is a imperative Variable.".format(
-                input_name, op_name))
+                input_name, op_name
+            )
+        )
     elif hasattr(core, "eager"):
         if isinstance(input, core.eager.Tensor):
             raise TypeError(
                 "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
                 "Because received '{}' in {} is a imperative Variable.".format(
-                    input_name, op_name))
+                    input_name, op_name
+                )
+            )
     if not isinstance(input, expected_type):
         raise TypeError(
-            "The type of '%s' in %s must be %s, but received %s. %s" %
-            (input_name, op_name, expected_type, type(input), extra_message))
+            "The type of '%s' in %s must be %s, but received %s. %s"
+            % (input_name, op_name, expected_type, type(input), extra_message)
+        )
 
 
-def check_dtype(input_dtype,
-                input_name,
-                expected_dtype,
-                op_name,
-                extra_message=''):
+def check_dtype(
+    input_dtype, input_name, expected_dtype, op_name, extra_message=''
+):
     # See NOTE [ Why skip dynamic graph check ]
     if _non_static_mode():
         return
     if convert_dtype(input_dtype) in ['float16']:
         warnings.warn(
-            "The data type of '%s' in %s only support float16 in GPU now. %s" %
-            (input_name, op_name, extra_message))
+            "The data type of '%s' in %s only support float16 in GPU now. %s"
+            % (input_name, op_name, extra_message)
+        )
     if convert_dtype(input_dtype) in ['uint16'] and op_name not in [
-            'reshape', 'lookup_table', 'scale'
+        'reshape',
+        'lookup_table',
+        'scale',
     ]:
         warnings.warn(
             "The data type of '%s' in %s only support bfloat16 in OneDNN now. %s"
-            % (input_name, op_name, extra_message))
+            % (input_name, op_name, extra_message)
+        )
     if convert_dtype(input_dtype) not in expected_dtype:
         raise TypeError(
-            "The data type of '%s' in %s must be %s, but received %s. %s" %
-            (input_name, op_name, expected_dtype, convert_dtype(input_dtype),
-             extra_message))
-
-
-def check_shape(shape,
+            "The data type of '%s' in %s must be %s, but received %s. %s"
+            % (
+                input_name,
                 op_name,
-                expected_shape_type=(list, tuple, Variable),
-                expected_element_type=(int, Variable),
-                expected_tensor_dtype=('int32', 'int64')):
+                expected_dtype,
+                convert_dtype(input_dtype),
+                extra_message,
+            )
+        )
+
+
+def check_shape(
+    shape,
+    op_name,
+    expected_shape_type=(list, tuple, Variable),
+    expected_element_type=(int, Variable),
+    expected_tensor_dtype=('int32', 'int64'),
+):
     # See NOTE [ Why skip dynamic graph check ]
     if _non_static_mode():
         return
@@ -160,16 +209,19 @@ def check_shape(shape,
             check_type(item, 'element of shape', expected_element_type, op_name)
             if expected_tensor_dtype is not None and isinstance(item, Variable):
                 check_dtype(
-                    item.dtype, 'element of shape', expected_tensor_dtype,
+                    item.dtype,
+                    'element of shape',
+                    expected_tensor_dtype,
                     op_name,
-                    'If element of shape is Tensor, its data type should be {}'.
-                    format(', '.join(expected_tensor_dtype)))
+                    'If element of shape is Tensor, its data type should be {}'.format(
+                        ', '.join(expected_tensor_dtype)
+                    ),
+                )
     if expected_tensor_dtype is not None and isinstance(shape, Variable):
         check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
 
 
 class DataToLoDTensorConverter(object):
-
     def __init__(self, place, lod_level, shape, dtype):
         self.place = place
         self.lod_level = lod_level
@@ -203,8 +255,10 @@ class DataToLoDTensorConverter(object):
         for s1, s2 in zip(self.shape, shape):
             if s1 != s2 and s1 >= 0 and s2 >= 0:
                 raise ValueError(
-                    "Shape not match. What is defined in data layer is {}, but receive {}"
-                    .format(self.shape, shape))
+                    "Shape not match. What is defined in data layer is {}, but receive {}".format(
+                        self.shape, shape
+                    )
+                )
 
     def done(self):
         arr = np.array(self.data, dtype=self.dtype)
@@ -214,8 +268,10 @@ class DataToLoDTensorConverter(object):
                     arr = arr.reshape(self.shape)
                 except ValueError:
                     raise ValueError(
-                        "Reshape error. What is defined in data layer is {}, but receive {}"
-                        .format(self.shape, arr.shape))
+                        "Reshape error. What is defined in data layer is {}, but receive {}".format(
+                            self.shape, arr.shape
+                        )
+                    )
         t = core.LoDTensor()
         t.set(arr, self.place)
         if self.lod_level > 0:
@@ -225,7 +281,6 @@ class DataToLoDTensorConverter(object):
 
 
 class BatchedTensorProvider(object):
-
     def __init__(self, feed_list, place, batch_size, generator, drop_last):
         self.place = place
         self.batch_size = batch_size
@@ -236,10 +291,13 @@ class BatchedTensorProvider(object):
         for var in feed_list:
             assert var.lod_level == 0, "lod_level must be 0"
             self.converters.append(
-                DataToLoDTensorConverter(place=self.place,
-                                         lod_level=0,
-                                         shape=var.shape,
-                                         dtype=var.dtype))
+                DataToLoDTensorConverter(
+                    place=self.place,
+                    lod_level=0,
+                    shape=var.shape,
+                    dtype=var.dtype,
+                )
+            )
 
     def _done(self):
         return [c.done() for c in self.converters]
@@ -380,18 +438,23 @@ class DataFeeder(object):
 
         """
         converter = []
-        for lod_level, shape, dtype in zip(self.feed_lod_level,
-                                           self.feed_shapes, self.feed_dtypes):
+        for lod_level, shape, dtype in zip(
+            self.feed_lod_level, self.feed_shapes, self.feed_dtypes
+        ):
             converter.append(
-                DataToLoDTensorConverter(place=self.place,
-                                         lod_level=lod_level,
-                                         shape=shape,
-                                         dtype=dtype))
+                DataToLoDTensorConverter(
+                    place=self.place,
+                    lod_level=lod_level,
+                    shape=shape,
+                    dtype=dtype,
+                )
+            )
 
         for each_sample in iterable:
             assert len(each_sample) == len(converter), (
-                "The number of fields in data (%d) does not match " +
-                "len(feed_list) (%d)") % (len(each_sample), len(converter))
+                "The number of fields in data (%d) does not match "
+                + "len(feed_list) (%d)"
+            ) % (len(each_sample), len(converter))
             for each_converter, each_slot in zip(converter, each_sample):
                 each_converter.feed(each_slot)
         ret_dict = {}
@@ -465,10 +528,12 @@ class DataFeeder(object):
             ]
 
         if len(iterable) != len(places):
-            raise ValueError("feed_parallel takes multiple mini-batches. Each "
-                             "mini-batch will be feed on each device. The "
-                             "number of devices and number of mini-batches "
-                             "must be same.")
+            raise ValueError(
+                "feed_parallel takes multiple mini-batches. Each "
+                "mini-batch will be feed on each device. The "
+                "number of devices and number of mini-batches "
+                "must be same."
+            )
 
         place = self.place
         for p, batch in zip(places, iterable):
@@ -484,11 +549,9 @@ class DataFeeder(object):
         else:
             return _cpu_num()
 
-    def decorate_reader(self,
-                        reader,
-                        multi_devices,
-                        num_places=None,
-                        drop_last=True):
+    def decorate_reader(
+        self, reader, multi_devices, num_places=None, drop_last=True
+    ):
         """
         Decorate the reader (generator) to fit multiple devices. The reader generate
         multiple mini-batches. Each mini-batch will be fed into a single device.
@@ -566,6 +629,7 @@ class DataFeeder(object):
                     raise ValueError(
                         "The data batch which cannot fit for devices will be "
                         "dropped is not implementation. Other strategies are "
-                        "not implemented")
+                        "not implemented"
+                    )
 
         return __reader_creator__

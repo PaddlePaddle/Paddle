@@ -14,10 +14,12 @@
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import (OpTest,
-                                                  convert_float_to_uint16,
-                                                  convert_uint16_to_float,
-                                                  skip_check_grad_ci)
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    skip_check_grad_ci,
+)
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
@@ -26,8 +28,11 @@ from paddle import enable_static
 
 def _lookup(weights, ids, flat_ids, op_version="lookup_table"):
     w_shape = weights.shape
-    out_shape = list(ids.shape[:-1]) if op_version == "lookup_table" else list(
-        ids.shape)
+    out_shape = (
+        list(ids.shape[:-1])
+        if op_version == "lookup_table"
+        else list(ids.shape)
+    )
     out_shape.append(w_shape[-1])
     out = weights[flat_ids].reshape(out_shape)
     return out
@@ -36,8 +41,11 @@ def _lookup(weights, ids, flat_ids, op_version="lookup_table"):
 def _get_grad(weights, ids, flat_ids, op_version="lookup_table"):
     w_shape = weights.shape
     w_grad = np.zeros((w_shape), dtype=weights.dtype)
-    out_shape = list(ids.shape[:-1]) if op_version == "lookup_table" else list(
-        ids.shape)
+    out_shape = (
+        list(ids.shape[:-1])
+        if op_version == "lookup_table"
+        else list(ids.shape)
+    )
     out_grad_shape = (np.prod(out_shape), w_shape[-1])
     out_grad = weights[flat_ids].reshape(out_grad_shape)
     for i, idx in enumerate(flat_ids):
@@ -45,10 +53,10 @@ def _get_grad(weights, ids, flat_ids, op_version="lookup_table"):
     return w_grad
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestLookupTableBF16Op(OpTest):
-
     def init_test(self):
         self.op_type = "lookup_table"
         self.ids_shape = (4, 1)
@@ -62,11 +70,13 @@ class TestLookupTableBF16Op(OpTest):
         self.flat_ids = self.ids.flatten()
 
         self.w_bf16 = convert_float_to_uint16(table)
-        self.out_bf16 = _lookup(self.w_bf16, self.ids, self.flat_ids,
-                                self.op_type)
+        self.out_bf16 = _lookup(
+            self.w_bf16, self.ids, self.flat_ids, self.op_type
+        )
         self.out_fp32 = _lookup(table, self.ids, self.flat_ids, self.op_type)
-        self.w_grad_fp32 = _get_grad(table, self.ids, self.flat_ids,
-                                     self.op_type)
+        self.w_grad_fp32 = _get_grad(
+            table, self.ids, self.flat_ids, self.op_type
+        )
 
         self.inputs = {'W': self.w_bf16, 'Ids': self.ids}
         self.outputs = {'Out': self.out_fp32}
@@ -75,36 +85,40 @@ class TestLookupTableBF16Op(OpTest):
         self.check_output_with_place(core.CPUPlace(), check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CPUPlace(), ['W'],
-                                   'Out',
-                                   no_grad_set=set('Ids'),
-                                   check_dygraph=False,
-                                   max_relative_error=1.5e-2,
-                                   user_defined_grads=[self.w_grad_fp32],
-                                   user_defined_grad_outputs=[self.out_bf16])
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ['W'],
+            'Out',
+            no_grad_set=set('Ids'),
+            check_dygraph=False,
+            max_relative_error=1.5e-2,
+            user_defined_grads=[self.w_grad_fp32],
+            user_defined_grad_outputs=[self.out_bf16],
+        )
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestLookupTableBF16OpIds4D(TestLookupTableBF16Op):
-
     def init_test(self):
         self.op_type = "lookup_table"
         self.ids_shape = (2, 4, 5, 1)
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
-
     def init_test(self):
         self.op_type = "lookup_table"
         self.ids_shape = (10, 1)
 
     def setUp(self):
         self.init_test()
-        self.ids = np.random.randint(low=0, high=15,
-                                     size=self.ids_shape).astype("int64")
+        self.ids = np.random.randint(
+            low=0, high=15, size=self.ids_shape
+        ).astype("int64")
         self.flat_ids = self.ids.flatten()
         self.w_fp32 = np.random.random((15, 32)).astype("float32")
         self.w_bf16 = convert_float_to_uint16(self.w_fp32)
@@ -144,11 +158,12 @@ class TestLookupTableBF16OpWIsSelectedRows(unittest.TestCase):
         self._check_output(ref, result_array)
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestLookupTableBF16OpWIsSelectedRows4DIds(
-        TestLookupTableBF16OpWIsSelectedRows):
-
+    TestLookupTableBF16OpWIsSelectedRows
+):
     def init_test(self):
         self.op_type = "lookup_table"
         self.ids_shape = (3, 4, 5, 1)
@@ -161,11 +176,12 @@ class TestLookupTableBF16OpWIsSelectedRows4DIds(
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+    "test the gradient here."
+)
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestLookupTableBF16OpWithPadding(TestLookupTableBF16Op):
-
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
@@ -177,11 +193,12 @@ class TestLookupTableBF16OpWithPadding(TestLookupTableBF16Op):
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+    "test the gradient here."
+)
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestLookupTableBF16OpIds4DPadding(TestLookupTableBF16OpIds4D):
-
     def test_check_output(self):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
@@ -202,8 +219,9 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
     def setUp(self):
         self.ids_shape = [4, 1]
         self.w_shape = [10, 64]
-        self.ids = np.random.randint(low=0, high=9,
-                                     size=self.ids_shape).astype("int64")
+        self.ids = np.random.randint(low=0, high=9, size=self.ids_shape).astype(
+            "int64"
+        )
         self.flat_ids = self.ids.flatten()
         self.value = 3.0
         self.w_fp32 = np.full(self.w_shape, self.value)
@@ -214,18 +232,20 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
 
         with fluid.program_guard(self.prog, self.startup_prog):
             x = fluid.layers.data(name='x', shape=self.ids_shape, dtype='int64')
-            self.emb = fluid.layers.embedding(input=x,
-                                              size=self.w_shape,
-                                              param_attr=fluid.ParamAttr(
-                                                  name="emb_weight",
-                                                  initializer=self.initializer),
-                                              is_sparse=False,
-                                              dtype="uint16")  # bfloat16
+            self.emb = fluid.layers.embedding(
+                input=x,
+                size=self.w_shape,
+                param_attr=fluid.ParamAttr(
+                    name="emb_weight", initializer=self.initializer
+                ),
+                is_sparse=False,
+                dtype="uint16",
+            )  # bfloat16
         exe = fluid.Executor(self.place)
         exe.run(self.startup_prog)
-        self.result = exe.run(self.prog,
-                              feed={'x': self.ids},
-                              fetch_list=['emb_weight', self.emb])
+        self.result = exe.run(
+            self.prog, feed={'x': self.ids}, fetch_list=['emb_weight', self.emb]
+        )
 
     def test_embedding_weights(self):
         result = convert_uint16_to_float(self.result[0])

@@ -24,7 +24,6 @@ from CspFileReader import FILEORGANIZEFORM_BYTRAINER
 
 
 class netFileReader(FileReader):
-
     def _parseSingleFile(self, fileNameList, tx_pid, rx_pid, q=None):
 
         traceInfo = {}
@@ -53,8 +52,9 @@ class netFileReader(FileReader):
                 for line in rf:
                     try:
                         event_str = json.loads(line.strip())
-                        event_str["pid"] = tx_pid if event_str[
-                            "name"] == "tx" else rx_pid
+                        event_str["pid"] = (
+                            tx_pid if event_str["name"] == "tx" else rx_pid
+                        )
                         # the unit of net is ms, we need ns
                         event_str["ts"] = self._align_ts(event_str["ts"] * 1e6)
                         event_str["id"] = trainerId
@@ -62,8 +62,9 @@ class netFileReader(FileReader):
 
                     except Exception:
                         self._logger.warning(
-                            "invalid record [%s] in [%s]. skip it!" %
-                            (line[:-1], fileName))
+                            "invalid record [%s] in [%s]. skip it!"
+                            % (line[:-1], fileName)
+                        )
         traceInfo["traceEvents"] = traceEventList
 
         if q is not None:
@@ -73,7 +74,7 @@ class netFileReader(FileReader):
 
     def parseFileByGroup(self, groupId, processNum=8):
         fileFist = self.getFileListByGroup(groupId)
-        fileFist = fileFist[:min(self._displaySize, len(fileFist))]
+        fileFist = fileFist[: min(self._displaySize, len(fileFist))]
 
         manager = multiprocessing.Manager()
         q = manager.Queue()
@@ -85,26 +86,30 @@ class netFileReader(FileReader):
 
         taskList = self._splitTaskListForMultiProcess(fileFist, processNum)
         for task in taskList:
-            subproc = Process(target=self._parseSingleFile,
-                              args=(
-                                  task,
-                                  tx_pid,
-                                  rx_pid,
-                                  q,
-                              ))
+            subproc = Process(
+                target=self._parseSingleFile,
+                args=(
+                    task,
+                    tx_pid,
+                    rx_pid,
+                    q,
+                ),
+            )
             processPool.append(subproc)
             subproc.start()
             pidList.append(subproc.pid)
             self._logger.info(
                 "[Net info]: process [%d] has been started, total task num is %d ..."
-                % (subproc.pid, len(processPool)))
+                % (subproc.pid, len(processPool))
+            )
 
         for t in processPool:
             t.join()
             pidList.remove(t.pid)
             self._logger.info(
-                "[Net info]: process [%d] has exited! remained %d process!" %
-                (t.pid, len(pidList)))
+                "[Net info]: process [%d] has exited! remained %d process!"
+                % (t.pid, len(pidList))
+            )
 
         traceInfo = {}
         isFistProcess = True

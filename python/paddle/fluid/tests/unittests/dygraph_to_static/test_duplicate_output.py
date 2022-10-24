@@ -26,14 +26,12 @@ else:
 
 
 class SimpleNet(paddle.nn.Layer):
-
     def __init__(self):
         super().__init__()
         self._linear = paddle.nn.Linear(1, 1)
 
     def forward(self, x):
-        """ forward with duplicate outputs.
-        """
+        """forward with duplicate outputs."""
         x = self._linear(x)
         return x, x
 

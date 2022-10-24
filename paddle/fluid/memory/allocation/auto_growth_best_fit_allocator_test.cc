@@ -33,7 +33,7 @@ class RecordedAllocator : public Allocator {
     return new Allocation(malloc(size), size, platform::CPUPlace());
   }
 
-  void FreeImpl(phi::Allocation *allocation) {
+  void FreeImpl(phi::Allocation *allocation) override {
     allocated_size_ -= allocation->size();
     free(allocation->ptr());
     delete allocation;
@@ -88,7 +88,7 @@ class LimitedResourceAllocator : public Allocator {
     return new Allocation(malloc(size), size, platform::CPUPlace());
   }
 
-  void FreeImpl(phi::Allocation *allocation) {
+  void FreeImpl(phi::Allocation *allocation) override {
     allocated_size_ -= allocation->size();
     free(allocation->ptr());
     delete allocation;

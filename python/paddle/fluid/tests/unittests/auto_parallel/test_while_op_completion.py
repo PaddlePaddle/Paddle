@@ -40,50 +40,56 @@ def get_random_inputs_and_labels(input_shape, label_shape):
 
 
 def batch_generator_creator():
-
     def __reader__():
         for _ in range(batch_size):
             batch_input, batch_label = get_random_inputs_and_labels(
                 [batch_size, sequence_len, hidden_size],
-                [batch_size, sequence_len, 1])
+                [batch_size, sequence_len, 1],
+            )
             yield batch_input, batch_label
 
     return __reader__
 
 
 class MLPLayer(nn.Layer):
-
-    def __init__(self,
-                 hidden_size=1024,
-                 intermediate_size=4 * 1024,
-                 dropout_ratio=0.1,
-                 initializer_range=0.02):
+    def __init__(
+        self,
+        hidden_size=1024,
+        intermediate_size=4 * 1024,
+        dropout_ratio=0.1,
+        initializer_range=0.02,
+    ):
         super(MLPLayer, self).__init__()
         d_model = hidden_size
         dim_feedforward = intermediate_size
-        param_initializer = nn.initializer.Normal(mean=0.0,
-                                                  std=initializer_range)
+        param_initializer = nn.initializer.Normal(
+            mean=0.0, std=initializer_range
+        )
 
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.linear0 = nn.Linear(
             d_model,
             dim_feedforward,
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
-            bias_attr=None)
+            bias_attr=None,
+        )
         self.linear1 = nn.Linear(
             dim_feedforward,
             d_model,
             weight_attr=paddle.ParamAttr(initializer=param_initializer),
-            bias_attr=None)
+            bias_attr=None,
+        )
 
     def forward(self, input):
         out = self.norm(input)
-        auto.shard_tensor(self.linear0.weight, _g_process_mesh[:, 0],
-                          [None, 'x'])
+        auto.shard_tensor(
+            self.linear0.weight, _g_process_mesh[:, 0], [None, 'x']
+        )
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
-        auto.shard_tensor(self.linear1.weight, _g_process_mesh[:, 1],
-                          ['x', None])
+        auto.shard_tensor(
+            self.linear1.weight, _g_process_mesh[:, 1], ['x', None]
+        )
         out = self.linear1(out)
 
         return out
@@ -95,15 +101,19 @@ def loop_cond(i, loop_len, input_array):
 
 def loop_body(i, loop_len, input_array):
     pre_input = paddle.tensor.array_read(array=input_array, i=i)
-    mlp_while0 = MLPLayer(hidden_size=hidden_size,
-                          intermediate_size=4 * hidden_size,
-                          dropout_ratio=0.1,
-                          initializer_range=0.02)
+    mlp_while0 = MLPLayer(
+        hidden_size=hidden_size,
+        intermediate_size=4 * hidden_size,
+        dropout_ratio=0.1,
+        initializer_range=0.02,
+    )
 
-    mlp_while1 = MLPLayer(hidden_size=hidden_size,
-                          intermediate_size=4 * hidden_size,
-                          dropout_ratio=0.1,
-                          initializer_range=0.02)
+    mlp_while1 = MLPLayer(
+        hidden_size=hidden_size,
+        intermediate_size=4 * hidden_size,
+        dropout_ratio=0.1,
+        initializer_range=0.02,
+    )
 
     output = mlp_while0(pre_input)
     cur_pred = mlp_while1(output)
@@ -128,41 +138,46 @@ def get_program():
         loop_len = paddle.full(shape=[1], fill_value=epoch_num, dtype='int64')
 
         # input
-        input = static.data(name="input",
-                            shape=[batch_size, sequence_len, hidden_size],
-                            dtype='float32')
-        label = static.data(name="label",
-                            shape=[batch_size, sequence_len, 1],
-                            dtype='float32')
+        input = static.data(
+            name="input",
+            shape=[batch_size, sequence_len, hidden_size],
+            dtype='float32',
+        )
+        label = static.data(
+            name="label", shape=[batch_size, sequence_len, 1], dtype='float32'
+        )
         data_holder = [input, label]
         # dataloader
-        dataloader = paddle.io.DataLoader.from_generator(feed_list=data_holder,
-                                                         capacity=4 *
-                                                         batch_size,
-                                                         iterable=False)
-        dataloader.set_batch_generator(batch_generator_creator(),
-                                       places=paddle.static.cuda_places())
+        dataloader = paddle.io.DataLoader.from_generator(
+            feed_list=data_holder, capacity=4 * batch_size, iterable=False
+        )
+        dataloader.set_batch_generator(
+            batch_generator_creator(), places=paddle.static.cuda_places()
+        )
         # data dist_attr
         auto.shard_tensor(input, _g_process_mesh[:, 0], [None, None, None])
         auto.shard_tensor(label, _g_process_mesh[:, 0], [None, None, None])
 
-        mlp_start = MLPLayer(hidden_size=hidden_size,
-                             intermediate_size=4 * hidden_size,
-                             dropout_ratio=0.1,
-                             initializer_range=0.02)
+        mlp_start = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02,
+        )
         pred = mlp_start(input)
 
         input_array = paddle.tensor.array_write(pred, i)
         i, loop_len, input_array = static.nn.while_loop(
-            cond=loop_cond,
-            body=loop_body,
-            loop_vars=[i, loop_len, input_array])
+            cond=loop_cond, body=loop_body, loop_vars=[i, loop_len, input_array]
+        )
         end_pred = paddle.tensor.array_read(array=input_array, i=i)
 
-        mlp_end = MLPLayer(hidden_size=hidden_size,
-                           intermediate_size=4 * hidden_size,
-                           dropout_ratio=0.1,
-                           initializer_range=0.02)
+        mlp_end = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02,
+        )
         pred = mlp_end(end_pred)
 
         error_cost = paddle.nn.functional.square_error_cost(pred, label)
@@ -172,13 +187,13 @@ def get_program():
 
 
 class TestMLP(unittest.TestCase):
-
     def test_completer(self):
         train_program, start_program, dataloader, i, loss = get_program()
         dist_context = DistributedContext()
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
+            train_program
+        )
         # print_program_with_dist_attr(complete_train_program, dist_context)
 
     def test_completer_by_dist_op(self):
@@ -186,7 +201,8 @@ class TestMLP(unittest.TestCase):
         dist_context = DistributedContext()
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
+            train_program
+        )
         complete_train_program = completer._complete_tensor_dist_attr_by_op()
 
 
