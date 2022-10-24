@@ -22,7 +22,6 @@ paddle.set_device('cpu')
 
 # Test 1
 def clear_grad_test_0(w, a):
-
     @paddle.no_grad()
     def warp(*_):
         assert w.grad is not None
@@ -33,7 +32,6 @@ def clear_grad_test_0(w, a):
 
 
 class TestInplaceAndClearGradient(unittest.TestCase):
-
     def func_test(self):
         input_data = np.ones([1, 1])
         w = paddle.to_tensor(input_data, 'float32', stop_gradient=False)
@@ -43,8 +41,9 @@ class TestInplaceAndClearGradient(unittest.TestCase):
         for i in range(2):
             print(" Step: ", i)
             out0 = _legacy_C_ops.scale(w, 'scale', 0.1)
-            out = _legacy_C_ops.matmul_v2(out0, w, 'trans_x', False, 'trans_y',
-                                          False)
+            out = _legacy_C_ops.matmul_v2(
+                out0, w, 'trans_x', False, 'trans_y', False
+            )
             out.backward()
         assert w.grad[0] == 0.15
 
@@ -56,14 +55,12 @@ class TestInplaceAndClearGradient(unittest.TestCase):
 
 # Test 2
 class Counter:
-
     def __init__(self):
         self.num_calls = 0
         self.step = 0
 
 
 def clear_grad_test_1(w, c):
-
     @paddle.no_grad()
     def warp(*_):
         assert w.grad is not None
@@ -77,7 +74,6 @@ def clear_grad_test_1(w, c):
 
 
 class TestInplaceClearGradAccumulation(unittest.TestCase):
-
     def func_test(self):
         input_data = np.ones([1, 1])
         w = paddle.to_tensor(input_data, 'float32', stop_gradient=False)
@@ -88,8 +84,9 @@ class TestInplaceClearGradAccumulation(unittest.TestCase):
 
         for c.step in range(5):
             out0 = _legacy_C_ops.scale(w, 'scale', 0.1)
-            out = _legacy_C_ops.matmul_v2(out0, w, 'trans_x', False, 'trans_y',
-                                          False)
+            out = _legacy_C_ops.matmul_v2(
+                out0, w, 'trans_x', False, 'trans_y', False
+            )
 
             out.backward()
 
@@ -106,7 +103,6 @@ class TestInplaceClearGradAccumulation(unittest.TestCase):
 
 
 class TestInplaceClearGradAccumulationAlt(unittest.TestCase):
-
     def func_test(self):
         input_data = np.ones([1, 1])
         w = paddle.to_tensor(input_data, 'float32', stop_gradient=False)

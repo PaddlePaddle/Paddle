@@ -33,7 +33,6 @@ def dyfunc_assert_non_variable(x=True):
 
 
 class TestAssertVariable(unittest.TestCase):
-
     def _run(self, func, x, with_exception, to_static):
         ProgramTranslator().enable(to_static)
         if with_exception:
@@ -49,28 +48,28 @@ class TestAssertVariable(unittest.TestCase):
         self._run(func, x, with_exception, False)
 
     def test_non_variable(self):
-        self._run_dy_static(dyfunc_assert_non_variable,
-                            x=False,
-                            with_exception=True)
-        self._run_dy_static(dyfunc_assert_non_variable,
-                            x=True,
-                            with_exception=False)
+        self._run_dy_static(
+            dyfunc_assert_non_variable, x=False, with_exception=True
+        )
+        self._run_dy_static(
+            dyfunc_assert_non_variable, x=True, with_exception=False
+        )
 
     def test_bool_variable(self):
-        self._run_dy_static(dyfunc_assert_variable,
-                            x=numpy.array([False]),
-                            with_exception=True)
-        self._run_dy_static(dyfunc_assert_variable,
-                            x=numpy.array([True]),
-                            with_exception=False)
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([False]), with_exception=True
+        )
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([True]), with_exception=False
+        )
 
     def test_int_variable(self):
-        self._run_dy_static(dyfunc_assert_variable,
-                            x=numpy.array([0]),
-                            with_exception=True)
-        self._run_dy_static(dyfunc_assert_variable,
-                            x=numpy.array([1]),
-                            with_exception=False)
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([0]), with_exception=True
+        )
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([1]), with_exception=False
+        )
 
 
 if __name__ == '__main__':

@@ -20,5 +20,11 @@ from . import backends
 from .backends.backend import info, load, save
 
 __all__ = [
-    "functional", "features", "datasets", "backends", "load", "info", "save"
+    "functional",
+    "features",
+    "datasets",
+    "backends",
+    "load",
+    "info",
+    "save",
 ]

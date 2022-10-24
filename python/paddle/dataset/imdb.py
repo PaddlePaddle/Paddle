@@ -29,7 +29,7 @@ import string
 
 __all__ = []
 
-#URL = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
+# URL = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
 URL = 'https://dataset.bj.bcebos.com/imdb%2FaclImdb_v1.tar.gz'
 MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
 
@@ -49,7 +49,8 @@ def tokenize(pattern):
             if bool(pattern.match(tf.name)):
                 # newline and punctuations removal and ad-hoc tokenization.
                 yield tarf.extractfile(tf).read().rstrip(b'\n\r').translate(
-                    None, string.punctuation.encode('latin-1')).lower().split()
+                    None, string.punctuation.encode('latin-1')
+                ).lower().split()
             tf = tarf.next()
 
 
@@ -77,7 +78,8 @@ def build_dict(pattern, cutoff):
     since="2.0.0",
     update_to="paddle.text.datasets.Imdb",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def reader_creator(pos_pattern, neg_pattern, word_idx):
     UNK = word_idx['<unk>']
     INS = []
@@ -100,7 +102,8 @@ def reader_creator(pos_pattern, neg_pattern, word_idx):
     since="2.0.0",
     update_to="paddle.text.datasets.Imdb",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def train(word_idx):
     """
     IMDB training set creator.
@@ -113,15 +116,19 @@ def train(word_idx):
     :return: Training reader creator
     :rtype: callable
     """
-    return reader_creator(re.compile(r"aclImdb/train/pos/.*\.txt$"),
-                          re.compile(r"aclImdb/train/neg/.*\.txt$"), word_idx)
+    return reader_creator(
+        re.compile(r"aclImdb/train/pos/.*\.txt$"),
+        re.compile(r"aclImdb/train/neg/.*\.txt$"),
+        word_idx,
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imdb",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def test(word_idx):
     """
     IMDB test set creator.
@@ -134,15 +141,19 @@ def test(word_idx):
     :return: Test reader creator
     :rtype: callable
     """
-    return reader_creator(re.compile(r"aclImdb/test/pos/.*\.txt$"),
-                          re.compile(r"aclImdb/test/neg/.*\.txt$"), word_idx)
+    return reader_creator(
+        re.compile(r"aclImdb/test/pos/.*\.txt$"),
+        re.compile(r"aclImdb/test/neg/.*\.txt$"),
+        word_idx,
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imdb",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def word_dict():
     """
     Build a word dictionary from the corpus.
@@ -151,13 +162,15 @@ def word_dict():
     :rtype: dict
     """
     return build_dict(
-        re.compile(r"aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), 150)
+        re.compile(r"aclImdb/((train)|(test))/((pos)|(neg))/.*\.txt$"), 150
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.Imdb",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def fetch():
     paddle.dataset.common.download(URL, 'imdb', MD5)

@@ -13,21 +13,24 @@
 # limitations under the License.
 
 import logging
-#import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+
+# import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+    fleet,
+)
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("fluid")
 logger.setLevel(logging.INFO)
-#role = role_maker.GeneralRoleMaker(
-#init_timeout_seconds=100,
-#run_timeout_seconds=100,
-#http_ip_port="127.0.0.1:26001")
+# role = role_maker.GeneralRoleMaker(
+# init_timeout_seconds=100,
+# run_timeout_seconds=100,
+# http_ip_port="127.0.0.1:26001")
 
-#role = role_maker.PaddleCloudRoleMaker(http_ip_port="127.0.0.1:26001")
+# role = role_maker.PaddleCloudRoleMaker(http_ip_port="127.0.0.1:26001")
 
-#role = role_maker.GeneralRoleMaker(path="./tmp4")
+# role = role_maker.GeneralRoleMaker(path="./tmp4")
 logger.info("Begin")
 res = [0, 0]
 
@@ -37,7 +40,7 @@ role = role_maker.PaddleCloudRoleMaker(path="./tmp4")
 
 fleet.init(role)
 print("init wancheng")  #
-#if fleet.is_worker():
+# if fleet.is_worker():
 #    import time
 #    time.sleep(3)
 
@@ -49,7 +52,7 @@ if fleet.worker_index() == 0:
 elif fleet.worker_index() == 1:
     role._all_reduce(role._node_type_comm, b)
 
-#logger.info(res)
-#print("res ", res)
+# logger.info(res)
+# print("res ", res)
 
-#role._barrier_all()
+# role._barrier_all()

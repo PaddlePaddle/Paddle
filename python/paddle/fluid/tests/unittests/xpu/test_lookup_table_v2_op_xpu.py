@@ -29,7 +29,6 @@ paddle.enable_static()
 
 
 class TestLookupTableOp(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table_v2"
         table = np.random.random((17, 31)).astype("float64")
@@ -42,15 +41,16 @@ class TestLookupTableOp(OpTest):
 
     def test_check_grad(self):
 
-        self.check_grad_with_place(inputs_to_check=['W'],
-                                   output_names='Out',
-                                   no_grad_set=set('Ids'),
-                                   place=paddle.XPUPlace(0),
-                                   in_place=True)
+        self.check_grad_with_place(
+            inputs_to_check=['W'],
+            output_names='Out',
+            no_grad_set=set('Ids'),
+            place=paddle.XPUPlace(0),
+            in_place=True,
+        )
 
 
 class TestLookupTableOpWithTensorIds(OpTest):
-
     def setUp(self):
         self.op_type = "lookup_table_v2"
         table = np.random.random((17, 31)).astype("float64")
@@ -62,19 +62,21 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.check_output_with_place(place=paddle.XPUPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(inputs_to_check=['W'],
-                                   output_names='Out',
-                                   no_grad_set=set('Ids'),
-                                   place=paddle.XPUPlace(0),
-                                   in_place=True)
+        self.check_grad_with_place(
+            inputs_to_check=['W'],
+            output_names='Out',
+            no_grad_set=set('Ids'),
+            place=paddle.XPUPlace(0),
+            in_place=True,
+        )
 
 
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
+    "test the gradient here."
+)
 class TestLookupTableOpWithPadding(TestLookupTableOp):
-
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
@@ -86,9 +88,9 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
+    "test the gradient here."
+)
 class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
-
     def test_check_output(self):
         ids = self.inputs['Ids']
         flatten_idx = ids.flatten()
@@ -99,7 +101,6 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
 
 
 class TestLookupTableWIsSelectedRows(unittest.TestCase):
-
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
         ids_array = np.array([0, 4, 3, 5]).astype("int64")
@@ -147,13 +148,14 @@ class TestLookupTableWIsSelectedRows(unittest.TestCase):
             self.check_with_place(place)
 
 
-class TestLookupTableWithTensorIdsWIsSelectedRows(TestLookupTableWIsSelectedRows
-                                                  ):
-
+class TestLookupTableWithTensorIdsWIsSelectedRows(
+    TestLookupTableWIsSelectedRows
+):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
-        ids_array = np.random.randint(low=0, high=6,
-                                      size=(2, 4, 3)).astype("int64")
+        ids_array = np.random.randint(low=0, high=6, size=(2, 4, 3)).astype(
+            "int64"
+        )
         ids_tensor.set(ids_array, place)
         return ids_array
 
@@ -163,7 +165,6 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(TestLookupTableWIsSelectedRows
 
 
 class TestLookupTableApi(unittest.TestCase):
-
     def test_api(self):
         x = fluid.layers.data(name='x', shape=[20], dtype='int64')
         emb = fluid.embedding(input=x, size=[128, 64])
@@ -173,15 +174,16 @@ class TestLookupTableApi(unittest.TestCase):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={
-            'x': x_data,
-        },
-                      fetch_list=[emb],
-                      return_numpy=False)
+        ret = exe.run(
+            feed={
+                'x': x_data,
+            },
+            fetch_list=[emb],
+            return_numpy=False,
+        )
 
 
 class TestEmbedOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.randint(0, 10, (4, 6)).astype("int64")

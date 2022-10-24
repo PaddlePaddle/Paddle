@@ -13,7 +13,16 @@
 # limitations under the License.
 
 from . import Layer
-from ..layers import sigmoid, tanh, concat, fill_constant, matmul, elementwise_add, elementwise_mul, split
+from ..layers import (
+    sigmoid,
+    tanh,
+    concat,
+    fill_constant,
+    matmul,
+    elementwise_add,
+    elementwise_mul,
+    split,
+)
 import copy
 
 __all__ = ['LSTMCell', 'GRUCell']
@@ -111,16 +120,18 @@ class LSTMCell(Layer):
 
     """
 
-    def __init__(self,
-                 hidden_size,
-                 input_size,
-                 param_attr=None,
-                 bias_attr=None,
-                 gate_activation=None,
-                 activation=None,
-                 forget_bias=1.0,
-                 use_cudnn_impl=True,
-                 dtype='float64'):
+    def __init__(
+        self,
+        hidden_size,
+        input_size,
+        param_attr=None,
+        bias_attr=None,
+        gate_activation=None,
+        activation=None,
+        forget_bias=1.0,
+        use_cudnn_impl=True,
+        dtype='float64',
+    ):
         super(LSTMCell, self).__init__(dtype)
 
         self._hidden_size = hidden_size
@@ -134,7 +145,10 @@ class LSTMCell(Layer):
 
         if self._use_cudnn_impl:
 
-            if self._param_attr is not None and self._param_attr.name is not None:
+            if (
+                self._param_attr is not None
+                and self._param_attr.name is not None
+            ):
                 weight_ih_param_attr = copy.deepcopy(self._param_attr)
                 weight_hh_param_attr = copy.deepcopy(self._param_attr)
                 weight_ih_param_attr.name += "_weight_ih"
@@ -155,40 +169,50 @@ class LSTMCell(Layer):
             self._weight_ih = self.create_parameter(
                 attr=weight_ih_param_attr,
                 shape=[4 * self._hidden_size, self._input_size],
-                dtype=self._dtype)
+                dtype=self._dtype,
+            )
 
             self._weight_hh = self.create_parameter(
                 attr=weight_hh_param_attr,
                 shape=[4 * self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
+                dtype=self._dtype,
+            )
 
-            self._bias_ih = self.create_parameter(attr=bias_ih_param_attr,
-                                                  shape=[4 * self._hidden_size],
-                                                  dtype=self._dtype,
-                                                  is_bias=True)
-            self._bias_hh = self.create_parameter(attr=bias_hh_param_attr,
-                                                  shape=[4 * self._hidden_size],
-                                                  dtype=self._dtype,
-                                                  is_bias=True)
+            self._bias_ih = self.create_parameter(
+                attr=bias_ih_param_attr,
+                shape=[4 * self._hidden_size],
+                dtype=self._dtype,
+                is_bias=True,
+            )
+            self._bias_hh = self.create_parameter(
+                attr=bias_hh_param_attr,
+                shape=[4 * self._hidden_size],
+                dtype=self._dtype,
+                is_bias=True,
+            )
 
         else:
 
-            self._forget_bias = fill_constant([1],
-                                              dtype=dtype,
-                                              value=forget_bias)
+            self._forget_bias = fill_constant(
+                [1], dtype=dtype, value=forget_bias
+            )
             self._forget_bias.stop_gradient = False
 
             self._weight = self.create_parameter(
                 attr=self._param_attr,
                 shape=[
-                    self._input_size + self._hidden_size, 4 * self._hidden_size
+                    self._input_size + self._hidden_size,
+                    4 * self._hidden_size,
                 ],
-                dtype=dtype)
+                dtype=dtype,
+            )
 
-            self._bias = self.create_parameter(attr=self._bias_attr,
-                                               shape=[4 * self._hidden_size],
-                                               dtype=dtype,
-                                               is_bias=True)
+            self._bias = self.create_parameter(
+                attr=self._bias_attr,
+                shape=[4 * self._hidden_size],
+                dtype=dtype,
+                is_bias=True,
+            )
 
     def forward(self, input, pre_hidden, pre_cell):
 
@@ -226,9 +250,12 @@ class LSTMCell(Layer):
             new_cell = elementwise_add(
                 elementwise_mul(
                     pre_cell,
-                    self._gate_activation(elementwise_add(f,
-                                                          self._forget_bias))),
-                elementwise_mul(sigmoid(i), tanh(j)))
+                    self._gate_activation(
+                        elementwise_add(f, self._forget_bias)
+                    ),
+                ),
+                elementwise_mul(sigmoid(i), tanh(j)),
+            )
             new_hidden = self._activation(new_cell) * self._gate_activation(o)
 
         return new_hidden, new_cell
@@ -312,15 +339,17 @@ class GRUCell(Layer):
 
     """
 
-    def __init__(self,
-                 hidden_size,
-                 input_size,
-                 param_attr=None,
-                 bias_attr=None,
-                 gate_activation=None,
-                 activation=None,
-                 use_cudnn_impl=True,
-                 dtype='float64'):
+    def __init__(
+        self,
+        hidden_size,
+        input_size,
+        param_attr=None,
+        bias_attr=None,
+        gate_activation=None,
+        activation=None,
+        use_cudnn_impl=True,
+        dtype='float64',
+    ):
         super(GRUCell, self).__init__()
 
         self._hidden_size = hidden_size
@@ -334,7 +363,10 @@ class GRUCell(Layer):
 
         if self._use_cudnn_impl:
 
-            if self._param_attr is not None and self._param_attr.name is not None:
+            if (
+                self._param_attr is not None
+                and self._param_attr.name is not None
+            ):
                 weight_ih_param_attr = copy.deepcopy(self._param_attr)
                 weight_hh_param_attr = copy.deepcopy(self._param_attr)
                 weight_ih_param_attr.name += "_weight_ih"
@@ -355,25 +387,34 @@ class GRUCell(Layer):
             self._weight_ih = self.create_parameter(
                 attr=weight_ih_param_attr,
                 shape=[3 * self._hidden_size, self._input_size],
-                dtype=self._dtype)
+                dtype=self._dtype,
+            )
 
             self._weight_hh = self.create_parameter(
                 attr=weight_hh_param_attr,
                 shape=[3 * self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
+                dtype=self._dtype,
+            )
 
-            self._bias_ih = self.create_parameter(attr=bias_ih_param_attr,
-                                                  shape=[3 * self._hidden_size],
-                                                  dtype=self._dtype,
-                                                  is_bias=True)
-            self._bias_hh = self.create_parameter(attr=bias_hh_param_attr,
-                                                  shape=[3 * self._hidden_size],
-                                                  dtype=self._dtype,
-                                                  is_bias=True)
+            self._bias_ih = self.create_parameter(
+                attr=bias_ih_param_attr,
+                shape=[3 * self._hidden_size],
+                dtype=self._dtype,
+                is_bias=True,
+            )
+            self._bias_hh = self.create_parameter(
+                attr=bias_hh_param_attr,
+                shape=[3 * self._hidden_size],
+                dtype=self._dtype,
+                is_bias=True,
+            )
 
         else:
 
-            if self._param_attr is not None and self._param_attr.name is not None:
+            if (
+                self._param_attr is not None
+                and self._param_attr.name is not None
+            ):
                 gate_weight_param_attr = copy.deepcopy(self._param_attr)
                 candidate_weight_param_attr = copy.deepcopy(self._param_attr)
                 gate_weight_param_attr.name += "_gate_weight"
@@ -394,25 +435,30 @@ class GRUCell(Layer):
             self._gate_weight = self.create_parameter(
                 attr=gate_weight_param_attr,
                 shape=[
-                    self._input_size + self._hidden_size, 2 * self._hidden_size
+                    self._input_size + self._hidden_size,
+                    2 * self._hidden_size,
                 ],
-                dtype=dtype)
+                dtype=dtype,
+            )
 
             self._candidate_weight = self.create_parameter(
                 attr=candidate_weight_param_attr,
                 shape=[self._input_size + self._hidden_size, self._hidden_size],
-                dtype=dtype)
+                dtype=dtype,
+            )
 
             self._gate_bias = self.create_parameter(
                 attr=gate_bias_param_attr,
                 shape=[2 * self._hidden_size],
                 dtype=dtype,
-                is_bias=True)
+                is_bias=True,
+            )
             self._candidate_bias = self.create_parameter(
                 attr=candidate_bias_param_attr,
                 shape=[self._hidden_size],
                 dtype=dtype,
-                is_bias=True)
+                is_bias=True,
+            )
 
     def forward(self, input, pre_hidden):
 
@@ -450,8 +496,9 @@ class GRUCell(Layer):
 
             r_hidden = r * pre_hidden
 
-            candidate = matmul(concat([input, r_hidden], 1),
-                               self._candidate_weight)
+            candidate = matmul(
+                concat([input, r_hidden], 1), self._candidate_weight
+            )
             candidate = elementwise_add(candidate, self._candidate_bias)
 
             c = self._activation(candidate)

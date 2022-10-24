@@ -266,10 +266,9 @@ def add(x, y, name=None):
         inputs = {'x': x, 'y': y}
         helper = LayerHelper(op_type)
         out = helper.create_sparse_variable_for_type_inference(x.dtype)
-        helper.append_op(type=op_type,
-                         inputs=inputs,
-                         outputs={'out': out},
-                         attrs={})
+        helper.append_op(
+            type=op_type, inputs=inputs, outputs={'out': out}, attrs={}
+        )
         return out
 
 

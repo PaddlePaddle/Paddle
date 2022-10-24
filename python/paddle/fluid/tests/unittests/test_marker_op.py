@@ -17,14 +17,13 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 
 
 class TestMarkerOp(OpTest):
-
     def setUp(self):
         self.op_type = "marker"
         self.inputs = {}
         self.attrs = {
             'marker_role': 'forward',
             'marker_pos': 'B',
-            'op_role': OpRole.Forward
+            'op_role': OpRole.Forward,
         }
         self.outputs = {}
 

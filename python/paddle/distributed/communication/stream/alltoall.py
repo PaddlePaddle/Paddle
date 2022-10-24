@@ -25,22 +25,26 @@ def _check_tensor_shape(tensor, shape, nranks=1):
 def _check_tensor_list_shape(tensor_list, shape, nranks=1):
     if len(tensor_list) != nranks:
         raise RuntimeError(
-            'The tensor_list for alltoall is not correctly-sized.')
+            'The tensor_list for alltoall is not correctly-sized.'
+        )
     for tensor in tensor_list:
         if tensor.shape != shape:
             raise RuntimeError(
-                'The tensor_list for alltoall is not correctly-sized.')
+                'The tensor_list for alltoall is not correctly-sized.'
+            )
 
 
-def _alltoall_tensor_in_dygraph(out_tensor, in_tensor, group, sync_op,
-                                use_calc_stream):
+def _alltoall_tensor_in_dygraph(
+    out_tensor, in_tensor, group, sync_op, use_calc_stream
+):
     group = collective._get_default_group() if group is None else group
 
     _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
     if use_calc_stream:
         return group.process_group.alltoall_tensor_on_calc_stream(
-            in_tensor, out_tensor)
+            in_tensor, out_tensor
+        )
 
     task = group.process_group.alltoall_tensor(in_tensor, out_tensor, sync_op)
     if sync_op:
@@ -49,8 +53,9 @@ def _alltoall_tensor_in_dygraph(out_tensor, in_tensor, group, sync_op,
     return task
 
 
-def _alltoall_in_dygraph(out_tensor_list, in_tensor_list, group, sync_op,
-                         use_calc_stream):
+def _alltoall_in_dygraph(
+    out_tensor_list, in_tensor_list, group, sync_op, use_calc_stream
+):
     group = collective._get_default_group() if group is None else group
 
     if len(in_tensor_list) == 0:
@@ -61,26 +66,31 @@ def _alltoall_in_dygraph(out_tensor_list, in_tensor_list, group, sync_op,
             paddle.empty_like(tensor) for tensor in in_tensor_list
         ]
     else:
-        _check_tensor_list_shape(out_tensor_list, in_tensor_list[0].shape,
-                                 group.nranks)
+        _check_tensor_list_shape(
+            out_tensor_list, in_tensor_list[0].shape, group.nranks
+        )
 
     if use_calc_stream:
         return group.process_group.alltoall_on_calc_stream(
-            in_tensor_list, out_tensor_list)
+            in_tensor_list, out_tensor_list
+        )
 
-    task = group.process_group.alltoall(in_tensor_list, out_tensor_list,
-                                        sync_op)
+    task = group.process_group.alltoall(
+        in_tensor_list, out_tensor_list, sync_op
+    )
     if sync_op:
         task.wait()
 
     return task
 
 
-def alltoall(out_tensor_or_tensor_list,
-             in_tensor_or_tensor_list,
-             group=None,
-             sync_op=True,
-             use_calc_stream=False):
+def alltoall(
+    out_tensor_or_tensor_list,
+    in_tensor_or_tensor_list,
+    group=None,
+    sync_op=True,
+    use_calc_stream=False,
+):
     """
 
     Scatter a tensor (or a tensor list) across devices and gather outputs to another tensor (or a tensor list, respectively).
@@ -130,7 +140,8 @@ def alltoall(out_tensor_or_tensor_list,
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be true in sync op behavior."
+        )
 
     if out_tensor_or_tensor_list is None:
         raise RuntimeError("The output should be specified.")
@@ -141,16 +152,25 @@ def alltoall(out_tensor_or_tensor_list,
         out_is_tensor = paddle.is_tensor(out_tensor_or_tensor_list)
         in_is_tensor = paddle.is_tensor(in_tensor_or_tensor_list)
         if out_is_tensor and in_is_tensor:
-            return _alltoall_tensor_in_dygraph(out_tensor_or_tensor_list,
-                                               in_tensor_or_tensor_list, group,
-                                               sync_op, use_calc_stream)
+            return _alltoall_tensor_in_dygraph(
+                out_tensor_or_tensor_list,
+                in_tensor_or_tensor_list,
+                group,
+                sync_op,
+                use_calc_stream,
+            )
         elif not out_is_tensor and not in_is_tensor:
-            return _alltoall_in_dygraph(out_tensor_or_tensor_list,
-                                        in_tensor_or_tensor_list, group,
-                                        sync_op, use_calc_stream)
+            return _alltoall_in_dygraph(
+                out_tensor_or_tensor_list,
+                in_tensor_or_tensor_list,
+                group,
+                sync_op,
+                use_calc_stream,
+            )
         else:
             raise RuntimeError(
-                "The output and input should be both tensor or tensor list.")
+                "The output and input should be both tensor or tensor list."
+            )
 
     raise RuntimeError(
         "paddle.distributed.stream.alltoall is only supported in dygraph mode now."

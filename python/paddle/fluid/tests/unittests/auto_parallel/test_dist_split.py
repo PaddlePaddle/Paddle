@@ -25,8 +25,9 @@ def make_program_dp2():
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 12, 16], dtype='float32')
         x.stop_gradient = False
-        auto.shard_tensor(x, auto.ProcessMesh([0, 1], dim_names=["x"]),
-                          ["x", None, None])
+        auto.shard_tensor(
+            x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x", None, None]
+        )
         out0, out1, out2 = paddle.split(x, num_or_sections=3, axis=1)
     return main_program, start_program
 
@@ -44,14 +45,14 @@ def parallelizer(program_func, rank):
     dist_context.block_state.parse_forward_blocks(main_program)
 
     partitioner = Partitioner(dist_context, rank)
-    dist_main_prog, _, _ = partitioner.partition(main_program, start_program,
-                                                 [])
+    dist_main_prog, _, _ = partitioner.partition(
+        main_program, start_program, []
+    )
 
     return dist_main_prog, dist_context
 
 
 class TestDistSplit(unittest.TestCase):
-
     def test_dist_split_dp2(self):
 
         for rank in range(2):

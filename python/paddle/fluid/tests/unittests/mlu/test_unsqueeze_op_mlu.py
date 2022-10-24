@@ -27,7 +27,6 @@ paddle.enable_static()
 
 # Correct: General.
 class TestUnsqueezeOp(OpTest):
-
     def setUp(self):
         self.init_test_case()
         self.set_mlu()
@@ -57,16 +56,14 @@ class TestUnsqueezeOp(OpTest):
 
 # Correct: Single input index.
 class TestUnsqueezeOp1(TestUnsqueezeOp):
-
     def init_test_case(self):
         self.ori_shape = (20, 5)
-        self.axes = (-1, )
+        self.axes = (-1,)
         self.new_shape = (20, 5, 1)
 
 
 # Correct: Mixed input axis.
 class TestUnsqueezeOp2(TestUnsqueezeOp):
-
     def init_test_case(self):
         self.ori_shape = (20, 5)
         self.axes = (0, -1)
@@ -75,7 +72,6 @@ class TestUnsqueezeOp2(TestUnsqueezeOp):
 
 # Correct: There is duplicated axis.
 class TestUnsqueezeOp3(TestUnsqueezeOp):
-
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (0, 3, 3)
@@ -84,7 +80,6 @@ class TestUnsqueezeOp3(TestUnsqueezeOp):
 
 # Correct: Reversed axes.
 class TestUnsqueezeOp4(TestUnsqueezeOp):
-
     def init_test_case(self):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)

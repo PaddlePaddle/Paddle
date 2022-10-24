@@ -19,10 +19,10 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle import enable_static
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestTransposeOp(OpTest):
-
     def setUp(self):
         self.op_type = "transpose2"
         self.use_mkldnn = True
@@ -36,12 +36,12 @@ class TestTransposeOp(OpTest):
         self.attrs = {
             'axis': list(self.axis),
             'use_mkldnn': self.use_mkldnn,
-            'mkldnn_data_type': self.mkldnn_data_type
+            'mkldnn_data_type': self.mkldnn_data_type,
         }
 
         self.outputs = {
             'XShape': np.random.random(self.shape).astype(np.uint16),
-            'Out': self.inputs['X'].transpose(self.axis)
+            'Out': self.inputs['X'].transpose(self.axis),
         }
 
     def test_check_output(self):
@@ -52,11 +52,11 @@ class TestTransposeOp(OpTest):
 
     def init_test_data(self):
         self.input_data = convert_float_to_uint16(
-            np.random.random(self.shape).astype(np.float32))
+            np.random.random(self.shape).astype(np.float32)
+        )
 
 
 class TestBF16Case(TestTransposeOp):
-
     def init_test_case(self):
         self.shape = (2, 4, 6, 8)
 

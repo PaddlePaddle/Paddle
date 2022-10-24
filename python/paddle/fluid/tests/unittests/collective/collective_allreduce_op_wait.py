@@ -22,22 +22,22 @@ paddle.enable_static()
 
 
 class TestCollectiveAllreduce(TestCollectiveRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program):
         ring_id = 0
         with fluid.program_guard(main_prog, startup_program):
-            tindata = layers.data(name="tindata",
-                                  shape=[10, 1000],
-                                  dtype='float32')
+            tindata = layers.data(
+                name="tindata", shape=[10, 1000], dtype='float32'
+            )
             toutdata = main_prog.current_block().create_var(
                 name="outofallreduce",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
-                stop_gradient=False)
+                stop_gradient=False,
+            )
 
             # tout = tin + tin - tin = tin
             if True:
@@ -58,21 +58,27 @@ class TestCollectiveAllreduce(TestCollectiveRunnerBase):
                     outputs={'Out': toutdata},
                 )
 
-            main_prog.global_block().append_op(type='c_wait_compute',
-                                               inputs={'X': toutdata},
-                                               outputs={'Out': toutdata},
-                                               attrs={'ring_id': ring_id})
+            main_prog.global_block().append_op(
+                type='c_wait_compute',
+                inputs={'X': toutdata},
+                outputs={'Out': toutdata},
+                attrs={'ring_id': ring_id},
+            )
 
-            main_prog.global_block().append_op(type="c_allreduce_sum",
-                                               inputs={'X': toutdata},
-                                               attrs={'ring_id': ring_id},
-                                               outputs={'Out': toutdata},
-                                               attr={'use_calc_stream': False})
+            main_prog.global_block().append_op(
+                type="c_allreduce_sum",
+                inputs={'X': toutdata},
+                attrs={'ring_id': ring_id},
+                outputs={'Out': toutdata},
+                attr={'use_calc_stream': False},
+            )
 
-            main_prog.global_block().append_op(type="c_wait_comm",
-                                               inputs={'X': toutdata},
-                                               outputs={'Out': toutdata},
-                                               attrs={'ring_id': ring_id})
+            main_prog.global_block().append_op(
+                type="c_wait_comm",
+                inputs={'X': toutdata},
+                outputs={'Out': toutdata},
+                attrs={'ring_id': ring_id},
+            )
 
             # tout = tin + tout - tin = tout
             if True:
