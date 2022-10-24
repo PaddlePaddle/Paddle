@@ -113,6 +113,12 @@ class ProcessGroupGloo : public ProcessGroup {
       std::vector<phi::DenseTensor>& outputs,
       const BroadcastOptions& = BroadcastOptions()) override;
 
+  std::shared_ptr<ProcessGroup::Task> Broadcast(
+      std::vector<phi::DenseTensor>& inputs,
+      std::vector<phi::DenseTensor>& outputs,
+      const BroadcastOptions& opts,
+      bool sync_op) override;
+
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& inputs,
       std::vector<phi::DenseTensor>& outputs,
@@ -134,7 +140,19 @@ class ProcessGroupGloo : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>& in_tensors,
       std::vector<phi::DenseTensor>& out_tensors,
+      const ReduceOptions& opts,
+      bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
       const ReduceOptions& opts) override;
+
+  std::shared_ptr<ProcessGroup::Task> Scatter(
+      std::vector<phi::DenseTensor>& in_tensors,
+      std::vector<phi::DenseTensor>& out_tensors,
+      const ScatterOptions&,
+      bool sync_op) override;
 
   std::shared_ptr<ProcessGroup::Task> Scatter(
       std::vector<phi::DenseTensor>& in_tensors,
