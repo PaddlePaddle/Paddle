@@ -2,9 +2,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/core/tensor_utils.h"
-#ifdef PADDLE_WITH_CUDA
-#include <cuda_runtime.h>
-#endif
 
 #include <assert.h>
 
@@ -98,8 +95,6 @@ void  multi_tensor_adam_utility(
     int compute_groups_this_tensor = ( tensor_and_block_inf[0][t]->numel() + compute_group_size - 1)/compute_group_size;
     tabi.start_compute_group_this_tensor = 0;
     int local_compute_group = 0;
-
-    cudaError_t error;
 
     for(int compute_group = 0; compute_group < compute_groups_this_tensor; compute_group++)
     {

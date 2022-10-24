@@ -376,7 +376,6 @@ class TestMultiTensorAdam(unittest.TestCase):
             np.allclose(i.numpy(), j.numpy())
 
     def test_main(self):
-        paddle.set_device('gpu')
         for mode in [True, False]:
             self.run_multi_tensor_adam(mode)
             self.run_multi_tensor_adam_fp16(mode)
