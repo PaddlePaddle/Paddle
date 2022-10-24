@@ -150,9 +150,9 @@ class ProgressBar(object):
                 for i, v in enumerate(val):
                     if isinstance(v, (float, np.float32, np.float64)):
                         if abs(v) > 1e-3:
-                            info += ' %.4f' % v
+                            info += ' %.6f' % v
                         else:
-                            info += ' %.4e' % v
+                            info += ' %.6e' % v
                     else:
                         info += ' %s' % v
 
@@ -202,18 +202,18 @@ class ProgressBar(object):
                 for v in val:
                     if isinstance(v, (float, np.float32, np.float64)):
                         if abs(v) > 1e-3:
-                            info += ' %.4f' % v
+                            info += ' %.6f' % v
                         else:
-                            info += ' %.4e' % v
+                            info += ' %.6e' % v
                     elif (
                         isinstance(v, np.ndarray)
                         and v.size == 1
                         and v.dtype in [np.float32, np.float64]
                     ):
                         if abs(v[0]) > 1e-3:
-                            info += ' %.4f' % v[0]
+                            info += ' %.6f' % v[0]
                         else:
-                            info += ' %.4e' % v[0]
+                            info += ' %.6e' % v[0]
                     else:
                         info += ' %s' % v
 
