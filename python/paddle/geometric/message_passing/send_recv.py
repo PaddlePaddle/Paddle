@@ -82,9 +82,8 @@ def send_u_recv(
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`.
-                      If `out_size` is set correctly, then it should have the same shape as `x` except
-                      the 0th dimension.
+        - out (Tensor), the output tensor, should have the same shape and same dtype as input tensor `x`.
+          If `out_size` is set correctly, then it should have the same shape as `x` except the 0th dimension.
 
     Examples:
         .. code-block:: python
@@ -249,9 +248,8 @@ def send_ue_recv(
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output tensor, should have the same shape and same dtype as input tensor `x`.
-                      If `out_size` is set correctly, then it should have the same shape as `x` except
-                      the 0th dimension.
+        - out (Tensor), the output tensor, should have the same shape and same dtype as input tensor `x`.
+          If `out_size` is set correctly, then it should have the same shape as `x` except the 0th dimension.
 
     Examples:
         .. code-block:: python
@@ -433,7 +431,7 @@ def send_uv(x, y, src_index, dst_index, message_op="add", name=None):
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output tensor.
+        - out (Tensor), the output tensor.
 
     Examples:
 

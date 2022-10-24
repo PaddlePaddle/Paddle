@@ -38,7 +38,7 @@ def segment_sum(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output (Tensor): The reduced result.
+        - output (Tensor), the reduced result.
 
     Examples:
         .. code-block:: python
@@ -99,7 +99,7 @@ def segment_mean(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+        - output (Tensor), the reduced result.
 
     Examples:
         .. code-block:: python
@@ -160,7 +160,7 @@ def segment_min(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+        - output (Tensor), the reduced result.
 
     Examples:
         .. code-block:: python
@@ -221,7 +221,7 @@ def segment_max(data, segment_ids, name=None):
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-       output (Tensor): the reduced result.
+        - output (Tensor), the reduced result.
 
     Examples:
         .. code-block:: python
