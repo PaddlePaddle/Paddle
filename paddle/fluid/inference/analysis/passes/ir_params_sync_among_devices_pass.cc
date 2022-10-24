@@ -124,7 +124,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
       if (!var_node->Var()->Persistable()) continue;
       auto var_name = var_node->Var()->Name();
       auto *var = scope->FindLocalVar(var_name);
-      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+      if (var->IsType<phi::DenseTensor>()) {
         auto *t = var->GetMutable<phi::DenseTensor>();
         params_total_bytes += t->numel() * experimental::SizeOf(t->dtype());
       }
