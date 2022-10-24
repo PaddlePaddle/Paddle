@@ -65,12 +65,12 @@ def sample_neighbors(
                               For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        - out_neighbors (Tensor): The sample neighbors of the input nodes.
+        - out_neighbors (Tensor), the sample neighbors of the input nodes.
 
-        - out_count (Tensor): The number of sampling neighbors of each input node, and the shape
+        - out_count (Tensor), the number of sampling neighbors of each input node, and the shape
                               should be the same with `input_nodes`.
 
-        - out_eids (Tensor): If `return_eids` is True, we will return the eid information of the
+        - out_eids (Tensor), if `return_eids` is True, we will return the eid information of the
                              sample edges.
 
     Examples:
