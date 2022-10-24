@@ -74,9 +74,11 @@ struct ConvArgsBase {
   paddle::platform::TensorDescriptor odesc;
   paddle::platform::FilterDescriptor wdesc;
   paddle::platform::ConvolutionDescriptor cdesc;
+
   const phi::DenseTensor* x = nullptr;
   const phi::DenseTensor* w = nullptr;
   const phi::DenseTensor* o = nullptr;
+
   DataT cudnn_dtype;
 
   // strides

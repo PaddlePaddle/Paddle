@@ -373,6 +373,7 @@ void ConvCudnnGradKernel(const Context& ctx,
   if (filter_grad) {
     // ------------------- cudnn descriptors ---------------------
     filter_grad_data = transformed_filter_grad_channel.data<T>();
+
     args2.idesc.set(transformed_input, layout_tensor);
     args2.wdesc.set(transformed_filter_grad_channel, layout_tensor, iwo_groups);
     args2.odesc.set(transformed_output_grad_channel, layout_tensor);
@@ -517,8 +518,6 @@ void ConvCudnnGradKernel(const Context& ctx,
     }
   }
 
-  // filter_grad do not use inplace addto.
-  ScalingParamType<T> beta_filter = 0.0f;
   // ------------------- cudnn conv backward filter ---------------------
   if (filter_grad) {
 // Because beta is zero, it is unnecessary to reset filter_grad.

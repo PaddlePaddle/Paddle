@@ -229,7 +229,8 @@ void ConvTransposeRawGPUDNNKernel(const Context& ctx,
   SearchResult<cudnnConvolutionBwdDataAlgo_t> bwd_result;
   using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
   bwd_result = search::Find<T>(ctx, args, false, deterministic, false);
-  workspace_size = std::max(workspace_size, bwd_result.workspace_size);
+  workspace_size =
+      std::max(workspace_size, search::GetWorkspaceSize(ctx, args, bwd_result));
 #endif
 
   // ------------------- cudnn conv transpose forward ---------------------
