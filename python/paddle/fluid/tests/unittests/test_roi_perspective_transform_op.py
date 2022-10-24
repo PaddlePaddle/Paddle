@@ -40,13 +40,20 @@ def in_quad(x, y, roi_x, roi_y):
         xe = roi_x[(i + 1) % 4]
         ye = roi_y[(i + 1) % 4]
         if abs(ys - ye) < 1e-4:
-            if abs(y - ys) < 1e-4 and abs(y - ye) < 1e-4 and gt_e(
-                    x, min(xs, xe)) and lt_e(x, max(xs, xe)):
+            if (
+                abs(y - ys) < 1e-4
+                and abs(y - ye) < 1e-4
+                and gt_e(x, min(xs, xe))
+                and lt_e(x, max(xs, xe))
+            ):
                 return True
         else:
             intersec_x = (y - ys) * (xe - xs) / (ye - ys) + xs
-            if abs(intersec_x - x) < 1e-4 and gt_e(y, min(ys, ye)) and lt_e(
-                    y, max(ys, ye)):
+            if (
+                abs(intersec_x - x) < 1e-4
+                and gt_e(y, min(ys, ye))
+                and lt_e(y, max(ys, ye))
+            ):
                 return True
     n_cross = 0
     for i in range(4):
@@ -63,7 +70,7 @@ def in_quad(x, y, roi_x, roi_y):
             return True
         if gt(intersec_x, x):
             n_cross += 1
-    return (n_cross % 2 == 1)
+    return n_cross % 2 == 1
 
 
 def get_transform_matrix(transformed_width, transformed_height, roi_x, roi_y):
@@ -84,8 +91,9 @@ def get_transform_matrix(transformed_width, transformed_height, roi_x, roi_y):
     estimated_width = (len1 + len3) / 2.0
 
     normalized_height = max(2, transformed_height)
-    normalized_width = round(estimated_width *
-                             (normalized_height - 1) / estimated_height) + 1
+    normalized_width = (
+        round(estimated_width * (normalized_height - 1) / estimated_height) + 1
+    )
     normalized_width = max(2, min(normalized_width, transformed_width))
 
     dx1 = x1 - x2
@@ -95,22 +103,32 @@ def get_transform_matrix(transformed_width, transformed_height, roi_x, roi_y):
     dy2 = y3 - y2
     dy3 = y0 - y1 + y2 - y3
     matrix = np.zeros([9])
-    matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1 +
-                                           1e-5) / (normalized_width - 1)
-    matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1 +
-                                           1e-5) / (normalized_height - 1)
+    matrix[6] = (
+        (dx3 * dy2 - dx2 * dy3)
+        / (dx1 * dy2 - dx2 * dy1 + 1e-5)
+        / (normalized_width - 1)
+    )
+    matrix[7] = (
+        (dx1 * dy3 - dx3 * dy1)
+        / (dx1 * dy2 - dx2 * dy1 + 1e-5)
+        / (normalized_height - 1)
+    )
     matrix[8] = 1
 
-    matrix[3] = (y1 - y0 + matrix[6] *
-                 (normalized_width - 1) * y1) / (normalized_width - 1)
-    matrix[4] = (y3 - y0 + matrix[7] *
-                 (normalized_height - 1) * y3) / (normalized_height - 1)
+    matrix[3] = (y1 - y0 + matrix[6] * (normalized_width - 1) * y1) / (
+        normalized_width - 1
+    )
+    matrix[4] = (y3 - y0 + matrix[7] * (normalized_height - 1) * y3) / (
+        normalized_height - 1
+    )
     matrix[5] = y0
 
-    matrix[0] = (x1 - x0 + matrix[6] *
-                 (normalized_width - 1) * x1) / (normalized_width - 1)
-    matrix[1] = (x3 - x0 + matrix[7] *
-                 (normalized_height - 1) * x3) / (normalized_height - 1)
+    matrix[0] = (x1 - x0 + matrix[6] * (normalized_width - 1) * x1) / (
+        normalized_width - 1
+    )
+    matrix[1] = (x3 - x0 + matrix[7] * (normalized_height - 1) * x3) / (
+        normalized_height - 1
+    )
     matrix[2] = x0
     return matrix
 
@@ -131,8 +149,12 @@ def bilinear_interpolate(in_data, in_n, in_c, in_w, in_h):
     height = in_data.shape[2]
     width = in_data.shape[3]
 
-    if gt_e(-0.5, in_w) or gt_e(in_w, width - 0.5) or gt_e(-0.5, in_h) or gt_e(
-            in_h, height - 0.5):
+    if (
+        gt_e(-0.5, in_w)
+        or gt_e(in_w, width - 0.5)
+        or gt_e(-0.5, in_h)
+        or gt_e(in_h, height - 0.5)
+    ):
         return 0.0
 
     if gt_e(0, in_w):
@@ -180,8 +202,14 @@ def lod_convert(lod):
     return ret
 
 
-def roi_transform(in_data, rois, rois_lod, transformed_height,
-                  transformed_width, spatial_scale):
+def roi_transform(
+    in_data,
+    rois,
+    rois_lod,
+    transformed_height,
+    transformed_width,
+    spatial_scale,
+):
     channels = in_data.shape[1]
     in_height = in_data.shape[2]
     in_width = in_data.shape[3]
@@ -194,8 +222,9 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
             roi2image[j] = i
 
     out = np.zeros([rois_num, channels, transformed_height, transformed_width])
-    mask = np.zeros([rois_num, 1, transformed_height,
-                     transformed_width]).astype('int')
+    mask = np.zeros(
+        [rois_num, 1, transformed_height, transformed_width]
+    ).astype('int')
     matrix = np.zeros([rois_num, 9], dtype=in_data.dtype)
     for n in range(rois_num):
         roi_x = []
@@ -204,20 +233,26 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
             roi_x.append(rois[n][2 * k] * spatial_scale)
             roi_y.append(rois[n][2 * k + 1] * spatial_scale)
         image_id = roi2image[n]
-        transform_matrix = get_transform_matrix(transformed_width,
-                                                transformed_height, roi_x,
-                                                roi_y)
+        transform_matrix = get_transform_matrix(
+            transformed_width, transformed_height, roi_x, roi_y
+        )
         matrix[n] = transform_matrix
         for c in range(channels):
             for out_h in range(transformed_height):
                 for out_w in range(transformed_width):
-                    in_w, in_h = get_source_coords(transform_matrix, out_w,
-                                                   out_h)
-                    if in_quad(in_w, in_h, roi_x, roi_y) and gt(
-                            in_w, -0.5) and gt(in_width - 0.5, in_w) and gt(
-                                in_h, -0.5) and gt(in_height - 0.5, in_h):
+                    in_w, in_h = get_source_coords(
+                        transform_matrix, out_w, out_h
+                    )
+                    if (
+                        in_quad(in_w, in_h, roi_x, roi_y)
+                        and gt(in_w, -0.5)
+                        and gt(in_width - 0.5, in_w)
+                        and gt(in_h, -0.5)
+                        and gt(in_height - 0.5, in_h)
+                    ):
                         out[n][c][out_h][out_w] = bilinear_interpolate(
-                            in_data, image_id, c, in_w, in_h)
+                            in_data, image_id, c, in_w, in_h
+                        )
                         mask[n][0][out_h][out_w] = 1
                     else:
                         out[n][c][out_h][out_w] = 0.0
@@ -226,7 +261,6 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
 
 
 class TestROIPoolOp(OpTest):
-
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -236,17 +270,20 @@ class TestROIPoolOp(OpTest):
         self.attrs = {
             'spatial_scale': self.spatial_scale,
             'transformed_height': self.transformed_height,
-            'transformed_width': self.transformed_width
+            'transformed_width': self.transformed_width,
         }
-        out, mask, transform_matrix = roi_transform(self.x, self.rois,
-                                                    self.rois_lod,
-                                                    self.transformed_height,
-                                                    self.transformed_width,
-                                                    self.spatial_scale)
+        out, mask, transform_matrix = roi_transform(
+            self.x,
+            self.rois,
+            self.rois_lod,
+            self.transformed_height,
+            self.transformed_width,
+            self.spatial_scale,
+        )
         self.outputs = {
             'Out': out,
             'Mask': mask,
-            'TransformMatrix': transform_matrix
+            'TransformMatrix': transform_matrix,
         }
 
     def init_test_case(self):
@@ -271,28 +308,38 @@ class TestROIPoolOp(OpTest):
             self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
                 x1 = np.random.randint(
-                    0,
-                    self.width // self.spatial_scale - self.transformed_width)
+                    0, self.width // self.spatial_scale - self.transformed_width
+                )
                 y1 = np.random.randint(
                     0,
-                    self.height // self.spatial_scale - self.transformed_height)
+                    self.height // self.spatial_scale - self.transformed_height,
+                )
 
-                x2 = np.random.randint(x1 + self.transformed_width,
-                                       self.width // self.spatial_scale)
+                x2 = np.random.randint(
+                    x1 + self.transformed_width,
+                    self.width // self.spatial_scale,
+                )
                 y2 = np.random.randint(
                     0,
-                    self.height // self.spatial_scale - self.transformed_height)
+                    self.height // self.spatial_scale - self.transformed_height,
+                )
 
-                x3 = np.random.randint(x1 + self.transformed_width,
-                                       self.width // self.spatial_scale)
-                y3 = np.random.randint(y1 + self.transformed_height,
-                                       self.height // self.spatial_scale)
+                x3 = np.random.randint(
+                    x1 + self.transformed_width,
+                    self.width // self.spatial_scale,
+                )
+                y3 = np.random.randint(
+                    y1 + self.transformed_height,
+                    self.height // self.spatial_scale,
+                )
 
                 x4 = np.random.randint(
-                    0,
-                    self.width // self.spatial_scale - self.transformed_width)
-                y4 = np.random.randint(y1 + self.transformed_height,
-                                       self.height // self.spatial_scale)
+                    0, self.width // self.spatial_scale - self.transformed_width
+                )
+                y4 = np.random.randint(
+                    y1 + self.transformed_height,
+                    self.height // self.spatial_scale,
+                )
 
                 roi = [x1, y1, x2, y2, x3, y3, x4, y4]
                 rois.append(roi)
@@ -308,52 +355,70 @@ class TestROIPoolOp(OpTest):
 
     def test_check_grad(self):
         self.outputs['Out2InIdx'] = np.zeros(
-            [np.product(self.outputs['Out'].shape), 4]).astype("int32")
+            [np.product(self.outputs['Out'].shape), 4]
+        ).astype("int32")
         self.outputs['Out2InWeights'] = np.zeros(
-            [np.product(self.outputs['Out'].shape), 4]).astype("float32")
+            [np.product(self.outputs['Out'].shape), 4]
+        ).astype("float32")
         self.check_grad(['X'], 'Out')
 
     def test_errors(self):
         x = fluid.data(name='x', shape=[100, 256, 28, 28], dtype='float32')
-        rois = fluid.data(name='rois',
-                          shape=[None, 8],
-                          lod_level=1,
-                          dtype='float32')
+        rois = fluid.data(
+            name='rois', shape=[None, 8], lod_level=1, dtype='float32'
+        )
 
-        x_int = fluid.data(name='x_int',
-                           shape=[100, 256, 28, 28],
-                           dtype='int32')
-        rois_int = fluid.data(name='rois_int',
-                              shape=[None, 8],
-                              lod_level=1,
-                              dtype='int32')
+        x_int = fluid.data(
+            name='x_int', shape=[100, 256, 28, 28], dtype='int32'
+        )
+        rois_int = fluid.data(
+            name='rois_int', shape=[None, 8], lod_level=1, dtype='int32'
+        )
         x_tmp = [1, 2]
         rois_tmp = [1, 2]
 
         # type of intput and rois must be variable
-        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform,
-                          x_tmp, rois, 7, 7)
-        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
-                          rois_tmp, 7, 7)
+        self.assertRaises(
+            TypeError, fluid.layers.roi_perspective_transform, x_tmp, rois, 7, 7
+        )
+        self.assertRaises(
+            TypeError, fluid.layers.roi_perspective_transform, x, rois_tmp, 7, 7
+        )
 
         # dtype of intput and rois must be float32
-        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform,
-                          x_int, rois, 7, 7)
-        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
-                          rois_int, 7, 7)
+        self.assertRaises(
+            TypeError, fluid.layers.roi_perspective_transform, x_int, rois, 7, 7
+        )
+        self.assertRaises(
+            TypeError, fluid.layers.roi_perspective_transform, x, rois_int, 7, 7
+        )
 
         height = 7.5
         width = 7.5
         # type of transformed_height and transformed_width must be int
-        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
-                          rois, height, 7)
-        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
-                          rois, 7, width)
+        self.assertRaises(
+            TypeError,
+            fluid.layers.roi_perspective_transform,
+            x,
+            rois,
+            height,
+            7,
+        )
+        self.assertRaises(
+            TypeError, fluid.layers.roi_perspective_transform, x, rois, 7, width
+        )
 
         scale = int(2)
         # type of spatial_scale must be float
-        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
-                          rois, 7, 7, scale)
+        self.assertRaises(
+            TypeError,
+            fluid.layers.roi_perspective_transform,
+            x,
+            rois,
+            7,
+            7,
+            scale,
+        )
 
 
 if __name__ == '__main__':

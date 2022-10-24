@@ -13,13 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.contrib.sparsity import calculate_density  #noqa: F401
-from ...fluid.contrib.sparsity import decorate  #noqa: F401
-from ...fluid.contrib.sparsity import prune_model  #noqa: F401
-from ...fluid.contrib.sparsity import set_excluded_layers  #noqa: F401
-from ...fluid.contrib.sparsity import reset_excluded_layers  #noqa: F401
+from ...fluid.contrib.sparsity import calculate_density  # noqa: F401
+from ...fluid.contrib.sparsity import decorate  # noqa: F401
+from ...fluid.contrib.sparsity import prune_model  # noqa: F401
+from ...fluid.contrib.sparsity import set_excluded_layers  # noqa: F401
+from ...fluid.contrib.sparsity import reset_excluded_layers  # noqa: F401
 
-__all__ = [  #noqa
-    'calculate_density', 'decorate', 'prune_model', 'set_excluded_layers',
-    'reset_excluded_layers'
+__all__ = [  # noqa
+    'calculate_density',
+    'decorate',
+    'prune_model',
+    'set_excluded_layers',
+    'reset_excluded_layers',
 ]

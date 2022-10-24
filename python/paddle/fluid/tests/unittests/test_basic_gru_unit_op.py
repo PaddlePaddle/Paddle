@@ -34,13 +34,13 @@ def sigmoid(x):
     y = np.copy(x)
     y[x < SIGMOID_THRESHOLD_MIN] = SIGMOID_THRESHOLD_MIN
     y[x > SIGMOID_THRESHOLD_MAX] = SIGMOID_THRESHOLD_MAX
-    return 1. / (1. + np.exp(-y))
+    return 1.0 / (1.0 + np.exp(-y))
 
 
 def tanh(x):
-    y = -2. * x
+    y = -2.0 * x
     y[y > EXP_MAX_INPUT] = EXP_MAX_INPUT
-    return (2. / (1. + np.exp(y))) - 1.
+    return (2.0 / (1.0 + np.exp(y))) - 1.0
 
 
 def step(step_in, pre_hidden, gate_w, gate_b, candidate_w, candidate_b):
@@ -64,16 +64,15 @@ def step(step_in, pre_hidden, gate_w, gate_b, candidate_w, candidate_b):
 
 
 class TestBasicGRUUnit(unittest.TestCase):
-
     def setUp(self):
         self.hidden_size = 5
         self.batch_size = 5
 
     def test_run(self):
         x = layers.data(name='x', shape=[-1, self.hidden_size], dtype='float32')
-        pre_hidden = layers.data(name="pre_hidden",
-                                 shape=[-1, self.hidden_size],
-                                 dtype='float32')
+        pre_hidden = layers.data(
+            name="pre_hidden", shape=[-1, self.hidden_size], dtype='float32'
+        )
         gru_unit = BasicGRUUnit("gru_unit", self.hidden_size)
 
         new_hidden = gru_unit(x, pre_hidden)
@@ -98,48 +97,67 @@ class TestBasicGRUUnit(unittest.TestCase):
         candidate_b_name = "gru_unit/BasicGRUUnit_0.b_1"
 
         gate_w = np.array(
-            fluid.global_scope().find_var(gate_w_name).get_tensor())
-        gate_w = np.random.uniform(-0.1, 0.1,
-                                   size=gate_w.shape).astype('float32')
+            fluid.global_scope().find_var(gate_w_name).get_tensor()
+        )
+        gate_w = np.random.uniform(-0.1, 0.1, size=gate_w.shape).astype(
+            'float32'
+        )
         fluid.global_scope().find_var(gate_w_name).get_tensor().set(
-            gate_w, place)
+            gate_w, place
+        )
 
         gate_b = np.array(
-            fluid.global_scope().find_var(gate_b_name).get_tensor())
-        gate_b = np.random.uniform(-0.1, 0.1,
-                                   size=gate_b.shape).astype('float32')
+            fluid.global_scope().find_var(gate_b_name).get_tensor()
+        )
+        gate_b = np.random.uniform(-0.1, 0.1, size=gate_b.shape).astype(
+            'float32'
+        )
         fluid.global_scope().find_var(gate_b_name).get_tensor().set(
-            gate_b, place)
+            gate_b, place
+        )
 
         candidate_w = np.array(
-            fluid.global_scope().find_var(candidate_w_name).get_tensor())
+            fluid.global_scope().find_var(candidate_w_name).get_tensor()
+        )
         candidate_w = np.random.uniform(
-            -0.1, 0.1, size=candidate_w.shape).astype('float32')
+            -0.1, 0.1, size=candidate_w.shape
+        ).astype('float32')
         fluid.global_scope().find_var(candidate_w_name).get_tensor().set(
-            candidate_w, place)
+            candidate_w, place
+        )
 
         candidate_b = np.array(
-            fluid.global_scope().find_var(candidate_b_name).get_tensor())
+            fluid.global_scope().find_var(candidate_b_name).get_tensor()
+        )
         candidate_b = np.random.uniform(
-            -0.1, 0.1, size=candidate_b.shape).astype('float32')
+            -0.1, 0.1, size=candidate_b.shape
+        ).astype('float32')
         fluid.global_scope().find_var(candidate_b_name).get_tensor().set(
-            candidate_b, place)
+            candidate_b, place
+        )
 
         step_input_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+            -0.1, 0.1, (self.batch_size, self.hidden_size)
+        ).astype('float32')
         pre_hidden_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+            -0.1, 0.1, (self.batch_size, self.hidden_size)
+        ).astype('float32')
 
-        out = exe.run(feed={
-            'x': step_input_np,
-            'pre_hidden': pre_hidden_np
-        },
-                      fetch_list=[new_hidden])
+        out = exe.run(
+            feed={'x': step_input_np, 'pre_hidden': pre_hidden_np},
+            fetch_list=[new_hidden],
+        )
 
         api_out = out[0]
 
-        np_out = step(step_input_np, pre_hidden_np, gate_w, gate_b, candidate_w,
-                      candidate_b)
+        np_out = step(
+            step_input_np,
+            pre_hidden_np,
+            gate_w,
+            gate_b,
+            candidate_w,
+            candidate_b,
+        )
 
         np.testing.assert_allclose(api_out, np_out, rtol=0.0001, atol=0)
 

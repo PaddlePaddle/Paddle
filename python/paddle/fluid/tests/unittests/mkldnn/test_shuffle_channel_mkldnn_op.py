@@ -21,7 +21,6 @@ import paddle.fluid.core as core
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestShuffleChannelOneDNNOp(OpTest):
-
     def setUp(self):
         self.op_type = "shuffle_channel"
         self.set_dtype()
@@ -30,8 +29,9 @@ class TestShuffleChannelOneDNNOp(OpTest):
         self.attrs = {'use_mkldnn': True, 'group': self.group}
 
         _, c, h, w = self.inputs['X'].shape
-        input_reshaped = np.reshape(self.inputs['X'],
-                                    (-1, self.group, c // self.group, h, w))
+        input_reshaped = np.reshape(
+            self.inputs['X'], (-1, self.group, c // self.group, h, w)
+        )
         input_transposed = np.transpose(input_reshaped, (0, 2, 1, 3, 4))
         self.outputs = {'Out': np.reshape(input_transposed, (-1, c, h, w))}
 
@@ -46,13 +46,11 @@ class TestShuffleChannelOneDNNOp(OpTest):
 
 
 class TestShuffleChannelSingleGroupOneDNNOp(TestShuffleChannelOneDNNOp):
-
     def set_group(self):
         self.group = 1
 
 
 class TestShuffleChannelBF16OneDNNOp(TestShuffleChannelOneDNNOp):
-
     def set_dtype(self):
         self.dtype = np.uint16
 

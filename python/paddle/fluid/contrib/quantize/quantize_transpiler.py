@@ -15,7 +15,11 @@
 import collections
 import numpy as np
 
-from paddle.fluid.framework import default_main_program, default_startup_program, program_guard
+from paddle.fluid.framework import (
+    default_main_program,
+    default_startup_program,
+    program_guard,
+)
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import unique_name
 from paddle.fluid import core
@@ -57,13 +61,13 @@ def _original_var_name(var_name):
     Return the original variable name.
     """
     if var_name.endswith('.quantized.dequantized'):
-        return var_name[:-len('.quantized.dequantized')]
+        return var_name[: -len('.quantized.dequantized')]
     if var_name.endswith('.quantized'):
-        return var_name[:-len('.quantized')]
+        return var_name[: -len('.quantized')]
     if var_name.endswith('.dequantized'):
-        return var_name[:-len('.dequantized')]
+        return var_name[: -len('.dequantized')]
     if var_name.endswith('.scale'):
-        return var_name[:-len('.scale')]
+        return var_name[: -len('.scale')]
     else:
         return var_name
 
@@ -78,14 +82,15 @@ def quant(x, scale, num_bits):
 
 
 class QuantizeTranspiler(object):
-
-    def __init__(self,
-                 weight_bits=8,
-                 activation_bits=8,
-                 activation_quantize_type='abs_max',
-                 weight_quantize_type='abs_max',
-                 window_size=10000,
-                 moving_rate=0.9):
+    def __init__(
+        self,
+        weight_bits=8,
+        activation_bits=8,
+        activation_quantize_type='abs_max',
+        weight_quantize_type='abs_max',
+        window_size=10000,
+        moving_rate=0.9,
+    ):
         """
         Convert and rewrite the fluid Program according to weight and
         activation quantization type.
@@ -123,12 +128,14 @@ class QuantizeTranspiler(object):
             raise ValueError(
                 "Unknown weight_quantize_type: '%s'. It can only be ",
                 "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'.",
-                str(weight_quantize_type))
+                str(weight_quantize_type),
+            )
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown activation_quantize_type : '%s'. It can only be ",
                 "'abs_max' or 'range_abs_max' or 'moving_average_abs_max'.",
-                str(activation_quantize_type))
+                str(activation_quantize_type),
+            )
 
         self.weight_quantize_type = weight_quantize_type
         self.activation_quantize_type = activation_quantize_type
@@ -137,8 +144,9 @@ class QuantizeTranspiler(object):
         self.moving_rate = moving_rate
         self.helper = LayerHelper(self.__class__.__name__)
         self.fake_quant_op_types = [
-            'fake_quantize_abs_max', 'fake_quantize_range_abs_max',
-            'fake_quantize_moving_average_abs_max'
+            'fake_quantize_abs_max',
+            'fake_quantize_range_abs_max',
+            'fake_quantize_moving_average_abs_max',
         ]
         self.fake_dequant_op_types = ['fake_dequantize_max_abs']
         self.is_test = None
@@ -157,8 +165,11 @@ class QuantizeTranspiler(object):
         """
         self.is_test = False
         program = default_main_program() if program is None else program
-        startup_program = default_startup_program() if startup_program is \
-            None else startup_program
+        startup_program = (
+            default_startup_program()
+            if startup_program is None
+            else startup_program
+        )
 
         # marked the variable which has been quantized and dequantized.
         dequanted_vars = [
@@ -173,20 +184,28 @@ class QuantizeTranspiler(object):
             block_id = block.idx
             # insert quant op and dequant op
             for name in op.input_arg_names:
-                #if share input between ops
+                # if share input between ops
                 if name in dequanted_vars[block_id]:
                     dequant_var = dequanted_vars[block_id][name]
                 else:
                     var = block.var(name)
-                    quant_bits = self.weight_bits if var.name in params \
-                                 else self.activation_bits
-                    quant_type = self.weight_quantize_type if var.name \
-                        in params else self.activation_quantize_type
+                    quant_bits = (
+                        self.weight_bits
+                        if var.name in params
+                        else self.activation_bits
+                    )
+                    quant_type = (
+                        self.weight_quantize_type
+                        if var.name in params
+                        else self.activation_quantize_type
+                    )
 
                     quant_var, scale_var = self._insert_quant_op(
-                        block, idx, var, quant_bits, quant_type)
+                        block, idx, var, quant_bits, quant_type
+                    )
                     dequant_var = self._insert_dequant_op(
-                        block, idx + 1, quant_var, scale_var, quant_bits)
+                        block, idx + 1, quant_var, scale_var, quant_bits
+                    )
                     dequanted_vars[block_id][name] = dequant_var
                 # rename the forward op inputs
                 op._rename_input(name, dequant_var.name)
@@ -200,8 +219,9 @@ class QuantizeTranspiler(object):
                     op._rename_input(name, dequant_var.name)
                     no_dequanted_input_vars = False
             if no_dequanted_input_vars:
-                raise ValueError("There is no dequanted inputs for op %s." %
-                                 (op.type))
+                raise ValueError(
+                    "There is no dequanted inputs for op %s." % (op.type)
+                )
 
         with program_guard(program, startup_program):
             self._create_global_step()
@@ -217,8 +237,10 @@ class QuantizeTranspiler(object):
                         _transpile_backward(block, op)
 
     def _create_global_step(self):
-        if self.weight_quantize_type == 'range_abs_max' or \
-            self.activation_quantize_type == 'range_abs_max':
+        if (
+            self.weight_quantize_type == 'range_abs_max'
+            or self.activation_quantize_type == 'range_abs_max'
+        ):
             self.global_step = autoincreased_step_counter()
 
     def freeze_program(self, program, place, scope=None):
@@ -263,7 +285,7 @@ class QuantizeTranspiler(object):
             max_range = None
             scale_var = None
             for name in op.input_arg_names:
-                #rename input name of the op to the input name of last op which has be removed
+                # rename input name of the op to the input name of last op which has be removed
                 if name in op_in_rename_map[block_id]:
                     op._rename_input(name, op_in_rename_map[block_id][name])
 
@@ -278,23 +300,25 @@ class QuantizeTranspiler(object):
                     scale_var = scale_v
 
             if len(op.output_arg_names) != 1:
-                raise ValueError("Only support one output, but op %s has"
-                                 " more than one output." % (op.type))
+                raise ValueError(
+                    "Only support one output, but op %s has"
+                    " more than one output." % (op.type)
+                )
             out_var = block.var(op.output_arg_names[0])
-            dequant_var = block.create_var(name=_dequantized_var_name(
-                out_var.name),
-                                           type=out_var.type,
-                                           shape=out_var.shape,
-                                           dtype=out_var.dtype)
+            dequant_var = block.create_var(
+                name=_dequantized_var_name(out_var.name),
+                type=out_var.type,
+                shape=out_var.shape,
+                dtype=out_var.dtype,
+            )
             # insert fake_dequantize_op
-            dequant_op = block._insert_op(idx + 1,
-                                          type="fake_dequantize_max_abs",
-                                          attrs={'max_range': float(max_range)},
-                                          inputs={
-                                              "X": out_var,
-                                              'Scale': scale_var
-                                          },
-                                          outputs={"Out": dequant_var})
+            dequant_op = block._insert_op(
+                idx + 1,
+                type="fake_dequantize_max_abs",
+                attrs={'max_range': float(max_range)},
+                inputs={"X": out_var, 'Scale': scale_var},
+                outputs={"Out": dequant_var},
+            )
             op_out_rename_map[block_id][out_var.name] = dequant_var.name
             return dequant_var
 
@@ -315,8 +339,9 @@ class QuantizeTranspiler(object):
                 # input of the followed ops(of fc/conv) to the dquant_op
                 for name in op.input_arg_names:
                     if name in op_out_rename_map[block_id]:
-                        op._rename_input(name,
-                                         op_out_rename_map[block_id][name])
+                        op._rename_input(
+                            name, op_out_rename_map[block_id][name]
+                        )
 
                 if op_type in self.fake_quant_op_types:
                     in_arg_name = op.input('X')[0]
@@ -346,7 +371,7 @@ class QuantizeTranspiler(object):
 
         # remove the unused var in ProgramDesc
         self._remove_unused_var(program)
-        #program = program.clone()
+        # program = program.clone()
 
     def convert_to_int8(self, program, place, scope=None):
         scope = global_scope() if scope is None else scope
@@ -363,7 +388,8 @@ class QuantizeTranspiler(object):
                 name=int8_var_name.encode('ascii'),
                 type=var.type,
                 dtype=core.VarDesc.VarType.INT8,
-                shape=var.shape)
+                shape=var.shape,
+            )
 
             tensor = _load_var(var.name)
 
@@ -392,7 +418,7 @@ class QuantizeTranspiler(object):
             for op in block.ops:
                 args += op.input_arg_names
                 args += op.output_arg_names
-            args = list(set(args))  #vals of all left ops
+            args = list(set(args))  # vals of all left ops
             var_names = block.vars.keys()  # all vals
             sub_block_remove_vars = []
             for var in var_names:
@@ -406,39 +432,45 @@ class QuantizeTranspiler(object):
                 block._remove_var(v)
 
     def _insert_quant_abs_max_op(self, block, idx, var, quant_bits):
-        """Insert fake_quantize_abs_max op.
-        """
-        quant_var = block.create_var(name=_quantized_var_name(var.name),
-                                     type=var.type,
-                                     shape=var.shape,
-                                     dtype=var.dtype)
-        scale = block.create_var(name=_quantized_scale_name(var.name),
-                                 type=var.type,
-                                 shape=var.shape,
-                                 dtype=var.dtype)
-        quant_op = block._insert_op(idx,
-                                    type='fake_quantize_abs_max',
-                                    attrs={'bit_length': quant_bits},
-                                    inputs={'X': var},
-                                    outputs={
-                                        'Out': quant_var,
-                                        'OutScale': scale
-                                    })
+        """Insert fake_quantize_abs_max op."""
+        quant_var = block.create_var(
+            name=_quantized_var_name(var.name),
+            type=var.type,
+            shape=var.shape,
+            dtype=var.dtype,
+        )
+        scale = block.create_var(
+            name=_quantized_scale_name(var.name),
+            type=var.type,
+            shape=var.shape,
+            dtype=var.dtype,
+        )
+        quant_op = block._insert_op(
+            idx,
+            type='fake_quantize_abs_max',
+            attrs={'bit_length': quant_bits},
+            inputs={'X': var},
+            outputs={'Out': quant_var, 'OutScale': scale},
+        )
         return quant_var, scale
 
     def _insert_quant_range_abs_max_op(self, block, idx, var, quant_bits):
-        """Insert fake_quantize_range_abs_max
-        """
-        quant_var = block.create_var(name=_quantized_var_name(var.name),
-                                     type=var.type,
-                                     shape=var.shape,
-                                     dtype=var.dtype)
-        scale = self.helper.create_parameter(attr=ParamAttr(
-            name=_quantized_scale_name(var.name),
-            initializer=Constant(0.001),
-            trainable=False),
-                                             shape=[1],
-                                             dtype=var.dtype)
+        """Insert fake_quantize_range_abs_max"""
+        quant_var = block.create_var(
+            name=_quantized_var_name(var.name),
+            type=var.type,
+            shape=var.shape,
+            dtype=var.dtype,
+        )
+        scale = self.helper.create_parameter(
+            attr=ParamAttr(
+                name=_quantized_scale_name(var.name),
+                initializer=Constant(0.001),
+                trainable=False,
+            ),
+            shape=[1],
+            dtype=var.dtype,
+        )
         scale.stop_gradient = True
 
         ins = {'X': var, 'InScale': scale}
@@ -449,9 +481,11 @@ class QuantizeTranspiler(object):
                 name=unique_name.generate('scales'),
                 persistable=True,
                 dtype=var.dtype,
-                shape=[self.window_size])
-            self.helper.set_variable_initializer(scales,
-                                                 initializer=Constant(value=0))
+                shape=[self.window_size],
+            )
+            self.helper.set_variable_initializer(
+                scales, initializer=Constant(value=0)
+            )
 
             ins['Iter'] = self.global_step
             outs['OutScales'] = scales
@@ -459,45 +493,56 @@ class QuantizeTranspiler(object):
         attrs = {
             'window_size': self.window_size,
             'bit_length': quant_bits,
-            'is_test': self.is_test
+            'is_test': self.is_test,
         }
 
-        quant_op = block._insert_op(idx,
-                                    type='fake_quantize_range_abs_max',
-                                    attrs=attrs,
-                                    inputs=ins,
-                                    outputs=outs)
+        quant_op = block._insert_op(
+            idx,
+            type='fake_quantize_range_abs_max',
+            attrs=attrs,
+            inputs=ins,
+            outputs=outs,
+        )
 
         return quant_var, scale
 
-    def _insert_quant_moving_average_abs_max_op(self, block, idx, var,
-                                                quant_bits):
-        """Insert fake_quantize_moving_average_abs_max
-        """
-        quant_var = block.create_var(name=_quantized_var_name(var.name),
-                                     type=var.type,
-                                     shape=var.shape,
-                                     dtype=var.dtype)
+    def _insert_quant_moving_average_abs_max_op(
+        self, block, idx, var, quant_bits
+    ):
+        """Insert fake_quantize_moving_average_abs_max"""
+        quant_var = block.create_var(
+            name=_quantized_var_name(var.name),
+            type=var.type,
+            shape=var.shape,
+            dtype=var.dtype,
+        )
         state = self.helper.create_global_variable(
             name=unique_name.generate('state'),
             persistable=True,
             dtype=var.dtype,
-            shape=[1])
-        self.helper.set_variable_initializer(state,
-                                             initializer=Constant(value=1))
+            shape=[1],
+        )
+        self.helper.set_variable_initializer(
+            state, initializer=Constant(value=1)
+        )
         accum = self.helper.create_global_variable(
             name=unique_name.generate('accum'),
             persistable=True,
             dtype=var.dtype,
-            shape=[1])
-        self.helper.set_variable_initializer(accum,
-                                             initializer=Constant(value=1))
-        scale = self.helper.create_parameter(attr=ParamAttr(
-            name=_quantized_scale_name(var.name),
-            initializer=Constant(0.001),
-            trainable=False),
-                                             shape=[1],
-                                             dtype=var.dtype)
+            shape=[1],
+        )
+        self.helper.set_variable_initializer(
+            accum, initializer=Constant(value=1)
+        )
+        scale = self.helper.create_parameter(
+            attr=ParamAttr(
+                name=_quantized_scale_name(var.name),
+                initializer=Constant(0.001),
+                trainable=False,
+            ),
+            shape=[1],
+            dtype=var.dtype,
+        )
         scale.stop_gradient = True
 
         ins = {'X': var, 'InScale': scale}
@@ -511,14 +556,16 @@ class QuantizeTranspiler(object):
         attrs = {
             'bit_length': quant_bits,
             'moving_rate': self.moving_rate,
-            'is_test': self.is_test
+            'is_test': self.is_test,
         }
 
-        quant_op = block._insert_op(idx,
-                                    type='fake_quantize_moving_average_abs_max',
-                                    attrs=attrs,
-                                    inputs=ins,
-                                    outputs=outs)
+        quant_op = block._insert_op(
+            idx,
+            type='fake_quantize_moving_average_abs_max',
+            attrs=attrs,
+            inputs=ins,
+            outputs=outs,
+        )
 
         return quant_var, scale
 
@@ -529,28 +576,31 @@ class QuantizeTranspiler(object):
         if quant_type == 'abs_max':
             return self._insert_quant_abs_max_op(block, idx, var, quant_bits)
         elif quant_type == 'range_abs_max':
-            return self._insert_quant_range_abs_max_op(block, idx, var,
-                                                       quant_bits)
+            return self._insert_quant_range_abs_max_op(
+                block, idx, var, quant_bits
+            )
         elif quant_type == 'moving_average_abs_max':
             return self._insert_quant_moving_average_abs_max_op(
-                block, idx, var, quant_bits)
+                block, idx, var, quant_bits
+            )
 
     def _insert_dequant_op(self, block, idx, var, scale, quant_bits):
         """
         Insert fake_quantize_op
         """
-        dequant_var = block.create_var(name=_dequantized_var_name(var.name),
-                                       type=var.type,
-                                       shape=var.shape,
-                                       dtype=var.dtype)
+        dequant_var = block.create_var(
+            name=_dequantized_var_name(var.name),
+            type=var.type,
+            shape=var.shape,
+            dtype=var.dtype,
+        )
         # insert fake_dequantize_op
         max_range = (1 << (quant_bits - 1)) - 1
-        dequant_op = block._insert_op(idx,
-                                      type="fake_dequantize_max_abs",
-                                      attrs={'max_range': float(max_range)},
-                                      inputs={
-                                          "X": var,
-                                          'Scale': scale
-                                      },
-                                      outputs={"Out": dequant_var})
+        dequant_op = block._insert_op(
+            idx,
+            type="fake_dequantize_max_abs",
+            attrs={'max_range': float(max_range)},
+            inputs={"X": var, 'Scale': scale},
+            outputs={"Out": dequant_var},
+        )
         return dequant_var

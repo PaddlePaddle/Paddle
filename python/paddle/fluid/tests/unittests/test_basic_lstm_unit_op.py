@@ -34,13 +34,13 @@ def sigmoid(x):
     y = np.copy(x)
     y[x < SIGMOID_THRESHOLD_MIN] = SIGMOID_THRESHOLD_MIN
     y[x > SIGMOID_THRESHOLD_MAX] = SIGMOID_THRESHOLD_MAX
-    return 1. / (1. + np.exp(-y))
+    return 1.0 / (1.0 + np.exp(-y))
 
 
 def tanh(x):
-    y = -2. * x
+    y = -2.0 * x
     y[y > EXP_MAX_INPUT] = EXP_MAX_INPUT
-    return (2. / (1. + np.exp(y))) - 1.
+    return (2.0 / (1.0 + np.exp(y))) - 1.0
 
 
 def step(step_in, pre_hidden, pre_cell, gate_w, gate_b, forget_bias=1.0):
@@ -57,19 +57,18 @@ def step(step_in, pre_hidden, pre_cell, gate_w, gate_b, forget_bias=1.0):
 
 
 class TestBasicGRUUnit(unittest.TestCase):
-
     def setUp(self):
         self.hidden_size = 5
         self.batch_size = 5
 
     def test_run(self):
         x = layers.data(name='x', shape=[-1, self.hidden_size], dtype='float32')
-        pre_hidden = layers.data(name="pre_hidden",
-                                 shape=[-1, self.hidden_size],
-                                 dtype='float32')
-        pre_cell = layers.data(name="pre_cell",
-                               shape=[-1, self.hidden_size],
-                               dtype='float32')
+        pre_hidden = layers.data(
+            name="pre_hidden", shape=[-1, self.hidden_size], dtype='float32'
+        )
+        pre_cell = layers.data(
+            name="pre_cell", shape=[-1, self.hidden_size], dtype='float32'
+        )
 
         lstm_unit = BasicLSTMUnit("lstm_unit", self.hidden_size)
 
@@ -94,44 +93,57 @@ class TestBasicGRUUnit(unittest.TestCase):
         gate_b_name = "lstm_unit/BasicLSTMUnit_0.b_0"
 
         gate_w = np.array(
-            fluid.global_scope().find_var(gate_w_name).get_tensor())
-        gate_w = np.random.uniform(-0.1, 0.1,
-                                   size=gate_w.shape).astype('float32')
+            fluid.global_scope().find_var(gate_w_name).get_tensor()
+        )
+        gate_w = np.random.uniform(-0.1, 0.1, size=gate_w.shape).astype(
+            'float32'
+        )
         fluid.global_scope().find_var(gate_w_name).get_tensor().set(
-            gate_w, place)
+            gate_w, place
+        )
 
         gate_b = np.array(
-            fluid.global_scope().find_var(gate_b_name).get_tensor())
-        gate_b = np.random.uniform(-0.1, 0.1,
-                                   size=gate_b.shape).astype('float32')
+            fluid.global_scope().find_var(gate_b_name).get_tensor()
+        )
+        gate_b = np.random.uniform(-0.1, 0.1, size=gate_b.shape).astype(
+            'float32'
+        )
         fluid.global_scope().find_var(gate_b_name).get_tensor().set(
-            gate_b, place)
+            gate_b, place
+        )
 
         step_input_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+            -0.1, 0.1, (self.batch_size, self.hidden_size)
+        ).astype('float32')
         pre_hidden_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+            -0.1, 0.1, (self.batch_size, self.hidden_size)
+        ).astype('float32')
         pre_cell_np = np.random.uniform(
-            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+            -0.1, 0.1, (self.batch_size, self.hidden_size)
+        ).astype('float32')
 
-        out = exe.run( feed={ 'x' : step_input_np, 'pre_hidden' : pre_hidden_np, \
-                              'pre_cell' : pre_cell_np },
-                fetch_list=[ new_hidden, new_cell])
+        out = exe.run(
+            feed={
+                'x': step_input_np,
+                'pre_hidden': pre_hidden_np,
+                'pre_cell': pre_cell_np,
+            },
+            fetch_list=[new_hidden, new_cell],
+        )
 
         api_hidden_out = out[0]
         api_cell_out = out[1]
 
-        np_hidden_out, np_cell_out = step(step_input_np, pre_hidden_np,
-                                          pre_cell_np, gate_w, gate_b)
+        np_hidden_out, np_cell_out = step(
+            step_input_np, pre_hidden_np, pre_cell_np, gate_w, gate_b
+        )
 
-        np.testing.assert_allclose(api_hidden_out,
-                                   np_hidden_out,
-                                   rtol=0.0001,
-                                   atol=0)
-        np.testing.assert_allclose(api_cell_out,
-                                   np_cell_out,
-                                   rtol=0.0001,
-                                   atol=0)
+        np.testing.assert_allclose(
+            api_hidden_out, np_hidden_out, rtol=0.0001, atol=0
+        )
+        np.testing.assert_allclose(
+            api_cell_out, np_cell_out, rtol=0.0001, atol=0
+        )
 
 
 if __name__ == '__main__':

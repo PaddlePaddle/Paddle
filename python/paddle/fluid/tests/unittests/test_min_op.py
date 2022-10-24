@@ -22,7 +22,6 @@ from test_sum_op import TestReduceOPTensorAxisBase
 
 
 class ApiMinTest(unittest.TestCase):
-
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.place = core.CUDAPlace(0)
@@ -31,39 +30,43 @@ class ApiMinTest(unittest.TestCase):
 
     def test_api(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data = paddle.static.data("data", shape=[10, 10], dtype="float32")
             result_min = paddle.min(x=data, axis=1)
             exe = paddle.static.Executor(self.place)
             input_data = np.random.rand(10, 10).astype(np.float32)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_min])
+            (res,) = exe.run(feed={"data": input_data}, fetch_list=[result_min])
         self.assertEqual((res == np.min(input_data, axis=1)).all(), True)
 
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data = paddle.static.data("data", shape=[10, 10], dtype="int64")
             result_min = paddle.min(x=data, axis=0)
             exe = paddle.static.Executor(self.place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_min])
+            (res,) = exe.run(feed={"data": input_data}, fetch_list=[result_min])
         self.assertEqual((res == np.min(input_data, axis=0)).all(), True)
 
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data = paddle.static.data("data", shape=[10, 10], dtype="int64")
             result_min = paddle.min(x=data, axis=(0, 1))
             exe = paddle.static.Executor(self.place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_min])
+            (res,) = exe.run(feed={"data": input_data}, fetch_list=[result_min])
         self.assertEqual((res == np.min(input_data, axis=(0, 1))).all(), True)
 
     def test_errors(self):
         paddle.enable_static()
 
         def test_input_type():
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 data = np.random.rand(10, 10)
                 result_min = paddle.min(x=data, axis=0)
 
@@ -84,17 +87,17 @@ class ApiMinTest(unittest.TestCase):
 
 
 class TestOutDtype(unittest.TestCase):
-
     def test_min(self):
         api_fn = paddle.min
         shape = [10, 16]
-        check_out_dtype(api_fn,
-                        in_specs=[(shape, )],
-                        expect_dtypes=['float32', 'float64', 'int32', 'int64'])
+        check_out_dtype(
+            api_fn,
+            in_specs=[(shape,)],
+            expect_dtypes=['float32', 'float64', 'int32', 'int64'],
+        )
 
 
 class TestMinWithTensorAxis1(TestReduceOPTensorAxisBase):
-
     def init_data(self):
         self.pd_api = paddle.min
         self.np_api = np.min
@@ -104,7 +107,6 @@ class TestMinWithTensorAxis1(TestReduceOPTensorAxisBase):
 
 
 class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
-
     def init_data(self):
         self.pd_api = paddle.min
         self.np_api = np.min
@@ -113,7 +115,7 @@ class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
         self.tensor_axis = [
             0,
             paddle.to_tensor([1], 'int64'),
-            paddle.to_tensor([2], 'int64')
+            paddle.to_tensor([2], 'int64'),
         ]
         self.keepdim = True
 

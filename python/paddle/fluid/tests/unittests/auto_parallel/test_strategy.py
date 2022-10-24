@@ -18,7 +18,6 @@ from paddle.distributed.fleet import auto
 
 
 class TestStrategy(unittest.TestCase):
-
     def test_default_config(self):
         strategy = auto.Strategy()
 

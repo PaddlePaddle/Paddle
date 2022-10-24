@@ -22,8 +22,11 @@
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
+#endif
+#ifdef PADDLE_WITH_INFERENCE_NVTX
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
 namespace paddle {
@@ -48,12 +51,24 @@ void NaiveExecutor::Run() {
   platform::RegisterModelLayout(ops_, place_);
 #endif
   platform::ScopedFlushDenormal flush;
+#ifdef PADDLE_WITH_INFERENCE_NVTX
+  platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
+#endif
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
+#ifdef PADDLE_WITH_INFERENCE_NVTX
+    platform::CudaNvtxRangePush(op->Type(), platform::NvtxRangeColor::Green);
+#endif
     op->Run(*scope_, place_);
+#ifdef PADDLE_WITH_INFERENCE_NVTX
+    platform::CudaNvtxRangePop();
+#endif
   }
+#ifdef PADDLE_WITH_INFERENCE_NVTX
+  platform::CudaNvtxRangePop();
+#endif
 }
 
 void NaiveExecutor::CreateVariables(const ProgramDesc &desc,
@@ -146,7 +161,7 @@ NaiveExecutor::~NaiveExecutor() {
 }
 
 void NaiveExecutor::ResetTrtOps(int num) {
-#if PADDLE_WITH_TENSORRT
+#ifdef PADDLE_WITH_TENSORRT
   for (auto &op : ops_) {
     if (op->Type() == "tensorrt_engine") {
       operators::TensorRTEngineOp *trtop =
