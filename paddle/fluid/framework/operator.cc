@@ -2722,6 +2722,9 @@ static void SetDnnAttrIntoDeviceContext(
       case proto::AttrType::FLOAT:
         one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(float, attr));
         break;
+      case proto::AttrType::INT:
+        one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
+        break;
       case proto::AttrType::STRING:
         one_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(std::string, attr));
         break;
