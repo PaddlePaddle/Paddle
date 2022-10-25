@@ -47,7 +47,6 @@ class FSShellCmdAborted(ExecuteError):
 
 
 class FS(object):
-
     @abc.abstractmethod
     def ls_dir(self, fs_path):
         raise NotImplementedError
@@ -171,7 +170,8 @@ class LocalFS(FS):
                 client.delete("test_mkdirs")
         """
         assert not os.path.isfile(fs_path), "{} is already a file".format(
-            fs_path)
+            fs_path
+        )
         os.system("mkdir -p {}".format(fs_path))
 
     def rename(self, fs_src_path, fs_dst_path):
@@ -379,9 +379,7 @@ class LocalFS(FS):
 
 
 def _handle_errors(max_time_out=None):
-
     def decorator(f):
-
         @functools.wraps(f)
         def handler(*args, **kwargs):
             o = args[0]
@@ -400,16 +398,20 @@ def _handle_errors(max_time_out=None):
                 # important: only ExecuteError need to retry
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
-                        raise FSTimeOut("args:{} timeout:{}".format(
-                            args,
-                            time.time() - start))
+                        raise FSTimeOut(
+                            "args:{} timeout:{}".format(
+                                args, time.time() - start
+                            )
+                        )
 
                     time.sleep(inter)
 
                 if time.time() - last_print_time > 30:
-                    print("hadoop operator timeout:args:{} timeout:{}".format(
-                        args,
-                        time.time() - start))
+                    print(
+                        "hadoop operator timeout:args:{} timeout:{}".format(
+                            args, time.time() - start
+                        )
+                    )
                     last_print_time = time.time()
 
         return handler
@@ -443,11 +445,12 @@ class HDFSClient(FS):
     """
 
     def __init__(
-            self,
-            hadoop_home,
-            configs,
-            time_out=5 * 60 * 1000,  # ms
-            sleep_inter=1000):  # ms
+        self,
+        hadoop_home,
+        configs,
+        time_out=5 * 60 * 1000,  # ms
+        sleep_inter=1000,
+    ):  # ms
         self.pre_commands = []
         hadoop_bin = '%s/bin/hadoop' % hadoop_home
         self.pre_commands.append(hadoop_bin)
@@ -463,7 +466,8 @@ class HDFSClient(FS):
         self._sleep_inter = sleep_inter
         self._base_cmd = " ".join(self.pre_commands)
         self._bd_err_re = re.compile(
-            r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:')
+            r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:'
+        )
 
     def _run_cmd(self, cmd, redirect_stderr=False, retry_times=5):
         exe_cmd = "{} -{}".format(self._base_cmd, cmd)
@@ -607,8 +611,8 @@ class HDFSClient(FS):
         return self._is_dir(fs_path)
 
     def _is_dir(self, fs_path):
-        cmd = "test -d {}".format(fs_path, redirect_stderr=True)
-        ret, lines = self._run_cmd(cmd, retry_times=1)
+        cmd = "test -d {}".format(fs_path)
+        ret, lines = self._run_cmd(cmd, redirect_stderr=True, retry_times=1)
         if ret:
             # other error
             if self._test_match(lines):
@@ -771,8 +775,9 @@ class HDFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(target=__subprocess_upload,
-                                        args=(fs_path, process_datas))
+            p = multiprocessing.Process(
+                target=__subprocess_upload, args=(fs_path, process_datas)
+            )
             procs.append(p)
             p.start()
 
@@ -841,8 +846,9 @@ class HDFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(target=__subprocess_download,
-                                        args=(local_path, process_datas))
+            p = multiprocessing.Process(
+                target=__subprocess_download, args=(local_path, process_datas)
+            )
             procs.append(p)
             p.start()
 
@@ -938,7 +944,8 @@ class HDFSClient(FS):
         if test_exists:
             if not self.is_exist(fs_src_path):
                 raise FSFileNotExistsError(
-                    "{} is not exists".format(fs_src_path))
+                    "{} is not exists".format(fs_src_path)
+                )
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))
@@ -954,8 +961,7 @@ class HDFSClient(FS):
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
-            if not self.is_exist(fs_src_path) and \
-                    self.is_exist(fs_dst_path):
+            if not self.is_exist(fs_src_path) and self.is_exist(fs_dst_path):
                 return
             raise e
 
@@ -1103,7 +1109,7 @@ class HDFSClient(FS):
         trainer_files = [[]] * trainers
         begin = 0
         for i in range(trainers):
-            trainer_files[i] = files[begin:begin + blocks[i]]
+            trainer_files[i] = files[begin : begin + blocks[i]]
             begin += blocks[i]
 
         return trainer_files[trainer_id]
@@ -1121,13 +1127,15 @@ class HDFSClient(FS):
 
         file_list = []
 
-        #concat filelist can speed up 'hadoop ls'
+        # concat filelist can speed up 'hadoop ls'
         str_concat = ""
         for path in path_list:
             str_concat += path + " "
-        cmd = "ls " + str_concat + " | awk '{if ($8 != \"\") {print $5\" \"$8 }}'"
+        cmd = (
+            "ls " + str_concat + " | awk '{if ($8 != \"\") {print $5\" \"$8 }}'"
+        )
         ret, lines = self._run_cmd(cmd)
-        if (len(lines) == 0):
+        if len(lines) == 0:
             logger.warning("list_files empty, path[%s]" % path_list)
             return []
         for line in lines:
@@ -1155,10 +1163,7 @@ class AFSClient(FS):
             client.ls_dir("hdfs:/test_hdfs_client")
     """
 
-    def __init__(
-            self,
-            time_out=5 * 60 * 1000,  # ms
-            sleep_inter=1000):  # ms
+    def __init__(self, time_out=5 * 60 * 1000, sleep_inter=1000):  # ms  # ms
         self._fs = core.AfsWrapper()
         self._time_out = time_out
 
@@ -1392,8 +1397,9 @@ class AFSClient(FS):
         procs = []
         for i in range(multi_processes):
             process_datas = self._split_files(all_files, i, multi_processes)
-            p = multiprocessing.Process(target=__subprocess_download,
-                                        args=(local_path, process_datas))
+            p = multiprocessing.Process(
+                target=__subprocess_download, args=(local_path, process_datas)
+            )
             procs.append(p)
             p.start()
 
@@ -1448,7 +1454,8 @@ class AFSClient(FS):
         if test_exists:
             if not self.is_exist(fs_src_path):
                 raise FSFileNotExistsError(
-                    "{} is not exists".format(fs_src_path))
+                    "{} is not exists".format(fs_src_path)
+                )
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))
@@ -1552,7 +1559,7 @@ class AFSClient(FS):
         trainer_files = [[]] * trainers
         begin = 0
         for i in range(trainers):
-            trainer_files[i] = files[begin:begin + blocks[i]]
+            trainer_files[i] = files[begin : begin + blocks[i]]
             begin += blocks[i]
 
         return trainer_files[trainer_id]

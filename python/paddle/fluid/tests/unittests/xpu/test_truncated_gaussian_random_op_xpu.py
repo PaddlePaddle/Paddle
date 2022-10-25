@@ -21,19 +21,21 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'truncated_gaussian_random'
         self.use_dynamic_create_class = False
 
     class TestTruncatedGaussianRandomOp(XPUOpTest):
-
         def init(self):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
@@ -64,9 +66,9 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             program = fluid.Program()
             block = program.global_block()
             vout = block.create_var(name="Out")
-            op = block.append_op(type=self.op_type,
-                                 outputs={"Out": vout},
-                                 attrs=self.attrs)
+            op = block.append_op(
+                type=self.op_type, outputs={"Out": vout}, attrs=self.attrs
+            )
 
             op.desc.infer_var_type(block.desc)
             op.desc.infer_shape(block.desc)
@@ -82,28 +84,24 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             np.testing.assert_allclose(np.var(tensor), 0.773, atol=0.05)
 
     class TestTruncatedGaussianRandomOp_1(TestTruncatedGaussianRandomOp):
-
         def set_attrs(self):
             self.shape = [4096, 2]
             self.mean = 5.0
             self.std = 1.0
 
     class TestTruncatedGaussianRandomOp_2(TestTruncatedGaussianRandomOp):
-
         def set_attrs(self):
             self.shape = [1024]
             self.mean = -2.0
             self.std = 1.0
 
     class TestTruncatedGaussianRandomOp_3(TestTruncatedGaussianRandomOp):
-
         def set_attrs(self):
             self.shape = [11 * 13 * 17]
             self.mean = -1.0
             self.std = 1.0
 
     class TestTruncatedGaussianRandomOp_4(TestTruncatedGaussianRandomOp):
-
         def set_attrs(self):
             self.shape = [2049]
             self.mean = 5.1234

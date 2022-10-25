@@ -14,17 +14,31 @@
 # limitations under the License.
 
 from paddle.utils import gast
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
-from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, ast_to_source_code, is_paddle_api, Dygraph2StaticException
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+    AstNodeWrapper,
+)
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    create_funcDef_node,
+    ast_to_source_code,
+    is_paddle_api,
+    Dygraph2StaticException,
+)
 import warnings
 
 import re
 from paddle.fluid.dygraph.dygraph_to_static.utils import RE_PYNAME, RE_PYMODULE
 
 IGNORE_NAMES = [
-    'declarative', 'to_static', 'dygraph_to_static_func', 'wraps',
-    'staticmethod', 'classmethod', 'decorator'
+    'declarative',
+    'to_static',
+    'dygraph_to_static_func',
+    'wraps',
+    'staticmethod',
+    'classmethod',
+    'decorator',
 ]
 
 
@@ -34,10 +48,10 @@ class DecoratorTransformer(BaseTransformer):
     """
 
     def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Type of input node should be AstNodeWrapper, but received %s ." % type(
-            wrapper_root)
+        assert isinstance(wrapper_root, AstNodeWrapper), (
+            "Type of input node should be AstNodeWrapper, but received %s ."
+            % type(wrapper_root)
+        )
         self.root = wrapper_root.node
 
         self.ancestor_nodes = []
@@ -70,16 +84,21 @@ class DecoratorTransformer(BaseTransformer):
                 # 1: @_jst.Call(a.b.c.d.deco)()
                 # 2: @q.w.e.r.deco()
                 re_tmp = re.match(
-                    r'({module})*({name}\(){{0,1}}({module})*({name})(\)){{0,1}}\(.*$'
-                    .format(name=RE_PYNAME, module=RE_PYMODULE), deco_full_name)
+                    r'({module})*({name}\(){{0,1}}({module})*({name})(\)){{0,1}}\(.*$'.format(
+                        name=RE_PYNAME, module=RE_PYMODULE
+                    ),
+                    deco_full_name,
+                )
                 deco_name = re_tmp.group(4)
             else:
                 # match case like:
                 # @a.d.g.deco
                 re_tmp = re.match(
-                    r'({module})*({name})$'.format(name=RE_PYNAME,
-                                                   module=RE_PYMODULE),
-                    deco_full_name)
+                    r'({module})*({name})$'.format(
+                        name=RE_PYNAME, module=RE_PYMODULE
+                    ),
+                    deco_full_name,
+                )
                 deco_name = re_tmp.group(2)
             if deco_name in IGNORE_NAMES:
                 continue
@@ -95,25 +114,37 @@ class DecoratorTransformer(BaseTransformer):
                 if '_jst.Call' in deco_full_name:
                     # in this case , the deco_full_name will be like:
                     # '_jst.Call(deco)(5)'
-                    rematch = re.match(r'\_jst\.Call\((.+?)\)\((.*)\)',
-                                       deco_full_name)
+                    rematch = re.match(
+                        r'\_jst\.Call\((.+?)\)\((.*)\)', deco_full_name
+                    )
                     re_name = rematch.group(1)
                     re_args = rematch.group(2)
                     re_args_with_func = deco_target + ', ' + re_args
-                    decofun_str = 'try:\n\t{0} = _jst.Call({1})({2})\nexcept:\n\t{0} = _jst.Call({1})({3})({4})'\
-                        .format(decoed_func, re_name, re_args_with_func, re_args, deco_target)
+                    decofun_str = 'try:\n\t{0} = _jst.Call({1})({2})\nexcept:\n\t{0} = _jst.Call({1})({3})({4})'.format(
+                        decoed_func,
+                        re_name,
+                        re_args_with_func,
+                        re_args,
+                        deco_target,
+                    )
                 else:
                     # paddle api will not be transformed to '_jst.Call'
                     rematch = re.match(r'(.+?)\((.*)\)', deco_full_name)
                     re_name = rematch.group(1)
                     re_args = rematch.group(2)
                     re_args_with_func = deco_target + ', ' + re_args
-                    decofun_str = 'try:\n\t{0} = {1}({2})\nexcept:\n\t{0} = {1}({3})({4})'\
-                        .format(decoed_func, re_name, re_args_with_func, re_args, deco_target)
+                    decofun_str = 'try:\n\t{0} = {1}({2})\nexcept:\n\t{0} = {1}({3})({4})'.format(
+                        decoed_func,
+                        re_name,
+                        re_args_with_func,
+                        re_args,
+                        deco_target,
+                    )
 
             else:
                 decofun_str = '{} = _jst.Call({})({})'.format(
-                    decoed_func, deco_full_name, deco_target)
+                    decoed_func, deco_full_name, deco_target
+                )
 
             decofun_nodes.extend(gast.parse(decofun_str).body)
             deco_target = decoed_func
@@ -121,12 +152,14 @@ class DecoratorTransformer(BaseTransformer):
         if not decofun_nodes:
             return node
 
-        orig_func_node = gast.FunctionDef(name='_orig_' + node.name,
-                                          args=node.args,
-                                          body=node.body,
-                                          decorator_list=[],
-                                          returns=None,
-                                          type_comment=None)
+        orig_func_node = gast.FunctionDef(
+            name='_orig_' + node.name,
+            args=node.args,
+            body=node.body,
+            decorator_list=[],
+            returns=None,
+            type_comment=None,
+        )
 
         args = [arg.id for arg in node.args.args]
         arg_str = ','.join(args)

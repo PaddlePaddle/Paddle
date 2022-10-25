@@ -19,19 +19,21 @@ import paddle
 import unittest
 import numpy as np
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'check_finite_and_unscale'
         self.use_dynamic_create_class = False
 
     class TestCheckFiniteAndUnscaleOpNormal(XPUOpTest):
-
         def setUp(self):
             self.op_type = "check_finite_and_unscale"
             self.init_dtype()
@@ -52,7 +54,6 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestCheckFiniteAndUnscaleOpWithNan(XPUOpTest):
-
         def setUp(self):
             self.op_type = "check_finite_and_unscale"
             self.init_dtype()
@@ -80,7 +81,6 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
                 self.check_output_with_place(place, no_check_set=['Out'])
 
     class TestCheckFiniteAndUnscaleOpWithInf(XPUOpTest):
-
         def setUp(self):
             self.op_type = "check_finite_and_unscale"
             self.init_dtype()
@@ -108,7 +108,6 @@ class XPUTestCheckFiniteAndUnscaleOp(XPUOpTestWrapper):
                 self.check_output_with_place(place, no_check_set=['Out'])
 
     class TestCheckFiniteAndUnscaleOpWithInfAndNan(XPUOpTest):
-
         def setUp(self):
             self.op_type = "check_finite_and_unscale"
             self.init_dtype()

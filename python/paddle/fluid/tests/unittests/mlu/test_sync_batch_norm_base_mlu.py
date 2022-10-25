@@ -41,17 +41,19 @@ SEED = 10
 
 
 class TestSyncBatchNormRunnerBase(object):
-
-    def get_model(self,
-                  main,
-                  startup,
-                  place,
-                  layout,
-                  seed,
-                  sync_bn=False,
-                  only_forward=False):
+    def get_model(
+        self,
+        main,
+        startup,
+        place,
+        layout,
+        seed,
+        sync_bn=False,
+        only_forward=False,
+    ):
         raise NotImplementedError(
-            "get model should be implemented by child class.")
+            "get model should be implemented by child class."
+        )
 
     def wait_server_ready(self, endpoints):
         assert not isinstance(endpoints, str)
@@ -60,13 +62,15 @@ class TestSyncBatchNormRunnerBase(object):
             not_ready_endpoints = []
             for ep in endpoints:
                 ip_port = ep.split(":")
-                with closing(socket.socket(socket.AF_INET,
-                                           socket.SOCK_STREAM)) as sock:
+                with closing(
+                    socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                ) as sock:
                     sock.settimeout(2)
                     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     if hasattr(socket, 'SO_REUSEPORT'):
-                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT,
-                                        1)
+                        sock.setsockopt(
+                            socket.SOL_SOCKET, socket.SO_REUSEPORT, 1
+                        )
 
                     result = sock.connect_ex((ip_port[0], int(ip_port[1])))
                     if result != 0:
@@ -74,39 +78,47 @@ class TestSyncBatchNormRunnerBase(object):
                         not_ready_endpoints.append(ep)
             if not all_ok:
                 sys.stderr.write("server not ready, wait 3 sec to retry...\n")
-                sys.stderr.write("not ready endpoints:" +
-                                 str(not_ready_endpoints) + "\n")
+                sys.stderr.write(
+                    "not ready endpoints:" + str(not_ready_endpoints) + "\n"
+                )
                 sys.stderr.flush()
                 time.sleep(3)
             else:
                 break
 
-    def initCommunicator(self, program, rank, nranks, wait_port,
-                         current_endpoint, endpoints):
+    def initCommunicator(
+        self, program, rank, nranks, wait_port, current_endpoint, endpoints
+    ):
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
         if rank == 0 and wait_port:
             self.wait_server_ready(other_endpoints)
         block = program.global_block()
-        cncl_id_var = block.create_var(name=nameGen.generate('cncl_id'),
-                                       persistable=True,
-                                       type=core.VarDesc.VarType.RAW)
-        block.append_op(type='c_gen_cncl_id',
-                        inputs={},
-                        outputs={'Out': cncl_id_var},
-                        attrs={
-                            'rank': rank,
-                            'endpoint': current_endpoint,
-                            'other_endpoints': other_endpoints
-                        })
-        block.append_op(type='c_comm_init',
-                        inputs={'X': cncl_id_var},
-                        outputs={},
-                        attrs={
-                            'nranks': nranks,
-                            'rank': rank,
-                            'ring_id': self.global_ring_id
-                        })
+        cncl_id_var = block.create_var(
+            name=nameGen.generate('cncl_id'),
+            persistable=True,
+            type=core.VarDesc.VarType.RAW,
+        )
+        block.append_op(
+            type='c_gen_cncl_id',
+            inputs={},
+            outputs={'Out': cncl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+            },
+        )
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': cncl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': self.global_ring_id,
+            },
+        )
 
     def run_trainer(self, args):
         device_id = int(os.getenv("FLAGS_selected_mlus", "0"))
@@ -139,24 +151,30 @@ class TestSyncBatchNormRunnerBase(object):
 
         sys.stdout.buffer.write(
             pickle.dumps(
-                'training, inference, fp32, fp16, NCHW, NHWC all passed'))
+                'training, inference, fp32, fp16, NCHW, NHWC all passed'
+            )
+        )
 
     def _compare(self, args, place, layout, only_forward):
         scope = core.Scope()
 
         np.random.seed(SEED)
-        data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
+        data = np.random.random(size=self.dshape).astype(self.dtype) * 4.0 - 2
         sys.stderr.write("data: " + str(data) + "\n")
-        data = create_or_get_tensor(scope, "input",
-                                    OpTest.np_dtype_to_fluid_dtype(data), place)
+        data = create_or_get_tensor(
+            scope, "input", OpTest.np_dtype_to_fluid_dtype(data), place
+        )
 
-        bn_fetches = self._cal_single_card(args, data, place, layout,
-                                           only_forward)
+        bn_fetches = self._cal_single_card(
+            args, data, place, layout, only_forward
+        )
         fetch_names, sync_bn_fetches = self._cal_multiple_cards(
-            args, data, place, layout, only_forward)
+            args, data, place, layout, only_forward
+        )
 
-        sys.stderr.write("len(sync_bn_fetches): " + str(len(sync_bn_fetches)) +
-                         "\n")
+        sys.stderr.write(
+            "len(sync_bn_fetches): " + str(len(sync_bn_fetches)) + "\n"
+        )
         for i in range(0, len(sync_bn_fetches)):
             sys.stderr.write("i: " + str(i) + "\n")
             sys.stderr.write("fetch_names[i]): " + fetch_names[i] + "\n")
@@ -164,13 +182,14 @@ class TestSyncBatchNormRunnerBase(object):
             bn_val = bn_fetches[i]
             sync_bn_val = sync_bn_fetches[i]
             if sync_bn_val.shape != bn_val.shape:
-                sync_bn_val = sync_bn_val[:bn_val.shape[0]]
+                sync_bn_val = sync_bn_val[: bn_val.shape[0]]
 
             # i = 0
             if fetch_names[i] == 'reduce_sum_0.tmp_0':
                 # sys.stderr.write("skip reduce_sum_0.tmp_0 (Out of reduce_sum op)" + "\n")
-                sys.stderr.write("reduce_sum_0.tmp_0 (Out of reduce_sum op)" +
-                                 "\n")
+                sys.stderr.write(
+                    "reduce_sum_0.tmp_0 (Out of reduce_sum op)" + "\n"
+                )
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
                 sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
 
@@ -198,7 +217,8 @@ class TestSyncBatchNormRunnerBase(object):
             if fetch_names[i] == 'batch_norm_0.tmp_2':
                 # sys.stderr.write("skip batch_norm_0.tmp_2 (ReserveSpace of batch_norm)" + "\n")
                 sys.stderr.write(
-                    "batch_norm_0.tmp_2 (ReserveSpace of batch_norm)" + "\n")
+                    "batch_norm_0.tmp_2 (ReserveSpace of batch_norm)" + "\n"
+                )
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
                 sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
 
@@ -231,8 +251,9 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 8
             if fetch_names[i] == 'batch_norm_0.tmp_1':
-                sys.stderr.write("skip batch_norm_0.tmp_1 (SavedVariance)" +
-                                 "\n")
+                sys.stderr.write(
+                    "skip batch_norm_0.tmp_1 (SavedVariance)" + "\n"
+                )
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
                 sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
 
@@ -278,10 +299,16 @@ class TestSyncBatchNormRunnerBase(object):
             if fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
                 atol = 1e-2
 
-            assert np.allclose(
-                bn_val, sync_bn_val, atol=atol), "Output (" + fetch_names[
-                    i] + ") has diff. \n" + "\nBN     " + str(
-                        bn_val) + "\n" + "Sync BN " + str(sync_bn_val)
+            assert np.allclose(bn_val, sync_bn_val, atol=atol), (
+                "Output ("
+                + fetch_names[i]
+                + ") has diff. \n"
+                + "\nBN     "
+                + str(bn_val)
+                + "\n"
+                + "Sync BN "
+                + str(sync_bn_val)
+            )
 
     def _cal_single_card(self, args, data, place, layout, only_forward):
         # Single-MLU, N = 32 per MLU
@@ -291,23 +318,31 @@ class TestSyncBatchNormRunnerBase(object):
         startup_prog.global_seed(SEED)
         paddle.seed(SEED)
 
-        outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
-                              False, only_forward)
+        outs = self.get_model(
+            train_prog, startup_prog, place, layout, SEED, False, only_forward
+        )
 
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         fetch_names = [v.name for v in outs] + [
-            'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
+            'bn_moving_mean',
+            'bn_moving_variance',
+            'bn_scale',
+            'bn_bias',
         ]
         if not only_forward:
             others = [
-                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
+                'batch_norm_0.tmp_0',
+                'batch_norm_0.tmp_1',
+                'bn_scale@GRAD',
+                'bn_bias@GRAD',
+                'batch_norm_0.tmp_3@GRAD',
+                'conv2d_0.tmp_0@GRAD',
             ]
             fetch_names += others
-        bn_fetches = exe.run(program=train_prog,
-                             feed={'input': data},
-                             fetch_list=fetch_names)
+        bn_fetches = exe.run(
+            program=train_prog, feed={'input': data}, fetch_list=fetch_names
+        )
 
         return bn_fetches
 
@@ -328,8 +363,9 @@ class TestSyncBatchNormRunnerBase(object):
         current_endpoint = args["currentendpoint"]
         nranks = 2
 
-        self.initCommunicator(startup_prog, rank, nranks, True,
-                              current_endpoint, endpoints)
+        self.initCommunicator(
+            startup_prog, rank, nranks, True, current_endpoint, endpoints
+        )
         # sys.stderr.write("after init, startup_prog: " +
         #                  startup_prog.to_string(True) + "\n")
         train_prog.global_seed(SEED)
@@ -339,8 +375,9 @@ class TestSyncBatchNormRunnerBase(object):
         paddle.seed(SEED)
 
         self.rank = rank
-        outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
-                              True, only_forward)
+        outs = self.get_model(
+            train_prog, startup_prog, place, layout, SEED, True, only_forward
+        )
         # sys.stderr.write("after get_model, train_prog: " +
         #                  train_prog.to_string(True) + "\n")
         # sys.stderr.write("after get_model, startup_prog: " +
@@ -363,17 +400,24 @@ class TestSyncBatchNormRunnerBase(object):
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         fetch_names = [v.name for v in outs] + [
-            'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
+            'bn_moving_mean',
+            'bn_moving_variance',
+            'bn_scale',
+            'bn_bias',
         ]
         if not only_forward:
             others = [
-                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
+                'batch_norm_0.tmp_0',
+                'batch_norm_0.tmp_1',
+                'bn_scale@GRAD',
+                'bn_bias@GRAD',
+                'batch_norm_0.tmp_3@GRAD',
+                'conv2d_0.tmp_0@GRAD',
             ]
             fetch_names += others
-        sync_bn_fetches = exe.run(program=train_prog,
-                                  feed={'input': data},
-                                  fetch_list=fetch_names)
+        sync_bn_fetches = exe.run(
+            program=train_prog, feed={'input': data}, fetch_list=fetch_names
+        )
 
         return fetch_names, sync_bn_fetches
 
@@ -396,19 +440,20 @@ from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
-
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
         self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-            self._find_free_port(), self._find_free_port())
+            self._find_free_port(),
+            self._find_free_port(),
+        )
         self._python_interp = sys.executable
 
     def _find_free_port(self):
-
         def __free_port():
-            with closing(socket.socket(socket.AF_INET,
-                                       socket.SOCK_STREAM)) as s:
+            with closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ) as s:
                 s.bind(('', 0))
                 return s.getsockname()[1]
 
@@ -437,7 +482,7 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
             "PADDLE_CURRENT_ENDPOINT": w1_ep,
         }
-        #update environment
+        # update environment
         env0.update(envs)
         env1.update(envs)
 
@@ -448,15 +493,19 @@ class TestDistBase(unittest.TestCase):
         tr1_pipe = open("/tmp/tr1_err_%d.log" % os.getpid(), "w")
         print("tr0_cmd: {}, env: {}\n".format(tr0_cmd, env0))
         print("tr1_cmd: {}, env: {}\n".format(tr1_cmd, env1))
-        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
-                                    stdout=subprocess.PIPE,
-                                    stderr=tr0_pipe,
-                                    env=env0)
+        tr0_proc = subprocess.Popen(
+            tr0_cmd.strip().split(),
+            stdout=subprocess.PIPE,
+            stderr=tr0_pipe,
+            env=env0,
+        )
 
-        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
-                                    stdout=subprocess.PIPE,
-                                    stderr=tr1_pipe,
-                                    env=env1)
+        tr1_proc = subprocess.Popen(
+            tr0_cmd.strip().split(),
+            stdout=subprocess.PIPE,
+            stderr=tr1_pipe,
+            env=env1,
+        )
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -470,14 +519,16 @@ class TestDistBase(unittest.TestCase):
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
         with open("/tmp/tr1_err_%d.log" % os.getpid(), "r") as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
-        return pickle.loads(tr0_out), pickle.loads(
-            tr1_out), tr0_proc.pid, tr1_proc.pid
+        return (
+            pickle.loads(tr0_out),
+            pickle.loads(tr1_out),
+            tr0_proc.pid,
+            tr1_proc.pid,
+        )
 
-    def check_with_place(self,
-                         model_file,
-                         col_type,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, col_type, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_eager_delete_tensor_gb": "0.0",
@@ -488,7 +539,7 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_call_stack_level": "2",
             "GLOG_v": "3",
             "PADDLE_WITH_GLOO": '0',
-            "BACKEND": "cncl"
+            "BACKEND": "cncl",
         }
         required_envs.update(need_envs)
         if check_error_log:
@@ -496,8 +547,11 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_logtostderr"] = "1"
             required_envs["GLOO_LOG_LEVEL"] = "TRACE"
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
-            model_file, required_envs)
+            model_file, required_envs
+        )
         self.assertEqual(
-            tr0_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed')
+            tr0_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed'
+        )
         self.assertEqual(
-            tr1_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed')
+            tr1_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed'
+        )

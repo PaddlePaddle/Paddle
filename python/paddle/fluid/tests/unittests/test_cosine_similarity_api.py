@@ -23,7 +23,6 @@ from paddle.fluid import Program, program_guard, Executor, default_main_program
 
 
 class TestCosineSimilarityAPI(unittest.TestCase):
-
     def setUp(self):
         self.places = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -52,12 +51,11 @@ class TestCosineSimilarityAPI(unittest.TestCase):
             x2 = paddle.fluid.data(name="x2", shape=shape)
             result = F.cosine_similarity(x1, x2, axis=axis, eps=eps)
             exe = Executor(place)
-            fetches = exe.run(default_main_program(),
-                              feed={
-                                  "x1": np_x1,
-                                  "x2": np_x2
-                              },
-                              fetch_list=[result])
+            fetches = exe.run(
+                default_main_program(),
+                feed={"x1": np_x1, "x2": np_x2},
+                fetch_list=[result],
+            )
 
             np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
             np.testing.assert_allclose(fetches[0], np_out, rtol=1e-05)

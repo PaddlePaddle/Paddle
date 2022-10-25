@@ -61,26 +61,26 @@ class MaxPool3D(Layer):
         .. code-block:: python
 
             import paddle
-            from paddle.fluid.framework import _test_eager_guard
 
-            with _test_eager_guard():
-                dense_x = paddle.randn((2, 3, 6, 6, 3))
-                sparse_x = dense_x.to_sparse_coo(4)
-                max_pool3d = paddle.incubate.sparse.nn.MaxPool3D(
-                    kernel_size=3, data_format='NDHWC')
-                out = max_pool3d(sparse_x)
-                #shape=[2, 1, 2, 2, 3]
+            dense_x = paddle.randn((2, 3, 6, 6, 3))
+            sparse_x = dense_x.to_sparse_coo(4)
+            max_pool3d = paddle.sparse.nn.MaxPool3D(
+                kernel_size=3, data_format='NDHWC')
+            out = max_pool3d(sparse_x)
+            #shape=[2, 1, 2, 2, 3]
 
     """
 
-    def __init__(self,
-                 kernel_size,
-                 stride=None,
-                 padding=0,
-                 return_mask=False,
-                 ceil_mode=False,
-                 data_format="NDHWC",
-                 name=None):
+    def __init__(
+        self,
+        kernel_size,
+        stride=None,
+        padding=0,
+        return_mask=False,
+        ceil_mode=False,
+        data_format="NDHWC",
+        name=None,
+    ):
         super(MaxPool3D, self).__init__()
         self.ksize = kernel_size
         self.stride = stride
@@ -91,14 +91,17 @@ class MaxPool3D(Layer):
         self.name = name
 
     def forward(self, x):
-        return F.max_pool3d(x,
-                            kernel_size=self.ksize,
-                            stride=self.stride,
-                            padding=self.padding,
-                            ceil_mode=self.ceil_mode,
-                            data_format=self.data_format,
-                            name=self.name)
+        return F.max_pool3d(
+            x,
+            kernel_size=self.ksize,
+            stride=self.stride,
+            padding=self.padding,
+            ceil_mode=self.ceil_mode,
+            data_format=self.data_format,
+            name=self.name,
+        )
 
     def extra_repr(self):
         return 'kernel_size={ksize}, stride={stride}, padding={padding}'.format(
-            **self.__dict__)
+            **self.__dict__
+        )

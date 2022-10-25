@@ -18,13 +18,13 @@ __all__ = []
 
 
 class WeightDecayHelper(object):
-
     def __init__(self):
         pass
 
     def _is_weight_decay_op(self, op):
-        return op.desc.has_attr("op_namescope") \
-            and op.desc.attr("op_namescope").startswith("/regularization")
+        return op.desc.has_attr("op_namescope") and op.desc.attr(
+            "op_namescope"
+        ).startswith("/regularization")
 
     def prune_weight_decay(self, block, shard):
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -33,7 +33,8 @@ class WeightDecayHelper(object):
             if OP_ROLE_VAR_KEY not in op.attr_names:
                 raise ValueError(
                     "The Weight Dacay op should hold op_role_var attribute"
-                    "but the {} op does not hold op_role_var".format(op.type))
+                    "but the {} op does not hold op_role_var".format(op.type)
+                )
             op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
             if not shard.has_param(op_role_var[0]):
                 block._remove_op(idx, sync=False)

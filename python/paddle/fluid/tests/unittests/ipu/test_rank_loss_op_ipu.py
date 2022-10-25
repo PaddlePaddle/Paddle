@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -49,15 +48,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self, on_ipu):
-        label = paddle.static.data(name=self.feed_list[0],
-                                   shape=self.feed_shape[0],
-                                   dtype="float32")
-        left = paddle.static.data(name=self.feed_list[1],
-                                  shape=self.feed_shape[1],
-                                  dtype='float32')
-        right = paddle.static.data(name=self.feed_list[2],
-                                   shape=self.feed_shape[2],
-                                   dtype='float32')
+        label = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
+        left = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
+        right = paddle.static.data(
+            name=self.feed_list[2], shape=self.feed_shape[2], dtype='float32'
+        )
         out = paddle.fluid.layers.rank_loss(label, left, right)
         self.fetch_list = [out.name]
 
