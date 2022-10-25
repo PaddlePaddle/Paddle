@@ -132,11 +132,10 @@ class TESS(AudioClassificationDataset):
 
         files = []
         labels = []
-        n_samples_per_fold = len(meta_info) // n_folds
         for idx, sample in enumerate(meta_info):
             _, _, emotion = sample
             target = self.label_list.index(emotion)
-            fold = idx // n_samples_per_fold + 1
+            fold = idx % n_folds + 1
 
             if mode == 'train' and int(fold) != split:
                 files.append(wav_files[idx])
