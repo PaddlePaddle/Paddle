@@ -909,19 +909,22 @@ class TestSliceAssignPJVPAndTranspose(TestAddPJVPAndTranspose):
         self.jvp_out_shape_map = {0: self.prim_output['Z']}
 
         # Set transpose
-        check_dot = lambda v: v is X or v is Y
+        check_dot = lambda v: v is X
         Z_BAR = paddle.static.data(name='Z_BAR', shape=[3, 20], dtype='float64')
         self.transpose_args = (check_dot, Z_BAR)
-        self.transpose_out_shape_map = {0: X, 1: Y}
+        self.transpose_out_shape_map = {0: X}
 
         self.all_ops = [
             # prim op:
             'slice_assign_p',
             # jvp op:
             'slice_assign_p',
+            "slice_assign_p",
+            "add_p",
+            "fill_constant_p",
+            "fill_constant_p",
             # transpose op:
             'slice_assign_p',
-            'slice_select_p',
             'fill_constant_p',
         ]
 
