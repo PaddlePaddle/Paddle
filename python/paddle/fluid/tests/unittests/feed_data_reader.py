@@ -17,7 +17,6 @@ from paddle.fluid.framework import Variable
 
 
 def cyclic_reader(reader):
-
     def __reader__():
         while True:
             for data in reader():
@@ -27,7 +26,6 @@ def cyclic_reader(reader):
 
 
 class FeedDataReader(object):
-
     def __init__(self, feed_list, reader):
         self._feed_list = []
         for var in feed_list:
@@ -62,8 +60,11 @@ class FeedDataReader(object):
             if program._is_data_parallel:
                 use_executor = False
                 if program._places is None:
-                    device_num = len(fluid.cuda_places()) if use_cuda else len(
-                        fluid.cpu_places())
+                    device_num = (
+                        len(fluid.cuda_places())
+                        if use_cuda
+                        else len(fluid.cpu_places())
+                    )
                 else:
                     device_num = len(program._places)
             else:

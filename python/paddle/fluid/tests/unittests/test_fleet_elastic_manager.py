@@ -17,17 +17,17 @@ import unittest
 
 from paddle.distributed.fleet.elastic.manager import ElasticManager
 from paddle.distributed.fleet.elastic.manager import LauncherInterface
-from paddle.distributed.fleet.elastic.manager import ELASTIC_AUTO_PARALLEL_EXIT_CODE
+from paddle.distributed.fleet.elastic.manager import (
+    ELASTIC_AUTO_PARALLEL_EXIT_CODE,
+)
 
 
-class MockLease():
-
+class MockLease:
     def refresh(self):
         pass
 
 
 class MockEtcdClient:
-
     def __init__(self, lease=None):
         self._lease = lease
 
@@ -66,12 +66,10 @@ class MockEtcdClient:
 
 
 class TestElasticManager(unittest.TestCase):
-
     def setUp(self):
         self.etcd_client = MockEtcdClient()
 
     def test_elastic_manager_init(self):
-
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
@@ -87,8 +85,7 @@ class TestElasticManager(unittest.TestCase):
 
         args = Argument()
 
-        class _MockLease():
-
+        class _MockLease:
             def refresh(self):
                 raise ValueError("valid error, this only for unittest")
 
@@ -96,7 +93,6 @@ class TestElasticManager(unittest.TestCase):
         elastic = ElasticManager(args, etcd_client=etcd_client)
 
     def test_match_faulttolerance(self):
-
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
@@ -117,7 +113,8 @@ class TestElasticManager(unittest.TestCase):
 
         hosts = ["10.10.10.1:6001", "10.10.10.2:6001"]
         os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.2:6001"
+            'PADDLE_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.2:6001"
 
         self.assertEqual(elastic._match(hosts), True)
 
@@ -127,7 +124,6 @@ class TestElasticManager(unittest.TestCase):
         self.assertEqual(elastic._match(hosts), False)
 
     def test_match_elastic(self):
-
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
@@ -146,16 +142,20 @@ class TestElasticManager(unittest.TestCase):
         args.ips = "10.10.10.1,10.10.10.2,10.10.10.3,10.10.10.4"
         os.environ['FLAGS_START_PORT'] = "6001"
         os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001,10.10.10.4:6001"
+            'DISTRIBUTED_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001,10.10.10.4:6001"
         os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001,10.10.10.4:6001"
+            'PADDLE_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001,10.10.10.4:6001"
         elastic = ElasticManager(args, self.etcd_client)
         hosts = ["10.10.10.1:6001", "10.10.10.2:6001"]
         self.assertEqual(elastic._match(hosts), False)
 
         hosts = [
-            "10.10.10.1:6001", "10.10.10.2:6001", "10.10.10.3:6001",
-            "10.10.10.4:6001"
+            "10.10.10.1:6001",
+            "10.10.10.2:6001",
+            "10.10.10.3:6001",
+            "10.10.10.4:6001",
         ]
         self.assertEqual(elastic._match(hosts), True)
 
@@ -167,19 +167,20 @@ class TestElasticManager(unittest.TestCase):
 
         args.ips = "10.10.10.1,10.10.10.2"
         os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.2:6001"
+            'DISTRIBUTED_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.2:6001"
         os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.2:6001"
+            'PADDLE_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.2:6001"
         elastic = ElasticManager(args, self.etcd_client)
         hosts = ["10.10.10.1:6001", "10.10.10.2:6001"]
         self.assertEqual(elastic._match(hosts), True)
 
         # TODO test timeout
-        #time.sleep(60)
-        #self.assertEqual(elastic._match(hosts), True)
+        # time.sleep(60)
+        # self.assertEqual(elastic._match(hosts), True)
 
     def test_update_hosts_for_faulttolerance(self):
-
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
@@ -198,9 +199,11 @@ class TestElasticManager(unittest.TestCase):
         os.environ['PADDLE_ELASTIC_NP'] = "2"
         os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.2"
         os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.2:6001"
+            'DISTRIBUTED_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.2:6001"
         os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.2:6001"
+            'PADDLE_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.2:6001"
         elastic = ElasticManager(args, self.etcd_client)
         # add 10.10.10.3:6001
         os.environ['PADDLE_TRAINER_ID'] = "0"
@@ -244,30 +247,38 @@ class TestElasticManager(unittest.TestCase):
         os.environ['FLAGS_START_PORT'] = "6001"
         os.environ['PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.2"
         os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.2:6001"
+            'DISTRIBUTED_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.2:6001"
         os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.2:6001"
+            'PADDLE_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.2:6001"
         elastic = ElasticManager(args, self.etcd_client)
         # add 10.10.10.3:6001
         elastic.curr_host = "10.10.10.1:6001"
         elastic.hosts = [
-            "10.10.10.1:6001", "10.10.10.2:6001", "10.10.10.3:6001"
+            "10.10.10.1:6001",
+            "10.10.10.2:6001",
+            "10.10.10.3:6001",
         ]
         elastic._update_hosts()
-        #self.assertEqual(elastic.all_host_endpoints,
+        # self.assertEqual(elastic.all_host_endpoints,
         #                 ["10.10.10.1:6001", "10.10.10.2:6001", "10.10.10.3:6001"])
-        self.assertEqual(os.getenv('PADDLE_TRAINERS'),
-                         "10.10.10.1,10.10.10.2,10.10.10.3")
+        self.assertEqual(
+            os.getenv('PADDLE_TRAINERS'), "10.10.10.1,10.10.10.2,10.10.10.3"
+        )
 
         #######################
         # elastic, scale in #
         #######################
         os.environ[
-            'PADDLE_TRAINERS'] = "10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3"
+            'PADDLE_TRAINERS'
+        ] = "10.10.10.0,10.10.10.1,10.10.10.2,10.10.10.3"
         os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.0:6000,10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001"
+            'DISTRIBUTED_TRAINER_ENDPOINTS'
+        ] = "10.10.10.0:6000,10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001"
         os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'] = "10.10.10.0:6000,10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001"
+            'PADDLE_TRAINER_ENDPOINTS'
+        ] = "10.10.10.0:6000,10.10.10.1:6001,10.10.10.2:6001,10.10.10.3:6001"
         os.environ['POD_IP'] = "10.10.10.1"
         os.environ['TRAINER_PORTS_NUM'] = "4"
         os.environ['PADDLE_TRAINER_ID'] = "1"
@@ -277,23 +288,31 @@ class TestElasticManager(unittest.TestCase):
         # remove 10.10.10.1:6001
         elastic.curr_host = "10.10.10.1:6001"
         elastic.hosts = [
-            "10.10.10.1:6001", "10.10.10.2:6001", "10.10.10.3:6001"
+            "10.10.10.1:6001",
+            "10.10.10.2:6001",
+            "10.10.10.3:6001",
         ]
         elastic._update_hosts()
-        #self.assertEqual(elastic.all_host_endpoints,
+        # self.assertEqual(elastic.all_host_endpoints,
         #                 ["10.10.10.3:6001", "10.10.10.1:6001", "10.10.10.2:6001"])
-        self.assertEqual(os.getenv('PADDLE_TRAINERS'),
-                         "10.10.10.3,10.10.10.1,10.10.10.2")
-        self.assertEqual(os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS'),
-                         "10.10.10.3:6001,10.10.10.1:6001,10.10.10.2:6001")
+        self.assertEqual(
+            os.getenv('PADDLE_TRAINERS'), "10.10.10.3,10.10.10.1,10.10.10.2"
+        )
+        self.assertEqual(
+            os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS'),
+            "10.10.10.3:6001,10.10.10.1:6001,10.10.10.2:6001",
+        )
 
         ############
         os.environ[
-            'PADDLE_TRAINERS'] = "10.10.10.1,10.10.10.1,10.10.10.1,10.10.10.1"
+            'PADDLE_TRAINERS'
+        ] = "10.10.10.1,10.10.10.1,10.10.10.1,10.10.10.1"
         os.environ[
-            'DISTRIBUTED_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.1:6002,10.10.10.1:6003,10.10.10.1:6004"
+            'DISTRIBUTED_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.1:6002,10.10.10.1:6003,10.10.10.1:6004"
         os.environ[
-            'PADDLE_TRAINER_ENDPOINTS'] = "10.10.10.1:6001,10.10.10.1:6002,10.10.10.1:6003,10.10.10.1:6004"
+            'PADDLE_TRAINER_ENDPOINTS'
+        ] = "10.10.10.1:6001,10.10.10.1:6002,10.10.10.1:6003,10.10.10.1:6004"
         os.environ['POD_IP'] = "10.10.10.1"
         os.environ['TRAINER_PORTS_NUM'] = "4"
         os.environ['PADDLE_PORT'] = "6001"
@@ -304,14 +323,15 @@ class TestElasticManager(unittest.TestCase):
         os.environ['PADDLE_TRAINER_ID'] = "-1"
         elastic.hosts = ["10.10.10.1:6001", "10.10.10.1:6003"]
         elastic._update_hosts()
-        #self.assertEqual(elastic.all_host_endpoints,
+        # self.assertEqual(elastic.all_host_endpoints,
         #                 ["10.10.10.1:6001", "10.10.10.1:6001"])
         self.assertEqual(os.getenv('PADDLE_TRAINERS'), "10.10.10.1,10.10.10.1")
-        self.assertEqual(os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS'),
-                         "10.10.10.1:6001,10.10.10.1:6003")
+        self.assertEqual(
+            os.getenv('DISTRIBUTED_TRAINER_ENDPOINTS'),
+            "10.10.10.1:6001,10.10.10.1:6003",
+        )
 
     def test_exit(self):
-
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
@@ -330,7 +350,6 @@ class TestElasticManager(unittest.TestCase):
         elastic.exit()
 
     def test_pre_hook(self):
-
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
@@ -353,7 +372,6 @@ class TestElasticManager(unittest.TestCase):
         elastic.pre_hook()
 
     def test_watch(self):
-
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
@@ -369,7 +387,6 @@ class TestElasticManager(unittest.TestCase):
             elastic_pre_hook = None
 
         class ElasticLauncher:
-
             def watch(self):
                 return ELASTIC_AUTO_PARALLEL_EXIT_CODE
 
@@ -383,14 +400,11 @@ class TestElasticManager(unittest.TestCase):
         elastic.watch()
 
     def test_launcher_interface_check_procs(self):
-
         class Proc:
-
             def poll(self):
                 return ELASTIC_AUTO_PARALLEL_EXIT_CODE
 
         class ProcList:
-
             def __init__(self):
                 self.proc = Proc()
 

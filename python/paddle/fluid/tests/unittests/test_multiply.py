@@ -23,27 +23,28 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMultiplyApi(unittest.TestCase):
-
     def _run_static_graph_case(self, x_data, y_data):
         with program_guard(Program(), Program()):
             paddle.enable_static()
-            x = paddle.static.data(name='x',
-                                   shape=x_data.shape,
-                                   dtype=x_data.dtype)
-            y = paddle.static.data(name='y',
-                                   shape=y_data.shape,
-                                   dtype=y_data.dtype)
+            x = paddle.static.data(
+                name='x', shape=x_data.shape, dtype=x_data.dtype
+            )
+            y = paddle.static.data(
+                name='y', shape=y_data.shape, dtype=y_data.dtype
+            )
             res = tensor.multiply(x, y)
 
-            place = paddle.CUDAPlace(
-                0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+            place = (
+                paddle.CUDAPlace(0)
+                if paddle.is_compiled_with_cuda()
+                else paddle.CPUPlace()
+            )
             exe = paddle.static.Executor(place)
-            outs = exe.run(paddle.static.default_main_program(),
-                           feed={
-                               'x': x_data,
-                               'y': y_data
-                           },
-                           fetch_list=[res])
+            outs = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_data, 'y': y_data},
+                fetch_list=[res],
+            )
             res = outs[0]
             return res
 
@@ -112,7 +113,6 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
-
     def func_test_errors(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()

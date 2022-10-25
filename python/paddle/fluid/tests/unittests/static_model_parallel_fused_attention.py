@@ -25,9 +25,11 @@ paddle.enable_static()
 
 def get_param_attr(weight, bias):
     weight_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(weight))
+        initializer=fluid.initializer.NumpyArrayInitializer(weight)
+    )
     bias_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(bias))
+        initializer=fluid.initializer.NumpyArrayInitializer(bias)
+    )
     return weight_attr, bias_attr
 
 
@@ -40,14 +42,16 @@ hidden = n_head * d_key
 
 def create_model(data, rank):
     np.random.seed(2021)
-    pre_ln_w = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
-    pre_ln_b = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
-    qkv_w = np.random.uniform(-1, 1,
-                              size=(3, n_head, d_key, hidden)).astype(DTYPE)
+    pre_ln_w = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
+    pre_ln_b = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
+    qkv_w = np.random.uniform(-1, 1, size=(3, n_head, d_key, hidden)).astype(
+        DTYPE
+    )
     qkv_b = np.random.uniform(-1, 1, size=(3, n_head, d_key)).astype(DTYPE)
-    linear_w = np.random.uniform(-1, 1,
-                                 size=(n_head * d_key, hidden)).astype(DTYPE)
-    linear_b = np.random.uniform(-1, 1, size=(hidden, )).astype(DTYPE)
+    linear_w = np.random.uniform(-1, 1, size=(n_head * d_key, hidden)).astype(
+        DTYPE
+    )
+    linear_b = np.random.uniform(-1, 1, size=(hidden,)).astype(DTYPE)
 
     data.stop_gradient = False
     if rank is not None:
@@ -55,46 +59,50 @@ def create_model(data, rank):
         end = start + n_head // MODEL_PARALLEL_SIZE
         col_qkv_w = qkv_w[:, start:end, :, :]
         col_qkv_b = qkv_b[:, start:end, :]
-        row_linear_w = linear_w[(start * d_key):(end * d_key), :]
+        row_linear_w = linear_w[(start * d_key) : (end * d_key), :]
 
         pre_ln_w_attr, pre_ln_b_attr = get_param_attr(pre_ln_w, pre_ln_b)
         qkv_w_attr, qkv_b_attr = get_param_attr(col_qkv_w, col_qkv_b)
         linear_w_attr, linear_b_attr = get_param_attr(row_linear_w, linear_b)
 
-        attn = FusedMultiHeadAttention(hidden,
-                                       n_head,
-                                       dropout_rate=0.0,
-                                       attn_dropout_rate=0.0,
-                                       normalize_before=False,
-                                       qkv_weight_attr=qkv_w_attr,
-                                       qkv_bias_attr=qkv_b_attr,
-                                       linear_weight_attr=linear_w_attr,
-                                       linear_bias_attr=linear_b_attr,
-                                       pre_ln_scale_attr=pre_ln_w_attr,
-                                       pre_ln_bias_attr=pre_ln_b_attr,
-                                       ln_scale_attr=pre_ln_w_attr,
-                                       ln_bias_attr=pre_ln_b_attr,
-                                       nranks=MODEL_PARALLEL_SIZE,
-                                       ring_id=0)
+        attn = FusedMultiHeadAttention(
+            hidden,
+            n_head,
+            dropout_rate=0.0,
+            attn_dropout_rate=0.0,
+            normalize_before=False,
+            qkv_weight_attr=qkv_w_attr,
+            qkv_bias_attr=qkv_b_attr,
+            linear_weight_attr=linear_w_attr,
+            linear_bias_attr=linear_b_attr,
+            pre_ln_scale_attr=pre_ln_w_attr,
+            pre_ln_bias_attr=pre_ln_b_attr,
+            ln_scale_attr=pre_ln_w_attr,
+            ln_bias_attr=pre_ln_b_attr,
+            nranks=MODEL_PARALLEL_SIZE,
+            ring_id=0,
+        )
         result = attn(data)
     else:
         pre_ln_w_attr, pre_ln_b_attr = get_param_attr(pre_ln_w, pre_ln_b)
         qkv_w_attr, qkv_b_attr = get_param_attr(qkv_w, qkv_b)
         linear_w_attr, linear_b_attr = get_param_attr(linear_w, linear_b)
 
-        attn = FusedMultiHeadAttention(hidden,
-                                       n_head,
-                                       dropout_rate=0.0,
-                                       attn_dropout_rate=0.0,
-                                       normalize_before=False,
-                                       qkv_weight_attr=qkv_w_attr,
-                                       qkv_bias_attr=qkv_b_attr,
-                                       linear_weight_attr=linear_w_attr,
-                                       linear_bias_attr=linear_b_attr,
-                                       pre_ln_scale_attr=pre_ln_w_attr,
-                                       pre_ln_bias_attr=pre_ln_b_attr,
-                                       ln_scale_attr=pre_ln_w_attr,
-                                       ln_bias_attr=pre_ln_b_attr)
+        attn = FusedMultiHeadAttention(
+            hidden,
+            n_head,
+            dropout_rate=0.0,
+            attn_dropout_rate=0.0,
+            normalize_before=False,
+            qkv_weight_attr=qkv_w_attr,
+            qkv_bias_attr=qkv_b_attr,
+            linear_weight_attr=linear_w_attr,
+            linear_bias_attr=linear_b_attr,
+            pre_ln_scale_attr=pre_ln_w_attr,
+            pre_ln_bias_attr=pre_ln_b_attr,
+            ln_scale_attr=pre_ln_w_attr,
+            ln_bias_attr=pre_ln_b_attr,
+        )
         result = attn(data)
 
     predict = paddle.sum(result)
@@ -102,20 +110,20 @@ def create_model(data, rank):
 
 
 class TestModelParallel(TestDistRunnerBase):
-
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         seq_len = 2
-        data_in = fluid.data(name='data_in',
-                             shape=[batch_size, seq_len, hidden],
-                             dtype=DTYPE)
+        data_in = fluid.data(
+            name='data_in', shape=[batch_size, seq_len, hidden], dtype=DTYPE
+        )
 
         if dist_strategy:
             data_loader = fluid.io.DataLoader.from_generator(
                 feed_list=[data_in],
                 capacity=64,
                 use_double_buffer=False,
-                iterable=False)
+                iterable=False,
+            )
 
         if dist_strategy:
             fleet.init(is_collective=True)
@@ -128,8 +136,9 @@ class TestModelParallel(TestDistRunnerBase):
         opt = fluid.optimizer.SGD(0.1)
 
         if dist_strategy:
-            dist_opt = fleet.distributed_optimizer(optimizer=opt,
-                                                   strategy=strategy)
+            dist_opt = fleet.distributed_optimizer(
+                optimizer=opt, strategy=strategy
+            )
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)

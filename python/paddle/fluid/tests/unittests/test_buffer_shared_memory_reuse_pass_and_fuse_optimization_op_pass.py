@@ -17,7 +17,6 @@ import unittest
 
 
 class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
-
     def initParameter(self):
         self.use_cuda = True
         self.fuse_all_optimizer_ops = True
@@ -31,7 +30,6 @@ class CUDAInplaceTestWithFuseOptimizationOps(InplaceTestBase):
 
 
 class CPUInplaceTestWithFuseOptimizationOps(InplaceTestBase):
-
     def initParameter(self):
         self.use_cuda = False
         self.fuse_all_optimizer_ops = True

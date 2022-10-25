@@ -22,7 +22,6 @@ import paddle.nn.functional as F
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -35,11 +34,11 @@ class TestBase(IPUOpTest):
         target = np.random.uniform(size=[3, 4, 2, 2])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
-            "target": target.astype(np.float32)
+            "target": target.astype(np.float32),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
-            "target": target.astype(np.float16)
+            "target": target.astype(np.float16),
         }
 
     def set_feed_attr(self):
@@ -53,12 +52,12 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self, on_ipu):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype="float32")
-        target = paddle.static.data(name=self.feed_list[1],
-                                    shape=self.feed_shape[1],
-                                    dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
+        target = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
         out = F.binary_cross_entropy(x, target, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -74,7 +73,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {
             'reduction': 'sum',
@@ -82,7 +80,6 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {
             'reduction': 'none',

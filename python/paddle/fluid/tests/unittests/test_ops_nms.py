@@ -46,10 +46,12 @@ def multiclass_nms(boxes, scores, category_idxs, iou_threshold, top_k):
         cur_category_scores = scores[cur_category_boxes_idxs]
         cur_category_sorted_indices = np.argsort(-cur_category_scores)
         cur_category_sorted_boxes = cur_category_boxes[
-            cur_category_sorted_indices]
+            cur_category_sorted_indices
+        ]
 
-        cur_category_keep_boxes_sub_idxs = cur_category_sorted_indices[nms(
-            cur_category_sorted_boxes, iou_threshold)]
+        cur_category_keep_boxes_sub_idxs = cur_category_sorted_indices[
+            nms(cur_category_sorted_boxes, iou_threshold)
+        ]
 
         mask[cur_category_boxes_idxs[cur_category_keep_boxes_sub_idxs]] = True
 
@@ -72,7 +74,6 @@ def gen_args(num_boxes, dtype):
 
 
 class TestOpsNMS(unittest.TestCase):
-
     def setUp(self):
         self.num_boxes = 64
         self.threshold = 0.5
@@ -91,78 +92,100 @@ class TestOpsNMS(unittest.TestCase):
         for device in self.devices:
             for dtype in self.dtypes:
                 boxes, scores, category_idxs, categories = gen_args(
-                    self.num_boxes, dtype)
+                    self.num_boxes, dtype
+                )
                 paddle.set_device(device)
-                out = paddle.vision.ops.nms(paddle.to_tensor(boxes),
-                                            self.threshold,
-                                            paddle.to_tensor(scores))
-                out = paddle.vision.ops.nms(paddle.to_tensor(boxes),
-                                            self.threshold)
+                out = paddle.vision.ops.nms(
+                    paddle.to_tensor(boxes),
+                    self.threshold,
+                    paddle.to_tensor(scores),
+                )
+                out = paddle.vision.ops.nms(
+                    paddle.to_tensor(boxes), self.threshold
+                )
                 out_py = nms(boxes, self.threshold)
 
                 np.testing.assert_array_equal(
                     out.numpy(),
                     out_py,
-                    err_msg='paddle out: {}\n py out: {}\n'.format(out, out_py))
+                    err_msg='paddle out: {}\n py out: {}\n'.format(out, out_py),
+                )
 
     def test_multiclass_nms_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 boxes, scores, category_idxs, categories = gen_args(
-                    self.num_boxes, dtype)
+                    self.num_boxes, dtype
+                )
                 paddle.set_device(device)
-                out = paddle.vision.ops.nms(paddle.to_tensor(boxes),
-                                            self.threshold,
-                                            paddle.to_tensor(scores),
-                                            paddle.to_tensor(category_idxs),
-                                            categories, self.topk)
-                out_py = multiclass_nms(boxes, scores, category_idxs,
-                                        self.threshold, self.topk)
+                out = paddle.vision.ops.nms(
+                    paddle.to_tensor(boxes),
+                    self.threshold,
+                    paddle.to_tensor(scores),
+                    paddle.to_tensor(category_idxs),
+                    categories,
+                    self.topk,
+                )
+                out_py = multiclass_nms(
+                    boxes, scores, category_idxs, self.threshold, self.topk
+                )
 
                 np.testing.assert_array_equal(
                     out.numpy(),
                     out_py,
-                    err_msg='paddle out: {}\n py out: {}\n'.format(out, out_py))
+                    err_msg='paddle out: {}\n py out: {}\n'.format(out, out_py),
+                )
 
     def test_multiclass_nms_static(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 paddle.enable_static()
                 boxes, scores, category_idxs, categories = gen_args(
-                    self.num_boxes, dtype)
-                boxes_static = paddle.static.data(shape=boxes.shape,
-                                                  dtype=boxes.dtype,
-                                                  name="boxes")
-                scores_static = paddle.static.data(shape=scores.shape,
-                                                   dtype=scores.dtype,
-                                                   name="scores")
+                    self.num_boxes, dtype
+                )
+                boxes_static = paddle.static.data(
+                    shape=boxes.shape, dtype=boxes.dtype, name="boxes"
+                )
+                scores_static = paddle.static.data(
+                    shape=scores.shape, dtype=scores.dtype, name="scores"
+                )
                 category_idxs_static = paddle.static.data(
                     shape=category_idxs.shape,
                     dtype=category_idxs.dtype,
-                    name="category_idxs")
-                out = paddle.vision.ops.nms(boxes_static, self.threshold,
-                                            scores_static, category_idxs_static,
-                                            categories, self.topk)
+                    name="category_idxs",
+                )
+                out = paddle.vision.ops.nms(
+                    boxes_static,
+                    self.threshold,
+                    scores_static,
+                    category_idxs_static,
+                    categories,
+                    self.topk,
+                )
                 place = paddle.CPUPlace()
                 if device == 'gpu':
                     place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
-                out = exe.run(paddle.static.default_main_program(),
-                              feed={
-                                  'boxes': boxes,
-                                  'scores': scores,
-                                  'category_idxs': category_idxs
-                              },
-                              fetch_list=[out])
+                out = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        'boxes': boxes,
+                        'scores': scores,
+                        'category_idxs': category_idxs,
+                    },
+                    fetch_list=[out],
+                )
                 paddle.disable_static()
-                out_py = multiclass_nms(boxes, scores, category_idxs,
-                                        self.threshold, self.topk)
+                out_py = multiclass_nms(
+                    boxes, scores, category_idxs, self.threshold, self.topk
+                )
                 out = np.array(out)
                 out = np.squeeze(out)
                 np.testing.assert_array_equal(
                     out,
                     out_py,
-                    err_msg='paddle out: {}\n py out: {}\n'.format(out, out_py))
+                    err_msg='paddle out: {}\n py out: {}\n'.format(out, out_py),
+                )
 
     def test_multiclass_nms_dynamic_to_static(self):
         for device in self.devices:
@@ -173,10 +196,14 @@ class TestOpsNMS(unittest.TestCase):
                     scores = np.arange(0, 64).astype('float32')
                     categories = np.array([0, 1, 2, 3])
                     category_idxs = categories.repeat(16)
-                    out = paddle.vision.ops.nms(x, 0.1,
-                                                paddle.to_tensor(scores),
-                                                paddle.to_tensor(category_idxs),
-                                                categories, 10)
+                    out = paddle.vision.ops.nms(
+                        x,
+                        0.1,
+                        paddle.to_tensor(scores),
+                        paddle.to_tensor(category_idxs),
+                        categories,
+                        10,
+                    )
                     return out
 
                 boxes = np.random.rand(64, 4).astype('float32')
@@ -188,9 +215,9 @@ class TestOpsNMS(unittest.TestCase):
                     fun,
                     self.path,
                     input_spec=[
-                        paddle.static.InputSpec(shape=[None, 4],
-                                                dtype='float32',
-                                                name='x')
+                        paddle.static.InputSpec(
+                            shape=[None, 4], dtype='float32', name='x'
+                        )
                     ],
                 )
                 load_func = paddle.jit.load(self.path)
@@ -199,20 +226,23 @@ class TestOpsNMS(unittest.TestCase):
                     origin,
                     res,
                     err_msg='origin out: {}\n inference model out: {}\n'.format(
-                        origin, res))
+                        origin, res
+                    ),
+                )
 
     def test_matrix_nms_dynamic(self):
         for device in self.devices:
             for dtype in self.dtypes:
                 boxes, scores, category_idxs, categories = gen_args(
-                    self.num_boxes, dtype)
+                    self.num_boxes, dtype
+                )
                 scores = np.random.rand(1, 4, self.num_boxes).astype(dtype)
                 paddle.set_device(device)
                 out = paddle.vision.ops.matrix_nms(
                     paddle.to_tensor(boxes).unsqueeze(0),
                     paddle.to_tensor(scores),
                     self.threshold,
-                    post_threshold=0.,
+                    post_threshold=0.0,
                     nms_top_k=400,
                     keep_top_k=100,
                 )

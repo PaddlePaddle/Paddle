@@ -23,7 +23,6 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestUnbind(unittest.TestCase):
-
     def test_unbind(self):
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
@@ -32,12 +31,11 @@ class TestUnbind(unittest.TestCase):
         axis = fluid.data(shape=[1], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())
 
-        [res_1, res_2] = exe.run(fluid.default_main_program(),
-                                 feed={
-                                     "x_1": input_1,
-                                     "axis": 0
-                                 },
-                                 fetch_list=[out_0, out_1])
+        [res_1, res_2] = exe.run(
+            fluid.default_main_program(),
+            feed={"x_1": input_1, "axis": 0},
+            fetch_list=[out_0, out_1],
+        )
 
         assert np.array_equal(res_1, input_1[0, 0:100])
         assert np.array_equal(res_2, input_1[1, 0:100])
@@ -63,7 +61,6 @@ class TestUnbind(unittest.TestCase):
 
 
 class TestLayersUnbind(unittest.TestCase):
-
     def test_layers_unbind(self):
 
         x_1 = fluid.data(shape=[2, 3], dtype='float32', name='x_1')
@@ -72,19 +69,17 @@ class TestLayersUnbind(unittest.TestCase):
         axis = fluid.data(shape=[1], dtype='int32', name='axis')
         exe = fluid.Executor(place=fluid.CPUPlace())
 
-        [res_1, res_2] = exe.run(fluid.default_main_program(),
-                                 feed={
-                                     "x_1": input_1,
-                                     "axis": 0
-                                 },
-                                 fetch_list=[out_0, out_1])
+        [res_1, res_2] = exe.run(
+            fluid.default_main_program(),
+            feed={"x_1": input_1, "axis": 0},
+            fetch_list=[out_0, out_1],
+        )
 
         assert np.array_equal(res_1, input_1[0, 0:100])
         assert np.array_equal(res_2, input_1[1, 0:100])
 
 
 class TestUnbindOp(OpTest):
-
     def initParameters(self):
         pass
 
@@ -106,8 +101,9 @@ class TestUnbindOp(OpTest):
         self.inputs = {'X': x}
         self.attrs = {'axis': self.axis}
         self.setAxis()
-        self.outputs = {'Out': [('out%d' % i, self.out[i]) \
-            for i in range(len(self.out))]}
+        self.outputs = {
+            'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
+        }
 
     def get_dtype(self):
         return "float64"
@@ -123,7 +119,6 @@ class TestUnbindOp(OpTest):
 
 
 class TestUnbindOp1(TestUnbindOp):
-
     def initParameters(self):
         self.axis = 1
         self.num = 2
@@ -137,7 +132,6 @@ class TestUnbindOp1(TestUnbindOp):
 
 
 class TestUnbindOp2(TestUnbindOp):
-
     def initParameters(self):
         self.axis = 2
         self.num = 2
@@ -151,7 +145,6 @@ class TestUnbindOp2(TestUnbindOp):
 
 
 class TestUnbindOp3(TestUnbindOp):
-
     def initParameters(self):
         self.axis = 2
         self.num = 2
@@ -168,7 +161,6 @@ class TestUnbindOp3(TestUnbindOp):
 
 
 class TestUnbindOp4(TestUnbindOp):
-
     def initParameters(self):
         self.axis = 1
         self.num = 2
@@ -185,7 +177,6 @@ class TestUnbindOp4(TestUnbindOp):
 
 
 class TestUnbindBF16Op(OpTest):
-
     def setUp(self):
         self._set_op_type()
         self.python_api = paddle.unbind
@@ -196,8 +187,12 @@ class TestUnbindBF16Op(OpTest):
         self.out = np.split(x, self.num, self.axis)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {'axis': self.axis}
-        self.outputs = {'Out': [('out%d' % i, convert_float_to_uint16(self.out[i])) \
-            for i in range(len(self.out))]}
+        self.outputs = {
+            'Out': [
+                ('out%d' % i, convert_float_to_uint16(self.out[i]))
+                for i in range(len(self.out))
+            ]
+        }
 
     def get_dtype(self):
         return np.uint16
@@ -213,7 +208,6 @@ class TestUnbindBF16Op(OpTest):
 
 
 class TestUnbindAxisError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = fluid.data(shape=[2, 3], dtype='float32', name='x')

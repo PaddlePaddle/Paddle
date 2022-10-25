@@ -30,21 +30,32 @@ import numpy as np
 
 from .ps_dispatcher import RoundRobin, PSDispatcher
 from .. import core, framework
-from ..framework import Program, default_main_program, \
-    default_startup_program, Block, Parameter
+from ..framework import (
+    Program,
+    default_main_program,
+    default_startup_program,
+    Block,
+    Parameter,
+)
 from .details import wait_server_ready, VarsDistributed
 from .details import delete_ops
 from ..distribute_lookup_table import find_distributed_lookup_table
-from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig
+from .distribute_transpiler import (
+    DistributeTranspiler,
+    DistributeTranspilerConfig,
+    slice_variable,
+    same_or_split_var,
+    ServerRuntimeConfig,
+)
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
-RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
-)
+RPC_OP_ROLE_ATTR_NAME = (
+    op_role_attr_name
+) = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 
 class GeoSgdTranspiler(DistributeTranspiler):
-
     def __init__(self, config=None):
         if config is not None:
             self.config = config
@@ -55,17 +66,19 @@ class GeoSgdTranspiler(DistributeTranspiler):
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
 
-        assert (self.config.min_block_size >= 8192)
-        assert (self.config.split_method.__bases__[0] == PSDispatcher)
+        assert self.config.min_block_size >= 8192
+        assert self.config.split_method.__bases__[0] == PSDispatcher
 
-    def transpile(self,
-                  trainer_id,
-                  program=None,
-                  pservers="127.0.0.1:6174",
-                  trainers=1,
-                  sync_mode=False,
-                  startup_program=None,
-                  current_endpoint="127.0.0.1:6174"):
+    def transpile(
+        self,
+        trainer_id,
+        program=None,
+        pservers="127.0.0.1:6174",
+        trainers=1,
+        sync_mode=False,
+        startup_program=None,
+        current_endpoint="127.0.0.1:6174",
+    ):
         if program is None:
             program = default_main_program()
         if startup_program is None:
@@ -92,7 +105,9 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # distribute lookup table
         self.table_name = find_distributed_lookup_table(self.origin_program)
         self.has_distributed_lookup_table = self.table_name != None
-        self.origin_program._distributed_lookup_table = self.table_name if self.table_name else None
+        self.origin_program._distributed_lookup_table = (
+            self.table_name if self.table_name else None
+        )
 
         # add distributed attrs to program
         self.origin_program._is_distributed = True
@@ -127,7 +142,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
         for i, ep in enumerate(eplist):
             self.param_opt_ep_mapping[ep]["params"].append(recv_vars[i])
             distributed_var = self.vars_overview.get_distributed_var_by_slice(
-                recv_vars[i].name)
+                recv_vars[i].name
+            )
             distributed_var.endpoint = ep
             origin_name = self.split_to_origin_mapping[recv_vars[i].name]
             self.vars_info[origin_name]["epmap"].append(ep)
@@ -142,11 +158,14 @@ class GeoSgdTranspiler(DistributeTranspiler):
                 if op.type == "lookup_table":
                     op._set_attr('remote_prefetch', False)
                 for input_var_name, sparse_var_name in zip(
-                        op.input("Ids"), op.input("W")):
+                    op.input("Ids"), op.input("W")
+                ):
                     if sparse_var_name in self.sparse_var_list:
                         if input_var_name in unique_sparse_var:
-                            if unique_sparse_var[
-                                    input_var_name] == sparse_var_name:
+                            if (
+                                unique_sparse_var[input_var_name]
+                                == sparse_var_name
+                            ):
                                 continue
                         input_var = program.global_block().var(input_var_name)
                         self.sparse_var.append(input_var)
@@ -155,32 +174,39 @@ class GeoSgdTranspiler(DistributeTranspiler):
 
         # batch training loop end flag
         dummy_output = program.global_block().create_var(
-            name=framework.generate_control_dev_var_name())
+            name=framework.generate_control_dev_var_name()
+        )
         program.global_block().append_op(
             type="send",
             inputs={"X": self.sparse_var},
             outputs={"Out": dummy_output},
-            attrs={"send_varnames": self.sparse_tables})
+            attrs={"send_varnames": self.sparse_tables},
+        )
 
         # add param_init flag in trainer startup program
         self.trainer_startup_program = self._get_trainer_startup_program(
-            recv_vars=recv_vars, eplist=eplist)
+            recv_vars=recv_vars, eplist=eplist
+        )
         for delta_var in self.delta_vars_list:
             self.trainer_startup_program.global_block().create_var(
                 name=delta_var.name,
                 persistable=delta_var.persistable,
                 dtype=delta_var.dtype,
                 type=delta_var.type,
-                shape=delta_var.shape)
+                shape=delta_var.shape,
+            )
         dummy_output = self.trainer_startup_program.global_block().create_var(
-            name=framework.generate_control_dev_var_name())
+            name=framework.generate_control_dev_var_name()
+        )
         param_init = self.trainer_startup_program.global_block().create_var(
-            name="param_init")
+            name="param_init"
+        )
         self.trainer_startup_program.global_block().append_op(
             type="send",
             inputs={"X": [param_init]},
             outputs={"Out": dummy_output},
-            attrs={"send_varnames": [param_init.name]})
+            attrs={"send_varnames": [param_init.name]},
+        )
 
     def _get_vars_info(self):
         return self.vars_info
@@ -193,8 +219,9 @@ class GeoSgdTranspiler(DistributeTranspiler):
     def get_pserver_programs(self, endpoint):
         pserver_prog = self.get_pserver_program(endpoint)
         self.param_grad_ep_mapping = self.param_opt_ep_mapping
-        pserver_startup = self.get_startup_program(endpoint,
-                                                   pserver_program=pserver_prog)
+        pserver_startup = self.get_startup_program(
+            endpoint, pserver_program=pserver_prog
+        )
         return pserver_prog, pserver_startup
 
     def get_pserver_program(self, endpoint):
@@ -224,21 +251,27 @@ class GeoSgdTranspiler(DistributeTranspiler):
             delta_var_name = "%s.delta" % (param.name)
             if var.name in self.sparse_var_splited_list:
                 delta_type = core.VarDesc.VarType.SELECTED_ROWS
-                sparse_grad_to_param.append(":".join(
-                    [delta_var_name, param.name]))
+                sparse_grad_to_param.append(
+                    ":".join([delta_var_name, param.name])
+                )
             else:
                 delta_type = param.type
-            delta_var = pserver_block.create_var(name=delta_var_name,
-                                                 persistable=False,
-                                                 type=delta_type,
-                                                 dtype=param.dtype,
-                                                 shape=param.shape)
+            delta_var = pserver_block.create_var(
+                name=delta_var_name,
+                persistable=False,
+                type=delta_type,
+                dtype=param.dtype,
+                shape=param.shape,
+            )
 
-            per_opt_block.append_op(type="sum",
-                                    inputs={"X": [param, delta_var]},
-                                    outputs={"Out": param})
-            param_to_block_id.append(delta_var_name + ":" +
-                                     str(per_opt_block.idx))
+            per_opt_block.append_op(
+                type="sum",
+                inputs={"X": [param, delta_var]},
+                outputs={"Out": param},
+            )
+            param_to_block_id.append(
+                delta_var_name + ":" + str(per_opt_block.idx)
+            )
 
         attrs = {
             "optimize_blocks": optimize_block,
@@ -249,15 +282,16 @@ class GeoSgdTranspiler(DistributeTranspiler):
             "sparse_grad_to_param": sparse_grad_to_param,
             "rpc_get_thread_num": self.server_config._rpc_get_thread_num,
             "rpc_send_thread_num": self.server_config._rpc_send_thread_num,
-            "rpc_prefetch_thread_num":
-            self.server_config._rpc_prefetch_thread_num
+            "rpc_prefetch_thread_num": self.server_config._rpc_prefetch_thread_num,
         }
 
         # step5 append the listen_and_serv op
-        pserver_program.global_block().append_op(type="listen_and_serv",
-                                                 inputs={'X': recv_inputs},
-                                                 outputs={},
-                                                 attrs=attrs)
+        pserver_program.global_block().append_op(
+            type="listen_and_serv",
+            inputs={'X': recv_inputs},
+            outputs={},
+            attrs=attrs,
+        )
 
         pserver_program._sync_with_cpp()
         # save pserver program to generate pserver side startup relatively.
@@ -284,21 +318,28 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # step 2. Slice vars into numbers of piece with block_size
         # when we slice var up into blocks, we will slice the var according to
         # pserver services' count. A pserver may have two or more listening ports.
-        param_blocks = slice_variable(param_list, len(self.pserver_endpoints),
-                                      self.config.min_block_size)
+        param_blocks = slice_variable(
+            param_list, len(self.pserver_endpoints), self.config.min_block_size
+        )
 
         # step 3. Create split param from split blocks
         # origin_param_name -> [splited_param_vars]
         # Todo: update _create_vars_from_blocklist
         self.param_var_mapping = self._create_vars_from_blocklist(
-            self.origin_program, param_blocks)
+            self.origin_program, param_blocks
+        )
 
         # step 4. Create mapping of endpoint -> split var to create pserver side program
         self.param_opt_ep_mapping = collections.OrderedDict()
         [
-            self.param_opt_ep_mapping.update({ep: {
-                "params": [],
-            }}) for ep in self.pserver_endpoints
+            self.param_opt_ep_mapping.update(
+                {
+                    ep: {
+                        "params": [],
+                    }
+                }
+            )
+            for ep in self.pserver_endpoints
         ]
 
         # step 5. Create delta var of Geo-Sgd & record vars information
@@ -325,28 +366,34 @@ class GeoSgdTranspiler(DistributeTranspiler):
                 persistable=False,
                 dtype=origin_var.dtype,
                 type=delta_type,
-                shape=origin_var.shape)
+                shape=origin_var.shape,
+            )
 
             self.delta_vars_list.append(delta_var)
 
             for splited_var in splited_vars:
                 is_slice, block_id, offset = self._get_slice_var_info(
-                    splited_var)
-                self.vars_overview.add_distributed_var(origin_var=origin_var,
-                                                       slice_var=splited_var,
-                                                       block_id=block_id,
-                                                       offset=offset,
-                                                       is_slice=is_slice,
-                                                       vtype="Param")
+                    splited_var
+                )
+                self.vars_overview.add_distributed_var(
+                    origin_var=origin_var,
+                    slice_var=splited_var,
+                    block_id=block_id,
+                    offset=offset,
+                    is_slice=is_slice,
+                    vtype="Param",
+                )
                 self.split_to_origin_mapping[splited_var.name] = origin_name
                 if origin_name in self.sparse_var_list:
                     self.sparse_var_splited_list.append(splited_var.name)
                 self.vars_info[origin_name]["var_names"].append(
-                    splited_var.name)
+                    splited_var.name
+                )
                 if len(splited_vars) != 1:
                     self.origin_program.global_block().create_var(
                         name=".".join([splited_var.name, "delta"]),
                         persistable=False,
                         dtype=splited_var.dtype,
                         type=delta_type,
-                        shape=splited_var.shape)
+                        shape=splited_var.shape,
+                    )

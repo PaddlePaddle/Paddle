@@ -21,7 +21,6 @@ sys.path.append("../")
 
 
 class TestSequenceFirstStepOpError(unittest.TestCase):
-
     def test_errors(self):
         with program_guard(Program(), Program()):
 
@@ -34,11 +33,13 @@ class TestSequenceFirstStepOpError(unittest.TestCase):
 
             def test_input_dtype():
                 # the dtype of input must be int64
-                type_data = fluid.layers.data(name='type_data',
-                                              shape=[7, 1],
-                                              append_batch_size=False,
-                                              dtype='int64',
-                                              lod_level=1)
+                type_data = fluid.layers.data(
+                    name='type_data',
+                    shape=[7, 1],
+                    append_batch_size=False,
+                    dtype='int64',
+                    lod_level=1,
+                )
                 fluid.layers.sequence_last_step(type_data)
 
             self.assertRaises(TypeError, test_input_dtype)

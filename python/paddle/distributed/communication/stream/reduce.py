@@ -30,12 +30,14 @@ def _reduce_in_dygraph(tensor, dst, op, group, sync_op, use_calc_stream):
     return task
 
 
-def reduce(tensor,
-           dst=0,
-           op=ReduceOp.SUM,
-           group=None,
-           sync_op=True,
-           use_calc_stream=False):
+def reduce(
+    tensor,
+    dst=0,
+    op=ReduceOp.SUM,
+    group=None,
+    sync_op=True,
+    use_calc_stream=False,
+):
     """
 
     Perform specific reduction (for example, sum, max) on a tensor across devices and send to the destintion device.
@@ -82,11 +84,13 @@ def reduce(tensor,
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be true in sync op behavior."
+        )
 
     if framework.in_dygraph_mode():
-        return _reduce_in_dygraph(tensor, dst, op, group, sync_op,
-                                  use_calc_stream)
+        return _reduce_in_dygraph(
+            tensor, dst, op, group, sync_op, use_calc_stream
+        )
 
     raise RuntimeError(
         "paddle.distributed.stream.reduce is only supported in dygraph mode now."

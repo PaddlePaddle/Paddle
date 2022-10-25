@@ -34,7 +34,6 @@ def apply_pass():
 
 
 class TestQuantizationPass(unittest.TestCase):
-
     def test_qat_pass(self):
 
         batch_size = 8
