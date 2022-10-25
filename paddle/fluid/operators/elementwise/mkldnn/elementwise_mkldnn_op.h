@@ -78,6 +78,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
                                              scale_x,
                                              scale_y,
                                              scale_o,
+                                             true,
                                              get_post_ops(ctx));
 
     // oneDNN's binary is optimized for broadcasting y into x, so in other case
@@ -126,7 +127,16 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     binary_prim->execute(astream, args);
     astream.wait();
 
-    z->set_mem_desc(dst_memory->get_desc());
+    if (handler.use_broadcasting_hack == false) {
+      platform::SetOutMemDescWithUnsqueeze2FuseSupport(
+          ctx, z, dst_memory->get_desc());
+    } else {
+      auto dims = dst_memory->get_desc().dims();
+      dims.insert(dims.begin(), x->dims()[0]);
+      dims[1] /= dims[0];
+      platform::SetOutMemDescWithUnsqueeze2FuseSupport(
+          ctx, z, dst_memory->get_desc().reshape(dims));
+    }
   }
 };
 
@@ -210,7 +220,8 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                                         dx,
                                                         1.0f,
                                                         1.0f,
-                                                        1.0f);
+                                                        1.0f,
+                                                        false);
 
         const auto src_dout_memory = binary_handler.AcquireSrcMemory(dout);
         const auto src_y_memory = binary_handler.AcquireSecondSrcMemory(y);
@@ -276,7 +287,8 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
             nullptr,
             1.0f,
             1.0f,
-            1.0f);
+            1.0f,
+            false);
 
         src_1_memory = binary_handler.AcquireSecondSrcMemory(x);
 
@@ -291,7 +303,8 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
               nullptr,
               1.0f,
               1.0f,
-              1.0f);
+              1.0f,
+              false);
 
           post_op_memory = post_op_binary_handler.AcquireSrcMemory(y);
 
@@ -310,6 +323,7 @@ class EltwiseMKLDNNGradKernel : public ElemwiseGradKernel<T> {
                                                -1.0f,
                                                1.0f,
                                                1.0f,
+                                               false,
                                                po);
 
           src_1_memory = binary_handler.AcquireSecondSrcMemory(out);
