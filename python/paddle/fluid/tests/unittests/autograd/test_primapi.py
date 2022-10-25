@@ -100,7 +100,7 @@ class TestFowardApi(unittest.TestCase):
         actual = actual()
         self.assertEqual(type(actual), type(expected))
         for i, j in zip(actual, expected):
-            np.testing.assert_allclose(i, j,rtol=1e-6)
+            np.testing.assert_allclose(i, j, rtol=1e-6)
 
 
 @utils.place(config.DEVICES)
