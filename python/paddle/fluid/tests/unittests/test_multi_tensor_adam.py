@@ -320,9 +320,10 @@ class TestMultiTensorAdam(unittest.TestCase):
     def test_main(self):
         for use_adamw in [True, False]:
             self.run_adam_or_adamw(use_adamw)
-            self.run_adam_or_adamw_fp16(use_adamw)
             self.run_adam_or_adamw_dict(use_adamw)
-            self.run_adam_or_adamw_dict_fp16(use_adamw)
+            if paddle.device.get_device() != "cpu":
+                self.run_adam_or_adamw_fp16(use_adamw)
+                self.run_adam_or_adamw_dict_fp16(use_adamw)
 
 
 if __name__ == "__main__":
