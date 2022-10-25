@@ -32,7 +32,7 @@ USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP_ITSELF(relu);
 PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(softmax);
-PD_DECLARE_KERNEL(softmax, OneDNN, ALL_LAYOUT);
+PD_DECLARE_KERNEL(softmax, OneDNN, ONEDNN);
 PD_DECLARE_KERNEL(softmax, CPU, ALL_LAYOUT);
 
 namespace paddle {
