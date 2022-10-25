@@ -142,6 +142,9 @@ class ESC50(AudioClassificationDataset):
                  feat_type: str = 'raw',
                  archive=None,
                  **kwargs):
+        assert (
+            split in range(1, 6)
+        ), f'The selected split should be integer, and 1 <= split <= 5, but got {split}'
         if archive is not None:
             self.archive = archive
         files, labels = self._get_data(mode, split)

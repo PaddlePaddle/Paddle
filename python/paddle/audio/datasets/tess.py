@@ -90,16 +90,18 @@ class TESS(AudioClassificationDataset):
     audio_path = 'TESS_Toronto_emotional_speech_set'
 
     def __init__(self,
-                 mode='train',
-                 n_folds=5,
-                 split=1,
-                 feat_type='raw',
+                 mode: str = 'train',
+                 n_folds: int = 5,
+                 split: int = 1,
+                 feat_type: str = 'raw',
                  archive=None,
                  **kwargs):
-        """
-
-        """
-        assert split <= n_folds, f'The selected split should not be larger than n_fold, but got {split} > {n_folds}'
+        assert (
+            isinstance(n_folds, int) and (n_folds >= 1)
+        ), f'the n_folds should be integer and n_folds >= 1, but got {n_folds}'
+        assert (
+            isinstance(split, int) and (split in range(1, n_folds + 1))
+        ), f'The selected split should be integer and should be 1 <= split <= n_folds, but got {split} > {n_folds}'
         if archive is not None:
             self.archive = archive
         files, labels = self._get_data(mode, n_folds, split)
@@ -115,7 +117,8 @@ class TESS(AudioClassificationDataset):
             ret.append(self.meta_info(*basename_without_extend.split('_')))
         return ret
 
-    def _get_data(self, mode, n_folds, split) -> Tuple[List[str], List[int]]:
+    def _get_data(self, mode: str, n_folds: int,
+                  split: int) -> Tuple[List[str], List[int]]:
         if not os.path.isdir(os.path.join(DATA_HOME, self.audio_path)):
             download.get_path_from_url(self.archive['url'],
                                        DATA_HOME,
