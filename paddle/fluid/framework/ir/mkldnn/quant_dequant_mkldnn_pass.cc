@@ -117,7 +117,7 @@ void QuantDequantMkldnnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
           platform::errors::NotFound(
               "The Scales variable [%s] of dequantize op is not found.", var));
 
-      auto* scale_tensor = var->GetMutable<LoDTensor>();
+      auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
       auto* scale_data = scale_tensor->data<float>();
 
       auto x_var_name = op_desc->Input("X")[0];
