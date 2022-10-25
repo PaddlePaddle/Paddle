@@ -35,14 +35,14 @@ class MockEtcdClient:
         pass
 
     def get(self, key):
-        value = "0"
+        value = b"0"
         return value, value
 
     def delete_prefix(self, key):
         pass
 
     def get_prefix(self, key_prefix):
-        hosts = ["10.10.10.1:6001", "10.10.10.2:6001"]
+        hosts = [b"10.10.10.1:6001", b"10.10.10.2:6001"]
         return hosts
 
     def add_watch_callback(self, *args, **kwargs):

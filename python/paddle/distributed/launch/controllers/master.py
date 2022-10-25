@@ -277,7 +277,7 @@ class ETCDMaster(Master):
 
     def fetch_peer_alive(self):
         peer_alive = [
-            i[0] for i in self.client.get_prefix(self.heartbeat_prefix)
+            i[0].decode() for i in self.client.get_prefix(self.heartbeat_prefix)
         ]
         self.ctx.logger.debug("peer alive {}".format(peer_alive))
         return peer_alive
