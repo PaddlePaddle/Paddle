@@ -95,7 +95,8 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                 activation_type,
                 inputs={"X": ["fc_output"]},
                 outputs={"Out": ["activation_output"]},
-                scale=draw(st.sampled_from([0.125, 0.4, 0.875, 2])))
+                scale=draw(st.sampled_from([0.125, 0.4, 0.875, 2])),
+            )
         elif activation_type == "swish":
             activation_op = OpConfig(
                 activation_type,
@@ -118,9 +119,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
                 "fc_weight": TensorConfig(
                     data_gen=partial(generate_input, [64, 64])
                 ),
-                "fc_bias": TensorConfig(
-                    data_gen=partial(generate_input, [64])
-                ),
+                "fc_bias": TensorConfig(data_gen=partial(generate_input, [64])),
             },
             inputs={
                 "fc_input": TensorConfig(
@@ -136,16 +135,20 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
         config = self.create_inference_config(
             use_mkldnn=True,
             passes=[
-                "fc_act_mkldnn_fuse_pass", "operator_scale_onednn_fuse_pass"
-            ])
+                "fc_act_mkldnn_fuse_pass",
+                "operator_scale_onednn_fuse_pass",
+            ],
+        )
         yield config, ["fc"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            passes=[
-                                "fc_act_mkldnn_fuse_pass",
-                                "operator_scale_onednn_fuse_pass"
-                            ])
+        self.run_and_statis(
+            quant=False,
+            passes=[
+                "fc_act_mkldnn_fuse_pass",
+                "operator_scale_onednn_fuse_pass",
+            ],
+        )
 
 
 if __name__ == "__main__":
