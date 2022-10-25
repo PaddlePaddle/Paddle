@@ -160,18 +160,20 @@ def summary(net, input_size=None, dtypes=None, input=None):
         _input_size = []
         for item in input_size:
             if isinstance(item, int):
-                item = (item, )
-            assert isinstance(item,
-                              (tuple, InputSpec)), 'When input_size is list, \
+                item = (item,)
+            assert isinstance(
+                item, (tuple, InputSpec)
+            ), 'When input_size is list, \
             expect item in input_size is a tuple or InputSpec, but got {}'.format(
-                                  type(item))
+                type(item)
+            )
 
             if isinstance(item, InputSpec):
                 _input_size.append(tuple(item.shape))
             else:
                 _input_size.append(item)
     elif isinstance(input_size, int):
-        _input_size = (input_size, )
+        _input_size = (input_size,)
     else:
         _input_size = input_size
 
@@ -207,8 +209,10 @@ def summary(net, input_size=None, dtypes=None, input=None):
             elif isinstance(item, numbers.Number):
                 if item <= 0:
                     raise ValueError(
-                        "Expected element in input size greater than zero, but got {}"
-                        .format(item))
+                        "Expected element in input size greater than zero, but got {}".format(
+                            item
+                        )
+                    )
             new_shape.append(item)
         return tuple(new_shape)
 
@@ -231,7 +235,6 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
 @no_grad()
 def summary_string(model, input_size=None, dtypes=None, input=None):
-
     def _all_is_numper(items):
         for item in items:
             if not isinstance(item, numbers.Number):
@@ -272,7 +275,6 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
         return output_shape
 
     def register_hook(layer):
-
         def hook(layer, input, output):
             class_name = str(layer.__class__).split(".")[-1].split("'")[0]
 
@@ -310,7 +312,8 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
                 try:
                     if (getattr(getattr(layer, k), 'trainable')) and (
-                            not getattr(getattr(layer, k), 'stop_gradient')):
+                        not getattr(getattr(layer, k), 'stop_gradient')
+                    ):
                         summary[m_key]["trainable_params"] += np.prod(v.shape)
                         summary[m_key]["trainable"] = True
                         trainable_flag = True
@@ -321,9 +324,11 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
             summary[m_key]["nb_params"] = params
 
-        if (not isinstance(layer, nn.Sequential)
-                and not isinstance(layer, nn.LayerList)
-                and (not (layer == model) or depth < 1)):
+        if (
+            not isinstance(layer, nn.Sequential)
+            and not isinstance(layer, nn.LayerList)
+            and (not (layer == model) or depth < 1)
+        ):
 
             hooks.append(layer.register_forward_post_hook(hook))
         # For rnn, gru and lstm layer
@@ -368,24 +373,30 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
             'input_shape_width': 20,
             'output_shape_width': 20,
             'params_width': 15,
-            'table_width': 75
+            'table_width': 75,
         }
 
         for layer in summary:
             if head_length['output_shape_width'] < len(
-                    str(summary[layer]["output_shape"])):
+                str(summary[layer]["output_shape"])
+            ):
                 head_length['output_shape_width'] = len(
-                    str(summary[layer]["output_shape"]))
+                    str(summary[layer]["output_shape"])
+                )
             if head_length['input_shape_width'] < len(
-                    str(summary[layer]["input_shape"])):
+                str(summary[layer]["input_shape"])
+            ):
                 head_length['input_shape_width'] = len(
-                    str(summary[layer]["input_shape"]))
+                    str(summary[layer]["input_shape"])
+                )
             if head_length['layer_width'] < len(str(layer)):
                 head_length['layer_width'] = len(str(layer))
             if head_length['params_width'] < len(
-                    str(summary[layer]["nb_params"])):
+                str(summary[layer]["nb_params"])
+            ):
                 head_length['params_width'] = len(
-                    str(summary[layer]["nb_params"]))
+                    str(summary[layer]["nb_params"])
+                )
 
         _temp_width = 0
         for k, v in head_length.items():
@@ -401,10 +412,15 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
     summary_str += "-" * table_width['table_width'] + "\n"
     line_new = "{:^{}} {:^{}} {:^{}} {:^{}}".format(
-        "Layer (type)", table_width['layer_width'], "Input Shape",
-        table_width['input_shape_width'], "Output Shape",
-        table_width['output_shape_width'], "Param #",
-        table_width['params_width'])
+        "Layer (type)",
+        table_width['layer_width'],
+        "Input Shape",
+        table_width['input_shape_width'],
+        "Output Shape",
+        table_width['output_shape_width'],
+        "Param #",
+        table_width['params_width'],
+    )
     summary_str += line_new + "\n"
     summary_str += "=" * table_width['table_width'] + "\n"
     total_params = 0
@@ -414,17 +430,21 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     for layer in summary:
         # input_shape, output_shape, trainable, nb_params
         line_new = "{:^{}} {:^{}} {:^{}} {:^{}}".format(
-            layer, table_width['layer_width'],
+            layer,
+            table_width['layer_width'],
             str(summary[layer]["input_shape"]),
             table_width['input_shape_width'],
             str(summary[layer]["output_shape"]),
-            table_width['output_shape_width'], "{0:,}".format(
-                summary[layer]["nb_params"]), table_width['params_width'])
+            table_width['output_shape_width'],
+            "{0:,}".format(summary[layer]["nb_params"]),
+            table_width['params_width'],
+        )
         total_params += summary[layer]["nb_params"]
 
         try:
             total_output += np.sum(
-                np.prod(summary[layer]["output_shape"], axis=-1))
+                np.prod(summary[layer]["output_shape"], axis=-1)
+            )
         except:
             for output_shape in summary[layer]["output_shape"]:
                 total_output += np.sum(np.prod(output_shape, axis=-1))
@@ -436,26 +456,31 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
 
     def _get_input_size(input_size, size):
         if isinstance(input_size, (list, tuple)) and _all_is_numper(input_size):
-            size = abs(np.prod(input_size) * 4. / (1024**2.))
+            size = abs(np.prod(input_size) * 4.0 / (1024**2.0))
         else:
             size = sum([_get_input_size(i, size) for i in input_size])
         return size
 
     total_input_size = _get_input_size(input_size, 0)
 
-    total_output_size = abs(2. * total_output * 4. /
-                            (1024**2.))  # x2 for gradients
-    total_params_size = abs(total_params * 4. / (1024**2.))
+    total_output_size = abs(
+        2.0 * total_output * 4.0 / (1024**2.0)
+    )  # x2 for gradients
+    total_params_size = abs(total_params * 4.0 / (1024**2.0))
     total_size = total_params_size + total_output_size + total_input_size
 
     summary_str += "=" * table_width['table_width'] + "\n"
     summary_str += "Total params: {0:,}".format(total_params) + "\n"
     summary_str += "Trainable params: {0:,}".format(trainable_params) + "\n"
-    summary_str += "Non-trainable params: {0:,}".format(total_params -
-                                                        trainable_params) + "\n"
+    summary_str += (
+        "Non-trainable params: {0:,}".format(total_params - trainable_params)
+        + "\n"
+    )
     summary_str += "-" * table_width['table_width'] + "\n"
     summary_str += "Input size (MB): %0.2f" % total_input_size + "\n"
-    summary_str += "Forward/backward pass size (MB): %0.2f" % total_output_size + "\n"
+    summary_str += (
+        "Forward/backward pass size (MB): %0.2f" % total_output_size + "\n"
+    )
     summary_str += "Params size (MB): %0.2f" % total_params_size + "\n"
     summary_str += "Estimated Total Size (MB): %0.2f" % total_size + "\n"
     summary_str += "-" * table_width['table_width'] + "\n"
@@ -463,5 +488,5 @@ def summary_string(model, input_size=None, dtypes=None, input=None):
     # return summary
     return summary_str, {
         'total_params': total_params,
-        'trainable_params': trainable_params
+        'trainable_params': trainable_params,
     }

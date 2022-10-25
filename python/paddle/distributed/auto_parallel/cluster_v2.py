@@ -75,10 +75,10 @@ class DeviceMesh(core.DeviceMesh):
     def __init__(self, name, mesh, dim_names=None):
         self._name = name
 
-        if not isinstance(mesh, list) and \
-           not isinstance(mesh, np.ndarray):
+        if not isinstance(mesh, list) and not isinstance(mesh, np.ndarray):
             raise ValueError(
-                'The mesh must be an instance of list or np.ndarray.')
+                'The mesh must be an instance of list or np.ndarray.'
+            )
         if isinstance(mesh, list):
             mesh = np.array(mesh)
 
@@ -87,24 +87,29 @@ class DeviceMesh(core.DeviceMesh):
         self._shape = list(self._mesh.shape)
 
         self._device_ids = self._mesh.flatten().tolist()
-        assert all(isinstance(p, int) for p in self._device_ids), \
-            ("All elements of the mesh be integer")
-        assert min(
-            self._device_ids) >= 0, ('All elements of the mesh must be >= 0.')
+        assert all(
+            isinstance(p, int) for p in self._device_ids
+        ), "All elements of the mesh be integer"
+        assert (
+            min(self._device_ids) >= 0
+        ), 'All elements of the mesh must be >= 0.'
         unique_device_ids = set(self._device_ids)
         assert len(unique_device_ids) == len(
-            self._device_ids), ('All elements of the mesh must be unique.')
+            self._device_ids
+        ), 'All elements of the mesh must be unique.'
 
         if dim_names is not None:
-            assert len(dim_names) == len(self._shape), \
-                ("The length of dims_names must be same as the shape of the mesh.")
+            assert len(dim_names) == len(
+                self._shape
+            ), "The length of dims_names must be same as the shape of the mesh."
             self._dim_names = dim_names
         else:
             self._dim_names = ["d" + str(i) for i in range(len(self._shape))]
 
         # Follow the requirement for using pybind11
-        core.DeviceMesh.__init__(self, self._name, self._shape,
-                                 self._device_ids, self._dim_names)
+        core.DeviceMesh.__init__(
+            self, self._name, self._shape, self._device_ids, self._dim_names
+        )
 
     @property
     def mesh(self):

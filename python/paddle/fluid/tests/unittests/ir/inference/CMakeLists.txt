@@ -117,7 +117,8 @@ endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_subgraph_pass PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_trt_activation_pass PROPERTIES TIMEOUT 120)
+  # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
+  set_tests_properties(test_trt_activation_pass PROPERTIES TIMEOUT 250)
   set_tests_properties(test_trt_conv_pass PROPERTIES TIMEOUT 120)
   #set_tests_properties(test_trt_multiclass_nms_op PROPERTIES TIMEOUT 200)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)

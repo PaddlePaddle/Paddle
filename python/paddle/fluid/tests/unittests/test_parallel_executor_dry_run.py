@@ -23,16 +23,18 @@ os.environ['CPU_NUM'] = str(4)
 
 
 class TestBase(unittest.TestCase):
-
-    def main(self,
-             network_func,
-             iter=10,
-             iter_per_pe=10,
-             use_gpu=True,
-             use_experimental_executor=False):
+    def main(
+        self,
+        network_func,
+        iter=10,
+        iter_per_pe=10,
+        use_gpu=True,
+        use_experimental_executor=False,
+    ):
         if use_gpu and not fluid.core.is_compiled_with_cuda():
             logging.warning(
-                "Paddle is not compiled with CUDA, skip GPU unittests")
+                "Paddle is not compiled with CUDA, skip GPU unittests"
+            )
             return
 
         main_prog = fluid.Program()
@@ -42,28 +44,34 @@ class TestBase(unittest.TestCase):
             with fluid.scope_guard(scope):
                 loss = network_func()
                 exe = fluid.Executor(
-                    fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace())
+                    fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+                )
                 exe.run(startup_prog)
 
                 exe_strategy = fluid.ExecutionStrategy()
                 exe_strategy._dry_run = True
-                exe_strategy.use_experimental_executor = use_experimental_executor
+                exe_strategy.use_experimental_executor = (
+                    use_experimental_executor
+                )
                 train_cp = compiler.CompiledProgram(
-                    main_prog).with_data_parallel(loss_name=loss.name,
-                                                  exec_strategy=exe_strategy)
+                    main_prog
+                ).with_data_parallel(
+                    loss_name=loss.name, exec_strategy=exe_strategy
+                )
                 for _ in range(iter):
                     for _ in range(iter_per_pe):
                         exe.run(train_cp)
 
 
 class TestMNISTDryRun(TestBase):
-
     def test_mnist_dry_run(self):
         for use_gpu in (False, True):
             for use_experimental_executor in (False, True):
-                self.main(network_func=TestMNISTDryRun.network_func,
-                          use_gpu=use_gpu,
-                          use_experimental_executor=use_experimental_executor)
+                self.main(
+                    network_func=TestMNISTDryRun.network_func,
+                    use_gpu=use_gpu,
+                    use_experimental_executor=use_experimental_executor,
+                )
 
     @staticmethod
     def network_func():

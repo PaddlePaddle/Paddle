@@ -43,7 +43,6 @@ def reset_prog():
 
 
 class TestGradientMergePass(unittest.TestCase):
-
     def setUp(self):
         self.rtol = 1e-5
         self.atol = 1e-8
@@ -78,23 +77,23 @@ class TestGradientMergePass(unittest.TestCase):
             rtol=self.rtol,
             atol=self.atol,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses))
+                __class__, ref_losses, check_losses, ref_losses - check_losses
+            ),
+        )
 
     def test_gradient_merge_pass(self):
         # dp2 training
         dp_engine = self.get_engine()
-        history = dp_engine.fit(self.dataset,
-                                3,
-                                batch_size=self.batch_size,
-                                log_freq=1)
+        history = dp_engine.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
         dp_losses = np.array(history.history["loss"])
 
         # dp2 gradient merge training
         gm_engine = self.get_engine(True)
-        history = gm_engine.fit(self.dataset,
-                                3,
-                                batch_size=self.batch_size,
-                                log_freq=1)
+        history = gm_engine.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
         gm_losses = np.array(history.history["loss"])
 
         # avg_loss = 0

@@ -30,19 +30,19 @@ from dist_test_utils import remove_ps_flag
 
 from paddle.fluid import core
 
-RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
-)
+RPC_OP_ROLE_ATTR_NAME = (
+    op_role_attr_name
+) = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 
 class TestSendOp(unittest.TestCase):
-
     def test_send(self):
         remove_ps_flag(os.getpid())
         # Run init_serv in a thread
         place = fluid.CPUPlace()
         # NOTE: python thread will not work here due to GIL.
-        p = Process(target=self.init_serv, args=(place, ))
+        p = Process(target=self.init_serv, args=(place,))
         p.daemon = True
         p.start()
 
@@ -79,14 +79,18 @@ class TestSendOp(unittest.TestCase):
         with fluid.program_guard(main):
             serv = ListenAndServ("127.0.0.1:0", ["X"], optimizer_mode=False)
             with serv.do():
-                out_var = main.global_block().create_var(name="scale_0.tmp_0",
-                                                         psersistable=True,
-                                                         dtype="float32",
-                                                         shape=[32, 32])
-                x = layers.data(shape=[32, 32],
-                                dtype='float32',
-                                name="X",
-                                append_batch_size=False)
+                out_var = main.global_block().create_var(
+                    name="scale_0.tmp_0",
+                    psersistable=True,
+                    dtype="float32",
+                    shape=[32, 32],
+                )
+                x = layers.data(
+                    shape=[32, 32],
+                    dtype='float32',
+                    name="X",
+                    append_batch_size=False,
+                )
                 fluid.initializer.Constant(value=1.0)(x, main.global_block())
                 ops._scale(x=x, scale=10.0, out=out_var)
 
@@ -96,20 +100,22 @@ class TestSendOp(unittest.TestCase):
     def init_client(self, place, port):
         main = fluid.Program()
         with fluid.program_guard(main):
-            main.global_block().append_op(type="fetch_barrier",
-                                          inputs={},
-                                          outputs={"Out": []},
-                                          attrs={
-                                              "endpoints":
-                                              ["127.0.0.1:{0}".format(port)],
-                                              RPC_OP_ROLE_ATTR_NAME:
-                                              RPC_OP_ROLE_ATTR_VALUE
-                                          })
+            main.global_block().append_op(
+                type="fetch_barrier",
+                inputs={},
+                outputs={"Out": []},
+                attrs={
+                    "endpoints": ["127.0.0.1:{0}".format(port)],
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                },
+            )
 
-            x = layers.data(shape=[32, 32],
-                            dtype='float32',
-                            name='X',
-                            append_batch_size=False)
+            x = layers.data(
+                shape=[32, 32],
+                dtype='float32',
+                name='X',
+                append_batch_size=False,
+            )
             x.persistable = True
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
 
@@ -117,7 +123,8 @@ class TestSendOp(unittest.TestCase):
                 name="scale_0.tmp_0",  # server side var
                 dtype="float32",
                 persistable=False,
-                shape=[32, 32])
+                shape=[32, 32],
+            )
             fluid.initializer.Constant(value=2.3)(get_var, main.global_block())
 
             # NOTE(zjl): `Send` is async send, which means that the sent
@@ -136,10 +143,12 @@ class TestSendOp(unittest.TestCase):
     def run_local(self, place):
         main = fluid.Program()
         with fluid.program_guard(main):
-            x = layers.data(shape=[32, 32],
-                            dtype='float32',
-                            name='X',
-                            append_batch_size=False)
+            x = layers.data(
+                shape=[32, 32],
+                dtype='float32',
+                name='X',
+                append_batch_size=False,
+            )
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
             o = layers.scale(x=x, scale=10.0)
         exe = fluid.Executor(place)

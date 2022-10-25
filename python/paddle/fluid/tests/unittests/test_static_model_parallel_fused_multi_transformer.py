@@ -23,7 +23,6 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestStaticModelParallel(TestDistBase):
-
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -33,12 +32,14 @@ class TestStaticModelParallel(TestDistBase):
 
     def test_dist_static_model_parallel_fused_multi_transformer(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "static_model_parallel_fused_multi_transformer.py",
                 delta=1e-5,
                 check_error_log=True,
-                log_name=flag_name)
+                log_name=flag_name,
+            )
 
 
 if __name__ == '__main__':

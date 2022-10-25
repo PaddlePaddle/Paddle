@@ -856,16 +856,6 @@
   kernel :
     func : equal_all
 
-- op : exp
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : exp
-  inplace : (x -> out)
-  backward : exp_grad
-
 - op : expand
   args : (Tensor x, IntArray shape)
   output : Tensor

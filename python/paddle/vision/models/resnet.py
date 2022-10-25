@@ -20,69 +20,87 @@ from paddle.utils.download import get_weights_path_from_url
 __all__ = []
 
 model_urls = {
-    'resnet18': ('https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams',
-                 'cf548f46534aa3560945be4b95cd11c4'),
-    'resnet34': ('https://paddle-hapi.bj.bcebos.com/models/resnet34.pdparams',
-                 '8d2275cf8706028345f78ac0e1d31969'),
-    'resnet50': ('https://paddle-hapi.bj.bcebos.com/models/resnet50.pdparams',
-                 'ca6f485ee1ab0492d38f323885b0ad80'),
-    'resnet101': ('https://paddle-hapi.bj.bcebos.com/models/resnet101.pdparams',
-                  '02f35f034ca3858e1e54d4036443c92d'),
-    'resnet152': ('https://paddle-hapi.bj.bcebos.com/models/resnet152.pdparams',
-                  '7ad16a2f1e7333859ff986138630fd7a'),
-    'resnext50_32x4d':
-    ('https://paddle-hapi.bj.bcebos.com/models/resnext50_32x4d.pdparams',
-     'dc47483169be7d6f018fcbb7baf8775d'),
-    "resnext50_64x4d":
-    ('https://paddle-hapi.bj.bcebos.com/models/resnext50_64x4d.pdparams',
-     '063d4b483e12b06388529450ad7576db'),
-    'resnext101_32x4d':
-    ('https://paddle-hapi.bj.bcebos.com/models/resnext101_32x4d.pdparams',
-     '967b090039f9de2c8d06fe994fb9095f'),
-    'resnext101_64x4d':
-    ('https://paddle-hapi.bj.bcebos.com/models/resnext101_64x4d.pdparams',
-     '98e04e7ca616a066699230d769d03008'),
-    'resnext152_32x4d':
-    ('https://paddle-hapi.bj.bcebos.com/models/resnext152_32x4d.pdparams',
-     '18ff0beee21f2efc99c4b31786107121'),
-    'resnext152_64x4d':
-    ('https://paddle-hapi.bj.bcebos.com/models/resnext152_64x4d.pdparams',
-     '77c4af00ca42c405fa7f841841959379'),
-    'wide_resnet50_2':
-    ('https://paddle-hapi.bj.bcebos.com/models/wide_resnet50_2.pdparams',
-     '0282f804d73debdab289bd9fea3fa6dc'),
-    'wide_resnet101_2':
-    ('https://paddle-hapi.bj.bcebos.com/models/wide_resnet101_2.pdparams',
-     'd4360a2d23657f059216f5d5a1a9ac93'),
+    'resnet18': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams',
+        'cf548f46534aa3560945be4b95cd11c4',
+    ),
+    'resnet34': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnet34.pdparams',
+        '8d2275cf8706028345f78ac0e1d31969',
+    ),
+    'resnet50': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnet50.pdparams',
+        'ca6f485ee1ab0492d38f323885b0ad80',
+    ),
+    'resnet101': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnet101.pdparams',
+        '02f35f034ca3858e1e54d4036443c92d',
+    ),
+    'resnet152': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnet152.pdparams',
+        '7ad16a2f1e7333859ff986138630fd7a',
+    ),
+    'resnext50_32x4d': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnext50_32x4d.pdparams',
+        'dc47483169be7d6f018fcbb7baf8775d',
+    ),
+    "resnext50_64x4d": (
+        'https://paddle-hapi.bj.bcebos.com/models/resnext50_64x4d.pdparams',
+        '063d4b483e12b06388529450ad7576db',
+    ),
+    'resnext101_32x4d': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnext101_32x4d.pdparams',
+        '967b090039f9de2c8d06fe994fb9095f',
+    ),
+    'resnext101_64x4d': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnext101_64x4d.pdparams',
+        '98e04e7ca616a066699230d769d03008',
+    ),
+    'resnext152_32x4d': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnext152_32x4d.pdparams',
+        '18ff0beee21f2efc99c4b31786107121',
+    ),
+    'resnext152_64x4d': (
+        'https://paddle-hapi.bj.bcebos.com/models/resnext152_64x4d.pdparams',
+        '77c4af00ca42c405fa7f841841959379',
+    ),
+    'wide_resnet50_2': (
+        'https://paddle-hapi.bj.bcebos.com/models/wide_resnet50_2.pdparams',
+        '0282f804d73debdab289bd9fea3fa6dc',
+    ),
+    'wide_resnet101_2': (
+        'https://paddle-hapi.bj.bcebos.com/models/wide_resnet101_2.pdparams',
+        'd4360a2d23657f059216f5d5a1a9ac93',
+    ),
 }
 
 
 class BasicBlock(nn.Layer):
     expansion = 1
 
-    def __init__(self,
-                 inplanes,
-                 planes,
-                 stride=1,
-                 downsample=None,
-                 groups=1,
-                 base_width=64,
-                 dilation=1,
-                 norm_layer=None):
+    def __init__(
+        self,
+        inplanes,
+        planes,
+        stride=1,
+        downsample=None,
+        groups=1,
+        base_width=64,
+        dilation=1,
+        norm_layer=None,
+    ):
         super(BasicBlock, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2D
 
         if dilation > 1:
             raise NotImplementedError(
-                "Dilation > 1 not supported in BasicBlock")
+                "Dilation > 1 not supported in BasicBlock"
+            )
 
-        self.conv1 = nn.Conv2D(inplanes,
-                               planes,
-                               3,
-                               padding=1,
-                               stride=stride,
-                               bias_attr=False)
+        self.conv1 = nn.Conv2D(
+            inplanes, planes, 3, padding=1, stride=stride, bias_attr=False
+        )
         self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2D(planes, planes, 3, padding=1, bias_attr=False)
@@ -113,37 +131,40 @@ class BottleneckBlock(nn.Layer):
 
     expansion = 4
 
-    def __init__(self,
-                 inplanes,
-                 planes,
-                 stride=1,
-                 downsample=None,
-                 groups=1,
-                 base_width=64,
-                 dilation=1,
-                 norm_layer=None):
+    def __init__(
+        self,
+        inplanes,
+        planes,
+        stride=1,
+        downsample=None,
+        groups=1,
+        base_width=64,
+        dilation=1,
+        norm_layer=None,
+    ):
         super(BottleneckBlock, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2D
-        width = int(planes * (base_width / 64.)) * groups
+        width = int(planes * (base_width / 64.0)) * groups
 
         self.conv1 = nn.Conv2D(inplanes, width, 1, bias_attr=False)
         self.bn1 = norm_layer(width)
 
-        self.conv2 = nn.Conv2D(width,
-                               width,
-                               3,
-                               padding=dilation,
-                               stride=stride,
-                               groups=groups,
-                               dilation=dilation,
-                               bias_attr=False)
+        self.conv2 = nn.Conv2D(
+            width,
+            width,
+            3,
+            padding=dilation,
+            stride=stride,
+            groups=groups,
+            dilation=dilation,
+            bias_attr=False,
+        )
         self.bn2 = norm_layer(width)
 
-        self.conv3 = nn.Conv2D(width,
-                               planes * self.expansion,
-                               1,
-                               bias_attr=False)
+        self.conv3 = nn.Conv2D(
+            width, planes * self.expansion, 1, bias_attr=False
+        )
         self.bn3 = norm_layer(planes * self.expansion)
         self.relu = nn.ReLU()
         self.downsample = downsample
@@ -214,20 +235,22 @@ class ResNet(nn.Layer):
             # [1, 1000]
     """
 
-    def __init__(self,
-                 block,
-                 depth=50,
-                 width=64,
-                 num_classes=1000,
-                 with_pool=True,
-                 groups=1):
+    def __init__(
+        self,
+        block,
+        depth=50,
+        width=64,
+        num_classes=1000,
+        with_pool=True,
+        groups=1,
+    ):
         super(ResNet, self).__init__()
         layer_cfg = {
             18: [2, 2, 2, 2],
             34: [3, 4, 6, 3],
             50: [3, 4, 6, 3],
             101: [3, 4, 23, 3],
-            152: [3, 8, 36, 3]
+            152: [3, 8, 36, 3],
         }
         layers = layer_cfg[depth]
         self.groups = groups
@@ -239,12 +262,14 @@ class ResNet(nn.Layer):
         self.inplanes = 64
         self.dilation = 1
 
-        self.conv1 = nn.Conv2D(3,
-                               self.inplanes,
-                               kernel_size=7,
-                               stride=2,
-                               padding=3,
-                               bias_attr=False)
+        self.conv1 = nn.Conv2D(
+            3,
+            self.inplanes,
+            kernel_size=7,
+            stride=2,
+            padding=3,
+            bias_attr=False,
+        )
         self.bn1 = self._norm_layer(self.inplanes)
         self.relu = nn.ReLU()
         self.maxpool = nn.MaxPool2D(kernel_size=3, stride=2, padding=1)
@@ -267,26 +292,40 @@ class ResNet(nn.Layer):
             stride = 1
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2D(self.inplanes,
-                          planes * block.expansion,
-                          1,
-                          stride=stride,
-                          bias_attr=False),
+                nn.Conv2D(
+                    self.inplanes,
+                    planes * block.expansion,
+                    1,
+                    stride=stride,
+                    bias_attr=False,
+                ),
                 norm_layer(planes * block.expansion),
             )
 
         layers = []
         layers.append(
-            block(self.inplanes, planes, stride, downsample, self.groups,
-                  self.base_width, previous_dilation, norm_layer))
+            block(
+                self.inplanes,
+                planes,
+                stride,
+                downsample,
+                self.groups,
+                self.base_width,
+                previous_dilation,
+                norm_layer,
+            )
+        )
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
             layers.append(
-                block(self.inplanes,
-                      planes,
-                      groups=self.groups,
-                      base_width=self.base_width,
-                      norm_layer=norm_layer))
+                block(
+                    self.inplanes,
+                    planes,
+                    groups=self.groups,
+                    base_width=self.base_width,
+                    norm_layer=norm_layer,
+                )
+            )
 
         return nn.Sequential(*layers)
 
@@ -313,10 +352,14 @@ class ResNet(nn.Layer):
 def _resnet(arch, Block, depth, pretrained, **kwargs):
     model = ResNet(Block, depth, **kwargs)
     if pretrained:
-        assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch)
-        weight_path = get_weights_path_from_url(model_urls[arch][0],
-                                                model_urls[arch][1])
+        assert (
+            arch in model_urls
+        ), "{} model do not have a pretrained model now, you should set pretrained=False".format(
+            arch
+        )
+        weight_path = get_weights_path_from_url(
+            model_urls[arch][0], model_urls[arch][1]
+        )
 
         param = paddle.load(weight_path)
         model.set_dict(param)
@@ -591,8 +634,9 @@ def resnext101_32x4d(pretrained=False, **kwargs):
     """
     kwargs['groups'] = 32
     kwargs['width'] = 4
-    return _resnet('resnext101_32x4d', BottleneckBlock, 101, pretrained,
-                   **kwargs)
+    return _resnet(
+        'resnext101_32x4d', BottleneckBlock, 101, pretrained, **kwargs
+    )
 
 
 def resnext101_64x4d(pretrained=False, **kwargs):
@@ -627,8 +671,9 @@ def resnext101_64x4d(pretrained=False, **kwargs):
     """
     kwargs['groups'] = 64
     kwargs['width'] = 4
-    return _resnet('resnext101_64x4d', BottleneckBlock, 101, pretrained,
-                   **kwargs)
+    return _resnet(
+        'resnext101_64x4d', BottleneckBlock, 101, pretrained, **kwargs
+    )
 
 
 def resnext152_32x4d(pretrained=False, **kwargs):
@@ -663,8 +708,9 @@ def resnext152_32x4d(pretrained=False, **kwargs):
     """
     kwargs['groups'] = 32
     kwargs['width'] = 4
-    return _resnet('resnext152_32x4d', BottleneckBlock, 152, pretrained,
-                   **kwargs)
+    return _resnet(
+        'resnext152_32x4d', BottleneckBlock, 152, pretrained, **kwargs
+    )
 
 
 def resnext152_64x4d(pretrained=False, **kwargs):
@@ -699,8 +745,9 @@ def resnext152_64x4d(pretrained=False, **kwargs):
     """
     kwargs['groups'] = 64
     kwargs['width'] = 4
-    return _resnet('resnext152_64x4d', BottleneckBlock, 152, pretrained,
-                   **kwargs)
+    return _resnet(
+        'resnext152_64x4d', BottleneckBlock, 152, pretrained, **kwargs
+    )
 
 
 def wide_resnet50_2(pretrained=False, **kwargs):
@@ -768,5 +815,6 @@ def wide_resnet101_2(pretrained=False, **kwargs):
             # [1, 1000]
     """
     kwargs['width'] = 64 * 2
-    return _resnet('wide_resnet101_2', BottleneckBlock, 101, pretrained,
-                   **kwargs)
+    return _resnet(
+        'wide_resnet101_2', BottleneckBlock, 101, pretrained, **kwargs
+    )

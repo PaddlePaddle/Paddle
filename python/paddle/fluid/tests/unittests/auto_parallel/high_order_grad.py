@@ -22,7 +22,6 @@ paddle.seed(1234)
 
 
 class FCNet:
-
     def __init__(self, num_ins, num_outs, num_layers, hidden_size):
         self.num_ins = num_ins
         self.num_outs = num_outs
@@ -43,12 +42,12 @@ class FCNet:
                 lsize = self.hidden_size
                 rsize = self.hidden_size
 
-            w = paddle.static.create_parameter(shape=[lsize, rsize],
-                                               dtype="float32",
-                                               is_bias=False)
-            b = paddle.static.create_parameter(shape=[rsize],
-                                               dtype="float32",
-                                               is_bias=True)
+            w = paddle.static.create_parameter(
+                shape=[lsize, rsize], dtype="float32", is_bias=False
+            )
+            b = paddle.static.create_parameter(
+                shape=[rsize], dtype="float32", is_bias=True
+            )
             self.weights.append(w)
             self.biases.append(b)
 
@@ -62,13 +61,14 @@ class FCNet:
 
 
 class LaplaceModel(paddle.nn.Layer):
-
     def __init__(self, num_ins=2, num_outs=1, num_layers=5, hidden_size=20):
         super(LaplaceModel, self).__init__()
-        self.net = FCNet(num_ins=num_ins,
-                         num_outs=num_outs,
-                         num_layers=num_layers,
-                         hidden_size=hidden_size)
+        self.net = FCNet(
+            num_ins=num_ins,
+            num_outs=num_outs,
+            num_layers=num_layers,
+            hidden_size=hidden_size,
+        )
 
     def forward(self, inputs, bc_index):
         inputs.stop_gradient = False
@@ -82,7 +82,6 @@ class LaplaceModel(paddle.nn.Layer):
 
 
 class LaplaceDataset(paddle.io.Dataset):
-
     def __init__(self, num_sample):
         self.num_sample = num_sample
 
@@ -126,10 +125,9 @@ def main():
     dist_strategy = auto.Strategy()
     dist_strategy.auto_mode = "semi"
 
-    engine = auto.Engine(laplace,
-                         loss=loss_func,
-                         optimizer=optimizer,
-                         strategy=dist_strategy)
+    engine = auto.Engine(
+        laplace, loss=loss_func, optimizer=optimizer, strategy=dist_strategy
+    )
     engine.fit(train_dataset, train_sample_split=2, batch_size=None)
 
     dist_context = engine.dist_context

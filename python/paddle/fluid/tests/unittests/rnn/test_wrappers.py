@@ -25,25 +25,29 @@ from rnn_numpy import GRUCell, RNN, BiRNN
 
 
 class TestRNNWrapper(unittest.TestCase):
-
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super(TestRNNWrapper, self).__init__("runTest")
         self.time_major = time_major
         self.direction = direction
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = (
+            paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
+        )
 
     def setUp(self):
         paddle.disable_static(self.place)
         cell1 = GRUCell(16, 32)
         cell2 = paddle.nn.GRUCell(16, 32)
         convert_params_for_cell(cell1, cell2)
-        rnn1 = RNN(cell1,
-                   is_reverse=self.direction == "backward",
-                   time_major=self.time_major)
-        rnn2 = paddle.nn.RNN(cell2,
-                             is_reverse=self.direction == "backward",
-                             time_major=self.time_major)
+        rnn1 = RNN(
+            cell1,
+            is_reverse=self.direction == "backward",
+            time_major=self.time_major,
+        )
+        rnn2 = paddle.nn.RNN(
+            cell2,
+            is_reverse=self.direction == "backward",
+            time_major=self.time_major,
+        )
 
         self.rnn1 = rnn1
         self.rnn2 = rnn2
@@ -104,12 +108,12 @@ class TestRNNWrapper(unittest.TestCase):
 
 
 class TestBiRNNWrapper(unittest.TestCase):
-
     def __init__(self, time_major=True, place="cpu"):
         super(TestBiRNNWrapper, self).__init__("runTest")
         self.time_major = time_major
-        self.place = paddle.CPUPlace() if place == "cpu" \
-            else paddle.CUDAPlace(0)
+        self.place = (
+            paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
+        )
 
     def setUp(self):
         paddle.disable_static(self.place)
@@ -138,7 +142,8 @@ class TestBiRNNWrapper(unittest.TestCase):
         y1, (fw_h1, bw_h1) = rnn1(x, (fw_prev_h, bw_prev_h))
         y2, (fw_h2, bw_h2) = rnn2(
             paddle.to_tensor(x),
-            (paddle.to_tensor(fw_prev_h), paddle.to_tensor(bw_prev_h)))
+            (paddle.to_tensor(fw_prev_h), paddle.to_tensor(bw_prev_h)),
+        )
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(fw_h1, fw_h2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(bw_h1, bw_h2.numpy(), atol=1e-8, rtol=1e-5)
@@ -188,8 +193,9 @@ class TestBiRNNWrapper(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
-    devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
-        else ["cpu"]
+    devices = (
+        ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() else ["cpu"]
+    )
     for direction in ["forward", "backward"]:
         for device in devices:
             for time_major in [False]:

@@ -106,21 +106,25 @@ class Adagrad(Optimizer):
     """
     _moment_acc_str = "moment"
 
-    def __init__(self,
-                 learning_rate,
-                 epsilon=1.0e-6,
-                 parameters=None,
-                 weight_decay=None,
-                 grad_clip=None,
-                 name=None,
-                 initial_accumulator_value=0.0):
+    def __init__(
+        self,
+        learning_rate,
+        epsilon=1.0e-6,
+        parameters=None,
+        weight_decay=None,
+        grad_clip=None,
+        name=None,
+        initial_accumulator_value=0.0,
+    ):
         assert learning_rate is not None
         assert epsilon is not None
-        super(Adagrad, self).__init__(learning_rate=learning_rate,
-                                      parameters=parameters,
-                                      weight_decay=weight_decay,
-                                      grad_clip=grad_clip,
-                                      name=name)
+        super(Adagrad, self).__init__(
+            learning_rate=learning_rate,
+            parameters=parameters,
+            weight_decay=weight_decay,
+            grad_clip=grad_clip,
+            name=name,
+        )
         self.type = "adagrad"
         self._epsilon = epsilon
         self.initial_accumulator_value = initial_accumulator_value
@@ -136,9 +140,11 @@ class Adagrad(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
-            self._add_accumulator(self._moment_acc_str,
-                                  p,
-                                  fill_value=self.initial_accumulator_value)
+            self._add_accumulator(
+                self._moment_acc_str,
+                p,
+                fill_value=self.initial_accumulator_value,
+            )
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -146,26 +152,22 @@ class Adagrad(Optimizer):
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        moment_acc = self._get_accumulator(self._moment_acc_str,
-                                           param_and_grad[0])
+        moment_acc = self._get_accumulator(
+            self._moment_acc_str, param_and_grad[0]
+        )
         # Create the adagrad optimizer op
-        adagrad_op = block.append_op(type=self.type,
-                                     inputs={
-                                         "Param":
-                                         param_and_grad[0],
-                                         "Grad":
-                                         param_and_grad[1],
-                                         "Moment":
-                                         moment_acc,
-                                         "LearningRate":
-                                         self._create_param_lr(param_and_grad)
-                                     },
-                                     outputs={
-                                         "ParamOut": param_and_grad[0],
-                                         "MomentOut": moment_acc
-                                     },
-                                     attrs={"epsilon": self._epsilon},
-                                     stop_gradient=True)
+        adagrad_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": moment_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            },
+            outputs={"ParamOut": param_and_grad[0], "MomentOut": moment_acc},
+            attrs={"epsilon": self._epsilon},
+            stop_gradient=True,
+        )
 
         return adagrad_op
 
@@ -173,6 +175,7 @@ class Adagrad(Optimizer):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
         self.initial_accumulator_value = parameters.get(
             'initial_accumulator_value',
-            self._default_dict['initial_accumulator_value'])
+            self._default_dict['initial_accumulator_value'],
+        )
         parameters = parameters.get('params')
         return parameters
