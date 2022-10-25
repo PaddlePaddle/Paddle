@@ -190,7 +190,7 @@ void MultiTensorAdamKernel(
     phi::Copy(
         dev_ctx, skip_update.get(), CPUPlace(), false, &skip_update_tensor);
     skip_update_value = skip_update_tensor.data<bool>()[0];
-    VLOG(4) << "skip_update_value:" << skip_update_value << std::endl;
+    VLOG(4) << "skip_update_value:" << skip_update_value;
   }
 
   // skip_update=true
