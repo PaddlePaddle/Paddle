@@ -134,15 +134,13 @@ class TestPowerAPI(unittest.TestCase):
         # test float scalar ** 2-d float tensor
         dims = (np.random.randint(1, 10), np.random.randint(5, 10))
         x = np.random.rand() * 10
-        y = (np.random.rand(*dims) * 10).astype(np.float64)
+        y = (np.random.rand(*dims) * 10).astype(np.float32)
         res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
-        res = _run_power(STATIC, x, y)
         np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
         # test 2-d float tensor ** float scalar
         dims = (np.random.randint(1, 10), np.random.randint(5, 10))
-        x = (np.random.rand(*dims) * 10).astype(np.float64)
+        x = (np.random.rand(*dims) * 10).astype(np.float32)
         y = np.random.rand() * 10
         res = _run_power(DYNAMIC, x, y)
         np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
