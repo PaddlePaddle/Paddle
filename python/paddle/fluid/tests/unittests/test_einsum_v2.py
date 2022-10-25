@@ -248,6 +248,11 @@ class TestEinsumTraceDiag5(TestEinsum):
         self.sample = {"paradigm": "aaa->a", "data": ["N"]}
 
 
+class TestEinsumTraceDiag6(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "i->iii", "data": ["x"]}
+
+
 class TestEinsumTraceDiag2Ops(TestEinsum):
     def setUp(self):
         self.sample = {"paradigm": "ijki,jkjk->ik", "data": ["O", "P"]}
