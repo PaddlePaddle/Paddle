@@ -399,6 +399,10 @@ void ConvertToMixedPrecisionPass::LoadAndPrepare() {
       inference::Load(&executor_, &scope_, model_file_, params_file_);
   main_graph_ = std::unique_ptr<framework::ir::Graph>(
       new framework::ir::Graph(*program_desc_));
+  for (size_t i = 0; i < main_graph_->SubGraphsSize(); ++i) {
+    auto* graph = main_graph_->GetSubGraph(i);
+    graphes_.push_back(graph);
+  }
 
   // Remove all control var
   IrInferCleanGraphPass pass;
@@ -496,9 +500,8 @@ void ConvertToMixedPrecisionPass::ConvertAllFp64ToFp32(
 void ConvertToMixedPrecisionPass::Run() {
   LoadAndPrepare();
 
-  for (size_t i = 0; i < main_graph_->SubGraphsSize(); ++i) {
-    auto* graph = main_graph_->GetSubGraph(i);
-    graphes_.push_back(graph);
+  for (size_t i = 0; i < graphes_.size(); ++i) {
+    auto* graph = graphes_[i];
     VLOG(2) << " --------  handle subgraph " << i << ", has "
             << graph->Nodes().size() << " nodes --------";
 
