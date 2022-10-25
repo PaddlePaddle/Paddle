@@ -13,25 +13,34 @@
 # limitations under the License.
 
 import paddle
+import paddle.distributed as dist
 import paddle.fluid as fluid
-import unittest
 import test_collective_api_base as test_base
 
 
 class TestCollectiveIsendIrecvAPI(test_base.TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
         with fluid.program_guard(main_prog, startup_program):
-            tindata = paddle.to_tensor(indata)
-            if rank == 0:
-                task = paddle.distributed.isend(tindata, dst=1)
+            # NOTE: this is a hack relying on an undocumented behavior that `to_tensor` uses uint16 to replace bfloat16
+            if indata.dtype == "bfloat16":
+                tindata = paddle.to_tensor(indata, "float32").cast("uint16")
+                if rank == 0:
+                    task = dist.isend(tindata, dst=1)
+                else:
+                    task = dist.irecv(tindata, src=0)
+                task.wait()
+                return [tindata.cast("float32").numpy()]
             else:
-                task = paddle.distributed.irecv(tindata, src=0)
-            task.wait()
-            return [tindata.numpy()]
+                tindata = paddle.to_tensor(indata)
+                if rank == 0:
+                    task = dist.isend(tindata, dst=1)
+                else:
+                    task = dist.irecv(tindata, src=0)
+                task.wait()
+                return [tindata.numpy()]
 
 
 if __name__ == "__main__":

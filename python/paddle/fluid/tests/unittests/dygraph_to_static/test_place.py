@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import paddle
 import unittest
 
 
 class TestPlace(unittest.TestCase):
-
     def test_place(self):
 
         paddle.enable_static()

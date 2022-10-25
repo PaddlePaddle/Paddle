@@ -16,20 +16,13 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
+from paddle.fluid.incubate.fleet.collective import fleet
 import os
-import sys
 
 from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
-from paddle.fluid.framework import program_guard
-from paddle.fluid import unique_name
 
-import numpy as np
-from paddle.io import Dataset, BatchSampler, DataLoader
-
-from paddle.fluid.tests.unittests.auto_checkpoint_utils import AutoCheckpointBase, get_logger
+from paddle.fluid.tests.unittests.auto_checkpoint_utils import get_logger
 from test_auto_checkpoint import AutoCheckPointACLBase
 
 paddle.enable_static()
@@ -37,7 +30,6 @@ logger = get_logger()
 
 
 class AutoCheckpointTestDist(AutoCheckPointACLBase):
-
     def setUp(self):
         get_logger()
         logger.info("enter tests")
@@ -54,7 +46,7 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
             "PADDLE_EDL_HDFS_CHECKPOINT_PATH": "auto_checkpoint_dist_basic",
             "PADDLE_EDL_ONLY_FOR_CE_TEST": "1",
             "PADDLE_EDL_FS_CACHE": ".auto_checkpoint_test_dist_basic",
-            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0"
+            "PADDLE_EDL_SAVE_CHECKPOINT_INTER": "0",
         }
         os.environ.update(proc_env)
 
@@ -72,8 +64,9 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
         # basic
         exe, main_prog, startup_prog = self._generate()
 
-        compiled, data_loader, optimizer, loss, image, label = \
-            self._init_env(exe, main_prog, startup_prog, minimize=False)
+        compiled, data_loader, optimizer, loss, image, label = self._init_env(
+            exe, main_prog, startup_prog, minimize=False
+        )
 
         # fleet
         os.environ["TRAINING_ROLE"] = "TRAINER"
@@ -98,9 +91,9 @@ class AutoCheckpointTestDist(AutoCheckPointACLBase):
             logger.info("_run_save_0 name:{} epoch_no:{}".format(o.name, i))
 
             for data in data_loader():
-                fetch = exe.run(fleet.main_program,
-                                feed=data,
-                                fetch_list=[loss])
+                fetch = exe.run(
+                    fleet.main_program, feed=data, fetch_list=[loss]
+                )
 
             self.assertEqual(len(o._exe_status), 1)
 

@@ -12,19 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import contextlib
-import unittest
 import numpy as np
-import six
-import pickle
-import random
 
 import paddle
 import paddle.fluid as fluid
-import paddle.distributed as dist
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid import core
 from paddle.fluid.dygraph.nn import Linear
 from test_dist_base import runtime_main
 from parallel_dygraph_no_sync import TestNoSync
@@ -36,7 +27,6 @@ batch_num = 1000
 
 
 class SimpleNetControlFlow(fluid.Layer):
-
     def __init__(self):
         super(SimpleNetControlFlow, self).__init__()
         self.net_a = Linear(input_dim=10, output_dim=20)
@@ -55,14 +45,14 @@ class SimpleNetControlFlow(fluid.Layer):
 
 
 class TestNoSyncControlFlow(TestNoSync):
-
     def get_model(self):
         model = SimpleNetControlFlow()
-        train_reader = paddle.batch(fake_sample_reader(),
-                                    batch_size=batch_size,
-                                    drop_last=True)
-        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
-                                         parameters=model.parameters())
+        train_reader = paddle.batch(
+            fake_sample_reader(), batch_size=batch_size, drop_last=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model.parameters()
+        )
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):
@@ -75,10 +65,9 @@ class TestNoSyncControlFlow(TestNoSync):
 
 
 def fake_sample_reader():
-
     def __reader__():
         for i in range(batch_num):
-            x_data = np.random.random_sample((10, )).astype('float32')
+            x_data = np.random.random_sample((10,)).astype('float32')
             yield x_data
 
     return __reader__

@@ -26,18 +26,19 @@ paddle.enable_static()
 
 
 class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
-
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
 
-    def compare_fuse_all_reduce_ops(self,
-                                    model,
-                                    use_device,
-                                    init_feed_dict=None,
-                                    get_data_from_feeder=None,
-                                    optimizer=None,
-                                    fuse_all_optimizer_ops=False):
+    def compare_fuse_all_reduce_ops(
+        self,
+        model,
+        use_device,
+        init_feed_dict=None,
+        get_data_from_feeder=None,
+        optimizer=None,
+        fuse_all_optimizer_ops=False,
+    ):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
         if use_device == DeviceType.XPU and not core.is_compiled_with_xpu():
@@ -48,22 +49,32 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
             img, label = init_feed_dict()
             feed_dict_data = {"image": img, "label": label}
 
-        not_fuse_op_first_loss, not_fuse_op_last_loss, _ = self.check_network_convergence(
+        (
+            not_fuse_op_first_loss,
+            not_fuse_op_last_loss,
+            _,
+        ) = self.check_network_convergence(
             model,
             feed_dict=feed_dict_data,
             get_data_from_feeder=get_data_from_feeder,
             use_device=use_device,
             fuse_all_reduce_ops=False,
             fuse_all_optimizer_ops=fuse_all_optimizer_ops,
-            optimizer=optimizer)
-        fuse_op_first_loss, fuse_op_last_loss, _ = self.check_network_convergence(
+            optimizer=optimizer,
+        )
+        (
+            fuse_op_first_loss,
+            fuse_op_last_loss,
+            _,
+        ) = self.check_network_convergence(
             model,
             feed_dict=feed_dict_data,
             get_data_from_feeder=get_data_from_feeder,
             use_device=use_device,
             fuse_all_reduce_ops=True,
             fuse_all_optimizer_ops=fuse_all_optimizer_ops,
-            optimizer=optimizer)
+            optimizer=optimizer,
+        )
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
@@ -73,18 +84,20 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
     def optimizer(self, learning_rate=1e-3):
         optimizer = fluid.optimizer.SGD(
             learning_rate=learning_rate,
-            regularization=fluid.regularizer.L2Decay(1e-3))
+            regularization=fluid.regularizer.L2Decay(1e-3),
+        )
         return optimizer
 
 
 class TestFuseAllReduceOps(TestFuseAllReduceOpsBase):
-
     def _decorate_compare_fused_all_reduce(self, model, use_device):
-        self.compare_fuse_all_reduce_ops(model,
-                                         use_device,
-                                         init_feed_dict=init_data,
-                                         optimizer=self.optimizer,
-                                         fuse_all_optimizer_ops=True)
+        self.compare_fuse_all_reduce_ops(
+            model,
+            use_device,
+            init_feed_dict=init_data,
+            optimizer=self.optimizer,
+            fuse_all_optimizer_ops=True,
+        )
 
     def test_simple_fc_with_fuse_all_reduce(self):
         self._decorate_compare_fused_all_reduce(simple_fc_net, DeviceType.CUDA)
@@ -92,27 +105,29 @@ class TestFuseAllReduceOps(TestFuseAllReduceOpsBase):
         self._decorate_compare_fused_all_reduce(simple_fc_net, DeviceType.CPU)
 
     def test_batchnorm_fc_with_fuse_all_reduce(self):
-        self._decorate_compare_fused_all_reduce(fc_with_batchnorm,
-                                                DeviceType.CUDA)
+        self._decorate_compare_fused_all_reduce(
+            fc_with_batchnorm, DeviceType.CUDA
+        )
         # TODO(wangxi): xpu batch_norm op only support dim = 4
         # self._decorate_compare_fused_all_reduce(fc_with_batchnorm,
         #                                         DeviceType.XPU)
-        self._decorate_compare_fused_all_reduce(fc_with_batchnorm,
-                                                DeviceType.CPU)
+        self._decorate_compare_fused_all_reduce(
+            fc_with_batchnorm, DeviceType.CPU
+        )
 
 
 class TestFuseAllReduceOpsAndOptiOps(TestFuseAllReduceOps):
-
     def _decorate_compare_fused_all_reduce(self, model, use_device):
-        self.compare_fuse_all_reduce_ops(model,
-                                         use_device,
-                                         init_feed_dict=init_data,
-                                         optimizer=self.optimizer,
-                                         fuse_all_optimizer_ops=True)
+        self.compare_fuse_all_reduce_ops(
+            model,
+            use_device,
+            init_feed_dict=init_data,
+            optimizer=self.optimizer,
+            fuse_all_optimizer_ops=True,
+        )
 
 
 class TestFuseAllReduceOpsWithSparseGrad(TestFuseAllReduceOpsBase):
-
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
@@ -132,7 +147,8 @@ class TestFuseAllReduceOpsWithSparseGrad(TestFuseAllReduceOpsBase):
             model,
             use_device,
             get_data_from_feeder=self.get_data_from_feeder,
-            optimizer=self.optimizer)
+            optimizer=self.optimizer,
+        )
 
     def test_simple_bow_net_with_fuse_all_reduce(self):
         model = partial(bow_net, dict_dim=self.word_dict_len, is_sparse=True)

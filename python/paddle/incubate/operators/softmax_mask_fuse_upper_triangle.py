@@ -14,8 +14,7 @@
 
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import _non_static_mode
-from paddle.fluid import core
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 
 
 def softmax_mask_fuse_upper_triangle(x):
@@ -64,7 +63,9 @@ def softmax_mask_fuse_upper_triangle(x):
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
-    helper.append_op(type='fused_softmax_mask_upper_triangle',
-                     inputs={'X': [x]},
-                     outputs={'Out': [out]})
+    helper.append_op(
+        type='fused_softmax_mask_upper_triangle',
+        inputs={'X': [x]},
+        outputs={'Out': [out]},
+    )
     return out

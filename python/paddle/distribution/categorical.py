@@ -12,21 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-import warnings
-
 import numpy as np
 import paddle
-from paddle import _C_ops, _legacy_C_ops
 from paddle.distribution import distribution
-from paddle.fluid import core
-from paddle.fluid.data_feeder import (check_dtype, check_type,
-                                      check_variable_and_dtype, convert_dtype)
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
-from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
-                                 elementwise_mul, elementwise_sub, nn, ops,
-                                 tensor)
-from paddle.tensor import arange, concat, gather_nd, multinomial
+from paddle.fluid.data_feeder import check_type, convert_dtype
+from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.layers import ops, tensor
+from paddle.tensor import multinomial
 
 
 class Categorical(distribution.Distribution):
@@ -98,9 +90,12 @@ class Categorical(distribution.Distribution):
             name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         """
         if not _non_static_mode():
-            check_type(logits, 'logits',
-                       (np.ndarray, tensor.Variable, list, tuple),
-                       'Categorical')
+            check_type(
+                logits,
+                'logits',
+                (np.ndarray, tensor.Variable, list, tuple),
+                'Categorical',
+            )
 
         self.name = name if name is not None else 'Categorical'
         self.dtype = 'float32'
@@ -109,8 +104,10 @@ class Categorical(distribution.Distribution):
             self.logits = logits
             self.dtype = convert_dtype(logits.dtype)
         else:
-            if isinstance(logits, np.ndarray) and str(
-                    logits.dtype) in ['float32', 'float64']:
+            if isinstance(logits, np.ndarray) and str(logits.dtype) in [
+                'float32',
+                'float64',
+            ]:
                 self.dtype = logits.dtype
             self.logits = self._to_tensor(logits)[0]
             if self.dtype != convert_dtype(self.logits.dtype):
@@ -157,13 +154,15 @@ class Categorical(distribution.Distribution):
         if len(logits_shape) > 1:
             sample_shape = shape + logits_shape[:-1]
             logits = paddle.reshape(
-                self.logits, [np.prod(logits_shape[:-1]), logits_shape[-1]])
+                self.logits, [np.prod(logits_shape[:-1]), logits_shape[-1]]
+            )
         else:
             sample_shape = shape
             logits = self.logits
 
-        sample_index = multinomial(self._logits_to_probs(logits), num_samples,
-                                   True)
+        sample_index = multinomial(
+            self._logits_to_probs(logits), num_samples, True
+        )
 
         # multinomial sample shape is (logits.shape[:-1], num_samples), need to
         # tanspose to (num_samples, logits.shape[:-1])
@@ -211,21 +210,22 @@ class Categorical(distribution.Distribution):
         if not _non_static_mode():
             check_type(other, 'other', Categorical, 'kl_divergence')
 
-        logits = self.logits - \
-            paddle.max(self.logits, axis=-1, keepdim=True)
+        logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
         other_logits = other.logits - paddle.max(
-            other.logits, axis=-1, keepdim=True)
+            other.logits, axis=-1, keepdim=True
+        )
         e_logits = ops.exp(logits)
         other_e_logits = ops.exp(other_logits)
         z = paddle.sum(e_logits, axis=-1, keepdim=True)
         other_z = paddle.sum(other_e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
         kl = paddle.sum(
-            prob *
-            (logits - paddle.log(z) - other_logits + paddle.log(other_z)),
+            prob
+            * (logits - paddle.log(z) - other_logits + paddle.log(other_z)),
             axis=-1,
             keepdim=True,
-            name=name)
+            name=name,
+        )
 
         return kl
 
@@ -254,8 +254,7 @@ class Categorical(distribution.Distribution):
 
         """
         name = self.name + '_entropy'
-        logits = self.logits - \
-            paddle.max(self.logits, axis=-1, keepdim=True)
+        logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
         e_logits = ops.exp(logits)
         z = paddle.sum(e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
@@ -301,17 +300,20 @@ class Categorical(distribution.Distribution):
         """
         name = self.name + '_probs'
         if len(self._prob.shape) == 1:  # batch_shape is empty
-            return paddle.gather(self._prob,
-                                 value.reshape([-1], name=name),
-                                 name=name).reshape(value.shape, name=name)
+            return paddle.gather(
+                self._prob, value.reshape([-1], name=name), name=name
+            ).reshape(value.shape, name=name)
         else:
             if len(value.shape) == 1:
                 return paddle.take_along_axis(
                     self._prob,
-                    paddle.reshape(value,
-                                   (len(self._prob.shape) - 1) * [1] + [-1],
-                                   name=name),
-                    axis=-1)
+                    paddle.reshape(
+                        value,
+                        (len(self._prob.shape) - 1) * [1] + [-1],
+                        name=name,
+                    ),
+                    axis=-1,
+                )
             else:
                 return paddle.take_along_axis(self._prob, value, axis=-1)
 

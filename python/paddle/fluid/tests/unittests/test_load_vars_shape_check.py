@@ -15,14 +15,11 @@
 import unittest
 import os
 import shutil
-import numpy as np
-import paddle as paddle
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 
 
 class TestLoadVarsShapeCheck(unittest.TestCase):
-
     def setUp(self):
         self.model_path = "./model_temp/"
 

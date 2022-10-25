@@ -14,15 +14,13 @@
 
 import unittest
 import numpy as np
-import struct
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle import enable_static
 
 
 class TestConcatAxis0OneDNNOp(OpTest):
-
     def setUp(self):
         self.op_type = "concat"
         self.mkldnn_data_type = "float32"
@@ -34,11 +32,12 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_mkldnn': True,
-            'mkldnn_data_type': self.mkldnn_data_type
+            'mkldnn_data_type': self.mkldnn_data_type,
         }
 
-        self.output = np.concatenate((self.x0, self.x1, self.x2),
-                                     axis=self.axis).astype(self.dtype)
+        self.output = np.concatenate(
+            (self.x0, self.x1, self.x2), axis=self.axis
+        ).astype(self.dtype)
 
         self.outputs = {'Out': self.output}
 
@@ -69,7 +68,6 @@ class TestConcatAxis0OneDNNOp(OpTest):
 
 
 class TestConcatAxis1OneDNNOp(TestConcatAxis0OneDNNOp):
-
     def init_axis(self):
         self.axis = 1
 
@@ -80,7 +78,6 @@ class TestConcatAxis1OneDNNOp(TestConcatAxis0OneDNNOp):
 
 
 class TestConcatAxis2OneDNNOp(TestConcatAxis0OneDNNOp):
-
     def init_axis(self):
         self.axis = 2
 
@@ -91,7 +88,6 @@ class TestConcatAxis2OneDNNOp(TestConcatAxis0OneDNNOp):
 
 
 class TestConcatAxis3OneDNNOp(TestConcatAxis0OneDNNOp):
-
     def init_axis(self):
         self.axis = 3
 

@@ -17,15 +17,14 @@ import numpy as np
 import sys
 
 sys.path.append("..")
-from op_test_xpu import OpTest, XPUOpTest
+from op_test_xpu import XPUOpTest
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
-from paddle.fluid import compiler, Program, program_guard, core
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 from scipy.special import logit
 from scipy.special import expit
@@ -34,15 +33,13 @@ paddle.enable_static()
 
 
 class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
-    """Test sigmoid_cross_entropy_with_logit_op with binary label
-    """
+    """Test sigmoid_cross_entropy_with_logit_op with binary label"""
 
     def __init__(self):
         self.op_name = "sigmoid_cross_entropy_with_logits"
         self.use_dynamic_create_class = False
 
     class TestSigmoidCrossEntropyWithLogitsOp(XPUOpTest):
-
         def setUp(self):
             self.set_xpu()
             self.op_type = "sigmoid_cross_entropy_with_logits"
@@ -65,13 +62,14 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             batch_size = 64
             num_classes = 20
             self.inputs = {
-                'X':
-                logit(
+                'X': logit(
                     np.random.uniform(0, 1, (batch_size, num_classes)).astype(
-                        self.dtype)),
-                'Label':
-                np.random.randint(0, 2,
-                                  (batch_size, num_classes)).astype(self.dtype)
+                        self.dtype
+                    )
+                ),
+                'Label': np.random.randint(
+                    0, 2, (batch_size, num_classes)
+                ).astype(self.dtype),
             }
             self.attrs = {'num_classes': num_classes, 'batch_size': batch_size}
 
@@ -90,9 +88,9 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             self.dtype = self.in_type
 
     class TestSigmoidCrossEntropyWithLogitsOp2(
-            TestSigmoidCrossEntropyWithLogitsOp):
-        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
-        """
+        TestSigmoidCrossEntropyWithLogitsOp
+    ):
+        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
 
         def set_inputs(self):
             batch_size = 64
@@ -100,13 +98,14 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             ignore_index = -1
             self.ignore_index = ignore_index
             self.inputs = {
-                'X':
-                logit(
+                'X': logit(
                     np.random.uniform(0, 1, (batch_size, num_classes)).astype(
-                        self.dtype)),
-                'Label':
-                np.random.randint(-1, 2,
-                                  (batch_size, num_classes)).astype(self.dtype)
+                        self.dtype
+                    )
+                ),
+                'Label': np.random.randint(
+                    -1, 2, (batch_size, num_classes)
+                ).astype(self.dtype),
             }
             self.attrs = {'ignore_index': ignore_index}
 
@@ -122,21 +121,22 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             self.outputs = {'Out': out}
 
     class TestSigmoidCrossEntropyWithLogitsOp3(
-            TestSigmoidCrossEntropyWithLogitsOp):
-        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
-        """
+        TestSigmoidCrossEntropyWithLogitsOp
+    ):
+        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
 
         def set_inputs(self):
             batch_size = 64
             num_classes = 20
             self.inputs = {
-                'X':
-                logit(
+                'X': logit(
                     np.random.uniform(0, 1, (batch_size, num_classes)).astype(
-                        self.dtype)),
-                'Label':
-                np.random.uniform(0, 1,
-                                  (batch_size, num_classes)).astype(self.dtype)
+                        self.dtype
+                    )
+                ),
+                'Label': np.random.uniform(
+                    0, 1, (batch_size, num_classes)
+                ).astype(self.dtype),
             }
             self.attrs = {'num_classes': num_classes, 'batch_size': batch_size}
 
@@ -150,9 +150,9 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             self.outputs = {'Out': -term1 - term2}
 
     class TestSigmoidCrossEntropyWithLogitsOp4(
-            TestSigmoidCrossEntropyWithLogitsOp):
-        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
-        """
+        TestSigmoidCrossEntropyWithLogitsOp
+    ):
+        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
 
         def set_inputs(self):
             batch_size = 64
@@ -160,13 +160,14 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             ignore_index = -1
             self.ignore_index = ignore_index
             self.inputs = {
-                'X':
-                logit(
+                'X': logit(
                     np.random.uniform(0, 1, (batch_size, num_classes)).astype(
-                        self.dtype)),
-                'Label':
-                np.random.randint(-1, 2,
-                                  (batch_size, num_classes)).astype(self.dtype)
+                        self.dtype
+                    )
+                ),
+                'Label': np.random.randint(
+                    -1, 2, (batch_size, num_classes)
+                ).astype(self.dtype),
             }
             self.attrs = {'ignore_index': ignore_index, 'normalize': True}
 
@@ -181,26 +182,27 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             out[np.where(self.inputs['Label'] == self.ignore_index)] = 0
             if self.attrs['normalize']:
                 out = out / float(
-                    np.where(self.inputs['Label'] != self.ignore_index)[0].size)
+                    np.where(self.inputs['Label'] != self.ignore_index)[0].size
+                )
             self.outputs = {'Out': out}
 
     class TestSigmoidCrossEntropyWithLogitsOp5(
-            TestSigmoidCrossEntropyWithLogitsOp):
-        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
-        """
+        TestSigmoidCrossEntropyWithLogitsOp
+    ):
+        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
 
         def set_inputs(self):
             batch_size = [10, 10]
             num_classes = 20
             self.inputs = {
-                'X':
-                logit(
-                    np.random.uniform(0, 1,
-                                      tuple(batch_size + [num_classes])).astype(
-                                          self.dtype)),
-                'Label':
-                np.random.uniform(0, 1, tuple(batch_size +
-                                              [num_classes])).astype(self.dtype)
+                'X': logit(
+                    np.random.uniform(
+                        0, 1, tuple(batch_size + [num_classes])
+                    ).astype(self.dtype)
+                ),
+                'Label': np.random.uniform(
+                    0, 1, tuple(batch_size + [num_classes])
+                ).astype(self.dtype),
             }
             self.attrs = {'num_classes': num_classes, 'batch_size': batch_size}
 
@@ -214,22 +216,22 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             self.outputs = {'Out': -term1 - term2}
 
     class TestSigmoidCrossEntropyWithLogitsOp6(
-            TestSigmoidCrossEntropyWithLogitsOp):
-        """Test sigmoid_cross_entropy_with_logit_op with binary label
-        """
+        TestSigmoidCrossEntropyWithLogitsOp
+    ):
+        """Test sigmoid_cross_entropy_with_logit_op with binary label"""
 
         def set_inputs(self):
             batch_size = [10, 10]
             num_classes = 20
             self.inputs = {
-                'X':
-                logit(
-                    np.random.uniform(0, 1,
-                                      tuple(batch_size + [num_classes])).astype(
-                                          self.dtype)),
-                'Label':
-                np.random.randint(0, 2, tuple(batch_size +
-                                              [num_classes])).astype(self.dtype)
+                'X': logit(
+                    np.random.uniform(
+                        0, 1, tuple(batch_size + [num_classes])
+                    ).astype(self.dtype)
+                ),
+                'Label': np.random.randint(
+                    0, 2, tuple(batch_size + [num_classes])
+                ).astype(self.dtype),
             }
             self.attrs = {'num_classes': num_classes, 'batch_size': batch_size}
 
@@ -243,9 +245,9 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             self.outputs = {'Out': -term1 - term2}
 
     class TestSigmoidCrossEntropyWithLogitsNorm(
-            TestSigmoidCrossEntropyWithLogitsOp):
-        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
-        """
+        TestSigmoidCrossEntropyWithLogitsOp
+    ):
+        """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
 
         def set_inputs(self):
             batch_size = [10, 10]
@@ -253,14 +255,14 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             ignore_index = -1
             self.ignore_index = ignore_index
             self.inputs = {
-                'X':
-                logit(
-                    np.random.uniform(0, 1,
-                                      tuple(batch_size + [num_classes])).astype(
-                                          self.dtype)),
-                'Label':
-                np.random.randint(
-                    -1, 2, tuple(batch_size + [num_classes])).astype(self.dtype)
+                'X': logit(
+                    np.random.uniform(
+                        0, 1, tuple(batch_size + [num_classes])
+                    ).astype(self.dtype)
+                ),
+                'Label': np.random.randint(
+                    -1, 2, tuple(batch_size + [num_classes])
+                ).astype(self.dtype),
             }
             self.attrs = {'ignore_index': ignore_index, 'normalize': True}
 
@@ -275,7 +277,8 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             out[np.where(self.inputs['Label'] == self.ignore_index)] = 0
             if self.attrs['normalize']:
                 out = out / float(
-                    np.where(self.inputs['Label'] != self.ignore_index)[0].size)
+                    np.where(self.inputs['Label'] != self.ignore_index)[0].size
+                )
             self.outputs = {'Out': out}
 
 

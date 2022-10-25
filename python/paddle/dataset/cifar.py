@@ -27,13 +27,11 @@ images per class.
 
 """
 
-import itertools
 import numpy
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 import tarfile
-import six
-from six.moves import cPickle as pickle
+import pickle
 
 __all__ = []
 
@@ -45,20 +43,21 @@ CIFAR100_MD5 = 'eb9058c3a382ffc7106e4002c42a8d85'
 
 
 def reader_creator(filename, sub_name, cycle=False):
-
     def read_batch(batch):
-        data = batch[six.b('data')]
-        labels = batch.get(six.b('labels'), batch.get(six.b('fine_labels'),
-                                                      None))
+        data = batch[b'data']
+        labels = batch.get(b'labels', batch.get(b'fine_labels', None))
         assert labels is not None
-        for sample, label in six.moves.zip(data, labels):
+        for sample, label in zip(data, labels):
             yield (sample / 255.0).astype(numpy.float32), int(label)
 
     def reader():
         while True:
             with tarfile.open(filename, mode='r') as f:
-                names = (each_item.name for each_item in f
-                         if sub_name in each_item.name)
+                names = (
+                    each_item.name
+                    for each_item in f
+                    if sub_name in each_item.name
+                )
 
                 for name in names:
                     batch = pickle.load(f.extractfile(name), encoding='bytes')
@@ -75,7 +74,8 @@ def reader_creator(filename, sub_name, cycle=False):
     since="2.0.0",
     update_to="paddle.vision.datasets.Cifar100",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def train100():
     """
     CIFAR-100 training set creator.
@@ -88,14 +88,16 @@ def train100():
     """
     return reader_creator(
         paddle.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5),
-        'train')
+        'train',
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Cifar100",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def test100():
     """
     CIFAR-100 test set creator.
@@ -108,14 +110,16 @@ def test100():
     """
     return reader_creator(
         paddle.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5),
-        'test')
+        'test',
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Cifar10",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def train10(cycle=False):
     """
     CIFAR-10 training set creator.
@@ -128,17 +132,19 @@ def train10(cycle=False):
     :return: Training reader creator
     :rtype: callable
     """
-    return reader_creator(paddle.dataset.common.download(
-        CIFAR10_URL, 'cifar', CIFAR10_MD5),
-                          'data_batch',
-                          cycle=cycle)
+    return reader_creator(
+        paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
+        'data_batch',
+        cycle=cycle,
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Cifar10",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def test10(cycle=False):
     """
     CIFAR-10 test set creator.
@@ -151,17 +157,19 @@ def test10(cycle=False):
     :return: Test reader creator.
     :rtype: callable
     """
-    return reader_creator(paddle.dataset.common.download(
-        CIFAR10_URL, 'cifar', CIFAR10_MD5),
-                          'test_batch',
-                          cycle=cycle)
+    return reader_creator(
+        paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
+        'test_batch',
+        cycle=cycle,
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.vision.datasets.Cifar10",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def fetch():
     paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5)
     paddle.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5)

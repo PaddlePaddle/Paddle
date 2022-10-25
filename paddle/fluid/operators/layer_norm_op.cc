@@ -24,9 +24,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
+using DataLayout = phi::DataLayout;
 
 class LayerNormOp : public framework::OperatorWithKernel {
  public:
@@ -111,16 +111,13 @@ class LayerNormOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
     int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        begin_norm_axis == ctx.Input<Tensor>("X")->dims().size() - 1) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    if (begin_norm_axis !=
+        ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
+      this->SetDnnFallback(true);
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -228,7 +225,7 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
         t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
 
     framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),

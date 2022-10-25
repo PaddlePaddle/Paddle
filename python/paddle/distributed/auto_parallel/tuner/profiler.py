@@ -13,20 +13,22 @@
 # limitations under the License.
 
 import os
-import sys
 import argparse
 import traceback
 import pickle
 import json
 import time
-import numpy as np
-from functools import partial
 
 import paddle
 from paddle.fluid.framework import Program, _current_expected_place
-from paddle.fluid.framework import Operator, Parameter
-from paddle.distributed.auto_parallel.process_group import clear_all_process_groups, get_all_process_groups, new_process_group
-from paddle.distributed.auto_parallel.dist_loader import NonIterableGeneratorLoader
+from paddle.fluid.framework import Operator
+from paddle.distributed.auto_parallel.process_group import (
+    get_all_process_groups,
+    new_process_group,
+)
+from paddle.distributed.auto_parallel.dist_loader import (
+    DistributedDataLoaderFromGenerator,
+)
 from paddle.distributed.collective import _get_global_env
 
 paddle.enable_static()
@@ -47,25 +49,32 @@ def parse_args():
         "--profile_start_step",
         default=10,
         type=int,
-        help="integer indicates the warmup step before starting profile.")
-    parser.add_argument("--profile_end_step",
-                        default=30,
-                        type=int,
-                        help="integer indicates at the end step of profile.")
-    parser.add_argument("--rank",
-                        type=int,
-                        required=True,
-                        help="the rank id of the this process.")
-    parser.add_argument("--device_id",
-                        type=int,
-                        required=True,
-                        help="the device id of the this process.")
+        help="integer indicates the warmup step before starting profile.",
+    )
+    parser.add_argument(
+        "--profile_end_step",
+        default=30,
+        type=int,
+        help="integer indicates at the end step of profile.",
+    )
+    parser.add_argument(
+        "--rank",
+        type=int,
+        required=True,
+        help="the rank id of the this process.",
+    )
+    parser.add_argument(
+        "--device_id",
+        type=int,
+        required=True,
+        help="the device id of the this process.",
+    )
     parser.add_argument(
         "--ctx_filename",
         type=str,
         required=True,
-        help=
-        "the filename to the profile context file saved by optimizaiton tuner")
+        help="the filename to the profile context file saved by optimizaiton tuner",
+    )
 
     args = parser.parse_args()
 
@@ -112,11 +121,9 @@ def get_cpp_error_type(error):
     return error_type
 
 
-def create_dataloader(main_program,
-                      startup_program,
-                      profile_ctx,
-                      epochs=1,
-                      steps_per_epoch=None):
+def create_dataloader(
+    main_program, startup_program, profile_ctx, epochs=1, steps_per_epoch=None
+):
 
     dataset = profile_ctx["dataset"]
     main_block = main_program.global_block()
@@ -135,15 +142,17 @@ def create_dataloader(main_program,
     # insert read op at the end of program
     places = paddle.static.cuda_places()
     with paddle.static.program_guard(main_program, startup_program):
-        dataloader = NonIterableGeneratorLoader(
-            dataset,
-            feed_list,
-            places,
-            dataset.batch_size,
-            epochs,
-            steps_per_epoch,
+        dataloader = DistributedDataLoaderFromGenerator(
+            dataset=dataset,
+            feed_list=feed_list,
+            capacity=70,
+            places=places,
+            batch_size=dataset.batch_size,
+            epochs=epochs,
+            steps_per_epoch=steps_per_epoch,
             data_parallel_world_size=dataset.dp_world_size,
-            data_parallel_rank=dataset.dp_rank)
+            data_parallel_rank=dataset.dp_rank,
+        )
 
     # move read op from the end of program to the start of program
     new_op_size = len(main_block.ops)
@@ -164,8 +173,12 @@ def init_comm(profile_ctx):
     dist_env = profile_ctx['distributed_env']
     genv = _get_global_env()
     genv = dist_env
-    print("current process rank: {}, device_id: {}, ip: {}.", genv.rank,
-          genv.device_id, genv.current_endpoint)
+    print(
+        "current process rank: {}, device_id: {}, ip: {}.",
+        genv.rank,
+        genv.device_id,
+        genv.current_endpoint,
+    )
 
     # init nccl comm
     group_map = profile_ctx['group_map']
@@ -203,8 +216,9 @@ def profiler(args):
     """
     # load ctx
     if not os.path.isfile(args.ctx_filename):
-        raise ValueError("There is no profile context named {}.".format(
-            args.ctx_filename))
+        raise ValueError(
+            "There is no profile context named {}.".format(args.ctx_filename)
+        )
     with open(args.ctx_filename, 'rb') as f:
         profile_ctx = pickle.load(f, encoding='latin1')
 
@@ -242,8 +256,9 @@ def profiler(args):
             print("step: %d, loss_print: %f" % (eval_step, loss[0]))
             eval_step += 1
 
-        avg_tput = 1.0 * (args.profile_end_step -
-                          args.profile_start_step) / duration
+        avg_tput = (
+            1.0 * (args.profile_end_step - args.profile_start_step) / duration
+        )
 
         result_dict = {
             "Throughtput": avg_tput,

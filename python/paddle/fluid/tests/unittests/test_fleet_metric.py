@@ -16,7 +16,6 @@
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import os
 import unittest
 import numpy as np
 import paddle.distributed.fleet.metrics.metric as metric
@@ -33,7 +32,6 @@ class TestFleetMetric(unittest.TestCase):
         """Set up, set envs."""
 
         class FakeUtil(UtilBase):
-
             def __init__(self, fake_fleet):
                 super(FakeUtil, self).__init__()
                 self.fleet = fake_fleet
@@ -80,16 +78,20 @@ class TestFleetMetric(unittest.TestCase):
         train = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(train, startup):
-            t = fluid.layers.create_global_var(shape=[1, 1],
-                                               value=1,
-                                               dtype='int64',
-                                               persistable=True,
-                                               force_cpu=True)
-            t1 = fluid.layers.create_global_var(shape=[1, 1],
-                                                value=1,
-                                                dtype='int64',
-                                                persistable=True,
-                                                force_cpu=True)
+            t = fluid.layers.create_global_var(
+                shape=[1, 1],
+                value=1,
+                dtype='int64',
+                persistable=True,
+                force_cpu=True,
+            )
+            t1 = fluid.layers.create_global_var(
+                shape=[1, 1],
+                value=1,
+                dtype='int64',
+                persistable=True,
+                force_cpu=True,
+            )
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         scope = fluid.Scope()

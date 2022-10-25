@@ -16,21 +16,17 @@ import unittest
 
 import paddle
 import numpy as np
-import paddle.distributed as dist
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
-import random
 
 
 class TestDistTraning(unittest.TestCase):
-
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
         strategy.hybrid_configs = {
             "dp_degree": 1,
             "mp_degree": self.model_parallel_size,
-            "pp_degree": 1
+            "pp_degree": 1,
         }
         fleet.init(is_collective=True, strategy=strategy)
 

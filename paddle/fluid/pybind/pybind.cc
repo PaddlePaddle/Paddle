@@ -182,6 +182,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #endif
 
+#if defined(PADDLE_WITH_RPC)
+#include "paddle/fluid/pybind/rpc.h"
+#endif
+
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -548,7 +552,7 @@ static void inline CreateVariableIfNotExist(
         auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
-        auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
+        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
         tensor_temp->Resize(phi::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(
             exe->GetPlace(),
@@ -696,7 +700,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
-    framework::Tensor tensor;
+    phi::DenseTensor tensor;
 
     if (dl.device.device_type == kDLCPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
@@ -847,6 +851,8 @@ PYBIND11_MODULE(libpaddle, m) {
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
+
+  m.def("set_current_thread_name", &paddle::platform::SetCurrentThreadName);
 
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
@@ -1691,11 +1697,11 @@ All parameter, weight, gradient are variables in Paddle.
            [](StandaloneExecutor &self,
               Scope *scope,
               const std::unordered_map<std::string, py::array> &input_dict) {
-             std::vector<framework::LoDTensor> feed_tensors;
+             std::vector<phi::DenseTensor> feed_tensors;
              std::vector<std::string> feed_names;
 
              for (auto &item : input_dict) {
-               framework::LoDTensor t;
+               phi::DenseTensor t;
                SetTensorFromPyArray<platform::CPUPlace>(
                    &t, item.second, platform::CPUPlace(), false);
                feed_names.push_back(item.first);
@@ -2057,7 +2063,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
   m.def("nvprof_stop", platform::CudaProfilerStop);
-  m.def("nvprof_nvtx_push", platform::CudaNvtxRangePush);
+  m.def("nvprof_nvtx_push", [](const std::string &name) {
+    platform::CudaNvtxRangePush(name, platform::NvtxRangeColor::Green);
+  });
   m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
   m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
@@ -2601,6 +2609,19 @@ All parameter, weight, gradient are variables in Paddle.
   BindNeighborSampleResult(&m);
   BindGraphGpuWrapper(&m);
 #endif
+#endif
+#if defined(PADDLE_WITH_RPC)
+  BindWorkerInfo(&m);
+  BindFuture(&m);
+  InitAndSetAgentInstance(&m);
+  InvokeRpc(&m);
+  StartWorker(&m);
+  StartClient(&m);
+  StopWorker(&m);
+  GetWorkerInfo(&m);
+  GetWorkerInfoByRank(&m);
+  GetCurrentWorkerInfo(&m);
+  GetAllWorkerInfos(&m);
 #endif
 }
 }  // namespace pybind

@@ -17,14 +17,11 @@ including config, etc.
 """
 
 import paddle.fluid as fluid
-import numpy as np
-import os
-import shutil
 import unittest
 
 
 class TestTrainerDesc(unittest.TestCase):
-    """  TestCases for TrainerDesc. """
+    """TestCases for TrainerDesc."""
 
     def test_config(self):
         """

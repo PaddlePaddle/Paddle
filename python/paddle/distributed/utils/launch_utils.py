@@ -20,9 +20,7 @@ import sys
 import subprocess
 from contextlib import closing
 import socket
-from paddle.fluid import core
 from distutils.util import strtobool
-import six
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from ..utils.log_utils import get_logger
@@ -35,12 +33,18 @@ def get_cluster_from_args(args, selected_gpus):
     node_ip = args.node_ip
     node_rank = node_ips.index(node_ip)
 
-    logger.debug("parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
-        node_ips, node_ip, node_rank))
+    logger.debug(
+        "parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
+            node_ips, node_ip, node_rank
+        )
+    )
 
     free_ports = None
-    if not args.use_paddlecloud and len(
-            node_ips) <= 1 and args.started_port is None:
+    if (
+        not args.use_paddlecloud
+        and len(node_ips) <= 1
+        and args.started_port is None
+    ):
         free_ports = find_free_ports(len(selected_gpus))
         if free_ports is not None:
             free_ports = list(free_ports)
@@ -62,6 +66,7 @@ def get_cluster_from_args(args, selected_gpus):
 def get_gpus(selected_gpus):
     if selected_gpus is None:
         from paddle.fluid import core
+
         gpus_num = core.get_cuda_device_count()
         gpus = [str(x) for x in range(0, gpus_num)]
     else:
@@ -74,48 +79,56 @@ def get_gpus(selected_gpus):
             # therefore selected_gpus=0,1,2,3
             cuda_visible_devices_list = cuda_visible_devices.split(',')
             for x in selected_gpus.split(','):
-                assert x in cuda_visible_devices_list, "Can't find "\
-                "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
-                % (x, cuda_visible_devices)
+                assert x in cuda_visible_devices_list, (
+                    "Can't find "
+                    "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."
+                    % (x, cuda_visible_devices)
+                )
             gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in selected_gpus.split(',')
             ]
-            logger.info("Change selected_gpus into reletive values. --ips:{} "
-                        "will change into relative_ips:{} according to your "
-                        "CUDA_VISIBLE_DEVICES:{}".format(
-                            selected_gpus, gpus, cuda_visible_devices_list))
+            logger.info(
+                "Change selected_gpus into reletive values. --ips:{} "
+                "will change into relative_ips:{} according to your "
+                "CUDA_VISIBLE_DEVICES:{}".format(
+                    selected_gpus, gpus, cuda_visible_devices_list
+                )
+            )
 
     return gpus
 
 
 class Hdfs(object):
-
     def __init__(self):
         self.hdfs_ugi = None
         self.hdfs_name = None
         self.hdfs_path = None
 
     def is_valid(self):
-        return self.hdfs_ugi is not None and \
-            self.hdfs_name is not None and \
-            self.hdfs_path is not None
+        return (
+            self.hdfs_ugi is not None
+            and self.hdfs_name is not None
+            and self.hdfs_path is not None
+        )
 
     def __str__(self):
         return "hdfs_ugi:{} hdfs_name:{} hdfs_path{}".format(
-            self.hdfs_ugi, self.hdfs_name, self.hdfs_path)
+            self.hdfs_ugi, self.hdfs_name, self.hdfs_path
+        )
 
     def __eq__(self, n):
-        return self.hdfs_ugi == n.hdfs_ugi and \
-            self.hdfs_name == n.hdfs_name and \
-            self.hdfs_path == n.hdfs_path
+        return (
+            self.hdfs_ugi == n.hdfs_ugi
+            and self.hdfs_name == n.hdfs_name
+            and self.hdfs_path == n.hdfs_path
+        )
 
     def __ne__(self, n):
         return not self == n
 
 
 class Cluster(object):
-
     def __init__(self, hdfs):
         self.job_server = None
         self.pods = []
@@ -124,8 +137,11 @@ class Cluster(object):
 
     def __str__(self):
         return "job_server:{} pods:{} job_stage_flag:{} hdfs:{}".format(
-            self.job_server, [str(pod) for pod in self.pods],
-            self.job_stage_flag, self.hdfs)
+            self.job_server,
+            [str(pod) for pod in self.pods],
+            self.job_stage_flag,
+            self.hdfs,
+        )
 
     def __eq__(self, cluster):
         if len(self.pods) != len(cluster.pods):
@@ -163,8 +179,9 @@ class Cluster(object):
         r = []
         for pod in self.pods:
             ep = "{}:{}".format(pod.addr, pod.port)
-            assert pod.port != None and pod.addr != None, "{} not a valid endpoint".format(
-                ep)
+            assert (
+                pod.port != None and pod.addr != None
+            ), "{} not a valid endpoint".format(ep)
             r.append(ep)
 
         return r
@@ -178,7 +195,6 @@ class Cluster(object):
 
 
 class JobServer(object):
-
     def __init__(self):
         self.endpoint = None
 
@@ -193,22 +209,21 @@ class JobServer(object):
 
 
 class Trainer(object):
-
     def __init__(self):
         self.gpus = []
         self.endpoint = None
         self.rank = None
 
     def __str__(self):
-        return "gpu:{} endpoint:{} rank:{}".format(self.gpus, self.endpoint,
-                                                   self.rank)
+        return "gpu:{} endpoint:{} rank:{}".format(
+            self.gpus, self.endpoint, self.rank
+        )
 
     def __eq__(self, t):
         if len(self.gpus) != len(t.gpus):
             return False
 
-        if self.endpoint != t.endpoint or \
-                self.rank != t.rank:
+        if self.endpoint != t.endpoint or self.rank != t.rank:
             return False
 
         for a, b in zip(self.gpus, t.gpus):
@@ -225,7 +240,6 @@ class Trainer(object):
 
 
 class Pod(object):
-
     def __init__(self):
         self.rank = None
         self.id = None
@@ -235,27 +249,38 @@ class Pod(object):
         self.gpus = []
 
     def __str__(self):
-        return "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{}".format(
-            self.rank, self.id, self.addr, self.port, self.gpus,
-            [str(t) for t in self.trainers])
+        return (
+            "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{}".format(
+                self.rank,
+                self.id,
+                self.addr,
+                self.port,
+                self.gpus,
+                [str(t) for t in self.trainers],
+            )
+        )
 
     def __eq__(self, pod):
-        if self.rank != pod.rank or \
-                self.id != pod.id or \
-                self.addr != pod.addr or \
-                self.port != pod.port:
+        if (
+            self.rank != pod.rank
+            or self.id != pod.id
+            or self.addr != pod.addr
+            or self.port != pod.port
+        ):
             logger.debug("pod {} != {}".format(self, pod))
             return False
 
         if len(self.trainers) != len(pod.trainers):
-            logger.debug("trainers {} != {}".format(self.trainers,
-                                                    pod.trainers))
+            logger.debug(
+                "trainers {} != {}".format(self.trainers, pod.trainers)
+            )
             return False
 
         for i in range(len(self.trainers)):
             if self.trainers[i] != pod.trainers[i]:
-                logger.debug("trainer {} != {}".format(self.trainers[i],
-                                                       pod.trainers[i]))
+                logger.debug(
+                    "trainer {} != {}".format(self.trainers[i], pod.trainers[i])
+                )
                 return False
 
         return True
@@ -312,7 +337,7 @@ def terminate_local_procs(procs):
                 p.log_fn.close()
             logger.debug("terminate process id:{}".format(p.proc.pid))
 
-    #wait all process terminiated
+    # wait all process terminiated
     time.sleep(3)
     for step in range(0, 50):
         alive = False
@@ -349,15 +374,16 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
         args = parser.parse_args()
     """
     type = strtobool if type == bool else type
-    argparser.add_argument("--" + argname,
-                           default=default,
-                           type=type,
-                           help=help + ' Default: %(default)s.',
-                           **kwargs)
+    argparser.add_argument(
+        "--" + argname,
+        default=default,
+        type=type,
+        help=help + ' Default: %(default)s.',
+        **kwargs
+    )
 
 
 def find_free_ports(num):
-
     def __free_port():
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
             s.bind(('', 0))
@@ -388,30 +414,30 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
         backend = get_backend_by_compile_flag()  # for compatibility
     if backend == 'bkcl':
         proc_env = {
-            "FLAGS_selected_xpus":
-            "%s" % ",".join([str(g) for g in trainer.gpus]),
+            "FLAGS_selected_xpus": "%s"
+            % ",".join([str(g) for g in trainer.gpus]),
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
     elif backend == 'nccl':
         proc_env = {
-            "FLAGS_selected_gpus":
-            "%s" % ",".join([str(g) for g in trainer.gpus]),
+            "FLAGS_selected_gpus": "%s"
+            % ",".join([str(g) for g in trainer.gpus]),
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
     elif backend == 'cncl':
         proc_env = {
-            "FLAGS_selected_mlus":
-            "%s" % ",".join([str(g) for g in trainer.gpus]),
+            "FLAGS_selected_mlus": "%s"
+            % ",".join([str(g) for g in trainer.gpus]),
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
     elif backend == 'gloo':
         # NOTE (xiongkun) default fall back into cpu only
@@ -420,8 +446,7 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
             "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-            "PADDLE_DISTRI_BACKEND":
-            backend,  # only add here, other will be auto
+            "PADDLE_DISTRI_BACKEND": backend,  # only add here, other will be auto
         }
     else:
         raise ValueError("backend must be one of 'gloo, nccl, bkcl'")
@@ -430,7 +455,6 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
 
 
 class TrainerProc(object):
-
     def __init__(self):
         self.proc = None
         self.log_fn = None
@@ -440,16 +464,14 @@ class TrainerProc(object):
         self.cmd = None
 
 
-def start_local_trainers(cluster,
-                         pod,
-                         training_script,
-                         training_script_args,
-                         log_dir=None):
+def start_local_trainers(
+    cluster, pod, training_script, training_script_args, log_dir=None
+):
     current_env = copy.copy(os.environ.copy())
-    #paddle broadcast ncclUniqueId use socket, and
-    #proxy maybe make trainers unreachable, so delete them.
-    #if we set them to "", grpc will log error message "bad uri"
-    #so just delete them.
+    # paddle broadcast ncclUniqueId use socket, and
+    # proxy maybe make trainers unreachable, so delete them.
+    # if we set them to "", grpc will log error message "bad uri"
+    # so just delete them.
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
@@ -495,8 +517,9 @@ def pull_worker_log(tp):
                 except UnicodeEncodeError:
                     sys.stdout.write(
                         'UnicodeEncodeError occurs at this line. '
-                        'Please refer to the original log file "%s"\n' %
-                        tp.log_fn.name)
+                        'Please refer to the original log file "%s"\n'
+                        % tp.log_fn.name
+                    )
             tp.log_offset = fin.tell()
 
 
@@ -527,14 +550,18 @@ def watch_local_trainers(procs, nranks):
         raise
     except SystemExit:
         logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
-            .format(nranks, error_rank))
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".format(
+                nranks, error_rank
+            )
+        )
         terminate_local_procs(procs)
         raise
     except:
         logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log."
-            .format(nranks, error_rank))
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".format(
+                nranks, error_rank
+            )
+        )
         terminate_local_procs(procs)
         raise
 
@@ -543,6 +570,6 @@ def watch_local_trainers(procs, nranks):
 
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")
-    for arg, value in sorted(six.iteritems(vars(args))):
+    for arg, value in sorted(vars(args).items()):
         print("%s: %s" % (arg, value))
     print("------------------------------------------------")

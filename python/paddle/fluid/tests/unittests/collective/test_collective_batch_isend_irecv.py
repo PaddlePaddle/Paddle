@@ -14,13 +14,11 @@
 
 import os
 import unittest
-import paddle.fluid as fluid
 
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestCollectiveBatchIsendIrecv(TestMultipleGpus):
-
     def test_collective_batch_isend_irecv(self):
         self.run_mnist_2gpu('collective_batch_isend_irecv.py', eager_mode=True)
 

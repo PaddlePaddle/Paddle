@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import unittest
-import os
-import sys
 import time
 import multiprocessing
 from contextlib import closing
@@ -28,12 +26,11 @@ paddle.enable_static()
 
 
 class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
-
     def find_free_port(self):
-
         def _free_port():
-            with closing(socket.socket(socket.AF_INET,
-                                       socket.SOCK_STREAM)) as s:
+            with closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ) as s:
                 s.bind(('', 0))
                 return s.getsockname()[1]
 
@@ -45,8 +42,9 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
 
     def barrier_func(self, id, rank_num, server_endpoint, out_dict, sleep_time):
         try:
-            paddle.distributed.gloo_init_parallel_env(id, rank_num,
-                                                      server_endpoint)
+            paddle.distributed.gloo_init_parallel_env(
+                id, rank_num, server_endpoint
+            )
             # 1st barrier
             # Run barrier to synchronize processes after starting
             paddle.distributed.gloo_barrier()
@@ -54,7 +52,7 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
             # Let rank 0 sleep for one second and check that all processes
             # saw that artificial delay through the barrier
             start = time.time()
-            if (id == 0):
+            if id == 0:
                 time.sleep(sleep_time)
             paddle.distributed.gloo_barrier()
             end = time.time()
@@ -68,8 +66,9 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
         try:
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
-            paddle.distributed.gloo_init_parallel_env(id, rank_num,
-                                                      server_endpoint)
+            paddle.distributed.gloo_init_parallel_env(
+                id, rank_num, server_endpoint
+            )
             place = fluid.CPUPlace()
             with fluid.program_guard(main_prog, startup_prog):
                 paddle.distributed.barrier()
@@ -79,7 +78,7 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
             # Let rank 0 sleep for one second and check that all processes
             # saw that artificial delay through the barrier
             start = time.time()
-            if (id == 0):
+            if id == 0:
                 time.sleep(sleep_time)
             exe.run(main_prog)
             end = time.time()
@@ -99,9 +98,10 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
         procs_out_dict = manager.dict()
         jobs = []
         for id in range(num_of_ranks):
-            p = multiprocessing.Process(target=self.barrier_func,
-                                        args=(id, num_of_ranks, ep_str,
-                                              procs_out_dict, sleep_time))
+            p = multiprocessing.Process(
+                target=self.barrier_func,
+                args=(id, num_of_ranks, ep_str, procs_out_dict, sleep_time),
+            )
             jobs.append(p)
             p.start()
         for proc in jobs:
@@ -119,9 +119,10 @@ class CollectiveCPUBarrierWithGlooTest(unittest.TestCase):
         procs_out_dict = manager.dict()
         jobs = []
         for id in range(num_of_ranks):
-            p = multiprocessing.Process(target=self.barrier_op,
-                                        args=(id, num_of_ranks, ep_str,
-                                              procs_out_dict, sleep_time))
+            p = multiprocessing.Process(
+                target=self.barrier_op,
+                args=(id, num_of_ranks, ep_str, procs_out_dict, sleep_time),
+            )
             jobs.append(p)
             p.start()
         for proc in jobs:

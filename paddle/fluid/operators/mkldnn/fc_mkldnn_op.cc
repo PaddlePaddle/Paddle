@@ -26,12 +26,9 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::prop_kind;
 using dnnl::stream;
-using framework::DataLayout;
 using framework::DDim;
 using framework::ExecutionContext;
-using framework::LoDTensor;
-using framework::Tensor;
-using phi::vectorize;
+using LoDTensor = phi::DenseTensor;
 using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::MKLDNNGetDataType;
@@ -49,10 +46,10 @@ class FCMKLDNNHandler
  public:
   FCMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                   const platform::MKLDNNDeviceContext& dev_ctx,
-                  const Tensor* x,
-                  const Tensor* weights,
-                  const Tensor* bias,
-                  Tensor* out,
+                  const phi::DenseTensor* x,
+                  const phi::DenseTensor* weights,
+                  const phi::DenseTensor* bias,
+                  phi::DenseTensor* out,
                   const int in_num_col_dims,
                   dnnl::engine mkldnn_engine,
                   platform::Place cpu_place)
@@ -90,8 +87,7 @@ class FCMKLDNNHandler
                                    dnnl::memory::format_tag::a);
     }
 
-    dnnl::primitive_attr attrs;
-    HandlePostOps(ctx, &attrs);
+    const auto attrs = CreateFCAttrs(ctx);
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
                                             prop_kind::forward_inference,
@@ -102,43 +98,33 @@ class FCMKLDNNHandler
   }
 
  private:
-  void HandlePostOps(const paddle::framework::ExecutionContext& ctx,
-                     dnnl::primitive_attr* attrs) {
-    static std::unordered_map<std::string, dnnl::algorithm> algo_map = {
-        {"relu", dnnl::algorithm::eltwise_relu},
-        {"gelu", dnnl::algorithm::eltwise_gelu},
-        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
-        {"tanh", dnnl::algorithm::eltwise_tanh},
-        {"sigmoid", dnnl::algorithm::eltwise_logistic},
-        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
-        {"mish", dnnl::algorithm::eltwise_mish}};
+  dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx) {
+    dnnl::primitive_attr attributes;
+    dnnl::post_ops post_operations;
 
     std::vector<float> output_shift_scale;
     float scale = 1.0f;
     if (IsInt8<T_w>()) {
       std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
-      attrs->set_output_scales(mask, output_shift_scale);
+      attributes.set_output_scales(mask, output_shift_scale);
     }
 
-    dnnl::post_ops post_ops;
-
-    constexpr float sum_scale = 1.0f;
+    float sum_scale = 1.0f;
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
-      post_ops.append_sum(sum_scale);
+      post_operations.append_sum(sum_scale);
     }
 
-    std::string activation_type = ctx.Attr<std::string>("activation_type");
-
-    if (activation_type.empty() == false) {
-      constexpr float alpha = 0.0f;
-      constexpr float beta = 0.0f;
-
-      post_ops.append_eltwise(scale, algo_map[activation_type], alpha, beta);
+    // ReLU from "fc_fuse_pass"
+    if (ctx.Attr<std::string>("activation_type") == "relu") {
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_relu, 0.0f, 0.0f);
     }
-    attrs->set_post_ops(post_ops);
+    platform::AppendActivation(ctx, post_operations, scale);
+
+    attributes.set_post_ops(post_operations);
+    return attributes;
   }
 
   // Compute the bias scales so that its values correspond to the
@@ -178,17 +164,16 @@ class FCMKLDNNHandler
                             ? 1.0f
                             : ctx.Attr<float>("Scale_out");
     const size_t weight_scales_num = scale_weights_data.size();
-    std::vector<float> output_shift_scale(weight_scales_num);
 
-    for (size_t i = 0; i < weight_scales_num; i++) {
+    for (size_t i = 0; i < weight_scales_num; ++i) {
       if (scale_weights_data[i] == 0.0)
-        output_shift_scale[i] = inner_scale;
+        scale_weights_data[i] = inner_scale;
       else
-        output_shift_scale[i] =
+        scale_weights_data[i] =
             inner_scale / (scale_in_data * scale_weights_data[i]);
     }
 
-    return make_tuple(output_shift_scale, scale);
+    return make_tuple(scale_weights_data, scale);
   }
 
   // Computing MKL-DNN's scaling mask which determines along which dimension
@@ -225,7 +210,8 @@ class FCMKLDNNHandler
   const platform::MKLDNNDeviceContext& dev_ctx_;
 
  public:
-  std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(const Tensor* x) {
+  std::shared_ptr<dnnl::memory> AcquireSrcMemoryWithReorder(
+      const phi::DenseTensor* x) {
     const T_in* x_data = x->data<T_in>();
 
     auto user_md = x->mem_desc();
@@ -240,7 +226,7 @@ class FCMKLDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
-      const Tensor* bias,
+      const phi::DenseTensor* bias,
       const float scale_in,
       const std::vector<float>& scale_weights) {
     const float* bias_data = bias->data<float>();
@@ -270,13 +256,14 @@ class FCMKLDNNHandler
             this->fwd_pd_->bias_desc(),
             to_void_cast<float>(bias_data),
             attrs);
+        this->dev_ctx_.SetBlob(bias_key, memory_p);
       }
       return memory_p;
     }
   }
 
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
-      const Tensor* weights, const std::vector<float>& scale_data) {
+      const phi::DenseTensor* weights, const std::vector<float>& scale_data) {
     const std::string weights_key = this->memory_key_ + "@weights";
     auto memory_p = std::static_pointer_cast<dnnl::memory>(
         this->dev_ctx_.GetBlob(weights_key));
@@ -312,10 +299,10 @@ class FCMKLDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
-      const ExecutionContext& ctx, Tensor* out) {
+      const ExecutionContext& ctx, phi::DenseTensor* out) {
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
-      auto* residual_param = ctx.Output<Tensor>("ResidualData");
+      auto* residual_param = ctx.Output<phi::DenseTensor>("ResidualData");
 
       PADDLE_ENFORCE_EQ(
           out->dims(),
@@ -330,38 +317,49 @@ class FCMKLDNNHandler
       out->ShareDataWith(*residual_param);
     }
     return this->template AcquireDstMemory<T_out>(out);
-  }
-};
+  }  // namespace operators
+};   // namespace paddle
 
-template <typename T_in, typename T_w>
+#define IF_CHANGE_FC_TW_TYPENAME(condition, ...) \
+  if (condition) {                               \
+    using T_w = int8_t;                          \
+    __VA_ARGS__();                               \
+  } else {                                       \
+    using T_w = T_in;                            \
+    __VA_ARGS__();                               \
+  }
+
+template <typename T_in>
 class FCMKLDNNKernel : public framework::OpKernel<T_in> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
     bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
 
-    if (force_fp32_output) {
-      this->RunKernel<float>(ctx);
-    } else if (IsInt8<T_in>()) {
-      if (fuse_relu) {
-        this->RunKernel<uint8_t>(ctx);
-      } else {
-        this->RunKernel<int8_t>(ctx);
-      }
-    } else {
-      this->RunKernel<T_in>(ctx);
-    }
+    IF_CHANGE_FC_TW_TYPENAME((std::is_same<T_in, uint8_t>::value), ([&] {
+                               if (force_fp32_output) {
+                                 this->RunKernel<float, T_w>(ctx);
+                               } else if (IsInt8<T_in>()) {
+                                 if (fuse_relu) {
+                                   this->RunKernel<uint8_t, T_w>(ctx);
+                                 } else {
+                                   this->RunKernel<int8_t, T_w>(ctx);
+                                 }
+                               } else {
+                                 this->RunKernel<T_in, T_w>(ctx);
+                               }
+                             }));
   }
 
-  template <typename T_out = T_w>
+  template <typename T_out, typename T_w>
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<LoDTensor>("Input");
-    const auto* weights = ctx.Input<Tensor>("W");
-    const auto* bias = ctx.Input<Tensor>("Bias");
+    const auto* weights = ctx.Input<phi::DenseTensor>("W");
+    const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
     auto out = ctx.Output<LoDTensor>("Out");
 
     auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
@@ -409,7 +407,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
   void RecomputeOutputDims(const ExecutionContext& ctx,
                            const LoDTensor* x,
-                           const Tensor* weights,
+                           const phi::DenseTensor* weights,
                            LoDTensor* out) const {
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     bool padding_weights = ctx.Attr<bool>("padding_weights");
@@ -435,32 +433,11 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 // data type implies their destination data type. (What's eventually going to
 // be used during computations of kernel).
 namespace ops = paddle::operators;
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    FP32,
-                                    ops::kFCMKLDNNFP32,
-                                    ops::FCMKLDNNKernel<float, float>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
-    fc,
-    MKLDNN,
-    ::paddle::platform::CPUPlace,
-    BF16,
-    ops::kFCMKLDNNFP32,
-    ops::FCMKLDNNKernel<paddle::platform::bfloat16,
-                        paddle::platform::bfloat16>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    U8,
-                                    ops::kFCMKLDNNINT8,
-                                    ops::FCMKLDNNKernel<uint8_t, int8_t>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc,
-                                    MKLDNN,
-                                    ::paddle::platform::CPUPlace,
-                                    S8,
-                                    ops::kFCMKLDNNINT8,
-                                    ops::FCMKLDNNKernel<int8_t, int8_t>);
+REGISTER_OP_KERNEL(fc,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::FCMKLDNNKernel<float>,
+                   ops::FCMKLDNNKernel<paddle::platform::bfloat16>,
+                   ops::FCMKLDNNKernel<uint8_t>,
+                   ops::FCMKLDNNKernel<int8_t>);

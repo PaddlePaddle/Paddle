@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import unittest
-import threading, time
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -25,21 +24,18 @@ paddle.enable_static()
 
 
 class TestASPHelperPruningBase(unittest.TestCase):
-
     def setUp(self):
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
 
         def build_model():
-            img = fluid.data(name='img',
-                             shape=[None, 3, 32, 32],
-                             dtype='float32')
+            img = fluid.data(
+                name='img', shape=[None, 3, 32, 32], dtype='float32'
+            )
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            hidden = fluid.layers.conv2d(input=img,
-                                         num_filters=4,
-                                         filter_size=3,
-                                         padding=2,
-                                         act="relu")
+            hidden = fluid.layers.conv2d(
+                input=img, num_filters=4, filter_size=3, padding=2, act="relu"
+            )
             hidden = fluid.layers.fc(input=hidden, size=32, act='relu')
             prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
             return img, label, prediction
@@ -47,23 +43,26 @@ class TestASPHelperPruningBase(unittest.TestCase):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.img, self.label, self.predict = build_model()
 
-    def run_inference_pruning_test(self, get_mask_gen_func,
-                                   get_mask_check_func):
+    def run_inference_pruning_test(
+        self, get_mask_gen_func, get_mask_check_func
+    ):
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
         exe = fluid.Executor(place)
 
-        self.__pruning_and_checking(exe, place, get_mask_gen_func,
-                                    get_mask_check_func, False)
+        self.__pruning_and_checking(
+            exe, place, get_mask_gen_func, get_mask_check_func, False
+        )
 
     def run_training_pruning_test(self, get_mask_gen_func, get_mask_check_func):
         with fluid.program_guard(self.main_program, self.startup_program):
             loss = paddle.mean(
-                fluid.layers.cross_entropy(input=self.predict,
-                                           label=self.label))
+                fluid.layers.cross_entropy(input=self.predict, label=self.label)
+            )
             optimizer = paddle.incubate.asp.decorate(
-                fluid.optimizer.SGD(learning_rate=0.01))
+                fluid.optimizer.SGD(learning_rate=0.01)
+            )
             optimizer.minimize(loss, self.startup_program)
 
         place = paddle.CPUPlace()
@@ -71,19 +70,24 @@ class TestASPHelperPruningBase(unittest.TestCase):
             place = paddle.CUDAPlace(0)
         exe = fluid.Executor(place)
 
-        self.__pruning_and_checking(exe, place, get_mask_gen_func,
-                                    get_mask_check_func, True)
+        self.__pruning_and_checking(
+            exe, place, get_mask_gen_func, get_mask_check_func, True
+        )
 
-    def __pruning_and_checking(self, exe, place, mask_func_name,
-                               check_func_name, with_mask):
+    def __pruning_and_checking(
+        self, exe, place, mask_func_name, check_func_name, with_mask
+    ):
         exe.run(self.startup_program)
-        paddle.incubate.asp.prune_model(self.main_program,
-                                        mask_algo=mask_func_name,
-                                        with_mask=with_mask)
+        paddle.incubate.asp.prune_model(
+            self.main_program, mask_algo=mask_func_name, with_mask=with_mask
+        )
         for param in self.main_program.global_block().all_parameters():
             if ASPHelper._is_supported_layer(self.main_program, param.name):
-                mat = np.array(fluid.global_scope().find_var(
-                    param.name).get_tensor())
+                mat = np.array(
+                    fluid.global_scope().find_var(param.name).get_tensor()
+                )
                 self.assertTrue(
                     paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, func_name=check_func_name, n=2, m=4))
+                        mat.T, func_name=check_func_name, n=2, m=4
+                    )
+                )

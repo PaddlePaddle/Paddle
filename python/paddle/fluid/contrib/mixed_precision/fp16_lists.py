@@ -19,7 +19,10 @@ __all__ = ["CustomOpLists", "AutoMixedPrecisionLists"]
 
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
 _extra_unsupported_fp16_list = {
-    'lookup_table', 'lookup_table_v2', 'scatter', 'scatter_grad'
+    'lookup_table',
+    'lookup_table_v2',
+    'scatter',
+    'scatter_grad',
 }
 
 
@@ -36,10 +39,12 @@ class AutoMixedPrecisionLists(object):
         custom_black_varnames (set): Users' custom black varibles' names.
     """
 
-    def __init__(self,
-                 custom_white_list=None,
-                 custom_black_list=None,
-                 custom_black_varnames=None):
+    def __init__(
+        self,
+        custom_white_list=None,
+        custom_black_list=None,
+        custom_black_varnames=None,
+    ):
         self._custom_white_list = custom_white_list
         self._custom_black_list = custom_black_list
         self.white_list = copy.copy(white_list)
@@ -56,8 +61,9 @@ class AutoMixedPrecisionLists(object):
         if self._custom_white_list and self._custom_black_list:
             for op_name in self._custom_white_list:
                 if op_name in self._custom_black_list:
-                    raise ValueError("Custom white list overlap "
-                                     "custom black list")
+                    raise ValueError(
+                        "Custom white list overlap " "custom black list"
+                    )
         if self._custom_white_list:
             for op_name in self._custom_white_list:
                 if op_name in self.black_list:
@@ -175,17 +181,23 @@ gray_list = {
 _sys_unsupported_fp16_list = []
 if core.is_compiled_with_xpu():
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'XPU', core.VarDesc.VarType.FP16)
+        'XPU', core.VarDesc.VarType.FP16
+    )
 elif core.is_compiled_with_npu():
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'NPU', core.VarDesc.VarType.FP16)
+        'NPU', core.VarDesc.VarType.FP16
+    )
 elif core.is_compiled_with_mlu():
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'MLU', core.VarDesc.VarType.FP16)
+        'MLU', core.VarDesc.VarType.FP16
+    )
 else:
     _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-        'GPU', core.VarDesc.VarType.FP16)
+        'GPU', core.VarDesc.VarType.FP16
+    )
 
-unsupported_fp16_list = _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
+unsupported_fp16_list = (
+    _extra_unsupported_fp16_list | _sys_unsupported_fp16_list
+)
 
 CustomOpLists = AutoMixedPrecisionLists

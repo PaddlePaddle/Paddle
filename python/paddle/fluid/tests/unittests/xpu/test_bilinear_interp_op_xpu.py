@@ -14,16 +14,10 @@
 
 import unittest
 import unittest
-import numpy as np
 import paddle
-import paddle.fluid.core as core
 import sys
 
 sys.path.append("..")
-from op_test_xpu import XPUOpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-import time
 
 paddle.enable_static()
 '''

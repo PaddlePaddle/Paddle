@@ -19,33 +19,32 @@ __all__ = []
 
 
 class CollectiveRuntime(RuntimeBase):
-
     def __init__(self):
         super(CollectiveRuntime, self).__init__()
 
     def _init_worker(self):
         logging.warn(
-            "You should not call 'init_worker' method for collective mode.")
-        pass
+            "You should not call 'init_worker' method for collective mode."
+        )
 
     def _run_worker(self):
         logging.warn(
-            "You should not call 'run_worker' method for collective mode.")
-        pass
+            "You should not call 'run_worker' method for collective mode."
+        )
 
     def _init_server(self, *args, **kwargs):
         logging.warn(
-            "You should not call 'init_server' method for collective mode.")
-        pass
+            "You should not call 'init_server' method for collective mode."
+        )
 
     def _run_server(self):
         logging.warn(
-            "You should not call 'run_server' method for collective mode.")
-        pass
+            "You should not call 'run_server' method for collective mode."
+        )
 
     def _stop_worker(self):
         logging.warn(
-            "You should not call 'stop_worker' method for collective mode.")
-        pass
+            "You should not call 'stop_worker' method for collective mode."
+        )
 
     # save inference model should be added here

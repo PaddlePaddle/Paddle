@@ -21,7 +21,6 @@ from ..fluid import unique_name
 from ..fluid.layer_helper import LayerHelper
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.executor import global_scope
-import paddle
 
 __all__ = []
 
@@ -99,26 +98,30 @@ class Lamb(Optimizer):
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
-    def __init__(self,
-                 learning_rate=0.001,
-                 lamb_weight_decay=0.01,
-                 beta1=0.9,
-                 beta2=0.999,
-                 epsilon=1e-6,
-                 parameters=None,
-                 grad_clip=None,
-                 exclude_from_weight_decay_fn=None,
-                 multi_precision=False,
-                 name=None):
+    def __init__(
+        self,
+        learning_rate=0.001,
+        lamb_weight_decay=0.01,
+        beta1=0.9,
+        beta2=0.999,
+        epsilon=1e-6,
+        parameters=None,
+        grad_clip=None,
+        exclude_from_weight_decay_fn=None,
+        multi_precision=False,
+        name=None,
+    ):
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        super(Lamb, self).__init__(learning_rate=learning_rate,
-                                   parameters=parameters,
-                                   weight_decay=None,
-                                   grad_clip=grad_clip,
-                                   name=name)
+        super(Lamb, self).__init__(
+            learning_rate=learning_rate,
+            parameters=parameters,
+            weight_decay=None,
+            grad_clip=grad_clip,
+            name=name,
+        )
         self.type = "lamb"
         self._beta1 = beta1
         self._beta2 = beta2
@@ -161,19 +164,23 @@ class Lamb(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
-            var = layers.create_global_var(name=var_name,
-                                           shape=param.shape,
-                                           value=0,
-                                           dtype='float32',
-                                           persistable=True)
+            var = layers.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True,
+            )
             block = self.helper.startup_program.global_block()
-            block.append_op(type="cast",
-                            inputs={"X": [param]},
-                            outputs={"Out": [var]},
-                            attrs={
-                                "in_dtype": param.dtype,
-                                "out_dtype": core.VarDesc.VarType.FP32
-                            })
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
             self._master_weights[param.name] = var
         return var
 
@@ -200,15 +207,22 @@ class Lamb(Optimizer):
         """
         if self._name is not None:
             name = self._name + "_" + name
-        find_master = self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
-        target_param = self._master_weights[
-            param.name] if find_master else param
+        find_master = (
+            self._multi_precision and param.dtype == core.VarDesc.VarType.FP16
+        )
+        target_param = (
+            self._master_weights[param.name] if find_master else param
+        )
         target_name = target_param.name
-        if (name not in self._accumulators
-                or target_name not in self._accumulators[name]):
+        if (
+            name not in self._accumulators
+            or target_name not in self._accumulators[name]
+        ):
             raise Exception(
                 "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name))
+                    name, target_name
+                )
+            )
         return self._accumulators[name][target_name]
 
     def _add_moments_pows(self, p):
@@ -219,21 +233,27 @@ class Lamb(Optimizer):
         self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(
-                name=self._beta1_pow_acc_str,
-                param=p,
-                dtype=acc_dtype,
-                fill_value=0.9 if isinstance(self._beta1, Variable) \
-                        else self._beta1,
-                shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
+            name=self._beta1_pow_acc_str,
+            param=p,
+            dtype=acc_dtype,
+            fill_value=0.9
+            if isinstance(self._beta1, Variable)
+            else self._beta1,
+            shape=[1],
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            device='cpu',
+        )
         self._add_accumulator(
-                name=self._beta2_pow_acc_str,
-                param=p,
-                dtype=acc_dtype,
-                fill_value=0.999 if isinstance(self._beta2, Variable) \
-                        else self._beta2,
-                shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
+            name=self._beta2_pow_acc_str,
+            param=p,
+            dtype=acc_dtype,
+            fill_value=0.999
+            if isinstance(self._beta2, Variable)
+            else self._beta2,
+            shape=[1],
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            device='cpu',
+        )
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -242,24 +262,32 @@ class Lamb(Optimizer):
 
         block.program._use_lamb = True
 
-        moment1 = self._get_accumulator(self._moment1_acc_str,
-                                        param_and_grad[0])
-        moment2 = self._get_accumulator(self._moment2_acc_str,
-                                        param_and_grad[0])
-        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                              param_and_grad[0])
-        beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                              param_and_grad[0])
+        moment1 = self._get_accumulator(
+            self._moment1_acc_str, param_and_grad[0]
+        )
+        moment2 = self._get_accumulator(
+            self._moment2_acc_str, param_and_grad[0]
+        )
+        beta1_pow_acc = self._get_accumulator(
+            self._beta1_pow_acc_str, param_and_grad[0]
+        )
+        beta2_pow_acc = self._get_accumulator(
+            self._beta2_pow_acc_str, param_and_grad[0]
+        )
 
-        if self._exclude_from_weight_decay_fn is not None \
-            and self._exclude_from_weight_decay_fn(param_and_grad[0]):
+        if (
+            self._exclude_from_weight_decay_fn is not None
+            and self._exclude_from_weight_decay_fn(param_and_grad[0])
+        ):
             weight_decay = 0.0
         else:
             weight_decay = self._lamb_weight_decay
         lr = self._create_param_lr(param_and_grad)
 
-        find_master = self._multi_precision and param_and_grad[
-            0].dtype == core.VarDesc.VarType.FP16
+        find_master = (
+            self._multi_precision
+            and param_and_grad[0].dtype == core.VarDesc.VarType.FP16
+        )
         p_name = param_and_grad[0].name
         if find_master:
             master_weight = self._master_weights[p_name]
@@ -269,20 +297,50 @@ class Lamb(Optimizer):
         found_inf = self._get_auxiliary_var('found_inf')
 
         if framework.in_dygraph_mode():
-            _C_ops.lamb_(param_and_grad[0], param_and_grad[1], lr, moment1,
-                         moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
-                         found_inf, weight_decay, self._beta1, self._beta2,
-                         self._epsilon, find_master)
+            _C_ops.lamb_(
+                param_and_grad[0],
+                param_and_grad[1],
+                lr,
+                moment1,
+                moment2,
+                beta1_pow_acc,
+                beta2_pow_acc,
+                master_weight,
+                found_inf,
+                weight_decay,
+                self._beta1,
+                self._beta2,
+                self._epsilon,
+                find_master,
+            )
             return None
         if framework._non_static_mode():
-            _legacy_C_ops.lamb(param_and_grad[0], param_and_grad[1], lr,
-                               moment1, moment2, beta1_pow_acc, beta2_pow_acc,
-                               master_weight, param_and_grad[0], moment1,
-                               moment2, beta1_pow_acc, beta2_pow_acc,
-                               master_weight, 'beta1', self._beta1, 'beta2',
-                               self._beta2, 'epsilon', self._epsilon,
-                               'weight_decay', weight_decay, 'multi_precision',
-                               find_master)
+            _legacy_C_ops.lamb(
+                param_and_grad[0],
+                param_and_grad[1],
+                lr,
+                moment1,
+                moment2,
+                beta1_pow_acc,
+                beta2_pow_acc,
+                master_weight,
+                param_and_grad[0],
+                moment1,
+                moment2,
+                beta1_pow_acc,
+                beta2_pow_acc,
+                master_weight,
+                'beta1',
+                self._beta1,
+                'beta2',
+                self._beta2,
+                'epsilon',
+                self._epsilon,
+                'weight_decay',
+                weight_decay,
+                'multi_precision',
+                find_master,
+            )
             return None
 
         # create the lamb optimize op
@@ -293,14 +351,14 @@ class Lamb(Optimizer):
             "Moment1": moment1,
             "Moment2": moment2,
             "Beta1Pow": beta1_pow_acc,
-            "Beta2Pow": beta2_pow_acc
+            "Beta2Pow": beta2_pow_acc,
         }
         outputs = {
             "ParamOut": param_and_grad[0],
             "Moment1Out": moment1,
             "Moment2Out": moment2,
             "Beta1PowOut": beta1_pow_acc,
-            "Beta2PowOut": beta2_pow_acc
+            "Beta2PowOut": beta2_pow_acc,
         }
         attrs = {
             "beta1": self._beta1,
@@ -317,11 +375,13 @@ class Lamb(Optimizer):
         if found_inf:
             inputs["SkipUpdate"] = found_inf
 
-        lamb_op = block.append_op(type=self.type,
-                                  inputs=inputs,
-                                  outputs=outputs,
-                                  attrs=attrs,
-                                  stop_gradient=True)
+        lamb_op = block.append_op(
+            type=self.type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
+            stop_gradient=True,
+        )
 
         return lamb_op
 
@@ -330,9 +390,11 @@ class Lamb(Optimizer):
         self._beta2 = parameters.get('beta2', self._default_dict['beta2'])
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])
         self._lamb_weight_decay = parameters.get(
-            'lamb_weight_decay', self._default_dict['lamb_weight_decay'])
+            'lamb_weight_decay', self._default_dict['lamb_weight_decay']
+        )
         self._exclude_from_weight_decay_fn = parameters.get(
             'exclude_from_weight_decay_fn',
-            self._default_dict['exclude_from_weight_decay_fn'])
+            self._default_dict['exclude_from_weight_decay_fn'],
+        )
         parameters = parameters.get('params')
         return parameters

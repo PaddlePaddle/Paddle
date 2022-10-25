@@ -22,10 +22,10 @@ template <typename DeviceContext, typename T>
 class WhereNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* condition = ctx.Input<framework::Tensor>("Condition");
-    auto* X = ctx.Input<framework::Tensor>("X");
-    auto* Y = ctx.Input<framework::Tensor>("Y");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* condition = ctx.Input<phi::DenseTensor>("Condition");
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto& runner =
@@ -42,10 +42,10 @@ template <typename DeviceContext, typename T>
 class WhereGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* condition = ctx.Input<framework::Tensor>("Condition");
-    auto* dout_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* dx_t = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* dy_t = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto* condition = ctx.Input<phi::DenseTensor>("Condition");
+    auto* dout_t = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx_t = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy_t = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     if (dx_t != nullptr) {
       dx_t->mutable_data<T>(ctx.GetPlace());
@@ -58,7 +58,7 @@ class WhereGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    framework::Tensor tensor_zeros(dout_t->dtype());
+    phi::DenseTensor tensor_zeros(dout_t->dtype());
     tensor_zeros.mutable_data<T>(dout_t->dims(), ctx.GetPlace());
     const auto& runner =
         NpuOpRunner("ZerosLike", {*dout_t}, {tensor_zeros}, {});

@@ -16,15 +16,10 @@ import unittest
 
 import paddle
 import numpy as np
-import random
 import paddle.distributed as dist
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
-from paddle import framework
 
 
 class TestCollectiveBatchIsendIrecv(unittest.TestCase):
-
     def setUp(self):
         dist.init_parallel_env()
         paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -37,8 +32,9 @@ class TestCollectiveBatchIsendIrecv(unittest.TestCase):
         # paddle.tensor([1, 2])  # Rank-1
         recv_t = paddle.empty(shape=[2], dtype=send_t.dtype)
         send_op = dist.P2POp(dist.isend, send_t, (rank + 1) % world_size)
-        recv_op = dist.P2POp(dist.irecv, recv_t,
-                             (rank - 1 + world_size) % world_size)
+        recv_op = dist.P2POp(
+            dist.irecv, recv_t, (rank - 1 + world_size) % world_size
+        )
         tasks = dist.batch_isend_irecv([send_op, recv_op])
 
         for task in tasks:

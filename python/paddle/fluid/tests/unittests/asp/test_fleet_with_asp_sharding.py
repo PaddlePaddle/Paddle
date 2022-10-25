@@ -14,11 +14,9 @@
 # limitations under the License.
 
 import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 import unittest
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import os
 from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
@@ -34,7 +32,6 @@ paddle.enable_static()
 
 
 class TestFleetWithASPSharding(unittest.TestCase):
-
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -51,9 +48,9 @@ class TestFleetWithASPSharding(unittest.TestCase):
 
     def net(self, main_prog, startup_prog):
         with fluid.program_guard(main_prog, startup_prog):
-            input_x = paddle.static.data(name="x",
-                                         shape=[-1, 32],
-                                         dtype='float32')
+            input_x = paddle.static.data(
+                name="x", shape=[-1, 32], dtype='float32'
+            )
             input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
             fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
@@ -73,7 +70,7 @@ class TestFleetWithASPSharding(unittest.TestCase):
                 "sharding_degree": 8,
                 "mp_degree": 1,
                 "hybrid_dp": False,
-                "gradient_merge_acc_step": 1
+                "gradient_merge_acc_step": 1,
             }
             dist_strategy.nccl_comm_num = 1
             dist_strategy.asp = True
@@ -82,18 +79,21 @@ class TestFleetWithASPSharding(unittest.TestCase):
     def test_with_asp_sharding(self):
         fleet.init(is_collective=True)
         train_prog, startup_prog = fluid.Program(), fluid.Program()
-        avg_cost, strategy, input_x, input_y = self.net(train_prog,
-                                                        startup_prog)
+        avg_cost, strategy, input_x, input_y = self.net(
+            train_prog, startup_prog
+        )
 
         with fluid.program_guard(train_prog, startup_prog):
             optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
-            optimizer = fleet.distributed_optimizer(optimizer,
-                                                    strategy=strategy)
+            optimizer = fleet.distributed_optimizer(
+                optimizer, strategy=strategy
+            )
             optimizer.minimize(avg_cost)
 
         if paddle.fluid.is_compiled_with_cuda():
             place = fluid.CUDAPlace(
-                int(os.environ.get('FLAGS_selected_gpus', 0)))
+                int(os.environ.get('FLAGS_selected_gpus', 0))
+            )
         else:
             place = fluid.CPUPlace()
 
@@ -108,20 +108,23 @@ class TestFleetWithASPSharding(unittest.TestCase):
 
         for param in train_prog.global_block().all_parameters():
             if ASPHelper._is_supported_layer(train_prog, param.name):
-                mat = np.array(fluid.global_scope().find_var(
-                    param.name).get_tensor())
-                if (len(param.shape) == 4
-                        and param.shape[1] < 4) or (len(param.shape) == 2
-                                                    and param.shape[0] < 4):
+                mat = np.array(
+                    fluid.global_scope().find_var(param.name).get_tensor()
+                )
+                if (len(param.shape) == 4 and param.shape[1] < 4) or (
+                    len(param.shape) == 2 and param.shape[0] < 4
+                ):
                     self.assertFalse(
-                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
-                                                                     n=2,
-                                                                     m=4))
+                        paddle.fluid.contrib.sparsity.check_sparsity(
+                            mat.T, n=2, m=4
+                        )
+                    )
                 else:
                     self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
-                                                                     n=2,
-                                                                     m=4))
+                        paddle.fluid.contrib.sparsity.check_sparsity(
+                            mat.T, n=2, m=4
+                        )
+                    )
 
 
 if __name__ == "__main__":

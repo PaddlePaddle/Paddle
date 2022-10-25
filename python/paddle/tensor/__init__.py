@@ -169,6 +169,7 @@ from .math import sqrt_  # noqa: F401
 from .math import square  # noqa: F401
 from .math import stanh  # noqa: F401
 from .math import sum  # noqa: F401
+from .math import nan_to_num  # noqa: F401
 from .math import nansum  # noqa: F401
 from .math import nanmean  # noqa: F401
 from .math import count_nonzero  # noqa: F401
@@ -239,6 +240,7 @@ from .math import heaviside  # noqa: F401
 from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
+from .math import frexp  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -349,6 +351,7 @@ tensor_method_func = [  # noqa
     'square',
     'stanh',
     'sum',
+    'nan_to_num',
     'nansum',
     'nanmean',
     'count_nonzero',
@@ -517,6 +520,7 @@ tensor_method_func = [  # noqa
     'take',
     'bucketize',
     'sgn',
+    'frexp',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

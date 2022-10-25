@@ -12,22 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-import paddle
-from ...fluid.framework import default_main_program
 from paddle.fluid.layer_helper import LayerHelper
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _legacy_C_ops
 from paddle import in_dynamic_mode
 
 
-def sparse_attention(query,
-                     key,
-                     value,
-                     sparse_csr_offset,
-                     sparse_csr_columns,
-                     key_padding_mask=None,
-                     attn_mask=None,
-                     name=None):
+def sparse_attention(
+    query,
+    key,
+    value,
+    sparse_csr_offset,
+    sparse_csr_columns,
+    key_padding_mask=None,
+    attn_mask=None,
+    name=None,
+):
     r"""
     This operator sparsify the Attention matrix in Transformer module
     to achieve the effect of reducing memory consumption and computation.
@@ -144,9 +143,19 @@ def sparse_attention(query,
             #       [1.99830270, 2.99830270]]]]
     """
     if in_dynamic_mode():
-        result_attention, result_sdd, result_softmax = _legacy_C_ops.sparse_attention(
-            query, key, value, sparse_csr_offset, sparse_csr_columns,
-            key_padding_mask, attn_mask)
+        (
+            result_attention,
+            result_sdd,
+            result_softmax,
+        ) = _legacy_C_ops.sparse_attention(
+            query,
+            key,
+            value,
+            sparse_csr_offset,
+            sparse_csr_columns,
+            key_padding_mask,
+            attn_mask,
+        )
         return result_attention
 
     helper = LayerHelper('sparse_attention', **locals())
@@ -166,7 +175,7 @@ def sparse_attention(query,
     outputs = {
         'Out': out,
         'SparseDotSdd': result_sdd,
-        'Softmax': result_softmax
+        'Softmax': result_softmax,
     }
     helper.append_op(type='sparse_attention', inputs=inputs, outputs=outputs)
     return out

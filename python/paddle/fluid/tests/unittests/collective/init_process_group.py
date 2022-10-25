@@ -13,22 +13,12 @@
 # limitations under the License.
 
 import unittest
-import random
-import numpy as np
-import os
-import shutil
 
 import paddle
-from paddle.fluid import core
-import datetime
-from datetime import timedelta
-import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
 class TestProcessGroupFp32(unittest.TestCase):
-
     def setUp(self):
         self.config()
 

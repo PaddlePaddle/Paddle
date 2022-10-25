@@ -17,15 +17,11 @@ import numpy as np
 import sys
 
 sys.path.append("..")
-from op_test_xpu import OpTest, XPUOpTest
+from op_test_xpu import XPUOpTest
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
 
 
 class TestXPUTransposeOp(XPUOpTest):
-
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -35,11 +31,11 @@ class TestXPUTransposeOp(XPUOpTest):
         self.attrs = {
             'axis': list(self.axis),
             'use_mkldnn': False,
-            'use_xpu': True
+            'use_xpu': True,
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float32"),
-            'Out': self.inputs['X'].transpose(self.axis)
+            'Out': self.inputs['X'].transpose(self.axis),
         }
 
     def init_op_type(self):
@@ -63,71 +59,67 @@ class TestXPUTransposeOp(XPUOpTest):
         self.axis = (1, 0)
 
 
-class TestCase0(TestXPUTransposeOp):
-
+class TestCase_ZeroDim(TestXPUTransposeOp):
     def initTestCase(self):
-        self.shape = (100, )
-        self.axis = (0, )
+        self.shape = ()
+        self.axis = ()
+
+
+class TestCase0(TestXPUTransposeOp):
+    def initTestCase(self):
+        self.shape = (100,)
+        self.axis = (0,)
 
 
 class TestCase1(TestXPUTransposeOp):
-
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
 class TestCase2(TestXPUTransposeOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
 
 
 class TestCase3(TestXPUTransposeOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
 
 
 class TestCase4(TestXPUTransposeOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
 class TestCase5(TestXPUTransposeOp):
-
     def initTestCase(self):
         self.shape = (2, 16, 96)
         self.axis = (0, 2, 1)
 
 
 class TestCase6(TestXPUTransposeOp):
-
     def initTestCase(self):
         self.shape = (2, 10, 12, 16)
         self.axis = (3, 1, 2, 0)
 
 
 class TestCase7(TestXPUTransposeOp):
-
     def initTestCase(self):
         self.shape = (2, 10, 2, 16)
         self.axis = (0, 1, 3, 2)
 
 
 class TestCase8(TestXPUTransposeOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (0, 1, 3, 2, 4, 5, 6, 7)
 
 
 class TestCase9(TestXPUTransposeOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)

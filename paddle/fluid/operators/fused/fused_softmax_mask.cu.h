@@ -20,8 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 namespace plat = paddle::platform;
 
 #define FINAL_MASK 0xffffffff

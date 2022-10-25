@@ -23,11 +23,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-import time
-import functools
-import numpy as np
 from functools import reduce
-from collections import deque
 from types import MethodType
 
 import paddle
@@ -37,7 +33,7 @@ from paddle.distributed.utils.log_utils import get_logger
 
 from .group_sharded_storage import GradStorage
 from .group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
-from .group_sharded_utils import Taskflow, Type, device_guard
+from .group_sharded_utils import Type, device_guard
 
 logger_ = get_logger(logging.WARNING)
 
@@ -62,56 +58,77 @@ class GroupShardedStage2(nn.Layer):
     # 5. Support the establishment of independent communication groups.
 
     def __init__(
-            self,
-            layer,
-            sharding_optimizer,
-            group=None,
-            sync_buffers=False,
-            buffer_max_size=2**23,  #8MB
-            auto_refresh_trainable=True,
-            device="gpu"):
+        self,
+        layer,
+        sharding_optimizer,
+        group=None,
+        sync_buffers=False,
+        buffer_max_size=2**23,  # 8MB
+        auto_refresh_trainable=True,
+        device="gpu",
+        dp_group=None,
+    ):
         super().__init__()
 
         # training options
         self._layer = layer
-        self._sharding_optimizers = [
-            sharding_optimizer
-        ] if not isinstance(sharding_optimizer, list) else sharding_optimizer
+        self._sharding_optimizers = (
+            [sharding_optimizer]
+            if not isinstance(sharding_optimizer, list)
+            else sharding_optimizer
+        )
         assert all(
             list(
-                map(lambda opt: isinstance(opt, GroupShardedOptimizerStage2),
-                    self._sharding_optimizers))
+                map(
+                    lambda opt: isinstance(opt, GroupShardedOptimizerStage2),
+                    self._sharding_optimizers,
+                )
+            )
         ), "Please use GroupShardedOptimizerStage2 optimizer"
         self._sync_buffers = sync_buffers
         self._auto_refresh_trainable = auto_refresh_trainable
 
         # Communication related attributes
-        self._group = collective.new_group(
-            collective._get_global_group().ranks) if group is None else group
+        self._group = (
+            collective.new_group(collective._get_global_group().ranks)
+            if group is None
+            else group
+        )
         self._world_size_scaling = 1.0 / self._group.nranks
-        assert self._group.nranks > 1, "Training must be distributed, ranks must be greater than 1"
+        assert (
+            self._group.nranks > 1
+        ), "Training must be distributed, ranks must be greater than 1"
         self._rank = self._group.rank
         self._global_root_rank = self._group.ranks[
-            0]  # picking ranks index 0 as the reference
+            0
+        ]  # picking ranks index 0 as the reference
         self._default_device = device
+
+        self._dp_group = dp_group
 
         # Global statistical parameters
         self._all_params = []
         for optim in self._sharding_optimizers:
             self._all_params.extend(list(optim.local_params))
 
-        self._trainable_params = []
+        # sharing stage 2 comm overlap flag
+        self._reduce_overlap = False
+
         self._grad_reduced = []
         self._trainable_param2rank = {}
         self._trainable_param2align = {}
-        self._trainable_mask = list(map(_trainable, self._all_params))
+        self._trainable_params = list(
+            filter(lambda x: x.trainable, self._all_params)
+        )
+        self._trainable_mask = list(map(_trainable, self._trainable_params))
         self._param_grads = []
 
         # Set grad storage size & Display param sizes and model sizes
         model_size = sum([p._numel() for p in self._layer.parameters()])
         assert buffer_max_size >= 0, "buffer_max_size must be GE than 0."
-        self._buffer_max_size = self._rank_buffer_size(buffer_max_size,
-                                                       model_size)
+        self._buffer_max_size = self._rank_buffer_size(
+            buffer_max_size, model_size
+        )
         self._use_grad_storage = buffer_max_size > 0
         self._grad_storages = {}  # {dtype: {rank: GradStorage}}
         self._has_grad_storage = []
@@ -120,11 +137,12 @@ class GroupShardedStage2(nn.Layer):
         # Offload
         # TODO(haohongxiang): Now it's not be supported for multi-optimizers using Offload strategy
         self._offload_optims = list(
-            filter(lambda optim: optim.offload, self._sharding_optimizers))
+            filter(lambda optim: optim.offload, self._sharding_optimizers)
+        )
         if len(self._offload_optims) > 0:
-            assert len(
-                self._sharding_optimizers
-            ) == 1, "Only support offload strategy for single optimizer"
+            assert (
+                len(self._sharding_optimizers) == 1
+            ), "Only support offload strategy for single optimizer"
 
         self._offload = len(self._offload_optims) > 0
         self._offload_device = "cpu"
@@ -167,17 +185,21 @@ class GroupShardedStage2(nn.Layer):
         return fw
 
     def set_state_dict(self, state_dict, use_structured_name=True):
-        self._layer.set_state_dict(state_dict,
-                                   use_structured_name=use_structured_name)
+        self._layer.set_state_dict(
+            state_dict, use_structured_name=use_structured_name
+        )
 
-    def state_dict(self,
-                   destination=None,
-                   include_sublayers=True,
-                   structured_name_prefix=""):
+    def state_dict(
+        self,
+        destination=None,
+        include_sublayers=True,
+        structured_name_prefix="",
+    ):
         return self._layer.state_dict(
             destination=destination,
             include_sublayers=include_sublayers,
-            structured_name_prefix=structured_name_prefix)
+            structured_name_prefix=structured_name_prefix,
+        )
 
     def _clear_gradients(self):
         """
@@ -185,8 +207,10 @@ class GroupShardedStage2(nn.Layer):
         """
         # Release grad storages
         for dtype in self._grad_storages.keys():
-            if not self._offload and self._rank in self._grad_storages[
-                    dtype].keys():
+            if (
+                not self._offload
+                and self._rank in self._grad_storages[dtype].keys()
+            ):
                 self._grad_storages[dtype][self._rank].buffer.zero_()
 
         # Release grads of params
@@ -202,24 +226,32 @@ class GroupShardedStage2(nn.Layer):
         """
         Before the gradient accumulation, scale the gradient.
         """
+
+        if self._dp_group is None or self._dp_group.nranks <= 1:
+            scale_factor = self._world_size_scaling
+        else:
+            scale_factor = 1.0 / (self._group.nranks * self._dp_group.nranks)
+
         # Scale grad storages
         for dtype in self._grad_storages.keys():
-            if not self._offload and self._rank in self._grad_storages[
-                    dtype].keys():
+            if (
+                not self._offload
+                and self._rank in self._grad_storages[dtype].keys()
+            ):
                 self._grad_storages[dtype][self._rank].buffer.scale_(
-                    scale=self._world_size_scaling)
+                    scale=scale_factor
+                )
 
         # Scale grads of params
         with paddle.no_grad():
             for param in self._trainable_params:
                 if param.name in self._param_grads and param.grad is not None:
-                    param.grad.scale_(scale=self._world_size_scaling)
+                    param.grad.scale_(scale=scale_factor)
                 # param._reset_grad_inplace_version(True)
 
             # Scale grads of master params with offload strategy
         if self._offload:
-            self._sharding_optimizers[0]._offload_scale_grad(
-                self._world_size_scaling)
+            self._sharding_optimizers[0]._offload_scale_grad(scale_factor)
 
     def _init_internal_storage(self, needs_fresh):
         """
@@ -238,7 +270,9 @@ class GroupShardedStage2(nn.Layer):
         Synchronously or asynchronously convert the data type of the layer, the device is not supported now.
         """
         assert isinstance(device, str), "Device must be type str"
-        assert device == self._default_device, "New devices are not supported, because of the optimizer state is not sync"
+        assert (
+            device == self._default_device
+        ), "New devices are not supported, because of the optimizer state is not sync"
 
         self._layer.to(device=device, dtype=dtype, blocking=blocking)
 
@@ -246,14 +280,15 @@ class GroupShardedStage2(nn.Layer):
         self._fresh_trainable()
 
     def _fresh_trainable(self):
-        """ Whether to update training parameters. """
+        """Whether to update training parameters."""
 
         # Make sure that this is not done while gradients are waiting to be reduced (if no_sync context for instance)
         if reduce(lambda x, y: x or y, self._grad_reduced, False):
             logging.warning("Grads waiting to be reduced.")
 
         self._trainable_params = list(
-            filter(lambda x: x.trainable, self._all_params))
+            filter(lambda x: x.trainable, self._all_params)
+        )
         self._trainable_params.sort(key=lambda x: x._numel())
 
         self._trainable_param2rank = {}
@@ -263,14 +298,19 @@ class GroupShardedStage2(nn.Layer):
                 optim._update_opt_status()
 
             # Get the parameters split by the optimizer according to rank
-            for per_rank_params in optim.dtype_rank_params.values(
+            for (
+                per_rank_params
+            ) in (
+                optim.dtype_rank_params.values()
             ):  # all the params from all ranks
                 for params in per_rank_params:
                     for param in filter(lambda x: x.trainable, params):
                         self._trainable_param2rank[
-                            param.name] = optim.param2rank[param.name]
+                            param.name
+                        ] = optim.param2rank[param.name]
                         self._trainable_param2align[
-                            param.name] = optim._param2align[param.name]
+                            param.name
+                        ] = optim._param2align[param.name]
 
         # Create grad_storage
         self._setup_use_grad_storage()
@@ -284,10 +324,17 @@ class GroupShardedStage2(nn.Layer):
         """
 
         for buffer in self._layer.buffers(include_sublayers=True):
-            collective.broadcast(buffer,
-                                 self._global_root_rank,
-                                 self._group,
-                                 sync_op=True)
+            collective.broadcast(
+                buffer, self._global_root_rank, self._group, sync_op=True
+            )
+
+            if self._dp_group and self._dp_group.nranks > 1:
+                collective.broadcast(
+                    buffer,
+                    self._dp_group.ranks[0],
+                    self._dp_group,
+                    sync_op=True,
+                )
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -306,6 +353,18 @@ class GroupShardedStage2(nn.Layer):
             for grad_storage in self._grad_storage_list:
                 grad_storage.reset_checked_in()
 
+    def _set_reduce_overlap(self, reduce_overlap):
+        # Hacky way to not add an extra parameter to the `group_sharded_parallel` funct.
+        # User should use this like:
+        # model, optimizer, scaler = group_sharded_parallel(...)
+        # model._set_reduce_overlap(True)
+        self._reduce_overlap = reduce_overlap
+        if self._reduce_overlap:
+            assert (
+                len(self._sharding_optimizers) == 1
+            ), "Only support comm overlap strategy for single optimizer"
+        self._sharding_optimizers[0]._set_reduce_overlap(reduce_overlap)
+
     def _get_reduce_fn(self, index, param, dst_rank):
         """
         There are two ways to reduce gradient.
@@ -319,7 +378,9 @@ class GroupShardedStage2(nn.Layer):
             def reduce(*_):
                 # Skip gradient reduction, do not change status information
                 if self._grad_reduced[index]:
-                    assert param.grad is not None, "Parameter gradient cannot be None"
+                    assert (
+                        param.grad is not None
+                    ), "Parameter gradient cannot be None"
 
                     # Change reduce information
                     self._grad_reduced[index] = False
@@ -330,18 +391,35 @@ class GroupShardedStage2(nn.Layer):
                             param.clear_gradient(False)
                         elif self._offload:
                             tmp_grad = param.grad.cast(
-                                dtype=Type.fp32.value).cpu()
+                                dtype=Type.fp32.value
+                            ).cpu()
 
                             self._sharding_optimizers[0]._offload_acc_grad(
-                                param.name, tmp_grad)
+                                param.name, tmp_grad
+                            )
                             del tmp_grad
                             param.clear_gradient(False)
 
-                    # Synchronize the reduce parameter gradient
-                    collective.reduce(tensor=param.grad,
-                                      dst=self._group.ranks[dst_rank],
-                                      group=self._group)
-                    #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
+                    # Synchronize the reduce parameter gradient asynchronize
+                    self._sharding_optimizers[0]._update_task(
+                        collective.reduce(
+                            tensor=param.grad,
+                            dst=self._group.ranks[dst_rank],
+                            group=self._group,
+                            sync_op=not self._reduce_overlap,
+                        )
+                    )
+
+                    if self._dp_group and self._dp_group.nranks > 1:
+                        assert (
+                            not self._reduce_overlap
+                        ), 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
+                        # TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
+                        collective.all_reduce(
+                            tensor=param.grad,
+                            group=self._dp_group,
+                            sync_op=True,
+                        )
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     # self._clear_task_flow()
@@ -354,7 +432,9 @@ class GroupShardedStage2(nn.Layer):
             def reduce(*_):
                 # Skip gradient reduction, do not change status information
                 if self._grad_reduced[index]:
-                    assert param.grad is not None, "Parameter gradient cannot be None"
+                    assert (
+                        param.grad is not None
+                    ), "Parameter gradient cannot be None"
 
                     # Change reduce information
                     self._grad_reduced[index] = False
@@ -376,21 +456,37 @@ class GroupShardedStage2(nn.Layer):
                                 for p in grad_storage._params:
                                     with device_guard():
                                         tmp_grad = p.grad.cast(
-                                            dtype=Type.fp32.value)
+                                            dtype=Type.fp32.value
+                                        )
                                     self._sharding_optimizers[
-                                        0]._offload_acc_grad(p.name, tmp_grad)
+                                        0
+                                    ]._offload_acc_grad(p.name, tmp_grad)
                                     p.clear_gradient(False)
                                 grad_storage._device = self._default_device
                                 grad_storage.buffer._clear_data()
 
                         # Reduce the bucket
                         grad_storage.sent = True
-                        # Synchronize the reduce parameter gradient
-                        collective.reduce(
-                            tensor=grad_storage.buffer,
-                            dst=self._group.ranks[grad_storage.destination],
-                            group=self._group)
-                        #  TODO (Baibaifan) Asynchronous the reduce parameter gradient
+                        # Synchronize the reduce parameter gradient asynchronize
+                        self._sharding_optimizers[0]._update_task(
+                            collective.reduce(
+                                tensor=grad_storage.buffer,
+                                dst=self._group.ranks[grad_storage.destination],
+                                group=self._group,
+                                sync_op=not self._reduce_overlap,
+                            )
+                        )
+
+                        if self._dp_group and self._dp_group.nranks > 1:
+                            assert (
+                                not self._reduce_overlap
+                            ), 'dp + stage2 hybrid parallel only Synchronize due to the new communication lib.'
+                            # TODO(wuhuachao):after the new communication lib upgrading, overlapping the comm of dp + stage2.
+                            collective.all_reduce(
+                                tensor=grad_storage.buffer,
+                                group=self._dp_group,
+                                sync_op=True,
+                            )
 
                         cleanup()
 
@@ -418,7 +514,8 @@ class GroupShardedStage2(nn.Layer):
             reduce_function = self._get_reduce_fn(index, param, dst_rank)
 
             self._bw_hooks.append(
-                param._register_backward_hook(reduce_function))
+                param._register_backward_hook(reduce_function)
+            )
 
     def _setup_use_grad_storage(self):
         """
@@ -441,25 +538,32 @@ class GroupShardedStage2(nn.Layer):
                     dtype=param.dtype,
                     device=self._default_device,
                     destination=dst_rank,
-                    parm2align=self._trainable_param2align)
+                    parm2align=self._trainable_param2align,
+                )
 
             # Criteria to decide whether this parameter is to be put in GradStorage
             if self._grad_storages[param.dtype][dst_rank].can_add_grad_view(
-                    param, self._trainable_param2align[param.name]):
+                param, self._trainable_param2align[param.name]
+            ):
                 self._grad_storages[param.dtype][dst_rank].add_grad(
-                    param, self._trainable_param2align[param.name])
+                    param, self._trainable_param2align[param.name]
+                )
                 self._has_grad_storage[index] = True
             else:
                 self._param_grads.append(param.name)
                 print(
-                    "Can not add param: {}, param's shape: {}, param align: {}, grad_storages fill: {}, "
-                    .format(param.name, param.shape,
-                            self._trainable_param2align[param.name],
-                            self._grad_storages[param.dtype][dst_rank]._fill))
+                    "Can not add param: {}, param's shape: {}, param align: {}, grad_storages fill: {}, ".format(
+                        param.name,
+                        param.shape,
+                        self._trainable_param2align[param.name],
+                        self._grad_storages[param.dtype][dst_rank]._fill,
+                    )
+                )
 
         for dtype in self._grad_storages.keys():
             self._grad_storage_list.extend(
-                list(self._grad_storages[dtype].values()))
+                list(self._grad_storages[dtype].values())
+            )
 
     # def _clear_task_flow(self):
     #     """Try to consume the previous tasks."""
@@ -471,7 +575,7 @@ class GroupShardedStage2(nn.Layer):
 
     def _detect_train_change(self):
         # Current trainable parameters
-        trainable_mask = list(map(_trainable, self._all_params))
+        trainable_mask = list(map(_trainable, self._trainable_params))
 
         # Whether parameters trainability changed
         trainability_changed = trainable_mask != self._trainable_mask
@@ -511,15 +615,27 @@ class GroupShardedStage2(nn.Layer):
         if Type.fp16.value in rank_buffer_size.keys():
             # FP16 GradStorage and model size
             logger_.info(
-                "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======"
-                .format(rank_buffer_size[Type.fp16.value] / 2**19,
-                        model_size / 2**19))
+                "====== FP16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".format(
+                    rank_buffer_size[Type.fp16.value] / 2**19,
+                    model_size / 2**19,
+                )
+            )
+        if Type.bf16.value in rank_buffer_size.keys():
+            # FP16 GradStorage and model size
+            logger_.info(
+                "====== BF16 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".format(
+                    rank_buffer_size[Type.bf16.value] / 2**19,
+                    model_size / 2**19,
+                )
+            )
         if Type.fp32.value in rank_buffer_size.keys():
             # FP32 GradStorage and model size
             logger_.info(
-                "====== FP32 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======"
-                .format(rank_buffer_size[Type.fp32.value] / 2**18,
-                        model_size / 2**18))
+                "====== FP32 GradStorage size: {:.2f}M parameters, Model size {:.2f}M parameters ======".format(
+                    rank_buffer_size[Type.fp32.value] / 2**18,
+                    model_size / 2**18,
+                )
+            )
         return rank_buffer_size
 
     def _redefine_opt_step(self):
@@ -528,6 +644,10 @@ class GroupShardedStage2(nn.Layer):
             opt_step = opt.step
 
             def _opt_step(self):
+                if self._reduce_overlap:
+                    # Wait for the last reduce task. This wait must before grad scale function.
+                    assert self._comm_task is not None
+                    self._comm_task.wait()
                 grad_func()
                 opt_step()
 

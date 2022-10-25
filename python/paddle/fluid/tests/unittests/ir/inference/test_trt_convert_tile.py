@@ -12,21 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
+from hypothesis import given
 import hypothesis.strategies as st
 
 
 class TrtConvertTileTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         attrs = [
@@ -39,38 +37,37 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self, *args, **kwargs):
-
         def generate_input1(attrs: List[Dict[str, Any]]):
             return np.ones([1, 2, 3, 4]).astype(np.float32)
 
         dics = [{"repeat_times": kwargs['repeat_times']}]
 
-        ops_config = [{
-            "op_type": "tile",
-            "op_inputs": {
-                "X": ["input_data"]
-            },
-            "op_outputs": {
-                "Out": ["tile_output_data"]
-            },
-            "op_attrs": dics[0]
-        }]
+        ops_config = [
+            {
+                "op_type": "tile",
+                "op_inputs": {"X": ["input_data"]},
+                "op_outputs": {"Out": ["tile_output_data"]},
+                "op_attrs": dics[0],
+            }
+        ]
         ops = self.generate_op_config(ops_config)
 
         program_config = ProgramConfig(
             ops=ops,
             weights={},
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input1, dics))
+                "input_data": TensorConfig(
+                    data_gen=partial(generate_input1, dics)
+                )
             },
-            outputs=["tile_output_data"])
+            outputs=["tile_output_data"],
+        )
 
         yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -99,19 +96,23 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-4
+            attrs, False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-4
+            attrs, True
+        ), 1e-3
 
     @given(repeat_times=st.sampled_from([[100], [1, 2], [0, 3], [1, 2, 100]]))
     def test(self, *args, **kwargs):

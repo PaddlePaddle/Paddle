@@ -19,20 +19,21 @@ import sys
 sys.path.append("..")
 
 import paddle
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
 class XPUTestReduceSumOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'reduce_sum'
 
     class XPUTestReduceSumBase(XPUOpTest):
-
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_case()
@@ -43,21 +44,21 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.attrs = {
                 'use_xpu': True,
                 'reduce_all': self.reduce_all,
-                'keep_dim': self.keep_dim
+                'keep_dim': self.keep_dim,
             }
             self.inputs = {'X': np.random.random(self.shape).astype("float32")}
             if self.attrs['reduce_all']:
                 self.outputs = {'Out': self.inputs['X'].sum()}
             else:
                 self.outputs = {
-                    'Out':
-                    self.inputs['X'].sum(axis=self.axis,
-                                         keepdims=self.attrs['keep_dim'])
+                    'Out': self.inputs['X'].sum(
+                        axis=self.axis, keepdims=self.attrs['keep_dim']
+                    )
                 }
 
         def init_case(self):
             self.shape = (5, 6, 10)
-            self.axis = (0, )
+            self.axis = (0,)
             self.reduce_all = False
             self.keep_dim = False
 
@@ -68,10 +69,9 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class XPUTestReduceSumCase1(XPUTestReduceSumBase):
-
         def init_case(self):
             self.shape = (5, 6, 10)
-            self.axis = (0, )
+            self.axis = (0,)
             self.reduce_all = False
             self.keep_dim = True
 

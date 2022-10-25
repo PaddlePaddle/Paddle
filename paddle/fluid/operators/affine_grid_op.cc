@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class AffineGridOp : public framework::OperatorWithKernel {
  public:
@@ -142,7 +142,7 @@ class AffineGridOp : public framework::OperatorWithKernel {
 #endif
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Theta");
     return framework::OpKernelType(
-        data_type, ctx.GetPlace(), framework::DataLayout::kAnyLayout, library);
+        data_type, ctx.GetPlace(), phi::DataLayout::kAnyLayout, library);
   }
 };
 
@@ -261,7 +261,7 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Output")),
                                    ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout,
+                                   phi::DataLayout::kAnyLayout,
                                    library_);
   }
 };

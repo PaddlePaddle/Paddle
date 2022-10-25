@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
 from .container import Container
 
 from .status import Status
@@ -22,17 +21,17 @@ import time
 
 
 class PodSepc(object):
-
     def __init__(self):
         self._name = ''.join(
-            random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6))
+            random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6)
+        )
 
         # by controller
         self._init_containers: List[Container] = []
         self._containers: List[Container] = []
 
-        #self.resource: Resource = None
-        #self.status: Status = None
+        # self.resource: Resource = None
+        # self.status: Status = None
 
         self._rank = -1
         self._init_timeout = None
@@ -42,14 +41,13 @@ class PodSepc(object):
 
 
 class Pod(PodSepc):
-
     def __init__(self):
         super().__init__()
 
     def __str__(self):
-        return "Pod: {}, replicas {}, status {}".format(self.name,
-                                                        self.replicas,
-                                                        self.status)
+        return "Pod: {}, replicas {}, status {}".format(
+            self.name, self.replicas, self.status
+        )
 
     def failed_container(self):
         cs = []
@@ -184,11 +182,13 @@ class Pod(PodSepc):
         else:
             self._containers[idx].tail()
 
-    def watch(self,
-              all_list=[Status.COMPLETED],
-              any_list=[Status.FAILED],
-              interval=1,
-              timeout=-1):
+    def watch(
+        self,
+        all_list=[Status.COMPLETED],
+        any_list=[Status.FAILED],
+        interval=1,
+        timeout=-1,
+    ):
         '''
         watch return if any container status in any_list
         or all container status in all_list

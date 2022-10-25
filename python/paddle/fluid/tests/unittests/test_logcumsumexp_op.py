@@ -19,8 +19,6 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.framework import _test_eager_guard
 from op_test import OpTest
 
 
@@ -28,11 +26,13 @@ def np_naive_logcumsumexp(x: np.ndarray, axis: Optional[int] = None):
     return np.log(np.cumsum(np.exp(x), axis=axis))
 
 
-def np_logcumsumexp(x: np.ndarray,
-                    axis: Optional[int] = None,
-                    flatten: Optional[bool] = None,
-                    reverse: bool = False,
-                    exclusive: bool = False):
+def np_logcumsumexp(
+    x: np.ndarray,
+    axis: Optional[int] = None,
+    flatten: Optional[bool] = None,
+    reverse: bool = False,
+    exclusive: bool = False,
+):
     # `flatten` aligns with c++ op
     if flatten:
         assert axis in [0, None]
@@ -78,23 +78,30 @@ def np_logcumsumexp_grad(
     log_grad_negative = np.where(dout < 0, np.log(-dout), np.finfo(x.dtype).min)
 
     output_pos = np.exp(
-        np_logcumsumexp(log_grad_positive - out,
-                        axis=axis,
-                        flatten=flatten,
-                        reverse=not reverse,
-                        exclusive=exclusive).reshape(x.shape) + x)
+        np_logcumsumexp(
+            log_grad_positive - out,
+            axis=axis,
+            flatten=flatten,
+            reverse=not reverse,
+            exclusive=exclusive,
+        ).reshape(x.shape)
+        + x
+    )
     output_neg = np.exp(
-        np_logcumsumexp(log_grad_negative - out,
-                        axis=axis,
-                        flatten=flatten,
-                        reverse=not reverse,
-                        exclusive=exclusive).reshape(x.shape) + x)
+        np_logcumsumexp(
+            log_grad_negative - out,
+            axis=axis,
+            flatten=flatten,
+            reverse=not reverse,
+            exclusive=exclusive,
+        ).reshape(x.shape)
+        + x
+    )
 
     return output_pos - output_neg
 
 
 class TestLogcumsumexp(unittest.TestCase):
-
     def run_imperative(self):
         data_np = np.arange(12, dtype=np.float32).reshape(3, 4)
         data = paddle.to_tensor(data_np)
@@ -148,14 +155,16 @@ class TestLogcumsumexp(unittest.TestCase):
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            out = exe.run(feed={'X': data_np},
-                          fetch_list=[
-                              y.name,
-                              y2.name,
-                              y3.name,
-                              y4.name,
-                              y5.name,
-                          ])
+            out = exe.run(
+                feed={'X': data_np},
+                fetch_list=[
+                    y.name,
+                    y2.name,
+                    y3.name,
+                    y4.name,
+                    y5.name,
+                ],
+            )
 
             z = np_logcumsumexp(data_np)
             np.testing.assert_allclose(z, out[0], rtol=1e-05)
@@ -204,66 +213,96 @@ class TestLogcumsumexp(unittest.TestCase):
 
 
 class BaseTestCases:
-
     class BaseOpTest(OpTest):
-
         def setUp(self):
             self.op_type = "logcumsumexp"
             input, attrs = self.input_and_attrs()
             self.inputs = {'X': input}
             self.attrs = attrs
+            if "dtype" in attrs:
+                del attrs["dtype"]
             self.outputs = {'Out': np_logcumsumexp(input, **attrs)}
 
         def test_check_output(self):
             self.check_output()
 
         def test_check_grad(self):
-            self.check_grad(['X'],
-                            'Out',
-                            user_defined_grads=[
-                                np_logcumsumexp_grad(self.inputs['X'],
-                                                     1 / self.inputs['X'].size,
-                                                     **self.attrs)
-                            ])
+            self.check_grad(
+                ['X'],
+                'Out',
+                user_defined_grads=[
+                    np_logcumsumexp_grad(
+                        self.inputs['X'],
+                        1 / self.inputs['X'].size,
+                        **self.attrs
+                    )
+                ],
+            )
 
         def input_and_attrs(self):
             raise NotImplementedError()
 
 
 class TestLogcumsumexpOp1(BaseTestCases.BaseOpTest):
-
-    def input_and_attrs(self):
-        return np.arange(100, dtype=np.float64).reshape(10, 10), {
-            'axis': 0,
-            'flatten': True,
-            'reverse': True
-        }
-
-
-class TestLogcumsumexpOp2(BaseTestCases.BaseOpTest):
-
-    def input_and_attrs(self):
-        return np.arange(100, dtype=np.float64).reshape(10, 10), {
-            'axis': 1,
-            'reverse': True
-        }
-
-
-class TestLogcumsumexpOp3(BaseTestCases.BaseOpTest):
-
-    def input_and_attrs(self):
-        return np.arange(100, dtype=np.float64).reshape(10, 10), {'axis': 1}
-
-
-class TestLogcumsumexpOp4(BaseTestCases.BaseOpTest):
-
     def input_and_attrs(self):
         return np.arange(100, dtype=np.float64).reshape(10, 10), {
             'axis': 0,
             'flatten': True,
             'reverse': True,
-            'exclusive': True
         }
+
+
+class TestLogcumsumexpOp2(BaseTestCases.BaseOpTest):
+    def input_and_attrs(self):
+        return np.arange(100, dtype=np.float64).reshape(10, 10), {
+            'axis': 1,
+            'reverse': True,
+        }
+
+
+class TestLogcumsumexpOp3(BaseTestCases.BaseOpTest):
+    def input_and_attrs(self):
+        return np.arange(100, dtype=np.float64).reshape(10, 10), {'axis': 1}
+
+
+class TestLogcumsumexpOp4(BaseTestCases.BaseOpTest):
+    def input_and_attrs(self):
+        return np.arange(100, dtype=np.float64).reshape(10, 10), {
+            'axis': 0,
+            'flatten': True,
+            'reverse': True,
+            'exclusive': True,
+        }
+
+
+class TestLogcumsumexpFP16(unittest.TestCase):
+    def check_main(self, x_np, dtype, axis=None):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np.astype(dtype))
+        x.stop_gradient = False
+        y = paddle.logcumsumexp(x, dtype=dtype, axis=axis)
+        x_g = paddle.grad(y, [x])
+        y_np = y.numpy().astype('float32')
+        x_g_np = x_g[0].numpy().astype('float32')
+        paddle.enable_static()
+        return y_np, x_g_np
+
+    def test_main(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        np.random.seed(20)
+        x_np = np.random.random([10, 12])
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32')
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=1e-03)
+
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float16', axis=1)
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float32', axis=1)
+        np.testing.assert_allclose(y_np_1, y_np_2, rtol=1e-03)
+        np.testing.assert_allclose(x_g_np_1, x_g_np_2, rtol=2e-03)
 
 
 if __name__ == '__main__':

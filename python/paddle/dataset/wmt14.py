@@ -20,22 +20,21 @@ parse training set and test set into paddle reader creators.
 
 """
 
-import six
 import tarfile
-import gzip
 
 import paddle.dataset.common
-import paddle.compat as cpt
 import paddle.utils.deprecated as deprecated
 
 __all__ = []
 
-URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
-                'cslm_joint_paper/data/dev+test.tgz')
+URL_DEV_TEST = (
+    'http://www-lium.univ-lemans.fr/~schwenk/'
+    'cslm_joint_paper/data/dev+test.tgz'
+)
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
 # this is a small set of data for test. The original data is too large and
 # will be add later.
-URL_TRAIN = ('http://paddlemodels.bj.bcebos.com/wmt/wmt14.tgz')
+URL_TRAIN = 'http://paddlemodels.bj.bcebos.com/wmt/wmt14.tgz'
 MD5_TRAIN = '0791583d57d5beb693b9414c5b36798c'
 # BLEU of this trained model is 26.92
 URL_MODEL = 'http://paddlemodels.bj.bcebos.com/wmt%2Fwmt14.tgz'
@@ -48,25 +47,26 @@ UNK_IDX = 2
 
 
 def __read_to_dict(tar_file, dict_size):
-
     def __to_dict(fd, size):
         out_dict = dict()
         for line_count, line in enumerate(fd):
             if line_count < size:
-                out_dict[cpt.to_text(line.strip())] = line_count
+                out_dict[line.strip().decode()] = line_count
             else:
                 break
         return out_dict
 
     with tarfile.open(tar_file, mode='r') as f:
         names = [
-            each_item.name for each_item in f
+            each_item.name
+            for each_item in f
             if each_item.name.endswith("src.dict")
         ]
         assert len(names) == 1
         src_dict = __to_dict(f.extractfile(names[0]), dict_size)
         names = [
-            each_item.name for each_item in f
+            each_item.name
+            for each_item in f
             if each_item.name.endswith("trg.dict")
         ]
         assert len(names) == 1
@@ -75,17 +75,17 @@ def __read_to_dict(tar_file, dict_size):
 
 
 def reader_creator(tar_file, file_name, dict_size):
-
     def reader():
         src_dict, trg_dict = __read_to_dict(tar_file, dict_size)
         with tarfile.open(tar_file, mode='r') as f:
             names = [
-                each_item.name for each_item in f
+                each_item.name
+                for each_item in f
                 if each_item.name.endswith(file_name)
             ]
             for name in names:
                 for line in f.extractfile(name):
-                    line = cpt.to_text(line)
+                    line = line.decode()
                     line_split = line.strip().split('\t')
                     if len(line_split) != 2:
                         continue
@@ -115,7 +115,8 @@ def reader_creator(tar_file, file_name, dict_size):
     since="2.0.0",
     update_to="paddle.text.datasets.WMT14",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def train(dict_size):
     """
     WMT14 training set creator.
@@ -129,14 +130,17 @@ def train(dict_size):
     """
     return reader_creator(
         paddle.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
-        'train/train', dict_size)
+        'train/train',
+        dict_size,
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT14",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def test(dict_size):
     """
     WMT14 test set creator.
@@ -150,33 +154,39 @@ def test(dict_size):
     """
     return reader_creator(
         paddle.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
-        'test/test', dict_size)
+        'test/test',
+        dict_size,
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT14",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def gen(dict_size):
     return reader_creator(
         paddle.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN),
-        'gen/gen', dict_size)
+        'gen/gen',
+        dict_size,
+    )
 
 
 @deprecated(
     since="2.0.0",
     update_to="paddle.text.datasets.WMT14",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def get_dict(dict_size, reverse=True):
     # if reverse = False, return dict = {'a':'001', 'b':'002', ...}
     # else reverse = true, return dict = {'001':'a', '002':'b', ...}
     tar_file = paddle.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)
     src_dict, trg_dict = __read_to_dict(tar_file, dict_size)
     if reverse:
-        src_dict = {v: k for k, v in six.iteritems(src_dict)}
-        trg_dict = {v: k for k, v in six.iteritems(trg_dict)}
+        src_dict = {v: k for k, v in src_dict.items()}
+        trg_dict = {v: k for k, v in trg_dict.items()}
     return src_dict, trg_dict
 
 
@@ -184,7 +194,8 @@ def get_dict(dict_size, reverse=True):
     since="2.0.0",
     update_to="paddle.text.datasets.WMT14",
     level=1,
-    reason="Please use new dataset API which supports paddle.io.DataLoader")
+    reason="Please use new dataset API which supports paddle.io.DataLoader",
+)
 def fetch():
     paddle.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)
     paddle.dataset.common.download(URL_MODEL, 'wmt14', MD5_MODEL)

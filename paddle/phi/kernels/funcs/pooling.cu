@@ -460,7 +460,6 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int stride_width = strides[1];
   const int padding_height = paddings[0];
   const int padding_width = paddings[1];
-
   int nthreads = batch_size * output_channels * output_height * output_width;
   auto pool_divmods =
       FastDivModForPooling(input_channels, output_width, output_height);
@@ -491,6 +490,7 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
                                        pool_compute,
                                        exclusive,
                                        output);
+
   } else {
     int thread_num = 1024;
 #ifdef WITH_NV_JETSON

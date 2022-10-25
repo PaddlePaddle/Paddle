@@ -14,17 +14,13 @@
 
 import numpy as np
 import os
-import sys
 import paddle
 import paddle.fluid as fluid
-import unittest
-import paddle.fluid.layers as layers
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 import paddle.distributed.utils.moe_utils as moe_utils
 
 
 class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
-
     def __init__(self):
         self.global_ring_id = 0
 
@@ -37,21 +33,23 @@ class TestCollectiveGlobalScatterAPI(TestCollectiveAPIRunnerBase):
             world_size = 2
             tot_expert = n_expert * world_size
             local_expert_count = np.random.randint(
-                1, 4, size=tot_expert).astype("int")
+                1, 4, size=tot_expert
+            ).astype("int")
             fwd_expert_count = sum(local_expert_count)
-            local_input_buf = np.random.rand(fwd_expert_count,
-                                             in_feat).astype("float32")
+            local_input_buf = np.random.rand(fwd_expert_count, in_feat).astype(
+                "float32"
+            )
             local_expert_count = paddle.to_tensor(local_expert_count)
             local_input_buf = paddle.to_tensor(local_input_buf)
             global_expert_count = []
             paddle.distributed.alltoall(
-                paddle.split(local_expert_count, 2, axis=0),
-                global_expert_count)
+                paddle.split(local_expert_count, 2, axis=0), global_expert_count
+            )
             global_expert_count = paddle.concat(global_expert_count, axis=0)
             local_input_buf.stop_gradient = False
-            output = moe_utils.global_scatter(local_input_buf,
-                                              local_expert_count,
-                                              global_expert_count)
+            output = moe_utils.global_scatter(
+                local_input_buf, local_expert_count, global_expert_count
+            )
             output.stop_gradient = False
             c = output * output
             c.backward()

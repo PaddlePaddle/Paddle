@@ -14,8 +14,11 @@
 
 import os
 import json
-import paddle
-from paddle.distributed.fleet.launch_utils import get_cluster, logger, get_host_name_ip, DeviceMode
+from paddle.distributed.fleet.launch_utils import (
+    DeviceMode,
+    get_cluster,
+    get_host_name_ip,
+)
 
 __all__ = []
 
@@ -81,17 +84,18 @@ def _get_ascend_rankfile(rank_table_file_path):
             assert nodes is not None, "DLS_TASK_NUMBER didn't set!"
             for node in range(int(nodes)):
                 node_ip = os.getenv("VC_CUSTOM{}_HOSTS".format(node), None)
-                assert node_ip is not None, "VC_CUSTOM{}_HOSTS didn't set!".format(
-                    node)
+                assert (
+                    node_ip is not None
+                ), "VC_CUSTOM{}_HOSTS didn't set!".format(node)
                 node_ips.append(node_ip)
             return node_ips, device_count
         node_ips.append(server['server_id'])
     return node_ips, device_count
 
 
-def get_cloud_cluster(rank_table_file=None,
-                      device_mode=DeviceMode.ASCEND_NPU,
-                      start_port=6070):
+def get_cloud_cluster(
+    rank_table_file=None, device_mode=DeviceMode.ASCEND_NPU, start_port=6070
+):
     """
     Args:
     rank_table_file: string, ascend npu rank file path
@@ -111,8 +115,12 @@ def get_cloud_cluster(rank_table_file=None,
             else:
                 _, node_ip = get_host_name_ip()
 
-        assert node_ip in node_ips, "Can't find your local ip {%s} in node_ips: {%s}" \
-            % (node_ip, node_ips)
+        assert (
+            node_ip in node_ips
+        ), "Can't find your local ip {%s} in node_ips: {%s}" % (
+            node_ip,
+            node_ips,
+        )
     else:
         # single trainer (single ascend card)
         node_ips = ["127.0.0.1"]
@@ -128,5 +136,6 @@ def get_cloud_cluster(rank_table_file=None,
     for ip in node_ips:
         trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
 
-    return get_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
-                       devices_per_proc)
+    return get_cluster(
+        node_ips, node_ip, trainer_endpoints, device_mode, devices_per_proc
+    )

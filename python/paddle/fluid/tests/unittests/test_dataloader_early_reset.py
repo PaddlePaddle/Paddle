@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-import paddle
 import numpy as np
 import unittest
 
@@ -26,7 +25,6 @@ def infinite_reader():
 
 
 class TestDataLoaderEarlyReset(unittest.TestCase):
-
     def setUp(self):
         self.stop_batch = 10
         self.iterable = True
@@ -46,9 +44,9 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
 
     def create_data_loader(self):
         self.x = fluid.data(name='x', shape=[None, 32], dtype='float32')
-        return fluid.io.DataLoader.from_generator(feed_list=[self.x],
-                                                  capacity=10,
-                                                  iterable=self.iterable)
+        return fluid.io.DataLoader.from_generator(
+            feed_list=[self.x], capacity=10, iterable=self.iterable
+        )
 
     def test_main(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -69,7 +67,7 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
             batch_id = 0
             if loader.iterable:
                 for data in loader():
-                    x_val, = exe.run(prog, feed=data, fetch_list=[self.x])
+                    (x_val,) = exe.run(prog, feed=data, fetch_list=[self.x])
                     self.assertTrue(np.all(x_val == batch_id))
                     batch_id += 1
                     if batch_id >= self.stop_batch:
@@ -90,7 +88,6 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
 
 
 class TestDataLoaderEarlyReset2(TestDataLoaderEarlyReset):
-
     def setUp(self):
         self.stop_batch = 20
         self.iterable = False

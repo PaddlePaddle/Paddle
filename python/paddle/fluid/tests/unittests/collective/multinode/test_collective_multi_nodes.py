@@ -12,30 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
-import time
-import argparse
 import os
 import sys
 import subprocess
-import traceback
-import functools
-import pickle
 import tempfile
-from contextlib import closing
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.unique_name as nameGen
-from paddle.fluid import core
-import socket
 
 
 class TestCollectiveAPIRunnerBase(object):
-
     def check_pass(self, *args, **kwargs):
         raise NotImplementedError(
-            "get model should be implemented by child class.")
+            "get model should be implemented by child class."
+        )
 
     def run_trainer(self, *args, **kwargs):
         self.check_pass(*args, **kwargs)
@@ -49,7 +37,6 @@ def runtime_main(test_class, col_type=None):
 
 
 class TestDistBase(unittest.TestCase):
-
     def setUp(self):
         self._trainers = 4
         self._init_env()
@@ -58,15 +45,17 @@ class TestDistBase(unittest.TestCase):
         self._python_interp = sys.executable
         self.temp_dir = tempfile.TemporaryDirectory()
 
-    def check_with_place(self,
-                         model_file,
-                         backend="nccl",
-                         static_mode=False,
-                         check_error_log=False,
-                         need_envs={},
-                         eager_mode=True,
-                         args=[],
-                         kwargs={}):
+    def check_with_place(
+        self,
+        model_file,
+        backend="nccl",
+        static_mode=False,
+        check_error_log=False,
+        need_envs={},
+        eager_mode=True,
+        args=[],
+        kwargs={},
+    ):
         required_envs = {
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_eager_delete_tensor_gb": "0.0",
@@ -80,7 +69,7 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_WITH_GLOO": "0",
             "BACKEND": backend,
             "PADDLE_DISTRI_BACKEND": backend,
-            "PADDLE_USE_GPU": "1"
+            "PADDLE_USE_GPU": "1",
         }
         required_envs.update(need_envs)
         if check_error_log:
@@ -99,15 +88,18 @@ class TestDistBase(unittest.TestCase):
         filted_envs = dict()
         for k in envs.keys():
             if "PADDLE_" == k[:7] and k not in [
-                    "PADDLE_NNODES", "PADDLE_MASTER"
+                "PADDLE_NNODES",
+                "PADDLE_MASTER",
             ]:
                 continue
             filted_envs[k] = envs[k]
 
-        launcher = subprocess.Popen(run_cluster_process.strip().split(),
-                                    stdout=sys.stderr,
-                                    stderr=sys.stdout,
-                                    env=filted_envs)
+        launcher = subprocess.Popen(
+            run_cluster_process.strip().split(),
+            stdout=sys.stderr,
+            stderr=sys.stdout,
+            env=filted_envs,
+        )
         launcher.communicate(timeout=240)
 
         if launcher.poll() is None:

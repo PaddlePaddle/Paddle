@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
 import numpy as np
 import unittest
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.backward import append_backward
 from paddle.distributed.models.moe import utils
 from paddle.fluid.framework import _test_eager_guard
 
@@ -37,22 +32,24 @@ def random_routing(topk_idx, topk_value, prob, topk=2):
         raise RuntimeError("only topk=2 is supported now")
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNumberCountAPIFp32(unittest.TestCase):
-
     def setUp(self):
         self.dtype = "float32"
         self.init()
 
     def init(self):
         self.upper_range = 8
-        self.x = np.random.randint(-1, self.upper_range,
-                                   size=(200, 2)).astype('int64')
-        self.prob = np.random.random((self.x.shape[0], )).astype(self.dtype)
+        self.x = np.random.randint(-1, self.upper_range, size=(200, 2)).astype(
+            'int64'
+        )
+        self.prob = np.random.random((self.x.shape[0],)).astype(self.dtype)
         self.topk_value = np.random.random(self.x.shape).astype(self.dtype)
-        self.out = random_routing(self.x, self.topk_value,
-                                  self.prob).astype(self.dtype)
+        self.out = random_routing(self.x, self.topk_value, self.prob).astype(
+            self.dtype
+        )
         self.place = paddle.CUDAPlace(0)
 
     def func_api_dygraph(self):
@@ -69,10 +66,10 @@ class TestNumberCountAPIFp32(unittest.TestCase):
         self.func_api_dygraph()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNumberCountAPIFp16(TestNumberCountAPIFp32):
-
     def setUp(self):
         self.dtype = "float16"
         self.init()

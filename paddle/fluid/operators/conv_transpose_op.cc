@@ -28,57 +28,46 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#endif
 
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_{framework::LibraryType::kPlain};
-  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-  bool use_cudnn =
-      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
-    if (use_cudnn) {
-      library_ = framework::LibraryType::kCUDNN;
-    }
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    return framework::OpKernelType(data_type,
+                                   ctx.GetPlace(),
+                                   phi::DataLayout::kAnyLayout,
+                                   framework::LibraryType::kCUDNN);
   }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
-  }
-#endif
-
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
     const std::string& var_name,
-    const framework::Tensor& tensor,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "Input") &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+      (tensor.layout() != phi::DataLayout::kMKLDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_format = ar.Get<std::string>("data_format");
-    auto dl = framework::StringToDataLayout(data_format);
+    auto dl = phi::StringToDataLayout(data_format);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != phi::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -278,28 +267,16 @@ Example:
 
 framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  bool use_cudnn =
-      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    return framework::OpKernelType(data_type,
+                                   ctx.GetPlace(),
+                                   phi::DataLayout::kAnyLayout,
+                                   framework::LibraryType::kCUDNN);
   }
 #endif
-  framework::LibraryType library_;
-  if (use_cudnn) {
-    library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
-  }
-
-  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-      ctx.GetPlace(),
-      layout_,
-      library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 template <typename T>
@@ -365,28 +342,16 @@ class ConvTransposeDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
 framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  bool use_cudnn =
-      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
-  use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
+  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
-    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  if (platform::CanCUDNNBeUsed(ctx)) {
+    return framework::OpKernelType(data_type,
+                                   ctx.GetPlace(),
+                                   phi::DataLayout::kAnyLayout,
+                                   framework::LibraryType::kCUDNN);
   }
 #endif
-  framework::LibraryType library_;
-  if (use_cudnn) {
-    library_ = framework::LibraryType::kCUDNN;
-  } else {
-    library_ = framework::LibraryType::kPlain;
-  }
-
-  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-      ctx.GetPlace(),
-      layout_,
-      library_);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 }  // namespace operators
