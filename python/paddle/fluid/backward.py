@@ -20,7 +20,6 @@ from . import core
 import collections
 import copy
 import logging
-from .. import compat as cpt
 from . import unique_name
 from . import log_helper
 import paddle.fluid

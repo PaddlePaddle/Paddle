@@ -44,8 +44,6 @@ try:
             os.add_dll_directory(third_lib_path)
 
 except ImportError as e:
-    from .. import compat as cpt
-
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
@@ -71,8 +69,6 @@ def avx_supported():
     """
     Whether current system(Linux, MacOS, Windows) is supported with AVX.
     """
-    from .. import compat as cpt
-
     sysstr = platform.system().lower()
     has_avx = False
     if sysstr == 'linux':
