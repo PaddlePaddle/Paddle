@@ -78,8 +78,8 @@ class TestMatmulv2ActivationMkldnnFusePass(PassAutoScanTest):
             inputs={'X': ['matmul_X'], 'Y': ['matmul_Y']},
             outputs={'Out': ['matmul_output']},
             attrs={
-                'trans_X': transpose_X,
-                'trans_Y': transpose_Y,
+                'trans_x': transpose_X,
+                'trans_y': transpose_Y,
                 'use_mkldnn': True,
             },
         )
