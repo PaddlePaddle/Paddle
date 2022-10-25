@@ -71,7 +71,7 @@ enum PermuteType {
   kCopy = 1,
   kTranspose = 2,
   kVecPermute = 3,
-  kNormalPermute = 4
+  kGeneralPermute = 4
 };
 
 constexpr int kBlockRows = 16;
@@ -79,15 +79,15 @@ constexpr int kTileSize = 32;
 
 // Simplify the input dims and permute dims if possible.
 template <typename T>
-class DimsSimplifier {
+class TranposeTypeClassifier {
  public:
-  explicit DimsSimplifier(const int sm_count,
-                          const size_t rank,
-                          const int64_t numel,
-                          const std::vector<int32_t>& perm,
-                          const std::vector<int>& dims,
-                          const T* src,
-                          T* dst)
+  TranposeTypeClassifier(const int sm_count,
+                         const size_t rank,
+                         const int64_t numel,
+                         const std::vector<int32_t>& perm,
+                         const std::vector<int>& dims,
+                         const T* src,
+                         T* dst)
       : perm_(rank), src_dims(rank) {
     SimplifyPermAndDims(rank, dims, perm);
     if (rank_ > 1) {
@@ -107,15 +107,15 @@ class DimsSimplifier {
   PermuteType GetPermType() const { return type_; }
 
   std::vector<int> GetPerm() const { return perm_; }
-  std::vector<int> GetSrcDims() const { return src_dims; }
-  std::vector<int> GetDstDims() const { return dst_dims; }
+  std::vector<int64_t> GetSrcDims() const { return src_dims; }
+  std::vector<int64_t> GetDstDims() const { return dst_dims; }
 
  private:
   int rank_{1};
   int vec_size_{1};
   std::vector<int> perm_;
-  std::vector<int> src_dims;
-  std::vector<int> dst_dims;
+  std::vector<int64_t> src_dims;
+  std::vector<int64_t> dst_dims;
   PermuteType type_{kCopy};
 
   void SimplifyPermAndDims(const size_t rank,
@@ -186,7 +186,7 @@ class DimsSimplifier {
   int GetPermVecSize(const int sm_count, const T* src, T* dst) {
     // For gerneal_permute kernel, there is good chance for
     // vectorized write.
-    type_ = PermuteType::kNormalPermute;
+    type_ = PermuteType::kGeneralPermute;
     int vec_size = phi::GetVectorizedSize<T>(dst);
 
     // While the last dim is fixed, there is good chance for

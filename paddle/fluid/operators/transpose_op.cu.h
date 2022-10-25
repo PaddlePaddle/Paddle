@@ -831,15 +831,6 @@ class IdxAndOffsetHelper {
     index_helper = IdxHelper<N, T>(dims);
   }
 
-  template <typename U>
-  explicit IdxAndOffsetHelper(const U* dims) {
-    T temp_dims[N];
-    for (int i = 0; i < N; ++i) {
-      temp_dims[i] = static_cast<T>(dims[i]);
-    }
-    index_helper = IdxHelper<N, T>(temp_dims);
-  }
-
   __device__ inline T IndexToOffset(const T* index) const {
     T offset = 0;
 #pragma unroll
@@ -865,15 +856,17 @@ struct PermuteParams {
   IdxAndOffsetHelper<IndexT, Rank> dst_index_helper;
   int perm[Rank]{};
 
-  explicit PermuteParams(const std::vector<int>& dims,
+  explicit PermuteParams(const std::vector<int64_t>& dims,
                          const std::vector<int>& perm_) {
-    size_t dst_dims[Rank];
-    for (size_t i = 0; i < Rank; ++i) {
+    IndexT dst_dims[Rank];
+    IndexT src_dims[Rank];
+    for (auto i = 0; i < Rank; ++i) {
+      src_dims[i] = dims[i];
       dst_dims[i] = dims[perm_[i]];
       perm[i] = perm_[i];
     }
     dst_index_helper = IdxAndOffsetHelper<IndexT, Rank>(dst_dims);
-    src_index_helper = IdxAndOffsetHelper<IndexT, Rank>(dims.data());
+    src_index_helper = IdxAndOffsetHelper<IndexT, Rank>(src_dims);
   }
 };
 
@@ -965,14 +958,14 @@ template <typename T, typename IndexT, int VecSize, int Rank>
 inline void LaunchPermuteKernel(const phi::GPUContext& ctx,
                                 const IndexT count,
                                 const PermuteType perm_type,
-                                const std::vector<int>& dims,
+                                const std::vector<int64_t>& dims,
                                 const std::vector<int>& perm,
                                 const T* src,
                                 T* dst) {
   size_t main_count = count / VecSize;
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, main_count);
 
-  if (perm_type == PermuteType::kNormalPermute) {
+  if (perm_type == PermuteType::kGeneralPermute) {
     size_t tail_count = count - main_count * VecSize;
     size_t offset = count - tail_count;
     auto params = PermuteParams<Rank, IndexT>(dims, perm);
@@ -981,7 +974,7 @@ inline void LaunchPermuteKernel(const phi::GPUContext& ctx,
         <<<config.GetGridSize(), config.GetBlockSize(), 0, ctx.stream()>>>(
             params, src, dst, main_count, tail_count, offset);
   } else {
-    std::vector<int> vec_dims(dims);
+    std::vector<int64_t> vec_dims(dims);
     vec_dims[dims.size() - 1] /= VecSize;
     auto params = PermuteParams<Rank, IndexT>(vec_dims, perm);
 
@@ -995,7 +988,7 @@ template <typename T, typename IndexT, int VecSize>
 inline void LaunchPermuteRankDispatch(const phi::GPUContext& ctx,
                                       const IndexT count,
                                       const PermuteType perm_type,
-                                      const std::vector<int>& dims,
+                                      const std::vector<int64_t>& dims,
                                       const std::vector<int>& perm,
                                       const T* src,
                                       T* dst) {
@@ -1083,7 +1076,7 @@ template <typename T,
           int Size,
           int VecSize = (sizeof(T) > 4 ? 1 : Size)>
 inline void LaunchTransposeKernel(const phi::GPUContext& ctx,
-                                  const std::vector<int>& dims,
+                                  const std::vector<int64_t>& dims,
                                   const T* src,
                                   T* dst) {
   auto rank = dims.size();
@@ -1105,7 +1098,7 @@ template <typename T, typename IndexT>
 inline void LaunchWithDispatchVecSize(const phi::GPUContext& ctx,
                                       const int vec_size,
                                       const PermuteType perm_type,
-                                      const std::vector<int>& dims,
+                                      const std::vector<int64_t>& dims,
                                       const std::vector<int>& perm,
                                       const T* src,
                                       T* dst,
@@ -1141,15 +1134,15 @@ inline void PermuteAndTranspose(const int rank,
                                 phi::DenseTensor* out,
                                 const std::vector<int32_t>& perm) {
   const int64_t numel = in.numel();
-  auto simplifier = DimsSimplifier<T>(ctx.GetSMCount(),
-                                      rank,
-                                      numel,
-                                      perm,
-                                      phi::vectorize<int>(in.dims()),
-                                      in.data<T>(),
-                                      out->data<T>());
+  auto classifier = TranposeTypeClassifier<T>(ctx.GetSMCount(),
+                                              rank,
+                                              numel,
+                                              perm,
+                                              phi::vectorize<int>(in.dims()),
+                                              in.data<T>(),
+                                              out->data<T>());
 
-  if (simplifier.GetPermType() == PermuteType::kCopy) {
+  if (classifier.GetPermType() == PermuteType::kCopy) {
     // If perm is [0,1,2,3], then just operate a DtoD copy.
     phi::backends::gpu::GpuMemcpyAsync(out->data<T>(),
                                        in.data<T>(),
@@ -1159,20 +1152,20 @@ inline void PermuteAndTranspose(const int rank,
   } else {
     if (numel < std::numeric_limits<int>::max()) {
       LaunchWithDispatchVecSize<T, int>(ctx,
-                                        simplifier.GetVecSize(),
-                                        simplifier.GetPermType(),
-                                        simplifier.GetSrcDims(),
-                                        simplifier.GetPerm(),
+                                        classifier.GetVecSize(),
+                                        classifier.GetPermType(),
+                                        classifier.GetSrcDims(),
+                                        classifier.GetPerm(),
                                         in.data<T>(),
                                         out->data<T>(),
                                         static_cast<int>(numel));
     } else {
       int64_t cnt = static_cast<int64_t>(numel);
       LaunchWithDispatchVecSize<T, int64_t>(ctx,
-                                            simplifier.GetVecSize(),
-                                            simplifier.GetPermType(),
-                                            simplifier.GetSrcDims(),
-                                            simplifier.GetPerm(),
+                                            classifier.GetVecSize(),
+                                            classifier.GetPermType(),
+                                            classifier.GetSrcDims(),
+                                            classifier.GetPerm(),
                                             in.data<T>(),
                                             out->data<T>(),
                                             static_cast<int64_t>(numel));
