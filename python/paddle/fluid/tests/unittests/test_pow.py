@@ -18,15 +18,18 @@ import numpy as np
 
 import paddle
 from paddle.static import Program, program_guard
+import paddle.fluid.core as core
 
 DYNAMIC = 1
 STATIC = 2
 
 
-def _run_power(mode, x, y):
+def _run_power(mode, x, y, device='cpu'):
     # dynamic mode
     if mode == DYNAMIC:
         paddle.disable_static()
+        # Set device
+        paddle.set_device(device)
         # y is scalar
         if isinstance(y, (int, float)):
             x_ = paddle.to_tensor(x)
@@ -48,7 +51,11 @@ def _run_power(mode, x, y):
                 x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
                 y_ = y
                 res = paddle.pow(x_, y_)
-                place = paddle.CPUPlace()
+                place = (
+                    paddle.CPUPlace()
+                    if device == 'cpu'
+                    else paddle.CUDAPlace(0)
+                )
                 exe = paddle.static.Executor(place)
                 outs = exe.run(feed={'x': x}, fetch_list=[res])
                 return outs[0]
@@ -58,7 +65,11 @@ def _run_power(mode, x, y):
                 x_ = paddle.static.data(name="x", shape=x.shape, dtype=x.dtype)
                 y_ = paddle.static.data(name="y", shape=y.shape, dtype=y.dtype)
                 res = paddle.pow(x_, y_)
-                place = paddle.CPUPlace()
+                place = (
+                    paddle.CPUPlace()
+                    if device == 'cpu'
+                    else paddle.CUDAPlace(0)
+                )
                 exe = paddle.static.Executor(place)
                 outs = exe.run(feed={'x': x, 'y': y}, fetch_list=[res])
                 return outs[0]
@@ -67,98 +78,104 @@ def _run_power(mode, x, y):
 class TestPowerAPI(unittest.TestCase):
     """TestPowerAPI."""
 
+    def setUp(self):
+        self.places = ['cpu']
+        if core.is_compiled_with_cuda():
+            self.places.append('gpu')
+
     def test_power(self):
         """test_power."""
         np.random.seed(7)
-        # test 1-d float tensor ** float scalar
-        dims = (np.random.randint(200, 300),)
-        x = (np.random.rand(*dims) * 10).astype(np.float64)
-        y = np.random.rand() * 10
-        res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
-        res = _run_power(STATIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+        for place in self.places:
+            # test 1-d float tensor ** float scalar
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            y = np.random.rand() * 10
+            res = _run_power(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            res = _run_power(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
-        # test 1-d float tensor ** int scalar
-        dims = (np.random.randint(200, 300),)
-        x = (np.random.rand(*dims) * 10).astype(np.float64)
-        y = int(np.random.rand() * 10)
-        res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
-        res = _run_power(STATIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            # test 1-d float tensor ** int scalar
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            y = int(np.random.rand() * 10)
+            res = _run_power(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            res = _run_power(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
-        x = (np.random.rand(*dims) * 10).astype(np.int64)
-        y = int(np.random.rand() * 10)
-        res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
-        res = _run_power(STATIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            x = (np.random.rand(*dims) * 10).astype(np.int64)
+            y = int(np.random.rand() * 10)
+            res = _run_power(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            res = _run_power(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
-        # test 1-d float tensor ** 1-d float tensor
-        dims = (np.random.randint(200, 300),)
-        x = (np.random.rand(*dims) * 10).astype(np.float64)
-        y = (np.random.rand(*dims) * 10).astype(np.float64)
-        res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
-        res = _run_power(STATIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            # test 1-d float tensor ** 1-d float tensor
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            y = (np.random.rand(*dims) * 10).astype(np.float64)
+            res = _run_power(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            res = _run_power(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
-        # test 1-d int tensor ** 1-d int tensor
-        dims = (np.random.randint(200, 300),)
-        x = (np.random.rand(*dims) * 10).astype(np.int64)
-        y = (np.random.rand(*dims) * 10).astype(np.int64)
-        res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
-        res = _run_power(STATIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            # test 1-d int tensor ** 1-d int tensor
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.int64)
+            y = (np.random.rand(*dims) * 10).astype(np.int64)
+            res = _run_power(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            res = _run_power(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
-        # test 1-d int tensor ** 1-d int tensor
-        dims = (np.random.randint(200, 300),)
-        x = (np.random.rand(*dims) * 10).astype(np.int32)
-        y = (np.random.rand(*dims) * 10).astype(np.int32)
-        res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
-        res = _run_power(STATIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            # test 1-d int tensor ** 1-d int tensor
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.int32)
+            y = (np.random.rand(*dims) * 10).astype(np.int32)
+            res = _run_power(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            res = _run_power(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
-        # test 1-d int tensor ** 1-d int tensor
-        dims = (np.random.randint(200, 300),)
-        x = (np.random.rand(*dims) * 10).astype(np.float32)
-        y = (np.random.rand(*dims) * 10).astype(np.float32)
-        res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
-        res = _run_power(STATIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            # test 1-d int tensor ** 1-d int tensor
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.float32)
+            y = (np.random.rand(*dims) * 10).astype(np.float32)
+            res = _run_power(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            res = _run_power(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
-        # test float scalar ** 2-d float tensor
-        dims = (np.random.randint(1, 10), np.random.randint(5, 10))
-        x = np.random.rand() * 10
-        y = (np.random.rand(*dims) * 10).astype(np.float32)
-        res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            # test float scalar ** 2-d float tensor
+            dims = (np.random.randint(2, 10), np.random.randint(5, 10))
+            x = np.random.rand() * 10
+            y = (np.random.rand(*dims) * 10).astype(np.float32)
+            res = _run_power(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
-        # test 2-d float tensor ** float scalar
-        dims = (np.random.randint(1, 10), np.random.randint(5, 10))
-        x = (np.random.rand(*dims) * 10).astype(np.float32)
-        y = np.random.rand() * 10
-        res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
-        res = _run_power(STATIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            # test 2-d float tensor ** float scalar
+            dims = (np.random.randint(2, 10), np.random.randint(5, 10))
+            x = (np.random.rand(*dims) * 10).astype(np.float32)
+            y = np.random.rand() * 10
+            res = _run_power(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            res = _run_power(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
-        # test broadcast
-        dims = (
-            np.random.randint(1, 10),
-            np.random.randint(5, 10),
-            np.random.randint(5, 10),
-        )
-        x = (np.random.rand(*dims) * 10).astype(np.float64)
-        y = (np.random.rand(dims[-1]) * 10).astype(np.float64)
-        res = _run_power(DYNAMIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
-        res = _run_power(STATIC, x, y)
-        np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            # test broadcast
+            dims = (
+                np.random.randint(1, 10),
+                np.random.randint(5, 10),
+                np.random.randint(5, 10),
+            )
+            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            y = (np.random.rand(dims[-1]) * 10).astype(np.float64)
+            res = _run_power(DYNAMIC, x, y)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
+            res = _run_power(STATIC, x, y)
+            np.testing.assert_allclose(res, np.power(x, y), rtol=1e-05)
 
 
 class TestPowerError(unittest.TestCase):
