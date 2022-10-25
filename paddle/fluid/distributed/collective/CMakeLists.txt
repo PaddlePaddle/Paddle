@@ -86,11 +86,18 @@ if(WITH_CUSTOM_DEVICE)
   cc_library(
     processgroup_custom
     SRCS ProcessGroupCustom.cc CustomCCLTools.cc Common.cc
-    DEPS phi_backends
-         place
-         enforce
-         collective_helper
-         device_context
-         phi_api
-         eager_api)
+    DEPS processgroup phi_backends place enforce collective_helper
+         device_context)
 endif()
+
+set(COMM_UTILS_DEPS processgroup)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_nccl)
+endif()
+if(WITH_CUSTOM_DEVICE)
+  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} processgroup_custom)
+endif()
+cc_library(
+  processgroup_comm_utils
+  SRCS CommUtils.cc
+  DEPS ${COMM_UTILS_DEPS})
