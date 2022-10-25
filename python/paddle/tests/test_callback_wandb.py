@@ -24,13 +24,11 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class MnistDataset(MNIST):
-
     def __len__(self):
         return 512
 
 
 class TestWandbCallbacks(unittest.TestCase):
-
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
 
@@ -46,18 +44,21 @@ class TestWandbCallbacks(unittest.TestCase):
         model = paddle.Model(net, inputs, labels)
 
         optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
-        model.prepare(optimizer=optim,
-                      loss=paddle.nn.CrossEntropyLoss(),
-                      metrics=paddle.metric.Accuracy())
+        model.prepare(
+            optimizer=optim,
+            loss=paddle.nn.CrossEntropyLoss(),
+            metrics=paddle.metric.Accuracy(),
+        )
 
-        callback = paddle.callbacks.WandbCallback(project='random',
-                                                  dir=self.save_dir,
-                                                  anonymous='must',
-                                                  mode='offline')
-        model.fit(train_dataset,
-                  eval_dataset,
-                  batch_size=64,
-                  callbacks=callback)
+        callback = paddle.callbacks.WandbCallback(
+            project='random',
+            dir=self.save_dir,
+            anonymous='must',
+            mode='offline',
+        )
+        model.fit(
+            train_dataset, eval_dataset, batch_size=64, callbacks=callback
+        )
 
     def test_wandb_callback(self):
         with _test_eager_guard():

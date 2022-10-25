@@ -1044,25 +1044,29 @@ class WandbCallback(Callback):
 
     """
 
-    def __init__(self,
-                 project=None,
-                 entity=None,
-                 name=None,
-                 dir=None,
-                 mode=None,
-                 job_type=None,
-                 **kwargs):
+    def __init__(
+        self,
+        project=None,
+        entity=None,
+        name=None,
+        dir=None,
+        mode=None,
+        job_type=None,
+        **kwargs
+    ):
         self.wandb = try_import(
             "wandb",
-            "You want to use `wandb` which is not installed yet install it with `pip install wandb`"
+            "You want to use `wandb` which is not installed yet install it with `pip install wandb`",
         )
 
-        self.wandb_args = dict(project=project,
-                               name=name,
-                               entity=entity,
-                               dir=dir,
-                               mode=mode,
-                               job_type=job_type)
+        self.wandb_args = dict(
+            project=project,
+            name=name,
+            entity=entity,
+            dir=dir,
+            mode=mode,
+            job_type=job_type,
+        )
 
         self._run = None
         self.wandb_args.update(**kwargs)

@@ -29,5 +29,5 @@ __all__ = [  # noqa
     'LRScheduler',
     'EarlyStopping',
     'ReduceLROnPlateau',
-    'WandbCallback'
+    'WandbCallback',
 ]
