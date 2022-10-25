@@ -22,25 +22,25 @@ KernelSignature MultiTensorAdamOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   paddle::small_vector<const char*> in_names = {"Params",
                                                 "Grads",
+                                                "LearningRate",
                                                 "Moments1",
                                                 "Moments2",
-                                                "MasterParam",
                                                 "Beta1Pow",
                                                 "Beta2Pow",
-                                                "LearningRate",
+                                                "MasterParams",
                                                 "SkipUpdate"};
   paddle::small_vector<const char*> out_names = {"ParamsOut",
                                                  "Moments1Out",
                                                  "Moments2Out",
-                                                 "MasterParamOut",
                                                  "Beta1PowOut",
-                                                 "Beta2PowOut"};
+                                                 "Beta2PowOut",
+                                                 "MasterParamsOut"};
   paddle::small_vector<const char*> attr_names = {"beta1",
                                                   "beta2",
                                                   "epsilon",
-                                                  "compute_group_size",
+                                                  "chunk_size",
                                                   "weight_decay",
-                                                  "mode",
+                                                  "use_adamw",
                                                   "multi_precision",
                                                   "use_global_beta_pow"};
 

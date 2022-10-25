@@ -16,19 +16,16 @@
 #include <vector>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 #include "paddle/phi/kernels/adam_kernel.h"
 #include "paddle/phi/kernels/adamw_kernel.h"
 
-DECLARE_int32(inner_op_parallelism);
-
 namespace phi {
 
-paddle::optional<DenseTensor> TensorPtrToOptionalTensor(const DenseTensor* t) {
+static paddle::optional<DenseTensor> TensorPtrToOptionalTensor(
+    const DenseTensor* t) {
   if (t != nullptr) {
     return *t;
   } else {
@@ -41,27 +38,27 @@ void MultiTensorAdamKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& params,
     const std::vector<const DenseTensor*>& grads,
+    const DenseTensor& learning_rate,
     const std::vector<const DenseTensor*>& moments1,
     const std::vector<const DenseTensor*>& moments2,
-    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
-    const DenseTensor& learning_rate,
+    const paddle::optional<std::vector<const DenseTensor*>>& master_params,
     const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
-    int compute_group_size,
+    int chunk_size,
     float weight_decay,
-    bool mode,
+    bool use_adamw,
     bool multi_precision,
     bool use_global_beta_pow,
     std::vector<DenseTensor*> params_out,
     std::vector<DenseTensor*> moments1_out,
     std::vector<DenseTensor*> moments2_out,
-    std::vector<DenseTensor*> master_param_out,
     DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out) {
+    DenseTensor* beta2_pow_out,
+    std::vector<DenseTensor*> master_params_out) {
   size_t params_num = params.size();
   PADDLE_ENFORCE_EQ(
       params_num,
@@ -88,12 +85,24 @@ void MultiTensorAdamKernel(
                         moments2.size(),
                         params_num));
 
+  bool skip_update_value = false;
+  if (skip_update.is_initialized()) {
+    PADDLE_ENFORCE_EQ(
+        skip_update->numel(),
+        1,
+        errors::InvalidArgument("Input(SkipUpdate) size must be 1, but get %d",
+                                skip_update->numel()));
+    std::vector<bool> skip_update_vec;
+    paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
+    skip_update_value = skip_update_vec[0];
+  }
+
   for (size_t idx = 0; idx < params_num; idx++) {
-    paddle::optional<DenseTensor> master_param_tmp = paddle::none;
-    if (master_param) {
-      master_param_tmp = TensorPtrToOptionalTensor(master_param.get()[idx]);
+    paddle::optional<DenseTensor> master_params_tmp = paddle::none;
+    if (master_params) {
+      master_params_tmp = TensorPtrToOptionalTensor(master_params.get()[idx]);
     }
-    if (!mode) {
+    if (!use_adamw) {
       AdamDenseKernel<T, Context>(
           dev_ctx,
           *params[idx],
@@ -103,7 +112,7 @@ void MultiTensorAdamKernel(
           *moments2[idx],
           beta1_pow,
           beta2_pow,
-          master_param_tmp,
+          master_params_tmp,
           skip_update,
           beta1,
           beta2,
@@ -117,7 +126,7 @@ void MultiTensorAdamKernel(
           moments2_out[idx],
           beta1_pow_out,
           beta2_pow_out,
-          master_param_out.empty() ? nullptr : master_param_out[idx]);
+          master_params_out.empty() ? nullptr : master_params_out[idx]);
     } else {
       AdamwDenseKernel<T, Context>(
           dev_ctx,
@@ -128,14 +137,14 @@ void MultiTensorAdamKernel(
           *moments2[idx],
           beta1_pow,
           beta2_pow,
-          master_param_tmp,
+          master_params_tmp,
           skip_update,
           beta1,
           beta2,
           epsilon,
           1.0,
           weight_decay,
-          mode,
+          use_adamw,
           false,
           1000,
           multi_precision,
@@ -145,13 +154,13 @@ void MultiTensorAdamKernel(
           moments2_out[idx],
           beta1_pow_out,
           beta2_pow_out,
-          master_param_out.empty() ? nullptr : master_param_out[idx]);
+          master_params_out.empty() ? nullptr : master_params_out[idx]);
     }
   }
 
   T beta1_ = beta1.to<T>();
   T beta2_ = beta2.to<T>();
-  if (!use_global_beta_pow) {
+  if (!use_global_beta_pow && !skip_update_value) {
     dev_ctx.template Alloc<T>(beta1_pow_out)[0] =
         beta1_ * beta1_pow.data<T>()[0];
     dev_ctx.template Alloc<T>(beta2_pow_out)[0] =

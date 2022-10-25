@@ -52,29 +52,29 @@ class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Params", "(Tensor) Input parameters").AsDuplicable();
     AddInput("Grads", "(Tensor) Input gradients").AsDuplicable();
+    AddInput("LearningRate", "(Tensor, default Tensor<float>) Learning rate");
     AddInput("Moments1", "(Tensor) Input first moments").AsDuplicable();
     AddInput("Moments2", "(Tensor) Input second moments").AsDuplicable();
-    AddInput("MasterParam", "FP32 master weight for AMP.")
-        .AsDispensable()
-        .AsDuplicable();
     AddInput("Beta1Pow",
              "(Tensor, default Tensor<float>) Input beta1 power accumulator");
     AddInput("Beta2Pow",
              "(Tensor, default Tensor<float>) Input beta2 power accumulator");
-    AddInput("LearningRate", "(Tensor, default Tensor<float>) Learning rate");
+    AddInput("MasterParams", "FP32 master weight for AMP.")
+        .AsDispensable()
+        .AsDuplicable();
     AddInput("SkipUpdate", "(Tensor<bool>, optional), Skip the update or not.")
         .AsDispensable();
 
     AddOutput("ParamsOut", "(Tensor) Output parameters").AsDuplicable();
     AddOutput("Moments1Out", "(Tensor) Output first moments").AsDuplicable();
     AddOutput("Moments2Out", "(Tensor) Output second moments").AsDuplicable();
-    AddOutput("MasterParamOut",
-              "The updated FP32 master weight for AMP. "
-              "It shared memory with Input(MasterParam).")
-        .AsDispensable()
-        .AsDuplicable();
     AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
     AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator");
+    AddOutput("MasterParamsOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParams).")
+        .AsDispensable()
+        .AsDuplicable();
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "
@@ -91,15 +91,15 @@ class MultiTensorAdamOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Constant for numerical stability")
         .SetDefault(1.0e-8f);
 
-    AddAttr<int>("compute_group_size", "ComputeGroupSize for blocks computing");
+    AddAttr<int>("chunk_size", "ChunkSize for blocks computing");
 
     AddAttr<float>("weight_decay",
                    "(float, default 0) "
                    "weight decay (L2 penalty)")
         .SetDefault(0);
-    AddAttr<bool>("mode",
+    AddAttr<bool>("use_adamw",
                   "(bool, default False) "
-                  "Apply Adam or weight AdamW"
+                  "Whether to use AdamW"
                   "True for decoupled weight decay")
         .SetDefault(false);
     AddAttr<bool>("multi_precision",
@@ -130,6 +130,16 @@ moment\_2_\out = \beta_2 * moment\_2 + (1 - \beta_2) * grad * grad \\
 learning\_rate = learning\_rate *
                   \frac{\sqrt{1 - \beta_{2\_pow}}}{1 - \beta_{1\_pow}} \\
 param\_out = param - learning\_rate * \frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
+$$
+
+AdamW updates:
+
+$$
+moment\_1\_out = \beta_1 * moment\_1 + (1 - \beta_1) * grad \\
+moment\_2_\out = \beta_2 * moment\_2 + (1 - \beta_2) * grad * grad \\
+learning\_rate = learning\_rate *
+                  \frac{\sqrt{1 - \beta_{2\_pow}}}{1 - \beta_{1\_pow}} \\
+param\_out & = param - learning\_rate * (\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
 $$
 
 )DOC");

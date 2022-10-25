@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/multi_tensor_adam_kernel.h"
-#include <assert.h>
-#include <cstdlib>
 #include <vector>
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -24,114 +22,112 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/adam_functors.h"
-#include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
-#include "paddle/phi/kernels/multi_tensor_adam_utility_kernel.cuh"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/multi_tensor_adam_utility_kernel.h"
 
 namespace phi {
 
-#define BLOCK_SIZE 512
-#define PARALLEL_SIZE 4
+constexpr int block_size = 512;
 
-template <typename T, typename MT, int N>
-struct CudaKernelFunctor {
-  __device__ __forceinline__ void operator()(int compute_group_size,
-                                             TensorAndBlockInf<N> tabi,
-                                             MT beta1,
-                                             MT beta2,
-                                             const MT* beta1_pow_,
-                                             const MT* beta2_pow_,
-                                             MT epsilon,
-                                             const MT* learning_rate,
-                                             bool mode,
-                                             bool multi_precision,
-                                             MT decay) {
+template <typename T, typename MT, int N, int MAXTENSORSIZE, int MAXBLOCKSIZE>
+struct MultiTensorAdamFunctor {
+  __device__ __forceinline__ void operator()(
+      int chunk_size,
+      TensorAndBlockInfo<N, MAXTENSORSIZE, MAXBLOCKSIZE> t_info,
+      MT beta1,
+      MT beta2,
+      const MT* beta1_pow_,
+      const MT* beta2_pow_,
+      MT epsilon,
+      const MT* learning_rate,
+      bool use_adamw,
+      bool multi_precision,
+      MT decay) {
     MT lr = *learning_rate;
     MT beta1_pow = *beta1_pow_;
     MT beta2_pow = *beta2_pow_;
 
-    int tensor_id = tabi.tenosr_for_this_block[blockIdx.x];
+    int tensor_id = t_info.tenosr_for_this_block[blockIdx.x];
 
-    int compute_group_idx = tabi.compute_group_for_this_block[blockIdx.x] +
-                            tabi.start_compute_group_this_tensor;
+    int chunk_idx = t_info.chunk_for_this_block[blockIdx.x] +
+                    t_info.start_chunk_this_tensor;
 
-    int n = tabi.sizes[tensor_id];
-    const T* g = static_cast<const T*>(tabi.grad[tensor_id]);
-    g += compute_group_idx * compute_group_size;
+    int n = t_info.sizes[tensor_id];
+    const T* g = static_cast<const T*>(t_info.grads[tensor_id]);
+    g += chunk_idx * chunk_size;
     MT* mp;
     T* p;
-    p = static_cast<T*>(tabi.tensors_addr[0][tensor_id]);
-    p += compute_group_idx * compute_group_size;
-    MT* m = static_cast<MT*>(tabi.tensors_addr[1][tensor_id]);
-    m += compute_group_idx * compute_group_size;
-    MT* v = static_cast<MT*>(tabi.tensors_addr[2][tensor_id]);
-    v += compute_group_idx * compute_group_size;
+    p = static_cast<T*>(t_info.tensor_addrs[0][tensor_id]);
+    p += chunk_idx * chunk_size;
+    MT* m = static_cast<MT*>(t_info.tensor_addrs[1][tensor_id]);
+    m += chunk_idx * chunk_size;
+    MT* v = static_cast<MT*>(t_info.tensor_addrs[2][tensor_id]);
+    v += chunk_idx * chunk_size;
 
     if (multi_precision) {
-      mp = static_cast<MT*>(tabi.tensors_addr[3][tensor_id]);
-      mp += compute_group_idx * compute_group_size;
+      mp = static_cast<MT*>(t_info.tensor_addrs[3][tensor_id]);
+      mp += chunk_idx * chunk_size;
     }
 
-    n -= compute_group_idx * compute_group_size;
+    n -= chunk_idx * chunk_size;
 
-    for (int i_start = 0; i_start < n && i_start < compute_group_size;
-         i_start += blockDim.x * PARALLEL_SIZE) {
-      MT r_g[PARALLEL_SIZE];
-      MT r_p[PARALLEL_SIZE];
-      MT r_m[PARALLEL_SIZE];
-      MT r_v[PARALLEL_SIZE];
+    for (int i_start = 0; i_start < n && i_start < chunk_size;
+         i_start += blockDim.x * 4) {
+      phi::AlignedVector<MT, 4> g_v;
+      phi::AlignedVector<MT, 4> p_v;
+      phi::AlignedVector<MT, 4> m_v;
+      phi::AlignedVector<MT, 4> v_v;
 #pragma unroll
-      for (int ii = 0; ii < PARALLEL_SIZE; ii++) {
+      for (int ii = 0; ii < 4; ii++) {
         int i = i_start + threadIdx.x + ii * blockDim.x;
-        if (i < n && i < compute_group_size) {
-          r_g[ii] = static_cast<MT>(g[i]);
-          r_p[ii] = multi_precision ? mp[i] : static_cast<MT>(p[i]);
-          r_m[ii] = static_cast<MT>(m[i]);
-          r_v[ii] = static_cast<MT>(v[i]);
+        if (i < n && i < chunk_size) {
+          g_v[ii] = static_cast<MT>(g[i]);
+          p_v[ii] = multi_precision ? mp[i] : static_cast<MT>(p[i]);
+          m_v[ii] = static_cast<MT>(m[i]);
+          v_v[ii] = static_cast<MT>(v[i]);
         } else {
-          r_g[ii] = MT(0);
-          r_p[ii] = MT(0);
-          r_m[ii] = MT(0);
-          r_v[ii] = MT(0);
+          g_v[ii] = MT(0);
+          p_v[ii] = MT(0);
+          m_v[ii] = MT(0);
+          v_v[ii] = MT(0);
         }
       }
 #pragma unroll
-      for (int ii = 0; ii < PARALLEL_SIZE; ii++) {
-        MT p = r_p[ii];
-        MT g = r_g[ii];
-        MT m = r_m[ii];
-        MT v = r_v[ii];
-        if (mode == false) {
+      for (int ii = 0; ii < 4; ii++) {
+        MT p = p_v[ii];
+        MT g = g_v[ii];
+        MT m = m_v[ii];
+        MT v = v_v[ii];
+        if (!use_adamw) {
           m = beta1 * m + (static_cast<MT>(1.0) - beta1) * g;
           v = beta2 * v + (static_cast<MT>(1.0) - beta2) * g * g;
-          r_m[ii] = m;
-          r_v[ii] = v;
+          m_v[ii] = m;
+          v_v[ii] = v;
           MT denom =
               (sqrt(v) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
           p += (m / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
-          r_p[ii] = p;
+          p_v[ii] = p;
         } else {  // weight decay
           p *= (static_cast<MT>(1.0) - lr * decay);
           m = beta1 * m + (static_cast<MT>(1.0) - beta1) * g;
           v = beta2 * v + (static_cast<MT>(1.0) - beta2) * g * g;
-          r_m[ii] = m;
-          r_v[ii] = v;
+          m_v[ii] = m;
+          v_v[ii] = v;
           MT denom =
               (sqrt(v) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
           p += (m / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
-          r_p[ii] = p;
+          p_v[ii] = p;
         }
       }
 #pragma unroll
-      for (int ii = 0; ii < PARALLEL_SIZE; ii++) {
+      for (int ii = 0; ii < 4; ii++) {
         int i = i_start + threadIdx.x + ii * blockDim.x;
-        if (i < n && i < compute_group_size) {
-          p[i] = static_cast<T>(r_p[ii]);
-          m[i] = r_m[ii];
-          v[i] = r_v[ii];
+        if (i < n && i < chunk_size) {
+          p[i] = static_cast<T>(p_v[ii]);
+          m[i] = m_v[ii];
+          v[i] = v_v[ii];
           if (multi_precision) {
-            mp[i] = r_p[ii];
+            mp[i] = p_v[ii];
           }
         }
       }
@@ -155,36 +151,36 @@ void MultiTensorAdamKernel(
     const Context& dev_ctx,
     const std::vector<const DenseTensor*>& params,
     const std::vector<const DenseTensor*>& grads,
+    const DenseTensor& learning_rate,
     const std::vector<const DenseTensor*>& moments1,
     const std::vector<const DenseTensor*>& moments2,
-    const paddle::optional<std::vector<const DenseTensor*>>& master_param,
     const DenseTensor& beta1_pow,
     const DenseTensor& beta2_pow,
-    const DenseTensor& learning_rate,
+    const paddle::optional<std::vector<const DenseTensor*>>& master_params,
     const paddle::optional<DenseTensor>& skip_update,
     const Scalar& beta1,
     const Scalar& beta2,
     const Scalar& epsilon,
-    int compute_group_size,
+    int chunk_size,
     float weight_decay,
-    bool mode,
+    bool use_adamw,
     bool multi_precision,
     bool use_global_beta_pow,
     std::vector<DenseTensor*> params_out,
     std::vector<DenseTensor*> moments1_out,
     std::vector<DenseTensor*> moments2_out,
-    std::vector<DenseTensor*> master_param_out,
     DenseTensor* beta1_pow_out,
-    DenseTensor* beta2_pow_out) {
+    DenseTensor* beta2_pow_out,
+    std::vector<DenseTensor*> master_params_out) {
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
-  MPDType beta1_ = beta1.to<MPDType>();
-  MPDType beta2_ = beta2.to<MPDType>();
+  MPDType beta1_tmp = beta1.to<MPDType>();
+  MPDType beta2_tmp = beta2.to<MPDType>();
   MPDType weight_decay_ = static_cast<MPDType>(weight_decay);
-  MPDType epsilon_ = epsilon.to<MPDType>();
+  MPDType epsilon_tmp = epsilon.to<MPDType>();
 
-  bool skip_update_ = false;
+  bool skip_update_value = false;
   if (skip_update.is_initialized()) {
     PADDLE_ENFORCE_EQ(
         skip_update->numel(),
@@ -193,14 +189,14 @@ void MultiTensorAdamKernel(
                                 skip_update->numel()));
     std::vector<bool> skip_update_vec;
     paddle::framework::TensorToVector(*skip_update, dev_ctx, &skip_update_vec);
-    skip_update_ = skip_update_vec[0];
+    skip_update_value = skip_update_vec[0];
   }
 
   // skip_update=true
   // mutable_data
-  if (skip_update_) {
+  if (skip_update_value) {
     VLOG(4) << "Adam skip update";
-    for (int i = 0; i < params.size(); i++) {
+    for (size_t i = 0; i < params.size(); i++) {
       phi::Copy(dev_ctx, *params[i], dev_ctx.GetPlace(), false, params_out[i]);
       phi::Copy(
           dev_ctx, *moments1[i], dev_ctx.GetPlace(), false, moments1_out[i]);
@@ -212,54 +208,69 @@ void MultiTensorAdamKernel(
     return;
   }
 
-  std::vector<std::vector<DenseTensor*>> tensor_and_block_inf;
+  std::vector<std::vector<DenseTensor*>> input_vector;
 
-  tensor_and_block_inf.push_back(params_out);
-  tensor_and_block_inf.push_back(moments1_out);
-  tensor_and_block_inf.push_back(moments2_out);
+  input_vector.push_back(params_out);
+  input_vector.push_back(moments1_out);
+  input_vector.push_back(moments2_out);
   if (multi_precision) {
-    tensor_and_block_inf.push_back(master_param_out);
+    input_vector.push_back(master_params_out);
   }
 
+  const int max_tensors_size_mp = 24;
+  const int max_blocks_size_mp = 320;
+
+  const int MAXTENSORSIZE = 30;
+  const int MAXBLOCKSIZE = 320;
+
   if (multi_precision) {
-    multi_tensor_adam_utility<5, MPDType>(dev_ctx,
-                                          BLOCK_SIZE,
-                                          compute_group_size,
-                                          tensor_and_block_inf,
-                                          grads,
-                                          CudaKernelFunctor<T, MPDType, 5>(),
-                                          beta1_,
-                                          beta2_,
-                                          beta1_pow.data<MPDType>(),
-                                          beta2_pow.data<MPDType>(),
-                                          epsilon_,
-                                          learning_rate.data<MPDType>(),
-                                          mode,
-                                          multi_precision,
-                                          weight_decay_);
+    MultiTensorAdamUtilityKernel<5,
+                                 max_tensors_size_mp,
+                                 max_blocks_size_mp,
+                                 MPDType>(
+        dev_ctx,
+        block_size,
+        chunk_size,
+        input_vector,
+        grads,
+        MultiTensorAdamFunctor<T,
+                               MPDType,
+                               5,
+                               max_tensors_size_mp,
+                               max_blocks_size_mp>(),
+        beta1_tmp,
+        beta2_tmp,
+        beta1_pow.data<MPDType>(),
+        beta2_pow.data<MPDType>(),
+        epsilon_tmp,
+        learning_rate.data<MPDType>(),
+        use_adamw,
+        multi_precision,
+        weight_decay_);
   } else {
-    multi_tensor_adam_utility<4, MPDType>(dev_ctx,
-                                          BLOCK_SIZE,
-                                          compute_group_size,
-                                          tensor_and_block_inf,
-                                          grads,
-                                          CudaKernelFunctor<T, MPDType, 4>(),
-                                          beta1_,
-                                          beta2_,
-                                          beta1_pow.data<MPDType>(),
-                                          beta2_pow.data<MPDType>(),
-                                          epsilon_,
-                                          learning_rate.data<MPDType>(),
-                                          mode,
-                                          multi_precision,
-                                          weight_decay_);
+    MultiTensorAdamUtilityKernel<4, MAXTENSORSIZE, MAXBLOCKSIZE, MPDType>(
+        dev_ctx,
+        block_size,
+        chunk_size,
+        input_vector,
+        grads,
+        MultiTensorAdamFunctor<T, MPDType, 4, MAXTENSORSIZE, MAXBLOCKSIZE>(),
+        beta1_tmp,
+        beta2_tmp,
+        beta1_pow.data<MPDType>(),
+        beta2_pow.data<MPDType>(),
+        epsilon_tmp,
+        learning_rate.data<MPDType>(),
+        use_adamw,
+        multi_precision,
+        weight_decay_);
   }
 
   if (!use_global_beta_pow) {
     // Update with gpu
     UpdateBetaPow<MPDType><<<1, 32, 0, dev_ctx.stream()>>>(
-        beta1_,
-        beta2_,
+        beta1_tmp,
+        beta2_tmp,
         beta1_pow.data<MPDType>(),
         beta2_pow.data<MPDType>(),
         dev_ctx.template Alloc<MPDType>(beta1_pow_out),
