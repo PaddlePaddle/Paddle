@@ -118,7 +118,7 @@ class MultiTensorAdam(Optimizer):
             beta1 = paddle.to_tensor([0.9], dtype="float32")
             beta2 = paddle.to_tensor([0.99], dtype="float32")
 
-            multi_tensor_adam = paddle.optimizer.MultiTensorAdam(learning_rate=0.1,
+            multi_tensor_adam = paddle.incubate.optimizer.MultiTensorAdam(learning_rate=0.1,
                     parameters=linear.parameters(),
                     beta1=beta1,
                     beta2=beta2,
@@ -455,7 +455,7 @@ class MultiTensorAdam(Optimizer):
                 a = paddle.rand([2,13], dtype="float32")
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.
-                multi_tensor_adam = paddle.optimizer.MultiTensorAdam(learning_rate = 0.01,
+                multi_tensor_adam = paddle.incubate.optimizer.MultiTensorAdam(learning_rate = 0.01,
                                             parameters = linear.parameters())
                 out = linear(a)
                 out.backward()
