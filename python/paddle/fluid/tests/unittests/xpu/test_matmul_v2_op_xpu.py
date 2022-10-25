@@ -21,7 +21,11 @@ from op_test_xpu import XPUOpTest
 
 import paddle
 
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -30,7 +34,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     # transpose X and Y appropriately.
     if transpose_X:
         if X.ndim == 1:
-            X = X.reshape((X.size, ))
+            X = X.reshape((X.size,))
         elif X.ndim == 2:
             X = X.T
         else:
@@ -39,7 +43,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
         if Y.ndim == 1:
-            Y = Y.reshape((Y.size, ))
+            Y = Y.reshape((Y.size,))
         else:
             dim = [i for i in range(len(Y.shape))]
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
@@ -55,7 +59,6 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
 
 
 class XPUTestMatmulV2Op(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = "matmul_v2"
         self.use_dynamic_create_class = False
@@ -66,8 +69,8 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
         """
 
         def config(self):
-            self.x_shape = (100, )
-            self.y_shape = (100, )
+            self.x_shape = (100,)
+            self.y_shape = (100,)
             self.trans_x = False
             self.trans_y = False
 
@@ -96,8 +99,10 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.check_output_with_place(place)
 
         def test_check_grad(self):
-            if hasattr(self.__class__, "no_need_check_grad"
-                       ) and self.__class__.no_need_check_grad == True:
+            if (
+                hasattr(self.__class__, "no_need_check_grad")
+                and self.__class__.no_need_check_grad == True
+            ):
                 return
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(place, ['X', 'Y'], 'Out')
@@ -108,7 +113,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
         """
 
         def config(self):
-            self.x_shape = (100)
+            self.x_shape = 100
             self.y_shape = (100, 3)
             self.trans_x = False
             self.trans_y = False
@@ -119,7 +124,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
         """
 
         def config(self):
-            self.x_shape = (100, )
+            self.x_shape = (100,)
             self.y_shape = (1, 1, 100, 2)
             self.trans_x = False
             self.trans_y = False
@@ -142,7 +147,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
 
         def config(self):
             self.x_shape = (1, 1, 100, 1)
-            self.y_shape = (100, )
+            self.y_shape = (100,)
             self.trans_x = True
             self.trans_y = False
 
@@ -219,7 +224,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
 
         def config(self):
             self.x_shape = (1, 20, 100)
-            self.y_shape = (100, )
+            self.y_shape = (100,)
             self.trans_x = False
             self.trans_y = False
 
@@ -274,7 +279,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
 
         def config(self):
             self.x_shape = (2, 1, 100)
-            self.y_shape = (100)
+            self.y_shape = 100
             self.trans_x = False
             self.trans_y = False
 
@@ -285,7 +290,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
 
         def config(self):
             self.x_shape = (8, 111, 4, 17)
-            self.y_shape = (17)
+            self.y_shape = 17
             self.trans_x = False
             self.trans_y = False
 

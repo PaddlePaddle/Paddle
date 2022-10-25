@@ -18,7 +18,6 @@ from paddle.dataset.common import download, DATA_HOME, md5file
 
 
 class TestDataSetDownload(unittest.TestCase):
-
     def setUp(self):
         flower_path = DATA_HOME + "/flowers/imagelabels.mat"
 

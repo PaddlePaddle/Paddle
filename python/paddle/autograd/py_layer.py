@@ -124,9 +124,7 @@ class LegacyPyLayerContext(object):
 
 
 def with_mateclass(meta, *bases):
-
     class impl(meta):
-
         def __new__(cls, name, temp_bases, attrs):
             return meta(name, bases, attrs)
 
@@ -134,7 +132,6 @@ def with_mateclass(meta, *bases):
 
 
 class CPyLayer(object):
-
     @classmethod
     @dygraph_only
     def apply(cls, *args, **kwargs):
@@ -182,12 +179,14 @@ class CPyLayer(object):
 
 
 class PyLayerBackward(LegacyPyLayerContext):
-
     def backward(self, *args, **kwargs):
         with paddle.fluid.dygraph.guard():
             with paddle.fluid.dygraph.no_grad():
-                if self._amp_state and 'enable' in self._amp_state and self._amp_state[
-                        'enable']:
+                if (
+                    self._amp_state
+                    and 'enable' in self._amp_state
+                    and self._amp_state['enable']
+                ):
                     with auto_cast(**args[0]._amp_state):
                         return self._forward_cls.backward(*args, **kwargs)
                 else:
@@ -197,10 +196,10 @@ class PyLayerBackward(LegacyPyLayerContext):
 
 
 class LayerMeta(type):
-
     def __init__(cls, name, bases, attrs):
-        cls._backward_function = type(name + '_backward', (PyLayerBackward, ),
-                                      {"_forward_cls": cls})
+        cls._backward_function = type(
+            name + '_backward', (PyLayerBackward,), {"_forward_cls": cls}
+        )
 
         return super(LayerMeta, cls).__init__(name, bases, attrs)
 
@@ -292,7 +291,8 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
                         return grad
         """
         raise NotImplementedError(
-            "You must implement the forward function for PyLayer.")
+            "You must implement the forward function for PyLayer."
+        )
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -332,11 +332,11 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
         """
 
         raise NotImplementedError(
-            "You must implement the backward function for PyLayer.")
+            "You must implement the backward function for PyLayer."
+        )
 
 
 class EagerPyLayerContext(object):
-
     def save_for_backward(self, *tensors):
         """
         Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
@@ -542,25 +542,22 @@ class EagerPyLayerContext(object):
 
 
 class EagerPyLayerBackward(core.eager.PyLayer, EagerPyLayerContext):
-
     def backward(self, *args):
         return self._forward_cls.backward(self, *args)
 
 
 class EagerPyLayerMeta(type):
-
     def __init__(cls, name, bases, attrs):
-        cls._backward_function = type(name + '_backward',
-                                      (EagerPyLayerBackward, ),
-                                      {"_forward_cls": cls})
+        cls._backward_function = type(
+            name + '_backward', (EagerPyLayerBackward,), {"_forward_cls": cls}
+        )
 
         return super(EagerPyLayerMeta, cls).__init__(name, bases, attrs)
 
 
 class EagerPyLayer(
-        with_mateclass(EagerPyLayerMeta, core.eager.PyLayer,
-                       EagerPyLayerContext)):
-
+    with_mateclass(EagerPyLayerMeta, core.eager.PyLayer, EagerPyLayerContext)
+):
     @staticmethod
     def forward(ctx, *args, **kwargs):
         """
@@ -597,7 +594,8 @@ class EagerPyLayer(
                         return grad
         """
         raise NotImplementedError(
-            "You must implement the forward function for PyLayer.")
+            "You must implement the forward function for PyLayer."
+        )
 
     @staticmethod
     def backward(ctx, *args):
@@ -637,11 +635,11 @@ class EagerPyLayer(
         """
 
         raise NotImplementedError(
-            "You must implement the backward function for PyLayer.")
+            "You must implement the backward function for PyLayer."
+        )
 
 
 def once_differentiable(backward):
-
     def wrapper(ctx, *args):
         with paddle.fluid.dygraph.no_grad():
             outputs = backward(ctx, *args)

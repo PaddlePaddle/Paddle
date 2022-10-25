@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/abs_grad_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -35,4 +36,6 @@ void AbsGradKernel(const Context& ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(abs_grad, XPU, ALL_LAYOUT, phi::AbsGradKernel, float) {}
+PD_REGISTER_KERNEL(abs_grad, XPU, ALL_LAYOUT, phi::AbsGradKernel, float) {
+  kernel->InputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}

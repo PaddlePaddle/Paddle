@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -50,14 +49,14 @@ class TestBase(IPUOpTest):
             "class_num": 80,
             "anchors": [10, 13, 16, 30, 33, 23],
             "conf_thresh": 0.01,
-            "downsample_ratio": 32
+            "downsample_ratio": 32,
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         attrs = {
             'name': 'img_size',
             'shape': [1, 2],

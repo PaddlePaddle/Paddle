@@ -46,33 +46,38 @@ def _get_image_size(img):
             return img.shape[2:][::-1]  # nchw -> wh
         else:
             raise ValueError(
-                "The dim for input Tensor should be 3-D or 4-D, but received {}"
-                .format(len(img.shape)))
+                "The dim for input Tensor should be 3-D or 4-D, but received {}".format(
+                    len(img.shape)
+                )
+            )
     else:
         raise TypeError("Unexpected type {}".format(type(img)))
 
 
-def _check_input(value,
-                 name,
-                 center=1,
-                 bound=(0, float('inf')),
-                 clip_first_on_zero=True):
+def _check_input(
+    value, name, center=1, bound=(0, float('inf')), clip_first_on_zero=True
+):
     if isinstance(value, numbers.Number):
         if value < 0:
             raise ValueError(
                 "If {} is a single number, it must be non negative.".format(
-                    name))
+                    name
+                )
+            )
         value = [center - value, center + value]
         if clip_first_on_zero:
             value[0] = max(value[0], 0)
     elif isinstance(value, (tuple, list)) and len(value) == 2:
         if not bound[0] <= value[0] <= value[1] <= bound[1]:
-            raise ValueError("{} values should be between {}".format(
-                name, bound))
+            raise ValueError(
+                "{} values should be between {}".format(name, bound)
+            )
     else:
         raise TypeError(
-            "{} should be a single number or a list/tuple with lenght 2.".
-            format(name))
+            "{} should be a single number or a list/tuple with lenght 2.".format(
+                name
+            )
+        )
 
     if value[0] == value[1] == center:
         value = None
@@ -116,8 +121,10 @@ class Compose(object):
                 data = f(data)
             except Exception as e:
                 stack_info = traceback.format_exc()
-                print("fail to perform transform [{}] with error: "
-                      "{} and stack:\n{}".format(f, e, str(stack_info)))
+                print(
+                    "fail to perform transform [{}] with error: "
+                    "{} and stack:\n{}".format(f, e, str(stack_info))
+                )
                 raise e
         return data
 
@@ -240,14 +247,16 @@ class BaseTransform(object):
 
     def __init__(self, keys=None):
         if keys is None:
-            keys = ("image", )
+            keys = ("image",)
         elif not isinstance(keys, Sequence):
             raise ValueError(
-                "keys should be a sequence, but got keys={}".format(keys))
+                "keys should be a sequence, but got keys={}".format(keys)
+            )
         for k in keys:
             if self._get_apply(k) is None:
                 raise NotImplementedError(
-                    "{} is unsupported data structure".format(k))
+                    "{} is unsupported data structure".format(k)
+                )
         self.keys = keys
 
         # storage some params get from function get_params()
@@ -259,7 +268,7 @@ class BaseTransform(object):
     def __call__(self, inputs):
         """Apply transform on single input data"""
         if not isinstance(inputs, tuple):
-            inputs = (inputs, )
+            inputs = (inputs,)
 
         self.params = self._get_params(inputs)
 
@@ -271,7 +280,7 @@ class BaseTransform(object):
             else:
                 outputs.append(apply_func(inputs[i]))
         if len(inputs) > len(self.keys):
-            outputs.extend(inputs[len(self.keys):])
+            outputs.extend(inputs[len(self.keys) :])
 
         if len(outputs) == 1:
             outputs = outputs[0]
@@ -413,8 +422,9 @@ class Resize(BaseTransform):
 
     def __init__(self, size, interpolation='bilinear', keys=None):
         super(Resize, self).__init__(keys)
-        assert isinstance(size, int) or (isinstance(size, Iterable)
-                                         and len(size) == 2)
+        assert isinstance(size, int) or (
+            isinstance(size, Iterable) and len(size) == 2
+        )
         self.size = size
         self.interpolation = interpolation
 
@@ -473,19 +483,21 @@ class RandomResizedCrop(BaseTransform):
 
     """
 
-    def __init__(self,
-                 size,
-                 scale=(0.08, 1.0),
-                 ratio=(3. / 4, 4. / 3),
-                 interpolation='bilinear',
-                 keys=None):
+    def __init__(
+        self,
+        size,
+        scale=(0.08, 1.0),
+        ratio=(3.0 / 4, 4.0 / 3),
+        interpolation='bilinear',
+        keys=None,
+    ):
         super(RandomResizedCrop, self).__init__(keys)
         if isinstance(size, int):
             self.size = (size, size)
         else:
             self.size = size
-        assert (scale[0] <= scale[1]), "scale should be of kind (min, max)"
-        assert (ratio[0] <= ratio[1]), "ratio should be of kind (min, max)"
+        assert scale[0] <= scale[1], "scale should be of kind (min, max)"
+        assert ratio[0] <= ratio[1], "ratio should be of kind (min, max)"
         self.scale = scale
         self.ratio = ratio
         self.interpolation = interpolation
@@ -696,12 +708,9 @@ class Normalize(BaseTransform):
 
     """
 
-    def __init__(self,
-                 mean=0.0,
-                 std=1.0,
-                 data_format='CHW',
-                 to_rgb=False,
-                 keys=None):
+    def __init__(
+        self, mean=0.0, std=1.0, data_format='CHW', to_rgb=False, keys=None
+    ):
         super(Normalize, self).__init__(keys)
         if isinstance(mean, numbers.Number):
             mean = [mean, mean, mean]
@@ -715,8 +724,9 @@ class Normalize(BaseTransform):
         self.to_rgb = to_rgb
 
     def _apply_image(self, img):
-        return F.normalize(img, self.mean, self.std, self.data_format,
-                           self.to_rgb)
+        return F.normalize(
+            img, self.mean, self.std, self.data_format, self.to_rgb
+        )
 
 
 class Transpose(BaseTransform):
@@ -934,11 +944,9 @@ class HueTransform(BaseTransform):
 
     def __init__(self, value, keys=None):
         super(HueTransform, self).__init__(keys)
-        self.value = _check_input(value,
-                                  'hue',
-                                  center=0,
-                                  bound=(-0.5, 0.5),
-                                  clip_first_on_zero=False)
+        self.value = _check_input(
+            value, 'hue', center=0, bound=(-0.5, 0.5), clip_first_on_zero=False
+        )
 
     def _apply_image(self, img):
         if self.value is None:
@@ -985,12 +993,9 @@ class ColorJitter(BaseTransform):
 
     """
 
-    def __init__(self,
-                 brightness=0,
-                 contrast=0,
-                 saturation=0,
-                 hue=0,
-                 keys=None):
+    def __init__(
+        self, brightness=0, contrast=0, saturation=0, hue=0, keys=None
+    ):
         super(ColorJitter, self).__init__(keys)
         self.brightness = brightness
         self.contrast = contrast
@@ -1033,8 +1038,9 @@ class ColorJitter(BaseTransform):
         Returns:
             PIL Image: Color jittered image.
         """
-        transform = self._get_param(self.brightness, self.contrast,
-                                    self.saturation, self.hue)
+        transform = self._get_param(
+            self.brightness, self.contrast, self.saturation, self.hue
+        )
         return transform(img)
 
 
@@ -1093,13 +1099,15 @@ class RandomCrop(BaseTransform):
             print(crop_img.shape) # [3, 224, 224]
     """
 
-    def __init__(self,
-                 size,
-                 padding=None,
-                 pad_if_needed=False,
-                 fill=0,
-                 padding_mode='constant',
-                 keys=None):
+    def __init__(
+        self,
+        size,
+        padding=None,
+        pad_if_needed=False,
+        fill=0,
+        padding_mode='constant',
+        keys=None,
+    ):
         super(RandomCrop, self).__init__(keys)
         if isinstance(size, numbers.Number):
             self.size = (int(size), int(size))
@@ -1144,12 +1152,14 @@ class RandomCrop(BaseTransform):
 
         # pad the width if needed
         if self.pad_if_needed and w < self.size[1]:
-            img = F.pad(img, (self.size[1] - w, 0), self.fill,
-                        self.padding_mode)
+            img = F.pad(
+                img, (self.size[1] - w, 0), self.fill, self.padding_mode
+            )
         # pad the height if needed
         if self.pad_if_needed and h < self.size[0]:
-            img = F.pad(img, (0, self.size[0] - h), self.fill,
-                        self.padding_mode)
+            img = F.pad(
+                img, (0, self.size[0] - h), self.fill, self.padding_mode
+            )
 
         i, j, h, w = self._get_param(img, self.size)
 
@@ -1214,8 +1224,9 @@ class Pad(BaseTransform):
 
         if isinstance(padding, Sequence) and len(padding) not in [2, 4]:
             raise ValueError(
-                "Padding must be an int or a 2, or 4 element tuple, not a " +
-                "{} element tuple".format(len(padding)))
+                "Padding must be an int or a 2, or 4 element tuple, not a "
+                + "{} element tuple".format(len(padding))
+            )
 
         super(Pad, self).__init__(keys)
         self.padding = padding
@@ -1234,19 +1245,23 @@ class Pad(BaseTransform):
 
 
 def _check_sequence_input(x, name, req_sizes):
-    msg = req_sizes[0] if len(req_sizes) < 2 else " or ".join(
-        [str(s) for s in req_sizes])
+    msg = (
+        req_sizes[0]
+        if len(req_sizes) < 2
+        else " or ".join([str(s) for s in req_sizes])
+    )
     if not isinstance(x, Sequence):
         raise TypeError(f"{name} should be a sequence of length {msg}.")
     if len(x) not in req_sizes:
         raise ValueError(f"{name} should be sequence of length {msg}.")
 
 
-def _setup_angle(x, name, req_sizes=(2, )):
+def _setup_angle(x, name, req_sizes=(2,)):
     if isinstance(x, numbers.Number):
         if x < 0:
             raise ValueError(
-                f"If {name} is a single number, it must be positive.")
+                f"If {name} is a single number, it must be positive."
+            )
         x = [-x, x]
     else:
         _check_sequence_input(x, name, req_sizes)
@@ -1312,31 +1327,34 @@ class RandomAffine(BaseTransform):
             print(fake_img.shape)
     """
 
-    def __init__(self,
-                 degrees,
-                 translate=None,
-                 scale=None,
-                 shear=None,
-                 interpolation='nearest',
-                 fill=0,
-                 center=None,
-                 keys=None):
-        self.degrees = _setup_angle(degrees, name="degrees", req_sizes=(2, ))
+    def __init__(
+        self,
+        degrees,
+        translate=None,
+        scale=None,
+        shear=None,
+        interpolation='nearest',
+        fill=0,
+        center=None,
+        keys=None,
+    ):
+        self.degrees = _setup_angle(degrees, name="degrees", req_sizes=(2,))
 
         super(RandomAffine, self).__init__(keys)
         assert interpolation in ['nearest', 'bilinear', 'bicubic']
         self.interpolation = interpolation
 
         if translate is not None:
-            _check_sequence_input(translate, "translate", req_sizes=(2, ))
+            _check_sequence_input(translate, "translate", req_sizes=(2,))
             for t in translate:
                 if not (0.0 <= t <= 1.0):
                     raise ValueError(
-                        "translation values should be between 0 and 1")
+                        "translation values should be between 0 and 1"
+                    )
         self.translate = translate
 
         if scale is not None:
-            _check_sequence_input(scale, "scale", req_sizes=(2, ))
+            _check_sequence_input(scale, "scale", req_sizes=(2,))
             for s in scale:
                 if s <= 0:
                     raise ValueError("scale values should be positive")
@@ -1354,15 +1372,12 @@ class RandomAffine(BaseTransform):
         self.fill = fill
 
         if center is not None:
-            _check_sequence_input(center, "center", req_sizes=(2, ))
+            _check_sequence_input(center, "center", req_sizes=(2,))
         self.center = center
 
-    def _get_param(self,
-                   img_size,
-                   degrees,
-                   translate=None,
-                   scale_ranges=None,
-                   shears=None):
+    def _get_param(
+        self, img_size, degrees, translate=None, scale_ranges=None, shears=None
+    ):
         """Get parameters for affine transformation
 
         Returns:
@@ -1405,14 +1420,17 @@ class RandomAffine(BaseTransform):
         w, h = _get_image_size(img)
         img_size = [w, h]
 
-        ret = self._get_param(img_size, self.degrees, self.translate,
-                              self.scale, self.shear)
+        ret = self._get_param(
+            img_size, self.degrees, self.translate, self.scale, self.shear
+        )
 
-        return F.affine(img,
-                        *ret,
-                        interpolation=self.interpolation,
-                        fill=self.fill,
-                        center=self.center)
+        return F.affine(
+            img,
+            *ret,
+            interpolation=self.interpolation,
+            fill=self.fill,
+            center=self.center,
+        )
 
 
 class RandomRotation(BaseTransform):
@@ -1464,22 +1482,26 @@ class RandomRotation(BaseTransform):
             print(fake_img.size)
     """
 
-    def __init__(self,
-                 degrees,
-                 interpolation='nearest',
-                 expand=False,
-                 center=None,
-                 fill=0,
-                 keys=None):
+    def __init__(
+        self,
+        degrees,
+        interpolation='nearest',
+        expand=False,
+        center=None,
+        fill=0,
+        keys=None,
+    ):
         if isinstance(degrees, numbers.Number):
             if degrees < 0:
                 raise ValueError(
-                    "If degrees is a single number, it must be positive.")
+                    "If degrees is a single number, it must be positive."
+                )
             self.degrees = (-degrees, degrees)
         else:
             if len(degrees) != 2:
                 raise ValueError(
-                    "If degrees is a sequence, it must be of len 2.")
+                    "If degrees is a sequence, it must be of len 2."
+                )
             self.degrees = degrees
 
         super(RandomRotation, self).__init__(keys)
@@ -1504,8 +1526,9 @@ class RandomRotation(BaseTransform):
 
         angle = self._get_param(self.degrees)
 
-        return F.rotate(img, angle, self.interpolation, self.expand,
-                        self.center, self.fill)
+        return F.rotate(
+            img, angle, self.interpolation, self.expand, self.center, self.fill
+        )
 
 
 class RandomPerspective(BaseTransform):
@@ -1553,15 +1576,19 @@ class RandomPerspective(BaseTransform):
             print(fake_img.shape)
     """
 
-    def __init__(self,
-                 prob=0.5,
-                 distortion_scale=0.5,
-                 interpolation='nearest',
-                 fill=0,
-                 keys=None):
+    def __init__(
+        self,
+        prob=0.5,
+        distortion_scale=0.5,
+        interpolation='nearest',
+        fill=0,
+        keys=None,
+    ):
         super(RandomPerspective, self).__init__(keys)
         assert 0 <= prob <= 1, "probability must be between 0 and 1"
-        assert 0 <= distortion_scale <= 1, "distortion_scale must be between 0 and 1"
+        assert (
+            0 <= distortion_scale <= 1
+        ), "distortion_scale must be between 0 and 1"
         assert interpolation in ['nearest', 'bilinear', 'bicubic']
         assert isinstance(fill, (numbers.Number, str, list, tuple))
 
@@ -1579,35 +1606,43 @@ class RandomPerspective(BaseTransform):
         half_height = height // 2
         half_width = width // 2
         topleft = [
-            int(random.uniform(0,
-                               int(distortion_scale * half_width) + 1)),
-            int(random.uniform(0,
-                               int(distortion_scale * half_height) + 1)),
+            int(random.uniform(0, int(distortion_scale * half_width) + 1)),
+            int(random.uniform(0, int(distortion_scale * half_height) + 1)),
         ]
         topright = [
             int(
-                random.uniform(width - int(distortion_scale * half_width) - 1,
-                               width)),
-            int(random.uniform(0,
-                               int(distortion_scale * half_height) + 1)),
+                random.uniform(
+                    width - int(distortion_scale * half_width) - 1, width
+                )
+            ),
+            int(random.uniform(0, int(distortion_scale * half_height) + 1)),
         ]
         botright = [
             int(
-                random.uniform(width - int(distortion_scale * half_width) - 1,
-                               width)),
+                random.uniform(
+                    width - int(distortion_scale * half_width) - 1, width
+                )
+            ),
             int(
-                random.uniform(height - int(distortion_scale * half_height) - 1,
-                               height)),
+                random.uniform(
+                    height - int(distortion_scale * half_height) - 1, height
+                )
+            ),
         ]
         botleft = [
-            int(random.uniform(0,
-                               int(distortion_scale * half_width) + 1)),
+            int(random.uniform(0, int(distortion_scale * half_width) + 1)),
             int(
-                random.uniform(height - int(distortion_scale * half_height) - 1,
-                               height)),
+                random.uniform(
+                    height - int(distortion_scale * half_height) - 1, height
+                )
+            ),
         ]
-        startpoints = [[0, 0], [width - 1, 0], [width - 1, height - 1],
-                       [0, height - 1]]
+        startpoints = [
+            [0, 0],
+            [width - 1, 0],
+            [width - 1, height - 1],
+            [0, height - 1],
+        ]
         endpoints = [topleft, topright, botright, botleft]
 
         return startpoints, endpoints
@@ -1624,10 +1659,12 @@ class RandomPerspective(BaseTransform):
         width, height = _get_image_size(img)
 
         if random.random() < self.prob:
-            startpoints, endpoints = self.get_params(width, height,
-                                                     self.distortion_scale)
-            return F.perspective(img, startpoints, endpoints,
-                                 self.interpolation, self.fill)
+            startpoints, endpoints = self.get_params(
+                width, height, self.distortion_scale
+            )
+            return F.perspective(
+                img, startpoints, endpoints, self.interpolation, self.fill
+            )
         return img
 
 
@@ -1715,27 +1752,34 @@ class RandomErasing(BaseTransform):
             print(result)
     """
 
-    def __init__(self,
-                 prob=0.5,
-                 scale=(0.02, 0.33),
-                 ratio=(0.3, 3.3),
-                 value=0,
-                 inplace=False,
-                 keys=None):
+    def __init__(
+        self,
+        prob=0.5,
+        scale=(0.02, 0.33),
+        ratio=(0.3, 3.3),
+        value=0,
+        inplace=False,
+        keys=None,
+    ):
         super(RandomErasing, self).__init__(keys)
-        assert isinstance(scale,
-                          (tuple, list)), "scale should be a tuple or list"
-        assert (scale[0] >= 0 and scale[1] <= 1 and scale[0] <= scale[1]
-                ), "scale should be of kind (min, max) and in range [0, 1]"
-        assert isinstance(ratio,
-                          (tuple, list)), "ratio should be a tuple or list"
-        assert (ratio[0] >= 0
-                and ratio[0] <= ratio[1]), "ratio should be of kind (min, max)"
-        assert (prob >= 0
-                and prob <= 1), "The probability should be in range [0, 1]"
         assert isinstance(
-            value, (numbers.Number, str, tuple,
-                    list)), "value should be a number, tuple, list or str"
+            scale, (tuple, list)
+        ), "scale should be a tuple or list"
+        assert (
+            scale[0] >= 0 and scale[1] <= 1 and scale[0] <= scale[1]
+        ), "scale should be of kind (min, max) and in range [0, 1]"
+        assert isinstance(
+            ratio, (tuple, list)
+        ), "ratio should be a tuple or list"
+        assert (
+            ratio[0] >= 0 and ratio[0] <= ratio[1]
+        ), "ratio should be of kind (min, max)"
+        assert (
+            prob >= 0 and prob <= 1
+        ), "The probability should be in range [0, 1]"
+        assert isinstance(
+            value, (numbers.Number, str, tuple, list)
+        ), "value should be a number, tuple, list or str"
         if isinstance(value, str) and value != "random":
             raise ValueError("value must be 'random' when type is str")
 
@@ -1779,7 +1823,8 @@ class RandomErasing(BaseTransform):
             if F._is_tensor_image(img):
                 if value is None:
                     v = paddle.normal(shape=[c, erase_h, erase_w]).astype(
-                        img.dtype)
+                        img.dtype
+                    )
                 else:
                     v = paddle.to_tensor(value, dtype=img.dtype)[:, None, None]
             else:
@@ -1815,6 +1860,7 @@ class RandomErasing(BaseTransform):
                     "Value should be a single number or a sequence with length equals to image's channel."
                 )
             top, left, erase_h, erase_w, v = self._get_param(
-                img, self.scale, self.ratio, value)
+                img, self.scale, self.ratio, value
+            )
             return F.erase(img, top, left, erase_h, erase_w, v, self.inplace)
         return img

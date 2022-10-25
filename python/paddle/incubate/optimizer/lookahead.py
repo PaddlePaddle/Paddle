@@ -115,24 +115,27 @@ class LookAhead(Optimizer):
     _slow_str = "slow"
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5, name=None):
-        assert (inner_optimizer is not None), "inner optimizer can not be None"
+        assert inner_optimizer is not None, "inner optimizer can not be None"
         assert (
             0.0 <= alpha <= 1.0
         ), "alpha should be larger or equal to 0.0, and less or equal than 1.0"
-        assert (isinstance(k, int) and k > 0), "k should be a positive integer"
+        assert isinstance(k, int) and k > 0, "k should be a positive integer"
 
         self.inner_optimizer = inner_optimizer
         if self.inner_optimizer._parameter_list is None:
-            parameters = framework.default_main_program().global_block(
-            ).all_parameters()
+            parameters = (
+                framework.default_main_program().global_block().all_parameters()
+            )
         else:
             parameters = self.inner_optimizer._parameter_list
 
-        super(LookAhead, self).__init__(learning_rate=alpha,
-                                        parameters=parameters,
-                                        weight_decay=None,
-                                        grad_clip=None,
-                                        name=name)
+        super(LookAhead, self).__init__(
+            learning_rate=alpha,
+            parameters=parameters,
+            weight_decay=None,
+            grad_clip=None,
+            name=name,
+        )
 
         self.alpha = alpha
         self.k = k
@@ -178,9 +181,9 @@ class LookAhead(Optimizer):
                 grad_var = param._grad_ivar()
                 params_grads.append((param, grad_var))
 
-        self._apply_optimize(loss=None,
-                             startup_program=None,
-                             params_grads=params_grads)
+        self._apply_optimize(
+            loss=None, startup_program=None, params_grads=params_grads
+        )
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -195,24 +198,28 @@ class LookAhead(Optimizer):
                 shape=[1],
                 value=0,
                 dtype='int32',
-                persistable=True)
+                persistable=True,
+            )
 
-        self.helper.append_op(type='increment',
-                              inputs={'X': [self._global_step_var]},
-                              outputs={'Out': [self._global_step_var]},
-                              attrs={'step': 1.0})
+        self.helper.append_op(
+            type='increment',
+            inputs={'X': [self._global_step_var]},
+            outputs={'Out': [self._global_step_var]},
+            attrs={'step': 1.0},
+        )
 
     def _append_optimize_op(self, block, param_and_grad):
         one_var = paddle.ones(shape=[1], dtype='int32', name='lookahead_ones')
-        zero_var = paddle.zeros(shape=[1],
-                                dtype='int32',
-                                name='lookahead_zeros')
+        zero_var = paddle.zeros(
+            shape=[1], dtype='int32', name='lookahead_zeros'
+        )
         k_var = layers.create_global_var(
             name=unique_name.generate("lookahead_k"),
             shape=[1],
             value=self.k,
             dtype='int32',
-            persistable=True)
+            persistable=True,
+        )
 
         mod = paddle.remainder(self._global_step_var, k_var)
 
@@ -235,11 +242,9 @@ class LookAhead(Optimizer):
         paddle.assign(tmp_var_1, slow_var)
 
     @imperative_base.no_grad
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameters=None,
-                 no_grad_set=None):
+    def minimize(
+        self, loss, startup_program=None, parameters=None, no_grad_set=None
+    ):
         """
         Add operations to minimize ``loss`` by updating ``parameters``.
 
@@ -286,12 +291,13 @@ class LookAhead(Optimizer):
             loss,
             startup_program=startup_program,
             parameters=parameters,
-            no_grad_set=no_grad_set)
+            no_grad_set=no_grad_set,
+        )
 
         self._increment_global_var()
 
-        _ = self._apply_optimize(loss,
-                                 startup_program=startup_program,
-                                 params_grads=params_grads)
+        _ = self._apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads
+        )
 
         return optimize_ops, params_grads

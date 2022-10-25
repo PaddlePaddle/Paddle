@@ -17,41 +17,35 @@ from paddle.fluid.tests.unittests.test_fusion_gru_op import TestFusionGRUOp
 
 
 class TestFusionGRUMKLDNNOp(TestFusionGRUOp):
-
     def set_confs(self):
         self.use_mkldnn = True
 
 
 class TestFusionGRUMKLDNNOpNoInitial(TestFusionGRUOp):
-
     def set_confs(self):
         self.with_h0 = False
         self.use_mkldnn = True
 
 
 class TestFusionGRUMKLDNNOpNoBias(TestFusionGRUOp):
-
     def set_confs(self):
         self.with_bias = False
         self.use_mkldnn = True
 
 
 class TestFusionGRUMKLDNNOpReverse(TestFusionGRUOp):
-
     def set_confs(self):
         self.is_reverse = True
         self.use_mkldnn = True
 
 
 class TestFusionGRUMKLDNNOpOriginMode(TestFusionGRUOp):
-
     def set_confs(self):
         self.origin_mode = True
         self.use_mkldnn = True
 
 
 class TestFusionGRUMKLDNNOpMD1(TestFusionGRUOp):
-
     def set_confs(self):
         self.M = 36
         self.D = 8
@@ -59,7 +53,6 @@ class TestFusionGRUMKLDNNOpMD1(TestFusionGRUOp):
 
 
 class TestFusionGRUMKLDNNOpMD2(TestFusionGRUOp):
-
     def set_confs(self):
         self.M = 8
         self.D = 8
@@ -67,7 +60,6 @@ class TestFusionGRUMKLDNNOpMD2(TestFusionGRUOp):
 
 
 class TestFusionGRUMKLDNNOpMD3(TestFusionGRUOp):
-
     def set_confs(self):
         self.M = 17
         self.D = 15
@@ -75,7 +67,6 @@ class TestFusionGRUMKLDNNOpMD3(TestFusionGRUOp):
 
 
 class TestFusionGRUMKLDNNOpBS1(TestFusionGRUOp):
-
     def set_confs(self):
         self.lod = [[3]]
         self.D = 16
@@ -84,5 +75,6 @@ class TestFusionGRUMKLDNNOpBS1(TestFusionGRUOp):
 
 if __name__ == "__main__":
     from paddle import enable_static
+
     enable_static()
     unittest.main()

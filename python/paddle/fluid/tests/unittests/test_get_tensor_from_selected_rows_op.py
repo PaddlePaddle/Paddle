@@ -40,7 +40,6 @@ class TestGetTensorFromSelectedRowsError(unittest.TestCase):
 
 
 class TestGetTensorFromSelectedRows(unittest.TestCase):
-
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():

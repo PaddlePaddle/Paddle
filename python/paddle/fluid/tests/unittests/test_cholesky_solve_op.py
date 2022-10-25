@@ -28,7 +28,7 @@ from paddle.fluid import Program, program_guard, core
 paddle.enable_static()
 
 
-#cholesky_solve implement 1
+# cholesky_solve implement 1
 def cholesky_solution(X, B, upper=True):
     if upper:
         A = np.triu(X)
@@ -39,10 +39,11 @@ def cholesky_solution(X, B, upper=True):
         L = A
         U = A.T
     return scipy.linalg.solve_triangular(
-        U, scipy.linalg.solve_triangular(L, B, lower=True))
+        U, scipy.linalg.solve_triangular(L, B, lower=True)
+    )
 
 
-#cholesky_solve implement 2
+# cholesky_solve implement 2
 def scipy_cholesky_solution(X, B, upper=True):
     if upper:
         umat = np.triu(X)
@@ -54,7 +55,7 @@ def scipy_cholesky_solution(X, B, upper=True):
     return scipy.linalg.cho_solve(K, B)
 
 
-#broadcast function used by cholesky_solve
+# broadcast function used by cholesky_solve
 def broadcast_shape(matA, matB):
     shapeA = matA.shape
     shapeB = matB.shape
@@ -67,14 +68,16 @@ def broadcast_shape(matA, matB):
             Broadshape.append(max(shapeA[idx], shapeB[idx]))
         else:
             raise Exception(
-                'shapeA and shapeB should be broadcasted, but got {} and {}'.
-                format(shapeA, shapeB))
+                'shapeA and shapeB should be broadcasted, but got {} and {}'.format(
+                    shapeA, shapeB
+                )
+            )
     bsA = Broadshape + list(shapeA[-2:])
     bsB = Broadshape + list(shapeB[-2:])
     return np.broadcast_to(matA, bsA), np.broadcast_to(matB, bsB)
 
 
-#cholesky_solve implement in batch
+# cholesky_solve implement in batch
 def scipy_cholesky_solution_batch(bumat, bB, upper=True):
     bumat, bB = broadcast_shape(bumat, bB)
     ushape = bumat.shape
@@ -99,19 +102,21 @@ class TestCholeskySolveOp(OpTest):
     case 1
     """
 
-    #test condition set
+    # test condition set
     def config(self):
         self.y_shape = [15, 15]
         self.x_shape = [15, 5]
         self.upper = False
-        self.dtype = np.float64  #Here cholesky_solve Op only supports float64/float32 type, please check others if Op supports more types.
+        self.dtype = (
+            np.float64
+        )  # Here cholesky_solve Op only supports float64/float32 type, please check others if Op supports more types.
 
-    #get scipy result
+    # get scipy result
     def set_output(self):
         umat = self.inputs['Y']
-        self.output = scipy_cholesky_solution_batch(umat,
-                                                    self.inputs['X'],
-                                                    upper=self.upper)
+        self.output = scipy_cholesky_solution_batch(
+            umat, self.inputs['X'], upper=self.upper
+        )
 
     def setUp(self):
         self.op_type = "cholesky_solve"
@@ -124,17 +129,17 @@ class TestCholeskySolveOp(OpTest):
 
         self.inputs = {
             'X': np.random.random(self.x_shape).astype(self.dtype),
-            'Y': umat
+            'Y': umat,
         }
         self.attrs = {'upper': self.upper}
         self.set_output()
         self.outputs = {'Out': self.output}
 
-    #check Op forward result
+    # check Op forward result
     def test_check_output(self):
         self.check_output()
 
-    #check Op grad
+    # check Op grad
     def test_check_grad_normal(self):
         self.check_grad(['Y'], 'Out', max_relative_error=0.01)
 
@@ -152,9 +157,8 @@ class TestCholeskySolveOp3(TestCholeskySolveOp):
         self.dtype = np.float64
 
 
-#API function test
+# API function test
 class TestCholeskySolveAPI(unittest.TestCase):
-
     def setUp(self):
         np.random.seed(2021)
         self.place = [paddle.CPUPlace()]
@@ -180,22 +184,20 @@ class TestCholeskySolveAPI(unittest.TestCase):
             z2_np = scipy_cholesky_solution(umat, x_np, upper=self.upper)
 
             exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={
-                                  "x": x_np,
-                                  "y": umat
-                              },
-                              fetch_list=[z])
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"x": x_np, "y": umat},
+                fetch_list=[z],
+            )
             np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
-    #test in static mode
+    # test in static mode
     def test_static(self):
         for place in self.place:
             self.check_static_result(place=place)
 
-    #test in dynamic mode
+    # test in dynamic mode
     def test_dygraph(self):
-
         def run(place):
             paddle.disable_static(place)
             x_np = np.random.random([20, 2]).astype(self.dtype)
@@ -213,9 +215,8 @@ class TestCholeskySolveAPI(unittest.TestCase):
         for idx, place in enumerate(self.place):
             run(place)
 
-    #test input with broadcast
+    # test input with broadcast
     def test_broadcast(self):
-
         def run(place):
             paddle.disable_static()
             x_np = np.random.random([1, 30, 2]).astype(self.dtype)
@@ -234,17 +235,18 @@ class TestCholeskySolveAPI(unittest.TestCase):
             run(place)
 
 
-#test condition out of bounds
+# test condition out of bounds
 class TestCholeskySolveOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of solve_op must be Variable.
-            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
-                                         fluid.CPUPlace())
-            y1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
-                                         fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
+            y1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
             self.assertRaises(TypeError, paddle.linalg.cholesky_solve, x1, y1)
 
             # The data type of input must be float32 or float64.

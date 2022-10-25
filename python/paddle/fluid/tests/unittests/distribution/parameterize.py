@@ -25,16 +25,14 @@ TEST_CASE_NAME = 'suffix'
 
 
 def xrand(shape=(10, 10, 10), dtype=config.DEFAULT_DTYPE, min=1.0, max=10.0):
-    return ((np.random.rand(*shape).astype(dtype)) * (max - min) + min)
+    return (np.random.rand(*shape).astype(dtype)) * (max - min) + min
 
 
 def place(devices, key='place'):
-
     def decorate(cls):
         module = sys.modules[cls.__module__].__dict__
         raw_classes = {
-            k: v
-            for k, v in module.items() if k.startswith(cls.__name__)
+            k: v for k, v in module.items() if k.startswith(cls.__name__)
         }
 
         for raw_name, raw_cls in raw_classes.items():
@@ -42,7 +40,7 @@ def place(devices, key='place'):
                 test_cls = dict(raw_cls.__dict__)
                 test_cls.update({key: d})
                 new_name = raw_name + '.' + d.__class__.__name__
-                module[new_name] = type(new_name, (raw_cls, ), test_cls)
+                module[new_name] = type(new_name, (raw_cls,), test_cls)
             del module[raw_name]
         return cls
 
@@ -61,7 +59,7 @@ def parameterize_cls(fields, values=None):
             name = cls.__name__ + str(k)
             name = name + '.' + v.get('suffix') if v.get('suffix') else name
 
-            test_cls_module[name] = type(name, (cls, ), test_cls)
+            test_cls_module[name] = type(name, (cls,), test_cls)
 
         for m in list(cls.__dict__):
             if m.startswith("test"):
@@ -71,10 +69,9 @@ def parameterize_cls(fields, values=None):
     return decorate
 
 
-def parameterize_func(input,
-                      name_func=None,
-                      doc_func=None,
-                      skip_on_empty=False):
+def parameterize_func(
+    input, name_func=None, doc_func=None, skip_on_empty=False
+):
     doc_func = doc_func or default_doc_func
     name_func = name_func or default_name_func
 
@@ -88,13 +85,15 @@ def parameterize_func(input,
                 raise ValueError(
                     "Parameters iterable is empty (hint: use "
                     "`parameterized.expand([], skip_on_empty=True)` to skip "
-                    "this test when the input is empty)")
+                    "this test when the input is empty)"
+                )
             return wraps(f)(skip_on_empty_helper)
 
         digits = len(str(len(parameters) - 1))
         for num, p in enumerate(parameters):
-            name = name_func(f, "{num:0>{digits}}".format(digits=digits,
-                                                          num=num), p)
+            name = name_func(
+                f, "{num:0>{digits}}".format(digits=digits, num=num), p
+            )
             # If the original function has patches applied by 'mock.patch',
             # re-construct all patches on the just former decoration layer
             # of param_as_standalone_func so as not to share
@@ -113,9 +112,7 @@ def parameterize_func(input,
 
 
 def reapply_patches_if_need(func):
-
     def dummy_wrapper(orgfunc):
-
         @wraps(orgfunc)
         def dummy_func(*args, **kwargs):
             return orgfunc(*args, **kwargs)
@@ -138,7 +135,7 @@ def delete_patches_if_need(func):
 
 def default_name_func(func, num, p):
     base_name = func.__name__
-    name_suffix = "_%s" % (num, )
+    name_suffix = "_%s" % (num,)
 
     if len(p.args) > 0 and isinstance(p.args[0], str):
         name_suffix += "_" + to_safe_name(p.args[0])
@@ -167,7 +164,6 @@ def default_doc_func(func, num, p):
 
 
 def param_as_standalone_func(p, func, name):
-
     @functools.wraps(func)
     def standalone_func(*a):
         return func(*(a + p.args), **p.kwargs)
@@ -209,36 +205,35 @@ _param = collections.namedtuple("param", "args kwargs")
 
 
 class param(_param):
-
     def __new__(cls, *args, **kwargs):
         return _param.__new__(cls, args, kwargs)
 
     @classmethod
     def explicit(cls, args=None, kwargs=None):
-        """ Creates a ``param`` by explicitly specifying ``args`` and
-            ``kwargs``::
-                >>> param.explicit([1,2,3])
-                param(*(1, 2, 3))
-                >>> param.explicit(kwargs={"foo": 42})
-                param(*(), **{"foo": "42"})
-            """
+        """Creates a ``param`` by explicitly specifying ``args`` and
+        ``kwargs``::
+            >>> param.explicit([1,2,3])
+            param(*(1, 2, 3))
+            >>> param.explicit(kwargs={"foo": 42})
+            param(*(), **{"foo": "42"})
+        """
         args = args or ()
         kwargs = kwargs or {}
         return cls(*args, **kwargs)
 
     @classmethod
     def from_decorator(cls, args):
-        """ Returns an instance of ``param()`` for ``@parameterized`` argument
-            ``args``::
-                >>> param.from_decorator((42, ))
-                param(args=(42, ), kwargs={})
-                >>> param.from_decorator("foo")
-                param(args=("foo", ), kwargs={})
-            """
+        """Returns an instance of ``param()`` for ``@parameterized`` argument
+        ``args``::
+            >>> param.from_decorator((42, ))
+            param(args=(42, ), kwargs={})
+            >>> param.from_decorator("foo")
+            param(args=("foo", ), kwargs={})
+        """
         if isinstance(args, param):
             return args
         elif isinstance(args, str):
-            args = (args, )
+            args = (args,)
         try:
             return cls(*args)
         except TypeError as e:
@@ -246,7 +241,8 @@ class param(_param):
                 raise
             raise TypeError(
                 "Parameters must be tuples, but %r is not (hint: use '(%r, )')"
-                % (args, args), )
+                % (args, args),
+            )
 
     def __repr__(self):
         return "param(*%r, **%r)" % self

@@ -21,9 +21,11 @@ import paddle.fluid as fluid
 import paddle.nn.functional as F
 
 
-def ref_selu(x,
-             scale=1.0507009873554804934193349852946,
-             alpha=1.6732632423543772848170429916717):
+def ref_selu(
+    x,
+    scale=1.0507009873554804934193349852946,
+    alpha=1.6732632423543772848170429916717,
+):
     out = np.copy(x)
     out_flat = out.flatten()
     for i in range(out_flat.size):
@@ -35,7 +37,6 @@ def ref_selu(x,
 
 
 class SeluTest(OpTest):
-
     def setUp(self):
         self.op_type = "selu"
         self.python_api = paddle.nn.functional.selu
@@ -85,8 +86,11 @@ class TestSeluAPI(unittest.TestCase):
         # Since zero point in selu is not differentiable, avoid randomize
         # zero.
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
-        self.place=paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -125,21 +129,21 @@ class TestSeluAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.selu, 1)
             # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(name='x_int32',
-                                        shape=[12, 10],
-                                        dtype='int32')
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
             self.assertRaises(TypeError, F.selu, x_int32)
             # The scale must be greater than 1.0
-            x_fp32 = paddle.fluid.data(name='x_fp32',
-                                       shape=[12, 10],
-                                       dtype='float32')
+            x_fp32 = paddle.fluid.data(
+                name='x_fp32', shape=[12, 10], dtype='float32'
+            )
             self.assertRaises(ValueError, F.selu, x_fp32, -1.0)
             # The alpha must be no less than 0
             self.assertRaises(ValueError, F.selu, x_fp32, 1.6, -1.0)
             # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(name='x_fp16',
-                                       shape=[12, 10],
-                                       dtype='float16')
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
             F.selu(x_fp16)
 
 

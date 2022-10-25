@@ -67,16 +67,19 @@ class PixelShuffle(Layer):
             raise TypeError("upscale factor must be int type")
 
         if data_format not in ["NCHW", "NHWC"]:
-            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
-                             "But recevie data format: {}".format(data_format))
+            raise ValueError(
+                "Data format should be 'NCHW' or 'NHWC'."
+                "But recevie data format: {}".format(data_format)
+            )
 
         self._upscale_factor = upscale_factor
         self._data_format = data_format
         self._name = name
 
     def forward(self, x):
-        return functional.pixel_shuffle(x, self._upscale_factor,
-                                        self._data_format, self._name)
+        return functional.pixel_shuffle(
+            x, self._upscale_factor, self._data_format, self._name
+        )
 
     def extra_repr(self):
         main_str = 'upscale_factor={}'.format(self._upscale_factor)
@@ -130,16 +133,19 @@ class PixelUnshuffle(Layer):
             raise ValueError("Downscale factor must be positive")
 
         if data_format not in ["NCHW", "NHWC"]:
-            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
-                             "But recevie data format: {}".format(data_format))
+            raise ValueError(
+                "Data format should be 'NCHW' or 'NHWC'."
+                "But recevie data format: {}".format(data_format)
+            )
 
         self._downscale_factor = downscale_factor
         self._data_format = data_format
         self._name = name
 
     def forward(self, x):
-        return functional.pixel_unshuffle(x, self._downscale_factor,
-                                          self._data_format, self._name)
+        return functional.pixel_unshuffle(
+            x, self._downscale_factor, self._data_format, self._name
+        )
 
     def extra_repr(self):
         main_str = 'downscale_factor={}'.format(self._downscale_factor)
@@ -202,16 +208,19 @@ class ChannelShuffle(Layer):
             raise ValueError("groups must be positive")
 
         if data_format not in ["NCHW", "NHWC"]:
-            raise ValueError("Data format should be 'NCHW' or 'NHWC'."
-                             "But recevie data format: {}".format(data_format))
+            raise ValueError(
+                "Data format should be 'NCHW' or 'NHWC'."
+                "But recevie data format: {}".format(data_format)
+            )
 
         self._groups = groups
         self._data_format = data_format
         self._name = name
 
     def forward(self, x):
-        return functional.channel_shuffle(x, self._groups, self._data_format,
-                                          self._name)
+        return functional.channel_shuffle(
+            x, self._groups, self._data_format, self._name
+        )
 
     def extra_repr(self):
         main_str = 'groups={}'.format(self._groups)

@@ -22,7 +22,6 @@ from contextlib import closing
 
 
 class Node(object):
-
     def __init__(self):
         # self.device = Device.detect_device()
         self.device = Device.parse_device()
@@ -54,8 +53,9 @@ class Node(object):
 
     def _get_free_port(self, port=0):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
-                         struct.pack('ii', 1, 0))
+            s.setsockopt(
+                socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0)
+            )
             try:
                 s.bind(('', port))
                 return s.getsockname()[1]
@@ -81,8 +81,8 @@ class Node(object):
     @classmethod
     def is_server_ready(self, ip, port):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-            #sock.settimeout(0.01)
-            #sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # sock.settimeout(0.01)
+            # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             if hasattr(socket, 'SO_REUSEPORT'):
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
             result = sock.connect_ex((ip, int(port)))

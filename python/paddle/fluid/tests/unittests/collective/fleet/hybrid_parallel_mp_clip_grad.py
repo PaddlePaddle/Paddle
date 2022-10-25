@@ -16,20 +16,19 @@ import paddle
 from hybrid_parallel_mp_model import TestDistMPTraning
 import unittest
 
-#log = logging.getLogger("HybridParallel")
-#log.setLevel(logging.WARNING)
+# log = logging.getLogger("HybridParallel")
+# log.setLevel(logging.WARNING)
 
 
 class TestMPClipGrad(TestDistMPTraning):
-
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
-        scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=0.001,
-                                                         gamma=0.999,
-                                                         verbose=True)
-        optimizer = paddle.optimizer.SGD(scheduler,
-                                         grad_clip=grad_clip,
-                                         parameters=model.parameters())
+        scheduler = paddle.optimizer.lr.ExponentialDecay(
+            learning_rate=0.001, gamma=0.999, verbose=True
+        )
+        optimizer = paddle.optimizer.SGD(
+            scheduler, grad_clip=grad_clip, parameters=model.parameters()
+        )
         return optimizer
 
 

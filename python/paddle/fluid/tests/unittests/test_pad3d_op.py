@@ -24,7 +24,6 @@ from paddle.fluid import Program, program_guard, Executor, default_main_program
 
 
 class TestPad3dOp(OpTest):
-
     def setUp(self):
         paddle.enable_static()
         self.value = 0.0
@@ -35,11 +34,13 @@ class TestPad3dOp(OpTest):
         self.attrs = {}
         if self.variable_paddings:
             self.attrs['paddings'] = []
-            self.inputs['Paddings'] = np.array(
-                self.paddings).flatten().astype("int32")
+            self.inputs['Paddings'] = (
+                np.array(self.paddings).flatten().astype("int32")
+            )
         else:
-            self.attrs['paddings'] = np.array(
-                self.paddings).flatten().astype("int32")
+            self.attrs['paddings'] = (
+                np.array(self.paddings).flatten().astype("int32")
+            )
         self.attrs['value'] = self.value
         self.attrs['mode'] = self.mode
         self.attrs['data_format'] = self.data_format
@@ -60,10 +61,12 @@ class TestPad3dOp(OpTest):
                 (0, 0),
             ]
         if self.mode == "constant":
-            out = np.pad(self.inputs['X'],
-                         paddings,
-                         mode=self.mode,
-                         constant_values=self.value)
+            out = np.pad(
+                self.inputs['X'],
+                paddings,
+                mode=self.mode,
+                constant_values=self.value,
+            )
         elif self.mode == "reflect":
             out = np.pad(self.inputs['X'], paddings, mode=self.mode)
         elif self.mode == "replicate":
@@ -88,7 +91,6 @@ class TestPad3dOp(OpTest):
 
 
 class TestCase1(TestPad3dOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.paddings = [0, 1, 2, 3, 4, 5]
@@ -99,7 +101,6 @@ class TestCase1(TestPad3dOp):
 
 
 class TestCase2(TestPad3dOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.paddings = [1, 1, 1, 1, 1, 1]
@@ -110,7 +111,6 @@ class TestCase2(TestPad3dOp):
 
 
 class TestCase3(TestPad3dOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.paddings = [0, 1, 1, 0, 2, 3]
@@ -120,7 +120,6 @@ class TestCase3(TestPad3dOp):
 
 
 class TestCase4(TestPad3dOp):
-
     def initTestCase(self):
         self.shape = (4, 4, 4, 4, 4)
         self.paddings = [0, 1, 2, 1, 2, 3]
@@ -130,7 +129,6 @@ class TestCase4(TestPad3dOp):
 
 
 class TestCase5(TestPad3dOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.paddings = [0, 1, 2, 3, 2, 1]
@@ -140,7 +138,6 @@ class TestCase5(TestPad3dOp):
 
 
 class TestCase6(TestPad3dOp):
-
     def initTestCase(self):
         self.shape = (4, 4, 4, 4, 4)
         self.paddings = [5, 4, 2, 1, 2, 3]
@@ -150,7 +147,6 @@ class TestCase6(TestPad3dOp):
 
 
 class TestCase7(TestPad3dOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.paddings = [0, 1, 2, 3, 2, 1]
@@ -160,7 +156,6 @@ class TestCase7(TestPad3dOp):
 
 
 class TestCase8(TestPad3dOp):
-
     def initTestCase(self):
         self.shape = (4, 4, 4, 4, 4)
         self.paddings = [0, 1, 2, 1, 2, 3]
@@ -170,7 +165,6 @@ class TestCase8(TestPad3dOp):
 
 
 class TestCase9(TestPad3dOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.paddings = [0, 1, 2, 3, 4, 5]
@@ -181,7 +175,6 @@ class TestCase9(TestPad3dOp):
 
 
 class TestCase10(TestPad3dOp):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.paddings = [0, 1, 2, 3, 4, 5]
@@ -192,7 +185,6 @@ class TestCase10(TestPad3dOp):
 
 
 class TestPadAPI(unittest.TestCase):
-
     def setUp(self):
         self.places = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -207,15 +199,15 @@ class TestPadAPI(unittest.TestCase):
             value = 100
             input_data = np.random.rand(*input_shape).astype(np.float32)
             x = paddle.fluid.data(name="x", shape=input_shape)
-            result = F.pad(x=x,
-                           pad=pad,
-                           value=value,
-                           mode=mode,
-                           data_format="NCDHW")
+            result = F.pad(
+                x=x, pad=pad, value=value, mode=mode, data_format="NCDHW"
+            )
             exe = Executor(place)
-            fetches = exe.run(default_main_program(),
-                              feed={"x": input_data},
-                              fetch_list=[result])
+            fetches = exe.run(
+                default_main_program(),
+                feed={"x": input_data},
+                fetch_list=[result],
+            )
 
             np_out = self._get_numpy_out(input_data, pad, mode, value)
             np.testing.assert_allclose(fetches[0], np_out, rtol=1e-05)
@@ -231,18 +223,18 @@ class TestPadAPI(unittest.TestCase):
             result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
             exe = Executor(place)
-            fetches = exe.run(default_main_program(),
-                              feed={"x": input_data},
-                              fetch_list=[result1, result2])
+            fetches = exe.run(
+                default_main_program(),
+                feed={"x": input_data},
+                fetch_list=[result1, result2],
+            )
 
-            np_out1 = self._get_numpy_out(input_data,
-                                          pad,
-                                          mode,
-                                          data_format="NCDHW")
-            np_out2 = self._get_numpy_out(input_data,
-                                          pad,
-                                          mode,
-                                          data_format="NDHWC")
+            np_out1 = self._get_numpy_out(
+                input_data, pad, mode, data_format="NCDHW"
+            )
+            np_out2 = self._get_numpy_out(
+                input_data, pad, mode, data_format="NDHWC"
+            )
             np.testing.assert_allclose(fetches[0], np_out1, rtol=1e-05)
             np.testing.assert_allclose(fetches[1], np_out2, rtol=1e-05)
 
@@ -257,18 +249,18 @@ class TestPadAPI(unittest.TestCase):
             result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
             exe = Executor(place)
-            fetches = exe.run(default_main_program(),
-                              feed={"x": input_data},
-                              fetch_list=[result1, result2])
+            fetches = exe.run(
+                default_main_program(),
+                feed={"x": input_data},
+                fetch_list=[result1, result2],
+            )
 
-            np_out1 = self._get_numpy_out(input_data,
-                                          pad,
-                                          mode,
-                                          data_format="NCDHW")
-            np_out2 = self._get_numpy_out(input_data,
-                                          pad,
-                                          mode,
-                                          data_format="NDHWC")
+            np_out1 = self._get_numpy_out(
+                input_data, pad, mode, data_format="NCDHW"
+            )
+            np_out2 = self._get_numpy_out(
+                input_data, pad, mode, data_format="NDHWC"
+            )
             np.testing.assert_allclose(fetches[0], np_out1, rtol=1e-05)
             np.testing.assert_allclose(fetches[1], np_out2, rtol=1e-05)
 
@@ -283,27 +275,24 @@ class TestPadAPI(unittest.TestCase):
             result1 = F.pad(x=x, pad=pad, mode=mode, data_format="NCDHW")
             result2 = F.pad(x=x, pad=pad, mode=mode, data_format="NDHWC")
             exe = Executor(place)
-            fetches = exe.run(default_main_program(),
-                              feed={"x": input_data},
-                              fetch_list=[result1, result2])
+            fetches = exe.run(
+                default_main_program(),
+                feed={"x": input_data},
+                fetch_list=[result1, result2],
+            )
 
-            np_out1 = self._get_numpy_out(input_data,
-                                          pad,
-                                          mode,
-                                          data_format="NCDHW")
-            np_out2 = self._get_numpy_out(input_data,
-                                          pad,
-                                          mode,
-                                          data_format="NDHWC")
+            np_out1 = self._get_numpy_out(
+                input_data, pad, mode, data_format="NCDHW"
+            )
+            np_out2 = self._get_numpy_out(
+                input_data, pad, mode, data_format="NDHWC"
+            )
             np.testing.assert_allclose(fetches[0], np_out1, rtol=1e-05)
             np.testing.assert_allclose(fetches[1], np_out2, rtol=1e-05)
 
-    def _get_numpy_out(self,
-                       input_data,
-                       pad,
-                       mode,
-                       value=0,
-                       data_format="NCDHW"):
+    def _get_numpy_out(
+        self, input_data, pad, mode, value=0, data_format="NCDHW"
+    ):
         if mode == "constant" and len(pad) == len(input_data.shape) * 2:
             pad = np.reshape(pad, (-1, 2)).tolist()
         elif data_format == "NCDHW":
@@ -375,38 +364,26 @@ class TestPadAPI(unittest.TestCase):
         mode = "constant"
         value = 100
         input_data = np.random.rand(*input_shape).astype(np.float32)
-        np_out1 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NCDHW")
-        np_out2 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NDHWC")
-        np_out3 = self._get_numpy_out(input_data,
-                                      pad_3,
-                                      mode,
-                                      value,
-                                      data_format="NCDHW")
+        np_out1 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NCDHW"
+        )
+        np_out2 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NDHWC"
+        )
+        np_out3 = self._get_numpy_out(
+            input_data, pad_3, mode, value, data_format="NCDHW"
+        )
         tensor_data = paddle.to_tensor(input_data)
 
-        y1 = F.pad(tensor_data,
-                   pad=pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NCDHW")
-        y2 = F.pad(tensor_data,
-                   pad=pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NDHWC")
-        y3 = F.pad(tensor_data,
-                   pad=pad_3,
-                   mode=mode,
-                   value=value,
-                   data_format="NCDHW")
+        y1 = F.pad(
+            tensor_data, pad=pad, mode=mode, value=value, data_format="NCDHW"
+        )
+        y2 = F.pad(
+            tensor_data, pad=pad, mode=mode, value=value, data_format="NDHWC"
+        )
+        y3 = F.pad(
+            tensor_data, pad=pad_3, mode=mode, value=value, data_format="NCDHW"
+        )
 
         np.testing.assert_allclose(y1.numpy(), np_out1, rtol=1e-05)
         np.testing.assert_allclose(y2.numpy(), np_out2, rtol=1e-05)
@@ -420,40 +397,36 @@ class TestPadAPI(unittest.TestCase):
         mode = "constant"
         value = 100
         input_data = np.random.rand(*input_shape).astype(np.float32)
-        np_out1 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NCHW")
-        np_out2 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NHWC")
-        np_out3 = self._get_numpy_out(input_data,
-                                      pad_3,
-                                      mode,
-                                      value,
-                                      data_format="NCHW")
+        np_out1 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NCHW"
+        )
+        np_out2 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NHWC"
+        )
+        np_out3 = self._get_numpy_out(
+            input_data, pad_3, mode, value, data_format="NCHW"
+        )
 
         tensor_data = paddle.to_tensor(input_data)
         tensor_pad = paddle.to_tensor(pad, dtype="int32")
 
-        y1 = F.pad(tensor_data,
-                   pad=tensor_pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NCHW")
-        y2 = F.pad(tensor_data,
-                   pad=tensor_pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NHWC")
-        y3 = F.pad(tensor_data,
-                   pad=pad_3,
-                   mode=mode,
-                   value=value,
-                   data_format="NCHW")
+        y1 = F.pad(
+            tensor_data,
+            pad=tensor_pad,
+            mode=mode,
+            value=value,
+            data_format="NCHW",
+        )
+        y2 = F.pad(
+            tensor_data,
+            pad=tensor_pad,
+            mode=mode,
+            value=value,
+            data_format="NHWC",
+        )
+        y3 = F.pad(
+            tensor_data, pad=pad_3, mode=mode, value=value, data_format="NCHW"
+        )
 
         np.testing.assert_allclose(y1.numpy(), np_out1, rtol=1e-05)
         np.testing.assert_allclose(y2.numpy(), np_out2, rtol=1e-05)
@@ -467,39 +440,35 @@ class TestPadAPI(unittest.TestCase):
         mode = "constant"
         value = 100
         input_data = np.random.rand(*input_shape).astype(np.float32)
-        np_out1 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NCL")
-        np_out2 = self._get_numpy_out(input_data,
-                                      pad,
-                                      mode,
-                                      value,
-                                      data_format="NLC")
-        np_out3 = self._get_numpy_out(input_data,
-                                      pad_3,
-                                      mode,
-                                      value,
-                                      data_format="NCL")
+        np_out1 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NCL"
+        )
+        np_out2 = self._get_numpy_out(
+            input_data, pad, mode, value, data_format="NLC"
+        )
+        np_out3 = self._get_numpy_out(
+            input_data, pad_3, mode, value, data_format="NCL"
+        )
         tensor_data = paddle.to_tensor(input_data)
         tensor_pad = paddle.to_tensor(pad, dtype="int32")
 
-        y1 = F.pad(tensor_data,
-                   pad=tensor_pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NCL")
-        y2 = F.pad(tensor_data,
-                   pad=tensor_pad,
-                   mode=mode,
-                   value=value,
-                   data_format="NLC")
-        y3 = F.pad(tensor_data,
-                   pad=pad_3,
-                   mode=mode,
-                   value=value,
-                   data_format="NCL")
+        y1 = F.pad(
+            tensor_data,
+            pad=tensor_pad,
+            mode=mode,
+            value=value,
+            data_format="NCL",
+        )
+        y2 = F.pad(
+            tensor_data,
+            pad=tensor_pad,
+            mode=mode,
+            value=value,
+            data_format="NLC",
+        )
+        y3 = F.pad(
+            tensor_data, pad=pad_3, mode=mode, value=value, data_format="NCL"
+        )
 
         np.testing.assert_allclose(y1.numpy(), np_out1, rtol=1e-05)
         np.testing.assert_allclose(y2.numpy(), np_out2, rtol=1e-05)
@@ -507,13 +476,9 @@ class TestPadAPI(unittest.TestCase):
 
 
 class TestPad1dAPI(unittest.TestCase):
-
-    def _get_numpy_out(self,
-                       input_data,
-                       pad,
-                       mode,
-                       value=0.0,
-                       data_format="NCL"):
+    def _get_numpy_out(
+        self, input_data, pad, mode, value=0.0, data_format="NCL"
+    ):
         if data_format == "NCL":
             pad = [
                 (0, 0),
@@ -555,59 +520,52 @@ class TestPad1dAPI(unittest.TestCase):
             pad_reflection = nn.Pad1D(padding=pad, mode="reflect")
             pad_replication = nn.Pad1D(padding=pad, mode="replicate")
             pad_constant = nn.Pad1D(padding=pad, mode="constant", value=value)
-            pad_constant_int = nn.Pad1D(padding=pad_int,
-                                        mode="constant",
-                                        value=value)
+            pad_constant_int = nn.Pad1D(
+                padding=pad_int, mode="constant", value=value
+            )
             pad_circular = nn.Pad1D(padding=pad, mode="circular")
 
             data = paddle.to_tensor(input_data)
 
             output = pad_reflection(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "reflect",
-                                         data_format="NCL")
+            np_out = self._get_numpy_out(
+                input_data, pad, "reflect", data_format="NCL"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_replication(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "replicate",
-                                         data_format="NCL")
+            np_out = self._get_numpy_out(
+                input_data, pad, "replicate", data_format="NCL"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "constant",
-                                         value=value,
-                                         data_format="NCL")
+            np_out = self._get_numpy_out(
+                input_data, pad, "constant", value=value, data_format="NCL"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant_int(data)
-            np_out = self._get_numpy_out(input_data, [pad_int] * 2,
-                                         "constant",
-                                         value=value,
-                                         data_format="NCL")
+            np_out = self._get_numpy_out(
+                input_data,
+                [pad_int] * 2,
+                "constant",
+                value=value,
+                data_format="NCL",
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_circular(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "circular",
-                                         value=value,
-                                         data_format="NCL")
+            np_out = self._get_numpy_out(
+                input_data, pad, "circular", value=value, data_format="NCL"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
 
 class TestPad2dAPI(unittest.TestCase):
-
-    def _get_numpy_out(self,
-                       input_data,
-                       pad,
-                       mode,
-                       value=0.0,
-                       data_format="NCHW"):
+    def _get_numpy_out(
+        self, input_data, pad, mode, value=0.0, data_format="NCHW"
+    ):
         if data_format == "NCHW":
             pad = [
                 (0, 0),
@@ -651,58 +609,52 @@ class TestPad2dAPI(unittest.TestCase):
             pad_reflection = nn.Pad2D(padding=pad, mode="reflect")
             pad_replication = nn.Pad2D(padding=pad, mode="replicate")
             pad_constant = nn.Pad2D(padding=pad, mode="constant", value=value)
-            pad_constant_int = nn.Pad2D(padding=pad_int,
-                                        mode="constant",
-                                        value=value)
+            pad_constant_int = nn.Pad2D(
+                padding=pad_int, mode="constant", value=value
+            )
             pad_circular = nn.Pad2D(padding=pad, mode="circular")
 
             data = paddle.to_tensor(input_data)
 
             output = pad_reflection(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "reflect",
-                                         data_format="NCHW")
+            np_out = self._get_numpy_out(
+                input_data, pad, "reflect", data_format="NCHW"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_replication(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "replicate",
-                                         data_format="NCHW")
+            np_out = self._get_numpy_out(
+                input_data, pad, "replicate", data_format="NCHW"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "constant",
-                                         value=value,
-                                         data_format="NCHW")
+            np_out = self._get_numpy_out(
+                input_data, pad, "constant", value=value, data_format="NCHW"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant_int(data)
-            np_out = self._get_numpy_out(input_data, [pad_int] * 4,
-                                         "constant",
-                                         value=value,
-                                         data_format="NCHW")
+            np_out = self._get_numpy_out(
+                input_data,
+                [pad_int] * 4,
+                "constant",
+                value=value,
+                data_format="NCHW",
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_circular(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "circular",
-                                         data_format="NCHW")
+            np_out = self._get_numpy_out(
+                input_data, pad, "circular", data_format="NCHW"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
 
 class TestPad3dAPI(unittest.TestCase):
-
-    def _get_numpy_out(self,
-                       input_data,
-                       pad,
-                       mode,
-                       value=0.0,
-                       data_format="NCDHW"):
+    def _get_numpy_out(
+        self, input_data, pad, mode, value=0.0, data_format="NCDHW"
+    ):
         if data_format == "NCDHW":
             pad = [
                 (0, 0),
@@ -748,47 +700,45 @@ class TestPad3dAPI(unittest.TestCase):
             pad_reflection = nn.Pad3D(padding=pad, mode="reflect")
             pad_replication = nn.Pad3D(padding=pad, mode="replicate")
             pad_constant = nn.Pad3D(padding=pad, mode="constant", value=value)
-            pad_constant_int = nn.Pad3D(padding=pad_int,
-                                        mode="constant",
-                                        value=value)
+            pad_constant_int = nn.Pad3D(
+                padding=pad_int, mode="constant", value=value
+            )
             pad_circular = nn.Pad3D(padding=pad, mode="circular")
 
             data = paddle.to_tensor(input_data)
 
             output = pad_reflection(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "reflect",
-                                         data_format="NCDHW")
+            np_out = self._get_numpy_out(
+                input_data, pad, "reflect", data_format="NCDHW"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_replication(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "replicate",
-                                         data_format="NCDHW")
+            np_out = self._get_numpy_out(
+                input_data, pad, "replicate", data_format="NCDHW"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "constant",
-                                         value=value,
-                                         data_format="NCDHW")
+            np_out = self._get_numpy_out(
+                input_data, pad, "constant", value=value, data_format="NCDHW"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant_int(data)
-            np_out = self._get_numpy_out(input_data, [pad_int] * 6,
-                                         "constant",
-                                         value=value,
-                                         data_format="NCDHW")
+            np_out = self._get_numpy_out(
+                input_data,
+                [pad_int] * 6,
+                "constant",
+                value=value,
+                data_format="NCDHW",
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_circular(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "circular",
-                                         data_format="NCDHW")
+            np_out = self._get_numpy_out(
+                input_data, pad, "circular", data_format="NCDHW"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
     def test_pad_tensor(self):
@@ -799,38 +749,34 @@ class TestPad3dAPI(unittest.TestCase):
             pad_tensor = paddle.to_tensor(pad)
             input_data = np.random.rand(*input_shape).astype(np.float32)
 
-            pad_reflection_ncdhw = nn.Pad3D(padding=pad_tensor,
-                                            mode="reflect",
-                                            data_format="NCDHW")
-            pad_reflection_ndhwc = nn.Pad3D(padding=pad_tensor,
-                                            mode="reflect",
-                                            data_format="NDHWC")
+            pad_reflection_ncdhw = nn.Pad3D(
+                padding=pad_tensor, mode="reflect", data_format="NCDHW"
+            )
+            pad_reflection_ndhwc = nn.Pad3D(
+                padding=pad_tensor, mode="reflect", data_format="NDHWC"
+            )
             data = paddle.to_tensor(input_data)
 
             output = pad_reflection_ncdhw(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "reflect",
-                                         data_format="NCDHW")
+            np_out = self._get_numpy_out(
+                input_data, pad, "reflect", data_format="NCDHW"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_reflection_ndhwc(data)
-            np_out = self._get_numpy_out(input_data,
-                                         pad,
-                                         "reflect",
-                                         data_format="NDHWC")
+            np_out = self._get_numpy_out(
+                input_data, pad, "reflect", data_format="NDHWC"
+            )
             np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
 
 class TestPad3dOpError(unittest.TestCase):
-
     def setUp(self):
         self.places = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
     def test_errors(self):
-
         def test_variable():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
@@ -840,49 +786,53 @@ class TestPad3dOpError(unittest.TestCase):
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
             x = paddle.to_tensor(data)
-            y = F.pad(x,
-                      pad=[5, 6, 1, 1, 1, 1],
-                      value=1,
-                      mode='reflect',
-                      data_format="NCDHW")
+            y = F.pad(
+                x,
+                pad=[5, 6, 1, 1, 1, 1],
+                value=1,
+                mode='reflect',
+                data_format="NCDHW",
+            )
 
         def test_reflect_2():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
             x = paddle.to_tensor(data)
-            y = F.pad(x,
-                      pad=[1, 1, 4, 3, 1, 1],
-                      value=1,
-                      mode='reflect',
-                      data_format="NCDHW")
+            y = F.pad(
+                x,
+                pad=[1, 1, 4, 3, 1, 1],
+                value=1,
+                mode='reflect',
+                data_format="NCDHW",
+            )
 
         def test_reflect_3():
             input_shape = (1, 2, 3, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
             x = paddle.to_tensor(data)
-            y = F.pad(x,
-                      pad=[1, 1, 1, 1, 2, 3],
-                      value=1,
-                      mode='reflect',
-                      data_format="NCDHW")
+            y = F.pad(
+                x,
+                pad=[1, 1, 1, 1, 2, 3],
+                value=1,
+                mode='reflect',
+                data_format="NCDHW",
+            )
 
         def test_circular_1():
             input_shape = (1, 2, 0, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
             x = paddle.to_tensor(data)
-            y = F.pad(x,
-                      pad=[1, 1, 1, 1, 2, 3],
-                      mode='circular',
-                      data_format="NCDHW")
+            y = F.pad(
+                x, pad=[1, 1, 1, 1, 2, 3], mode='circular', data_format="NCDHW"
+            )
 
         def test_replicate_1():
             input_shape = (1, 2, 0, 4, 5)
             data = np.random.rand(*input_shape).astype(np.float32)
             x = paddle.to_tensor(data)
-            y = F.pad(x,
-                      pad=[1, 1, 1, 1, 2, 3],
-                      mode='replicate',
-                      data_format="NCDHW")
+            y = F.pad(
+                x, pad=[1, 1, 1, 1, 2, 3], mode='replicate', data_format="NCDHW"
+            )
 
         paddle.disable_static()
         for place in self.places:
@@ -896,14 +846,16 @@ class TestPad3dOpError(unittest.TestCase):
 
 
 class TestPadDataformatError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_ncl():
             input_shape = (1, 2, 3, 4)
             pad = paddle.to_tensor(np.array([2, 1, 2, 1]).astype('int32'))
-            data = np.arange(np.prod(input_shape),
-                             dtype=np.float64).reshape(input_shape) + 1
+            data = (
+                np.arange(np.prod(input_shape), dtype=np.float64).reshape(
+                    input_shape
+                )
+                + 1
+            )
             my_pad = nn.Pad1D(padding=pad, mode="replicate", data_format="NCL")
             data = paddle.to_tensor(data)
             result = my_pad(data)
@@ -911,8 +863,12 @@ class TestPadDataformatError(unittest.TestCase):
         def test_nchw():
             input_shape = (1, 2, 4)
             pad = paddle.to_tensor(np.array([2, 1, 2, 1]).astype('int32'))
-            data = np.arange(np.prod(input_shape),
-                             dtype=np.float64).reshape(input_shape) + 1
+            data = (
+                np.arange(np.prod(input_shape), dtype=np.float64).reshape(
+                    input_shape
+                )
+                + 1
+            )
             my_pad = nn.Pad1D(padding=pad, mode="replicate", data_format="NCHW")
             data = paddle.to_tensor(data)
             result = my_pad(data)
@@ -920,11 +876,15 @@ class TestPadDataformatError(unittest.TestCase):
         def test_ncdhw():
             input_shape = (1, 2, 3, 4)
             pad = paddle.to_tensor(np.array([2, 1, 2, 1]).astype('int32'))
-            data = np.arange(np.prod(input_shape),
-                             dtype=np.float64).reshape(input_shape) + 1
-            my_pad = nn.Pad1D(padding=pad,
-                              mode="replicate",
-                              data_format="NCDHW")
+            data = (
+                np.arange(np.prod(input_shape), dtype=np.float64).reshape(
+                    input_shape
+                )
+                + 1
+            )
+            my_pad = nn.Pad1D(
+                padding=pad, mode="replicate", data_format="NCDHW"
+            )
             data = paddle.to_tensor(data)
             result = my_pad(data)
 

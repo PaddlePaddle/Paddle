@@ -24,7 +24,7 @@ from paddle.fluid.framework import _test_eager_guard
 def assign_pos(x, _cum_count):
     cum_count = np.copy(_cum_count)
     x = x.reshape(-1)
-    res = np.zeros((cum_count[-1], ), dtype=np.int64)
+    res = np.zeros((cum_count[-1],), dtype=np.int64)
     for i, idx in enumerate(x):
         p = cum_count[idx]
         cum_count[idx] -= 1
@@ -34,7 +34,7 @@ def assign_pos(x, _cum_count):
 
 
 def count(x, upper_num):
-    res = np.zeros((upper_num, )).astype(int)
+    res = np.zeros((upper_num,)).astype(int)
     for i in x.reshape(-1):
         if i >= 0 and i < len(res):
             res[i] += 1
@@ -62,17 +62,16 @@ def assert_allclose(res, out, cum_count):
 
 
 def get_redefined_allclose(cum_count):
-
     def redefined_allclose(x, y, *args, **kwargs):
         return assert_allclose(x, y, cum_count)
 
     return redefined_allclose
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestAssignPosOpInt64(op_test.OpTest):
-
     def setUp(self):
         x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(x, 16)
@@ -81,7 +80,7 @@ class TestAssignPosOpInt64(op_test.OpTest):
         self.inputs = {
             'X': x,
             "cum_count": cum_count,
-            "eff_num_len": np.array([cum_count[-1]])
+            "eff_num_len": np.array([cum_count[-1]]),
         }
         self.outputs = {'Out': assign_pos(x, cum_count)}
         self.cum_count = cum_count
@@ -91,10 +90,10 @@ class TestAssignPosOpInt64(op_test.OpTest):
         self.check_output_with_place(paddle.CUDAPlace(0))
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestAssignPosAPI(unittest.TestCase):
-
     def setUp(self):
         self.x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(self.x, 16)
@@ -106,16 +105,15 @@ class TestAssignPosAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('x', self.x.shape, dtype="int64")
-            cum_count = paddle.fluid.data('cum_count',
-                                          self.cum_count.shape,
-                                          dtype="int64")
+            cum_count = paddle.fluid.data(
+                'cum_count', self.cum_count.shape, dtype="int64"
+            )
             out = utils._assign_pos(x, cum_count)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={
-                'x': self.x,
-                "cum_count": self.cum_count
-            },
-                          fetch_list=[out])
+            res = exe.run(
+                feed={'x': self.x, "cum_count": self.cum_count},
+                fetch_list=[out],
+            )
             assert_allclose(res[0], self.out, self.cum_count)
 
     def func_api_dygraph(self):

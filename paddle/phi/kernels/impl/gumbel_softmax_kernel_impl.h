@@ -21,6 +21,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -63,6 +64,12 @@ void GumbelSoftmaxKernelHelper(const Context& ctx,
   // allocate memory on device.
   ctx.template Alloc<T>(out);
   if (out->numel() == 0) {
+    return;
+  }
+
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(ctx, out, 1.0);
     return;
   }
 

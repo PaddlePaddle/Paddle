@@ -23,8 +23,12 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.framework import _test_eager_guard
 
-from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import GroupShardedOptimizerStage2
-from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import GroupShardedStage2
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
+    GroupShardedOptimizerStage2,
+)
+from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import (
+    GroupShardedStage2,
+)
 
 seed = 2022
 epoch = 2
@@ -35,7 +39,6 @@ paddle.seed(seed)
 
 
 class MLP(fluid.Layer):
-
     def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
         super(MLP, self).__init__()
 
@@ -51,7 +54,6 @@ class MLP(fluid.Layer):
 
 
 def reader_decorator(linear_size=1000):
-
     def __reader__():
         for _ in range(100):
             img = np.random.rand(linear_size).astype('float32')
@@ -63,42 +65,50 @@ def reader_decorator(linear_size=1000):
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-    optimizer = paddle.optimizer.AdamW(parameters=[{
-        "params": model.parameters(),
-    }] if opt_group else model.parameters(),
-                                       learning_rate=0.001,
-                                       weight_decay=0.00001,
-                                       grad_clip=clip,
-                                       multi_precision=use_pure_fp16)
+    optimizer = paddle.optimizer.AdamW(
+        parameters=[
+            {
+                "params": model.parameters(),
+            }
+        ]
+        if opt_group
+        else model.parameters(),
+        learning_rate=0.001,
+        weight_decay=0.00001,
+        grad_clip=clip,
+        multi_precision=use_pure_fp16,
+    )
 
     return optimizer
 
 
-def train_mlp(model,
-              sharding_stage,
-              batch_size=100,
-              use_pure_fp16=False,
-              accumulate_grad=False,
-              opt_group=False,
-              save_model=False,
-              test_minimize=False):
+def train_mlp(
+    model,
+    sharding_stage,
+    batch_size=100,
+    use_pure_fp16=False,
+    accumulate_grad=False,
+    opt_group=False,
+    save_model=False,
+    test_minimize=False,
+):
     if sharding_stage != "dp":
         group = paddle.distributed.new_group([0, 1], backend="nccl")
     if opt_group:
-        optimizer = optimizer_setting(model=model,
-                                      use_pure_fp16=use_pure_fp16,
-                                      opt_group=opt_group)
+        optimizer = optimizer_setting(
+            model=model, use_pure_fp16=use_pure_fp16, opt_group=opt_group
+        )
     else:
         optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
     if sharding_stage == 2:
         optimizer = GroupShardedOptimizerStage2(
-            params=optimizer._parameter_list, optim=optimizer, group=group)
+            params=optimizer._parameter_list, optim=optimizer, group=group
+        )
 
-        model = GroupShardedStage2(model,
-                                   optimizer,
-                                   group=group,
-                                   buffer_max_size=2**21)
+        model = GroupShardedStage2(
+            model, optimizer, group=group, buffer_max_size=2**21
+        )
     else:
         model = paddle.DataParallel(model)
 
@@ -108,18 +118,21 @@ def train_mlp(model,
             optimizer.minimize()
         except:
             print(
-                "====== Find sharding_stage2_optimizer.minimize() error ======")
+                "====== Find sharding_stage2_optimizer.minimize() error ======"
+            )
         return
 
-    train_reader = paddle.batch(reader_decorator(),
-                                batch_size=batch_size,
-                                drop_last=True)
+    train_reader = paddle.batch(
+        reader_decorator(), batch_size=batch_size, drop_last=True
+    )
 
-    train_loader = paddle.io.DataLoader.from_generator(capacity=32,
-                                                       use_double_buffer=True,
-                                                       iterable=True,
-                                                       return_list=True,
-                                                       use_multiprocess=True)
+    train_loader = paddle.io.DataLoader.from_generator(
+        capacity=32,
+        use_double_buffer=True,
+        iterable=True,
+        return_list=True,
+        use_multiprocess=True,
+    )
     train_loader.set_sample_list_generator(train_reader)
 
     if sharding_stage == 2:
@@ -174,50 +187,50 @@ def test_dp_stage2():
     mlp7.set_state_dict(state_dict)
 
     # DP VS stage2
-    dp_params = train_mlp(mlp1,
-                          sharding_stage="dp",
-                          use_pure_fp16=False,
-                          opt_group=False)
-    stage2_params = train_mlp(mlp2,
-                              sharding_stage=2,
-                              use_pure_fp16=False,
-                              opt_group=False)
+    dp_params = train_mlp(
+        mlp1, sharding_stage="dp", use_pure_fp16=False, opt_group=False
+    )
+    stage2_params = train_mlp(
+        mlp2, sharding_stage=2, use_pure_fp16=False, opt_group=False
+    )
     for i in range(len(dp_params)):
-        np.testing.assert_allclose(dp_params[i].numpy(),
-                                   stage2_params[i].numpy(),
-                                   rtol=1e-6)
+        np.testing.assert_allclose(
+            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6
+        )
 
     # stage2 accumulate grad
     stage2_params = train_mlp(mlp3, sharding_stage=2, accumulate_grad=True)
-    stage2_accumulate_grad = train_mlp(mlp4,
-                                       sharding_stage=2,
-                                       batch_size=20,
-                                       accumulate_grad=True)
+    stage2_accumulate_grad = train_mlp(
+        mlp4, sharding_stage=2, batch_size=20, accumulate_grad=True
+    )
     for i in range(len(stage2_params)):
-        np.testing.assert_allclose(stage2_params[i].numpy(),
-                                   stage2_accumulate_grad[i].numpy(),
-                                   rtol=1e-5,
-                                   atol=1e-5)
+        np.testing.assert_allclose(
+            stage2_params[i].numpy(),
+            stage2_accumulate_grad[i].numpy(),
+            rtol=1e-5,
+            atol=1e-5,
+        )
 
     # stage2 param list VS param group
-    stage2_params = train_mlp(mlp5,
-                              sharding_stage=2,
-                              use_pure_fp16=False,
-                              opt_group=True)
+    stage2_params = train_mlp(
+        mlp5, sharding_stage=2, use_pure_fp16=False, opt_group=True
+    )
     for i in range(len(dp_params)):
-        np.testing.assert_allclose(dp_params[i].numpy(),
-                                   stage2_params[i].numpy(),
-                                   rtol=1e-6)
+        np.testing.assert_allclose(
+            dp_params[i].numpy(), stage2_params[i].numpy(), rtol=1e-6
+        )
 
     # save/load model
     output_dir = tempfile.mkdtemp()
     model_file = os.path.join(output_dir, "model.pdmodel")
     optimizer_file = os.path.join(output_dir, "model.pdopt")
-    model_stage2, optimizer_stage2 = train_mlp(mlp6,
-                                               sharding_stage=2,
-                                               use_pure_fp16=False,
-                                               opt_group=False,
-                                               save_model=True)
+    model_stage2, optimizer_stage2 = train_mlp(
+        mlp6,
+        sharding_stage=2,
+        use_pure_fp16=False,
+        opt_group=False,
+        save_model=True,
+    )
     paddle.save(model_stage2.state_dict(), model_file)
     paddle.save(optimizer_stage2.state_dict(), optimizer_file)
     m_state_dict = paddle.load(model_file)
