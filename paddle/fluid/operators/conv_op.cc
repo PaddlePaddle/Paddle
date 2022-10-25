@@ -210,16 +210,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
-#if PADDLE_WITH_CUDA
-    if (input_data_type == framework::proto::VarType::BF16) {
-      PADDLE_ENFORCE_GE(
-          platform::DnnVersion(),
-          8100,
-          platform::errors::InvalidArgument(
-              "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
-    }
-#endif  // PADDLE_WITH_CUDA
+  if (platform::CanCUDNNBeUsed(ctx, input_data_type)) {
     return framework::OpKernelType(input_data_type,
                                    ctx.GetPlace(),
                                    phi::DataLayout::kAnyLayout,
@@ -478,7 +469,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
+  if (platform::CanCUDNNBeUsed(ctx, data_type)) {
     return framework::OpKernelType(data_type,
                                    ctx.GetPlace(),
                                    phi::DataLayout::kAnyLayout,
@@ -658,7 +649,7 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::CanCUDNNBeUsed(ctx)) {
+  if (platform::CanCUDNNBeUsed(ctx, data_type)) {
     return framework::OpKernelType(data_type,
                                    ctx.GetPlace(),
                                    framework::DataLayout::kAnyLayout,

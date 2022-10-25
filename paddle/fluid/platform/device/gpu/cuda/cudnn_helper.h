@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -616,10 +617,18 @@ class ScopedActivationDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
 };
 
-inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
+inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                           const framework::proto::VarType::Type data_type) {
   bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn");
   use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_CUDA
+  if (data_type == framework::proto::VarType::BF16) {
+    PADDLE_ENFORCE_GE(
+        CUDNN_VERSION,
+        8100,
+        platform::errors::InvalidArgument(
+            "bfloat16 can only be used when CUDNN_VERSION >= 8100"));
+  }
   if (use_cudnn) {
     auto& dev_ctx = ctx.device_context<phi::GPUContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
