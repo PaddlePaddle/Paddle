@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from functools import reduce
+import logging
 
 from paddle.framework import core
 from paddle.fluid import unique_name
@@ -740,14 +741,7 @@ def partition_by_use_order(params, group_size):
             cur_rank += 1
         mapping[cur_rank].append(param)
         mem_accu += mem
-    print()
-    print("######" * 6)
-    for k, v in mapping.items():
-        print("rank:{}, size:{}.".format(k,
-                                         sum([get_var_size(var) for var in v])))
-        print([var.name for var in v])
-    print("######" * 6)
-    print()
+
     return mapping
 
 
@@ -767,23 +761,22 @@ def partition_by_greedy_even(params, group_size):
             param.name, numel)
         sizes[rank] += numel
 
-    print()
-    print("######" * 6)
-    for k, v in mapping:
-        print("rank:{}, size:{}.".format(k,
-                                         sum([get_var_size(var) for var in v])))
-        print([var.name for var in v])
-    print("######" * 6)
-    print()
-
     return mapping
 
 
 def partition_parameters(params, group_size, algor="greedy_even"):
     if algor == "greedy_even":
-        return partition_by_greedy_even(params, group_size)
+        rank_to_params = partition_by_greedy_even(params, group_size)
     else:
-        return partition_by_use_order(params, group_size)
+        rank_to_params = partition_by_use_order(params, group_size)
+
+    logging.info("Sharding Parameter Partition:")
+    for k, v in rank_to_params.items():
+        logging.info("Rank:{}, Parameter Size:{} MB.".format(
+            k, sum([get_var_size(var) for var in v])))
+        logging.info("Params in this rank: {}.".format([var.name for var in v]))
+
+    return rank_to_params
 
 
 class ShardingInfo(object):
@@ -867,10 +860,6 @@ class ShardingInfo(object):
 
 
 def _order_param_grads(block, param_grads):
-    print()
-    print("######" * 6)
-    print("the parameter order before sort: ")
-    print([p.name for p, g in param_grads])
     pname_to_pg_pairs = {}
     for p, g in param_grads:
         pname_to_pg_pairs[p.name] = (p, g)
@@ -883,8 +872,7 @@ def _order_param_grads(block, param_grads):
                 use_order.append(input_name)
         if len(use_order) == len(pname_to_pg_pairs):
             break
-    print("the parameter order after sort: ")
-    print(use_order)
-    print("######" * 6)
-    print()
+
+    logging.info(
+        "Sharding the Order of param being used: {}.".format(use_order))
     return [pname_to_pg_pairs[p] for p in use_order]
