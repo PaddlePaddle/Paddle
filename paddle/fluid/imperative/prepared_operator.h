@@ -347,7 +347,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     auto iter = outs.find(output_names[i]);
     if (iter == outs.end()) {
-      kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+      kernel_ctx->EmplaceBackOutputWithoutSetRange(nullptr);
       kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
                                     i);
       continue;
@@ -358,7 +358,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       if (outs_vector[offset] == nullptr) {
-        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(nullptr);
         continue;
       }
 
