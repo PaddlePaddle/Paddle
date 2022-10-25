@@ -135,7 +135,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
       dims.insert(dims.begin(), x->dims()[0]);
       dims[1] /= dims[0];
       platform::SetOutMemDescWithUnsqueeze2FuseSupport(
-          dst_memory->get_desc().reshape(dims));
+          ctx, z, dst_memory->get_desc().reshape(dims));
     }
   }
 };
