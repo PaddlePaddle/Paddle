@@ -543,7 +543,8 @@ struct OperatorUnsqueeze2 : public PatternBase {
   OperatorUnsqueeze2(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "operator_unsqueeze2") {}
 
-  PDNode* operator()(const std::string& operator_type, const int num_of_outputs);
+  PDNode* operator()(const std::string& operator_type,
+                     const int num_of_outputs);
 
   PATTERN_DECL_NODE(preceding_op);
   PATTERN_DECL_NODE(preceding_op_out);

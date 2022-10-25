@@ -109,25 +109,29 @@ static void AppendActivation(const framework::ExecutionContext& ctx,
   }
 }
 
-static void SetOutMemDescWithUnsqueeze2FuseSupport(const framework::ExecutionContext& ctx,
-             phi::DenseTensor* out, const dnnl::memory::desc& out_md) {
-  if(ctx.HasAttr("fused_unsqueeze2_axes") == false) {
+static void SetOutMemDescWithUnsqueeze2FuseSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  if (ctx.HasAttr("fused_unsqueeze2_axes") == false) {
     out->set_mem_desc(out_md);
     return;
   }
-            
-  const std::vector<int>& fused_unsqueeze2_axes = ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes");
-  const std::vector<int64_t>& op_tz = out_md.dims();
-  std::vector<int64_t> unsqueezed_op_tz(op_tz.size() + fused_unsqueeze2_axes.size(), 0);
 
-  for(const auto& axis:fused_unsqueeze2_axes) {
+  const std::vector<int>& fused_unsqueeze2_axes =
+      ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes");
+  const std::vector<int64_t>& op_tz = out_md.dims();
+  std::vector<int64_t> unsqueezed_op_tz(
+      op_tz.size() + fused_unsqueeze2_axes.size(), 0);
+
+  for (const auto& axis : fused_unsqueeze2_axes) {
     int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
     unsqueezed_op_tz[positive_axis] = 1;
   }
 
   int j = 0;
-  for(size_t i = 0 ; i < unsqueezed_op_tz.size(); ++i) {
-    if(unsqueezed_op_tz[i] == 0) {
+  for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
+    if (unsqueezed_op_tz[i] == 0) {
       unsqueezed_op_tz[i] = op_tz[j++];
     }
   }

@@ -26,15 +26,14 @@ using string::PrettyLogDetail;
 
 void FuseOperatorUnsqueeze2OneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::pair<std::string, int>> ops_and_outputs = {
-    {"transpose2", 2},
-    {"elementwise_mul", 1}
-  };
+      {"transpose2", 2}, {"elementwise_mul", 1}};
 
-  for (const auto &op_and_outputs : ops_and_outputs) FuseUnsqueeze2(graph, op_and_outputs.first, op_and_outputs.second);
+  for (const auto &op_and_outputs : ops_and_outputs)
+    FuseUnsqueeze2(graph, op_and_outputs.first, op_and_outputs.second);
 }
 
-void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(Graph *graph,
-                                            const std::string &op_type, int num_of_outputs) const {
+void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(
+    Graph *graph, const std::string &op_type, int num_of_outputs) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(op_type + "_unsqueeze2_onednn_fuse_pass", graph);
@@ -49,9 +48,12 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(Graph *graph,
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     GET_IR_NODE_FROM_SUBGRAPH(operator_op, preceding_op, op_unsqueeze2_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(operator_out, preceding_op_out, op_unsqueeze2_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(unsqueeze2_op, unsqueeze2_op, op_unsqueeze2_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(unsqueeze2_out, unsqueeze2_out, op_unsqueeze2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        operator_out, preceding_op_out, op_unsqueeze2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        unsqueeze2_op, unsqueeze2_op, op_unsqueeze2_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        unsqueeze2_out, unsqueeze2_out, op_unsqueeze2_pattern);
 
     if (operator_op->Op()->HasAttr("use_mkldnn") &&
         !(PADDLE_GET_CONST(bool, operator_op->Op()->GetAttr("use_mkldnn")))) {
@@ -60,7 +62,8 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(Graph *graph,
       return;
     }
 
-    std::vector<int> unsqueeze2_axes = PADDLE_GET_CONST(std::vector<int>, unsqueeze2_op->Op()->GetAttr("axes"));
+    std::vector<int> unsqueeze2_axes = PADDLE_GET_CONST(
+        std::vector<int>, unsqueeze2_op->Op()->GetAttr("axes"));
 
     auto const &names = unsqueeze2_op->Op()->InputNames();
 
@@ -70,7 +73,9 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(Graph *graph,
         std::find(names.begin(), names.end(), "AxesTensorList") != names.end();
 
     if (has_axes_tensor || has_axes_tensor_list) {
-        VLOG(3) << "Cannot fuse op with unsqueeze2, because its dims are specified either by AxesTensor or AxesTensorList and can be changed at runtime!"; 
+      VLOG(3) << "Cannot fuse op with unsqueeze2, because its dims are "
+                 "specified either by AxesTensor or AxesTensorList and can be "
+                 "changed at runtime!";
     }
 
     operator_op->Op()->SetAttr("fused_unsqueeze2_axes", unsqueeze2_axes);
@@ -85,8 +90,9 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(Graph *graph,
   AddStatis(found_operator_unsqueeze2_count);
   if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
       found_operator_unsqueeze2_count > 0)
-    PrettyLogDetail(
-        "---    fused %d %s with unsqueeze2", found_operator_unsqueeze2_count, op_type);
+    PrettyLogDetail("---    fused %d %s with unsqueeze2",
+                    found_operator_unsqueeze2_count,
+                    op_type);
 }
 
 }  // namespace ir
