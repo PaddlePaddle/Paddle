@@ -242,9 +242,7 @@ class ElasticManager(object):
 
         # register callback
         def host_call_back(event):
-            self.hosts = [
-                i[0].decode() for i in self.etcd.get_prefix(self.node_prefix)
-            ]
+            self.hosts = [i[0] for i in self.etcd.get_prefix(self.node_prefix)]
             self.hosts = list(set(self.hosts)) if self.hosts else self.hosts
             logger.info(
                 f"host_call_back curr_host={self.curr_host}, hosts:{self.hosts}"
@@ -310,7 +308,7 @@ class ElasticManager(object):
             if not self.dist_endpoints:
                 return
             value = self.etcd.get(self.endpoints_path)[0]
-            edps = value if value is not None else ''
+            edps = value.decode() if value is not None else ''
             self.dist_endpoints, self.trainers = edps.split('|')
             logger.info(
                 "set DISTRIBUTED_TRAINER_ENDPOINTS {} ".format(
