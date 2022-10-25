@@ -207,13 +207,13 @@ void TensorRTEngine::FreezeNetwork() {
   for (int i = 0; i < network()->getNbInputs(); ++i) {
     auto *input = network()->getInput(i);
     switch(input->getType()) {
-      case nvinfer1::DataType::kInt32:
+      case nvinfer1::DataType::kINT32:
       case nvinfer1::DataType::kBOOL:
       case nvinfer1::DataType::kHALF:
         break;
       case nvinfer1::DataType::kFLOAT:
       case nvinfer1::DataType::kINT8:
-        input->setType(nvinfer1::DATATYPE::FLOAT);
+        input->setType(nvinfer1::DataType::kFLOAT);
         break;
     }
     input->setAllowedFormats(
