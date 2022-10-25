@@ -373,7 +373,7 @@ def _worker_loop(
                 if isinstance(batch, _WorkerException):
                     out_queue.put((idx, batch, None))
                 batch, structure = _flatten_batch(batch)
-                if use_shared_memory:
+                if use_shared_memory and False:
                     # NOTE: In eager mode, Tensor._share_memory has no
                     # effect, fall back to _array_to_share_memory_tensor
                     def tensor_share_memory(tensor):
