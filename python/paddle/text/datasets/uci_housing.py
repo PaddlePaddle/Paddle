@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import numpy as np
 
 import paddle
@@ -24,8 +23,19 @@ __all__ = []
 URL = 'http://paddlemodels.bj.bcebos.com/uci_housing/housing.data'
 MD5 = 'd4accdce7a25600298819f8e28e8d593'
 feature_names = [
-    'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX',
-    'PTRATIO', 'B', 'LSTAT'
+    'CRIM',
+    'ZN',
+    'INDUS',
+    'CHAS',
+    'NOX',
+    'RM',
+    'AGE',
+    'DIS',
+    'RAD',
+    'TAX',
+    'PTRATIO',
+    'B',
+    'LSTAT',
 ]
 
 
@@ -74,15 +84,20 @@ class UCIHousing(Dataset):
     """
 
     def __init__(self, data_file=None, mode='train', download=True):
-        assert mode.lower() in ['train', 'test'], \
-                "mode should be 'train' or 'test', but got {}".format(mode)
+        assert mode.lower() in [
+            'train',
+            'test',
+        ], "mode should be 'train' or 'test', but got {}".format(mode)
         self.mode = mode.lower()
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(data_file, URL, MD5,
-                                                        'uci_housing', download)
+            assert (
+                download
+            ), "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(
+                data_file, URL, MD5, 'uci_housing', download
+            )
 
         # read dataset into memory
         self._load_data()
@@ -92,9 +107,12 @@ class UCIHousing(Dataset):
     def _load_data(self, feature_num=14, ratio=0.8):
         data = np.fromfile(self.data_file, sep=' ')
         data = data.reshape(data.shape[0] // feature_num, feature_num)
-        maximums, minimums, avgs = data.max(axis=0), data.min(
-            axis=0), data.sum(axis=0) / data.shape[0]
-        for i in six.moves.range(feature_num - 1):
+        maximums, minimums, avgs = (
+            data.max(axis=0),
+            data.min(axis=0),
+            data.sum(axis=0) / data.shape[0],
+        )
+        for i in range(feature_num - 1):
             data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
         offset = int(data.shape[0] * ratio)
         if self.mode == 'train':
@@ -104,8 +122,9 @@ class UCIHousing(Dataset):
 
     def __getitem__(self, idx):
         data = self.data[idx]
-        return np.array(data[:-1]).astype(self.dtype), \
-                np.array(data[-1:]).astype(self.dtype)
+        return np.array(data[:-1]).astype(self.dtype), np.array(
+            data[-1:]
+        ).astype(self.dtype)
 
     def __len__(self):
         return len(self.data)

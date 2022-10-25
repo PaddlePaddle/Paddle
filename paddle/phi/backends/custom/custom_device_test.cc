@@ -260,8 +260,8 @@ void TestBlasAPI(const paddle::platform::Place& place) {
   }
 
   std::vector<int64_t> dims = {2, 5};
-  auto* src = var1.GetMutable<paddle::framework::LoDTensor>();
-  auto* dst = var2.GetMutable<paddle::framework::LoDTensor>();
+  auto* src = var1.GetMutable<phi::DenseTensor>();
+  auto* dst = var2.GetMutable<phi::DenseTensor>();
   src->Resize(phi::make_ddim(dims));
   dst->Resize(phi::make_ddim(dims));
   auto* src_mutable = src->mutable_data<float>(place);
@@ -280,7 +280,7 @@ void TestBlasAPI(const paddle::platform::Place& place) {
                        sizeof(float) * dst_data.size());
 
   paddle::imperative::TensorAdd<paddle::framework::Variable>(var1, &var2);
-  paddle::framework::LoDTensor rlt;
+  phi::DenseTensor rlt;
   paddle::platform::CPUPlace rlt_place;
   paddle::framework::TensorCopySync(*dst, rlt_place, &rlt);
 }

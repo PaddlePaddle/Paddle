@@ -16,8 +16,12 @@ from .node import DownpourWorker
 from ..backward import append_backward
 import ps_pb2 as pslib
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
+from paddle.fluid.distribute_lookup_table import (
+    find_distributed_lookup_table_inputs,
+)
+from paddle.fluid.distribute_lookup_table import (
+    find_distributed_lookup_table_outputs,
+)
 from google.protobuf import text_format
 
 
@@ -47,15 +51,21 @@ class DownpourSGD(object):
         self.window_ = window
         self.type = "downpour"
         self.data_norm_name = [
-            ".batch_size", ".batch_square_sum", ".batch_sum",
-            ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
+            ".batch_size",
+            ".batch_square_sum",
+            ".batch_sum",
+            ".batch_size@GRAD",
+            ".batch_square_sum@GRAD",
+            ".batch_sum@GRAD",
         ]
 
-    def minimize(self,
-                 losses,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None):
+    def minimize(
+        self,
+        losses,
+        startup_program=None,
+        parameter_list=None,
+        no_grad_set=None,
+    ):
         """
         DownpounSGD is a distributed optimizer so
         that user can call minimize to generate backward
@@ -76,30 +86,44 @@ class DownpourSGD(object):
             raise ValueError('losses is a list, just lick [model.cost]')
         table_name = find_distributed_lookup_table(losses[0].block.program)
         prefetch_slots = find_distributed_lookup_table_inputs(
-            losses[0].block.program, table_name)
+            losses[0].block.program, table_name
+        )
         prefetch_slots_emb = find_distributed_lookup_table_outputs(
-            losses[0].block.program, table_name)
+            losses[0].block.program, table_name
+        )
 
         ps_param = pslib.PSParameter()
         server = DownpourServer()
         worker = DownpourWorker(self.window_)
         sparse_table_index = 0
-        server.add_sparse_table(sparse_table_index, self.learning_rate_,
-                                prefetch_slots, prefetch_slots_emb)
-        worker.add_sparse_table(sparse_table_index, self.learning_rate_,
-                                prefetch_slots, prefetch_slots_emb)
+        server.add_sparse_table(
+            sparse_table_index,
+            self.learning_rate_,
+            prefetch_slots,
+            prefetch_slots_emb,
+        )
+        worker.add_sparse_table(
+            sparse_table_index,
+            self.learning_rate_,
+            prefetch_slots,
+            prefetch_slots_emb,
+        )
         dense_table_index = 1
         program_configs = []
         param_grads_list = []
         for loss_index in range(len(losses)):
             program_config = ps_param.trainer_param.program_config.add()
-            program_config.program_id = str(id(
-                losses[loss_index].block.program))
+            program_config.program_id = str(
+                id(losses[loss_index].block.program)
+            )
             program_config.pull_sparse_table_id.extend([sparse_table_index])
             program_config.push_sparse_table_id.extend([sparse_table_index])
-            params_grads = sorted(append_backward(losses[loss_index],
-                                                  parameter_list, no_grad_set),
-                                  key=lambda x: x[0].name)
+            params_grads = sorted(
+                append_backward(
+                    losses[loss_index], parameter_list, no_grad_set
+                ),
+                key=lambda x: x[0].name,
+            )
             param_grads_list.append(params_grads)
             params = []
             grads = []
@@ -121,19 +145,28 @@ class DownpourSGD(object):
                         data_norm_grads.append(i[1])
                 if not is_data_norm_data:
                     grads.append(i[1])
-            server.add_dense_table(dense_table_index, self.learning_rate_,
-                                   params, grads)
-            worker.add_dense_table(dense_table_index, self.learning_rate_,
-                                   params, grads)
+            server.add_dense_table(
+                dense_table_index, self.learning_rate_, params, grads
+            )
+            worker.add_dense_table(
+                dense_table_index, self.learning_rate_, params, grads
+            )
             program_config.pull_dense_table_id.extend([dense_table_index])
             program_config.push_dense_table_id.extend([dense_table_index])
             if len(data_norm_params) != 0 and len(data_norm_grads) != 0:
                 dense_table_index += 1
-                server.add_data_norm_table(dense_table_index,
-                                           self.learning_rate_,
-                                           data_norm_params, data_norm_grads)
-                worker.add_dense_table(dense_table_index, self.learning_rate_,
-                                       data_norm_params, data_norm_grads)
+                server.add_data_norm_table(
+                    dense_table_index,
+                    self.learning_rate_,
+                    data_norm_params,
+                    data_norm_grads,
+                )
+                worker.add_dense_table(
+                    dense_table_index,
+                    self.learning_rate_,
+                    data_norm_params,
+                    data_norm_grads,
+                )
                 program_config.pull_dense_table_id.extend([dense_table_index])
                 program_config.push_dense_table_id.extend([dense_table_index])
             dense_table_index += 1

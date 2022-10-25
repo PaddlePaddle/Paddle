@@ -28,6 +28,10 @@ if(WITH_PYTHON)
   endif()
 endif()
 
+if(WITH_RPC)
+  add_subdirectory(rpc)
+endif()
+
 if(NOT WITH_PSCORE)
   add_subdirectory(fleet_executor)
   return()
@@ -42,7 +46,6 @@ set(DISTRIBUTE_COMPILE_FLAGS
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
   set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 endif()
-
 add_subdirectory(common)
 add_subdirectory(ps)
 add_subdirectory(test)

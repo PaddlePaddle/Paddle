@@ -19,11 +19,14 @@ import sys
 sys.path.append("..")
 
 import paddle
-import paddle.fluid as fluid
 
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -37,13 +40,11 @@ def huber_loss_forward(val, delta):
 
 
 class XPUTestHuberLossOp(XPUOpTestWrapper):
-
     def __init__(self):
         self.op_name = 'huber_loss'
         self.use_dynamic_create_class = False
 
     class TestHuberLossOp(XPUOpTest):
-
         def setUp(self):
             self.set_xpu()
             self.op_type = 'huber_loss'
@@ -56,11 +57,11 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
 
         def set_inputs(self):
             shape = self.set_shape()
-            x = np.random.uniform(0, 1., shape).astype(self.dtype)
-            y = np.random.uniform(0, 1., shape).astype(self.dtype)
+            x = np.random.uniform(0, 1.0, shape).astype(self.dtype)
+            y = np.random.uniform(0, 1.0, shape).astype(self.dtype)
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(y),
             }
 
         def set_attrs(self):
@@ -70,8 +71,9 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
             delta = self.attrs['delta']
             shape = self.set_shape()
             residual = self.inputs['Y'] - self.inputs['X']
-            loss = np.vectorize(huber_loss_forward)(residual,
-                                                    delta).astype(self.dtype)
+            loss = np.vectorize(huber_loss_forward)(residual, delta).astype(
+                self.dtype
+            )
             self.outputs = {'Residual': residual, 'Out': loss.reshape(shape)}
 
         def set_shape(self):
@@ -90,27 +92,24 @@ class XPUTestHuberLossOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
         def test_check_grad_ingore_x(self):
-            self.check_grad_with_place(self.place, ['Y'],
-                                       'Out',
-                                       no_grad_set=set("residual"))
+            self.check_grad_with_place(
+                self.place, ['Y'], 'Out', no_grad_set=set("residual")
+            )
 
         def test_check_grad_ingore_y(self):
-            self.check_grad_with_place(self.place, ['X'],
-                                       'Out',
-                                       no_grad_set=set('residual'))
+            self.check_grad_with_place(
+                self.place, ['X'], 'Out', no_grad_set=set('residual')
+            )
 
     class TestHuberLossOp1(TestHuberLossOp):
-
         def set_shape(self):
-            return (640)
+            return 640
 
     class TestHuberLossOp2(TestHuberLossOp):
-
         def set_shape(self):
             return (10, 10)
 
     class TestHuberLossOp3(TestHuberLossOp):
-
         def set_shape(self):
             return (10, 10, 1)
 

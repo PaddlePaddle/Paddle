@@ -15,14 +15,11 @@
 import os
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 import paddle.distributed as dist
-import test_communication_api_base as test_base
 import test_collective_api_base as test_collective_base
 
 
-class StreamAllgatherTestCase():
-
+class StreamAllgatherTestCase:
     def __init__(self):
         self._sync_op = eval(os.getenv("sync_op"))
         self._use_calc_stream = eval(os.getenv("use_calc_stream"))
@@ -32,7 +29,8 @@ class StreamAllgatherTestCase():
         self._seeds = eval(os.getenv("seeds"))
         if self._backend not in ["nccl", "gloo"]:
             raise NotImplementedError(
-                "Only support nccl and gloo as the backend for now.")
+                "Only support nccl and gloo as the backend for now."
+            )
         os.environ["PADDLE_DISTRI_BACKEND"] = self._backend
 
     def run_test_case(self):
@@ -41,47 +39,53 @@ class StreamAllgatherTestCase():
         test_data_list = []
         for seed in self._seeds:
             test_data_list.append(
-                test_collective_base.create_test_data(shape=self._shape,
-                                                      dtype=self._dtype,
-                                                      seed=seed))
+                test_collective_base.create_test_data(
+                    shape=self._shape, dtype=self._dtype, seed=seed
+                )
+            )
 
         rank = dist.get_rank()
         tensor = paddle.to_tensor(test_data_list[rank])
 
         # case 1: pass an empty tensor list
         empty_tensor_list = []
-        task = dist.stream.all_gather(empty_tensor_list,
-                                      tensor,
-                                      sync_op=self._sync_op,
-                                      use_calc_stream=self._use_calc_stream)
+        task = dist.stream.all_gather(
+            empty_tensor_list,
+            tensor,
+            sync_op=self._sync_op,
+            use_calc_stream=self._use_calc_stream,
+        )
         if not self._sync_op:
             task.wait()
-        assert np.allclose(empty_tensor_list,
-                           test_data_list,
-                           rtol=1e-05,
-                           atol=1e-05)
+        assert np.allclose(
+            empty_tensor_list, test_data_list, rtol=1e-05, atol=1e-05
+        )
 
         # case 2: pass a pre-sized tensor list
         full_tensor_list = [paddle.empty_like(tensor) for _ in test_data_list]
-        task = dist.stream.all_gather(full_tensor_list,
-                                      tensor,
-                                      sync_op=self._sync_op,
-                                      use_calc_stream=self._use_calc_stream)
+        task = dist.stream.all_gather(
+            full_tensor_list,
+            tensor,
+            sync_op=self._sync_op,
+            use_calc_stream=self._use_calc_stream,
+        )
         if not self._sync_op:
             task.wait()
-        assert np.allclose(full_tensor_list,
-                           test_data_list,
-                           rtol=1e-05,
-                           atol=1e-05)
+        assert np.allclose(
+            full_tensor_list, test_data_list, rtol=1e-05, atol=1e-05
+        )
 
         # case 3: pass a pre-sized tensor
         result_tensor = paddle.concat(
-            [paddle.to_tensor(data) for data in test_data_list])
+            [paddle.to_tensor(data) for data in test_data_list]
+        )
         out_tensor = paddle.empty_like(result_tensor)
-        task = dist.stream.all_gather(out_tensor,
-                                      tensor,
-                                      sync_op=self._sync_op,
-                                      use_calc_stream=self._use_calc_stream)
+        task = dist.stream.all_gather(
+            out_tensor,
+            tensor,
+            sync_op=self._sync_op,
+            use_calc_stream=self._use_calc_stream,
+        )
         if not self._sync_op:
             task.wait()
         assert np.allclose(out_tensor, result_tensor, rtol=1e-05, atol=1e-05)

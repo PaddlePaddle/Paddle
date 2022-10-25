@@ -61,11 +61,14 @@ class Independent(distribution.Distribution):
         self._reinterpreted_batch_rank = reinterpreted_batch_rank
 
         shape = base.batch_shape + base.event_shape
-        super(Independent,
-              self).__init__(batch_shape=shape[:len(base.batch_shape) -
-                                               reinterpreted_batch_rank],
-                             event_shape=shape[len(base.batch_shape) -
-                                               reinterpreted_batch_rank:])
+        super(Independent, self).__init__(
+            batch_shape=shape[
+                : len(base.batch_shape) - reinterpreted_batch_rank
+            ],
+            event_shape=shape[
+                len(base.batch_shape) - reinterpreted_batch_rank :
+            ],
+        )
 
     @property
     def mean(self):
@@ -79,15 +82,17 @@ class Independent(distribution.Distribution):
         return self._base.sample(shape)
 
     def log_prob(self, value):
-        return self._sum_rightmost(self._base.log_prob(value),
-                                   self._reinterpreted_batch_rank)
+        return self._sum_rightmost(
+            self._base.log_prob(value), self._reinterpreted_batch_rank
+        )
 
     def prob(self, value):
         return self.log_prob(value).exp()
 
     def entropy(self):
-        return self._sum_rightmost(self._base.entropy(),
-                                   self._reinterpreted_batch_rank)
+        return self._sum_rightmost(
+            self._base.entropy(), self._reinterpreted_batch_rank
+        )
 
     def _sum_rightmost(self, value, n):
         return value.sum(list(range(-n, 0))) if n > 0 else value

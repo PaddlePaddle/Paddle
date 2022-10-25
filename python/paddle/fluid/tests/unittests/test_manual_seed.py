@@ -16,13 +16,10 @@ import unittest
 
 import paddle
 import paddle.fluid as fluid
-from paddle.framework import seed
-from paddle.fluid.framework import Program, default_main_program, default_startup_program
 import numpy as np
 
 
 class TestManualSeed(unittest.TestCase):
-
     def test_seed(self):
         fluid.enable_dygraph()
 

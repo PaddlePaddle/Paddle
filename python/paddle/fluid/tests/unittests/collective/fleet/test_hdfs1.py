@@ -23,12 +23,10 @@ java_home = os.environ["JAVA_HOME"]
 
 
 class FSTest1(FSTestBase):
-
     def test_timeout(self):
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/",
-                        None,
-                        time_out=6 * 1000,
-                        sleep_inter=100)
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/", None, time_out=6 * 1000, sleep_inter=100
+        )
         src = "hdfs_test_timeout"
         dst = "new_hdfs_test_timeout"
         fs.delete(dst)
@@ -40,7 +38,8 @@ class FSTest1(FSTestBase):
         try:
             fs.mv(src, dst, test_exists=False)
             self.assertFalse(
-                1, "can't execute cmd:{} output:{}".format(cmd, output))
+                1, "can't execute cmd:{} output:{}".format(cmd, output)
+            )
         except FSTimeOut as e:
             print("execute mv {} to {} timeout".format(src, dst))
 
@@ -49,10 +48,9 @@ class FSTest1(FSTestBase):
         print("second mv ret:{} output:{}".format(ret, output))
 
     def test_is_dir(self):
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/",
-                        None,
-                        time_out=6 * 1000,
-                        sleep_inter=100)
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/", None, time_out=6 * 1000, sleep_inter=100
+        )
         self.assertFalse(fs.is_dir("./test_hdfs.py"))
         s = """
 java.io.IOException: Input/output error
@@ -67,23 +65,24 @@ java.io.IOException: Input/output error
 	at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:65)
 	at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:79)
 	at org.apache.hadoop.fs.FsShell.main(FsShell.java:2353)
-        """
+        """  # fmt: off, avoid remove tabs in string
 
         print("split lines:", s.splitlines())
         self.assertTrue(fs._test_match(s.splitlines()) != None)
 
     def test_config(self):
         config = {"fs.default.name": "hdfs://xxx", "hadoop.job.ugi": "ugi"}
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/",
-                        config,
-                        time_out=6 * 1000,
-                        sleep_inter=100)
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/",
+            config,
+            time_out=6 * 1000,
+            sleep_inter=100,
+        )
 
     def test_exists(self):
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/",
-                        None,
-                        time_out=6 * 1000,
-                        sleep_inter=100)
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/", None, time_out=6 * 1000, sleep_inter=100
+        )
         self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
         self.assertFalse(fs.is_dir(os.path.abspath("./xxxx")))
         self.assertTrue(fs.is_dir(os.path.abspath("./xxx/..")))

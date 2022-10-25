@@ -16,8 +16,6 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 
 
 class TestRot90_API(unittest.TestCase):
@@ -39,15 +37,17 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
-            self.assertTrue((out_np == out_ref).all(),
-                            msg='rot90 output is wrong, out =' + str(out_np))
+            self.assertTrue(
+                (out_np == out_ref).all(),
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_k_0(self):
         paddle.enable_static()
@@ -64,15 +64,17 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
 
-            self.assertTrue((out_np == out_ref).all(),
-                            msg='rot90 output is wrong, out =' + str(out_np))
+            self.assertTrue(
+                (out_np == out_ref).all(),
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_k_2(self):
         paddle.enable_static()
@@ -89,15 +91,17 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[6, 5, 4], [3, 2, 1]]).astype(np.float32)
 
-            self.assertTrue((out_np == out_ref).all(),
-                            msg='rot90 output is wrong, out =' + str(out_np))
+            self.assertTrue(
+                (out_np == out_ref).all(),
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_k_3(self):
         paddle.enable_static()
@@ -114,15 +118,17 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
-            self.assertTrue((out_np == out_ref).all(),
-                            msg='rot90 output is wrong, out =' + str(out_np))
+            self.assertTrue(
+                (out_np == out_ref).all(),
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_neg_k_1(self):
         paddle.enable_static()
@@ -139,15 +145,17 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
-            self.assertTrue((out_np == out_ref).all(),
-                            msg='rot90 output is wrong, out =' + str(out_np))
+            self.assertTrue(
+                (out_np == out_ref).all(),
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_neg_k_2(self):
         paddle.enable_static()
@@ -164,15 +172,17 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[6, 5, 4], [3, 2, 1]]).astype(np.float32)
 
-            self.assertTrue((out_np == out_ref).all(),
-                            msg='rot90 output is wrong, out =' + str(out_np))
+            self.assertTrue(
+                (out_np == out_ref).all(),
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_neg_k_3(self):
         paddle.enable_static()
@@ -189,15 +199,17 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[3, 6], [2, 5], [1, 4]]).astype(np.float32)
 
-            self.assertTrue((out_np == out_ref).all(),
-                            msg='rot90 output is wrong, out =' + str(out_np))
+            self.assertTrue(
+                (out_np == out_ref).all(),
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_neg_k_4(self):
         paddle.enable_static()
@@ -214,15 +226,17 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
 
-            self.assertTrue((out_np == out_ref).all(),
-                            msg='rot90 output is wrong, out =' + str(out_np))
+            self.assertTrue(
+                (out_np == out_ref).all(),
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_error_api(self):
         paddle.enable_static()
@@ -271,7 +285,8 @@ class TestRot90_API(unittest.TestCase):
 
             self.assertTrue(
                 (ret.numpy() == out_ref).all(),
-                msg='rot90 output is wrong, out =' + str(ret.numpy()))
+                msg='rot90 output is wrong, out =' + str(ret.numpy()),
+            )
 
 
 if __name__ == "__main__":

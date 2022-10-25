@@ -54,7 +54,7 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.GetPlace(),
-        framework::StringToDataLayout(data_format),
+        phi::StringToDataLayout(data_format),
         library_);
   }
 };
@@ -154,7 +154,7 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Out"),
         ctx.GetPlace(),
-        framework::StringToDataLayout(data_format),
+        phi::StringToDataLayout(data_format),
         library_);
   }
 };

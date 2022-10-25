@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import paddle
-import os
-import numpy as np
-from .base import topology as tp
 from .base.topology import ParallelMode
-from .meta_parallel import TensorParallel, model_parallel_random_seed
-from .meta_parallel import PipelineParallel, ShardingParallel, PipelineParallelWithInterleave, PipelineLayer
-from paddle.fluid import core
+from .meta_parallel import TensorParallel
+from .meta_parallel import (
+    PipelineParallel,
+    ShardingParallel,
+    PipelineParallelWithInterleave,
+    PipelineLayer,
+)
 from paddle.fluid.dygraph.varbase_patch_methods import _grad_scalar
 from paddle.distributed import fleet
 
@@ -93,19 +94,23 @@ def distributed_model(model):
         amp_enable = True
         amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"
         if amp_level.upper() == "O2":
-            model = paddle.amp.decorate(models=model,
-                                        optimizers=None,
-                                        level="O2",
-                                        master_weight=None,
-                                        save_dtype=None)
+            model = paddle.amp.decorate(
+                models=model,
+                optimizers=None,
+                level="O2",
+                master_weight=None,
+                save_dtype=None,
+            )
         init_loss_scaling = strategy.amp_configs['init_loss_scaling']
         incr_ratio = strategy.amp_configs['incr_ratio']
         decr_ratio = strategy.amp_configs['decr_ratio']
         incr_every_n_steps = strategy.amp_configs['incr_every_n_steps']
         decr_every_n_nan_or_inf = strategy.amp_configs[
-            'decr_every_n_nan_or_inf']
+            'decr_every_n_nan_or_inf'
+        ]
         use_dynamic_loss_scaling = strategy.amp_configs[
-            'use_dynamic_loss_scaling']
+            'use_dynamic_loss_scaling'
+        ]
 
         global _grad_scalar
         _grad_scalar = paddle.amp.GradScaler(
@@ -114,14 +119,16 @@ def distributed_model(model):
             decr_ratio=decr_ratio,
             incr_every_n_steps=incr_every_n_steps,
             decr_every_n_nan_or_inf=decr_every_n_nan_or_inf,
-            use_dynamic_loss_scaling=use_dynamic_loss_scaling)
+            use_dynamic_loss_scaling=use_dynamic_loss_scaling,
+        )
 
     if strategy.heter_ccl_mode == True:
         distributed_model = paddle.DataParallel(
             model,
             comm_buffer_size=strategy.fuse_grad_size_in_MB,
             last_comm_buffer_size=strategy.last_comm_group_size_MB,
-            find_unused_parameters=strategy.find_unused_parameters)
+            find_unused_parameters=strategy.find_unused_parameters,
+        )
         return distributed_model
 
     if fleet_env._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
@@ -131,15 +138,22 @@ def distributed_model(model):
         # NOTE (JZ-LIANG) init parameters broadcast within sharding group
         # normally it should be done inside DataParallel
         if fleet_env.sharding_degree > 1:
-            from paddle.distributed.fleet.utils.hybrid_parallel_util import broadcast_mp_parameters, broadcast_sharding_parameters
-            assert fleet_env.sharding_degree == fleet_env._hcg.get_sharding_parallel_world_size(
+            from paddle.distributed.fleet.utils.hybrid_parallel_util import (
+                broadcast_sharding_parameters,
+            )
+
+            assert (
+                fleet_env.sharding_degree
+                == fleet_env._hcg.get_sharding_parallel_world_size()
             )
             broadcast_sharding_parameters(model, fleet_env._hcg)
         model = paddle.DataParallel(
             model,
             comm_buffer_size=strategy.fuse_grad_size_in_MB,
             last_comm_buffer_size=strategy.last_comm_group_size_MB,
-            find_unused_parameters=strategy.find_unused_parameters)
+            find_unused_parameters=strategy.find_unused_parameters,
+            group=fleet_env._hcg.get_data_parallel_group(),
+        )
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
         model = TensorParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
@@ -151,8 +165,8 @@ def distributed_model(model):
             model = PipelineParallel(model, fleet_env._hcg, strategy=strategy)
         else:
             # interleave pipeline
-            model = PipelineParallelWithInterleave(model,
-                                                   fleet_env._hcg,
-                                                   strategy=strategy)
+            model = PipelineParallelWithInterleave(
+                model, fleet_env._hcg, strategy=strategy
+            )
 
     return model

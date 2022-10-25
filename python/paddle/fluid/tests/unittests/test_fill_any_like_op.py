@@ -13,17 +13,13 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-import paddle.compat as cpt
 import unittest
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 
 class TestFillAnyLikeOp(OpTest):
-
     def setUp(self):
         self.op_type = "fill_any_like"
         self.dtype = np.int32
@@ -41,16 +37,15 @@ class TestFillAnyLikeOp(OpTest):
 
 
 class TestFillAnyLikeOpFloat32(TestFillAnyLikeOp):
-
     def init(self):
         self.dtype = np.float32
         self.value = 0.0
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFillAnyLikeOpBfloat16(OpTest):
-
     def setUp(self):
         self.op_type = "fill_any_like"
         self.dtype = np.uint16
@@ -58,8 +53,9 @@ class TestFillAnyLikeOpBfloat16(OpTest):
         self.inputs = {'X': np.random.random((219, 232)).astype(np.float32)}
         self.attrs = {'value': self.value, 'dtype': core.VarDesc.VarType.BF16}
         self.outputs = {
-            'Out':
-            convert_float_to_uint16(self.value * np.ones_like(self.inputs["X"]))
+            'Out': convert_float_to_uint16(
+                self.value * np.ones_like(self.inputs["X"])
+            )
         }
 
     def test_check_output(self):
@@ -68,25 +64,21 @@ class TestFillAnyLikeOpBfloat16(OpTest):
 
 
 class TestFillAnyLikeOpValue1(TestFillAnyLikeOp):
-
     def init(self):
         self.value = 1.0
 
 
 class TestFillAnyLikeOpValue2(TestFillAnyLikeOp):
-
     def init(self):
         self.value = 1e-10
 
 
 class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
-
     def init(self):
         self.value = 1e-100
 
 
 class TestFillAnyLikeOpType(TestFillAnyLikeOp):
-
     def setUp(self):
         self.op_type = "fill_any_like"
         self.dtype = np.int32
@@ -95,16 +87,15 @@ class TestFillAnyLikeOpType(TestFillAnyLikeOp):
         self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
         self.attrs = {
             'value': self.value,
-            'dtype': int(core.VarDesc.VarType.FP32)
+            'dtype': int(core.VarDesc.VarType.FP32),
         }
         self.outputs = {
-            'Out':
-            self.value * np.ones_like(self.inputs["X"]).astype(np.float32)
+            'Out': self.value
+            * np.ones_like(self.inputs["X"]).astype(np.float32)
         }
 
 
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
-
     def init(self):
         self.dtype = np.float16
 

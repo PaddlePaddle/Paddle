@@ -24,12 +24,11 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TensorRTSubgraphPassFcTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 6, 64, 64],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32"
+            )
             fc_out = fluid.layers.fc(input=[data], act=None, size=1000)
             reshape_out = fluid.layers.reshape(x=fc_out, shape=[1, 1000])
         self.feeds = {
@@ -37,7 +36,8 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassFcTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [reshape_out]
 
     def test_check_output(self):
@@ -46,19 +46,19 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
             # TRT output shape of fc is (1, 1000, 1, 1). To compare the output value only, flatten the results.
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassConcatTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(name="data1",
-                               shape=[-1, 3, 64, 64],
-                               dtype="float32")
-            data2 = fluid.data(name="data2",
-                               shape=[-1, 3, 64, 64],
-                               dtype="float32")
+            data1 = fluid.data(
+                name="data1", shape=[-1, 3, 64, 64], dtype="float32"
+            )
+            data2 = fluid.data(
+                name="data2", shape=[-1, 3, 64, 64], dtype="float32"
+            )
             concat_out = fluid.layers.concat([data1, data2], axis=2)
             out = fluid.layers.batch_norm(concat_out, is_test=True)
         self.feeds = {
@@ -67,7 +67,8 @@ class TensorRTSubgraphPassConcatTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassConcatTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -75,16 +76,16 @@ class TensorRTSubgraphPassConcatTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassSplitTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 3, 64, 64],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 3, 64, 64], dtype="float32"
+            )
             split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
             out = fluid.layers.batch_norm(split_out[0], is_test=True)
         self.feeds = {
@@ -92,7 +93,8 @@ class TensorRTSubgraphPassSplitTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassSplitTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -100,16 +102,16 @@ class TensorRTSubgraphPassSplitTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 3, 64, 64],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 3, 64, 64], dtype="float32"
+            )
             split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
             out = fluid.layers.batch_norm(split_out[0], is_test=True)
         self.feeds = {
@@ -117,7 +119,8 @@ class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassSplitTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -127,16 +130,16 @@ class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
                 shutil.rmtree(self.path + "_opt_cache")
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 3, 64, 64],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 3, 64, 64], dtype="float32"
+            )
             split_out = fluid.layers.split(data, dim=-1, num_or_sections=2)
             out = fluid.layers.batch_norm(split_out[0], is_test=True)
         self.feeds = {
@@ -144,10 +147,16 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassSplitTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False)
-        self.dynamic_shape_params = TensorRTSubgraphPassDynamicSplitFp16SerializeTest.DynamicShapeParam(
-            {'data': [1, 3, 8, 64]}, {'data': [1, 3, 512, 64]},
-            {'data': [1, 3, 256, 64]}, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Half, True, False
+        )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassDynamicSplitFp16SerializeTest.DynamicShapeParam(
+                {'data': [1, 3, 8, 64]},
+                {'data': [1, 3, 512, 64]},
+                {'data': [1, 3, 256, 64]},
+                False,
+            )
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -157,31 +166,36 @@ class TensorRTSubgraphPassDynamicSplitFp16SerializeTest(InferencePassTest):
                 shutil.rmtree(self.path + "_opt_cache")
             self.check_output_with_option(use_gpu, 1e-3)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 3, 64, 64],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 3, 64, 64], dtype="float32"
+            )
             param_attr = fluid.ParamAttr(
                 name='instance_norm_w',
-                initializer=fluid.initializer.Constant(value=1.0))
+                initializer=fluid.initializer.Constant(value=1.0),
+            )
             bias_attr = fluid.ParamAttr(
                 name='instance_norm_b',
-                initializer=fluid.initializer.Constant(value=0.0))
-            out = fluid.layers.instance_norm(input=data,
-                                             param_attr=param_attr,
-                                             bias_attr=bias_attr)
+                initializer=fluid.initializer.Constant(value=0.0),
+            )
+            out = fluid.layers.instance_norm(
+                input=data, param_attr=param_attr, bias_attr=bias_attr
+            )
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassInstanceNormTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.trt_parameters = (
+            TensorRTSubgraphPassInstanceNormTest.TensorRTParam(
+                1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+            )
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -189,16 +203,16 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=1e-4, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassTransposeTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 6, 64, 64],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32"
+            )
             transpose_out = self.append_transpose(data)
             out = fluid.layers.batch_norm(transpose_out, is_test=True)
         self.feeds = {
@@ -206,7 +220,8 @@ class TensorRTSubgraphPassTransposeTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassTransposeTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def append_transpose(self, data):
@@ -217,25 +232,27 @@ class TensorRTSubgraphPassTransposeTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 3, 64, 64],
-                              dtype="float32")
-            out = fluid.layers.layer_norm(data,
-                                          begin_norm_axis=self.begin_norm_axis)
+            data = fluid.data(
+                name="data", shape=[-1, 3, 64, 64], dtype="float32"
+            )
+            out = fluid.layers.layer_norm(
+                data, begin_norm_axis=self.begin_norm_axis
+            )
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassLayerNormTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def set_params(self):
@@ -246,19 +263,20 @@ class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassLayerNormDynamicTest(InferencePassTest):
-
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 3, 64, 64],
-                              dtype="float32")
-            out = fluid.layers.layer_norm(data,
-                                          begin_norm_axis=self.begin_norm_axis)
+            data = fluid.data(
+                name="data", shape=[-1, 3, 64, 64], dtype="float32"
+            )
+            out = fluid.layers.layer_norm(
+                data, begin_norm_axis=self.begin_norm_axis
+            )
         self.feeds = {
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
@@ -267,16 +285,25 @@ class TensorRTSubgraphPassLayerNormDynamicTest(InferencePassTest):
 
     def set_trt_params(self):
         self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassLayerNormDynamicTest.TensorRTParam(
-            1 << 30, 32, 0, self.precision, self.serialize, False)
-        self.dynamic_shape_params = TensorRTSubgraphPassLayerNormDynamicTest.DynamicShapeParam(
-            {
-                'data': [1, 3, 64, 64],
-            }, {
-                'data': [8, 8, 64, 64],
-            }, {
-                'data': [4, 4, 64, 64],
-            }, False)
+        self.trt_parameters = (
+            TensorRTSubgraphPassLayerNormDynamicTest.TensorRTParam(
+                1 << 30, 32, 0, self.precision, self.serialize, False
+            )
+        )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassLayerNormDynamicTest.DynamicShapeParam(
+                {
+                    'data': [1, 3, 64, 64],
+                },
+                {
+                    'data': [8, 8, 64, 64],
+                },
+                {
+                    'data': [4, 4, 64, 64],
+                },
+                False,
+            )
+        )
 
     def set_params(self):
         self.begin_norm_axis = 2
@@ -290,12 +317,13 @@ class TensorRTSubgraphPassLayerNormDynamicTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassLayerNormDynamicFP16Test(
-        TensorRTSubgraphPassLayerNormDynamicTest):
-
+    TensorRTSubgraphPassLayerNormDynamicTest
+):
     def set_params(self):
         self.begin_norm_axis = 2
         self.precision = AnalysisConfig.Precision.Half
@@ -308,33 +336,33 @@ class TensorRTSubgraphPassLayerNormDynamicFP16Test(
             use_gpu = True
             self.check_output_with_option(use_gpu, atol=0.01, rtol=0.01)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassLayerNormBeginNormAxis2Test(
-        TensorRTSubgraphPassLayerNormTest):
-
+    TensorRTSubgraphPassLayerNormTest
+):
     def set_params(self):
         self.begin_norm_axis = 2
 
 
 class TensorRTSubgraphPassLayerNormBeginNormAxis3Test(
-        TensorRTSubgraphPassLayerNormTest):
-
+    TensorRTSubgraphPassLayerNormTest
+):
     def set_params(self):
         self.begin_norm_axis = 3
 
 
 class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(name="data1",
-                               shape=[-1, 3, 64, 64],
-                               dtype="float32")
-            data2 = fluid.data(name="data2",
-                               shape=[-1, 3, 64, 64],
-                               dtype="float32")
+            data1 = fluid.data(
+                name="data1", shape=[-1, 3, 64, 64], dtype="float32"
+            )
+            data2 = fluid.data(
+                name="data2", shape=[-1, 3, 64, 64], dtype="float32"
+            )
             eltwise_out = self.append_eltwise(data1, data2)
             out = fluid.layers.batch_norm(eltwise_out, is_test=True)
         self.feeds = {
@@ -343,7 +371,8 @@ class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassElementwiseTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
@@ -354,38 +383,40 @@ class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
-class TensorRTSubgraphPassElementwiseMulTest(TensorRTSubgraphPassElementwiseTest
-                                             ):
-
+class TensorRTSubgraphPassElementwiseMulTest(
+    TensorRTSubgraphPassElementwiseTest
+):
     def append_eltwise(self, data1, data2):
         return fluid.layers.elementwise_mul(x=data1, y=data2)
 
 
 class TensorRTSubgraphPassElementwiseSerializeTest(
-        TensorRTSubgraphPassElementwiseTest):
-
+    TensorRTSubgraphPassElementwiseTest
+):
     def setUp(self):
         super(TensorRTSubgraphPassElementwiseSerializeTest, self).setUp()
         self.trt_parameters = TensorRTSubgraphPassElementwiseTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False
+        )
 
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
             shutil.rmtree(self.path + "_opt_cache")
-        super(TensorRTSubgraphPassElementwiseSerializeTest,
-              self).test_check_output()
+        super(
+            TensorRTSubgraphPassElementwiseSerializeTest, self
+        ).test_check_output()
 
 
 class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data1 = fluid.data(name="data1",
-                               shape=[-1, 3, 64, 64],
-                               dtype="float32")
+            data1 = fluid.data(
+                name="data1", shape=[-1, 3, 64, 64], dtype="float32"
+            )
             data2 = fluid.data(name="data2", shape=[64, 64], dtype="float32")
             eltwise_out = self.append_eltwise(data1, data2)
             out = fluid.layers.batch_norm(eltwise_out, is_test=True)
@@ -394,19 +425,17 @@ class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
             "data2": np.random.random([64, 64]).astype("float32"),
         }
         self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassElementwiseBroadcastDynamicTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False)
+        self.trt_parameters = (
+            TensorRTSubgraphPassElementwiseBroadcastDynamicTest.TensorRTParam(
+                1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False
+            )
+        )
         self.dynamic_shape_params = TensorRTSubgraphPassElementwiseBroadcastDynamicTest.DynamicShapeParam(
-            {
-                'data1': [1, 3, 8, 64],
-                'data2': [8, 64]
-            }, {
-                'data1': [1, 3, 512, 64],
-                'data2': [512, 64]
-            }, {
-                'data1': [1, 3, 256, 64],
-                'data2': [256, 64]
-            }, False)
+            {'data1': [1, 3, 8, 64], 'data2': [8, 64]},
+            {'data1': [1, 3, 512, 64], 'data2': [512, 64]},
+            {'data1': [1, 3, 256, 64], 'data2': [256, 64]},
+            False,
+        )
         self.fetch_list = [out]
 
     def append_eltwise(self, data1, data2):
@@ -419,24 +448,27 @@ class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TensorRTSubgraphPassShuffleChannelTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 6, 64, 64],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32"
+            )
             sc_out = fluid.layers.shuffle_channel(data, group=3)
             out = fluid.layers.batch_norm(sc_out, is_test=True)
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassShuffleChannelTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+        self.trt_parameters = (
+            TensorRTSubgraphPassShuffleChannelTest.TensorRTParam(
+                1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+            )
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -444,7 +476,8 @@ class TensorRTSubgraphPassShuffleChannelTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 if __name__ == "__main__":

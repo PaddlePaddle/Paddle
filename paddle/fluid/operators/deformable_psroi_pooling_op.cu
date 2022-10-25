@@ -40,7 +40,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
 
 static inline int GET_BLOCKS(const int N) {

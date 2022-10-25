@@ -15,14 +15,13 @@
 import unittest
 import paddle
 import numpy as np
-import paddle.fluid.core as core
 from op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program
 
 
-def compute_index_add_ref(axis, x_shape, x_np, add_value_shape, add_value_np,
-                          index_size, index_np):
+def compute_index_add_ref(
+    axis, x_shape, x_np, add_value_shape, add_value_np, index_size, index_np
+):
     if axis < 0:
         axis = axis + len(x_shape)
     if axis != 0:
@@ -30,11 +29,13 @@ def compute_index_add_ref(axis, x_shape, x_np, add_value_shape, add_value_np,
         x_reshape = [outer_loop] + list(x_shape[axis:])
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
 
-        add_value_reshape = [np.prod(add_value_shape[:axis]).astype(int)
-                             ] + list(add_value_shape[axis:])
+        add_value_reshape = [
+            np.prod(add_value_shape[:axis]).astype(int)
+        ] + list(add_value_shape[axis:])
 
-        add_value_np_reshape = np.reshape(add_value_np,
-                                          tuple(add_value_reshape))
+        add_value_np_reshape = np.reshape(
+            add_value_np, tuple(add_value_reshape)
+        )
     else:
         x_np_reshape = x_np
         add_value_np_reshape = add_value_np
@@ -56,23 +57,29 @@ def raw_index_add(x, index, value, axis):
 
 
 class TestIndexAddOp(OpTest):
-
     def setUp(self):
         self.python_api = raw_index_add
         self.op_type = "index_add"
         self.init_dtype_type()
-        index_np = np.random.randint(low=0,
-                                     high=self.x_shape[self.axis],
-                                     size=self.index_size)
+        index_np = np.random.randint(
+            low=0, high=self.x_shape[self.axis], size=self.index_size
+        )
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         add_value_np = np.random.random(self.add_value_shape).astype(
-            self.x_type)
+            self.x_type
+        )
 
         self.inputs = {'X': x_np, 'Index': index_np, 'AddValue': add_value_np}
         self.attrs = {'axis': self.axis}
-        out = compute_index_add_ref(self.axis, self.x_shape, x_np,
-                                    self.add_value_shape, add_value_np,
-                                    self.index_size, index_np)
+        out = compute_index_add_ref(
+            self.axis,
+            self.x_shape,
+            x_np,
+            self.add_value_shape,
+            add_value_np,
+            self.index_size,
+            index_np,
+        )
         self.outputs = {'Out': out}
 
     def init_dtype_type(self):
@@ -91,7 +98,6 @@ class TestIndexAddOp(OpTest):
 
 
 class TestIndexAddAPI(unittest.TestCase):
-
     def setUp(self):
         self.setType()
         self.setPlace()
@@ -128,11 +134,11 @@ class TestIndexAddAPI(unittest.TestCase):
 
         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
         self.add_value_np = np.random.random(self.add_value_shape).astype(
-            self.x_type)
-        self.index_np = np.random.randint(low=0,
-                                          high=self.x_shape[axis],
-                                          size=self.index_size).astype(
-                                              self.index_type)
+            self.x_type
+        )
+        self.index_np = np.random.randint(
+            low=0, high=self.x_shape[axis], size=self.index_size
+        ).astype(self.index_type)
         if self.check_backward:
             self.dout_np = np.random.random(self.x_shape).astype(self.x_type)
 
@@ -156,36 +162,47 @@ class TestIndexAddAPI(unittest.TestCase):
         add_value = paddle.to_tensor(self.add_value_np, stop_gradient=False)
 
         out = paddle.index_add(input_tensor, index, self.axis, add_value)
-        ref_out = compute_index_add_ref(self.axis, self.x_shape, self.x_np,
-                                        self.add_value_shape, self.add_value_np,
-                                        self.index_size, self.index_np)
-        np.testing.assert_allclose(ref_out,
-                                   out.numpy(),
-                                   rtol=self.rtol,
-                                   atol=self.atol)
+        ref_out = compute_index_add_ref(
+            self.axis,
+            self.x_shape,
+            self.x_np,
+            self.add_value_shape,
+            self.add_value_np,
+            self.index_size,
+            self.index_np,
+        )
+        np.testing.assert_allclose(
+            ref_out, out.numpy(), rtol=self.rtol, atol=self.atol
+        )
 
         if self.check_backward:
             dout_tensor = paddle.to_tensor(self.dout_np)
             paddle.autograd.backward([out], [dout_tensor], retain_graph=True)
-            ref_x_grad, ref_add_value_grad = self.compute_index_add_backward_ref(
+            (
+                ref_x_grad,
+                ref_add_value_grad,
+            ) = self.compute_index_add_backward_ref()
+            np.testing.assert_allclose(
+                ref_x_grad,
+                input_tensor.grad.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
             )
-            np.testing.assert_allclose(ref_x_grad,
-                                       input_tensor.grad.numpy(),
-                                       rtol=self.rtol,
-                                       atol=self.atol)
-            np.testing.assert_allclose(ref_add_value_grad,
-                                       add_value.grad.numpy(),
-                                       rtol=self.rtol,
-                                       atol=self.atol)
+            np.testing.assert_allclose(
+                ref_add_value_grad,
+                add_value.grad.numpy(),
+                rtol=self.rtol,
+                atol=self.atol,
+            )
 
     def run_static(self, device):
         x = paddle.static.data(name='X', shape=self.x_shape, dtype=self.x_type)
-        index = paddle.static.data(name='Index',
-                                   shape=self.index_shape,
-                                   dtype=self.index_type)
-        add_value = paddle.static.data(name='AddValue',
-                                       shape=self.add_value_shape,
-                                       dtype=self.x_type)
+        index = paddle.static.data(
+            name='Index', shape=self.index_shape, dtype=self.index_type
+        )
+        add_value = paddle.static.data(
+            name='AddValue', shape=self.add_value_shape, dtype=self.x_type
+        )
 
         out = paddle.index_add(x, index, self.axis, add_value)
 
@@ -195,19 +212,22 @@ class TestIndexAddAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0)
         else:
             raise TypeError(
-                "paddle.index_add api only support cpu and gpu device now.")
+                "paddle.index_add api only support cpu and gpu device now."
+            )
 
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
 
-        res = exe.run(paddle.static.default_main_program(),
-                      feed={
-                          "X": self.x_np,
-                          "Index": self.index_np,
-                          "AddValue": self.add_value_np,
-                      },
-                      fetch_list=[out.name],
-                      return_numpy=False)
+        res = exe.run(
+            paddle.static.default_main_program(),
+            feed={
+                "X": self.x_np,
+                "Index": self.index_np,
+                "AddValue": self.add_value_np,
+            },
+            fetch_list=[out.name],
+            return_numpy=False,
+        )
         return res
 
     def test_static(self):
@@ -215,14 +235,18 @@ class TestIndexAddAPI(unittest.TestCase):
         for device in self.place:
             with paddle.static.program_guard(Program()):
                 out = self.run_static(device)
-            ref_out = compute_index_add_ref(self.axis, self.x_shape, self.x_np,
-                                            self.add_value_shape,
-                                            self.add_value_np, self.index_size,
-                                            self.index_np)
-            np.testing.assert_allclose(ref_out,
-                                       np.array(out[0]),
-                                       rtol=self.rtol,
-                                       atol=self.atol)
+            ref_out = compute_index_add_ref(
+                self.axis,
+                self.x_shape,
+                self.x_np,
+                self.add_value_shape,
+                self.add_value_np,
+                self.index_size,
+                self.index_np,
+            )
+            np.testing.assert_allclose(
+                ref_out, np.array(out[0]), rtol=self.rtol, atol=self.atol
+            )
 
     def test_dynamic(self):
         paddle.disable_static()
@@ -231,14 +255,12 @@ class TestIndexAddAPI(unittest.TestCase):
 
 
 class TestIndexAddAPIMoreType(TestIndexAddAPI):
-
     def setType(self):
         self.x_type = np.float64
         self.index_type = np.int64
 
 
 class TestIndexAddAPICase2(TestIndexAddAPI):
-
     def config(self):
         self.axis = 1
         self.x_shape = (100, 100, 5)
@@ -247,7 +269,6 @@ class TestIndexAddAPICase2(TestIndexAddAPI):
 
 
 class TestIndexAddAPICase3(TestIndexAddAPI):
-
     def config(self):
         self.axis = 2
         self.x_shape = (100, 100, 25)
@@ -256,16 +277,14 @@ class TestIndexAddAPICase3(TestIndexAddAPI):
 
 
 class TestIndexAddAPICase4(TestIndexAddAPI):
-
     def config(self):
         self.axis = 0
-        self.x_shape = (10, )
+        self.x_shape = (10,)
         self.index_size = 4
-        self.add_value_shape = (4, )
+        self.add_value_shape = (4,)
 
 
 class TestIndexAddAPICase5(TestIndexAddAPI):
-
     def config(self):
         self.axis = -1
         self.x_shape = (10, 10)

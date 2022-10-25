@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import paddle
 import unittest
 import numpy as np
 from paddle.jit import ProgramTranslator
 
-from test_resnet import ResNet, ResNetHelper
+from test_resnet import ResNetHelper
 
 program_translator = ProgramTranslator()
 
 
 class TestResnetWithPass(unittest.TestCase):
-
     def setUp(self):
         self.build_strategy = paddle.static.BuildStrategy()
         self.build_strategy.fuse_elewise_add_act_ops = True
@@ -49,19 +47,24 @@ class TestResnetWithPass(unittest.TestCase):
             dy_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre))
+            err_msg='dy_pre:\n {}\n, st_pre: \n{}.'.format(dy_pre, st_pre),
+        )
         np.testing.assert_allclose(
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
             err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre))
+                dy_jit_pre, st_pre
+            ),
+        )
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,
             rtol=1e-05,
             err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
-                predictor_pre, st_pre))
+                predictor_pre, st_pre
+            ),
+        )
 
     def test_resnet(self):
         static_loss = self.train(to_static=True)
@@ -71,7 +74,9 @@ class TestResnetWithPass(unittest.TestCase):
             dygraph_loss,
             rtol=1e-05,
             err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss))
+                static_loss, dygraph_loss
+            ),
+        )
         self.verify_predict()
 
     def test_in_static_mode_mkldnn(self):
@@ -84,9 +89,7 @@ class TestResnetWithPass(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
-
     def test_type_error(self):
-
         def foo(x):
             out = x + 1
             return out

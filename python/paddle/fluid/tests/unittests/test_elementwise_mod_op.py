@@ -16,14 +16,12 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 from op_test import OpTest
 
 import random
 
 
 class TestElementwiseModOp(OpTest):
-
     def init_kernel_type(self):
         self.use_mkldnn = False
 
@@ -38,7 +36,7 @@ class TestElementwiseModOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -62,7 +60,6 @@ class TestElementwiseModOp(OpTest):
 
 
 class TestElementwiseModOp_scalar(TestElementwiseModOp):
-
     def init_input_output(self):
         scale_x = random.randint(0, 100000000)
         scale_y = random.randint(1, 100000000)
@@ -72,7 +69,6 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
 
 
 class TestElementwiseModOpFloat(TestElementwiseModOp):
-
     def init_dtype(self):
         self.dtype = np.float32
 
@@ -89,7 +85,6 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
 
 class TestElementwiseModOpFp16(TestElementwiseModOp):
-
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -106,13 +101,11 @@ class TestElementwiseModOpFp16(TestElementwiseModOp):
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
-
     def init_dtype(self):
         self.dtype = np.float64
 
 
 class TestRemainderOp(unittest.TestCase):
-
     def _executed_api(self, x, y, name=None):
         return paddle.remainder(x, y, name)
 
@@ -136,7 +129,7 @@ class TestRemainderOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
             np_x = np.array([-3.3, 11.5, -2, 3.5])
-            np_y = np.array([-1.2, 2., 3.3, -2.3])
+            np_y = np.array([-1.2, 2.0, 3.3, -2.3])
             x = paddle.to_tensor(np_x)
             y = paddle.to_tensor(np_y)
             z = x % y
@@ -153,13 +146,11 @@ class TestRemainderOp(unittest.TestCase):
 
 
 class TestRemainderInplaceOp(TestRemainderOp):
-
     def _executed_api(self, x, y, name=None):
         return x.remainder_(y, name)
 
 
 class TestRemainderInplaceBroadcastSuccess(unittest.TestCase):
-
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 4).astype('float')
         self.y_numpy = np.random.rand(3, 4).astype('float')
@@ -175,17 +166,17 @@ class TestRemainderInplaceBroadcastSuccess(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestRemainderInplaceBroadcastSuccess2(TestRemainderInplaceBroadcastSuccess
-                                            ):
-
+class TestRemainderInplaceBroadcastSuccess2(
+    TestRemainderInplaceBroadcastSuccess
+):
     def init_data(self):
         self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
         self.y_numpy = np.random.rand(3, 1).astype('float')
 
 
-class TestRemainderInplaceBroadcastSuccess3(TestRemainderInplaceBroadcastSuccess
-                                            ):
-
+class TestRemainderInplaceBroadcastSuccess3(
+    TestRemainderInplaceBroadcastSuccess
+):
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
         self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')

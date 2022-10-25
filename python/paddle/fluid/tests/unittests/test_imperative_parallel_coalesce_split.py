@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
 import numpy as np
 from collections import OrderedDict
 
-import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.parallel import DataParallel
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.parallel import _coalesce_tensors, _split_tensors, _reshape_inplace
+from paddle.fluid.dygraph.parallel import (
+    _coalesce_tensors,
+    _split_tensors,
+    _reshape_inplace,
+)
 
 
 class MyLayer(fluid.Layer):
-
     def __init__(self, name_scope):
         super(MyLayer, self).__init__(name_scope)
 
@@ -38,7 +39,6 @@ class MyLayer(fluid.Layer):
 
 
 class TestImperativeParallelCoalesceSplit(unittest.TestCase):
-
     def test_coalesce_split(self):
         with fluid.dygraph.guard():
             test_layer = MyLayer("test_layer")
@@ -49,8 +49,9 @@ class TestImperativeParallelCoalesceSplit(unittest.TestCase):
             vars = []
             vars.append(to_variable(np.random.random([2, 3]).astype("float32")))
             vars.append(to_variable(np.random.random([4, 9]).astype("float32")))
-            vars.append(to_variable(
-                np.random.random([10, 1]).astype("float32")))
+            vars.append(
+                to_variable(np.random.random([10, 1]).astype("float32"))
+            )
             var_groups = OrderedDict()
             var_groups.setdefault(0, vars)
 

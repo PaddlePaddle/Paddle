@@ -274,6 +274,12 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : exp
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : expand (expand_v2)
   backward : expand_grad (expand_v2_grad)
   extra :
@@ -323,6 +329,12 @@
 - op : fft_r2c
   inputs: {x: X}
   outputs: {out: Out}
+
+- op : flip
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : floor
   backward : floor_grad
@@ -768,7 +780,7 @@
 
 - op : trunc
   inputs :
-    x : X
+    input : X
   outputs :
     out : Out
 

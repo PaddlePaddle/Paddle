@@ -14,22 +14,18 @@
 
 import os
 import unittest
-import tempfile
 from test_dist_fleet_base import TestFleetBase
 
 
 class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
-
     def _setup_config(self):
         self._mode = "async"
-        #self._reader = "pyreader"
+        # self._reader = "pyreader"
         self._reader = "dataset"
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -39,14 +35,10 @@ class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
             "CPU_NUM": "2",
             "LOG_DIRNAME": "/tmp",
             "SAVE_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/model",
-            "SAVE_CACHE_DIRNAME":
-            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/cache_model",
-            "SAVE_DENSE_PARAM_DIRNAME":
-            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/dense_param",
-            "SAVE_ONE_TABLE_DIRNAME":
-            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/table_0",
-            "SAVE_PATCH_DIRNAME":
-            "/tmp/TestDistMnistAsyncInMemoryDataset2x2/patch_model",
+            "SAVE_CACHE_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/cache_model",
+            "SAVE_DENSE_PARAM_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/dense_param",
+            "SAVE_ONE_TABLE_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/table_0",
+            "SAVE_PATCH_DIRNAME": "/tmp/TestDistMnistAsyncInMemoryDataset2x2/patch_model",
             "LOG_PREFIX": self.__class__.__name__,
         }
 
@@ -59,22 +51,19 @@ class TestDistMnistAsyncInMemoryDataset2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        self.check_with_place("dist_fleet_ctr.py",
-                              delta=1e-5,
-                              check_error_log=False)
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
 
 
 class TestDistMnistAsync2x2(TestFleetBase):
-
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -95,22 +84,19 @@ class TestDistMnistAsync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        self.check_with_place("dist_fleet_ctr.py",
-                              delta=1e-5,
-                              check_error_log=False)
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
 
 
 class TestDistCtrHalfAsync2x2(TestFleetBase):
-
     def _setup_config(self):
         self._mode = "async"
         self._reader = "pyreader"
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -134,9 +120,9 @@ class TestDistCtrHalfAsync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
-        self.check_with_place("dist_fleet_ctr.py",
-                              delta=1e-5,
-                              check_error_log=False)
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
 
 
 if __name__ == "__main__":

@@ -19,20 +19,18 @@
 #            'sampling_id',
 #            'Uniform']
 
-import math
 import warnings
 
 import numpy as np
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import core
-from paddle.fluid.data_feeder import (check_dtype, check_type,
-                                      check_variable_and_dtype, convert_dtype)
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode, _in_legacy_dygraph
-from paddle.fluid.layers import (control_flow, elementwise_add, elementwise_div,
-                                 elementwise_mul, elementwise_sub, nn, ops,
-                                 tensor)
-from paddle.tensor import arange, concat, gather_nd, multinomial
+from paddle.fluid.data_feeder import check_variable_and_dtype, convert_dtype
+from paddle.fluid.framework import (
+    _non_static_mode,
+    in_dygraph_mode,
+    _in_legacy_dygraph,
+)
+from paddle.fluid.layers import tensor
 
 
 class Distribution(object):
@@ -51,10 +49,16 @@ class Distribution(object):
 
     def __init__(self, batch_shape=(), event_shape=()):
 
-        self._batch_shape = batch_shape if isinstance(
-            batch_shape, tuple) else tuple(batch_shape)
-        self._event_shape = event_shape if isinstance(
-            event_shape, tuple) else tuple(event_shape)
+        self._batch_shape = (
+            batch_shape
+            if isinstance(batch_shape, tuple)
+            else tuple(batch_shape)
+        )
+        self._event_shape = (
+            event_shape
+            if isinstance(event_shape, tuple)
+            else tuple(event_shape)
+        )
 
         super(Distribution, self).__init__()
 
@@ -153,7 +157,8 @@ class Distribution(object):
 
         if is_variable and is_number:
             raise ValueError(
-                'if one argument is Tensor, all arguments should be Tensor')
+                'if one argument is Tensor, all arguments should be Tensor'
+            )
 
         return is_variable
 
@@ -168,15 +173,17 @@ class Distribution(object):
         """
         numpy_args = []
         variable_args = []
-        tmp = 0.
+        tmp = 0.0
 
         for arg in args:
             if isinstance(arg, float):
                 arg = [arg]
             if not isinstance(arg, (list, tuple, np.ndarray, tensor.Variable)):
                 raise TypeError(
-                    "Type of input args must be float, list, numpy.ndarray or Tensor, but received type {}"
-                    .format(type(arg)))
+                    "Type of input args must be float, list, numpy.ndarray or Tensor, but received type {}".format(
+                        type(arg)
+                    )
+                )
 
             arg_np = np.array(arg)
             arg_dtype = arg_np.dtype
@@ -214,20 +221,24 @@ class Distribution(object):
             value (Tensor): Change value's dtype if value's dtype is different from param.
         """
         if _non_static_mode():
-            if value.dtype != param.dtype and convert_dtype(
-                    value.dtype) in ['float32', 'float64']:
+            if value.dtype != param.dtype and convert_dtype(value.dtype) in [
+                'float32',
+                'float64',
+            ]:
                 warnings.warn(
                     "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
                 )
                 if in_dygraph_mode():
                     return _C_ops.cast(value, param.dtype)
                 if _in_legacy_dygraph():
-                    return _legacy_C_ops.cast(value, 'in_dtype', value.dtype,
-                                              'out_dtype', param.dtype)
+                    return _legacy_C_ops.cast(
+                        value, 'in_dtype', value.dtype, 'out_dtype', param.dtype
+                    )
             return value
 
-        check_variable_and_dtype(value, 'value', ['float32', 'float64'],
-                                 'log_prob')
+        check_variable_and_dtype(
+            value, 'value', ['float32', 'float64'], 'log_prob'
+        )
         if value.dtype != param.dtype:
             warnings.warn(
                 "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
@@ -242,8 +253,11 @@ class Distribution(object):
         multi-dimensional, values of last axis denote the probabilities of
         occurrence of each of the events.
         """
-        return (paddle.log(probs) - paddle.log1p(-probs)) \
-            if is_binary else paddle.log(probs)
+        return (
+            (paddle.log(probs) - paddle.log1p(-probs))
+            if is_binary
+            else paddle.log(probs)
+        )
 
     def _logits_to_probs(self, logits, is_binary=False):
         r"""
@@ -251,5 +265,8 @@ class Distribution(object):
         log odds, whereas for the multi-dimensional case, the values along the
         last dimension denote the log probabilities of the events.
         """
-        return paddle.nn.functional.sigmoid(logits) \
-            if is_binary else paddle.nn.functional.softmax(logits, axis=-1)
+        return (
+            paddle.nn.functional.sigmoid(logits)
+            if is_binary
+            else paddle.nn.functional.softmax(logits, axis=-1)
+        )

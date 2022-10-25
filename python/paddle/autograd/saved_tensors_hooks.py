@@ -17,7 +17,7 @@ from paddle.fluid import core
 __all__ = []
 
 
-class saved_tensors_hooks():
+class saved_tensors_hooks:
     """
     Dynamic graph, registers a pair of pack / unpack hooks for saved tensors.
 
@@ -104,8 +104,9 @@ class saved_tensors_hooks():
         self.unpack_hook = unpack_hook
 
     def __enter__(self):
-        core.eager.register_saved_tensors_hooks(self.pack_hook,
-                                                self.unpack_hook)
+        core.eager.register_saved_tensors_hooks(
+            self.pack_hook, self.unpack_hook
+        )
 
     def __exit__(self, *args):
         core.eager.reset_saved_tensors_hooks()

@@ -77,8 +77,8 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e,
 }
 
 inline void MatchShapeToLayout(phi::DenseTensor* tensor_in,
-                               framework::DataLayout from,
-                               framework::DataLayout to) {
+                               phi::DataLayout from,
+                               phi::DataLayout to) {
   auto print_dims = [](const std::vector<int>& dims) {
     std::ostringstream oss;
 
@@ -105,9 +105,8 @@ inline void MatchShapeToLayout(phi::DenseTensor* tensor_in,
   }
 
   switch (from) {
-    case framework::DataLayout::kMKLDNN:
-      if ((to == framework::DataLayout::kNHWC) ||
-          (to == framework::DataLayout::kNDHWC)) {
+    case phi::DataLayout::kMKLDNN:
+      if ((to == phi::DataLayout::kNHWC) || (to == phi::DataLayout::kNDHWC)) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
@@ -115,9 +114,9 @@ inline void MatchShapeToLayout(phi::DenseTensor* tensor_in,
                 << print_dims(dims);
       }
       break;
-    case framework::DataLayout::kNHWC:
-    case framework::DataLayout::kNDHWC:
-      if (to == framework::DataLayout::kMKLDNN) {
+    case phi::DataLayout::kNHWC:
+    case phi::DataLayout::kNDHWC:
+      if (to == phi::DataLayout::kMKLDNN) {
         auto dims = phi::vectorize<int>(tensor_in->dims());
         std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
         tensor_in->Resize(phi::make_ddim(dims));
@@ -423,10 +422,10 @@ inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
 
 inline MKLDNNMemoryFormat data_format_to_memory_format(
     const std::string& data_format) {
-  switch (framework::StringToDataLayout(data_format)) {
-    case framework::DataLayout::kNHWC:
+  switch (phi::StringToDataLayout(data_format)) {
+    case phi::DataLayout::kNHWC:
       return MKLDNNMemoryFormat::nhwc;
-    case framework::DataLayout::kNCHW:
+    case phi::DataLayout::kNCHW:
       return MKLDNNMemoryFormat::nchw;
     default:
       return MKLDNNMemoryFormat::any;
@@ -583,7 +582,7 @@ inline void RegisterModelLayout(
     // If there is already registered NHWC then quit this call
     // not to overwrite setting with analysis of internal "while" op block
     if (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
-        framework::DataLayout::kNHWC)
+        phi::DataLayout::kNHWC)
       return;
 
     VLOG(4) << "RegisterModelLayout for mkldnn";
@@ -592,8 +591,8 @@ inline void RegisterModelLayout(
       if (op->HasAttr(attrib_name)) {
         auto data_format = op->Attr<std::string>(attrib_name);
         platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-            data_format.compare("NHWC") == 0 ? framework::DataLayout::kNHWC
-                                             : framework::DataLayout::kNCHW);
+            data_format.compare("NHWC") == 0 ? phi::DataLayout::kNHWC
+                                             : phi::DataLayout::kNCHW);
         return true;
       } else {
         return false;
@@ -632,4 +631,22 @@ bool constexpr is_int8() {
 }
 
 }  // namespace platform
+
+inline std::string FindInputNameByVarName(framework::OpDesc* op,
+                                          const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->InputNames())
+    for (const auto& input_name : op->Input(name))
+      if (input_name == searched_name) ret = name;
+  return ret;
+}
+
+inline std::string FindOutputNameByVarName(framework::OpDesc* op,
+                                           const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->OutputNames())
+    for (const auto& output_name : op->Output(name))
+      if (output_name == searched_name) ret = name;
+  return ret;
+}
 }  // namespace paddle

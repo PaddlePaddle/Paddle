@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import subprocess
-import os
-import time
-import six
-import copy
 import unittest
-import paddle.fluid as fluid
 
 from argparse import ArgumentParser, REMAINDER
-from paddle.distributed.utils.launch_utils import _print_arguments, get_gpus, get_cluster_from_args
+from paddle.distributed.utils.launch_utils import (
+    _print_arguments,
+    get_gpus,
+    get_cluster_from_args,
+)
 from paddle.distributed.fleet.launch_utils import find_free_ports
 
 
@@ -39,72 +36,75 @@ PADDLE_CURRENT_ENDPOINT
 PADDLE_TRAINERS_NUM
 PADDLE_TRAINER_ENDPOINTS
 POD_IP (current node ip address, not needed for local training)
-''')
+'''
+    )
 
-    #Optional arguments for the launch helper
+    # Optional arguments for the launch helper
     parser.add_argument(
         "--cluster_node_ips",
         type=str,
         default="127.0.0.1",
-        help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
-    parser.add_argument("--node_ip",
-                        type=str,
-                        default="127.0.0.1",
-                        help="The current node ip. ")
+        help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..",
+    )
+    parser.add_argument(
+        "--node_ip", type=str, default="127.0.0.1", help="The current node ip. "
+    )
     parser.add_argument(
         "--use_paddlecloud",
         action='store_true',
-        help=
-        "wheter to use paddlecloud platform to run your multi-process job. If false, no need to set this argument."
+        help="wheter to use paddlecloud platform to run your multi-process job. If false, no need to set this argument.",
     )
-    parser.add_argument("--started_port",
-                        type=int,
-                        default=None,
-                        help="The trainer's started port on a single node")
+    parser.add_argument(
+        "--started_port",
+        type=int,
+        default=None,
+        help="The trainer's started port on a single node",
+    )
 
-    parser.add_argument("--print_config",
-                        type=bool,
-                        default=True,
-                        help="Print the config or not")
+    parser.add_argument(
+        "--print_config",
+        type=bool,
+        default=True,
+        help="Print the config or not",
+    )
 
     parser.add_argument(
         "--selected_gpus",
         type=str,
         default=None,
-        help=
-        "It's for gpu training and the training process will run on the selected_gpus,"
-        "each process is bound to a single GPU. And if it's not set, this module will use all the gpu cards for training."
+        help="It's for gpu training and the training process will run on the selected_gpus,"
+        "each process is bound to a single GPU. And if it's not set, this module will use all the gpu cards for training.",
     )
 
     parser.add_argument(
         "--log_level",
         type=int,
-        default=
-        20,  # logging.INFO, details are here:https://docs.python.org/3/library/logging.html#levels
-        help="Logging level, default is logging.INFO")
+        default=20,  # logging.INFO, details are here:https://docs.python.org/3/library/logging.html#levels
+        help="Logging level, default is logging.INFO",
+    )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        help=
-        "The path for each process's log.If it's not set, the log will printed to default pipe."
+        help="The path for each process's log.If it's not set, the log will printed to default pipe.",
     )
 
-    #positional
-    parser.add_argument("training_script",
-                        type=str,
-                        help="The full path to the single GPU training "
-                        "program/script to be launched in parallel, "
-                        "followed by all the arguments for the "
-                        "training script")
+    # positional
+    parser.add_argument(
+        "training_script",
+        type=str,
+        help="The full path to the single GPU training "
+        "program/script to be launched in parallel, "
+        "followed by all the arguments for the "
+        "training script",
+    )
 
-    #rest from the training program
+    # rest from the training program
     parser.add_argument('training_script_args', nargs=REMAINDER)
     return parser.parse_args()
 
 
 class TestCoverage(unittest.TestCase):
-
     def test_gpus(self):
         args = _parse_args()
 

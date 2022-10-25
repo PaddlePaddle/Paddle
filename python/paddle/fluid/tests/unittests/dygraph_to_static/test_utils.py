@@ -15,15 +15,11 @@
 import types
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
 
-from test_program_translator import get_source_code
-
 
 class TestIndexInList(unittest.TestCase):
-
     def test_index_in_list(self):
         list_to_test = [1, 2, 3, 4, 5]
         self.assertEqual(index_in_list(list_to_test, 4), 3)
@@ -40,8 +36,7 @@ def dyfunc_assign(input):
     [x, y] = m, n = z
 
 
-class StaticCode():
-
+class StaticCode:
     def dyfunc_assign(input):
         b = 1
         a = b
@@ -56,7 +51,6 @@ class StaticCode():
 
 
 class TestIsPaddle(unittest.TestCase):
-
     def fake_module(self):
         return types.ModuleType('paddlenlp')
 

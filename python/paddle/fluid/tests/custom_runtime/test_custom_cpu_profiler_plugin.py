@@ -14,14 +14,11 @@
 
 import os
 import sys
-import site
 import unittest
-import numpy as np
 import tempfile
 
 
 class TestCustomCPUProfilerPlugin(unittest.TestCase):
-
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,15 +30,18 @@ class TestCustomCPUProfilerPlugin(unittest.TestCase):
             && git checkout {} -b dev \
             && cd backends/custom_cpu \
             && mkdir build && cd build && cmake .. && make -j8'.format(
-            self.temp_dir.name, os.getenv('PLUGIN_URL'),
-            os.getenv('PLUGIN_TAG'))
+            self.temp_dir.name, os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG')
+        )
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
-            cur_dir, '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
-                self.temp_dir.name))
+            cur_dir,
+            '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
+                self.temp_dir.name
+            ),
+        )
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -49,6 +49,7 @@ class TestCustomCPUProfilerPlugin(unittest.TestCase):
 
     def test_custom_device(self):
         import paddle
+
         with paddle.fluid.framework._test_eager_guard():
             self._test_custom_profiler()
 
@@ -59,9 +60,12 @@ class TestCustomCPUProfilerPlugin(unittest.TestCase):
         paddle.set_device('custom_cpu')
 
         x = paddle.to_tensor([1, 2, 3])
-        p = profiler.Profiler(targets=[
-            profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.CUSTOM_DEVICE
-        ])
+        p = profiler.Profiler(
+            targets=[
+                profiler.ProfilerTarget.CPU,
+                profiler.ProfilerTarget.CUSTOM_DEVICE,
+            ]
+        )
         p.start()
         for iter in range(10):
             x = x + 1

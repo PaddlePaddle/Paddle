@@ -31,12 +31,14 @@ __all__ = [
 
 def _clone_var_(block, var):
     assert isinstance(var, Variable)
-    return block.create_var(name=var.name,
-                            shape=var.shape,
-                            dtype=var.dtype,
-                            type=var.type,
-                            lod_level=var.lod_level,
-                            persistable=True)
+    return block.create_var(
+        name=var.name,
+        shape=var.shape,
+        dtype=var.dtype,
+        type=var.type,
+        lod_level=var.lod_level,
+        persistable=True,
+    )
 
 
 class Evaluator(object):
@@ -66,7 +68,9 @@ class Evaluator(object):
     def __init__(self, name, **kwargs):
         warnings.warn(
             "The %s is deprecated, because maintain a modified program inside evaluator cause bug easily, please use fluid.metrics.%s instead."
-            % (self.__class__.__name__, self.__class__.__name__), Warning)
+            % (self.__class__.__name__, self.__class__.__name__),
+            Warning,
+        )
         self.states = []
         self.metrics = []
         self.helper = LayerHelper(name, **kwargs)
@@ -86,10 +90,9 @@ class Evaluator(object):
             for var in self.states:
                 assert isinstance(var, Variable)
                 g_var = _clone_var_(reset_program.current_block(), var)
-                layers.fill_constant(shape=g_var.shape,
-                                     value=0.0,
-                                     dtype=g_var.dtype,
-                                     out=g_var)
+                layers.fill_constant(
+                    shape=g_var.shape, value=0.0, dtype=g_var.dtype, out=g_var
+                )
 
         executor.run(reset_program)
 
@@ -114,11 +117,12 @@ class Evaluator(object):
         Returns: State variable
 
         """
-        state = self.helper.create_variable(name="_".join(
-            [unique_name.generate(self.helper.name), suffix]),
-                                            persistable=True,
-                                            dtype=dtype,
-                                            shape=shape)
+        state = self.helper.create_variable(
+            name="_".join([unique_name.generate(self.helper.name), suffix]),
+            persistable=True,
+            dtype=dtype,
+            shape=shape,
+        )
         self.states.append(state)
         return state
 
@@ -169,27 +173,41 @@ class ChunkEvaluator(Evaluator):
         if main_program.current_block().idx != 0:
             raise ValueError("You can only invoke Evaluator in root block")
 
-        self.num_infer_chunks = self._create_state(dtype='int64',
-                                                   shape=[1],
-                                                   suffix='num_infer_chunks')
-        self.num_label_chunks = self._create_state(dtype='int64',
-                                                   shape=[1],
-                                                   suffix='num_label_chunks')
+        self.num_infer_chunks = self._create_state(
+            dtype='int64', shape=[1], suffix='num_infer_chunks'
+        )
+        self.num_label_chunks = self._create_state(
+            dtype='int64', shape=[1], suffix='num_label_chunks'
+        )
         self.num_correct_chunks = self._create_state(
-            dtype='int64', shape=[1], suffix='num_correct_chunks')
-        precision, recall, f1_score, num_infer_chunks, num_label_chunks, num_correct_chunks = layers.chunk_eval(
+            dtype='int64', shape=[1], suffix='num_correct_chunks'
+        )
+        (
+            precision,
+            recall,
+            f1_score,
+            num_infer_chunks,
+            num_label_chunks,
+            num_correct_chunks,
+        ) = layers.chunk_eval(
             input=input,
             label=label,
             chunk_scheme=chunk_scheme,
             num_chunk_types=num_chunk_types,
             excluded_chunk_types=excluded_chunk_types,
         )
-        layers.sums(input=[self.num_infer_chunks, num_infer_chunks],
-                    out=self.num_infer_chunks)
-        layers.sums(input=[self.num_label_chunks, num_label_chunks],
-                    out=self.num_label_chunks)
-        layers.sums(input=[self.num_correct_chunks, num_correct_chunks],
-                    out=self.num_correct_chunks)
+        layers.sums(
+            input=[self.num_infer_chunks, num_infer_chunks],
+            out=self.num_infer_chunks,
+        )
+        layers.sums(
+            input=[self.num_label_chunks, num_label_chunks],
+            out=self.num_label_chunks,
+        )
+        layers.sums(
+            input=[self.num_correct_chunks, num_correct_chunks],
+            out=self.num_correct_chunks,
+        )
 
         self.metrics.extend([precision, recall, f1_score])
 
@@ -199,18 +217,31 @@ class ChunkEvaluator(Evaluator):
         block = eval_program.current_block()
         num_infer_chunks, num_label_chunks, num_correct_chunks = executor.run(
             eval_program,
-            fetch_list=[_clone_var_(block, state) for state in self.states])
+            fetch_list=[_clone_var_(block, state) for state in self.states],
+        )
         num_infer_chunks = num_infer_chunks[0]
         num_label_chunks = num_label_chunks[0]
         num_correct_chunks = num_correct_chunks[0]
-        precision = float(
-            num_correct_chunks) / num_infer_chunks if num_infer_chunks else 0
-        recall = float(
-            num_correct_chunks) / num_label_chunks if num_label_chunks else 0
-        f1_score = float(2 * precision * recall) / (
-            precision + recall) if num_correct_chunks else 0
-        return np.array([precision], dtype='float32'), np.array(
-            [recall], dtype='float32'), np.array([f1_score], dtype='float32')
+        precision = (
+            float(num_correct_chunks) / num_infer_chunks
+            if num_infer_chunks
+            else 0
+        )
+        recall = (
+            float(num_correct_chunks) / num_label_chunks
+            if num_label_chunks
+            else 0
+        )
+        f1_score = (
+            float(2 * precision * recall) / (precision + recall)
+            if num_correct_chunks
+            else 0
+        )
+        return (
+            np.array([precision], dtype='float32'),
+            np.array([recall], dtype='float32'),
+            np.array([f1_score], dtype='float32'),
+        )
 
 
 class EditDistance(Evaluator):
@@ -250,31 +281,35 @@ class EditDistance(Evaluator):
         if main_program.current_block().idx != 0:
             raise ValueError("You can only invoke Evaluator in root block")
 
-        self.total_distance = self._create_state(dtype='float32',
-                                                 shape=[1],
-                                                 suffix='total_distance')
-        self.seq_num = self._create_state(dtype='int64',
-                                          shape=[1],
-                                          suffix='seq_num')
-        self.instance_error = self._create_state(dtype='int64',
-                                                 shape=[1],
-                                                 suffix='instance_error')
-        distances, seq_num = layers.edit_distance(input=input,
-                                                  label=label,
-                                                  ignored_tokens=ignored_tokens)
+        self.total_distance = self._create_state(
+            dtype='float32', shape=[1], suffix='total_distance'
+        )
+        self.seq_num = self._create_state(
+            dtype='int64', shape=[1], suffix='seq_num'
+        )
+        self.instance_error = self._create_state(
+            dtype='int64', shape=[1], suffix='instance_error'
+        )
+        distances, seq_num = layers.edit_distance(
+            input=input, label=label, ignored_tokens=ignored_tokens
+        )
 
         zero = layers.fill_constant(shape=[1], value=0.0, dtype='float32')
         compare_result = layers.equal(distances, zero)
         compare_result_int = layers.cast(x=compare_result, dtype='int64')
         seq_right_count = layers.reduce_sum(compare_result_int)
-        instance_error_count = layers.elementwise_sub(x=seq_num,
-                                                      y=seq_right_count)
+        instance_error_count = layers.elementwise_sub(
+            x=seq_num, y=seq_right_count
+        )
         total_distance = layers.reduce_sum(distances)
-        layers.sums(input=[self.total_distance, total_distance],
-                    out=self.total_distance)
+        layers.sums(
+            input=[self.total_distance, total_distance], out=self.total_distance
+        )
         layers.sums(input=[self.seq_num, seq_num], out=self.seq_num)
-        layers.sums(input=[self.instance_error, instance_error_count],
-                    out=self.instance_error)
+        layers.sums(
+            input=[self.instance_error, instance_error_count],
+            out=self.instance_error,
+        )
         self.metrics.append(total_distance)
         self.metrics.append(instance_error_count)
 
@@ -289,10 +324,12 @@ class EditDistance(Evaluator):
             seq_num = layers.cast(x=seq_num, dtype='float32')
             instance_error = layers.cast(x=instance_error, dtype='float32')
             avg_distance = layers.elementwise_div(x=total_distance, y=seq_num)
-            avg_instance_error = layers.elementwise_div(x=instance_error,
-                                                        y=seq_num)
-            result = executor.run(eval_program,
-                                  fetch_list=[avg_distance, avg_instance_error])
+            avg_instance_error = layers.elementwise_div(
+                x=instance_error, y=seq_num
+            )
+            result = executor.run(
+                eval_program, fetch_list=[avg_distance, avg_instance_error]
+            )
         return np.array(result[0]), np.array(result[1])
 
 
@@ -355,16 +392,18 @@ class DetectionMAP(Evaluator):
         'accum_map_v' is the accumulative mAP of one pass.
     """
 
-    def __init__(self,
-                 input,
-                 gt_label,
-                 gt_box,
-                 gt_difficult=None,
-                 class_num=None,
-                 background_label=0,
-                 overlap_threshold=0.5,
-                 evaluate_difficult=True,
-                 ap_version='integral'):
+    def __init__(
+        self,
+        input,
+        gt_label,
+        gt_box,
+        gt_difficult=None,
+        class_num=None,
+        background_label=0,
+        overlap_threshold=0.5,
+        evaluate_difficult=True,
+        ap_version='integral',
+    ):
         super(DetectionMAP, self).__init__("map_eval")
 
         gt_label = layers.cast(x=gt_label, dtype=gt_box.dtype)
@@ -375,26 +414,29 @@ class DetectionMAP(Evaluator):
             label = layers.concat([gt_label, gt_box], axis=1)
 
         # calculate mean average precision (mAP) of current mini-batch
-        map = detection.detection_map(input,
-                                      label,
-                                      class_num,
-                                      background_label,
-                                      overlap_threshold=overlap_threshold,
-                                      evaluate_difficult=evaluate_difficult,
-                                      ap_version=ap_version)
+        map = detection.detection_map(
+            input,
+            label,
+            class_num,
+            background_label,
+            overlap_threshold=overlap_threshold,
+            evaluate_difficult=evaluate_difficult,
+            ap_version=ap_version,
+        )
 
         self._create_state(dtype='int32', shape=None, suffix='accum_pos_count')
         self._create_state(dtype='float32', shape=None, suffix='accum_true_pos')
-        self._create_state(dtype='float32',
-                           shape=None,
-                           suffix='accum_false_pos')
+        self._create_state(
+            dtype='float32', shape=None, suffix='accum_false_pos'
+        )
 
         self.has_state = None
-        var = self.helper.create_variable(persistable=True,
-                                          dtype='int32',
-                                          shape=[1])
-        self.helper.set_variable_initializer(var,
-                                             initializer=Constant(value=int(0)))
+        var = self.helper.create_variable(
+            persistable=True, dtype='int32', shape=[1]
+        )
+        self.helper.set_variable_initializer(
+            var, initializer=Constant(value=int(0))
+        )
         self.has_state = var
 
         # calculate accumulative mAP
@@ -408,12 +450,15 @@ class DetectionMAP(Evaluator):
             has_state=self.has_state,
             input_states=self.states,
             out_states=self.states,
-            ap_version=ap_version)
+            ap_version=ap_version,
+        )
 
-        layers.fill_constant(shape=self.has_state.shape,
-                             value=1,
-                             dtype=self.has_state.dtype,
-                             out=self.has_state)
+        layers.fill_constant(
+            shape=self.has_state.shape,
+            value=1,
+            dtype=self.has_state.dtype,
+            out=self.has_state,
+        )
 
         self.cur_map = map
         self.accum_map = accum_map
@@ -426,8 +471,7 @@ class DetectionMAP(Evaluator):
             reset_program = Program()
         with program_guard(main_program=reset_program):
             var = _clone_var_(reset_program.current_block(), self.has_state)
-            layers.fill_constant(shape=var.shape,
-                                 value=0,
-                                 dtype=var.dtype,
-                                 out=var)
+            layers.fill_constant(
+                shape=var.shape, value=0, dtype=var.dtype, out=var
+            )
         executor.run(reset_program)

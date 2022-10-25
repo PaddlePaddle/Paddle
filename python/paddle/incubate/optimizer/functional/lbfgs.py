@@ -15,23 +15,29 @@
 import numpy as np
 
 from .line_search import strong_wolfe
-from .utils import _value_and_gradient, check_input_type, check_initial_inverse_hessian_estimate
+from .utils import (
+    _value_and_gradient,
+    check_input_type,
+    check_initial_inverse_hessian_estimate,
+)
 
 import paddle
 
 
-def minimize_lbfgs(objective_func,
-                   initial_position,
-                   history_size=100,
-                   max_iters=50,
-                   tolerance_grad=1e-8,
-                   tolerance_change=1e-8,
-                   initial_inverse_hessian_estimate=None,
-                   line_search_fn='strong_wolfe',
-                   max_line_search_iters=50,
-                   initial_step_length=1.0,
-                   dtype='float32',
-                   name=None):
+def minimize_lbfgs(
+    objective_func,
+    initial_position,
+    history_size=100,
+    max_iters=50,
+    tolerance_grad=1e-8,
+    tolerance_change=1e-8,
+    initial_inverse_hessian_estimate=None,
+    line_search_fn='strong_wolfe',
+    max_line_search_iters=50,
+    initial_step_length=1.0,
+    dtype='float32',
+    name=None,
+):
     r"""
     Minimizes a differentiable function `func` using the L-BFGS method.
     The L-BFGS is a quasi-Newton method for solving an unconstrained optimization problem over a differentiable function.
@@ -91,8 +97,10 @@ def minimize_lbfgs(objective_func,
     """
     if dtype not in ['float32', 'float64']:
         raise ValueError(
-            "The dtype must be 'float32' or 'float64', but the specified is {}."
-            .format(dtype))
+            "The dtype must be 'float32' or 'float64', but the specified is {}.".format(
+                dtype
+            )
+        )
 
     op_name = 'minimize_lbfgs'
     check_input_type(initial_position, 'initial_position', op_name)
@@ -100,8 +108,11 @@ def minimize_lbfgs(objective_func,
     if initial_inverse_hessian_estimate is None:
         H0 = paddle.eye(initial_position.shape[0], dtype=dtype)
     else:
-        check_input_type(initial_inverse_hessian_estimate,
-                         'initial_inverse_hessian_estimate', op_name)
+        check_input_type(
+            initial_inverse_hessian_estimate,
+            'initial_inverse_hessian_estimate',
+            op_name,
+        )
         check_initial_inverse_hessian_estimate(initial_inverse_hessian_estimate)
         H0 = initial_inverse_hessian_estimate
 
@@ -114,9 +125,9 @@ def minimize_lbfgs(objective_func,
     is_converge = paddle.full(shape=[1], fill_value=False, dtype='bool')
     num_func_calls = paddle.full(shape=[1], fill_value=1, dtype='int64')
 
-    history_size = paddle.full(shape=[1],
-                               fill_value=history_size,
-                               dtype='int64')
+    history_size = paddle.full(
+        shape=[1], fill_value=history_size, dtype='int64'
+    )
     head = paddle.full(shape=[1], fill_value=1, dtype='int64')
     tail = paddle.full(shape=[1], fill_value=0, dtype='int64')
 
@@ -130,20 +141,44 @@ def minimize_lbfgs(objective_func,
     rhok_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
     ai_vec = paddle.zeros((history_size + 1, 1), dtype=dtype)
 
-    def cond(k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
-             yk_vec, rhok_vec, head, tail):
+    def cond(
+        k,
+        done,
+        is_converge,
+        num_func_calls,
+        value,
+        xk,
+        g1,
+        sk_vec,
+        yk_vec,
+        rhok_vec,
+        head,
+        tail,
+    ):
         return (k < max_iters) & ~done
 
-    def body(k, done, is_converge, num_func_calls, value, xk, g1, sk_vec,
-             yk_vec, rhok_vec, head, tail):
+    def body(
+        k,
+        done,
+        is_converge,
+        num_func_calls,
+        value,
+        xk,
+        g1,
+        sk_vec,
+        yk_vec,
+        rhok_vec,
+        head,
+        tail,
+    ):
         # use assign to cut off the relevance between g1 and q, or they will change together.
 
         #############    compute p_k by two-loop recursion    #############
         q = paddle.assign(g1)
         # In a array circle, the index may out of range, so must use mod.
-        i = paddle.full(shape=[1],
-                        fill_value=(head - 1).mod(history_size),
-                        dtype='int64')
+        i = paddle.full(
+            shape=[1], fill_value=(head - 1).mod(history_size), dtype='int64'
+        )
 
         def cond(i, q):
             return i != tail
@@ -180,11 +215,14 @@ def minimize_lbfgs(objective_func,
                 xk=xk,
                 pk=pk,
                 initial_step_length=initial_step_length,
-                dtype=dtype)
+                dtype=dtype,
+            )
         else:
             raise NotImplementedError(
-                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'"
-                .format(line_search_fn))
+                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".format(
+                    line_search_fn
+                )
+            )
         paddle.assign(num_func_calls + ls_func_calls, num_func_calls)
 
         #############    update sk_vec, yk_vec, rhok_vec    #############
@@ -193,9 +231,10 @@ def minimize_lbfgs(objective_func,
 
         rhok_inv = paddle.dot(yk, sk)
         rhok = paddle.static.nn.cond(
-            rhok_inv == 0.,
+            rhok_inv == 0.0,
             lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
-            lambda: 1. / rhok_inv)
+            lambda: 1.0 / rhok_inv,
+        )
 
         sk_vec[head] = sk
         yk_vec[head] = yk
@@ -216,21 +255,43 @@ def minimize_lbfgs(objective_func,
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
         paddle.assign(
-            done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change),
-            done)
+            done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change), done
+        )
         paddle.assign(done, is_converge)
         # when alpha=0, there is no chance to get xk change.
-        paddle.assign(done | (alpha == 0.), done)
+        paddle.assign(done | (alpha == 0.0), done)
 
         return [
-            k, done, is_converge, num_func_calls, value, xk, g1, sk_vec, yk_vec,
-            rhok_vec, head, tail
+            k,
+            done,
+            is_converge,
+            num_func_calls,
+            value,
+            xk,
+            g1,
+            sk_vec,
+            yk_vec,
+            rhok_vec,
+            head,
+            tail,
         ]
 
-    paddle.static.nn.while_loop(cond=cond,
-                                body=body,
-                                loop_vars=[
-                                    k, done, is_converge, num_func_calls, value,
-                                    xk, g1, sk_vec, yk_vec, rhok_vec, head, tail
-                                ])
+    paddle.static.nn.while_loop(
+        cond=cond,
+        body=body,
+        loop_vars=[
+            k,
+            done,
+            is_converge,
+            num_func_calls,
+            value,
+            xk,
+            g1,
+            sk_vec,
+            yk_vec,
+            rhok_vec,
+            head,
+            tail,
+        ],
+    )
     return is_converge, num_func_calls, xk, value, g1

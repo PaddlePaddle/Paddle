@@ -14,14 +14,11 @@
 
 import unittest
 import paddle
-from paddle import fluid
 import numpy as np
 
 
 class TestCpuCuda(unittest.TestCase):
-
     def test_cpu_cuda(self):
-
         def func(x):
             x = paddle.to_tensor([1, 2, 3, 4])
             x = x.cuda()
@@ -34,9 +31,7 @@ class TestCpuCuda(unittest.TestCase):
 
 
 class TestToTensor(unittest.TestCase):
-
     def test_to_tensor_with_variable_list(self):
-
         def func(x):
             ones = paddle.to_tensor([1])
             twos = paddle.to_tensor([2])
@@ -45,15 +40,15 @@ class TestToTensor(unittest.TestCase):
 
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(func).code)
-        np.testing.assert_allclose(paddle.jit.to_static(func)(x).numpy(),
-                                   np.array([1, 2, 3, 4]),
-                                   rtol=1e-05)
+        np.testing.assert_allclose(
+            paddle.jit.to_static(func)(x).numpy(),
+            np.array([1, 2, 3, 4]),
+            rtol=1e-05,
+        )
 
 
 class TestToTensor1(unittest.TestCase):
-
     def test_to_tensor_with_variable_list(self):
-
         def func(x):
             ones = paddle.to_tensor([1])
             twos = paddle.to_tensor([2])
@@ -65,24 +60,26 @@ class TestToTensor1(unittest.TestCase):
 
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(func).code)
-        np.testing.assert_allclose(paddle.jit.to_static(func)(x).numpy(),
-                                   np.array([1, 2, 3, 4]),
-                                   rtol=1e-05)
+        np.testing.assert_allclose(
+            paddle.jit.to_static(func)(x).numpy(),
+            np.array([1, 2, 3, 4]),
+            rtol=1e-05,
+        )
 
 
 class TestToTensor2(unittest.TestCase):
-
     def test_to_tensor_with_variable_list(self):
-
         def func(x):
             x = paddle.to_tensor([[1], [2], [3], [4]])
             return x
 
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(func).code)
-        np.testing.assert_allclose(paddle.jit.to_static(func)(x).numpy(),
-                                   np.array([[1], [2], [3], [4]]),
-                                   rtol=1e-05)
+        np.testing.assert_allclose(
+            paddle.jit.to_static(func)(x).numpy(),
+            np.array([[1], [2], [3], [4]]),
+            rtol=1e-05,
+        )
 
 
 if __name__ == '__main__':

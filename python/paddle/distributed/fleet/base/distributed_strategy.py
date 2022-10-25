@@ -15,7 +15,7 @@
 
 import paddle
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
-from paddle.fluid.framework import Variable, set_flags, core, _global_flags
+from paddle.fluid.framework import _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
 import google.protobuf.text_format
 import google.protobuf
@@ -26,7 +26,6 @@ non_auto_func_called = True
 
 
 def __non_auto_func_called__(func):
-
     def __impl__(*args, **kwargs):
         global non_auto_func_called
         non_auto_func_called = False
@@ -129,7 +128,8 @@ class DistributedStrategy(object):
         key = 'FLAGS_cudnn_batchnorm_spatial_persistent'
         if _global_flags().is_public(key):
             self.strategy.cudnn_batchnorm_spatial_persistent = bool(
-                _global_flags()[key])
+                _global_flags()[key]
+            )
         key = 'FLAGS_conv_workspace_size_limit'
         if _global_flags().is_public(key):
             self.strategy.conv_workspace_size_limit = int(_global_flags()[key])
@@ -144,8 +144,9 @@ class DistributedStrategy(object):
 
     def __setattr__(self, key, value):
         if self.__lock_attr and not hasattr(self, key):
-            raise TypeError("%s is not a attribute of %s" %
-                            (key, self.__class__.__name__))
+            raise TypeError(
+                "%s is not a attribute of %s" % (key, self.__class__.__name__)
+            )
         object.__setattr__(self, key, value)
 
     def save_to_prototxt(self, output):
@@ -180,7 +181,8 @@ class DistributedStrategy(object):
         """
         with open(pb_file, 'r') as f:
             self.strategy = google.protobuf.text_format.Merge(
-                str(f.read()), self.strategy)
+                str(f.read()), self.strategy
+            )
 
     @property
     def execution_strategy(self):
@@ -203,8 +205,11 @@ class DistributedStrategy(object):
         execution_strategy = paddle.fluid.ExecutionStrategy()
         fields = self.strategy.execution_strategy.DESCRIPTOR.fields
         for f in fields:
-            setattr(execution_strategy, f.name,
-                    getattr(self.strategy.execution_strategy, f.name))
+            setattr(
+                execution_strategy,
+                f.name,
+                getattr(self.strategy.execution_strategy, f.name),
+            )
         return execution_strategy
 
     @execution_strategy.setter
@@ -212,8 +217,11 @@ class DistributedStrategy(object):
     def execution_strategy(self, strategy):
         fields = self.strategy.execution_strategy.DESCRIPTOR.fields
         for f in fields:
-            setattr(self.strategy.execution_strategy, f.name,
-                    getattr(strategy, f.name))
+            setattr(
+                self.strategy.execution_strategy,
+                f.name,
+                getattr(strategy, f.name),
+            )
 
     @property
     def build_strategy(self):
@@ -261,8 +269,9 @@ class DistributedStrategy(object):
                     value = ReduceStrategyFleet(value)
                 setattr(self.strategy.build_strategy, f.name, value)
             elif f.label == 3:  # repeated field
-                getattr(self.strategy.build_strategy,
-                        f.name).extend(getattr(strategy, f.name))
+                getattr(self.strategy.build_strategy, f.name).extend(
+                    getattr(strategy, f.name)
+                )
 
     @property
     def gradient_scale_configs(self):
@@ -282,8 +291,11 @@ class DistributedStrategy(object):
     @gradient_scale_configs.setter
     @is_strict_auto
     def gradient_scale_configs(self, config):
-        check_configs_key(self.strategy.gradient_scale_configs, config,
-                          'gradient_scale_configs')
+        check_configs_key(
+            self.strategy.gradient_scale_configs,
+            config,
+            'gradient_scale_configs',
+        )
         assign_configs_value(self.strategy.gradient_scale_configs, config)
 
     @property
@@ -318,8 +330,10 @@ class DistributedStrategy(object):
             self.a_sync_configs = {"k_steps": 0}
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received {}"
-                .format(type(flag)))
+                "The type of `flag` is invalid, expected type is bool, but received {}".format(
+                    type(flag)
+                )
+            )
 
     @property
     def a_sync_configs(self):
@@ -365,8 +379,9 @@ class DistributedStrategy(object):
     @a_sync_configs.setter
     @is_strict_auto
     def a_sync_configs(self, configs):
-        check_configs_key(self.strategy.a_sync_configs, configs,
-                          "a_sync_configs")
+        check_configs_key(
+            self.strategy.a_sync_configs, configs, "a_sync_configs"
+        )
         assign_configs_value(self.strategy.a_sync_configs, configs)
 
     @property
@@ -430,14 +445,17 @@ class DistributedStrategy(object):
             self.strategy.adam_d2sum = flag
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received {}"
-                .format(type(flag)))
+                "The type of `flag` is invalid, expected type is bool, but received {}".format(
+                    type(flag)
+                )
+            )
 
     @trainer_desc_configs.setter
     @is_strict_auto
     def trainer_desc_configs(self, configs):
-        check_configs_key(self.strategy.trainer_desc_configs, configs,
-                          "trainer_desc_configs")
+        check_configs_key(
+            self.strategy.trainer_desc_configs, configs, "trainer_desc_configs"
+        )
         assign_configs_value(self.strategy.trainer_desc_configs, configs)
 
     @property
@@ -465,8 +483,9 @@ class DistributedStrategy(object):
     @fs_client_param.setter
     @is_strict_auto
     def fs_client_param(self, configs):
-        check_configs_key(self.strategy.fs_client_param, configs,
-                          "fs_client_param")
+        check_configs_key(
+            self.strategy.fs_client_param, configs, "fs_client_param"
+        )
         assign_configs_value(self.strategy.fs_client_param, configs)
 
     @property
@@ -477,6 +496,7 @@ class DistributedStrategy(object):
     @is_strict_auto
     def sparse_table_configs(self, configs):
         from google.protobuf.descriptor import FieldDescriptor
+
         table_param = self.strategy.downpour_table_param
 
         def set_table_config(msg, config_name, configs, index=0):
@@ -493,8 +513,9 @@ class DistributedStrategy(object):
                             data = getattr(msg, field.name).add()
                             set_table_config(data, name, configs, i)
                     else:
-                        set_table_config(getattr(msg, field.name), name,
-                                         configs)
+                        set_table_config(
+                            getattr(msg, field.name), name, configs
+                        )
                 else:
                     # print("not message:", name)
                     if name not in configs:
@@ -513,133 +534,204 @@ class DistributedStrategy(object):
             for table_name in configs:
                 table_data = table_param.add()
                 table_data.table_name = table_name
-                set_table_config(table_data, "table_parameters." + table_name,
-                                 configs[table_name])
+                set_table_config(
+                    table_data,
+                    "table_parameters." + table_name,
+                    configs[table_name],
+                )
 
     @sparse_table_configs.setter
     def fleet_desc_configs(self, configs):
-        support_sparse_key_list = ['sparse_table_class', 'sparse_compress_in_save', 'sparse_shard_num', \
-                                   'sparse_accessor_class', 'sparse_learning_rate', 'sparse_initial_g2sum', 'sparse_initial_range', \
-                                   'sparse_weight_bounds', 'sparse_fea_dim', 'sparse_embedx_dim', 'sparse_embedx_threshold', 'sparse_nonclk_coeff', \
-                                   'sparse_click_coeff', 'sparse_base_threshold', 'sparse_delta_threshold', 'sparse_delta_keep_days', \
-                                   'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold', \
-                                   'sparse_converter', 'sparse_deconverter', 'sparse_enable_cache', 'sparse_cache_rate', \
-                                   'sparse_cache_file_num', 'sparse_beta1_decay_rate', 'sparse_beta2_decay_rate', \
-                                   'sparse_ada_epsilon', 'sparse_optimizer', 'sparse_ssd_unseenday_threshold',
-                                   'embed_sparse_optimizer', 'embed_sparse_learning_rate', 'embed_sparse_weight_bounds', \
-                                   'embed_sparse_initial_range', 'embed_sparse_initial_g2sum', 'embed_sparse_beta1_decay_rate', \
-                                   'embed_sparse_beta2_decay_rate', 'embedx_sparse_optimizer', 'embedx_sparse_learning_rate', \
-                                   'embedx_sparse_weight_bounds', 'embedx_sparse_initial_range', 'embedx_sparse_initial_g2sum', \
-                                   'embedx_sparse_beta1_decay_rate', 'embedx_sparse_beta2_decay_rate', 'feature_learning_rate', 'nodeid_slot']
+        support_sparse_key_list = [
+            'sparse_table_class',
+            'sparse_compress_in_save',
+            'sparse_shard_num',
+            'sparse_accessor_class',
+            'sparse_learning_rate',
+            'sparse_initial_g2sum',
+            'sparse_initial_range',
+            'sparse_weight_bounds',
+            'sparse_fea_dim',
+            'sparse_embedx_dim',
+            'sparse_embedx_threshold',
+            'sparse_nonclk_coeff',
+            'sparse_click_coeff',
+            'sparse_base_threshold',
+            'sparse_delta_threshold',
+            'sparse_delta_keep_days',
+            'sparse_delete_after_unseen_days',
+            'sparse_show_click_decay_rate',
+            'sparse_delete_threshold',
+            'sparse_converter',
+            'sparse_deconverter',
+            'sparse_enable_cache',
+            'sparse_cache_rate',
+            'sparse_cache_file_num',
+            'sparse_beta1_decay_rate',
+            'sparse_beta2_decay_rate',
+            'sparse_ada_epsilon',
+            'sparse_optimizer',
+            'sparse_ssd_unseenday_threshold',
+            'embed_sparse_optimizer',
+            'embed_sparse_learning_rate',
+            'embed_sparse_weight_bounds',
+            'embed_sparse_initial_range',
+            'embed_sparse_initial_g2sum',
+            'embed_sparse_beta1_decay_rate',
+            'embed_sparse_beta2_decay_rate',
+            'embedx_sparse_optimizer',
+            'embedx_sparse_learning_rate',
+            'embedx_sparse_weight_bounds',
+            'embedx_sparse_initial_range',
+            'embedx_sparse_initial_g2sum',
+            'embedx_sparse_beta1_decay_rate',
+            'embedx_sparse_beta2_decay_rate',
+            'feature_learning_rate',
+            'nodeid_slot',
+        ]
         support_sparse_table_class = ['DownpourSparseTable']
         support_sparse_accessor_class = [
-            'DownpourSparseValueAccessor', 'DownpourCtrAccessor',
-            'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor',
-            'DownpourDoubleUnitAccessor', 'DownpourCtrDymfAccessor'
+            'DownpourSparseValueAccessor',
+            'DownpourCtrAccessor',
+            'DownpourCtrDoubleAccessor',
+            'DownpourUnitAccessor',
+            'DownpourDoubleUnitAccessor',
+            'DownpourCtrDymfAccessor',
         ]
-        from google.protobuf.descriptor import FieldDescriptor
         table_param = self.strategy.downpour_table_param
 
         def add_graph_config(graph, strategy):
-            graph.feature_learning_rate = strategy.get('feature_learning_rate',
-                                                       0.05)
+            graph.feature_learning_rate = strategy.get(
+                'feature_learning_rate', 0.05
+            )
             graph.nodeid_slot = strategy.get('nodeid_slot', 9008)
 
         def sparse_optimizer_config(sgd, strategy, prefix):
-            optimizer_name = strategy.get(prefix + "sparse_optimizer",
-                                          "adagrad")
+            optimizer_name = strategy.get(
+                prefix + "sparse_optimizer", "adagrad"
+            )
             sgd.name = optimizer_name
             if optimizer_name == "naive":
                 sgd.name = "SparseNaiveSGDRule"
                 sgd.naive.learning_rate = strategy.get(
-                    prefix + 'sparse_learning_rate', 0.05)
+                    prefix + 'sparse_learning_rate', 0.05
+                )
                 sgd.naive.initial_range = strategy.get(
-                    prefix + 'sparse_initial_range', 1e-4)
-                bounds = strategy.get(prefix + 'sparse_weight_bounds',
-                                      [-10, 10])
+                    prefix + 'sparse_initial_range', 1e-4
+                )
+                bounds = strategy.get(
+                    prefix + 'sparse_weight_bounds', [-10, 10]
+                )
                 sgd.naive.weight_bounds.extend(bounds)
             elif optimizer_name == "adagrad":
                 sgd.name = 'SparseAdaGradSGDRule'
                 sgd.adagrad.learning_rate = strategy.get(
-                    prefix + 'sparse_learning_rate', 0.05)
+                    prefix + 'sparse_learning_rate', 0.05
+                )
                 sgd.adagrad.initial_range = strategy.get(
-                    prefix + 'sparse_initial_range', 1e-4)
+                    prefix + 'sparse_initial_range', 1e-4
+                )
                 if prefix == "embed_":
                     sgd.adagrad.initial_range = 0
                 sgd.adagrad.initial_g2sum = strategy.get(
-                    prefix + 'sparse_initial_g2sum', 3)
-                bounds = strategy.get(prefix + 'sparse_weight_bounds',
-                                      [-10, 10])
+                    prefix + 'sparse_initial_g2sum', 3
+                )
+                bounds = strategy.get(
+                    prefix + 'sparse_weight_bounds', [-10, 10]
+                )
                 sgd.adagrad.weight_bounds.extend(bounds)
             elif optimizer_name == "std_adagrad":
                 sgd.name = 'StdAdaGradSGDRule'
                 sgd.adagrad.learning_rate = strategy.get(
-                    prefix + 'sparse_learning_rate', 0.05)
+                    prefix + 'sparse_learning_rate', 0.05
+                )
                 sgd.adagrad.initial_range = strategy.get(
-                    prefix + 'sparse_initial_range', 1e-4)
+                    prefix + 'sparse_initial_range', 1e-4
+                )
                 if prefix == "embed_":
                     sgd.adagrad.initial_range = 0
                 sgd.adagrad.initial_g2sum = strategy.get(
-                    prefix + 'sparse_initial_g2sum', 3)
-                bounds = strategy.get(prefix + 'sparse_weight_bounds',
-                                      [-10, 10])
+                    prefix + 'sparse_initial_g2sum', 3
+                )
+                bounds = strategy.get(
+                    prefix + 'sparse_weight_bounds', [-10, 10]
+                )
                 sgd.adagrad.weight_bounds.extend(bounds)
             elif optimizer_name == "adam":
                 sgd.name = 'SparseAdamSGDRule'
                 sgd.adam.learning_rate = strategy.get(
-                    prefix + 'sparse_learning_rate', 0.001)
+                    prefix + 'sparse_learning_rate', 0.001
+                )
                 sgd.adam.initial_range = strategy.get(
-                    prefix + 'sparse_initial_range', 1e-4)
+                    prefix + 'sparse_initial_range', 1e-4
+                )
                 sgd.adam.beta1_decay_rate = strategy.get(
-                    prefix + 'sparse_beta1_decay_rate', 0.9)
+                    prefix + 'sparse_beta1_decay_rate', 0.9
+                )
                 sgd.adam.beta2_decay_rate = strategy.get(
-                    prefix + 'sparse_beta2_decay_rate', 0.999)
+                    prefix + 'sparse_beta2_decay_rate', 0.999
+                )
                 sgd.adam.ada_epsilon = strategy.get(
-                    prefix + 'sparse_ada_epsilon', 1e-8)
-                bounds = strategy.get(prefix + 'sparse_weight_bounds',
-                                      [-10, 10])
+                    prefix + 'sparse_ada_epsilon', 1e-8
+                )
+                bounds = strategy.get(
+                    prefix + 'sparse_weight_bounds', [-10, 10]
+                )
                 sgd.adam.weight_bounds.extend(bounds)
             elif optimizer_name == "shared_adam":
                 sgd.name = 'SparseSharedAdamSGDRule'
                 sgd.adam.learning_rate = strategy.get(
-                    prefix + 'sparse_learning_rate', 0.001)
+                    prefix + 'sparse_learning_rate', 0.001
+                )
                 sgd.adam.initial_range = strategy.get(
-                    prefix + 'sparse_initial_range', 1e-4)
+                    prefix + 'sparse_initial_range', 1e-4
+                )
                 sgd.adam.beta1_decay_rate = strategy.get(
-                    prefix + 'sparse_beta1_decay_rate', 0.9)
+                    prefix + 'sparse_beta1_decay_rate', 0.9
+                )
                 sgd.adam.beta2_decay_rate = strategy.get(
-                    prefix + 'sparse_beta2_decay_rate', 0.999)
+                    prefix + 'sparse_beta2_decay_rate', 0.999
+                )
                 sgd.adam.ada_epsilon = strategy.get(
-                    prefix + 'sparse_ada_epsilon', 1e-8)
-                bounds = strategy.get(prefix + 'sparse_weight_bounds',
-                                      [-10, 10])
+                    prefix + 'sparse_ada_epsilon', 1e-8
+                )
+                bounds = strategy.get(
+                    prefix + 'sparse_weight_bounds', [-10, 10]
+                )
                 sgd.adam.weight_bounds.extend(bounds)
 
         def set_sparse_table_config(table_data, config):
             for key in config:
                 if key not in support_sparse_key_list:
                     raise ValueError("strategy key '%s' not support" % (key))
-            table_class = config.get("sparse_table_class",
-                                     "DownpourSparseTable")
+            table_class = config.get(
+                "sparse_table_class", "DownpourSparseTable"
+            )
             if table_class not in support_sparse_table_class:
                 raise ValueError(
                     "support sparse_table_class: ['DownpourSparseTable'], but actual %s"
-                    % (table_class))
+                    % (table_class)
+                )
             table_data.table_class = 'MemorySparseTable'
             table_data.shard_num = config.get('sparse_shard_num', 1000)
             table_data.enable_sparse_table_cache = config.get(
-                'sparse_enable_cache', True)
+                'sparse_enable_cache', True
+            )
             table_data.sparse_table_cache_rate = config.get(
-                'sparse_cache_rate', 0.00055)
+                'sparse_cache_rate', 0.00055
+            )
             table_data.sparse_table_cache_file_num = config.get(
-                'sparse_cache_file_num', 16)
+                'sparse_cache_file_num', 16
+            )
 
-            accessor_class = config.get("sparse_accessor_class",
-                                        "DownpourCtrAccessor")
+            accessor_class = config.get(
+                "sparse_accessor_class", "DownpourCtrAccessor"
+            )
             if accessor_class not in support_sparse_accessor_class:
                 raise ValueError(
                     "support sparse_accessor_class: ['DownpourSparseValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDoubleAccessor', 'DownpourUnitAccessor', 'DownpourDoubleUnitAccessor'], but actual %s"
-                    % (accessor_class))
+                    % (accessor_class)
+                )
 
             if accessor_class.find("Double") >= 0:
                 table_data.accessor.accessor_class = 'CtrDoubleAccessor'
@@ -654,7 +746,8 @@ class DistributedStrategy(object):
             table_data.accessor.embedx_dim = config.get('sparse_embedx_dim', 8)
             table_data.accessor.fea_dim = table_data.accessor.embedx_dim + 3
             table_data.accessor.embedx_threshold = config.get(
-                'sparse_embedx_threshold', 10)
+                'sparse_embedx_threshold', 10
+            )
 
             if accessor_class == 'DownpourUnitAccessor':
                 table_data.accessor.ctr_accessor_param.show_scale = False
@@ -662,23 +755,32 @@ class DistributedStrategy(object):
                 table_data.accessor.ctr_accessor_param.show_scale = True
 
             table_data.accessor.ctr_accessor_param.nonclk_coeff = config.get(
-                'sparse_nonclk_coeff', 0.1)
+                'sparse_nonclk_coeff', 0.1
+            )
             table_data.accessor.ctr_accessor_param.click_coeff = config.get(
-                'sparse_click_coeff', 1)
+                'sparse_click_coeff', 1
+            )
             table_data.accessor.ctr_accessor_param.base_threshold = config.get(
-                'sparse_base_threshold', 1.5)
+                'sparse_base_threshold', 1.5
+            )
             table_data.accessor.ctr_accessor_param.delta_threshold = config.get(
-                'sparse_delta_threshold', 0.25)
+                'sparse_delta_threshold', 0.25
+            )
             table_data.accessor.ctr_accessor_param.delta_keep_days = config.get(
-                'sparse_delta_keep_days', 16)
-            table_data.accessor.ctr_accessor_param.show_click_decay_rate = config.get(
-                'sparse_show_click_decay_rate', 0.98)
-            table_data.accessor.ctr_accessor_param.delete_threshold = config.get(
-                'sparse_delete_threshold', 0.8)
-            table_data.accessor.ctr_accessor_param.delete_after_unseen_days = config.get(
-                'sparse_delete_after_unseen_days', 30)
-            table_data.accessor.ctr_accessor_param.ssd_unseenday_threshold = config.get(
-                'sparse_ssd_unseenday_threshold', 1)
+                'sparse_delta_keep_days', 16
+            )
+            table_data.accessor.ctr_accessor_param.show_click_decay_rate = (
+                config.get('sparse_show_click_decay_rate', 0.98)
+            )
+            table_data.accessor.ctr_accessor_param.delete_threshold = (
+                config.get('sparse_delete_threshold', 0.8)
+            )
+            table_data.accessor.ctr_accessor_param.delete_after_unseen_days = (
+                config.get('sparse_delete_after_unseen_days', 30)
+            )
+            table_data.accessor.ctr_accessor_param.ssd_unseenday_threshold = (
+                config.get('sparse_ssd_unseenday_threshold', 1)
+            )
             converter = config.get('sparse_converter', "")
             deconverter = config.get('sparse_deconverter', "")
 
@@ -692,23 +794,33 @@ class DistributedStrategy(object):
             save_data2.converter = converter
             save_data2.deconverter = deconverter
 
-            if accessor_class == 'DownpourCtrAccessor' or accessor_class == 'DownpourCtrDoubleAccessor':
-                sparse_optimizer_config(table_data.accessor.embed_sgd_param,
-                                        config, '')
-                sparse_optimizer_config(table_data.accessor.embedx_sgd_param,
-                                        config, '')
+            if (
+                accessor_class == 'DownpourCtrAccessor'
+                or accessor_class == 'DownpourCtrDoubleAccessor'
+            ):
+                sparse_optimizer_config(
+                    table_data.accessor.embed_sgd_param, config, ''
+                )
+                sparse_optimizer_config(
+                    table_data.accessor.embedx_sgd_param, config, ''
+                )
             else:
-                sparse_optimizer_config(table_data.accessor.embed_sgd_param,
-                                        config, 'embed_')
-                sparse_optimizer_config(table_data.accessor.embedx_sgd_param,
-                                        config, 'embedx_')
+                sparse_optimizer_config(
+                    table_data.accessor.embed_sgd_param, config, 'embed_'
+                )
+                sparse_optimizer_config(
+                    table_data.accessor.embedx_sgd_param, config, 'embedx_'
+                )
             add_graph_config(table_data.accessor.graph_sgd_param, config)
 
         if not configs:
             print("fleet desc config is empty")
         else:
             for table_name in configs:
-                if table_name == 'dense_table' or table_name == 'datanorm_table':
+                if (
+                    table_name == 'dense_table'
+                    or table_name == 'datanorm_table'
+                ):
                     continue
                 if type(configs[table_name]) != dict:
                     continue
@@ -1137,8 +1249,9 @@ class DistributedStrategy(object):
     @recompute_configs.setter
     @is_strict_auto
     def recompute_configs(self, configs):
-        check_configs_key(self.strategy.recompute_configs, configs,
-                          "checkpoint_configs")
+        check_configs_key(
+            self.strategy.recompute_configs, configs, "checkpoint_configs"
+        )
         assign_configs_value(self.strategy.recompute_configs, configs)
 
     @property
@@ -1231,8 +1344,9 @@ class DistributedStrategy(object):
     @sharding_configs.setter
     @is_strict_auto
     def sharding_configs(self, configs):
-        check_configs_key(self.strategy.sharding_configs, configs,
-                          "sharding_configs")
+        check_configs_key(
+            self.strategy.sharding_configs, configs, "sharding_configs"
+        )
         assign_configs_value(self.strategy.sharding_configs, configs)
 
     @property
@@ -1413,8 +1527,9 @@ class DistributedStrategy(object):
     @pipeline_configs.setter
     @is_strict_auto
     def pipeline_configs(self, configs):
-        check_configs_key(self.strategy.pipeline_configs, configs,
-                          "pipeline_configs")
+        check_configs_key(
+            self.strategy.pipeline_configs, configs, "pipeline_configs"
+        )
         assign_configs_value(self.strategy.pipeline_configs, configs)
 
     @property
@@ -1468,8 +1583,11 @@ class DistributedStrategy(object):
     @tensor_parallel_configs.setter
     @is_strict_auto
     def tensor_parallel_configs(self, configs):
-        check_configs_key(self.strategy.tensor_parallel_configs, configs,
-                          "tensor_parallel_configs")
+        check_configs_key(
+            self.strategy.tensor_parallel_configs,
+            configs,
+            "tensor_parallel_configs",
+        )
         assign_configs_value(self.strategy.tensor_parallel_configs, configs)
 
     @property
@@ -1502,8 +1620,9 @@ class DistributedStrategy(object):
 
     @hybrid_configs.setter
     def hybrid_configs(self, configs):
-        check_configs_key(self.strategy.hybrid_configs, configs,
-                          "hybrid_configs")
+        check_configs_key(
+            self.strategy.hybrid_configs, configs, "hybrid_configs"
+        )
         assign_configs_value(self.strategy.hybrid_configs, configs)
 
     @property
@@ -1559,8 +1678,9 @@ class DistributedStrategy(object):
     @localsgd_configs.setter
     @is_strict_auto
     def localsgd_configs(self, configs):
-        check_configs_key(self.strategy.localsgd_configs, configs,
-                          "localsgd_configs")
+        check_configs_key(
+            self.strategy.localsgd_configs, configs, "localsgd_configs"
+        )
         assign_configs_value(self.strategy.localsgd_configs, configs)
 
     @property
@@ -1618,8 +1738,11 @@ class DistributedStrategy(object):
     @adaptive_localsgd_configs.setter
     @is_strict_auto
     def adaptive_localsgd_configs(self, configs):
-        check_configs_key(self.strategy.adaptive_localsgd_configs, configs,
-                          "adaptive_localsgd_configs")
+        check_configs_key(
+            self.strategy.adaptive_localsgd_configs,
+            configs,
+            "adaptive_localsgd_configs",
+        )
         assign_configs_value(self.strategy.adaptive_localsgd_configs, configs)
 
     @property
@@ -1763,8 +1886,9 @@ class DistributedStrategy(object):
     @gradient_merge_configs.setter
     @is_strict_auto
     def gradient_merge_configs(self, configs):
-        check_configs_key(self.strategy.gradient_merge_configs, configs,
-                          "gradient_configs")
+        check_configs_key(
+            self.strategy.gradient_merge_configs, configs, "gradient_configs"
+        )
         assign_configs_value(self.strategy.gradient_merge_configs, configs)
 
     @property
@@ -2244,7 +2368,8 @@ class DistributedStrategy(object):
 
         h1_format = "    " + "|{{:^{}s}}|\n".format(length)
         h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
-            max_k, " " * spacing, max_v)
+            max_k, " " * spacing, max_v
+        )
 
         border = "    +" + "".join(["="] * length) + "+"
         line = "    +" + "".join(["-"] * length) + "+"
@@ -2269,37 +2394,48 @@ class DistributedStrategy(object):
                         if getattr(self.strategy, f.name):
                             draws += border + "\n"
                             draws += h1_format.format(
-                                "{}=True <-> {}_configs".format(f.name, f.name))
+                                "{}=True <-> {}_configs".format(f.name, f.name)
+                            )
                             draws += line + "\n"
-                            my_configs = getattr(self.strategy,
-                                                 f.name + "_configs")
+                            my_configs = getattr(
+                                self.strategy, f.name + "_configs"
+                            )
                             config_fields = my_configs.DESCRIPTOR.fields
                             for ff in config_fields:
                                 if isinstance(
-                                        getattr(my_configs,
-                                                ff.name), google.protobuf.pyext.
-                                        _message.RepeatedScalarContainer):
+                                    getattr(my_configs, ff.name),
+                                    google.protobuf.pyext._message.RepeatedScalarContainer,
+                                ):
                                     values = getattr(my_configs, ff.name)
                                     for i, v in enumerate(values):
                                         if i == 0:
                                             draws += h2_format.format(
-                                                ff.name, str(v))
+                                                ff.name, str(v)
+                                            )
                                         else:
                                             draws += h2_format.format(
-                                                "", str(v))
+                                                "", str(v)
+                                            )
                                 else:
                                     draws += h2_format.format(
                                         ff.name,
-                                        str(getattr(my_configs, ff.name)))
+                                        str(getattr(my_configs, ff.name)),
+                                    )
                     else:
                         env_draws += h2_format.format(
-                            f.name, str(getattr(self.strategy, f.name)))
+                            f.name, str(getattr(self.strategy, f.name))
+                        )
                 else:
                     env_draws += h2_format.format(
-                        f.name, str(getattr(self.strategy, f.name)))
+                        f.name, str(getattr(self.strategy, f.name))
+                    )
 
-        result_res = draws + border + "\n" + h1_format.format(
-            "Environment Flags, Communication Flags")
+        result_res = (
+            draws
+            + border
+            + "\n"
+            + h1_format.format("Environment Flags, Communication Flags")
+        )
         result_res += env_draws
 
         build_strategy_str = border + "\n"
@@ -2309,7 +2445,8 @@ class DistributedStrategy(object):
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
             build_strategy_str += h2_format.format(
-                f.name, str(getattr(self.strategy.build_strategy, f.name)))
+                f.name, str(getattr(self.strategy.build_strategy, f.name))
+            )
         build_strategy_str += border + "\n"
 
         execution_strategy_str = h1_format.format("Execution Strategy")
@@ -2318,7 +2455,8 @@ class DistributedStrategy(object):
         fields = self.strategy.execution_strategy.DESCRIPTOR.fields
         for f in fields:
             execution_strategy_str += h2_format.format(
-                f.name, str(getattr(self.strategy.execution_strategy, f.name)))
+                f.name, str(getattr(self.strategy.execution_strategy, f.name))
+            )
         execution_strategy_str += border + "\n"
 
         result_res += build_strategy_str + execution_strategy_str

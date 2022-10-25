@@ -22,12 +22,11 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTFlattenTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 6, 64, 64],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32"
+            )
             flatten_out = self.append_flatten(data)
             out = fluid.layers.batch_norm(flatten_out, is_test=True)
         self.feeds = {
@@ -35,7 +34,8 @@ class TRTFlattenTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTFlattenTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def append_flatten(self, data):
@@ -46,16 +46,16 @@ class TRTFlattenTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTFlattenDynamicTest(InferencePassTest):
-
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data",
-                              shape=[-1, 6, 64, 64],
-                              dtype="float32")
+            data = fluid.data(
+                name="data", shape=[-1, 6, 64, 64], dtype="float32"
+            )
             flatten_out = self.append_flatten(data)
             out = fluid.layers.batch_norm(flatten_out, is_test=True)
         self.feeds = {
@@ -63,18 +63,14 @@ class TRTFlattenDynamicTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTFlattenDynamicTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
         self.dynamic_shape_params = TRTFlattenDynamicTest.DynamicShapeParam(
-            {
-                'data': [2, 6, 64, 64],
-                'flatten_0.tmp_0': [2, 6 * 64 * 64]
-            }, {
-                'data': [2, 6, 64, 64],
-                'flatten_0.tmp_0': [2, 6 * 64 * 64]
-            }, {
-                'data': [2, 6, 64, 64],
-                'flatten_0.tmp_0': [2, 6 * 64 * 64]
-            }, False)
+            {'data': [2, 6, 64, 64], 'flatten_0.tmp_0': [2, 6 * 64 * 64]},
+            {'data': [2, 6, 64, 64], 'flatten_0.tmp_0': [2, 6 * 64 * 64]},
+            {'data': [2, 6, 64, 64], 'flatten_0.tmp_0': [2, 6 * 64 * 64]},
+            False,
+        )
         self.fetch_list = [out]
 
     def append_flatten(self, data):
@@ -85,7 +81,8 @@ class TRTFlattenDynamicTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 if __name__ == "__main__":

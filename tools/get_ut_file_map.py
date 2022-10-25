@@ -14,7 +14,6 @@
 
 import os
 import sys
-import re
 import json
 
 
@@ -35,8 +34,9 @@ def get_all_paddle_file(rootPath):
 def get_all_uts(rootPath):
     all_uts_paddle = '%s/build/all_uts_paddle' % rootPath
     os.system(
-        'cd %s/build && ctest -N -V | grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > %s'
-        % (rootPath, all_uts_paddle))
+        r'cd %s/build && ctest -N -V | grep -Ei "Test[ \t]+#" | grep -oEi "\w+$" > %s'
+        % (rootPath, all_uts_paddle)
+    )
 
 
 def remove_useless_file(rootPath):
@@ -76,10 +76,11 @@ def handle_ut_file_map(rootPath):
                     continue
                 elif line.startswith('/paddle/build'):
                     source_file = line.replace('/build', '')
-                    #source_file = re.sub('.pb.*', '.proto', source_file)
+                    # source_file = re.sub('.pb.*', '.proto', source_file)
                 elif 'precise test map fileeee:' in line:
-                    source_file = line.split(
-                        'precise test map fileeee:')[1].strip()
+                    source_file = line.split('precise test map fileeee:')[
+                        1
+                    ].strip()
                 else:
                     source_file = line
                 if source_file not in ut_file_map:
@@ -194,7 +195,8 @@ def ut_file_map_supplement(rootPath):
             if not os.path.exists(filename) and ut not in prec_delta_new_list:
                 prec_delta_new_list.append(ut)
     prec_delta_new_list.append(
-        'test_py_reader_error_msg')  #add a python case for pycoverage
+        'test_py_reader_error_msg'
+    )  # add a python case for pycoverage
     prec_delta_file = open("/pre_test/prec_delta", 'w')
     for ut in prec_delta_new_list:
         prec_delta_file.write(ut + '\n')

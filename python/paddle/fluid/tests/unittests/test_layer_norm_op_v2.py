@@ -12,21 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from op_test import OpTest, _set_use_system_allocator
-from paddle.fluid.framework import grad_var_name, _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 import paddle
 
 
 class TestDygraphLayerNormv2(unittest.TestCase):
-
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
@@ -117,7 +113,6 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
 
 class TestLayerNormFunction(unittest.TestCase):
-
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
@@ -165,10 +160,12 @@ class TestLayerNormFunction(unittest.TestCase):
             y4 = compute_v4(x)
             np.testing.assert_allclose(y3, y4, rtol=1e-05)
 
-            self.assertRaises(ValueError,
-                              paddle.nn.functional.layer_norm,
-                              x=x,
-                              normalized_shape=1.0)
+            self.assertRaises(
+                ValueError,
+                paddle.nn.functional.layer_norm,
+                x=x,
+                normalized_shape=1.0,
+            )
 
 
 if __name__ == '__main__':

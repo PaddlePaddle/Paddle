@@ -12,21 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, IgnoreReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
+class FcElementLayernormFusePassDataGen:
+    def __init__(self, min_v, max_v, shape, dtype):
+        self.min_v = min_v
+        self.max_v = max_v
+        self.shape = shape
+        self.dtype = dtype
+
+    def __call__(self):
+        return np.random.normal(self.min_v, self.max_v, self.shape).astype(
+            self.dtype
+        )
+
+
 class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
-    """
+    r"""
     x_var   w(persistable) bias_var(persistable)
       \     |              /
           fc
@@ -48,18 +56,20 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of fc
         x_shape = draw(
-            st.lists(st.integers(min_value=1, max_value=8),
-                     min_size=2,
-                     max_size=5))
+            st.lists(
+                st.integers(min_value=1, max_value=8), min_size=2, max_size=5
+            )
+        )
         x_shape = [2, 1]
         x_rank = len(x_shape)
         # 2. Generate attr:in_num_col_dims of fc
         in_num_col_dims = draw(st.integers(min_value=1, max_value=x_rank - 1))
         # 3. Generate legal shape of input:W/bias of fc
         w_shape = draw(
-            st.lists(st.integers(min_value=1, max_value=8),
-                     min_size=2,
-                     max_size=2))
+            st.lists(
+                st.integers(min_value=1, max_value=8), min_size=2, max_size=2
+            )
+        )
         w_shape[0] = int(np.prod(x_shape[in_num_col_dims:]))
         w_shape = [1, 2]
         fc_bias_shape = [
@@ -76,17 +86,14 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
         axis = draw(st.integers(min_value=-1, max_value=0))
         # 5. Generate legal shape of layer_norm
         begin_norm_axis = draw(
-            st.integers(min_value=1, max_value=len(fc_out_shape) - 1))
+            st.integers(min_value=1, max_value=len(fc_out_shape) - 1)
+        )
         layer_norm_shape = [int(np.prod(fc_out_shape[begin_norm_axis:]))]
         epsilon = 1e-5
 
         fc_op = OpConfig(
             "fc",
-            inputs={
-                "Input": ["fc_x"],
-                "W": ["fc_w"],
-                "Bias": ["fc_bias"]
-            },
+            inputs={"Input": ["fc_x"], "W": ["fc_w"], "Bias": ["fc_bias"]},
             outputs={"Out": ["fc_out"]},
             in_num_col_dims=in_num_col_dims,
             padding_weights=False,
@@ -96,26 +103,25 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
         )
         add_op = OpConfig(
             "elementwise_add",
-            inputs={
-                "X": ["fc_out"],
-                "Y": ["add_bias"]
-            },
+            inputs={"X": ["fc_out"], "Y": ["add_bias"]},
             outputs={"Out": ["add_out"]},
             axis=axis,
         )
-        layer_norm_op = OpConfig("layer_norm",
-                                 inputs={
-                                     "X": ["add_out"],
-                                     "Scale": ["scale"],
-                                     "Bias": ["layer_norm_bias"]
-                                 },
-                                 outputs={
-                                     "Y": ["layer_norm_out"],
-                                     "Mean": ["layer_norm_mean"],
-                                     "Variance": ["layer_norm_var"]
-                                 },
-                                 begin_norm_axis=begin_norm_axis,
-                                 epsilon=epsilon)
+        layer_norm_op = OpConfig(
+            "layer_norm",
+            inputs={
+                "X": ["add_out"],
+                "Scale": ["scale"],
+                "Bias": ["layer_norm_bias"],
+            },
+            outputs={
+                "Y": ["layer_norm_out"],
+                "Mean": ["layer_norm_mean"],
+                "Variance": ["layer_norm_var"],
+            },
+            begin_norm_axis=begin_norm_axis,
+            epsilon=epsilon,
+        )
 
         ops = [fc_op, add_op, layer_norm_op]
         program_config = ProgramConfig(
@@ -124,7 +130,12 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
                 "fc_w": TensorConfig(shape=w_shape),
                 "fc_bias": TensorConfig(shape=fc_bias_shape),
                 "add_bias": TensorConfig(shape=add_bias_shape),
-                "scale": TensorConfig(shape=layer_norm_shape),
+                "scale": TensorConfig(
+                    shape=layer_norm_shape,
+                    data_gen=FcElementLayernormFusePassDataGen(
+                        0.0, 0.5, layer_norm_shape, np.float32
+                    ),
+                ),
                 "layer_norm_bias": TensorConfig(shape=layer_norm_shape),
             },
             inputs={
@@ -135,9 +146,11 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(quant=False,
-                            max_examples=300,
-                            passes=["fc_elementwise_layernorm_fuse_pass"])
+        self.run_and_statis(
+            quant=False,
+            max_examples=300,
+            passes=["fc_elementwise_layernorm_fuse_pass"],
+        )
 
 
 if __name__ == "__main__":

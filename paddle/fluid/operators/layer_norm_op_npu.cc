@@ -21,7 +21,7 @@ namespace operators {
 using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 class NormDataType;

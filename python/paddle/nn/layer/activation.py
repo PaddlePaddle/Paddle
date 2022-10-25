@@ -14,7 +14,6 @@
 
 # TODO: define activation functions of neural network
 
-from ...framework import ParamAttr
 from ..initializer import Constant
 from paddle.framework import get_default_dtype
 from .. import functional as F
@@ -403,12 +402,14 @@ class PReLU(Layer):
             #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
     """
 
-    def __init__(self,
-                 num_parameters=1,
-                 init=0.25,
-                 weight_attr=None,
-                 data_format="NCHW",
-                 name=None):
+    def __init__(
+        self,
+        num_parameters=1,
+        init=0.25,
+        weight_attr=None,
+        data_format="NCHW",
+        name=None,
+    ):
         super(PReLU, self).__init__()
         self._num_parameters = num_parameters
         self._init = init
@@ -416,12 +417,13 @@ class PReLU(Layer):
         self._name = name
         self._data_format = data_format
 
-        self._weight = self.create_parameter(attr=self._weight_attr,
-                                             shape=[self._num_parameters],
-                                             dtype=get_default_dtype(),
-                                             is_bias=False,
-                                             default_initializer=Constant(
-                                                 self._init))
+        self._weight = self.create_parameter(
+            attr=self._weight_attr,
+            shape=[self._num_parameters],
+            dtype=get_default_dtype(),
+            is_bias=False,
+            default_initializer=Constant(self._init),
+        )
 
     def forward(self, x):
         return F.prelu(x, self._weight, data_format=self._data_format)
@@ -429,8 +431,12 @@ class PReLU(Layer):
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'num_parameters={}, data_format={}, init={}, dtype={}{}'.format(
-            self._num_parameters, self._data_format, self._init, self._dtype,
-            name_str)
+            self._num_parameters,
+            self._data_format,
+            self._init,
+            self._dtype,
+            name_str,
+        )
 
 
 class RReLU(Layer):
@@ -504,22 +510,22 @@ class RReLU(Layer):
             #   [ 6.          7.          8.          9.        ]]]]
     """
 
-    def __init__(self, lower=1. / 8., upper=1. / 3., name=None):
+    def __init__(self, lower=1.0 / 8.0, upper=1.0 / 3.0, name=None):
         super(RReLU, self).__init__()
         self._lower = lower
         self._upper = upper
         self._name = name
 
     def forward(self, x):
-        return F.rrelu(x,
-                       lower=self._lower,
-                       upper=self._upper,
-                       training=self.training)
+        return F.rrelu(
+            x, lower=self._lower, upper=self._upper, training=self.training
+        )
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
         return 'lower={}, upper={}, training={}, dtype={}{}'.format(
-            self._lower, self._upper, self.training, self._dtype, name_str)
+            self._lower, self._upper, self.training, self._dtype, name_str
+        )
 
 
 class ReLU(Layer):
@@ -638,10 +644,12 @@ class SELU(Layer):
             # [[0, 1.050701],[2.101402, 3.152103]]
     """
 
-    def __init__(self,
-                 scale=1.0507009873554804934193349852946,
-                 alpha=1.6732632423543772848170429916717,
-                 name=None):
+    def __init__(
+        self,
+        scale=1.0507009873554804934193349852946,
+        alpha=1.6732632423543772848170429916717,
+        name=None,
+    ):
         super(SELU, self).__init__()
         self._scale = scale
         self._alpha = alpha
@@ -652,8 +660,9 @@ class SELU(Layer):
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'scale={:.16f}, alpha={:.16f}{}'.format(self._scale, self._alpha,
-                                                       name_str)
+        return 'scale={:.16f}, alpha={:.16f}{}'.format(
+            self._scale, self._alpha, name_str
+        )
 
 
 class LeakyReLU(Layer):
@@ -836,8 +845,9 @@ class Softplus(Layer):
 
     def extra_repr(self):
         name_str = ', name={}'.format(self._name) if self._name else ''
-        return 'beta={}, threshold={}{}'.format(self._beta, self._threshold,
-                                                name_str)
+        return 'beta={}, threshold={}{}'.format(
+            self._beta, self._threshold, name_str
+        )
 
 
 class Softshrink(Layer):
@@ -1470,8 +1480,11 @@ class Softmax2D(Layer):
         self._name = name
 
     def forward(self, x):
-        assert x.ndim == 3 or x.ndim == 4, "Softmax2D requires a 3D or 4D tensor as input. Received: {}D.".format(
-            x.ndim)
+        assert (
+            x.ndim == 3 or x.ndim == 4
+        ), "Softmax2D requires a 3D or 4D tensor as input. Received: {}D.".format(
+            x.ndim
+        )
         return F.softmax(x, axis=-3, dtype=self._dtype, name=self._name)
 
     def extra_repr(self):
