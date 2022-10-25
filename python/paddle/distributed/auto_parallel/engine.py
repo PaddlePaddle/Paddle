@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import copy
 import logging
 import random
 import numpy as np
@@ -158,6 +159,7 @@ class Engine:
                 " or `paddle.fluid.optimizer.Optimizer`."
             )
         self._optimizer = validate_opt(optimizer)
+        self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         metrics = metrics or []
         for metric in to_list(metrics):
@@ -195,6 +197,7 @@ class Engine:
         self._orig_dist_context = get_default_distributed_context()
         self._dist_contexts = {}
         self._fwd_main_progs = {}
+        self._fwd_dist_contexts = {}
         self._serial_main_progs = {}
         self._serial_startup_progs = {}
         self._dist_main_progs = defaultdict(dict)  # dist main programs
@@ -212,12 +215,14 @@ class Engine:
         self._labels_spec = []
         self._inputs = []
         self._labels = []
+        self._losses = []
 
         self._skip_build = False
         self._outside_dataloader = False
         self._planned_mode = None
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
+        self._mode = None
 
         self.history = None
 
@@ -584,6 +589,16 @@ class Engine:
 
         self._set_recompute_ckpts()
         self._dist_contexts[mode] = DistributedContext(
+            serial_main_prog,
+            serial_startup_prog,
+            self._optimizer,
+            self._losses,
+            feed_vars,
+            fetch_vars,
+            self._cluster,
+            self._strategy,
+        )
+        self._fwd_dist_contexts[mode] = DistributedContext(
             serial_main_prog,
             serial_startup_prog,
             self._optimizer,
@@ -1640,7 +1655,7 @@ class Engine:
         )
         return self._state_dict, self._dist_attr
 
-    def cost(self, inputs_spec=None, labels_spec=None, mode="train"):
+    def cost(self, inputs_spec=None, labels_spec=None, mode=None):
         """
         Get and Print cost, including memory of every rank,
         max memory among all ranks, and the global cost of one step based on
@@ -1651,7 +1666,7 @@ class Engine:
         Args:
             inputs_spec(InputSpec): The specification of inputs. Default: None.
             labels_spec(InputSpec): The specification of labels. Default: None.
-            mode (str): The engine mode must be in ["train", "predict", "eval"]. Default: "train".
+            mode (str): The engine mode must be in ["train", "predict", "eval"]. Default: None.
 
         Returns:
             Return the global execution time (ms) and max memory (B).
@@ -1665,6 +1680,8 @@ class Engine:
             return
 
         # Check mode
+        mode = mode if mode is not None else self._mode
+        assert mode is not None, "Please set mode."
         if mode not in self._has_prepared:
             raise ValueError(
                 "The mode {} is not in accepted modes {}".format(
@@ -1680,8 +1697,20 @@ class Engine:
         else:
             if _non_static_mode() or self._dygraph_mode:
                 raise ValueError(
-                    "Please call `prepare()` or `fit()` before calling `cost()`."
+                    "Please call `prepare()` or `fit()` or  `evaluate()` or  `predict()` before calling `cost()`."
                 )
+            else:
+                self._logger.info(
+                    "The program whose cost to be estimated must be static default program. Otherwise, please call `prepare()`before calling `cost()`."
+                )
+                program = paddle.static.default_main_program()
+                if (
+                    not program.global_block().ops
+                    or not program.global_block().ops
+                ) and not self._has_prepared[mode]:
+                    raise ValueError(
+                        "Please call `prepare()` or `fit()` or  `evaluate()` or  `predict()` before calling `cost()`."
+                    )
 
         # Estimate the exec cost and max memory
         global_cost, max_memory = get_cost_from_engine(self, mode)

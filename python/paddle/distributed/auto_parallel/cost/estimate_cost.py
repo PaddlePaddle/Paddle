@@ -545,6 +545,7 @@ class CostEstimator:
 
 def get_cost_from_engine(engine, mode):
     from ..utils import to_list
+    import copy
 
     # Construct cost estimator by original main program
     serial_main_prog = (
@@ -566,29 +567,29 @@ def get_cost_from_engine(engine, mode):
         )
         else engine._losses
     )
-    serial_optimizer = engine._optimizer
-    if mode in engine._dist_contexts:
-        dist_context = engine._dist_contexts[mode]
-        completer = engine._planners[mode].completer
+    serial_optimizer = copy.deepcopy(engine._orig_optimizer)
+    if mode in engine._fwd_dist_contexts:
+        dist_context = copy.deepcopy(engine._fwd_dist_contexts[mode])
     else:
-        from ..completion import Completer
         from ..dist_context import DistributedContext
 
         dist_context = DistributedContext(
             serial_main_prog,
             serial_startup_prog,
-            engine._optimizer,
+            serial_optimizer,
             losses,
             {},
             {"loss": losses},
             engine._cluster,
             engine._strategy,
         )
-        completer = Completer(dist_context)
-        completer.complete_forward_annotation()
-        dist_context.block_state.parse_forward_blocks(
-            dist_context.serial_main_program
-        )
+    from ..completion import Completer
+
+    completer = Completer(dist_context)
+    completer.complete_forward_annotation()
+    dist_context.block_state.parse_forward_blocks(
+        dist_context.serial_main_program
+    )
 
     if mode == "eval" or mode == "predict":
         cost_estimator = CostEstimator(serial_main_prog, engine._cluster)

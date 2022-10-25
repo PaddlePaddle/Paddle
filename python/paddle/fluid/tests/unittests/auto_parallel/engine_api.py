@@ -414,7 +414,57 @@ def get_cost():
     engine = auto.Engine(
         loss=loss_var, optimizer=optimizer, metrics=metric, strategy=strategy
     )
+    engine.prepare(
+        main_program=main_program,
+        startup_program=startup_program,
+        inputs=[input],
+        labels=[label],
+    )
     engine.cost()
+
+
+def get_cost_by_default_program():
+    main_program = static.default_main_program()
+    startup_program = static.default_startup_program()
+    with static.program_guard(
+        main_program, startup_program
+    ), utils.unique_name.guard():
+        input = static.data(
+            name="input", shape=[batch_size, image_size], dtype='float32'
+        )
+        label = static.data(name="label", shape=[batch_size, 1], dtype='int64')
+
+        loader = paddle.io.DataLoader.from_generator(
+            feed_list=[input, label], capacity=4 * batch_size, iterable=False
+        )
+        places = static.cuda_places()
+        loader.set_batch_generator(batch_generator_creator(), places=places)
+
+        mlp = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02,
+        )
+        loss = paddle.nn.CrossEntropyLoss()
+        optimizer = paddle.optimizer.Adam(
+            learning_rate=0.00001,
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-08,
+            grad_clip=None,
+        )
+        metric = paddle.metric.Accuracy()
+        predict = mlp(input)
+        loss_var = loss(predict, label)
+
+    strategy = auto.Strategy()
+    strategy.auto_mode = "semi"
+
+    engine = auto.Engine(
+        loss=loss_var, optimizer=optimizer, metrics=metric, strategy=strategy
+    )
+    engine.cost(mode="train")
 
 
 def get_cost_by_spec():
@@ -445,10 +495,11 @@ def get_cost_by_spec():
 
 
 if __name__ == "__main__":
-    # train_high_level(fetch=True)
-    # train_high_level(fetch=False)
-    # train_low_level()
-    # train_builtin_data_vars()
-    # train_non_builtin_data_vars()
+    train_high_level(fetch=True)
+    train_high_level(fetch=False)
+    train_low_level()
+    train_builtin_data_vars()
+    train_non_builtin_data_vars()
     get_cost()
-    # get_cost_by_spec()
+    get_cost_by_default_program()
+    get_cost_by_spec()
