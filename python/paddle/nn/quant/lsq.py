@@ -29,6 +29,8 @@ from paddle.autograd import PyLayer
 import math
 import copy
 
+__all__ = ["ActLSQPlusQuanter", "WeightLSQPlusQuanter"]
+
 
 def round(x):
     sign = paddle.sign(x)
@@ -113,10 +115,42 @@ class LsqPlusActFunc(PyLayer):
         return grad_x, grad_alpha, grad_beta
 
 
+class Quanter(object):
+
+    def __init__(self, **args):
+        self._args = args
+
+    def instance(self):
+        print(f"self._args: {self._args}")
+        return self.get_class()(**self._args)
+
+    @property
+    def args(self):
+        return self._args
+
+    def get_class(self):
+        raise NotImplementedError
+
+    def __str__(self):
+        return f"{self.__class__.__name__}({self.args})"
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class ActLSQPlusQuanter(Quanter):
+
+    def __init__(self, **args):
+        super(ActLSQPlusQuanter, self).__init__(**args)
+
+    def get_class(self):
+        return FakeQuantActLSQPlus
+
+
 class FakeQuantActLSQPlus(Layer):
 
     def __init__(self,
-                 quant_bits,
+                 quant_bits=8,
                  all_postive=False,
                  symmetric=False,
                  batch_init=20,
@@ -218,10 +252,19 @@ class FakeQuantActLSQPlus(Layer):
         return q_a
 
 
+class WeightLSQPlusQuanter(Quanter):
+
+    def __init__(self, **args):
+        super(WeightLSQPlusQuanter, self).__init__(**args)
+
+    def get_class(self):
+        return FakeQuantWeightLSQPlus
+
+
 class FakeQuantWeightLSQPlus(Layer):
 
     def __init__(self,
-                 quant_bits,
+                 quant_bits=8,
                  all_postive=False,
                  per_channel=False,
                  batch_init=20,
