@@ -18,7 +18,7 @@ import paddle
 from paddle import fluid
 from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.quantization import QuantConfig, QAT, TRTQuantConfig
-from paddle.nn.quant import ActLSQPlusQuanter, WeightLSQPlusQuanter
+from paddle.quantization.quanters import ActLSQPlusQuanter, WeightLSQPlusQuanter
 
 
 class LeNetDygraph(paddle.nn.Layer):
@@ -58,7 +58,6 @@ class TestQAT(unittest.TestCase):
                                               all_postive=False,
                                               per_channel=False,
                                               batch_init=20,
-                                              channel_num=32,
                                               quant_linear=False,
                                               reduce_type=None)
 

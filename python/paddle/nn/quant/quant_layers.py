@@ -26,7 +26,6 @@ from paddle.fluid.log_helper import get_logger
 from paddle import _C_ops, _legacy_C_ops
 from paddle import in_dynamic_mode
 from paddle.nn import Layer
-from paddle.nn.quant.lsq import FakeQuantActLSQPlus, FakeQuantWeightLSQPlus
 
 __all__ = [
     'FakeQuantAbsMax',
@@ -969,8 +968,6 @@ def _get_fake_quant_type(quant_type, **kwargs):
         'abs_max': FakeQuantAbsMax,
         'moving_average_abs_max': FakeQuantMovingAverageAbsMax,
         'channel_wise_abs_max': FakeQuantChannelWiseAbsMax,
-        'lsq_weight': FakeQuantWeightLSQPlus,
-        'lsq_act': FakeQuantActLSQPlus
     }
 
     return fake_quant_map[quant_type](**call_args)

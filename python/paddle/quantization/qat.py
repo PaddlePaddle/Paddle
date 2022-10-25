@@ -39,14 +39,11 @@ class QAT(object):
     def _convert_to_quant_layers(self, model: paddle.nn.Layer, config):
         replaced = {}
         for name, child in model.named_children():
-            print(f"child: {child}")
             if config.is_quantable(child):
-                print(f"quantable: True")
                 if type(child) not in config.qat_layer_mappings:
                     self._convert_to_quant_layers(child, config)
                 else:
                     replaced[name] = config.get_qat_layer(child)
-        print(f"replaced: {replaced}")
         for key, value in replaced.items():
             model._sub_layers[key] = value
 

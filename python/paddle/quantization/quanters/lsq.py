@@ -120,9 +120,9 @@ class Quanter(object):
     def __init__(self, **args):
         self._args = args
 
-    def instance(self):
+    def instance(self, layer):
         print(f"self._args: {self._args}")
-        return self.get_class()(**self._args)
+        return self.get_class()(layer, **self._args)
 
     @property
     def args(self):
@@ -150,6 +150,7 @@ class ActLSQPlusQuanter(Quanter):
 class FakeQuantActLSQPlus(Layer):
 
     def __init__(self,
+                 layer,
                  quant_bits=8,
                  all_postive=False,
                  symmetric=False,
@@ -261,14 +262,20 @@ class WeightLSQPlusQuanter(Quanter):
         return FakeQuantWeightLSQPlus
 
 
+CHANNEL_AXIS = {
+    paddle.nn.Conv2D: 0,
+    paddle.nn.Linear: 1,
+}
+
+
 class FakeQuantWeightLSQPlus(Layer):
 
     def __init__(self,
+                 layer,
                  quant_bits=8,
                  all_postive=False,
                  per_channel=False,
                  batch_init=20,
-                 channel_num=None,
                  quant_linear=False,
                  dtype='float32',
                  name=None,
@@ -313,10 +320,16 @@ class FakeQuantWeightLSQPlus(Layer):
         s_attr = ParamAttr(name=self._scale_name,
                            initializer=Constant(1.0),
                            trainable=True)
+        channel_num = self.cal_channel_num(layer)
         self.s = self.create_parameter(shape=[channel_num],
                                        attr=s_attr,
                                        dtype=dtype)
         self.s.stop_gradient = False
+
+    def cal_channel_num(self, layer):
+        layer_type = type(layer)
+        assert layer_type in CHANNEL_AXIS, ""
+        return layer.weight.shape[CHANNEL_AXIS[type(layer)]]
 
     def forward(self, weight):
         if self.reduce_type == "max":

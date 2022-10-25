@@ -22,10 +22,6 @@ from .functional_layers import transpose  # noqa: F401
 from .functional_layers import concat  # noqa: F401
 from .functional_layers import flatten  # noqa: F401
 from .quant_layers import QuantStub  # noqa: F401
-from .lsq import ActLSQPlusQuanter
-from .lsq import WeightLSQPlusQuanter
-from . import lsq
 from . import qat
 
 __all__ = []
-__all__ += lsq.__all__

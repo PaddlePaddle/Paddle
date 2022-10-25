@@ -21,7 +21,7 @@ DEFAULT_QAT_LAYER_MAPPINGS: Dict[paddle.nn.Layer, paddle.nn.Layer] = {
     paddle.nn.Conv2D: paddle.nn.quant.qat.QuantConv2D,
     paddle.nn.Conv2DTranspose:
     paddle.nn.quant.quant_layers.QuantizedConv2DTranspose,
-    paddle.nn.Linear: paddle.nn.quant.quant_layers.QuantizedLinear,
+    paddle.nn.Linear: paddle.nn.quant.qat.QuantLinear,
 }
 
 
@@ -81,20 +81,14 @@ class QuantConfig(object):
         self._model = model
         self.specify_helper(self._model)
 
-    def specify_helper(self, model):
+    def specify_helper(self, model, prefix=""):
         for name, child in model.named_children():
-            config = self.global_config
-            layer_type = type(child)
-            layer_prefix = name
-            if model in self._layer2config:
-                config = self._layer2config[model]
-            if layer_type in self._layer2config:
-                config = self._type2config[layer_type]
-            if layer_prefix in self._prefix2config:
-                config = self._prefix2config[layer_prefix]
-
-            self._layer2config[child] = config
-            self.specify_helper(child)
+            layer_prefix = "/".join([prefix, name])
+            config = self._layer2config.get(model, self.global_config)
+            config = self._type2config.get(type(child), config)
+            self._layer2config[child] = self._prefix2config.get(
+                layer_prefix, config)
+            self.specify_helper(child, prefix=layer_prefix)
         return self
 
     def details(self):
@@ -104,7 +98,6 @@ class QuantConfig(object):
         extra_lines = []
         sublayer_lines = []
         for name, sublayer in layer.named_children():
-            print(f"name: {name}")
             sublayer_str = self.details_helper(sublayer)
             sublayer_str = self._addindent(sublayer_str, 2)
             sublayer_lines.append('(' + name + '): ' + sublayer_str + ', ' +
