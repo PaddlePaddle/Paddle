@@ -559,6 +559,10 @@ class ReduceOp : public framework::OperatorWithKernel {
         experimental::DataType::BFLOAT16)
       return true;
 
+    if (!ctx.HasAttr("dim") || !ctx.HasAttr("reduce_all")) {
+      return false;
+    }
+
     auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
     const bool reduce_all = ctx.Attr<bool>("reduce_all");
     int ndims = ctx.Input<phi::DenseTensor>("X")->dims().size();
@@ -586,18 +590,12 @@ class ReduceOp : public framework::OperatorWithKernel {
     // choose cudnn kernel if the runtime supported.
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5)
-      return framework::OpKernelType(input_data_type, ctx.GetPlace());
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        HasOptimizedOneDNNKernel(ctx)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     phi::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5 ||
+        !HasOptimizedOneDNNKernel(ctx)) {
+      this->SetDnnFallback(true);
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(
@@ -674,22 +672,13 @@ class ReduceGradOp : public framework::OperatorWithKernel {
             ? static_cast<framework::proto::VarType::Type>(out_dtype)
             : OperatorWithKernel::IndicateVarDataType(
                   ctx, framework::GradVarName("Out"));
-#ifdef PADDLE_WITH_MKLDNN
-    auto CanMKLDNNReduceGradBeUsed = [&]() {
-      auto dx_dims = ctx.Input<phi::DenseTensor>("X")->dims();
 
-      if (dx_dims.size() > 5) return false;  // max 5D tensor is supported
-
-      return true;
-    };
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type) &&
-        CanMKLDNNReduceGradBeUsed()) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     phi::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    // max 5D tensor is supported
+    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5) {
+      dnn_fallback_ = true;
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }

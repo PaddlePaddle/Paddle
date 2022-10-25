@@ -195,11 +195,12 @@ PreparedOp PrepareImpl(
 // NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
 // LibraryType::kMKLDNN and data_layout_ = DataLayout::kMKLDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
-// here. There are two statements in if condition:
-// 1. Whether this op has specific implementation;
-// 2. Whether mkldnn kernel can be used.
+// here. There are three statements in if condition:
+// 1. Whether mkldnn kernel fallbacks to plain kernel;
+// 2. Whether this op has specific implementation;
+// 3. Whether mkldnn kernel can be used.
 #ifdef PADDLE_WITH_MKLDNN
-  if (!paddle::platform::in_mkldnn_white_list(op.Type()) &&
+  if (!op.DnnFallback() && !paddle::platform::in_mkldnn_white_list(op.Type()) &&
       op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
