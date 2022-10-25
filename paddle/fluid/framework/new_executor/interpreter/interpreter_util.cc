@@ -553,6 +553,11 @@ void BuildOpFuncList(const platform::Place& place,
             *op_with_kernel, *runtime_scope, *dev_ctx, runtime_context);
         auto expected_kernel_key =
             op_with_kernel->GetExpectedKernelType(exec_ctx);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        if (paddle::platform::CanCUDNNBeUsed(exec_ctx)) {
+          expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+        }
+#endif
         VLOG(4) << "expected_kernel_key : " << expected_kernel_key;
         // change device by the device_guard()
         ApplyDeviceGuard(op, place, &expected_kernel_key);
