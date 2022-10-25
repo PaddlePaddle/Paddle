@@ -76,6 +76,7 @@ void FuseOperatorUnsqueeze2OneDNNPass::FuseUnsqueeze2(
       VLOG(3) << "Cannot fuse op with unsqueeze2, because its dims are "
                  "specified either by AxesTensor or AxesTensorList and can be "
                  "changed at runtime!";
+      return;
     }
 
     operator_op->Op()->SetAttr("fused_unsqueeze2_axes", unsqueeze2_axes);
