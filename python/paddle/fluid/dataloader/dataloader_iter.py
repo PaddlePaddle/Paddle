@@ -691,6 +691,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 if self._thread_done_event.is_set():
                     continue
 
+                # get(timeout) will call _poll(timeout) and may raise IOError
+                if isinstance(e, queue.Empty) or isinstance(e, IOError):
+                    # continue on timeout to keep getting data from queue
+                    continue
+
                 # check failed workers
                 failed_workers = []
                 for i, w in enumerate(self._workers):
@@ -704,11 +709,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         "DataLoader {} workers exit unexpectedly, "
                         "pids: {}".format(len(failed_workers), pids)
                     )
-
-                # get(timeout) will call _poll(timeout) and may raise IOError
-                if isinstance(e, queue.Empty) or isinstance(e, IOError):
-                    # continue on timeout to keep getting data from queue
-                    continue
 
                 self._exit_thread_unexpectedly()
                 logging.error(
