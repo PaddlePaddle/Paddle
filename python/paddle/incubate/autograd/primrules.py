@@ -1026,18 +1026,17 @@ def slice_select_jvp(op, x_dot):
 
 @REGISTER_JVP('slice_assign_p')
 def slice_assign_jvp(op, x_dot, y_dot):
-    if x_dot is None:
-        assert y_dot is None, 'y_dot must be None.'
-        return None
-    else:
-        assert y_dot is not None, 'y_dot should not be None.'
+    x, y = op_position_inputs(op)
+    assert x_dot is not None or y_dot is not None, "x_dot and y_dot can't be None at the same time. "
     axis = op.attr('axis')
     starts = op.attr('starts')
     ends = op.attr('ends')
     strides = op.attr('strides')
-    return linear_jvp(
-        op, x_dot, y_dot, axis=axis, starts=starts, ends=ends, strides=strides
-    )
+    if x_dot is None:
+        return linear_jvp(op, fill_const(value=0.0, shape=x.shape, dtype=x.dtype), y_dot, axis=axis, starts=starts, ends=ends, strides=strides)
+    elif y_dot is None:
+        return linear_jvp(op, x_dot, fill_const(value=0.0, shape=y.shape, dtype=y.dtype), axis=axis, starts=starts, ends=ends, strides=strides)
+    return add(linear_jvp(op, fill_const(value=0.0, shape=x.shape, dtype=x.dtype), y_dot, axis=axis, starts=starts, ends=ends, strides=strides), linear_jvp(op, x_dot, fill_const(value=0.0, shape=y.shape, dtype=y.dtype), axis=axis, starts=starts, ends=ends, strides=strides))
 
 
 @REGISTER_JVP('gather_p')
@@ -1311,8 +1310,8 @@ def slice_select_transpose(op, check_dot, y_bar):
 @REGISTER_TRANSPOSE('slice_assign_p')
 def slice_assign_transpose(op, check_dot, z_bar):
     x, y = op_position_inputs(op)
-    assert check_dot(x) and check_dot(y), (
-        f'(check_dot(x) and check_dot(y)) must be True, '
+    assert check_dot(x) ^ check_dot(y), (
+        f'(check_dot(x) ^ check_dot(y)) must be True, '
         f'but check_dot(x)={check_dot(x)} and check_dot(y)={check_dot(y)}.'
     )
     zeros = fill_const(value=0.0, shape=y.shape, dtype=y.dtype)
@@ -1320,13 +1319,13 @@ def slice_assign_transpose(op, check_dot, z_bar):
     starts = op.attr('starts')
     ends = op.attr('ends')
     strides = op.attr('strides')
-    x_bar = slice_assign(
-        z_bar, zeros, axis=axis, starts=starts, ends=ends, strides=strides
-    )
-    y_bar = slice_select(
+    if check_dot(x):
+        return slice_assign(
+            z_bar, zeros, axis=axis, starts=starts, ends=ends, strides=strides
+        ), None
+    return None, slice_select(
         z_bar, axis=axis, starts=starts, ends=ends, strides=strides
     )
-    return x_bar, y_bar
 
 
 @REGISTER_TRANSPOSE('gather_p')
