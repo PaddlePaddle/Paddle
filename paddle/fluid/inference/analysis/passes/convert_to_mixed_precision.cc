@@ -121,7 +121,7 @@ class ConvertToMixedPrecisionPass {
 
  private:
   void LoadAndPrepare();
-  inline bool NodeVarHasDtype(framework::ir::Node* node);
+  inline bool VarNodeHasDtype(framework::ir::Node* node);
   void ConvertAllFp64ToFp32(framework::ir::Graph* graph);
   void FixCastAttr(framework::ir::Graph* graph);
   void SaveMixedModel();
@@ -145,7 +145,7 @@ class ConvertToMixedPrecisionPass {
 
   // To support multi block, we need to consider a lot of special cases.
   // Return Node* which first appers in block.
-  framework::ir::Node* GetRealNode(int block_idx, framework::ir::Node* node);
+  framework::ir::Node* GetRealVarNode(int block_idx, framework::ir::Node* node);
   void FindVarsInMultiBlock();
   inline bool VarIsMultiPrecisionOpsOut(int block_idx,
                                         framework::ir::Node* op_node);
@@ -172,7 +172,7 @@ class ConvertToMixedPrecisionPass {
   std::unordered_map<std::string, std::pair<VarType::Type, int>>
       vars_in_multi_block_map_;
   std::vector<std::unordered_map<std::string, std::vector<std::string>>>
-      vars_appear_multi_in_one_block_;
+      vars_repeat_in_one_block_;
   int suffix_{0};
 
   std::unique_ptr<framework::ProgramDesc> program_desc_{nullptr};
@@ -180,27 +180,29 @@ class ConvertToMixedPrecisionPass {
   std::vector<framework::ir::Graph*> graphes_;
 };
 
-framework::ir::Node* ConvertToMixedPrecisionPass::GetRealNode(
-    int block_idx, framework::ir::Node* node) {
-  if (vars_in_multi_block_map_.count(node->Name())) {
-    int var_origin_block_id = vars_in_multi_block_map_.at(node->Name()).second;
-    if (block_idx != var_origin_block_id) {
-      auto* graph = graphes_[var_origin_block_id];
-      for (auto* nd : graph->Nodes()) {
-        if (nd->Name() == node->Name()) {
-          return nd;
+framework::ir::Node* ConvertToMixedPrecisionPass::GetRealVarNode(
+    int block_idx, framework::ir::Node* var_node) {
+  CHECK_EQ(var_node->IsVar(), true);
+
+  if (vars_in_multi_block_map_.count(var_node->Name())) {
+    int origin_blockId = vars_in_multi_block_map_.at(var_node->Name()).second;
+    if (block_idx != origin_blockId) {
+      auto* graph = graphes_[origin_blockId];
+      for (auto* node : graph->Nodes()) {
+        if (node->Name() == var_node->Name()) {
+          return node;
         }
       }
     }
   }
 
-  return node;
+  return var_node;
 }
 
-inline bool ConvertToMixedPrecisionPass::NodeVarHasDtype(
-    framework::ir::Node* node) {
-  if (!node->IsVar()) return false;
-  auto type = node->Var()->GetType();
+inline bool ConvertToMixedPrecisionPass::VarNodeHasDtype(
+    framework::ir::Node* var_node) {
+  CHECK_EQ(var_node->IsVar(), true);
+  auto type = var_node->Var()->GetType();
   return (type == VarType::SELECTED_ROWS) || (type == VarType::LOD_TENSOR) ||
          (type == VarType::LOD_TENSOR_ARRAY) || (type == VarType::STRINGS) ||
          (type == VarType::VOCAB);
@@ -213,25 +215,22 @@ inline bool ConvertToMixedPrecisionPass::VarIsMultiPrecisionOpsOut(
     int block_idx, framework::ir::Node* op_node) {
   CHECK_EQ(op_node->IsOp(), true);
 
-  bool ret{false};
   for (auto* var_node : op_node->outputs) {
-    auto* real_var_node = GetRealNode(block_idx, var_node);
+    auto* real_var_node = GetRealVarNode(block_idx, var_node);
     if (!real_var_node->Var()->Persistable() &&
-        vars_appear_multi_in_one_block_[block_idx].count(var_node->Name())) {
+        vars_repeat_in_one_block_[block_idx].count(var_node->Name())) {
       for (const auto& op_type :
-           vars_appear_multi_in_one_block_[block_idx].at(var_node->Name())) {
+           vars_repeat_in_one_block_[block_idx].at(var_node->Name())) {
         if (OpSupportPrecision(
                 op_type, backend_, mixed_precision_, black_list_)) {
-          ret = true;
           VLOG(2) << var_node->Name()
                   << " is multi precision op's out, so we skip convert to fp16";
-          break;
+          return true;
         }
       }
     }
-    if (ret) break;
   }
-  return ret;
+  return false;
 }
 
 void ConvertToMixedPrecisionPass::ProcessInputNode(
@@ -242,8 +241,8 @@ void ConvertToMixedPrecisionPass::ProcessInputNode(
     framework::BlockDesc* block_desc,
     VarType::Type to_type,
     int block_idx) {
-  auto* real_node = GetRealNode(block_idx, in_node);
-  if (!NodeVarHasDtype(real_node)) return;
+  auto* real_node = GetRealVarNode(block_idx, in_node);
+  if (!VarNodeHasDtype(real_node)) return;
   auto graph = graphes_[block_idx];
   bool is_main_block = block_idx == 0;
   auto* in_var = real_node->Var();
@@ -293,8 +292,8 @@ void ConvertToMixedPrecisionPass::ProcessInputNode(
 
 void ConvertToMixedPrecisionPass::ProcessOutputNode(
     int block_idx, framework::ir::Node* var_node, VarType::Type to_type) {
-  auto* real_node = GetRealNode(block_idx, var_node);
-  if (!NodeVarHasDtype(real_node)) return;
+  auto* real_node = GetRealVarNode(block_idx, var_node);
+  if (!VarNodeHasDtype(real_node)) return;
   auto* out_var = real_node->Var();
   auto prev_type = out_var->GetDataType();
   if (out_var->GetDataType() == VarType::FP32) {
@@ -401,41 +400,40 @@ void ConvertToMixedPrecisionPass::LoadAndPrepare() {
   arg.SetMainGraphNotOwned(main_graph_.get());
   pass.Run(&arg);
 
-  vars_appear_multi_in_one_block_.resize(program_desc_->Size());
+  vars_repeat_in_one_block_.resize(program_desc_->Size());
   FindVarsInMultiBlock();
 }
 
 void ConvertToMixedPrecisionPass::FindVarsInMultiBlock() {
   std::vector<std::set<std::string>> block_var_names_set(program_desc_->Size());
-  for (size_t i = 0; i < program_desc_->Size(); ++i) {
-    for (auto* op : program_desc_->Block(i).AllOps()) {
+  for (size_t idx = 0; idx < program_desc_->Size(); ++idx) {
+    for (auto* op : program_desc_->Block(idx).AllOps()) {
       const auto& in_names = op->InputArgumentNames();
-      block_var_names_set[i].insert(in_names.begin(), in_names.end());
+      block_var_names_set[idx].insert(in_names.begin(), in_names.end());
       const auto& out_names = op->OutputArgumentNames();
       if (op->HasAttr("sub_block") == false) {
-        for (const auto& n : out_names) {
-          if (block_var_names_set[i].count(n)) {
-            vars_appear_multi_in_one_block_[i][n].push_back(op->Type());
+        for (const auto& name : out_names) {
+          if (block_var_names_set[idx].count(name)) {
+            vars_repeat_in_one_block_[idx][name].push_back(op->Type());
           }
         }
       }
-      block_var_names_set[i].insert(out_names.begin(), out_names.end());
+      block_var_names_set[idx].insert(out_names.begin(), out_names.end());
     }
   }
 
-  for (size_t i = 0; i < program_desc_->Size() - 1; ++i) {
-    for (size_t j = i + 1; j < program_desc_->Size(); ++j) {
-      std::set<std::string> vars_in_multi_block;
-      std::set_intersection(
-          block_var_names_set[i].begin(),
-          block_var_names_set[i].end(),
-          block_var_names_set[j].begin(),
-          block_var_names_set[j].end(),
-          std::inserter(vars_in_multi_block, vars_in_multi_block.begin()));
+  for (size_t idx = 0; idx < program_desc_->Size() - 1; ++idx) {
+    for (size_t jdx = idx + 1; jdx < program_desc_->Size(); ++jdx) {
+      std::vector<std::string> vars_in_multi_block;
+      std::set_intersection(block_var_names_set[idx].begin(),
+                            block_var_names_set[idx].end(),
+                            block_var_names_set[jdx].begin(),
+                            block_var_names_set[jdx].end(),
+                            std::back_inserter(vars_in_multi_block));
 
       for (const auto& name : vars_in_multi_block) {
         vars_in_multi_block_map_.emplace(name,
-                                         std::make_pair(VarType::FP32, i));
+                                         std::make_pair(VarType::FP32, idx));
       }
     }
   }
@@ -488,7 +486,7 @@ void ConvertToMixedPrecisionPass::Run() {
   LoadAndPrepare();
 
   for (size_t i = 0; i < main_graph_->SubGraphsSize(); ++i) {
-    auto graph = main_graph_->GetSubGraph(i);
+    auto* graph = main_graph_->GetSubGraph(i);
     graphes_.push_back(graph);
     VLOG(2) << " --------  handle subgraph " << i << ", has "
             << graph->Nodes().size() << " nodes --------";
@@ -549,15 +547,15 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
       // same name.
       std::unordered_map<std::string, framework::ir::Node*> in_name_to_node;
       for (auto* in : op_node->inputs) {
-        auto* real_node = GetRealNode(block_idx, in);
-        if (NodeVarHasDtype(real_node)) {
+        auto* real_node = GetRealVarNode(block_idx, in);
+        if (VarNodeHasDtype(real_node)) {
           in_name_to_node[in->Name()] = in;
         }
       }
 
       for (auto* out : op_node->outputs) {
-        auto* real_node = GetRealNode(block_idx, out);
-        if (NodeVarHasDtype(real_node)) {
+        auto* real_node = GetRealVarNode(block_idx, out);
+        if (VarNodeHasDtype(real_node)) {
           if (in_name_to_node.count(out->Name()))
             real_node->Var()->SetDataType(
                 in_name_to_node[out->Name()]->Var()->GetDataType());
@@ -583,7 +581,7 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
       {
         bool has_float_input{false};
         for (auto in_node : op_node->inputs) {
-          auto* real_node = GetRealNode(block_idx, in_node);
+          auto* real_node = GetRealVarNode(block_idx, in_node);
           if (real_node->Var()->GetDataType() == VarType::FP16 ||
               real_node->Var()->GetDataType() == VarType::FP32 ||
               real_node->Var()->GetDataType() == VarType::FP64 ||
@@ -699,8 +697,8 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
   }
 
   for (auto* node : graph->Nodes()) {
-    auto* real_node = GetRealNode(block_idx, node);
-    if (!NodeVarHasDtype(real_node)) continue;
+    auto* real_node = GetRealVarNode(block_idx, node);
+    if (!VarNodeHasDtype(real_node)) continue;
 
     if (vars_in_multi_block_map_.count(real_node->Name()) &&
         vars_in_multi_block_map_.at(real_node->Name()).second == block_idx) {
@@ -740,8 +738,8 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
 
   std::unordered_set<std::string> weights_should_be_fp32;
   for (auto* node : main_graph_->Nodes()) {
-    if (!(node->IsVar())) continue;
-    if (NodeVarHasDtype(node)) {
+    if (!node->IsVar()) continue;
+    if (VarNodeHasDtype(node)) {
       if (node->Var()->Persistable() &&
           node->Var()->GetDataType() == VarType::FP32) {
         VLOG(2) << "weights keep to fp32: " << node->Name();
