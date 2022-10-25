@@ -1367,6 +1367,17 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         process_level_allocator_enabled = true;
       }
 
+      // support set flags from enviorment.
+      const platform::ExportedFlagInfoMap &env_map =
+          platform::GetExportedFlagInfoMap();
+      std::ostringstream os;
+      os << "--tryfromenv=";
+      for (auto &pair : env_map) {
+        os << pair.second.name << ",";
+      }
+      auto tryfromenv_str = os.str();
+      gflags.push_back(os.str().substr(0, tryfromenv_str.size() - 1));
+
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
                    "for the first predictor: ";

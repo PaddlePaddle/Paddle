@@ -14,7 +14,13 @@
 
 import os
 import paddle
-from .framework import Program, program_guard, unique_name, cuda_places, cpu_places
+from .framework import (
+    Program,
+    program_guard,
+    unique_name,
+    cuda_places,
+    cpu_places,
+)
 from .param_attr import ParamAttr
 from .initializer import Constant
 from . import layers
@@ -31,13 +37,11 @@ __all__ = ['run_check']
 
 
 class SimpleLayer(Layer):
-
     def __init__(self, input_size):
         super(SimpleLayer, self).__init__()
         self._linear1 = nn.Linear(
-            input_size,
-            3,
-            param_attr=ParamAttr(initializer=Constant(value=0.1)))
+            input_size, 3, param_attr=ParamAttr(initializer=Constant(value=0.1))
+        )
 
     def forward(self, inputs):
         x = self._linear1(inputs)
@@ -74,7 +78,8 @@ def run_check():
         except Exception as e:
             logging.warning(
                 "You are using GPU version Paddle Fluid, But Your CUDA Device is not set properly"
-                "\n Original Error is {}".format(e))
+                "\n Original Error is {}".format(e)
+            )
             return 0
         device_list = cuda_places()
     else:
@@ -100,22 +105,29 @@ def run_check():
                     simple_layer = SimpleLayer(input_size=2)
                     out = simple_layer(inp)
                     exe = executor.Executor(
-                        core.CUDAPlace(0) if core.is_compiled_with_cuda() and
-                        (core.get_cuda_device_count() > 0) else core.CPUPlace())
+                        core.CUDAPlace(0)
+                        if core.is_compiled_with_cuda()
+                        and (core.get_cuda_device_count() > 0)
+                        else core.CPUPlace()
+                    )
                     loss = paddle.mean(out)
                     loss.persistable = True
                     optimizer.SGD(learning_rate=0.01).minimize(loss)
                     startup_prog.random_seed = 1
                     compiled_prog = compiler.CompiledProgram(
-                        train_prog).with_data_parallel(
-                            build_strategy=build_strategy,
-                            loss_name=loss.name,
-                            places=device_list)
+                        train_prog
+                    ).with_data_parallel(
+                        build_strategy=build_strategy,
+                        loss_name=loss.name,
+                        places=device_list,
+                    )
                     exe.run(startup_prog)
 
-                    exe.run(compiled_prog,
-                            feed={inp.name: np_inp_muti},
-                            fetch_list=[loss.name])
+                    exe.run(
+                        compiled_prog,
+                        feed={inp.name: np_inp_muti},
+                        fetch_list=[loss.name],
+                    )
 
     def test_simple_exe():
         train_prog = Program()
@@ -124,20 +136,26 @@ def run_check():
         with executor.scope_guard(scope):
             with program_guard(train_prog, startup_prog):
                 with unique_name.guard():
-                    inp0 = layers.data(name="inp",
-                                       shape=[2, 2],
-                                       append_batch_size=False)
+                    inp0 = layers.data(
+                        name="inp", shape=[2, 2], append_batch_size=False
+                    )
                     simple_layer0 = SimpleLayer(input_size=2)
                     out0 = simple_layer0(inp0)
                     param_grads = backward.append_backward(
                         out0,
-                        parameter_list=[simple_layer0._linear1.weight.name])[0]
+                        parameter_list=[simple_layer0._linear1.weight.name],
+                    )[0]
                     exe0 = executor.Executor(
-                        core.CUDAPlace(0) if core.is_compiled_with_cuda() and
-                        (core.get_cuda_device_count() > 0) else core.CPUPlace())
+                        core.CUDAPlace(0)
+                        if core.is_compiled_with_cuda()
+                        and (core.get_cuda_device_count() > 0)
+                        else core.CPUPlace()
+                    )
                     exe0.run(startup_prog)
-                    exe0.run(feed={inp0.name: np_inp_single},
-                             fetch_list=[out0.name, param_grads[1].name])
+                    exe0.run(
+                        feed={inp0.name: np_inp_single},
+                        fetch_list=[out0.name, param_grads[1].name],
+                    )
 
     test_simple_exe()
 
@@ -160,6 +178,7 @@ def run_check():
         print("\n Original Error is: {}".format(e))
         print(
             "Your Paddle Fluid is installed successfully ONLY for SINGLE GPU or CPU! "
-            "\n Let's start deep Learning with Paddle Fluid now")
+            "\n Let's start deep Learning with Paddle Fluid now"
+        )
 
     paddle.disable_static()

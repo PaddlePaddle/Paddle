@@ -31,7 +31,6 @@ def set_random_seed(seed):
 
 
 class ColumnLinearNet(fluid.dygraph.Layer):
-
     def __init__(self, input_size, output_size, global_dtype):
         super(ColumnLinearNet, self).__init__()
         self.parallel_linear = fleet.meta_parallel.ColumnParallelLinear(
@@ -40,7 +39,8 @@ class ColumnLinearNet(fluid.dygraph.Layer):
             weight_attr=None,
             has_bias=True,
             gather_output=True,
-            name="test_column_linear")
+            name="test_column_linear",
+        )
 
     def forward(self, x):
         output = self.parallel_linear(x)
@@ -48,7 +48,6 @@ class ColumnLinearNet(fluid.dygraph.Layer):
 
 
 class RowLinearNet(fluid.dygraph.Layer):
-
     def __init__(self, input_size, output_size):
         super(RowLinearNet, self).__init__()
         self.parallel_linear = fleet.meta_parallel.RowParallelLinear(
@@ -56,7 +55,8 @@ class RowLinearNet(fluid.dygraph.Layer):
             out_features=output_size,
             has_bias=True,
             input_is_parallel=False,
-            name="test_row_linear")
+            name="test_row_linear",
+        )
 
     def forward(self, x):
         output = self.parallel_linear(x)
@@ -64,11 +64,11 @@ class RowLinearNet(fluid.dygraph.Layer):
 
 
 class EmbeddingNet(fluid.dygraph.Layer):
-
     def __init__(self, vocab_size, hidden_size):
         super(EmbeddingNet, self).__init__()
         self.embedding = fleet.meta_parallel.VocabParallelEmbedding(
-            vocab_size, hidden_size)
+            vocab_size, hidden_size
+        )
 
     def forward(self, x):
         output = self.embedding(x)
@@ -76,19 +76,22 @@ class EmbeddingNet(fluid.dygraph.Layer):
 
 
 class SimpleMatmul(fluid.dygraph.Layer):
-
     def __init__(self, weight, output_size, global_dtype):
         super(SimpleMatmul, self).__init__()
         self.weight = paddle.create_parameter(
             shape=weight.shape,
             dtype=global_dtype,
             attr=paddle.ParamAttr(
-                initializer=paddle.nn.initializer.Assign(weight)))
+                initializer=paddle.nn.initializer.Assign(weight)
+            ),
+        )
         self.bias = self.create_parameter(
             shape=[output_size],
             dtype=global_dtype,
             attr=paddle.ParamAttr(
-                initializer=paddle.nn.initializer.Constant(0.0)))
+                initializer=paddle.nn.initializer.Constant(0.0)
+            ),
+        )
 
     def forward(self, x):
         output = paddle.matmul(x, self.weight) + self.bias
@@ -96,7 +99,6 @@ class SimpleMatmul(fluid.dygraph.Layer):
 
 
 class SimpleEmbedding(fluid.dygraph.Layer):
-
     def __init__(self, vocab_size, hidden_size, weight):
         super(SimpleEmbedding, self).__init__()
         self.embedding = paddle.nn.Embedding(
@@ -104,7 +106,9 @@ class SimpleEmbedding(fluid.dygraph.Layer):
             hidden_size,
             weight_attr=paddle.framework.ParamAttr(
                 name="origin_embedding",
-                initializer=paddle.nn.initializer.Assign(weight)))
+                initializer=paddle.nn.initializer.Assign(weight),
+            ),
+        )
 
     def forward(self, x):
         output = self.embedding(x)
@@ -112,14 +116,13 @@ class SimpleEmbedding(fluid.dygraph.Layer):
 
 
 class TestDistTraning(unittest.TestCase):
-
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 2
         strategy.hybrid_configs = {
             "dp_degree": 1,
             "mp_degree": self.model_parallel_size,
-            "pp_degree": 1
+            "pp_degree": 1,
         }
         fleet.init(is_collective=True, strategy=strategy)
 
@@ -144,10 +147,12 @@ class TestDistTraning(unittest.TestCase):
 
         model_b = SimpleMatmul(integral_w, output_size, global_dtype)
 
-        optimizer_a = paddle.optimizer.SGD(learning_rate=0.001,
-                                           parameters=model_a.parameters())
-        optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
-                                           parameters=model_b.parameters())
+        optimizer_a = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model_a.parameters()
+        )
+        optimizer_b = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model_b.parameters()
+        )
         for idx in range(5):
             input = paddle.randn([batch_size, input_size], global_dtype)
             input.stop_gradient = True
@@ -192,11 +197,13 @@ class TestDistTraning(unittest.TestCase):
 
         model_b = SimpleMatmul(integral_w, output_size, global_dtype)
 
-        optimizer_a = paddle.optimizer.SGD(learning_rate=0.001,
-                                           parameters=model_a.parameters())
+        optimizer_a = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model_a.parameters()
+        )
 
-        optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
-                                           parameters=model_b.parameters())
+        optimizer_b = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model_b.parameters()
+        )
 
         for idx in range(5):
             input = paddle.randn([batch_size, input_size], global_dtype)
@@ -213,9 +220,9 @@ class TestDistTraning(unittest.TestCase):
             optimizer_a.step()
             optimizer_b.step()
 
-            np.testing.assert_allclose(loss_a.numpy(),
-                                       loss_b.numpy(),
-                                       rtol=5e-6)
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=5e-6
+            )
 
     def test_parallel_embedding(self):
         batch_size = 17
@@ -240,21 +247,25 @@ class TestDistTraning(unittest.TestCase):
         for idx in range(len(integral_w)):
             tmp = paddle.gather(
                 integral_w[idx],
-                paddle.to_tensor(list(range(vocab_size_per_card))))
+                paddle.to_tensor(list(range(vocab_size_per_card))),
+            )
             result_w.append(tmp)
         integral_w = paddle.concat(result_w, axis=0)
 
         model_b = SimpleEmbedding(vocab_size, hidden_size, integral_w)
 
-        optimizer_a = paddle.optimizer.SGD(learning_rate=0.001,
-                                           parameters=model_a.parameters())
+        optimizer_a = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model_a.parameters()
+        )
 
-        optimizer_b = paddle.optimizer.SGD(learning_rate=0.001,
-                                           parameters=model_b.parameters())
+        optimizer_b = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model_b.parameters()
+        )
 
         for _ in range(5):
-            np_input_data = np.random.randint(0, vocab_size,
-                                              (batch_size, seq_length))
+            np_input_data = np.random.randint(
+                0, vocab_size, (batch_size, seq_length)
+            )
             input_data = paddle.to_tensor(np_input_data, dtype="int32")
 
             output_a = model_a(input_data)
@@ -292,21 +303,23 @@ class TestDistTraning(unittest.TestCase):
         np.random.seed(seed)
 
         for _ in range(5):
-            np_label = np.random.randint(0, vocab_size,
-                                         (batch_size, seq_length))
+            np_label = np.random.randint(
+                0, vocab_size, (batch_size, seq_length)
+            )
             label = paddle.to_tensor(np_label, dtype="int64")
 
             data = paddle.randn(
                 shape=[batch_size, seq_length, class_size_per_card],
-                dtype='float32')
+                dtype='float32',
+            )
             data.stop_gradient = False
 
             check_group = dist.new_group(list(range(self.model_parallel_size)))
             integral_data = []
             partial_data = data.clone().detach()
-            paddle.distributed.all_gather(integral_data,
-                                          partial_data,
-                                          group=check_group)
+            paddle.distributed.all_gather(
+                integral_data, partial_data, group=check_group
+            )
             integral_data = paddle.concat(integral_data, axis=-1)
             integral_data = integral_data.detach().clone()
             integral_data.stop_gradient = False
@@ -315,23 +328,23 @@ class TestDistTraning(unittest.TestCase):
             loss_b = model_b(integral_data, label).sum() / batch_size
             print("loss_a: ", loss_a.numpy(), "loss_b: ", loss_b.numpy())
 
-            np.testing.assert_allclose(loss_a.numpy(),
-                                       loss_b.numpy(),
-                                       rtol=1e-6)
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-6
+            )
 
             loss_a.backward()
             loss_b.backward()
 
             integral_grad = []
             partial_grad = data.grad.clone().detach()
-            paddle.distributed.all_gather(integral_grad,
-                                          partial_grad,
-                                          group=check_group)
+            paddle.distributed.all_gather(
+                integral_grad, partial_grad, group=check_group
+            )
             integral_grad = paddle.concat(integral_grad, axis=-1)
 
-            np.testing.assert_allclose(integral_data.grad.numpy(),
-                                       integral_grad.numpy(),
-                                       rtol=1e-6)
+            np.testing.assert_allclose(
+                integral_data.grad.numpy(), integral_grad.numpy(), rtol=1e-6
+            )
 
 
 if __name__ == '__main__':

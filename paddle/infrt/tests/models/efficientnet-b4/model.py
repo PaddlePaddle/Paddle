@@ -20,6 +20,7 @@ import paddle
 import sys
 
 model = EfficientNet.from_name('efficientnet-b4')
-net = to_static(model,
-                input_spec=[InputSpec(shape=[None, 3, 256, 256], name='x')])
+net = to_static(
+    model, input_spec=[InputSpec(shape=[None, 3, 256, 256], name='x')]
+)
 paddle.jit.save(net, sys.argv[1])

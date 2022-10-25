@@ -21,9 +21,10 @@ paddle.enable_static()
 
 
 class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
-
     def test_gradient_merge_optimizer(self):
-        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        train_prog, startup_prog = (
+            paddle.fluid.Program(),
+            paddle.fluid.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'gradient_merge')
@@ -33,7 +34,9 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@GradientMerge', ''.join(vars))
 
     def test_recom_gm_optimizer(self):
-        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        train_prog, startup_prog = (
+            paddle.fluid.Program(),
+            paddle.fluid.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'gradient_merge')
@@ -45,7 +48,9 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(vars))
 
     def test_gm_amp_optimizer(self):
-        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        train_prog, startup_prog = (
+            paddle.fluid.Program(),
+            paddle.fluid.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'gradient_merge')
@@ -57,7 +62,9 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('cast', ''.join(vars))
 
     def test_gm_pure_fp16_optimizer(self):
-        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        train_prog, startup_prog = (
+            paddle.fluid.Program(),
+            paddle.fluid.Program(),
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'gradient_merge')
@@ -67,8 +74,9 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
 
         params = train_prog.all_parameters()
         for param in train_prog.all_parameters():
-            self.assertEqual(param.dtype,
-                             paddle.fluid.core.VarDesc.VarType.FP16)
+            self.assertEqual(
+                param.dtype, paddle.fluid.core.VarDesc.VarType.FP16
+            )
 
         vars = [x.name for x in train_prog.list_vars()]
         self.assertIn('@GradientMerge', ''.join(vars))

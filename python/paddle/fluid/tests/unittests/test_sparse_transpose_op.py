@@ -37,14 +37,16 @@ class TestTranspose(unittest.TestCase):
             sp_x.stop_gradient = False
             sp_out = paddle.sparse.transpose(sp_x, dims)
 
-            np.testing.assert_allclose(sp_out.to_dense().numpy(),
-                                       dense_out.numpy(),
-                                       rtol=1e-05)
+            np.testing.assert_allclose(
+                sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
+            )
             dense_out.backward()
             sp_out.backward()
-            np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
-                                       (dense_x.grad * mask).numpy(),
-                                       rtol=1e-05)
+            np.testing.assert_allclose(
+                sp_x.grad.to_dense().numpy(),
+                (dense_x.grad * mask).numpy(),
+                rtol=1e-05,
+            )
 
     def test_transpose_2d(self):
         self.check_result([2, 5], [0, 1], 'coo')
@@ -69,8 +71,9 @@ class TestTranspose(unittest.TestCase):
     def test_transpose_nd(self):
         self.check_result([8, 3, 4, 4, 5, 3], [5, 3, 4, 1, 0, 2], 'coo')
         # Randint now only supports access to dimension 0 to 9.
-        self.check_result([2, 3, 4, 2, 3, 4, 2, 3, 4],
-                          [2, 3, 4, 5, 6, 7, 8, 0, 1], 'coo')
+        self.check_result(
+            [2, 3, 4, 2, 3, 4, 2, 3, 4], [2, 3, 4, 5, 6, 7, 8, 0, 1], 'coo'
+        )
 
 
 if __name__ == "__main__":

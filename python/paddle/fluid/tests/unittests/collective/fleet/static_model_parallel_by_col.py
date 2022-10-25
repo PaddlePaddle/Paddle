@@ -27,60 +27,63 @@ IN_SIZE = 2 * MODEL_PARALLEL_SIZE
 OUT_SIZE = 2 * MODEL_PARALLEL_SIZE
 
 # Fix seed for test
-#fluid.default_startup_program().random_seed = 1
-#fluid.default_main_program().random_seed = 1
+# fluid.default_startup_program().random_seed = 1
+# fluid.default_main_program().random_seed = 1
 
 
 def get_param_attr(weight, bias):
     weight_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(weight))
+        initializer=fluid.initializer.NumpyArrayInitializer(weight)
+    )
     bias_attr = paddle.ParamAttr(
-        initializer=fluid.initializer.NumpyArrayInitializer(bias))
+        initializer=fluid.initializer.NumpyArrayInitializer(bias)
+    )
     return weight_attr, bias_attr
 
 
 def create_model(data, rank):
     np.random.seed(2021)
     np_weight = np.random.uniform(-1, 1, size=(IN_SIZE, OUT_SIZE)).astype(DTYPE)
-    np_bias = np.random.uniform(-1, 1, size=(OUT_SIZE, )).astype(DTYPE)
+    np_bias = np.random.uniform(-1, 1, size=(OUT_SIZE,)).astype(DTYPE)
     if rank is not None:
         start_col = 0 if rank == 0 else OUT_SIZE // 2
-        np_weight_part = np_weight[:, start_col:start_col + OUT_SIZE // 2]
-        np_bias_part = np_bias[start_col:start_col + OUT_SIZE // 2]
+        np_weight_part = np_weight[:, start_col : start_col + OUT_SIZE // 2]
+        np_bias_part = np_bias[start_col : start_col + OUT_SIZE // 2]
 
         weight_attr, bias_attr = get_param_attr(np_weight_part, np_bias_part)
-        result = paddle.distributed.split(data,
-                                          size=(IN_SIZE, OUT_SIZE),
-                                          operation='linear',
-                                          axis=1,
-                                          num_partitions=MODEL_PARALLEL_SIZE,
-                                          weight_attr=weight_attr,
-                                          bias_attr=bias_attr)
+        result = paddle.distributed.split(
+            data,
+            size=(IN_SIZE, OUT_SIZE),
+            operation='linear',
+            axis=1,
+            num_partitions=MODEL_PARALLEL_SIZE,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
+        )
     else:
         weight_attr, bias_attr = get_param_attr(np_weight, np_bias)
-        result = fluid.layers.fc(data,
-                                 size=OUT_SIZE,
-                                 param_attr=weight_attr,
-                                 bias_attr=bias_attr)
+        result = fluid.layers.fc(
+            data, size=OUT_SIZE, param_attr=weight_attr, bias_attr=bias_attr
+        )
 
     predict = paddle.sum(result)
     return predict
 
 
 class TestModelParallel(TestDistRunnerBase):
-
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
-        data_in = fluid.data(name='data_in',
-                             shape=[batch_size, IN_SIZE],
-                             dtype=DTYPE)
+        data_in = fluid.data(
+            name='data_in', shape=[batch_size, IN_SIZE], dtype=DTYPE
+        )
 
         if dist_strategy:
             data_loader = fluid.io.DataLoader.from_generator(
                 feed_list=[data_in],
                 capacity=64,
                 use_double_buffer=False,
-                iterable=False)
+                iterable=False,
+            )
 
         if dist_strategy:
             fleet.init(is_collective=True)
@@ -93,8 +96,9 @@ class TestModelParallel(TestDistRunnerBase):
         opt = fluid.optimizer.SGD(0.1)
 
         if dist_strategy:
-            dist_opt = fleet.distributed_optimizer(optimizer=opt,
-                                                   strategy=strategy)
+            dist_opt = fleet.distributed_optimizer(
+                optimizer=opt, strategy=strategy
+            )
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)

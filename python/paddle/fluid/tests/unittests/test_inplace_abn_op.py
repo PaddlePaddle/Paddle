@@ -22,7 +22,6 @@ import paddle
 
 
 class TestInplaceANBOpTraining(unittest.TestCase):
-
     def setUp(self):
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
         self.N = 4
@@ -31,26 +30,30 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         self.W = 9
         self.dshape = [self.N, self.C, self.H, self.W]
 
-    def build_program(self,
-                      place,
-                      layout,
-                      seed,
-                      only_forward=False,
-                      activation="identity",
-                      alpha=1.0,
-                      use_cuda=False,
-                      inplace=False):
+    def build_program(
+        self,
+        place,
+        layout,
+        seed,
+        only_forward=False,
+        activation="identity",
+        alpha=1.0,
+        use_cuda=False,
+        inplace=False,
+    ):
         main = fluid.Program()
         startup = fluid.Program()
         main.random_seed = seed
         startup.random_seed = seed
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
-                data = fluid.layers.data(name='input',
-                                         shape=self.dshape,
-                                         dtype=self.dtype,
-                                         append_batch_size=False,
-                                         stop_gradient=False)
+                data = fluid.layers.data(
+                    name='input',
+                    shape=self.dshape,
+                    dtype=self.dtype,
+                    append_batch_size=False,
+                    stop_gradient=False,
+                )
                 if inplace:
                     bn = fluid.layers.inplace_abn(
                         data,
@@ -61,7 +64,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                         moving_variance_name='bn_moving_variance',
                         data_layout=layout,
                         is_test=only_forward,
-                        act_alpha=alpha)
+                        act_alpha=alpha,
+                    )
                 else:
                     bn = fluid.layers.batch_norm(
                         data,
@@ -71,7 +75,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                         moving_variance_name='bn_moving_variance',
                         data_layout=layout,
                         is_test=only_forward,
-                        in_place=inplace)
+                        in_place=inplace,
+                    )
                     if activation == 'leaky_relu':
                         bn = fluid.layers.leaky_relu(bn, alpha)
                     if activation == 'elu':
@@ -80,7 +85,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 # NOTE: in inplace mode input and output of bn
                 # may have same name, multiply 1. to generate
                 # a new Variable for fetch
-                bn = bn * 1.
+                bn = bn * 1.0
 
                 sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
@@ -92,23 +97,28 @@ class TestInplaceANBOpTraining(unittest.TestCase):
     def compare(self, place, layout, only_forward, activation, alpha, use_cuda):
         seed = 10
         os.environ['FLAGS_cudnn_deterministic'] = "1"
-        data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
+        data = np.random.random(size=self.dshape).astype(self.dtype) * 4.0 - 2
 
         fetch_outs = []
         fetch_names = []
         for inplace in [False, True]:
-            main, startup, outs = self.build_program(place,
-                                                     layout,
-                                                     seed,
-                                                     only_forward,
-                                                     activation,
-                                                     alpha,
-                                                     inplace=inplace)
+            main, startup, outs = self.build_program(
+                place,
+                layout,
+                seed,
+                only_forward,
+                activation,
+                alpha,
+                inplace=inplace,
+            )
             exe = fluid.Executor(place)
             exe.run(startup)
 
             fetch_name = [v.name for v in outs] + [
-                'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
+                'bn_moving_mean',
+                'bn_moving_variance',
+                'bn_scale',
+                'bn_bias',
             ]
             if not only_forward:
                 others = [
@@ -124,50 +134,69 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                 fv.persistable = True
 
             build_strategy = fluid.BuildStrategy()
-            build_strategy.sync_batch_norm = use_cuda and \
-                        fluid.core.get_cuda_device_count() > 1
+            build_strategy.sync_batch_norm = (
+                use_cuda and fluid.core.get_cuda_device_count() > 1
+            )
             build_strategy.enable_inplace = inplace
             exec_strategy = fluid.ExecutionStrategy()
             exec_strategy.num_threads = 1 if os.name == 'nt' else 0
             comp_prog1 = compiler.CompiledProgram(main).with_data_parallel(
                 outs[0].name if not only_forward else None,
                 build_strategy=build_strategy,
-                exec_strategy=exec_strategy)
-            bn_fetches = exe.run(program=main,
-                                 feed={'input': data},
-                                 fetch_list=fetch_name)
+                exec_strategy=exec_strategy,
+            )
+            bn_fetches = exe.run(
+                program=main, feed={'input': data}, fetch_list=fetch_name
+            )
             fetch_outs.append(bn_fetches)
             fetch_names.append(fetch_name)
 
-        for bn_val, inplace_abn_val, name1, name2 in zip(*(fetch_outs +
-                                                           fetch_names)):
+        for bn_val, inplace_abn_val, name1, name2 in zip(
+            *(fetch_outs + fetch_names)
+        ):
             np.testing.assert_allclose(
                 bn_val,
                 inplace_abn_val,
                 rtol=1e-05,
                 atol=0.01,
-                err_msg='Output (' + name1 + ':' + name2 +
-                ') has diff on {} with {} layout and {} activation. \n'.format(
-                    place, layout, activation) + '\nBN     ' + str(bn_val) +
-                '\n' + 'Inplace ABN ' + str(inplace_abn_val))
+                err_msg='Output ('
+                + name1
+                + ':'
+                + name2
+                + ') has diff on {} with {} layout and {} activation. \n'.format(
+                    place, layout, activation
+                )
+                + '\nBN     '
+                + str(bn_val)
+                + '\n'
+                + 'Inplace ABN '
+                + str(inplace_abn_val),
+            )
 
     def test_op(self):
         use_cudas = [False, True] if core.is_compiled_with_cuda() else [False]
-        #use_cudas = [False]
+        # use_cudas = [False]
         for use_cuda in use_cudas:
             place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
             layouts = ["NCHW", "NHWC"]
             for layout in layouts:
-                for activation, alpha in zip([None, 'elu', 'leaky_relu'],
-                                             [0., 1., 0.02]):
+                for activation, alpha in zip(
+                    [None, 'elu', 'leaky_relu'], [0.0, 1.0, 0.02]
+                ):
                     for infer_only in [True, False]:
-                        self.compare(place, layout, infer_only, activation,
-                                     alpha, use_cuda)
+                        self.compare(
+                            place,
+                            layout,
+                            infer_only,
+                            activation,
+                            alpha,
+                            use_cuda,
+                        )
 
     def test_all_branches(self):
         seed = 10
         os.environ['FLAGS_cudnn_deterministic'] = "1"
-        data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
+        data = np.random.random(size=self.dshape).astype(self.dtype) * 4.0 - 2
         use_cudas = [False, True] if core.is_compiled_with_cuda() else [False]
         alpha = 0.1
         layouts = ["NCHW", "NHWC"]
@@ -176,8 +205,15 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             for layout in layouts:
                 for activation in ['identity', 'leaky_relu']:
                     main, startup, outs = self.build_program(
-                        place, layout, seed, False, activation, alpha, use_cuda,
-                        True)
+                        place,
+                        layout,
+                        seed,
+                        False,
+                        activation,
+                        alpha,
+                        use_cuda,
+                        True,
+                    )
                     exe = fluid.Executor(place)
                     exe.run(startup)
                     exe.run(program=main, feed={'input': data})

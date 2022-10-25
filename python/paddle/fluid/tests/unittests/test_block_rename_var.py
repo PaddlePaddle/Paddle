@@ -18,16 +18,15 @@ import paddle
 
 
 class TestBlockRenameVar(unittest.TestCase):
-
     def setUp(self):
         self.program = paddle.static.Program()
         self.block = self.program.current_block()
-        self.var = self.block.create_var(name="X",
-                                         shape=[-1, 23, 48],
-                                         dtype='float32')
-        self.op = self.block.append_op(type="abs",
-                                       inputs={"X": [self.var]},
-                                       outputs={"Out": [self.var]})
+        self.var = self.block.create_var(
+            name="X", shape=[-1, 23, 48], dtype='float32'
+        )
+        self.op = self.block.append_op(
+            type="abs", inputs={"X": [self.var]}, outputs={"Out": [self.var]}
+        )
         self.new_var_name = self.get_new_var_name()
 
     def get_new_var_name(self):
@@ -35,19 +34,20 @@ class TestBlockRenameVar(unittest.TestCase):
 
     def test_rename_var(self):
         self.block._rename_var(self.var.name, self.new_var_name)
-        new_var_name_str = self.new_var_name if isinstance(
-            self.new_var_name, str) else self.new_var_name.decode()
+        new_var_name_str = (
+            self.new_var_name
+            if isinstance(self.new_var_name, str)
+            else self.new_var_name.decode()
+        )
         self.assertTrue(new_var_name_str in self.block.vars)
 
 
 class TestBlockRenameVarStrCase2(TestBlockRenameVar):
-
     def get_new_var_name(self):
         return "ABC"
 
 
 class TestBlockRenameVarBytes(TestBlockRenameVar):
-
     def get_new_var_name(self):
         return b"Y"
 

@@ -70,7 +70,8 @@ class Gumbel(TransformedDistribution):
 
         if not isinstance(loc, (numbers.Real, framework.Variable)):
             raise TypeError(
-                f"Expected type of loc is Real|Variable, but got {type(loc)}")
+                f"Expected type of loc is Real|Variable, but got {type(loc)}"
+            )
         if not isinstance(scale, (numbers.Real, framework.Variable)):
             raise TypeError(
                 f"Expected type of scale is Real|Variable, but got {type(scale)}"
@@ -90,7 +91,8 @@ class Gumbel(TransformedDistribution):
         finfo = np.finfo(dtype='float32')
         self.base_dist = paddle.distribution.Uniform(
             paddle.full_like(self.loc, float(finfo.tiny)),
-            paddle.full_like(self.loc, float(1 - finfo.eps)))
+            paddle.full_like(self.loc, float(1 - finfo.eps)),
+        )
 
         self.transforms = ()
 
@@ -136,9 +138,11 @@ class Gumbel(TransformedDistribution):
             Tensor: The variance value.
 
         """
-        temp = paddle.full(shape=self.loc.shape,
-                           fill_value=math.pi * math.pi,
-                           dtype=self.scale.dtype)
+        temp = paddle.full(
+            shape=self.loc.shape,
+            fill_value=math.pi * math.pi,
+            dtype=self.scale.dtype,
+        )
 
         return paddle.pow(self.scale, 2) * temp / 6
 
@@ -230,13 +234,19 @@ class Gumbel(TransformedDistribution):
         """
         exp_trans = paddle.distribution.ExpTransform()
         affine_trans_1 = paddle.distribution.AffineTransform(
-            paddle.full(shape=self.scale.shape,
-                        fill_value=0,
-                        dtype=self.loc.dtype), -paddle.ones_like(self.scale))
+            paddle.full(
+                shape=self.scale.shape, fill_value=0, dtype=self.loc.dtype
+            ),
+            -paddle.ones_like(self.scale),
+        )
         affine_trans_2 = paddle.distribution.AffineTransform(
-            self.loc, -self.scale)
+            self.loc, -self.scale
+        )
 
         return affine_trans_2.forward(
             exp_trans.inverse(
                 affine_trans_1.forward(
-                    exp_trans.inverse(self._base.sample(shape)))))
+                    exp_trans.inverse(self._base.sample(shape))
+                )
+            )
+        )
