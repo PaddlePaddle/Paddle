@@ -583,20 +583,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "gather_nd op Index input data type must be int32";
         return false;
       }
-
-      const auto index_shape = index_var_desc->GetShape();
-      const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() <= 2) {
-        VLOG(3) << "gather_nd op requires the input's dimension to be greater "
-                   "than 2";
-        return false;
-      }
-
-      if (x_shape.size() != index_shape.size()) {
-        VLOG(3) << "gather_nd op Index input dims size [" << index_shape.size()
-                << " ] not equal to x dims size [" << x_shape.size() << "]";
-        return false;
-      }
     }
 
     if (op_type == "anchor_generator") {
