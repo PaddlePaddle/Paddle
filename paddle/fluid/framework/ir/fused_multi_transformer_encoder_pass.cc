@@ -1375,7 +1375,9 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
     fill_const_op_desc.SetAttr("input_dim_idx", 0);
     fill_const_op_desc.SetAttr("output_dim_idx", 1);
     fill_const_op_desc.SetAttr("value", 0);
-    fill_const_op_desc.SetAttr("dtype", static_cast<int>(proto::VarType::FP32));
+    fill_const_op_desc.SetAttr(
+        "dtype",
+        static_cast<int>(framework::TransToProtoVarType(wq_tensor->dtype())));
     auto* fill_const_op = graph->CreateOpNode(&fill_const_op_desc);
 
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv->Name()});
@@ -2107,7 +2109,9 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     fill_const_op_desc.SetAttr("input_dim_idx", 0);
     fill_const_op_desc.SetAttr("output_dim_idx", 1);
     fill_const_op_desc.SetAttr("value", 0);
-    fill_const_op_desc.SetAttr("dtype", static_cast<int>(proto::VarType::FP32));
+    fill_const_op_desc.SetAttr("dtype",
+                               static_cast<int>(framework::TransToProtoVarType(
+                                   qkv_w_tensor->dtype())));
     auto* fill_const_op = graph->CreateOpNode(&fill_const_op_desc);
 
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv->Name()});
@@ -2795,7 +2799,9 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     fill_const_op_desc.SetAttr("input_dim_idx", 0);
     fill_const_op_desc.SetAttr("output_dim_idx", 1);
     fill_const_op_desc.SetAttr("value", 0);
-    fill_const_op_desc.SetAttr("dtype", static_cast<int>(proto::VarType::FP32));
+    fill_const_op_desc.SetAttr("dtype",
+                               static_cast<int>(framework::TransToProtoVarType(
+                                   qkv_w_tensor->dtype())));
     auto* fill_const_op = graph->CreateOpNode(&fill_const_op_desc);
 
     fused_multi_transformer_op_desc.SetInput("CacheKV", {cache_kv->Name()});

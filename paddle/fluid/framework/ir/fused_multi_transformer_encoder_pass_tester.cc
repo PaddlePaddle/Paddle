@@ -210,12 +210,12 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
   int num_fused_nodes_after = GetNumOpNodes(graph, "fused_multi_transformer");
 
   PADDLE_ENFORCE_EQ(num_nodes_before,
-                    num_nodes_after + 68,
+                    num_nodes_after + 62,
                     platform::errors::InvalidArgument(
                         "After the fused_multi_transformer_encoder_pass, The "
                         "node num in graph "
                         "should be %d, but the result is %d",
-                        num_nodes_before - 68,
+                        num_nodes_before - 62,
                         num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
@@ -366,11 +366,11 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
 
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
-      num_nodes_after + 56,
+      num_nodes_after + 50,
       platform::errors::InvalidArgument(
           "After the fused_multi_transformer_encoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
-          num_nodes_before - 56,
+          num_nodes_before - 50,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
@@ -531,11 +531,11 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
 
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
-      num_nodes_after + 64,
+      num_nodes_after + 58,
       platform::errors::InvalidArgument(
           "After the fused_multi_transformer_encoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
-          num_nodes_before - 64,
+          num_nodes_before - 58,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
