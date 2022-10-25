@@ -21,7 +21,7 @@ set(MKLDNN_INC_DIR
     "${MKLDNN_INSTALL_DIR}/include"
     CACHE PATH "mkldnn include directory." FORCE)
 set(MKLDNN_REPOSITORY ${GIT_URL}/oneapi-src/oneDNN.git)
-set(MKLDNN_TAG 650085b2f3643aad05c629425983491d63b5c289)
+set(MKLDNN_TAG a96c94f39773df35760d037d1ebe580dcf79c137)
 
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR
