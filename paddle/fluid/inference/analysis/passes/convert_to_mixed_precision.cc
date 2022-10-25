@@ -89,6 +89,8 @@ bool GpuKernelSupportPrecision(
 }
 
 class ConvertToMixedPrecisionPass {
+  using BlockID = size_t;
+
  public:
   explicit ConvertToMixedPrecisionPass(
       const std::string& model_file,
@@ -114,7 +116,6 @@ class ConvertToMixedPrecisionPass {
     black_list_.insert("assign_value");
     black_list_.insert("eye");
     black_list_.insert("fill_any_like");
-    black_list_.insert("fill_constant_batch_size_like");
   }
 
   void Run();
@@ -125,16 +126,16 @@ class ConvertToMixedPrecisionPass {
   void ConvertAllFp64ToFp32(framework::ir::Graph* graph);
   void FixCastAttr(framework::ir::Graph* graph);
   void SaveMixedModel();
-  void ConvertTensorDtype(int block_idx);
+  void ConvertTensorDtype(BlockID block_idx);
   void ProcessInputNode(bool support_precision,
                         framework::ir::Node* in_node,
                         framework::ir::Node* op_node,
                         int* suffix,
                         framework::BlockDesc* block_desc,
                         VarType::Type to_type,
-                        int block_idx);
+                        BlockID block_idx);
 
-  void ProcessOutputNode(int block_idx,
+  void ProcessOutputNode(BlockID block_idx,
                          framework::ir::Node* var_node,
                          VarType::Type to_type);
   inline bool IsFloatVarType(VarType::Type type);
@@ -145,9 +146,10 @@ class ConvertToMixedPrecisionPass {
 
   // To support multi block, we need to consider a lot of special cases.
   // Return Node* which first appers in block.
-  framework::ir::Node* GetRealVarNode(int block_idx, framework::ir::Node* node);
+  framework::ir::Node* GetRealVarNode(BlockID block_idx,
+                                      framework::ir::Node* node);
   void FindVarsInMultiBlock();
-  inline bool VarIsMultiPrecisionOpsOut(int block_idx,
+  inline bool VarIsMultiPrecisionOpsOut(BlockID block_idx,
                                         framework::ir::Node* op_node);
 
  private:
@@ -169,10 +171,10 @@ class ConvertToMixedPrecisionPass {
   framework::Scope scope_;
 
   std::unordered_map<framework::ir::Node*, framework::ir::Node*> cast_map_;
-  std::unordered_map<std::string, std::pair<VarType::Type, int>>
-      vars_in_multi_block_map_;
-  std::vector<std::unordered_map<std::string, std::vector<std::string>>>
-      vars_repeat_in_one_block_;
+  std::unordered_map<std::string, std::pair<VarType::Type, BlockID>>
+      vars_in_multi_block_with_pair_;
+  std::unordered_map<std::string, std::vector<std::string>>
+      vars_in_multi_block_with_ops_;
   int suffix_{0};
 
   std::unique_ptr<framework::ProgramDesc> program_desc_{nullptr};
@@ -181,11 +183,12 @@ class ConvertToMixedPrecisionPass {
 };
 
 framework::ir::Node* ConvertToMixedPrecisionPass::GetRealVarNode(
-    int block_idx, framework::ir::Node* var_node) {
+    BlockID block_idx, framework::ir::Node* var_node) {
   CHECK_EQ(var_node->IsVar(), true);
 
-  if (vars_in_multi_block_map_.count(var_node->Name())) {
-    int origin_blockId = vars_in_multi_block_map_.at(var_node->Name()).second;
+  if (vars_in_multi_block_with_pair_.count(var_node->Name())) {
+    auto origin_blockId =
+        vars_in_multi_block_with_pair_.at(var_node->Name()).second;
     if (block_idx != origin_blockId) {
       auto* graph = graphes_[origin_blockId];
       for (auto* node : graph->Nodes()) {
@@ -212,16 +215,17 @@ inline bool ConvertToMixedPrecisionPass::VarNodeHasDtype(
 // if and only if op1 and op2 both support fp16, we convert op1 and op2's
 // precision.
 inline bool ConvertToMixedPrecisionPass::VarIsMultiPrecisionOpsOut(
-    int block_idx, framework::ir::Node* op_node) {
+    BlockID block_idx, framework::ir::Node* op_node) {
   CHECK_EQ(op_node->IsOp(), true);
 
   for (auto* var_node : op_node->outputs) {
+    if (!var_node->IsVar()) continue;
     auto* real_var_node = GetRealVarNode(block_idx, var_node);
     if (!real_var_node->Var()->Persistable() &&
-        vars_repeat_in_one_block_[block_idx].count(var_node->Name())) {
+        vars_in_multi_block_with_ops_.count(var_node->Name())) {
       for (const auto& op_type :
-           vars_repeat_in_one_block_[block_idx].at(var_node->Name())) {
-        if (OpSupportPrecision(
+           vars_in_multi_block_with_ops_.at(var_node->Name())) {
+        if (!OpSupportPrecision(
                 op_type, backend_, mixed_precision_, black_list_)) {
           VLOG(2) << var_node->Name()
                   << " is multi precision op's out, so we skip convert to fp16";
@@ -240,18 +244,19 @@ void ConvertToMixedPrecisionPass::ProcessInputNode(
     int* suffix,
     framework::BlockDesc* block_desc,
     VarType::Type to_type,
-    int block_idx) {
+    BlockID block_idx) {
+  if (!in_node->IsVar()) return;
   auto* real_node = GetRealVarNode(block_idx, in_node);
   if (!VarNodeHasDtype(real_node)) return;
-  auto graph = graphes_[block_idx];
+  auto* graph = graphes_[block_idx];
   bool is_main_block = block_idx == 0;
   auto* in_var = real_node->Var();
   auto in_var_type = in_var->GetDataType();
   auto prev_type = in_var_type;
-  bool is_in_multi_block = vars_in_multi_block_map_.count(in_var->Name());
+  bool is_in_multi_block = vars_in_multi_block_with_pair_.count(in_var->Name());
 
   if (!is_main_block && is_in_multi_block) {
-    in_var_type = vars_in_multi_block_map_.at(in_var->Name()).first;
+    in_var_type = vars_in_multi_block_with_pair_.at(in_var->Name()).first;
   }
   if (support_precision) {
     if (in_var->Persistable() && in_var_type == VarType::FP32) {
@@ -291,7 +296,8 @@ void ConvertToMixedPrecisionPass::ProcessInputNode(
 }
 
 void ConvertToMixedPrecisionPass::ProcessOutputNode(
-    int block_idx, framework::ir::Node* var_node, VarType::Type to_type) {
+    BlockID block_idx, framework::ir::Node* var_node, VarType::Type to_type) {
+  if (!var_node->IsVar()) return;
   auto* real_node = GetRealVarNode(block_idx, var_node);
   if (!VarNodeHasDtype(real_node)) return;
   auto* out_var = real_node->Var();
@@ -400,30 +406,35 @@ void ConvertToMixedPrecisionPass::LoadAndPrepare() {
   arg.SetMainGraphNotOwned(main_graph_.get());
   pass.Run(&arg);
 
-  vars_repeat_in_one_block_.resize(program_desc_->Size());
   FindVarsInMultiBlock();
 }
 
 void ConvertToMixedPrecisionPass::FindVarsInMultiBlock() {
-  std::vector<std::set<std::string>> block_var_names_set(program_desc_->Size());
-  for (size_t idx = 0; idx < program_desc_->Size(); ++idx) {
+  std::unordered_set<std::string> all_var_names_set;
+  std::vector<std::unordered_set<std::string>> block_var_names_set(
+      program_desc_->Size());
+  for (BlockID idx = 0; idx < program_desc_->Size(); ++idx) {
     for (auto* op : program_desc_->Block(idx).AllOps()) {
       const auto& in_names = op->InputArgumentNames();
       block_var_names_set[idx].insert(in_names.begin(), in_names.end());
       const auto& out_names = op->OutputArgumentNames();
+      block_var_names_set[idx].insert(out_names.begin(), out_names.end());
+
       if (op->HasAttr("sub_block") == false) {
         for (const auto& name : out_names) {
-          if (block_var_names_set[idx].count(name)) {
-            vars_repeat_in_one_block_[idx][name].push_back(op->Type());
+          if (all_var_names_set.count(name)) {
+            vars_in_multi_block_with_ops_[name].push_back(op->Type());
           }
         }
       }
-      block_var_names_set[idx].insert(out_names.begin(), out_names.end());
+      all_var_names_set.insert(block_var_names_set[idx].begin(),
+                               block_var_names_set[idx].end());
     }
   }
 
-  for (size_t idx = 0; idx < program_desc_->Size() - 1; ++idx) {
-    for (size_t jdx = idx + 1; jdx < program_desc_->Size(); ++jdx) {
+  CHECK_GT(program_desc_->Size(), 0U);
+  for (BlockID idx = 0; idx < program_desc_->Size() - 1; ++idx) {
+    for (BlockID jdx = idx + 1; jdx < program_desc_->Size(); ++jdx) {
       std::vector<std::string> vars_in_multi_block;
       std::set_intersection(block_var_names_set[idx].begin(),
                             block_var_names_set[idx].end(),
@@ -432,8 +443,8 @@ void ConvertToMixedPrecisionPass::FindVarsInMultiBlock() {
                             std::back_inserter(vars_in_multi_block));
 
       for (const auto& name : vars_in_multi_block) {
-        vars_in_multi_block_map_.emplace(name,
-                                         std::make_pair(VarType::FP32, idx));
+        vars_in_multi_block_with_pair_.emplace(
+            name, std::make_pair(VarType::FP32, idx));
       }
     }
   }
@@ -504,7 +515,7 @@ void ConvertToMixedPrecisionPass::Run() {
   SaveMixedModel();
 }
 
-void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
+void ConvertToMixedPrecisionPass::ConvertTensorDtype(BlockID block_idx) {
   auto* graph = graphes_[block_idx];
   VarType::Type to_type;
   if (mixed_precision_ == phi::DataType::FLOAT16) {
@@ -547,6 +558,7 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
       // same name.
       std::unordered_map<std::string, framework::ir::Node*> in_name_to_node;
       for (auto* in : op_node->inputs) {
+        if (!in->IsVar()) continue;
         auto* real_node = GetRealVarNode(block_idx, in);
         if (VarNodeHasDtype(real_node)) {
           in_name_to_node[in->Name()] = in;
@@ -554,6 +566,7 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
       }
 
       for (auto* out : op_node->outputs) {
+        if (!out->IsVar()) continue;
         auto* real_node = GetRealVarNode(block_idx, out);
         if (VarNodeHasDtype(real_node)) {
           if (in_name_to_node.count(out->Name()))
@@ -570,32 +583,46 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
     //      - add cast op if the input dtype is not fp16/bf16.
     //      - set output dtype.
     //
-    // If a var(op's out var) appears multiple times in a block, we should not
+    // If a var(op's out var) appears multiple times in graph, we should not
     // convert to fp16.
     else if (black_list_.count(op_type) == 0 &&  // NOLINT
              !VarIsMultiPrecisionOpsOut(block_idx, op_node)) {
       bool support_precision =
           OpSupportPrecision(op_type, backend_, mixed_precision_, black_list_);
 
-      // if op not has float input, we will not choose the low precision kernel.
+      // If the op has no input and output of float type, we will not choose the
+      // low precision kernel.
       {
-        bool has_float_input{false};
-        for (auto in_node : op_node->inputs) {
+        bool has_float_input_and_output{false};
+        for (auto* in_node : op_node->inputs) {
+          if (!in_node->IsVar()) continue;
           auto* real_node = GetRealVarNode(block_idx, in_node);
           if (real_node->Var()->GetDataType() == VarType::FP16 ||
               real_node->Var()->GetDataType() == VarType::FP32 ||
               real_node->Var()->GetDataType() == VarType::FP64 ||
               real_node->Var()->GetDataType() == VarType::BF16) {
-            has_float_input = true;
+            has_float_input_and_output = true;
             break;
           }
         }
-        if (!has_float_input) {
+        for (auto* out_node : op_node->outputs) {
+          if (!out_node->IsVar()) continue;
+          auto* real_node = GetRealVarNode(block_idx, out_node);
+          if (real_node->Var()->GetDataType() == VarType::FP16 ||
+              real_node->Var()->GetDataType() == VarType::FP32 ||
+              real_node->Var()->GetDataType() == VarType::FP64 ||
+              real_node->Var()->GetDataType() == VarType::BF16) {
+            has_float_input_and_output = true;
+            break;
+          }
+        }
+        if (!has_float_input_and_output) {
           support_precision = false;
-          VLOG(2) << " op doesn't has float input, just skip.";
+          VLOG(2) << " op doesn't has float input and output, just skip.";
         }
       }
-      VLOG(2) << " support low precision " << support_precision;
+      VLOG(2) << "op type: " << op_type
+              << " support low precision: " << support_precision;
 
       if (support_precision) {
         VLOG(2) << " process input nodes:";
@@ -697,12 +724,14 @@ void ConvertToMixedPrecisionPass::ConvertTensorDtype(int block_idx) {
   }
 
   for (auto* node : graph->Nodes()) {
+    if (!node->IsVar()) continue;
     auto* real_node = GetRealVarNode(block_idx, node);
     if (!VarNodeHasDtype(real_node)) continue;
 
-    if (vars_in_multi_block_map_.count(real_node->Name()) &&
-        vars_in_multi_block_map_.at(real_node->Name()).second == block_idx) {
-      vars_in_multi_block_map_.at(real_node->Name()).first =
+    if (vars_in_multi_block_with_pair_.count(real_node->Name()) &&
+        vars_in_multi_block_with_pair_.at(real_node->Name()).second ==
+            block_idx) {
+      vars_in_multi_block_with_pair_.at(real_node->Name()).first =
           real_node->Var()->GetDataType();
     }
   }
