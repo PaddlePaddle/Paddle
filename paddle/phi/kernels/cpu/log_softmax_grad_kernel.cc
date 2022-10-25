@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -71,6 +72,11 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
   const int canonical_axis = funcs::CanonicalAxis(axis, rank);
 
   dev_ctx.template Alloc<T>(x_grad);
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, x_grad, 0.0);
+    return;
+  }
   if (out.numel() != 0) {
     LogSoftmaxGradFunctor<Context, T>()(
         dev_ctx, &out, &out_grad, x_grad, canonical_axis);

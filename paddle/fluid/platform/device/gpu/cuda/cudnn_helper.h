@@ -617,7 +617,7 @@ class ScopedActivationDescriptor {
 };
 
 inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  bool use_cudnn = ctx.HasAttr("use_cudnn") && ctx.Attr<bool>("use_cudnn");
   use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_CUDA
   if (use_cudnn) {
