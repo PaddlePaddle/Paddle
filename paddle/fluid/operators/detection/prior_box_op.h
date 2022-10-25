@@ -67,7 +67,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     }
   }
 
-  template <typename data_t>
+  template <typename K>
   void PriorBoxOpHandler(const framework::ExecutionContext& ctx) const {
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* image = ctx.Input<phi::DenseTensor>("Image");
@@ -86,9 +86,9 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     std::vector<float> aspect_ratios;
     ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
 
-    data_t step_w = static_cast<data_t>(ctx.Attr<float>("step_w"));
-    data_t step_h = static_cast<data_t>(ctx.Attr<float>("step_h"));
-    data_t offset = static_cast<data_t>(ctx.Attr<float>("offset"));
+    K step_w = static_cast<K>(ctx.Attr<float>("step_w"));
+    K step_h = static_cast<K>(ctx.Attr<float>("step_h"));
+    K offset = static_cast<K>(ctx.Attr<float>("offset"));
 
     auto img_width = image->dims()[3];
     auto img_height = image->dims()[2];
@@ -96,10 +96,10 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto feature_width = input->dims()[3];
     auto feature_height = input->dims()[2];
 
-    data_t step_width, step_height;
+    K step_width, step_height;
     if (step_w == 0 || step_h == 0) {
-      step_width = static_cast<data_t>(img_width) / feature_width;
-      step_height = static_cast<data_t>(img_height) / feature_height;
+      step_width = static_cast<K>(img_width) / feature_width;
+      step_height = static_cast<K>(img_height) / feature_height;
     } else {
       step_width = step_w;
       step_height = step_h;
@@ -110,15 +110,15 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
       num_priors += max_sizes.size();
     }
 
-    boxes->mutable_data<data_t>(ctx.GetPlace());
-    vars->mutable_data<data_t>(ctx.GetPlace());
+    boxes->mutable_data<K>(ctx.GetPlace());
+    vars->mutable_data<K>(ctx.GetPlace());
 
-    data_t* b_t = boxes->data<data_t>();
+    K* b_t = boxes->data<K>();
     for (int h = 0; h < feature_height; ++h) {
       for (int w = 0; w < feature_width; ++w) {
-        data_t center_x = (w + offset) * step_width;
-        data_t center_y = (h + offset) * step_height;
-        data_t box_width, box_height;
+        K center_x = (w + offset) * step_width;
+        K center_y = (h + offset) * step_height;
+        K box_width, box_height;
         for (size_t s = 0; s < min_sizes.size(); ++s) {
           auto min_size = min_sizes[s];
           if (min_max_aspect_ratios_order) {
@@ -180,17 +180,17 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     }
 
     if (clip) {
-      data_t* dt = boxes->data<data_t>();
-      std::transform(dt, dt + boxes->numel(), dt, [](data_t v) -> data_t {
-        return std::min<data_t>(std::max<data_t>(v, 0.), 1.);
+      K* dt = boxes->data<K>();
+      std::transform(dt, dt + boxes->numel(), dt, [](K v) -> K {
+        return std::min<K>(std::max<K>(v, 0.), 1.);
       });
     }
 
     phi::DenseTensor var_t;
-    var_t.mutable_data<data_t>(
+    var_t.mutable_data<K>(
         phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
-    auto var_et = framework::EigenTensor<data_t, 2>::From(var_t);
+    auto var_et = framework::EigenTensor<K, 2>::From(var_t);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -203,7 +203,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto var_dim = vars->dims();
     vars->Resize({box_num, static_cast<int>(variances.size())});
 
-    auto e_vars = framework::EigenMatrix<data_t, Eigen::RowMajor>::From(*vars);
+    auto e_vars = framework::EigenMatrix<K, Eigen::RowMajor>::From(*vars);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for collapse(2)
