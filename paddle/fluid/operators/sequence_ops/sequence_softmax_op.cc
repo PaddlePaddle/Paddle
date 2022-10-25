@@ -130,7 +130,7 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Out");
     phi::DataLayout layout_ = DataLayout::kAnyLayout;
     if (ctx.HasAttr("data_format")) {
       layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
