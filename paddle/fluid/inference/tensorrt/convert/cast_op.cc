@@ -44,7 +44,7 @@ class CastOpConverter : public OpConverter {
 
     switch (out_dtype) {
       case framework::proto::VarType::BOOL:  // BOOL = 0
-        layer->setOutputType(0, nvinfer1::DataType::kBOOL);
+        // layer->setOutputType(0, nvinfer1::DataType::kBOOL);
         layer->getOutput(0)->setType(nvinfer1::DataType::kBOOL);
         break;
       case framework::proto::VarType::INT32:  // INT32 = 2
@@ -53,17 +53,16 @@ class CastOpConverter : public OpConverter {
         layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
         break;
       case framework::proto::VarType::FP16:  // FP16 = 4
-        layer->setOutputType(0, nvinfer1::DataType::kHALF);
+        // set layer output to fp16, may throw exception "fp16 precision has
+        // been set for a layer or layer output, but fp16 is not configured in
+        // the builder.".
+        // layer->setOutputType(0, nvinfer1::DataType::kHALF);
         layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
         break;
       case framework::proto::VarType::FP32:  // FP32 = 5
       case framework::proto::VarType::FP64:  // FP64 = 6
         layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
         layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
-        break;
-      case framework::proto::VarType::INT8:  // INT8 = 21
-        layer->setOutputType(0, nvinfer1::DataType::kINT8);
-        layer->getOutput(0)->setType(nvinfer1::DataType::kINT8);
         break;
       default:
         LOG(ERROR) << "Unable to convert a fluid data type(" << out_dtype
