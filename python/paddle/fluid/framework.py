@@ -5777,6 +5777,8 @@ class Program(object):
 
             .. code-block:: python
 
+                import paddle
+
                 def print_prog(prog):
                     for name, value in sorted(prog.block(0).vars.items()):
                         print(value)
