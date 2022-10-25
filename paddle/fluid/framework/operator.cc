@@ -1409,9 +1409,11 @@ bool OperatorWithKernel::SupportsKernelType(
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
-    auto tmp_kernel_type = kernel_type;
-    tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
-    return kernels.find(tmp_kernel_type) != kernels.end();
+    if (this->Type() != "relu") {
+      auto tmp_kernel_type = kernel_type;
+      tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
+      return kernels.find(tmp_kernel_type) != kernels.end();
+    }
   }
 #endif
 
@@ -1597,7 +1599,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
-        kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
+        if (this->Type() != "relu")
+          kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
       }
 #endif
 
@@ -1846,7 +1849,8 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (paddle::platform::CanCUDNNBeUsed(ctx)) {
-    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+    if (this->Type() != "relu")
+      expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif
 
