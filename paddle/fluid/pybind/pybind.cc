@@ -699,6 +699,7 @@ PYBIND11_MODULE(libpaddle, m) {
             "Note that a DLPack tensor can be consumed only once."));
 
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
+    DLTensor dl = dmt->dl_tensor;
     phi::DenseTensor tensor;
 
     if (dl.device.device_type == kDLCPU) {
