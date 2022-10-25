@@ -1027,16 +1027,53 @@ def slice_select_jvp(op, x_dot):
 @REGISTER_JVP('slice_assign_p')
 def slice_assign_jvp(op, x_dot, y_dot):
     x, y = op_position_inputs(op)
-    assert x_dot is not None or y_dot is not None, "x_dot and y_dot can't be None at the same time. "
+    assert (
+        x_dot is not None or y_dot is not None
+    ), "x_dot and y_dot can't be None at the same time. "
     axis = op.attr('axis')
     starts = op.attr('starts')
     ends = op.attr('ends')
     strides = op.attr('strides')
     if x_dot is None:
-        return linear_jvp(op, fill_const(value=0.0, shape=x.shape, dtype=x.dtype), y_dot, axis=axis, starts=starts, ends=ends, strides=strides)
+        return linear_jvp(
+            op,
+            fill_const(value=0.0, shape=x.shape, dtype=x.dtype),
+            y_dot,
+            axis=axis,
+            starts=starts,
+            ends=ends,
+            strides=strides,
+        )
     elif y_dot is None:
-        return linear_jvp(op, x_dot, fill_const(value=0.0, shape=y.shape, dtype=y.dtype), axis=axis, starts=starts, ends=ends, strides=strides)
-    return add(linear_jvp(op, fill_const(value=0.0, shape=x.shape, dtype=x.dtype), y_dot, axis=axis, starts=starts, ends=ends, strides=strides), linear_jvp(op, x_dot, fill_const(value=0.0, shape=y.shape, dtype=y.dtype), axis=axis, starts=starts, ends=ends, strides=strides))
+        return linear_jvp(
+            op,
+            x_dot,
+            fill_const(value=0.0, shape=y.shape, dtype=y.dtype),
+            axis=axis,
+            starts=starts,
+            ends=ends,
+            strides=strides,
+        )
+    return add(
+        linear_jvp(
+            op,
+            fill_const(value=0.0, shape=x.shape, dtype=x.dtype),
+            y_dot,
+            axis=axis,
+            starts=starts,
+            ends=ends,
+            strides=strides,
+        ),
+        linear_jvp(
+            op,
+            x_dot,
+            fill_const(value=0.0, shape=y.shape, dtype=y.dtype),
+            axis=axis,
+            starts=starts,
+            ends=ends,
+            strides=strides,
+        ),
+    )
 
 
 @REGISTER_JVP('gather_p')
@@ -1320,9 +1357,17 @@ def slice_assign_transpose(op, check_dot, z_bar):
     ends = op.attr('ends')
     strides = op.attr('strides')
     if check_dot(x):
-        return slice_assign(
-            z_bar, zeros, axis=axis, starts=starts, ends=ends, strides=strides
-        ), None
+        return (
+            slice_assign(
+                z_bar,
+                zeros,
+                axis=axis,
+                starts=starts,
+                ends=ends,
+                strides=strides,
+            ),
+            None,
+        )
     return None, slice_select(
         z_bar, axis=axis, starts=starts, ends=ends, strides=strides
     )
