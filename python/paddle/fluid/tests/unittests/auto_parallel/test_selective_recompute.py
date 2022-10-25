@@ -66,13 +66,14 @@ def generate_model(use_recompute, recompute_granularity):
     return model, criterion
 
 
-def apply_pass(use_recompute=False):
+def apply_pass(use_recompute=False, no_recompute_segments=[]):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
     if use_recompute:
         recompute = strategy.recompute
         recompute.enable = True
+        recompute.no_recompute_segments = no_recompute_segments
     return strategy
 
 
@@ -81,7 +82,7 @@ def reset_prog():
     paddle.fluid.framework.switch_startup_program(paddle.static.Program())
 
 
-class TestRecomputePass(unittest.TestCase):
+class TestRecomputePassWithRecomputeAPI(unittest.TestCase):
     def setUp(self):
         self.rtol = 1e-6
         self.atol = 1e-8
@@ -97,10 +98,15 @@ class TestRecomputePass(unittest.TestCase):
         place = paddle.fluid.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, use_recompute=False, recompute_granularity="full"):
+    def get_engine(
+        self,
+        use_recompute=False,
+        recompute_granularity="full",
+        no_recompute_segments=[],
+    ):
         reset_prog()
 
-        strategy = apply_pass(use_recompute)
+        strategy = apply_pass(use_recompute, no_recompute_segments)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model(use_recompute, recompute_granularity)
@@ -126,13 +132,11 @@ class TestRecomputePass(unittest.TestCase):
     def test_recompute_pass(self):
         # mp2 training
         mp_engine = self.get_engine()
-        history = mp_engine.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
+        history = mp_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         mp_losses = np.array(history.history["loss"])
 
-        # mp2 recompute full
-        rc1_engine = self.get_engine(True, "core_attn")
+        # mp2 recompute core_attn
+        rc1_engine = self.get_engine(True, "core_attn", [0])
         history = rc1_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         rc1_losses = np.array(history.history["loss"])
         self.check_results(mp_losses, rc1_losses)
@@ -143,7 +147,7 @@ class TestRecomputePass(unittest.TestCase):
         rc2_losses = np.array(history.history["loss"])
         self.check_results(mp_losses, rc2_losses)
 
-        # mp2 recompute core_attn
+        # mp2 recompute full
         rc3_engine = self.get_engine(True, "full")
         history = rc3_engine.fit(self.dataset, 3, batch_size=self.batch_size)
         rc3_losses = np.array(history.history["loss"])
@@ -156,6 +160,12 @@ class TestRecomputePass(unittest.TestCase):
 
         assert rc0_vars == []
         assert len(rc1_vars) < len(rc2_vars) and len(rc2_vars) < len(rc3_vars)
+
+    def test_recompute_pass_error(self):
+
+        with self.assertRaises(AssertionError):
+            rc_engine = self.get_engine(True, "full", [2])
+            history = rc_engine.fit(self.dataset, 3, batch_size=self.batch_size)
 
 
 if __name__ == "__main__":

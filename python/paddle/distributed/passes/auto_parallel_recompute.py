@@ -77,7 +77,9 @@ class RecomputeState(ProgramStats):
                 ), "The recompute segment's ops should be continuous"
                 self.seg_op_deps[seg_name].extend([i])
 
-    def get_recompute_segments(self, checkpoints_list=None):
+    def get_recompute_segments(
+        self, checkpoints_list=None, no_recompute_segments=None
+    ):
         """get recompute segments and checkpoints"""
         segments = []
         checkpoints = checkpoints_list or []
@@ -118,6 +120,15 @@ class RecomputeState(ProgramStats):
                             )
                         )
                 start_idx += 1
+
+        if no_recompute_segments:
+            for i in reversed(sorted(no_recompute_segments)):
+                assert i < len(
+                    segments
+                ), "the no_recompute_segments idx [{}] should be lower the number of segment [{}]".format(
+                    i, len(segments)
+                )
+                segments.pop(i)
 
         for i, (idx1, idx2) in enumerate(segments):
             logging.info("recompute segment[{}]".format(i))
@@ -278,6 +289,7 @@ class RecomputePass(PassBase):
         self.set_attr("loss", None)
         self.set_attr("dist_context", None)
         self.set_attr("no_grad_set", None)
+        self.set_attr("no_recompute_segments", [])
 
     def _check_self(self):
         if self.get_attr("dist_context") is None:
@@ -291,6 +303,7 @@ class RecomputePass(PassBase):
 
     def _apply_single_impl(self, main_program, startup_program, context):
         checkpoints = self.get_attr("checkpoints")
+        no_recompute_segments = self.get_attr("no_recompute_segments")
         loss = self.get_attr("loss")
         no_grad_set = self.get_attr("no_grad_set")
         self._dist_context = self.get_attr("dist_context")
@@ -308,7 +321,9 @@ class RecomputePass(PassBase):
         rc_state.modify_forward_desc_for_recompute(self._dist_context)
         rc_state.build_stats()
         checkpoints = rc_state.sort_checkpoints(checkpoints or [])
-        segments, checkpoints = rc_state.get_recompute_segments(checkpoints)
+        segments, checkpoints = rc_state.get_recompute_segments(
+            checkpoints, no_recompute_segments
+        )
         if segments == [] or checkpoints == []:
             return
 
