@@ -28,7 +28,7 @@ def reindex_graph(
     Reindex Graph API.
 
     This API is mainly used in Graph Learning domain, which should be used
-    in conjunction with `graph_sample_neighbors` API. And the main purpose
+    in conjunction with `paddle.geometric.sample_neighbors` API. And the main purpose
     is to reindex the ids information of the input nodes, and return the
     corresponding graph edges after reindex.
 
@@ -140,7 +140,7 @@ def reindex_heter_graph(
     Reindex HeterGraph API.
 
     This API is mainly used in Graph Learning domain, which should be used
-    in conjunction with `graph_sample_neighbors` API. And the main purpose
+    in conjunction with `paddle.geometric.sample_neighbors` API. And the main purpose
     is to reindex the ids information of the input nodes, and return the
     corresponding graph edges after reindex.
 
