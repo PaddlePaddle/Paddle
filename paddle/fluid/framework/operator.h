@@ -749,7 +749,6 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::unique_ptr<OpKernelType> kernel_type_;
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
-  mutable const Scope* pre_scope_ = nullptr;
   mutable bool need_prepare_data_ = true;
   mutable bool need_prepare_phi_data_ = false;
   mutable bool enable_cache_runtime_context_ = false;

@@ -1444,22 +1444,19 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
-  const Scope* cur_scope = &scope;
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
-    pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
     if (!all_kernels_must_compute_runtime_shape_)
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
     (*phi_kernel_)(impl_->getKernelContext());
   } else {
-    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+    if (runtime_ctx_.get() == nullptr) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
-      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+      if (runtime_ctx_.get() == nullptr) {
         runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
-        pre_scope_ = cur_scope;
       }
     }
     RunImpl(scope, place, runtime_ctx_.get());
@@ -2333,16 +2330,6 @@ Scope* OperatorWithKernel::PrepareData(
       if (!new_scope) {
         new_scope = &scope.NewScope();
       }
-      // For inference, if a gpu model has an op which could only run on CPU,
-      // each result of different input will be the same with the first one.
-      // The reason is that if a gpu tensor is the input of a cpu kernel,
-      // we will create a new cpu tensor in new scope.
-      // However, if enable_cache_runtime_context_, we get the cpu tensor each
-      // time, not the gpu tensor. Thus, we set pre_scope_ = nullptr
-      // to trigger `new RuntimeContext()` in RunImpl().
-      if (enable_cache_runtime_context_) {
-        pre_scope_ = nullptr;
-      }
 
       // Create new var with the same name in transfer scopes
       auto* trans_var = new_scope->Var(var_name);
@@ -2419,7 +2406,7 @@ Scope* OperatorWithKernel::PrepareData(
   // so disable prepare optimization conservatively.
   bool force_prepare_data = HasAttr("inference_force_prepare_data") &&
                             Attr<bool>("inference_force_prepare_data");
-  if (pre_scope_ == &scope && new_scope == nullptr && !force_prepare_data) {
+  if (new_scope == nullptr && !force_prepare_data) {
     need_prepare_data_ = false;
   }
 
