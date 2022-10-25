@@ -304,7 +304,6 @@ void Executor::RunPopef(const std::vector<const Tensor *> &inputs,
                         const framework::ExecutionContext &ctx) {
   VLOG(10) << "enter Executor::RunPopef";
 
-  std::atomic_int cnt_outputs = {0};
   auto input_names = ctx.InputNames("FeedList");
   auto output_names = ctx.OutputNames("FetchList");
 
@@ -374,11 +373,17 @@ void Executor::RunPopef(const std::vector<const Tensor *> &inputs,
 
   const auto &session_inputs = popef_session_->getUserInputAnchors();
   std::vector<Tensor> cast_tensor(inputs.size());
+  const auto &session_outputs = popef_session_->getUserOutputAnchors();
+
+  // ModelRuntime::Queue is not thread safety.
+  std::unique_lock lock(queue_mutex_);
   for (size_t i = 0; i < inputs.size(); ++i) {
     const auto &popef_input_name =
         compiler_resources_->tensors.at(input_names[i]);
     auto &elem_queue = queue_manager_->inputQueue(popef_input_name);
     const auto &info = elem_queue.tensorInfo();
+    VLOG(10) << "popef: handle popef input: " << popef_input_name
+             << " mapped with paddle " << input_names[i];
 
     bool casted = tensor_check(inputs[i], info, &batch_size, &(cast_tensor[i]));
 
@@ -391,12 +396,16 @@ void Executor::RunPopef(const std::vector<const Tensor *> &inputs,
     });
   }
 
-  const auto &session_outputs = popef_session_->getUserOutputAnchors();
+  std::vector<std::future<void>> finish_indicators;
+  finish_indicators.reserve(session_outputs.size());
+
   for (size_t i = 0; i < session_outputs.size(); ++i) {
     const auto &popef_output_name =
         compiler_resources_->tensors.at(output_names[i]);
     auto &out_queue = queue_manager_->outputQueue(popef_output_name);
     const auto &info = out_queue.tensorInfo();
+    VLOG(10) << "popef: handle popef output: " << popef_output_name
+             << " mapped with paddle " << output_names[i];
 
     auto popef_dtype = info.dataType();
     auto paddle_dtype = PopefDType2VarType(popef_dtype);
@@ -419,15 +428,19 @@ void Executor::RunPopef(const std::vector<const Tensor *> &inputs,
 
     const auto size = tensor->memory_size();
 
-    out_queue.enqueue(
-        tensor->data(), size, [popef_output_name, &cnt_outputs]() {
-          VLOG(10) << "popef: received output: " << popef_output_name;
-          cnt_outputs.fetch_add(1, std::memory_order::memory_order_relaxed);
-        });
+    auto promise = std::make_shared<std::promise<void>>();
+    finish_indicators.emplace_back(promise->get_future());
+    out_queue.enqueue(tensor->data(), size, [popef_output_name, promise]() {
+      VLOG(10) << "popef: received output: " << popef_output_name;
+      promise->set_value();
+    });
   }
+  lock.unlock();
 
-  while (cnt_outputs.load(std::memory_order_acquire) <
-         static_cast<int>(queue_manager_->outputs.size())) {
+  // Synchronous waiting outputs. Asynchronous execution is not supported since
+  // python api calling is synchronous and output data is copied outside.
+  for (const auto &indicator : finish_indicators) {
+    indicator.wait();
   }
 }
 
