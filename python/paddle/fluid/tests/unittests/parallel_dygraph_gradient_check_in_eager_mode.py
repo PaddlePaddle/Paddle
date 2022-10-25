@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import unittest
-import os
-import copy
 
 import paddle
 import numpy as np
@@ -22,8 +20,6 @@ import paddle.distributed as dist
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.dygraph.parallel import ParallelEnv
-import paddle.fluid.core as core
 
 paddle.seed(1024)
 np.random.seed(2021)
@@ -34,17 +30,19 @@ out_dim = 20
 
 
 class SimpleNet(fluid.Layer):
-
     def __init__(self, train_id):
         super(SimpleNet, self).__init__()
-        self.w1 = self.create_parameter(shape=[in_dim, out_dim],
-                                        dtype="float32")
-        self.w2 = self.create_parameter(shape=[in_dim, out_dim],
-                                        dtype="float32")
+        self.w1 = self.create_parameter(
+            shape=[in_dim, out_dim], dtype="float32"
+        )
+        self.w2 = self.create_parameter(
+            shape=[in_dim, out_dim], dtype="float32"
+        )
         self.share_net = Linear(out_dim, 10)
 
-        self.unused_param = self.create_parameter(shape=[out_dim, in_dim],
-                                                  dtype="float64")
+        self.unused_param = self.create_parameter(
+            shape=[out_dim, in_dim], dtype="float64"
+        )
 
         # just for test sync_params_buffers
         # self.register_buffer("queue", paddle.randn([10, 5]))
@@ -54,9 +52,10 @@ class SimpleNet(fluid.Layer):
         self.trainer_id = train_id
 
     def forward(self, x):
-        is_use = (paddle.equal_all(
-            x, paddle.ones(shape=(batch, in_dim))).numpy()[0]
-                  and self.trainer_id == 1)
+        is_use = (
+            paddle.equal_all(x, paddle.ones(shape=(batch, in_dim))).numpy()[0]
+            and self.trainer_id == 1
+        )
 
         if is_use:
             tmp = paddle.matmul(x, self.w1)
@@ -67,7 +66,6 @@ class SimpleNet(fluid.Layer):
 
 
 class TestDistTraning(unittest.TestCase):
-
     def test_multiple_gpus(self):
         self.trainer_id = dist.get_rank()
         with _test_eager_guard():
@@ -79,12 +77,12 @@ class TestDistTraning(unittest.TestCase):
             state_dict = model_a.state_dict()
             model_b.set_state_dict(state_dict)
 
-            model_a = paddle.DataParallel(model_a,
-                                          find_unused_parameters=True,
-                                          group=self.pg)
-            model_b = paddle.DataParallel(model_b,
-                                          find_unused_parameters=True,
-                                          group=self.pg)
+            model_a = paddle.DataParallel(
+                model_a, find_unused_parameters=True, group=self.pg
+            )
+            model_b = paddle.DataParallel(
+                model_b, find_unused_parameters=True, group=self.pg
+            )
 
             ones_input = paddle.ones(shape=(batch, in_dim))
             ones_input.stop_gradient = True
@@ -110,12 +108,16 @@ class TestDistTraning(unittest.TestCase):
                 self.check_gradient(model_b.parameters())
 
                 # test acc gradient
-                w1_grad_sum = self.check_acc(model_a._layers.w1.grad,
-                                             w1_grad_sum,
-                                             model_b._layers.w1.grad)
-                w2_grad_sum = self.check_acc(model_a._layers.w2.grad,
-                                             w2_grad_sum,
-                                             model_b._layers.w2.grad)
+                w1_grad_sum = self.check_acc(
+                    model_a._layers.w1.grad,
+                    w1_grad_sum,
+                    model_b._layers.w1.grad,
+                )
+                w2_grad_sum = self.check_acc(
+                    model_a._layers.w2.grad,
+                    w2_grad_sum,
+                    model_b._layers.w2.grad,
+                )
 
                 model_a.clear_gradients()
 

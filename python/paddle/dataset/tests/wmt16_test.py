@@ -19,7 +19,6 @@ __all__ = []
 
 
 class TestWMT16(unittest.TestCase):
-
     def checkout_one_sample(self, sample):
         # train data has 3 field: source language word indices,
         # target language word indices, and target next word indices.
@@ -37,23 +36,30 @@ class TestWMT16(unittest.TestCase):
 
     def test_train(self):
         for idx, sample in enumerate(
-                paddle.dataset.wmt16.train(src_dict_size=100000,
-                                           trg_dict_size=100000)()):
-            if idx >= 10: break
+            paddle.dataset.wmt16.train(
+                src_dict_size=100000, trg_dict_size=100000
+            )()
+        ):
+            if idx >= 10:
+                break
             self.checkout_one_sample(sample)
 
     def test_test(self):
         for idx, sample in enumerate(
-                paddle.dataset.wmt16.test(src_dict_size=1000,
-                                          trg_dict_size=1000)()):
-            if idx >= 10: break
+            paddle.dataset.wmt16.test(src_dict_size=1000, trg_dict_size=1000)()
+        ):
+            if idx >= 10:
+                break
             self.checkout_one_sample(sample)
 
     def test_val(self):
         for idx, sample in enumerate(
-                paddle.dataset.wmt16.validation(src_dict_size=1000,
-                                                trg_dict_size=1000)()):
-            if idx >= 10: break
+            paddle.dataset.wmt16.validation(
+                src_dict_size=1000, trg_dict_size=1000
+            )()
+        ):
+            if idx >= 10:
+                break
             self.checkout_one_sample(sample)
 
     def test_get_dict(self):

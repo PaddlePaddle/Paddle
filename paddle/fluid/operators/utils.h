@@ -99,7 +99,7 @@ inline std::vector<T> GetDataFromTensorList(
 inline framework::DDim GetShape(const framework::ExecutionContext& ctx) {
   // 1. shape is a Tensor
   if (ctx.HasInput("ShapeTensor")) {
-    auto* shape_tensor = ctx.Input<framework::LoDTensor>("ShapeTensor");
+    auto* shape_tensor = ctx.Input<phi::DenseTensor>("ShapeTensor");
     auto vec_shape = GetDataFromTensor<int>(shape_tensor);
     return phi::make_ddim(vec_shape);
   }

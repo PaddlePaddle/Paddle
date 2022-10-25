@@ -13,12 +13,16 @@
 # limitations under the License.
 
 import paddle.fluid.framework as framework
-from paddle.distributed import collective
+import paddle.fluid.data_feeder as data_feeder
+import paddle.fluid.layer_helper as layer_helper
+from paddle.distributed.communication.reduce import _get_reduce_op, ReduceOp
+from paddle.distributed.communication.group import _get_global_group
 
 
 def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
-    op_type = collective._get_reduce_op(op, "all_reduce")
-    group = collective._get_default_group() if group is None else group
+    op_type = _get_reduce_op(op, "all_reduce")
+
+    group = _get_global_group() if group is None else group
     if use_calc_stream:
         return group.process_group.allreduce_on_calc_stream(tensor, op_type)
 
@@ -29,19 +33,53 @@ def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
     return task
 
 
-def all_reduce(tensor,
-               op=collective.ReduceOp.SUM,
-               group=None,
-               sync_op=True,
-               use_calc_stream=False):
+def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'int8',
+            'uint8',
+            'bool',
+        ],
+        'all_reduce',
+    )
+
+    op_type = _get_reduce_op(op, "all_reduce")
+    ring_id = 0 if group is None else group.id
+
+    if not isinstance(ring_id, int):
+        raise ValueError("The type of 'ring_id' for all_reduce should be int.")
+
+    # TODO: Support task and use task.wait in static mode
+    #       Use use_calc_stream rather than sync_op
+    helper = layer_helper.LayerHelper(op_type, **locals())
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [tensor]},
+        attrs={'ring_id': ring_id, 'use_calc_stream': sync_op},
+    )
+
+    return None
+
+
+def all_reduce(
+    tensor, op=ReduceOp.SUM, group=None, sync_op=True, use_calc_stream=False
+):
     """
 
     Perform specific reduction (for example, sum, max) on inputs across devices.
 
     Args:
         tensor (Tensor): The input tensor on each rank. The result will overwrite this tenor after communication. Support
-            float16, float32, float64, int32 or int64 as the input data type.
-        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.Min|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
+            float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
+        op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
         group (Group, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
@@ -49,9 +87,6 @@ def all_reduce(tensor,
 
     Returns:
         Return a task object.
-
-    Warning:
-        This API only supports the dygraph mode now.
 
     Examples:
         .. code-block:: python
@@ -79,12 +114,14 @@ def all_reduce(tensor,
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be true in sync op behavior.")
+            "use_calc_stream can only be true in sync op behavior."
+        )
 
     if framework.in_dygraph_mode():
-        return _all_reduce_in_dygraph(tensor, op, group, sync_op,
-                                      use_calc_stream)
-
-    raise RuntimeError(
-        "paddle.distributed.stream.all_reduce is only supported in dygraph mode now."
-    )
+        return _all_reduce_in_dygraph(
+            tensor, op, group, sync_op, use_calc_stream
+        )
+    else:
+        return _all_reduce_in_static_mode(
+            tensor, op, group, sync_op, use_calc_stream
+        )

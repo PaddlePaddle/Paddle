@@ -17,9 +17,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
 import paddle
-import paddle.dataset.mnist as mnist
 import unittest
-import os
 
 
 def _feed_data_helper():
@@ -54,7 +52,6 @@ def fc_with_inplace_net(use_feed):
 
 
 class TestMNIST(TestParallelExecutorBase):
-
     def _dummy_data(self):
         np.random.seed(5)
         img = np.random.random(size=[32, 784]).astype(np.float32)
@@ -68,20 +65,16 @@ class TestMNIST(TestParallelExecutorBase):
         img, label = self._dummy_data()
         first_loss0, last_loss0, _ = self.check_network_convergence(
             model,
-            feed_dict={
-                "image": img,
-                "label": label
-            },
+            feed_dict={"image": img, "label": label},
             use_device=use_device,
-            use_ir_memory_optimize=False)
+            use_ir_memory_optimize=False,
+        )
         first_loss1, last_loss1, _ = self.check_network_convergence(
             model,
-            feed_dict={
-                "image": img,
-                "label": label
-            },
+            feed_dict={"image": img, "label": label},
             use_device=use_device,
-            use_ir_memory_optimize=True)
+            use_ir_memory_optimize=True,
+        )
         for loss in zip(first_loss0, first_loss1):
             self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
         for loss in zip(last_loss0, last_loss1):

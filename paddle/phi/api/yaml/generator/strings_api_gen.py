@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import yaml
 import argparse
-import re
 
 from api_gen import ForwardAPI
 
@@ -24,7 +22,6 @@ PREFIX_META_TENSOR_NAME = 'meta_'
 
 
 class StringsAPI(ForwardAPI):
-
     def __init__(self, api_item_yaml):
         super(StringsAPI, self).__init__(api_item_yaml)
 
@@ -50,11 +47,13 @@ class StringsAPI(ForwardAPI):
         }
         return tensor_type_dict[kernel_tensor_out_type]
 
-    def gene_output(self,
-                    out_dtype_list,
-                    out_tensor_type_list=None,
-                    code_indent='',
-                    inplace_flag=False):
+    def gene_output(
+        self,
+        out_dtype_list,
+        out_tensor_type_list=None,
+        code_indent='',
+        inplace_flag=False,
+    ):
         kernel_output = []
         output_names = []
         output_create = ""
@@ -64,11 +63,16 @@ class StringsAPI(ForwardAPI):
             kernel_output.append('kernel_out')
             output_names.append('kernel_out')
             kernel_tensor_out_type = self.get_kernel_tensor_out_type(
-                self.outputs['names'][0])
+                self.outputs['names'][0]
+            )
             tensor_type = self.get_tensor_type(kernel_tensor_out_type)
-            inplace_assign = " = " + self.inplace_map[self.outputs['names'][
-                0]] if inplace_flag and self.inplace_map is not None and self.outputs[
-                    'names'][0] in self.inplace_map else ""
+            inplace_assign = (
+                " = " + self.inplace_map[self.outputs['names'][0]]
+                if inplace_flag
+                and self.inplace_map is not None
+                and self.outputs['names'][0] in self.inplace_map
+                else ""
+            )
             output_create = f"""
   {return_type} api_output{inplace_assign};
   {tensor_type}* kernel_out = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(&api_output, {kernel_tensor_out_type}));"""
@@ -81,37 +85,45 @@ class StringsAPI(ForwardAPI):
                 kernel_output.append(f'kernel_out_{i}')
                 output_names.append(f'kernel_out_{i}')
                 kernel_tensor_out_type = self.get_kernel_tensor_out_type(
-                    self.outputs['names'][i])
+                    self.outputs['names'][i]
+                )
                 tensor_type = self.get_tensor_type(kernel_tensor_out_type)
-                if inplace_flag and self.inplace_map is not None and self.outputs[
-                        'names'][i] in self.inplace_map:
-                    output_create = output_create + f"""
+                if (
+                    inplace_flag
+                    and self.inplace_map is not None
+                    and self.outputs['names'][i] in self.inplace_map
+                ):
+                    output_create = (
+                        output_create
+                        + f"""
   std::get<{i}>(api_output) = {self.inplace_map[self.outputs['names'][i]]};"""
+                    )
 
-                output_create = output_create + f"""
+                output_create = (
+                    output_create
+                    + f"""
   {tensor_type}* kernel_out_{i} = dynamic_cast<{tensor_type}*>(SetStringsKernelOutput(&std::get<{i}>(api_output), {kernel_tensor_out_type}));"""
+                )
 
         else:
             raise ValueError(
                 "{} : Output error: the output should not be empty.".format(
-                    self.api))
+                    self.api
+                )
+            )
 
         return kernel_output, output_names, output_create
 
     def get_kernel_args(self, code_indent):
         input_trans_map = {
-            'const Tensor&':
-            'const phi::StringTensor&',
-            'const std::vector<Tensor>&':
-            'const std::vector<const phi::StringTensor*>&',
-            'const paddle::optional<Tensor>&':
-            'paddle::optional<const phi::StringTensor&>',
-            'const paddle::optional<std::vector<Tensor>>&':
-            'paddle::optional<const std::vector<phi::StringTensor>&>'
+            'const Tensor&': 'const phi::StringTensor&',
+            'const std::vector<Tensor>&': 'const std::vector<const phi::StringTensor*>&',
+            'const paddle::optional<Tensor>&': 'paddle::optional<const phi::StringTensor&>',
+            'const paddle::optional<std::vector<Tensor>>&': 'paddle::optional<const std::vector<phi::StringTensor>&>',
         }
         out_trans_map = {
             'Tensor': 'phi::StringTensor*',
-            'std::vector<Tensor>': 'std::vector<phi::StringTensor*>&'
+            'std::vector<Tensor>': 'std::vector<phi::StringTensor*>&',
         }
         input_names = self.inputs['names']
         input_infos = self.inputs['input_info']
@@ -124,21 +136,36 @@ class StringsAPI(ForwardAPI):
         input_tensor_code = ""
         # set input_tensor_code
         for i, input_name in enumerate(input_names):
-            input_tensor_code = input_tensor_code + f"""
+            input_tensor_code = (
+                input_tensor_code
+                + f"""
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = TensorToStringTensor({input_name});"""
+            )
 
         # set kernel_args
         kernel_args = "*dev_ctx, "
         for param in kernel_param:
             if param in input_names:
                 if param in self.optional_vars:
-                    kernel_args = kernel_args + PREFIX_TENSOR_NAME + param + ", "
+                    kernel_args = (
+                        kernel_args + PREFIX_TENSOR_NAME + param + ", "
+                    )
                 else:
                     if self.inputs['input_info'][param] == "const Tensor&":
-                        kernel_args = kernel_args + "*" + PREFIX_TENSOR_NAME + param + ", "
-                    elif self.inputs['input_info'][
-                            input_name] == "const std::vector<Tensor>&":
-                        kernel_args = kernel_args + PREFIX_TENSOR_NAME + param + ", "
+                        kernel_args = (
+                            kernel_args
+                            + "*"
+                            + PREFIX_TENSOR_NAME
+                            + param
+                            + ", "
+                        )
+                    elif (
+                        self.inputs['input_info'][input_name]
+                        == "const std::vector<Tensor>&"
+                    ):
+                        kernel_args = (
+                            kernel_args + PREFIX_TENSOR_NAME + param + ", "
+                        )
                     else:
                         # do nothing
                         pass
@@ -154,7 +181,8 @@ class StringsAPI(ForwardAPI):
                     param = 'phi::Scalar(' + param + ')'
                 else:
                     kernel_args_type_list.append(
-                        self.attrs['attr_info'][param][0])
+                        self.attrs['attr_info'][param][0]
+                    )
                 kernel_args = kernel_args + param + ", "
             elif isinstance(param, bool):
                 kernel_args = kernel_args + str(param).lower() + ", "
@@ -171,9 +199,11 @@ class StringsAPI(ForwardAPI):
 
     def gen_string_tensor_kernel_code(self, inplace_flag=False, code_indent=""):
         input_tensors, kernel_args, kernel_signature = self.get_kernel_args(
-            code_indent)
+            code_indent
+        )
         outputs_args, kernel_output_names, output_create = self.gene_output(
-            self.outputs['types'], None, '', inplace_flag)
+            self.outputs['types'], None, '', inplace_flag
+        )
 
         return f"""
   // 1. Get kernel signature and kernel
@@ -216,8 +246,9 @@ class StringsAPI(ForwardAPI):
         attr_data_type_count = 0
         for attr_name in attrs['names']:
             if attrs['attr_info'][attr_name][0] == 'Backend':
-                assert kernel['backend'] is not None, \
-                    f"{api} api: When there is a parameter with 'Backend' type in attributes, you must set backend of kernel manually."
+                assert (
+                    kernel['backend'] is not None
+                ), f"{api} api: When there is a parameter with 'Backend' type in attributes, you must set backend of kernel manually."
                 attr_backend_count = attr_backend_count + 1
 
         # preprocess kernel configures
@@ -225,22 +256,30 @@ class StringsAPI(ForwardAPI):
         if kernel['backend'] is not None:
             if '>' in kernel['backend']:
                 vars_list = kernel['backend'].split('>')
-                assert len(
-                    vars_list
-                ) == 2, f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
-                assert (vars_list[0].strip() in attrs['names']) and (attrs['attr_info'][vars_list[0].strip()][0] == 'const Place&'), \
-                    f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
-                kernel_select_code = kernel_select_code + f"""
+                assert (
+                    len(vars_list) == 2
+                ), f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                assert (vars_list[0].strip() in attrs['names']) and (
+                    attrs['attr_info'][vars_list[0].strip()][0]
+                    == 'const Place&'
+                ), f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                kernel_select_code = (
+                    kernel_select_code
+                    + f"""
   kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
 """
+                )
 
             else:
                 args_str = ""
                 for ele in kernel['backend'].split(','):
                     args_str = args_str + ele.strip() + ', '
-                kernel_select_code = kernel_select_code + f"""
+                kernel_select_code = (
+                    kernel_select_code
+                    + f"""
   kernel_backend = ParseBackend({args_str[:-2]});
 """
+                )
 
         kernel_select_args = ""
         for input_name in input_names:
@@ -252,10 +291,13 @@ class StringsAPI(ForwardAPI):
         kernel_select_code = kernel_key_item_init + kernel_select_code
 
         if len(input_names) > 0:
-            kernel_select_code = kernel_select_code + f"""
+            kernel_select_code = (
+                kernel_select_code
+                + f"""
   auto kernel_key_set = ParseKernelKeyByInputArgs({kernel_select_args});
   auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
   kernel_backend = kernel_key.backend();"""
+            )
 
         return kernel_select_code
 
@@ -302,17 +344,20 @@ PD_REGISTER_API(StringsApi);
 
 
 def api_namespace():
-    return ("""
+    return (
+        """
 namespace paddle {
 namespace experimental {
 namespace strings {
 
-""", """
+""",
+        """
 
 }  // namespace strings
 }  // namespace experimental
 }  // namespace paddle
-""")
+""",
+    )
 
 
 def generate_api(api_yaml_path, header_file_path, source_file_path):
@@ -348,18 +393,25 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate PaddlePaddle C++ Strings API files')
-    parser.add_argument('--api_yaml_path',
-                        help='path to sparse api yaml file',
-                        default='paddle/phi/api/yaml/strings_ops.yaml')
+        description='Generate PaddlePaddle C++ Strings API files'
+    )
+    parser.add_argument(
+        '--api_yaml_path',
+        help='path to sparse api yaml file',
+        default='paddle/phi/api/yaml/strings_ops.yaml',
+    )
 
-    parser.add_argument('--api_header_path',
-                        help='output of generated api header code file',
-                        default='paddle/phi/api/include/strings_api.h')
+    parser.add_argument(
+        '--api_header_path',
+        help='output of generated api header code file',
+        default='paddle/phi/api/include/strings_api.h',
+    )
 
-    parser.add_argument('--api_source_path',
-                        help='output of generated api source code file',
-                        default='paddle/phi/api/lib/strings_api.cc')
+    parser.add_argument(
+        '--api_source_path',
+        help='output of generated api source code file',
+        default='paddle/phi/api/lib/strings_api.cc',
+    )
 
     options = parser.parse_args()
 

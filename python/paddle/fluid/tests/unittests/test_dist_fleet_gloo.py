@@ -18,29 +18,25 @@ import tempfile
 import unittest
 import subprocess
 import time
-import paddle.fluid as fluid
-#import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+
+# import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from test_dist_fleet_base import TestFleetBase
 
-#from dist_simnet_bow import train_network
+# from dist_simnet_bow import train_network
 
 
 class TestDistGloo_2x2(TestFleetBase):
-
     def _setup_config(self):
         self._mode = "sync"
         self._reader = "pyreader"
         self._path = "./tmp4"
-        if (os.path.exists(self._path)):
+        if os.path.exists(self._path):
             shutil.rmtree(self._path)
         # if not os.path.exists(self._path):
         #      os.mkdir(self._path)
 
     def _start_pserver(self, cmd, required_envs):
-        #env.update(required_envs)
+        # env.update(required_envs)
         ps0_cmd = cmd
         ps1_cmd = cmd
 
@@ -50,24 +46,28 @@ class TestDistGloo_2x2(TestFleetBase):
         required_envs["POD_IP"] = "127.0.0.1"
         required_envs["PADDLE_PSERVER_ID"] = "0"
         required_envs["PADDLE_PORT"] = "36011"
-        ps0_proc = subprocess.Popen(ps0_cmd.strip().split(" "),
-                                    stdout=subprocess.PIPE,
-                                    stderr=ps0_pipe,
-                                    env=required_envs)
+        ps0_proc = subprocess.Popen(
+            ps0_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=ps0_pipe,
+            env=required_envs,
+        )
         print("PADDLE_PSERVER_ID=0:")
         print(required_envs)
         required_envs["PADDLE_PSERVER_ID"] = "1"
         required_envs["PADDLE_PORT"] = "36012"
-        ps1_proc = subprocess.Popen(ps1_cmd.strip().split(" "),
-                                    stdout=subprocess.PIPE,
-                                    stderr=ps1_pipe,
-                                    env=required_envs)
+        ps1_proc = subprocess.Popen(
+            ps1_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=ps1_pipe,
+            env=required_envs,
+        )
         print("PADDLE_PSERVER_ID=1:")
         print(required_envs)
         return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
 
     def _start_trainer(self, cmd, required_envs):
-        #env.update(required_envs)
+        # env.update(required_envs)
 
         tr0_cmd = cmd
         tr1_cmd = cmd
@@ -75,17 +75,21 @@ class TestDistGloo_2x2(TestFleetBase):
         tr0_pipe = open(tempfile.gettempdir() + "/tr0_err.log", "wb+")
         tr1_pipe = open(tempfile.gettempdir() + "/tr1_err.log", "wb+")
         required_envs["PADDLE_TRAINER_ID"] = "0"
-        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(" "),
-                                    stdout=subprocess.PIPE,
-                                    stderr=tr0_pipe,
-                                    env=required_envs)
+        tr0_proc = subprocess.Popen(
+            tr0_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=tr0_pipe,
+            env=required_envs,
+        )
         print("PADDLE_TRAINER_ID=0:")
         print(required_envs)
         required_envs["PADDLE_TRAINER_ID"] = "1"
-        tr1_proc = subprocess.Popen(tr1_cmd.strip().split(" "),
-                                    stdout=subprocess.PIPE,
-                                    stderr=tr1_pipe,
-                                    env=required_envs)
+        tr1_proc = subprocess.Popen(
+            tr1_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=tr1_pipe,
+            env=required_envs,
+        )
         print("PADDLE_TRAINER_ID=1:")
         print(required_envs)
         return tr0_proc, tr1_proc, tr0_pipe, tr1_pipe
@@ -142,11 +146,9 @@ class TestDistGloo_2x2(TestFleetBase):
 
         return 0, 0
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -154,16 +156,16 @@ class TestDistGloo_2x2(TestFleetBase):
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
             "CPU_NUM": "2",
-            #PSERVER
+            # PSERVER
             "PADDLE_PSERVERS_IP_PORT_LIST": "127.0.0.1:36011,127.0.0.1:36012",
-            #"PADDLE_PSERVER_PORT_ARRAY":"(36011 36012)",
+            # "PADDLE_PSERVER_PORT_ARRAY":"(36011 36012)",
             "PADDLE_PSERVER_NUMS": "2",
             "PADDLE_TRAINER_ID": "0",
-            #TRAINER
+            # TRAINER
             "PADDLE_TRAINER_ENDPOINTS": "127.0.0.1:36013,127.0.0.1:36014",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_PSERVER_ID": "0",
-            #GLOO FLAG
+            # GLOO FLAG
             "PADDLE_WITH_GLOO": "1",
         }
 
@@ -177,9 +179,9 @@ class TestDistGloo_2x2(TestFleetBase):
 
     def test_dist_train(self):
         print("path is not delete", os.path.exists("./tmp4"))
-        self.check_with_place("dist_fleet_debug_gloo.py",
-                              delta=1e-5,
-                              check_error_log=True)
+        self.check_with_place(
+            "dist_fleet_debug_gloo.py", delta=1e-5, check_error_log=True
+        )
 
 
 if __name__ == "__main__":

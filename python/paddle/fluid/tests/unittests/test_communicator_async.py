@@ -15,8 +15,6 @@
 import os
 import unittest
 import time
-import threading
-import numpy
 
 import paddle
 
@@ -28,7 +26,6 @@ import paddle.distributed.fleet as fleet
 
 
 class TestCommunicator(unittest.TestCase):
-
     def net(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
@@ -42,7 +39,8 @@ class TestCommunicator(unittest.TestCase):
             current_id=0,
             role=role_maker.Role.WORKER,
             worker_num=2,
-            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"],
+        )
 
         fleet.init(role)
         avg_cost = self.net()

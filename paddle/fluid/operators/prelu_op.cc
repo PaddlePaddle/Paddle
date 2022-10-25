@@ -36,15 +36,6 @@ class PReluOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -54,13 +45,13 @@ class PReluOp : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     // All inputs (including alpha) need shape rotating
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+        (tensor.layout() != phi::DataLayout::kMKLDNN) &&
         paddle::platform::MKLDNNDeviceContext::tls()
-                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
+                .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(),
-                                     framework::DataLayout::kNHWC);
+                                     phi::DataLayout::kNHWC);
     }
 #endif
     return framework::OpKernelType(
@@ -127,15 +118,6 @@ class PReluGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type,
-                                     ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -145,13 +127,13 @@ class PReluGradOp : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const override {
 #ifdef PADDLE_WITH_MKLDNN
     // All inputs (including alpha) need shape rotating
-    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-        (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+    if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
+        (tensor.layout() != phi::DataLayout::kMKLDNN) &&
         paddle::platform::MKLDNNDeviceContext::tls()
-                .get_cur_paddle_data_layout() == framework::DataLayout::kNHWC) {
+                .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
       return framework::OpKernelType(expected_kernel_type.data_type_,
                                      tensor.place(),
-                                     framework::DataLayout::kNHWC);
+                                     phi::DataLayout::kNHWC);
     }
 #endif
     return framework::OpKernelType(

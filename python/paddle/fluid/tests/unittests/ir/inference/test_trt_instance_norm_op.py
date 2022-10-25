@@ -25,7 +25,6 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTInstanceNormTest(InferencePassTest):
-
     def setUp(self):
         self.bs = 4
         self.channel = 4
@@ -37,7 +36,8 @@ class TRTInstanceNormTest(InferencePassTest):
 
     def build(self):
         self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30, self.bs, 2, self.precision, self.serialize, False)
+            1 << 30, self.bs, 2, self.precision, self.serialize, False
+        )
 
         with fluid.program_guard(self.main_program, self.startup_program):
             shape = [-1, self.channel, self.height, self.width]
@@ -61,7 +61,8 @@ class TRTInstanceNormTest(InferencePassTest):
                 atol = 2e-2
             self.check_output_with_option(use_gpu, atol, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
     def run_test(self, remove_cache=False):
         self.build()
@@ -69,12 +70,14 @@ class TRTInstanceNormTest(InferencePassTest):
 
     def run_all_tests(self):
         precision_opt = [
-            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+            AnalysisConfig.Precision.Float32,
+            AnalysisConfig.Precision.Half,
         ]
         serialize_opt = [False, True]
 
-        for precision, serialize in itertools.product(precision_opt,
-                                                      serialize_opt):
+        for precision, serialize in itertools.product(
+            precision_opt, serialize_opt
+        ):
             self.precision = precision
             self.serialize = serialize
             self.run_test()

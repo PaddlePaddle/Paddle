@@ -30,7 +30,6 @@ def set_random_seed(seed):
 
 
 class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
-
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         fleet.init(is_collective=True, strategy=strategy)
@@ -60,57 +59,71 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
 
                 num_class = np.sum(num_class_per_card)
                 for margin1, margin2, margin3, scale in zip(
-                        margin1s, margin2s, margin3s, scales):
+                    margin1s, margin2s, margin3s, scales
+                ):
 
                     for _ in range(5):
-                        np_label = np.random.randint(0, num_class,
-                                                     (batch_size, ))
+                        np_label = np.random.randint(
+                            0, num_class, (batch_size,)
+                        )
                         label = paddle.to_tensor(np_label, dtype="int64")
 
-                        input = paddle.randn(shape=[batch_size, feature_length],
-                                             dtype=dtype)
+                        input = paddle.randn(
+                            shape=[batch_size, feature_length], dtype=dtype
+                        )
                         input.stop_gradient = False
                         input_l2 = paddle.sqrt(
-                            paddle.sum(paddle.square(input),
-                                       axis=1,
-                                       keepdim=True))
+                            paddle.sum(
+                                paddle.square(input), axis=1, keepdim=True
+                            )
+                        )
                         norm_input = paddle.divide(input, input_l2)
 
                         weight = paddle.randn(
                             shape=[feature_length, num_class_per_card[rank_id]],
-                            dtype=dtype)
+                            dtype=dtype,
+                        )
                         weight.stop_gradient = False
                         weight_l2 = paddle.sqrt(
-                            paddle.sum(paddle.square(weight),
-                                       axis=0,
-                                       keepdim=True))
+                            paddle.sum(
+                                paddle.square(weight), axis=0, keepdim=True
+                            )
+                        )
                         norm_weight = paddle.divide(weight, weight_l2)
 
                         data = paddle.matmul(norm_input, norm_weight)
                         data.stop_gradient = False
 
-                        sta = np.sum(
-                            num_class_per_card[:rank_id]) if rank_id > 0 else 0
-                        end = np.sum(num_class_per_card[:rank_id + 1])
+                        sta = (
+                            np.sum(num_class_per_card[:rank_id])
+                            if rank_id > 0
+                            else 0
+                        )
+                        end = np.sum(num_class_per_card[: rank_id + 1])
 
-                        integral_data = np.zeros((batch_size, num_class),
-                                                 dtype=dtype)
-                        integral_data[:,
-                                      sta:end] = data.clone().detach().numpy()
-                        integral_data = paddle.to_tensor(integral_data,
-                                                         dtype=dtype)
+                        integral_data = np.zeros(
+                            (batch_size, num_class), dtype=dtype
+                        )
+                        integral_data[:, sta:end] = (
+                            data.clone().detach().numpy()
+                        )
+                        integral_data = paddle.to_tensor(
+                            integral_data, dtype=dtype
+                        )
 
                         paddle.distributed.all_reduce(
                             integral_data,
                             op=paddle.distributed.ReduceOp.SUM,
-                            group=check_group)
+                            group=check_group,
+                        )
                         integral_data = integral_data.detach().clone()
                         integral_data.stop_gradient = False
 
                         # add arcface margin to logit
                         theta = paddle.acos(integral_data)
                         one_hot_label = paddle.nn.functional.one_hot(
-                            label, num_classes=num_class)
+                            label, num_classes=num_class
+                        )
                         one_hot_label.stop_gradient = False
 
                         if margin1 != 1.0:
@@ -123,7 +136,10 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                         diff = one_hot_label * (margin_cos - integral_data)
                         arc_data = (integral_data + diff) * scale
 
-                        loss_a, softmax_a = paddle.nn.functional.margin_cross_entropy(
+                        (
+                            loss_a,
+                            softmax_a,
+                        ) = paddle.nn.functional.margin_cross_entropy(
                             data,
                             label,
                             margin1=margin1,
@@ -132,54 +148,69 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
                             scale=scale,
                             group=check_group,
                             return_softmax=True,
-                            reduction=None)
-                        loss_b, softmax_b = paddle.nn.functional.softmax_with_cross_entropy(
+                            reduction=None,
+                        )
+                        (
+                            loss_b,
+                            softmax_b,
+                        ) = paddle.nn.functional.softmax_with_cross_entropy(
                             logits=arc_data,
                             label=paddle.reshape(label, (-1, 1)),
-                            return_softmax=True)
+                            return_softmax=True,
+                        )
 
-                        np.testing.assert_allclose(loss_a.numpy(),
-                                                   loss_b.numpy(),
-                                                   rtol=1e-5,
-                                                   atol=1e-7)
+                        np.testing.assert_allclose(
+                            loss_a.numpy(), loss_b.numpy(), rtol=1e-5, atol=1e-7
+                        )
 
-                        integral_prob = np.zeros((batch_size, num_class),
-                                                 dtype=dtype)
-                        integral_prob[:, sta:end] = softmax_a.clone().detach(
-                        ).numpy()
-                        integral_prob = paddle.to_tensor(integral_prob,
-                                                         dtype=dtype)
+                        integral_prob = np.zeros(
+                            (batch_size, num_class), dtype=dtype
+                        )
+                        integral_prob[:, sta:end] = (
+                            softmax_a.clone().detach().numpy()
+                        )
+                        integral_prob = paddle.to_tensor(
+                            integral_prob, dtype=dtype
+                        )
                         paddle.distributed.all_reduce(
                             integral_prob,
                             op=paddle.distributed.ReduceOp.SUM,
-                            group=check_group)
+                            group=check_group,
+                        )
                         integral_prob = integral_prob.detach().clone()
                         integral_prob.stop_gradient = False
 
-                        np.testing.assert_allclose(integral_prob.numpy(),
-                                                   softmax_b.numpy(),
-                                                   rtol=1e-5,
-                                                   atol=1e-6)
+                        np.testing.assert_allclose(
+                            integral_prob.numpy(),
+                            softmax_b.numpy(),
+                            rtol=1e-5,
+                            atol=1e-6,
+                        )
 
                         loss_a = loss_a.sum() / batch_size
                         loss_b = loss_b.sum() / batch_size
                         loss_a.backward()
                         loss_b.backward()
 
-                        integral_grad = np.zeros((batch_size, num_class),
-                                                 dtype=dtype)
+                        integral_grad = np.zeros(
+                            (batch_size, num_class), dtype=dtype
+                        )
                         integral_grad[:, sta:end] = data.grad.clone().detach()
-                        integral_grad = paddle.to_tensor(integral_grad,
-                                                         dtype=dtype)
+                        integral_grad = paddle.to_tensor(
+                            integral_grad, dtype=dtype
+                        )
                         paddle.distributed.all_reduce(
                             integral_grad,
                             op=paddle.distributed.ReduceOp.SUM,
-                            group=check_group)
+                            group=check_group,
+                        )
 
-                        np.testing.assert_allclose(integral_data.grad.numpy(),
-                                                   integral_grad.numpy(),
-                                                   rtol=1e-5,
-                                                   atol=1e-7)
+                        np.testing.assert_allclose(
+                            integral_data.grad.numpy(),
+                            integral_grad.numpy(),
+                            rtol=1e-5,
+                            atol=1e-7,
+                        )
 
 
 if __name__ == '__main__':

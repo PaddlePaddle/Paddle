@@ -14,13 +14,11 @@
 
 import unittest
 import numpy as np
-import sys
 import math
 from op_test import OpTest
 
 
 class TestDensityPriorBoxOp(OpTest):
-
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -36,7 +34,7 @@ class TestDensityPriorBoxOp(OpTest):
             'densities': self.densities,
             'fixed_sizes': self.fixed_sizes,
             'fixed_ratios': self.fixed_ratios,
-            'flatten_to_2d': self.flatten_to_2d
+            'flatten_to_2d': self.flatten_to_2d,
         }
         self.outputs = {'Boxes': self.out_boxes, 'Variances': self.out_var}
 
@@ -75,18 +73,19 @@ class TestDensityPriorBoxOp(OpTest):
         if len(self.fixed_sizes) > 0 and len(self.densities) > 0:
             for density in self.densities:
                 if len(self.fixed_ratios) > 0:
-                    self.num_priors += len(self.fixed_ratios) * (pow(
-                        density, 2))
+                    self.num_priors += len(self.fixed_ratios) * (
+                        pow(density, 2)
+                    )
         self.offset = 0.5
 
     def init_test_input(self):
         self.image = np.random.random(
-            (self.batch_size, self.image_channels, self.image_w,
-             self.image_h)).astype('float32')
+            (self.batch_size, self.image_channels, self.image_w, self.image_h)
+        ).astype('float32')
 
         self.input = np.random.random(
-            (self.batch_size, self.input_channels, self.layer_w,
-             self.layer_h)).astype('float32')
+            (self.batch_size, self.input_channels, self.layer_w, self.layer_h)
+        ).astype('float32')
 
     def init_test_output(self):
         out_dim = (self.layer_h, self.layer_w, self.num_priors, 4)
@@ -100,32 +99,56 @@ class TestDensityPriorBoxOp(OpTest):
                 c_x = (w + self.offset) * self.step_w
                 c_y = (h + self.offset) * self.step_h
                 # Generate density prior boxes with fixed size
-                for density, fixed_size in zip(self.densities,
-                                               self.fixed_sizes):
-                    if (len(self.fixed_ratios) > 0):
+                for density, fixed_size in zip(
+                    self.densities, self.fixed_sizes
+                ):
+                    if len(self.fixed_ratios) > 0:
                         for ar in self.fixed_ratios:
                             shift = int(step_average / density)
                             box_width_ratio = fixed_size * math.sqrt(ar)
                             box_height_ratio = fixed_size / math.sqrt(ar)
                             for di in range(density):
                                 for dj in range(density):
-                                    c_x_temp = c_x - step_average / 2.0 + shift / 2.0 + dj * shift
-                                    c_y_temp = c_y - step_average / 2.0 + shift / 2.0 + di * shift
+                                    c_x_temp = (
+                                        c_x
+                                        - step_average / 2.0
+                                        + shift / 2.0
+                                        + dj * shift
+                                    )
+                                    c_y_temp = (
+                                        c_y
+                                        - step_average / 2.0
+                                        + shift / 2.0
+                                        + di * shift
+                                    )
                                     out_boxes[h, w, idx, :] = [
-                                        max((c_x_temp - box_width_ratio / 2.0) /
-                                            self.image_w, 0),
-                                        max((c_y_temp - box_height_ratio / 2.0)
-                                            / self.image_h, 0),
-                                        min((c_x_temp + box_width_ratio / 2.0) /
-                                            self.image_w, 1),
-                                        min((c_y_temp + box_height_ratio / 2.0)
-                                            / self.image_h, 1)
+                                        max(
+                                            (c_x_temp - box_width_ratio / 2.0)
+                                            / self.image_w,
+                                            0,
+                                        ),
+                                        max(
+                                            (c_y_temp - box_height_ratio / 2.0)
+                                            / self.image_h,
+                                            0,
+                                        ),
+                                        min(
+                                            (c_x_temp + box_width_ratio / 2.0)
+                                            / self.image_w,
+                                            1,
+                                        ),
+                                        min(
+                                            (c_y_temp + box_height_ratio / 2.0)
+                                            / self.image_h,
+                                            1,
+                                        ),
                                     ]
                                     idx += 1
         if self.clip:
             out_boxes = np.clip(out_boxes, 0.0, 1.0)
-        out_var = np.tile(self.variances,
-                          (self.layer_h, self.layer_w, self.num_priors, 1))
+        out_var = np.tile(
+            self.variances, (self.layer_h, self.layer_w, self.num_priors, 1)
+        )
         self.out_boxes = out_boxes.astype('float32')
         self.out_var = out_var.astype('float32')
         if self.flatten_to_2d:
@@ -134,7 +157,6 @@ class TestDensityPriorBoxOp(OpTest):
 
 
 class TestDensityPriorBox(TestDensityPriorBoxOp):
-
     def set_density(self):
         self.densities = [3, 4]
         self.fixed_sizes = [1.0, 2.0]

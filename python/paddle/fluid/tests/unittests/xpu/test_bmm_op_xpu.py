@@ -15,15 +15,14 @@ import sys
 sys.path.append("..")
 
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.tensor as tensor
 import unittest
 import numpy as np
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from paddle.fluid.framework import Program, program_guard
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -38,7 +37,6 @@ class XPUTestBmmOp(XPUOpTestWrapper):
         self.use_dynamic_create_class = False
 
     class TestBmmOp(XPUOpTest):
-
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -71,31 +69,26 @@ class XPUTestBmmOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     class TestBmmOp1(TestBmmOp):
-
         def set_shape(self):
             self.Xshape = (3, 3, 3)
             self.Yshape = (3, 3, 3)
 
     class TestBmmOp2(TestBmmOp):
-
         def set_shape(self):
             self.Xshape = (128, 3, 16)
             self.Yshape = (128, 16, 3)
 
     class TestBmmOp3(TestBmmOp):
-
         def set_shape(self):
             self.Xshape = (2048, 16, 27)
             self.Yshape = (2048, 27, 16)
 
     class TestBmmOp4(TestBmmOp):
-
         def set_shape(self):
             self.Xshape = (2, 27, 27)
             self.Yshape = (2, 27, 27)
 
     class TestBmmOp5(TestBmmOp):
-
         def set_shape(self):
             self.Xshape = (2, 1, 1)
             self.Yshape = (2, 1, 1)

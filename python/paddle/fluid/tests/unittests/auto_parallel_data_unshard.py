@@ -14,13 +14,11 @@
 
 import unittest
 
-import copy
 import numpy as np
 import random
 
 import paddle
 import paddle.nn as nn
-import paddle.fluid.core as core
 from paddle.distributed.fleet import auto
 import paddle.nn.functional as F
 from paddle.distributed import fleet
@@ -30,9 +28,7 @@ paddle.distributed.init_parallel_env()
 
 
 class TestDataUnshard(unittest.TestCase):
-
     def test_dp2pp1mp1(self):
-
         def create_model(train_program, start_program):
             with paddle.static.program_guard(train_program, start_program):
 
@@ -41,7 +37,8 @@ class TestDataUnshard(unittest.TestCase):
                 label = paddle.static.data(name='label', shape=[2, 8])
 
                 weight_attr = paddle.ParamAttr(
-                    initializer=nn.initializer.Normal(mean=0.0, std=0.02))
+                    initializer=nn.initializer.Normal(mean=0.0, std=0.02)
+                )
                 linear0 = nn.Linear(8, 8, weight_attr)
                 linear1 = nn.Linear(8, 8, weight_attr)
 
@@ -54,7 +51,8 @@ class TestDataUnshard(unittest.TestCase):
                 gelu_out = F.gelu(linear0_out)
                 linear1_out = linear1(gelu_out)
                 error_cost = paddle.nn.functional.square_error_cost(
-                    linear1_out, label)
+                    linear1_out, label
+                )
                 loss = paddle.mean(error_cost)
                 return train_program, start_program, loss, input, label
 
@@ -62,20 +60,27 @@ class TestDataUnshard(unittest.TestCase):
         start_program = paddle.static.Program()
         # serial program
         train_program, start_program, loss, input, label = create_model(
-            train_program, start_program)
+            train_program, start_program
+        )
 
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
-                                                         beta1=0.9,
-                                                         beta2=0.999,
-                                                         epsilon=1e-08,
-                                                         grad_clip=None)
+        optimizer = paddle.fluid.optimizer.AdamOptimizer(
+            learning_rate=0.00001,
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-08,
+            grad_clip=None,
+        )
 
         optimizer = fleet.distributed_optimizer(optimizer)
-        _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
-            loss, start_program)
+        (
+            _,
+            _,
+            distributed_startup_program,
+            distributed_main_program,
+        ) = optimizer.minimize(loss, start_program)
 
         worker_index = paddle.distributed.get_rank()
         paddle.seed(worker_index + 2021)
@@ -89,20 +94,20 @@ class TestDataUnshard(unittest.TestCase):
         input_data = np.array(range(2 * 8)).reshape([2, 8]).astype("float32")
         label_data = np.random.randint(0, 10, [2, 8]).astype("float32")
 
-        fetchs = [loss.name, 'split@RESHARD.tmp_0'] if worker_index == 0 else [
-            loss.name, 'split@RESHARD.tmp_1'
-        ]
-        loss_np, shard_data_np = exe.run(distributed_main_program,
-                                         feed={
-                                             "input": input_data,
-                                             "label": label_data
-                                         },
-                                         fetch_list=fetchs)
+        fetchs = (
+            [loss.name, 'split@RESHARD.tmp_0']
+            if worker_index == 0
+            else [loss.name, 'split@RESHARD.tmp_1']
+        )
+        loss_np, shard_data_np = exe.run(
+            distributed_main_program,
+            feed={"input": input_data, "label": label_data},
+            fetch_list=fetchs,
+        )
         desired = input_data[worker_index].reshape(shard_data_np.shape)
         np.testing.assert_allclose(shard_data_np, desired)
 
     def dp1pp1mp2(self):
-
         def create_model(train_program, start_program):
             with paddle.static.program_guard(train_program, start_program):
 
@@ -111,7 +116,8 @@ class TestDataUnshard(unittest.TestCase):
                 label = paddle.static.data(name='label', shape=[8, 8])
 
                 weight_attr = paddle.ParamAttr(
-                    initializer=nn.initializer.Normal(mean=0.0, std=0.02))
+                    initializer=nn.initializer.Normal(mean=0.0, std=0.02)
+                )
                 linear0 = nn.Linear(8, 8, weight_attr)
                 linear1 = nn.Linear(8, 8, weight_attr)
 
@@ -126,7 +132,8 @@ class TestDataUnshard(unittest.TestCase):
                 linear1_out = linear1(gelu_out)
 
                 error_cost = paddle.nn.functional.square_error_cost(
-                    linear1_out, label)
+                    linear1_out, label
+                )
                 loss = paddle.mean(error_cost)
                 return train_program, start_program, loss, input, label
 
@@ -134,20 +141,27 @@ class TestDataUnshard(unittest.TestCase):
         start_program = paddle.static.Program()
         # serial program
         train_program, start_program, loss, input, label = create_model(
-            train_program, start_program)
+            train_program, start_program
+        )
 
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
-                                                         beta1=0.9,
-                                                         beta2=0.999,
-                                                         epsilon=1e-08,
-                                                         grad_clip=None)
+        optimizer = paddle.fluid.optimizer.AdamOptimizer(
+            learning_rate=0.00001,
+            beta1=0.9,
+            beta2=0.999,
+            epsilon=1e-08,
+            grad_clip=None,
+        )
 
         optimizer = fleet.distributed_optimizer(optimizer)
-        _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
-            loss, start_program)
+        (
+            _,
+            _,
+            distributed_startup_program,
+            distributed_main_program,
+        ) = optimizer.minimize(loss, start_program)
 
         worker_index = paddle.distributed.get_rank()
         paddle.seed(worker_index + 2021)
@@ -162,12 +176,11 @@ class TestDataUnshard(unittest.TestCase):
         label_data = np.random.randint(0, 10, [8, 8]).astype("float32")
 
         fetchs = [loss.name, 'input']
-        loss_np, shard_data_np = exe.run(distributed_main_program,
-                                         feed={
-                                             "input": input_data,
-                                             "label": label_data
-                                         },
-                                         fetch_list=fetchs)
+        loss_np, shard_data_np = exe.run(
+            distributed_main_program,
+            feed={"input": input_data, "label": label_data},
+            fetch_list=fetchs,
+        )
 
         desired = input_data.reshape(shard_data_np.shape)
         np.testing.assert_allclose(shard_data_np, desired)

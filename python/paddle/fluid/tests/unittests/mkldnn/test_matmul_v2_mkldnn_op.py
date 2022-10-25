@@ -13,22 +13,28 @@
 # limitations under the License.
 
 import unittest
-from functools import reduce
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 import paddle.fluid.core as core
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
 from paddle.fluid.tests.unittests.mkldnn.test_matmul_mkldnn_op import (
     TestMatMulOpTransposeReshapeEmptyFloat,
     TestMatMulOpTransposeReshapeBasicFloat,
-    TestMatMulOpTransposeReshapeOtherDimFloat, TestReshapeTransposeMatMulOp,
-    TestReshapeTransposeMatMulOp4DXFloat, TestReshapeTransposeMatMulOp4DYFloat,
-    TestReshapeTransposeMatMulOp4DXYFloat, TestReshapeTransposeMatMulOp2DXFloat,
-    TestReshapeTransposeMatMulOp2DYFloat, TestReshapeTransposeMatMulOp3DXFloat,
-    TestReshapeTransposeMatMulOp3DYFloat)
+    TestMatMulOpTransposeReshapeOtherDimFloat,
+    TestReshapeTransposeMatMulOp,
+    TestReshapeTransposeMatMulOp4DXFloat,
+    TestReshapeTransposeMatMulOp4DYFloat,
+    TestReshapeTransposeMatMulOp4DXYFloat,
+    TestReshapeTransposeMatMulOp2DXFloat,
+    TestReshapeTransposeMatMulOp2DYFloat,
+    TestReshapeTransposeMatMulOp3DXFloat,
+    TestReshapeTransposeMatMulOp3DYFloat,
+)
 
 
 def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
@@ -37,7 +43,7 @@ def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
     # transpose X and Y appropriately.
     if transpose_x:
         if X.ndim == 1:
-            X = X.reshape((X.size, ))
+            X = X.reshape((X.size,))
         elif X.ndim == 2:
             X = X.T
         else:
@@ -46,7 +52,7 @@ def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
             X = np.transpose(X, tuple(dim))
     if transpose_y:
         if Y.ndim == 1:
-            Y = Y.reshape((Y.size, ))
+            Y = Y.reshape((Y.size,))
         else:
             dim = [i for i in range(len(Y.shape))]
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
@@ -57,10 +63,9 @@ def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
 
 
 class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
-
     def config(self):
-        self.x_shape = (100, )
-        self.y_shape = (100, )
+        self.x_shape = (100,)
+        self.y_shape = (100,)
         self.trans_x = False
         self.trans_y = False
         self._cpu_only = True
@@ -80,14 +85,15 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
         # -0.1 ~ 0.1
         x = -0.1 + 0.2 * x
         y = -0.1 + 0.2 * y
-        result = reference_matmul(x, y, self.trans_x,
-                                  self.trans_y).astype("float32")
+        result = reference_matmul(x, y, self.trans_x, self.trans_y).astype(
+            "float32"
+        )
 
         self.set_inputs(x, y)
         self.attrs = {
             'trans_x': self.trans_x,
             'trans_y': self.trans_y,
-            'use_mkldnn': True
+            'use_mkldnn': True,
         }
         self.set_dtype_attr()
         self.outputs = {'Out': result}
@@ -100,45 +106,42 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
 
 
 class TestMatMulV2VectorXMatrixTransposeYOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
-        self.x_shape = (100, )
+        self.x_shape = (100,)
         self.y_shape = (1, 3, 2, 100)
         self.trans_x = False
         self.trans_y = True
 
 
 class TestMatMulV2VectorXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
-        self.x_shape = (100, )
+        self.x_shape = (100,)
         self.y_shape = (1, 1, 100, 2)
         self.trans_x = False
         self.trans_y = False
 
 
 class TestMatMulV2MatrixXVectorTransposeXOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (1, 1, 100, 1)
-        self.y_shape = (100, )
+        self.y_shape = (100,)
         self.trans_x = True
         self.trans_y = False
 
 
 class TestMatMulV2MatrixXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
         self.x_shape = (1, 2, 1, 100)
-        self.y_shape = (100, )
+        self.y_shape = (100,)
         self.trans_x = False
         self.trans_y = False
 
 
 class TestMatMulV2MatrixXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
         self.x_shape = (1, 1, 2, 100)
         self.y_shape = (1, 1, 100, 1)
@@ -147,8 +150,8 @@ class TestMatMulV2MatrixXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrixTransposeYOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (1, 1, 1, 100)
         self.y_shape = (2, 1, 2, 100)
@@ -157,7 +160,6 @@ class TestMatMulV2MatrixXMatrixTransposeYOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix2OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
         self.x_shape = (2, 1, 12, 9)
         self.y_shape = (1, 3, 9, 12)
@@ -166,7 +168,6 @@ class TestMatMulV2MatrixXMatrix2OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrix3OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
         self.x_shape = (2, 1, 2, 100)
         self.y_shape = (1, 1, 100, 2)
@@ -175,8 +176,8 @@ class TestMatMulV2MatrixXMatrix3OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (2, 1, 4, 25)
         self.y_shape = (1, 1, 4, 25)
@@ -185,8 +186,8 @@ class TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2(
 
 
 class TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (2, 2, 7, 4)
         self.y_shape = (2, 2, 7, 5)
@@ -195,8 +196,8 @@ class TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3(
 
 
 class TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (3, 1, 6, 7)
         self.y_shape = (1, 2, 6, 9)
@@ -205,7 +206,6 @@ class TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix4OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
         self.x_shape = (3, 1, 6, 6)
         self.y_shape = (1, 2, 6, 9)
@@ -214,26 +214,24 @@ class TestMatMulV2MatrixXMatrix4OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2VectorXMatrix5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
-        self.x_shape = (100)
+        self.x_shape = 100
         self.y_shape = (1, 2, 2, 100, 2)
         self.trans_x = False
         self.trans_y = False
 
 
 class TestMatMulV2Matrix3DXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
         self.x_shape = (2, 1, 100)
-        self.y_shape = (100)
+        self.y_shape = 100
         self.trans_x = False
         self.trans_y = False
 
 
 class TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (3, 1, 10, 8)
         self.y_shape = (1, 2, 9, 10)
@@ -242,8 +240,8 @@ class TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (3, 1, 10, 10)
         self.y_shape = (1, 2, 9, 10)
@@ -252,8 +250,8 @@ class TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (1, 3, 1, 10, 10)
         self.y_shape = (3, 1, 2, 9, 10)
@@ -262,7 +260,6 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix6Dx2DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
         self.x_shape = (1, 1, 2, 1, 8, 9)
         self.y_shape = (9, 12)
@@ -271,7 +268,6 @@ class TestMatMulV2MatrixXMatrix6Dx2DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
         self.x_shape = (20, 5)
         self.y_shape = (1, 2, 1, 5, 11)
@@ -280,8 +276,8 @@ class TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrix4Dx3DTransposeXOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (5, 4, 15, 10)
         self.y_shape = (1, 15, 20)
@@ -290,8 +286,8 @@ class TestMatMulV2MatrixXMatrix4Dx3DTransposeXOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix3Dx4DTransposeYOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (2, 10, 15)
         self.y_shape = (4, 2, 20, 15)
@@ -300,8 +296,8 @@ class TestMatMulV2MatrixXMatrix3Dx4DTransposeYOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix5Dx3DTransposeXTransposeYOneDNNOp(
-        TestMatMulV2VectorXVectorOneDNNOp):
-
+    TestMatMulV2VectorXVectorOneDNNOp
+):
     def config(self):
         self.x_shape = (4, 3, 2, 15, 10)
         self.y_shape = (1, 20, 15)
@@ -310,7 +306,6 @@ class TestMatMulV2MatrixXMatrix5Dx3DTransposeXTransposeYOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix3Dx4DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
-
     def config(self):
         self.x_shape = (1, 1, 32, 16)
         self.y_shape = (16, 16, 16)
@@ -320,14 +315,12 @@ class TestMatMulV2MatrixXMatrix3Dx4DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
-
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestMatMulV2Bf16OneDNNOp(parent):
-
         def set_inputs(self, x, y):
             self.inputs = {
                 'X': convert_float_to_uint16(x),
-                'Y': convert_float_to_uint16(y)
+                'Y': convert_float_to_uint16(y),
             }
             self.x_fp32 = x
             self.y_fp32 = y
@@ -341,16 +334,24 @@ def create_bf16_test_class(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
-                core.CPUPlace(), ["X", "Y"],
+                core.CPUPlace(),
+                ["X", "Y"],
                 "Out",
                 user_defined_grads=[self.dx, self.dy],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            )
 
         def matmul_grad(self, x, transpose_x, y, transpose_y):
-            x = np.transpose(
-                x, self.shape_transpose_axes[x.ndim]) if transpose_x else x
-            y = np.transpose(
-                y, self.shape_transpose_axes[y.ndim]) if transpose_y else y
+            x = (
+                np.transpose(x, self.shape_transpose_axes[x.ndim])
+                if transpose_x
+                else x
+            )
+            y = (
+                np.transpose(y, self.shape_transpose_axes[y.ndim])
+                if transpose_y
+                else y
+            )
 
             return np.matmul(x, y)
 
@@ -360,7 +361,7 @@ def create_bf16_test_class(parent):
                 3: [0, 2, 1],
                 4: [0, 1, 3, 2],
                 5: [0, 1, 2, 4, 3],
-                6: [0, 1, 2, 3, 5, 4]
+                6: [0, 1, 2, 3, 5, 4],
             }
 
             # expand vector so it will be a valid matrix for multiplication
@@ -372,10 +373,16 @@ def create_bf16_test_class(parent):
             x_transpose_axes = self.shape_transpose_axes[self.x_fp32.ndim]
             y_transpose_axes = self.shape_transpose_axes[self.y_fp32.ndim]
 
-            x = np.transpose(self.x_fp32, x_transpose_axes
-                             ) if self.attrs['trans_x'] is True else self.x_fp32
-            y = np.transpose(self.y_fp32, y_transpose_axes
-                             ) if self.attrs['trans_y'] is True else self.y_fp32
+            x = (
+                np.transpose(self.x_fp32, x_transpose_axes)
+                if self.attrs['trans_x'] is True
+                else self.x_fp32
+            )
+            y = (
+                np.transpose(self.y_fp32, y_transpose_axes)
+                if self.attrs['trans_y'] is True
+                else self.y_fp32
+            )
 
             dout = np.matmul(x, y)
 
@@ -392,12 +399,14 @@ def create_bf16_test_class(parent):
             if self.attrs['trans_x'] is True and self.attrs['trans_y'] is True:
                 self.dx = self.matmul_grad(self.y_fp32, True, dout, True)
                 self.dy = self.matmul_grad(dout, True, self.x_fp32, True)
-            elif self.attrs['trans_x'] is True and self.attrs[
-                    'trans_y'] is False:
+            elif (
+                self.attrs['trans_x'] is True and self.attrs['trans_y'] is False
+            ):
                 self.dx = self.matmul_grad(self.y_fp32, False, dout, True)
                 self.dy = self.matmul_grad(self.x_fp32, False, dout, False)
-            elif self.attrs['trans_x'] is False and self.attrs[
-                    'trans_y'] is True:
+            elif (
+                self.attrs['trans_x'] is False and self.attrs['trans_y'] is True
+            ):
                 self.dx = self.matmul_grad(dout, False, self.y_fp32, False)
                 self.dy = self.matmul_grad(dout, True, self.x_fp32, False)
             else:
@@ -408,21 +417,25 @@ def create_bf16_test_class(parent):
                 x_reduce_axis = []
                 y_reduce_axis = []
                 for index, (first, second) in enumerate(
-                        zip(x_shape[0:-2], self.dx.shape[0:-2])):
+                    zip(x_shape[0:-2], self.dx.shape[0:-2])
+                ):
                     if first != second:
                         x_reduce_axis.append(index)
 
                 for index, (first, second) in enumerate(
-                        zip(y_shape[0:-2], self.dy.shape[0:-2])):
+                    zip(y_shape[0:-2], self.dy.shape[0:-2])
+                ):
                     if first != second:
                         y_reduce_axis.append(index)
 
                 if x_reduce_axis:
-                    self.dx = self.dx.sum(axis=tuple(x_reduce_axis),
-                                          keepdims=True)
+                    self.dx = self.dx.sum(
+                        axis=tuple(x_reduce_axis), keepdims=True
+                    )
                 if y_reduce_axis:
-                    self.dy = self.dy.sum(axis=tuple(y_reduce_axis),
-                                          keepdims=True)
+                    self.dy = self.dy.sum(
+                        axis=tuple(y_reduce_axis), keepdims=True
+                    )
 
             # after multiplying with vector one dimension is deleted from tensor
             if len(x_shape) == 2 and x_shape[0] == 1:
@@ -459,84 +472,83 @@ create_bf16_test_class(TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp)
 
 
 class TestMatMulV2OpTransposeReshapeEmptyFloat(
-        TestMatMulOpTransposeReshapeEmptyFloat):
-
+    TestMatMulOpTransposeReshapeEmptyFloat
+):
     def set_op_type(self):
         self.op_type = "matmul_v2"
 
 
 class TestMatMulV2OpTransposeReshapeBasicFloat(
-        TestMatMulOpTransposeReshapeBasicFloat):
-
+    TestMatMulOpTransposeReshapeBasicFloat
+):
     def set_op_type(self):
         self.op_type = "matmul_v2"
 
 
 class TestMatMulV2OpTransposeReshapeOtherDimFloat(
-        TestMatMulOpTransposeReshapeOtherDimFloat):
-
+    TestMatMulOpTransposeReshapeOtherDimFloat
+):
     def set_op_type(self):
         self.op_type = "matmul_v2"
 
 
 class TestMatMulV2OpReshapeTranspose(TestReshapeTransposeMatMulOp):
-
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose4DXFloat(
-        TestReshapeTransposeMatMulOp4DXFloat):
-
+    TestReshapeTransposeMatMulOp4DXFloat
+):
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose4DYFloat(
-        TestReshapeTransposeMatMulOp4DYFloat):
-
+    TestReshapeTransposeMatMulOp4DYFloat
+):
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose4DXYFloat(
-        TestReshapeTransposeMatMulOp4DXYFloat):
-
+    TestReshapeTransposeMatMulOp4DXYFloat
+):
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose2DXFloat(
-        TestReshapeTransposeMatMulOp2DXFloat):
-
+    TestReshapeTransposeMatMulOp2DXFloat
+):
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose2DYFloat(
-        TestReshapeTransposeMatMulOp2DYFloat):
-
+    TestReshapeTransposeMatMulOp2DYFloat
+):
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose3DXFloat(
-        TestReshapeTransposeMatMulOp3DXFloat):
-
+    TestReshapeTransposeMatMulOp3DXFloat
+):
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose3DYFloat(
-        TestReshapeTransposeMatMulOp3DYFloat):
-
+    TestReshapeTransposeMatMulOp3DYFloat
+):
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"

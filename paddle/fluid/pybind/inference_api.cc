@@ -35,6 +35,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/core/cuda_stream.h"
@@ -401,6 +402,12 @@ void BindInferenceApi(py::module *m) {
                new paddle_infer::Predictor(config));
            return pred;
          });
+  m->def(
+      "_get_phi_kernel_name",
+      [](const std::string &fluid_op_name) {
+        return phi::TransToPhiKernelName(fluid_op_name);
+      },
+      py::return_value_policy::reference);
   m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
@@ -616,13 +623,6 @@ void BindAnalysisConfig(py::module *m) {
       .value("Bfloat16", AnalysisConfig::Precision::kBf16)
       .export_values();
 
-  py::enum_<AnalysisConfig::Backend>(analysis_config, "Backend")
-      .value("CPU", AnalysisConfig::Backend::kCPU)
-      .value("GPU", AnalysisConfig::Backend::kGPU)
-      .value("NPU", AnalysisConfig::Backend::kNPU)
-      .value("XPU", AnalysisConfig::Backend::kXPU)
-      .export_values();
-
   analysis_config.def(py::init<>())
       .def(py::init<const AnalysisConfig &>())
       .def(py::init<const std::string &>())
@@ -673,6 +673,14 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("ipu_replica_num") = 1,
            py::arg("ipu_available_memory_proportion") = 1.0,
            py::arg("ipu_enable_half_partial") = false)
+      .def("set_ipu_custom_info",
+           &AnalysisConfig::SetIpuCustomInfo,
+           py::arg("ipu_custom_ops_info") =
+               std::vector<std::vector<std::string>>({}),
+           py::arg("ipu_custom_patterns") = std::map<std::string, bool>({}))
+      .def("load_ipu_config",
+           &AnalysisConfig::LoadIpuConfig,
+           py::arg("config_path"))
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("enable_onnxruntime", &AnalysisConfig::EnableONNXRuntime)
       .def("disable_onnxruntime", &AnalysisConfig::DisableONNXRuntime)

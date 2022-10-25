@@ -17,15 +17,13 @@ import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestCastBF16ToFP32MKLDNNOp(OpTest):
-
     def init_data(self):
         self.out = np.random.random(size=[10, 10]).astype("float32")
         self.x = convert_float_to_uint16(self.out)
@@ -34,12 +32,15 @@ class TestCastBF16ToFP32MKLDNNOp(OpTest):
         self.init_data()
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.out}
-        prepare_dtype = lambda x: int(core.VarDesc.VarType.BF16 if x.dtype != np
-                                      .float32 else core.VarDesc.VarType.FP32)
+        prepare_dtype = lambda x: int(
+            core.VarDesc.VarType.BF16
+            if x.dtype != np.float32
+            else core.VarDesc.VarType.FP32
+        )
         self.attrs = {
             'in_dtype': prepare_dtype(self.x),
             'out_dtype': prepare_dtype(self.out),
-            'use_mkldnn': True
+            'use_mkldnn': True,
         }
         self.op_type = 'cast'
 
@@ -48,29 +49,28 @@ class TestCastBF16ToFP32MKLDNNOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CPUPlace(), ["X"],
+            core.CPUPlace(),
+            ["X"],
             "Out",
             check_dygraph=False,
             user_defined_grads=[self.inputs['X']],
-            user_defined_grad_outputs=[self.outputs['Out']])
+            user_defined_grad_outputs=[self.outputs['Out']],
+        )
 
 
 class TestCastFP32ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
-
     def init_data(self):
         self.x = np.random.random(size=[2, 6]).astype("float32")
         self.out = convert_float_to_uint16(self.x)
 
 
 class TestCastBF16ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
-
     def init_data(self):
         self.x = np.random.random(size=[6, 13]).astype("uint16")
         self.out = self.x
 
 
 class TestCastFP32ToFP32MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
-
     def init_data(self):
         self.x = np.random.random(size=[7, 15]).astype("float32")
         self.out = self.x

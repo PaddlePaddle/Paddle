@@ -64,7 +64,7 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
                 task = dist.stream.recv(data, src=0, sync_op=False)
             task.wait()
             out = data.numpy()
-            # [[4, 5, 6], [4, 5, 6]
+            # [[4, 5, 6], [4, 5, 6]] (2 GPUs)
     """
     if group is not None and not group.is_member():
         raise RuntimeError(
@@ -73,10 +73,12 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
 
     if not sync_op and use_calc_stream:
         raise RuntimeError(
-            "use_calc_stream can only be True in sync op behavior.")
+            "use_calc_stream can only be True in sync op behavior."
+        )
 
     if framework.in_dygraph_mode():
         return _send_in_dygraph(tensor, dst, group, sync_op, use_calc_stream)
 
     raise RuntimeError(
-        "paddle.distributed.stream.send is only supported in dygraph mode now.")
+        "paddle.distributed.stream.send is only supported in dygraph mode now."
+    )

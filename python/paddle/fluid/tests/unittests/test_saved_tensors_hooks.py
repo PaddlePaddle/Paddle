@@ -13,15 +13,12 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 import paddle
 from paddle.autograd import PyLayer
 
 
 class TestSavedTensorsHooks(unittest.TestCase):
-
     def test_save_for_multiply(self):
-
         def pack_hook(x):
             return x.numpy()
 
@@ -47,9 +44,7 @@ class TestSavedTensorsHooks(unittest.TestCase):
         self.assertTrue(paddle.equal_all(bb.grad, b.grad))
 
     def test_save_for_pylayer(self):
-
         class cus_multiply(PyLayer):
-
             @staticmethod
             def forward(ctx, a, b):
                 y = paddle.multiply(a, b)

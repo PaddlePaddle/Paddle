@@ -222,8 +222,10 @@ class LayerList(Layer):
         if isinstance(idx, int):
             if not (-len(self) <= idx < len(self)):
                 raise IndexError(
-                    'index {} is out of range, should be an integer in range [{}, {})'
-                    .format(idx, -len(self), len(self)))
+                    'index {} is out of range, should be an integer in range [{}, {})'.format(
+                        idx, -len(self), len(self)
+                    )
+                )
             if idx < 0:
                 idx += len(self)
         return idx
@@ -248,7 +250,8 @@ class LayerList(Layer):
             delattr(self, str(idx))
         str_indices = [str(i) for i in range(len(self._sub_layers))]
         self._sub_layers = OrderedDict(
-            list(zip(str_indices, self._sub_layers.values())))
+            list(zip(str_indices, self._sub_layers.values()))
+        )
 
     def __len__(self):
         return len(self._sub_layers)
@@ -297,9 +300,11 @@ class LayerList(Layer):
                 linears.insert(-1, another)
                 print(linears[-2] is another) # True
         """
-        assert isinstance(index, int) and \
-               -len(self._sub_layers) <= index < len(self._sub_layers), \
-            "index should be an integer in range [{}, {})".format(-len(self), len(self))
+        assert isinstance(index, int) and -len(self._sub_layers) <= index < len(
+            self._sub_layers
+        ), "index should be an integer in range [{}, {})".format(
+            -len(self), len(self)
+        )
 
         index = self._get_abs_idx(index)
         for i in range(len(self._sub_layers), index, -1):

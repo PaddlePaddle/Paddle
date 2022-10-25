@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-
 
 class Registry(object):
-    """ A general registry object. """
+    """A general registry object."""
+
     __slots__ = ['name', 'tab']
 
     def __init__(self, name):
@@ -24,7 +23,9 @@ class Registry(object):
         self.tab = {}
 
     def register(self, name, value):
-        assert name not in self.tab, f'name "{name}" should not be registered before.'
+        assert (
+            name not in self.tab
+        ), f'name "{name}" should not be registered before.'
         self.tab[name] = value
 
     def lookup(self, name):
@@ -80,15 +81,17 @@ def op_position_inputs(op):
 
     """
     args = _primop_position_argnames.lookup(op.type)
-    assert args is not None, f'args of {op.type} should not be None in op_position_inputs().'
+    assert (
+        args is not None
+    ), f'args of {op.type} should not be None in op_position_inputs().'
     *input_names, _ = args
 
     inputs = []
     for name in input_names:
         vars = list(map(op.block.var, op.input(name)))
-        assert len(
-            vars
-        ) >= 0, f'len(vars) should be greater than or equal to 0, but len(vars)={len(vars)}.'
+        assert (
+            len(vars) >= 0
+        ), f'len(vars) should be greater than or equal to 0, but len(vars)={len(vars)}.'
         if len(vars) > 1:
             inputs.append(vars)
         else:
@@ -122,9 +125,9 @@ def op_position_output(op):
     *_, output_name = args
 
     outvars = list(map(op.block.var, op.output(output_name)))
-    assert len(
-        outvars
-    ) >= 0, f'len(outvars) should be greater than or equal to 0, but len(outvars)={len(outvars)}.'
+    assert (
+        len(outvars) >= 0
+    ), f'len(outvars) should be greater than or equal to 0, but len(outvars)={len(outvars)}.'
     if len(outvars) > 1:
         output = outvars
     else:
@@ -186,9 +189,10 @@ def REGISTER_ORIG2PRIM(op_type):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
-
         def _lower(op, *args, **kwargs):
-            assert op.type == op_type, f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
+            assert (
+                op.type == op_type
+            ), f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
             return f(op, *args, **kwargs)
 
         _orig2prim.register(op_type, _lower)
@@ -218,9 +222,10 @@ def REGISTER_PRIM2ORIG(op_type):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
-
         def _lower(op, *args, **kwargs):
-            assert op.type == op_type, f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
+            assert (
+                op.type == op_type
+            ), f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
             return f(op, *args, **kwargs)
 
         _prim2orig.register(op_type, _lower)
@@ -249,9 +254,10 @@ def REGISTER_JVP(op_type):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
-
         def _jvp(op, *args, **kwargs):
-            assert op.type == op_type, f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
+            assert (
+                op.type == op_type
+            ), f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
             return f(op, *args, **kwargs)
 
         _primop_jvp.register(op_type, _jvp)
@@ -282,9 +288,10 @@ def REGISTER_TRANSPOSE(op_type):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
 
     def wrapper(f):
-
         def _transpose(op, dot_checker, *args, **kwargs):
-            assert op.type == op_type, f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
+            assert (
+                op.type == op_type
+            ), f'op.type should be equal to op_type, but op.type is {op.type} and op_type is {op_type}'
             return f(op, dot_checker, *args, **kwargs)
 
         _primop_transpose.register(op_type, _transpose)

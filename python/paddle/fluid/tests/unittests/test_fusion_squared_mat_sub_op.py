@@ -18,7 +18,6 @@ from op_test import OpTest
 
 
 class TestFusionSquaredMatSubOp(OpTest):
-
     def setUp(self):
         self.op_type = 'fusion_squared_mat_sub'
         self.m = 11
@@ -31,8 +30,8 @@ class TestFusionSquaredMatSubOp(OpTest):
 
         self.inputs = {'X': matx, 'Y': maty}
         self.outputs = {
-            'Out':
-            (np.dot(matx, maty)**2 - np.dot(matx**2, maty**2)) * self.scalar
+            'Out': (np.dot(matx, maty) ** 2 - np.dot(matx**2, maty**2))
+            * self.scalar
         }
         self.attrs = {
             'scalar': self.scalar,
@@ -46,7 +45,6 @@ class TestFusionSquaredMatSubOp(OpTest):
 
 
 class TestFusionSquaredMatSubOpCase1(TestFusionSquaredMatSubOp):
-
     def set_conf(self):
         self.scalar = -0.3
 

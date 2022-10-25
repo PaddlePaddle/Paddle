@@ -17,17 +17,14 @@ import unittest
 import numpy as np
 import tempfile
 import shutil
-from op_test import OpTest, randomize_probability
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.fleet import fleet
 
 
 class SparseLoadOp(unittest.TestCase):
-    """ Test load operator.
-    """
+    """Test load operator."""
 
     def net(self, emb_array, fc_array):
         with fluid.unique_name.guard():
@@ -40,7 +37,9 @@ class SparseLoadOp(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name="embedding",
                     initializer=fluid.initializer.NumpyArrayInitializer(
-                        emb_array)),
+                        emb_array
+                    ),
+                ),
             )
 
             fc1 = fluid.layers.fc(
@@ -50,7 +49,10 @@ class SparseLoadOp(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name='fc',
                     initializer=fluid.initializer.NumpyArrayInitializer(
-                        fc_array)))
+                        fc_array
+                    ),
+                ),
+            )
             loss = fluid.layers.reduce_mean(fc1)
         return loss
 
@@ -72,7 +74,6 @@ class SparseLoadOp(unittest.TestCase):
 
 @unittest.skip(reason="Skip unstable ut, need rewrite with new implement")
 class TestSparseLoadOpCase1(SparseLoadOp):
-
     def test_2ps_0_load(self):
         # init No.0 server env
         env = {}
@@ -112,7 +113,8 @@ class TestSparseLoadOpCase1(SparseLoadOp):
         fc_w = np.array(fluid.global_scope().find_var("fc").get_tensor())
 
         emb = np.array(
-            fluid.global_scope().find_var("embedding.block0").get_tensor())
+            fluid.global_scope().find_var("embedding.block0").get_tensor()
+        )
 
         assert fc_w.all() == fc_array.all()
         assert emb.all() == emb_array[::2].all()

@@ -15,12 +15,9 @@
 import unittest
 import random
 import numpy as np
-import os
-import shutil
 
 import paddle
 from paddle.fluid import core
-from datetime import timedelta
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
@@ -32,15 +29,16 @@ def init_process_group(strategy=None):
     is_master = True if rank == 0 else False
     store = paddle.fluid.core.TCPStore("127.0.0.1", 6173, is_master, nranks)
     pg_group = core.ProcessGroupCustom(
-        store, rank, nranks,
-        paddle.CustomPlace(ParallelEnv().device_type,
-                           ParallelEnv().device_id))
+        store,
+        rank,
+        nranks,
+        paddle.CustomPlace(ParallelEnv().device_type, ParallelEnv().device_id),
+    )
 
     return pg_group
 
 
 class TestProcessGroupFp32(unittest.TestCase):
-
     def setUp(self):
         paddle.seed(2022)
         random.seed(2022)
@@ -53,8 +51,9 @@ class TestProcessGroupFp32(unittest.TestCase):
 
     def test_create_process_group_xccl(self):
         with _test_eager_guard():
-            paddle.set_device('custom_cpu:%d' %
-                              paddle.distributed.ParallelEnv().dev_id)
+            paddle.set_device(
+                'custom_cpu:%d' % paddle.distributed.ParallelEnv().dev_id
+            )
 
             pg = init_process_group()
 
@@ -150,8 +149,9 @@ class TestProcessGroupFp32(unittest.TestCase):
                 task.wait()
                 # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
             out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
-            out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2],
-                                 [out_shape[0]])
+            out_2 = paddle.slice(
+                tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
+            )
             # assert np.array_equal(tensor_x, out_1)
             # assert np.array_equal(tensor_y, out_2)
             print("test allgather api ok\n")
@@ -166,10 +166,12 @@ class TestProcessGroupFp32(unittest.TestCase):
             tensor_y = paddle.to_tensor(y)
             tensor_out1 = paddle.to_tensor(out1)
             tensor_out2 = paddle.to_tensor(out2)
-            raw_tensor_x_2 = paddle.slice(tensor_x, [0], [self.shape[0] // 2],
-                                          [self.shape[0]])
-            raw_tensor_y_1 = paddle.slice(tensor_y, [0], [0],
-                                          [self.shape[0] // 2])
+            raw_tensor_x_2 = paddle.slice(
+                tensor_x, [0], [self.shape[0] // 2], [self.shape[0]]
+            )
+            raw_tensor_y_1 = paddle.slice(
+                tensor_y, [0], [0], [self.shape[0] // 2]
+            )
             if pg.rank() == 0:
                 task = pg.alltoall(tensor_x, tensor_out1)
                 task.wait()
@@ -179,8 +181,9 @@ class TestProcessGroupFp32(unittest.TestCase):
                 task = pg.alltoall(tensor_y, tensor_out2)
                 task.wait()
                 # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
-            out1_2 = paddle.slice(tensor_out1, [0], [self.shape[0] // 2],
-                                  [self.shape[0]])
+            out1_2 = paddle.slice(
+                tensor_out1, [0], [self.shape[0] // 2], [self.shape[0]]
+            )
             out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
             # if pg.rank() == 0:
             #     assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
@@ -226,8 +229,9 @@ class TestProcessGroupFp32(unittest.TestCase):
                 task.wait()
                 # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
             out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
-            out2 = paddle.slice(tensor_x, [0], [self.shape[0]],
-                                [self.shape[0] * 2])
+            out2 = paddle.slice(
+                tensor_x, [0], [self.shape[0]], [self.shape[0] * 2]
+            )
             # if pg.rank() == 0:
             #     assert np.array_equal(tensor_y, out1)
             # else:

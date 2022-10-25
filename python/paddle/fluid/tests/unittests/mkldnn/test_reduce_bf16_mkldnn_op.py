@@ -14,9 +14,13 @@
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTestTool, OpTest, skip_check_grad_ci, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTestTool,
+    OpTest,
+    skip_check_grad_ci,
+    convert_float_to_uint16,
+)
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 import paddle
 
 paddle.enable_static()
@@ -24,7 +28,6 @@ paddle.enable_static()
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestReduceSumDefaultBF16OneDNNOp(OpTest):
-
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -70,20 +73,21 @@ class TestReduceSumDefaultBF16OneDNNOp(OpTest):
 
 
 class TestReduceDefaultWithGradBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
-
     def test_check_grad(self):
         self.calculate_grads()
         self.check_grad_with_place(
-            core.CPUPlace(), ["X"],
+            core.CPUPlace(),
+            ["X"],
             "Out",
             check_dygraph=False,
             user_defined_grads=[self.grad_X],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.grad_Out)])
+            user_defined_grad_outputs=[convert_float_to_uint16(self.grad_Out)],
+        )
 
 
 class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
-        TestReduceDefaultWithGradBF16OneDNNOp):
-
+    TestReduceDefaultWithGradBF16OneDNNOp
+):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -95,8 +99,8 @@ class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
 
 
 class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsBF16OneDNNOp(
-        TestReduceDefaultWithGradBF16OneDNNOp):
-
+    TestReduceDefaultWithGradBF16OneDNNOp
+):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -108,8 +112,8 @@ class TestReduceSum4DReduceAllWithoutReduceAllAttributeNegativeDimsBF16OneDNNOp(
 
 
 class TestReduceSum5DReduceAllKeepDimsBF16OneDNNOp(
-        TestReduceDefaultWithGradBF16OneDNNOp):
-
+    TestReduceDefaultWithGradBF16OneDNNOp
+):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -120,9 +124,9 @@ class TestReduceSum5DReduceAllKeepDimsBF16OneDNNOp(
         self.outputs = {'Out': self.x_fp32.sum(keepdims=self.attrs['keep_dim'])}
 
 
-class TestReduceSum4DReduceAllBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp
-                                           ):
-
+class TestReduceSum4DReduceAllBF16OneDNNOp(
+    TestReduceDefaultWithGradBF16OneDNNOp
+):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -135,7 +139,8 @@ class TestReduceSum4DReduceAllBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMax3DBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -151,9 +156,11 @@ class TestReduceMax3DBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMax4DNegativeAndPositiveDimsBF16OneDNNOp(
-        TestReduceSumDefaultBF16OneDNNOp):
+    TestReduceSumDefaultBF16OneDNNOp
+):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -168,7 +175,8 @@ class TestReduceMax4DNegativeAndPositiveDimsBF16OneDNNOp(
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMin3DBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -183,7 +191,6 @@ class TestReduceMin3DBF16OneDNNOp(TestReduceSumDefaultBF16OneDNNOp):
 
 
 class TestReduceMean3DBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp):
-
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
@@ -195,7 +202,6 @@ class TestReduceMean3DBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp):
 
 
 class TestReduceMean4DBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp):
-
     def setUp(self):
         self.op_type = "reduce_mean"
         self.use_mkldnn = True
@@ -204,9 +210,8 @@ class TestReduceMean4DBF16OneDNNOp(TestReduceDefaultWithGradBF16OneDNNOp):
         self.inputs = {'X': self.x_bf16}
         self.attrs = {'use_mkldnn': self.use_mkldnn, 'dim': [0, 1]}
         self.outputs = {
-            'Out':
-            self.x_fp32.sum(axis=tuple(self.attrs['dim'])) /
-            (self.x_fp32.shape[0] * self.x_fp32.shape[1])
+            'Out': self.x_fp32.sum(axis=tuple(self.attrs['dim']))
+            / (self.x_fp32.shape[0] * self.x_fp32.shape[1])
         }
 
 
