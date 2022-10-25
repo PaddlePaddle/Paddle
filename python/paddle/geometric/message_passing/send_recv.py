@@ -36,7 +36,6 @@ def send_u_recv(
     x, src_index, dst_index, reduce_op="sum", out_size=None, name=None
 ):
     """
-
     Graph Learning message passing api.
 
     This api is mainly used in Graph Learning domain, and the main purpose is to reduce intermediate memory
