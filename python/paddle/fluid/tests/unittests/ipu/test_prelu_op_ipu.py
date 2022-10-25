@@ -22,7 +22,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -46,9 +45,9 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
 
         array = np.random.uniform(size=[1]).astype(np.float32)
         result1 = paddle.zeros(shape=[1], dtype='float32')
@@ -70,12 +69,11 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     @IPUOpTest.static_graph
     def build_model(self):
-        x = paddle.static.data(name=self.feed_list[0],
-                               shape=self.feed_shape[0],
-                               dtype='float32')
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         array = np.random.uniform(size=[3]).astype(np.float32)
         result1 = paddle.zeros(shape=[3], dtype='float32')
         weight = paddle.assign(array, result1)

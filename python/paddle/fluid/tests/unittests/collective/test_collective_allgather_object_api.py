@@ -17,35 +17,42 @@ import test_collective_api_base as test_base
 
 
 class TestCollectiveAllgatherObjectAPI(test_base.TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_allgather_nccl(self):
-        self.check_with_place("collective_allgather_object_api_dygraph.py",
-                              "allgather_object",
-                              "nccl",
-                              static_mode="0",
-                              dtype="pylist")
-        self.check_with_place("collective_allgather_object_api_dygraph.py",
-                              "allgather_object",
-                              "nccl",
-                              static_mode="0",
-                              dtype="pydict")
+        self.check_with_place(
+            "collective_allgather_object_api_dygraph.py",
+            "allgather_object",
+            "nccl",
+            static_mode="0",
+            dtype="pylist",
+        )
+        self.check_with_place(
+            "collective_allgather_object_api_dygraph.py",
+            "allgather_object",
+            "nccl",
+            static_mode="0",
+            dtype="pydict",
+        )
 
     def test_allgather_gloo_dygraph(self):
-        self.check_with_place("collective_allgather_object_api_dygraph.py",
-                              "allgather_object",
-                              "gloo",
-                              "3",
-                              static_mode="0",
-                              dtype="pylist")
-        self.check_with_place("collective_allgather_object_api_dygraph.py",
-                              "allgather_object",
-                              "gloo",
-                              "3",
-                              static_mode="0",
-                              dtype="pydict")
+        self.check_with_place(
+            "collective_allgather_object_api_dygraph.py",
+            "allgather_object",
+            "gloo",
+            "3",
+            static_mode="0",
+            dtype="pylist",
+        )
+        self.check_with_place(
+            "collective_allgather_object_api_dygraph.py",
+            "allgather_object",
+            "gloo",
+            "3",
+            static_mode="0",
+            dtype="pydict",
+        )
 
 
 if __name__ == '__main__':

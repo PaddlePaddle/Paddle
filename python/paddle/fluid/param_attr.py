@@ -71,24 +71,31 @@ class ParamAttr(object):
             paddle.nn.Linear(3, 4, weight_attr=weight_attr)
     """
 
-    def __init__(self,
-                 name=None,
-                 initializer=None,
-                 learning_rate=1.0,
-                 regularizer=None,
-                 trainable=True,
-                 do_model_average=True,
-                 need_clip=True):
+    def __init__(
+        self,
+        name=None,
+        initializer=None,
+        learning_rate=1.0,
+        regularizer=None,
+        trainable=True,
+        do_model_average=True,
+        need_clip=True,
+    ):
 
         check_type(name, "name", (str, type(None)), "ParamAttr")
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
         check_type(need_clip, "need_clip", (bool), "ParamAttr")
-        check_type(initializer, "initializer", (Initializer, type(None)),
-                   "ParamAttr")
-        check_type(regularizer, "regularizer",
-                   (WeightDecayRegularizer, type(None)), "ParamAttr")
+        check_type(
+            initializer, "initializer", (Initializer, type(None)), "ParamAttr"
+        )
+        check_type(
+            regularizer,
+            "regularizer",
+            (WeightDecayRegularizer, type(None)),
+            "ParamAttr",
+        )
 
         self.name = name
         if self.name == "":
@@ -191,13 +198,11 @@ class ParamAttr(object):
         """
         kwargs = {
             'name': self.name,
-            'optimize_attr': {
-                'learning_rate': self.learning_rate
-            },
+            'optimize_attr': {'learning_rate': self.learning_rate},
             'regularizer': self.regularizer,
             'trainable': self.trainable,
             'do_model_average': self.do_model_average,
-            'need_clip': self.need_clip
+            'need_clip': self.need_clip,
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
@@ -277,21 +282,24 @@ class WeightNormParamAttr(ParamAttr):
     # these paramters for inference.
     params_with_weight_norm = []
 
-    def __init__(self,
-                 dim=None,
-                 name=None,
-                 initializer=None,
-                 learning_rate=1.0,
-                 regularizer=None,
-                 trainable=True,
-                 do_model_average=False,
-                 need_clip=True):
-        super(WeightNormParamAttr,
-              self).__init__(name=name,
-                             initializer=initializer,
-                             learning_rate=learning_rate,
-                             regularizer=regularizer,
-                             trainable=trainable,
-                             do_model_average=do_model_average,
-                             need_clip=need_clip)
+    def __init__(
+        self,
+        dim=None,
+        name=None,
+        initializer=None,
+        learning_rate=1.0,
+        regularizer=None,
+        trainable=True,
+        do_model_average=False,
+        need_clip=True,
+    ):
+        super(WeightNormParamAttr, self).__init__(
+            name=name,
+            initializer=initializer,
+            learning_rate=learning_rate,
+            regularizer=regularizer,
+            trainable=trainable,
+            do_model_average=do_model_average,
+            need_clip=need_clip,
+        )
         self.dim = dim

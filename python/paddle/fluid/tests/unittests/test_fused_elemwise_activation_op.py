@@ -32,14 +32,10 @@ from op_test import OpTest
 #   TestFusedElementwiseActivationOp_channelwise_add
 
 
-def create_test_class(test_case,
-                      callback,
-                      attrs,
-                      dtype=np.float32,
-                      grad_chek=True):
-
+def create_test_class(
+    test_case, callback, attrs, dtype=np.float32, grad_chek=True
+):
     class TestFusedElementwiseActivationOp_base(OpTest):
-
         def setUp(self):
             self.op_type = "fused_elemwise_activation"
             self.dtype = dtype
@@ -54,12 +50,12 @@ def create_test_class(test_case,
 
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
             }
             if self.attrs["save_intermediate_out"]:
                 self.outputs = {
                     'Out': self.out,
-                    "IntermediateOut": self.intermediate_out
+                    "IntermediateOut": self.intermediate_out,
                 }
             else:
                 self.outputs = {'Out': self.out}
@@ -70,8 +66,9 @@ def create_test_class(test_case,
             self.axis = -1
 
         def init_output(self):
-            self.x, self.y, self.intermediate_out, self.out = \
-                callback(self.x, self.y, self.x, self.y)
+            self.x, self.y, self.intermediate_out, self.out = callback(
+                self.x, self.y, self.x, self.y
+            )
 
         def init_attr(self):
             self.attrs = {
@@ -101,133 +98,152 @@ def create_test_class(test_case,
             if not grad_chek:
                 return
             if self.attrs["save_intermediate_out"]:
-                self.check_grad(['Y'], ['Out'],
-                                max_relative_error=0.005,
-                                no_grad_set=set("X"))
+                self.check_grad(
+                    ['Y'],
+                    ['Out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("X"),
+                )
             else:
-                self.check_grad(['Y'], ['Out'],
-                                max_relative_error=0.005,
-                                no_grad_set=set("X"))
+                self.check_grad(
+                    ['Y'],
+                    ['Out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("X"),
+                )
 
         def test_check_grad_ingore_y(self):
             if not grad_chek:
                 return
             if self.attrs["save_intermediate_out"]:
-                self.check_grad(['X'], ['Out'],
-                                max_relative_error=0.005,
-                                no_grad_set=set("Y"))
+                self.check_grad(
+                    ['X'],
+                    ['Out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("Y"),
+                )
             else:
-                self.check_grad(['X'], ['Out'],
-                                max_relative_error=0.005,
-                                no_grad_set=set("Y"))
+                self.check_grad(
+                    ['X'],
+                    ['Out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("Y"),
+                )
 
     class TestFusedElementwiseActivationOp_scalar(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(1).astype(self.dtype)
 
     class TestFusedElementwiseActivationOp_scalar2(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(1, 1).astype(self.dtype)
 
     class TestFusedElementwiseActivationOp_Vector(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
-            self.x = np.random.random((32, )).astype(self.dtype)
-            self.y = np.random.random((32, )).astype(self.dtype)
+            self.x = np.random.random((32,)).astype(self.dtype)
+            self.y = np.random.random((32,)).astype(self.dtype)
 
     class TestFusedElementwiseActivationOp_broadcast_0(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(2).astype(self.dtype)
             self.axis = 0
 
         def init_output(self):
-            self.x, self.y, self.intermediate_out, self.out = \
-                callback(self.x, self.y, self.x, self.y.reshape(2, 1, 1))
+            self.x, self.y, self.intermediate_out, self.out = callback(
+                self.x, self.y, self.x, self.y.reshape(2, 1, 1)
+            )
 
     class TestFusedElementwiseActivationOp_broadcast_1(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(3).astype(self.dtype)
             self.axis = 1
 
         def init_output(self):
-            self.x, self.y, self.intermediate_out, self.out = \
-                callback(self.x, self.y, self.x, self.y.reshape(1, 3, 1))
+            self.x, self.y, self.intermediate_out, self.out = callback(
+                self.x, self.y, self.x, self.y.reshape(1, 3, 1)
+            )
 
     class TestFusedElementwiseActivationOp_broadcast_2(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(4).astype(self.dtype)
 
         def init_output(self):
-            self.x, self.y, self.intermediate_out, self.out = \
-                callback(self.x, self.y, self.x, self.y.reshape(1, 1, 4))
+            self.x, self.y, self.intermediate_out, self.out = callback(
+                self.x, self.y, self.x, self.y.reshape(1, 1, 4)
+            )
 
     class TestFusedElementwiseActivationOp_broadcast_3(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
             self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
             self.y = np.random.rand(3, 4).astype(self.dtype)
             self.axis = 1
 
         def init_output(self):
-            self.x, self.y, self.intermediate_out, self.out = \
-                callback(self.x, self.y, self.x, self.y.reshape(1, 3, 4, 1))
+            self.x, self.y, self.intermediate_out, self.out = callback(
+                self.x, self.y, self.x, self.y.reshape(1, 3, 4, 1)
+            )
 
     class TestFusedElementwiseActivationOp_broadcast_4(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
             self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
             self.y = np.random.rand(2, 1).astype(self.dtype)
             self.axis = 0
 
         def init_output(self):
-            self.x, self.y, self.intermediate_out, self.out = \
-                callback(self.x, self.y, self.x, self.y.reshape(2, 1, 1, 1))
+            self.x, self.y, self.intermediate_out, self.out = callback(
+                self.x, self.y, self.x, self.y.reshape(2, 1, 1, 1)
+            )
 
     class TestFusedElementwiseActivationOp_rowwise_add_0(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
             self.x = np.random.rand(2, 3, 4).astype(self.dtype)
             self.y = np.random.rand(3, 4).astype(self.dtype)
             self.axis = 1
 
         def init_output(self):
-            self.x, self.y, self.intermediate_out, self.out = \
-                callback(self.x, self.y, self.x, self.y.reshape(1, 3, 4))
+            self.x, self.y, self.intermediate_out, self.out = callback(
+                self.x, self.y, self.x, self.y.reshape(1, 3, 4)
+            )
 
     class TestFusedElementwiseActivationOp_rowwise_add_1(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
             self.x = np.random.rand(2, 1).astype(self.dtype)
             self.y = np.random.rand(1).astype(self.dtype)
             self.axis = 1
 
         def init_output(self):
-            self.x, self.y, self.intermediate_out, self.out = \
-                callback(self.x, self.y, self.x, self.y.reshape(1, 1))
+            self.x, self.y, self.intermediate_out, self.out = callback(
+                self.x, self.y, self.x, self.y.reshape(1, 1)
+            )
 
     class TestFusedElementwiseActivationOp_channelwise_add(
-            TestFusedElementwiseActivationOp_base):
-
+        TestFusedElementwiseActivationOp_base
+    ):
         def init_input(self):
             self.x = np.random.rand(3, 20, 20).astype(self.dtype)
             self.y = np.random.rand(3, 1, 1).astype(self.dtype)
@@ -236,36 +252,59 @@ def create_test_class(test_case,
     TestFusedElementwiseActivationOp_scalar.__name__ = test_case + "_scalar"
     TestFusedElementwiseActivationOp_scalar2.__name__ = test_case + "_scalar2"
     TestFusedElementwiseActivationOp_Vector.__name__ = test_case + "_Vector"
-    TestFusedElementwiseActivationOp_broadcast_0.__name__ = test_case + "_broadcast_0"
-    TestFusedElementwiseActivationOp_broadcast_1.__name__ = test_case + "_broadcast_1"
-    TestFusedElementwiseActivationOp_broadcast_2.__name__ = test_case + "_broadcast_2"
-    TestFusedElementwiseActivationOp_broadcast_3.__name__ = test_case + "_broadcast_3"
-    TestFusedElementwiseActivationOp_broadcast_4.__name__ = test_case + "_broadcast_4"
-    TestFusedElementwiseActivationOp_rowwise_add_0.__name__ = test_case + "_rowwise_add_0"
-    TestFusedElementwiseActivationOp_rowwise_add_1.__name__ = test_case + "_rowwise_add_1"
-    TestFusedElementwiseActivationOp_channelwise_add.__name__ = test_case + "_channelwise_add"
+    TestFusedElementwiseActivationOp_broadcast_0.__name__ = (
+        test_case + "_broadcast_0"
+    )
+    TestFusedElementwiseActivationOp_broadcast_1.__name__ = (
+        test_case + "_broadcast_1"
+    )
+    TestFusedElementwiseActivationOp_broadcast_2.__name__ = (
+        test_case + "_broadcast_2"
+    )
+    TestFusedElementwiseActivationOp_broadcast_3.__name__ = (
+        test_case + "_broadcast_3"
+    )
+    TestFusedElementwiseActivationOp_broadcast_4.__name__ = (
+        test_case + "_broadcast_4"
+    )
+    TestFusedElementwiseActivationOp_rowwise_add_0.__name__ = (
+        test_case + "_rowwise_add_0"
+    )
+    TestFusedElementwiseActivationOp_rowwise_add_1.__name__ = (
+        test_case + "_rowwise_add_1"
+    )
+    TestFusedElementwiseActivationOp_channelwise_add.__name__ = (
+        test_case + "_channelwise_add"
+    )
 
     globals()[test_case + "_base"] = TestFusedElementwiseActivationOp_base
     globals()[test_case + "_scalar"] = TestFusedElementwiseActivationOp_scalar
     globals()[test_case + "_scalar2"] = TestFusedElementwiseActivationOp_scalar2
     globals()[test_case + "_Vector"] = TestFusedElementwiseActivationOp_Vector
-    globals()[test_case +
-              "_broadcast_0"] = TestFusedElementwiseActivationOp_broadcast_0
-    globals()[test_case +
-              "_broadcast_1"] = TestFusedElementwiseActivationOp_broadcast_1
-    globals()[test_case +
-              "_broadcast_2"] = TestFusedElementwiseActivationOp_broadcast_2
-    globals()[test_case +
-              "_broadcast_3"] = TestFusedElementwiseActivationOp_broadcast_3
-    globals()[test_case +
-              "_broadcast_4"] = TestFusedElementwiseActivationOp_broadcast_4
-    globals()[test_case +
-              "_rowwise_add_0"] = TestFusedElementwiseActivationOp_rowwise_add_0
-    globals()[test_case +
-              "_rowwise_add_1"] = TestFusedElementwiseActivationOp_rowwise_add_1
     globals()[
-        test_case +
-        "_channelwise_add"] = TestFusedElementwiseActivationOp_channelwise_add
+        test_case + "_broadcast_0"
+    ] = TestFusedElementwiseActivationOp_broadcast_0
+    globals()[
+        test_case + "_broadcast_1"
+    ] = TestFusedElementwiseActivationOp_broadcast_1
+    globals()[
+        test_case + "_broadcast_2"
+    ] = TestFusedElementwiseActivationOp_broadcast_2
+    globals()[
+        test_case + "_broadcast_3"
+    ] = TestFusedElementwiseActivationOp_broadcast_3
+    globals()[
+        test_case + "_broadcast_4"
+    ] = TestFusedElementwiseActivationOp_broadcast_4
+    globals()[
+        test_case + "_rowwise_add_0"
+    ] = TestFusedElementwiseActivationOp_rowwise_add_0
+    globals()[
+        test_case + "_rowwise_add_1"
+    ] = TestFusedElementwiseActivationOp_rowwise_add_1
+    globals()[
+        test_case + "_channelwise_add"
+    ] = TestFusedElementwiseActivationOp_channelwise_add
 
 
 def scale_add_func(x, y, x_bcast, y_bcast, scale, mode=0):
@@ -338,97 +377,129 @@ for mode in {0, 1}:
     gelu_add_func = partial(gelu_add_func, mode=mode)
 
     for save_intermediate_out in {True, False}:
-        suffix = ("_save_intermediate_out" if save_intermediate_out else "") \
-                 + ("_mode_"+ str(mode))
+        suffix = ("_save_intermediate_out" if save_intermediate_out else "") + (
+            "_mode_" + str(mode)
+        )
         create_test_class(
-            'scale_add' + suffix, scale_add_func, {
+            'scale_add' + suffix,
+            scale_add_func,
+            {
                 'scale': scale,
                 'functor_list': ["scale", "elementwise_add"],
                 'save_intermediate_out': save_intermediate_out,
-            })
+            },
+        )
         create_test_class(
-            'add_scale' + suffix, add_scale_func, {
+            'add_scale' + suffix,
+            add_scale_func,
+            {
                 'scale': scale,
                 'functor_list': ["elementwise_add", "scale"],
                 'save_intermediate_out': save_intermediate_out,
-            })
+            },
+        )
         create_test_class(
-            'add_relu' + suffix, add_relu_func, {
+            'add_relu' + suffix,
+            add_relu_func,
+            {
                 'functor_list': ["elementwise_add", "relu"],
                 'save_intermediate_out': save_intermediate_out,
-            })
+            },
+        )
         create_test_class(
-            'relu_add' + suffix, relu_add_func, {
+            'relu_add' + suffix,
+            relu_add_func,
+            {
                 'functor_list': ["relu", "elementwise_add"],
                 'save_intermediate_out': save_intermediate_out,
-            })
+            },
+        )
         create_test_class(
-            'mul_scale' + suffix, mul_scale_func, {
+            'mul_scale' + suffix,
+            mul_scale_func,
+            {
                 'scale': scale,
                 'functor_list': ["elementwise_mul", "scale"],
                 'save_intermediate_out': save_intermediate_out,
-            })
+            },
+        )
         create_test_class(
-            'gelu_add' + suffix, gelu_add_func, {
+            'gelu_add' + suffix,
+            gelu_add_func,
+            {
                 'functor_list': ["gelu", "elementwise_add"],
                 'save_intermediate_out': save_intermediate_out,
-            })
+            },
+        )
 
         if core.is_compiled_with_cuda():
             create_test_class(
                 'scale_add_fp16' + suffix,
-                scale_add_func, {
+                scale_add_func,
+                {
                     'scale': scale,
                     'functor_list': ["scale", "elementwise_add"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False)
+                grad_chek=False,
+            )
             create_test_class(
                 'add_scale_fp16' + suffix,
-                add_scale_func, {
+                add_scale_func,
+                {
                     'scale': scale,
                     'functor_list': ["elementwise_add", "scale"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False)
+                grad_chek=False,
+            )
 
             create_test_class(
                 'add_relu_fp16' + suffix,
-                add_relu_func, {
+                add_relu_func,
+                {
                     'functor_list': ["elementwise_add", "relu"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False)
+                grad_chek=False,
+            )
             create_test_class(
                 'relu_add_fp16' + suffix,
-                relu_add_func, {
+                relu_add_func,
+                {
                     'functor_list': ["relu", "elementwise_add"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False)
+                grad_chek=False,
+            )
             create_test_class(
                 'mul_scale_fp16' + suffix,
-                mul_scale_func, {
+                mul_scale_func,
+                {
                     'scale': scale,
                     'functor_list': ["elementwise_mul", "scale"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False)
+                grad_chek=False,
+            )
             create_test_class(
                 'gelu_add_fp16' + suffix,
-                gelu_add_func, {
+                gelu_add_func,
+                {
                     'functor_list': ["gelu", "elementwise_add"],
                     'save_intermediate_out': save_intermediate_out,
                 },
                 dtype=np.float16,
-                grad_chek=False)
+                grad_chek=False,
+            )
 
 if __name__ == '__main__':
     import paddle
+
     paddle.enable_static()
     unittest.main()

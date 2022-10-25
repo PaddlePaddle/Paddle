@@ -18,15 +18,13 @@ from unittest import TestCase
 
 def create_model():
     hidden_size = 32
-    bilstm = paddle.nn.LSTM(hidden_size,
-                            hidden_size,
-                            num_layers=1,
-                            direction='bidirectional')
+    bilstm = paddle.nn.LSTM(
+        hidden_size, hidden_size, num_layers=1, direction='bidirectional'
+    )
     return bilstm
 
 
 class TestRNNProgramClone(TestCase):
-
     def setUp(self):
         paddle.enable_static()
 

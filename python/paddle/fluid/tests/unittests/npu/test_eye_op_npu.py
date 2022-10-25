@@ -28,7 +28,6 @@ np.random.seed(10)
 
 
 class TestEyeOp(OpTest):
-
     def setUp(self):
         '''
         Test eye op with specified shape
@@ -47,14 +46,14 @@ class TestEyeOp(OpTest):
         if self.num_columns == 0:
             self.attrs = {
                 'num_rows': self.num_rows,
-                'dtype': framework.convert_np_dtype_to_dtype_(self.dtype)
+                'dtype': framework.convert_np_dtype_to_dtype_(self.dtype),
             }
             self.outputs = {'Out': np.eye(self.num_rows, dtype=self.dtype)}
         else:
             self.attrs = {
                 'num_rows': self.num_rows,
                 'num_columns': self.num_columns,
-                'dtype': framework.convert_np_dtype_to_dtype_(self.dtype)
+                'dtype': framework.convert_np_dtype_to_dtype_(self.dtype),
             }
             self.outputs = {
                 'Out': np.eye(self.num_rows, self.num_columns, dtype=self.dtype)
@@ -73,41 +72,35 @@ class TestEyeOp(OpTest):
 
 
 class TestEyeOp1(TestEyeOp):
-
     def initTestCase(self):
         self.num_rows = 50
 
 
 class TestEyeOp2(TestEyeOp):
-
     def initTestCase(self):
         self.num_rows = 50
         self.dtype = np.int32
 
 
 class TestEyeOp3(TestEyeOp):
-
     def initTestCase(self):
         self.num_rows = 50
         self.dtype = np.float16
 
 
 class TestEyeOp4(TestEyeOp):
-
     def initTestCase(self):
         self.num_rows = 1
         self.num_columns = 99
 
 
 class TestEyeOp5(TestEyeOp):
-
     def initTestCase(self):
         self.num_rows = 100
         self.num_columns = 100
 
 
 class TestEyeOp6(TestEyeOp):
-
     def initTestCase(self):
         self.num_rows = 100
         self.num_columns = 100
@@ -115,13 +108,12 @@ class TestEyeOp6(TestEyeOp):
 
 
 class API_TestTensorEye(unittest.TestCase):
-
     def test_out(self):
         with paddle.static.program_guard(paddle.static.Program()):
             data = paddle.eye(10)
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[data])
+            (result,) = exe.run(fetch_list=[data])
             expected_result = np.eye(10, dtype="float32")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -129,7 +121,7 @@ class API_TestTensorEye(unittest.TestCase):
             data = paddle.eye(10, num_columns=7, dtype="float16")
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[data])
+            (result,) = exe.run(fetch_list=[data])
             expected_result = np.eye(10, 7, dtype="float16")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -137,7 +129,7 @@ class API_TestTensorEye(unittest.TestCase):
             data = paddle.eye(10, dtype="int32")
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
-            result, = exe.run(fetch_list=[data])
+            (result,) = exe.run(fetch_list=[data])
             expected_result = np.eye(10, dtype="int32")
         self.assertEqual((result == expected_result).all(), True)
 
@@ -159,8 +151,9 @@ class API_TestTensorEye(unittest.TestCase):
             result = tmp_result
             expected_result = np.stack(result, axis=0)
         paddle.enable_static()
-        self.assertEqual(out.numpy().shape == np.array(expected_result).shape,
-                         True)
+        self.assertEqual(
+            out.numpy().shape == np.array(expected_result).shape, True
+        )
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
         paddle.disable_static(paddle.NPUPlace(0))
@@ -175,8 +168,9 @@ class API_TestTensorEye(unittest.TestCase):
             result = tmp_result
             expected_result = np.stack(result, axis=0)
         paddle.enable_static()
-        self.assertEqual(out.numpy().shape == np.array(expected_result).shape,
-                         True)
+        self.assertEqual(
+            out.numpy().shape == np.array(expected_result).shape, True
+        )
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
     def test_errors(self):

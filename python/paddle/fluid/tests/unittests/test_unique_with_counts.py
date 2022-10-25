@@ -20,7 +20,6 @@ import paddle.fluid.core as core
 
 
 class TestUniqueWithCountsOp(OpTest):
-
     def setUp(self):
         self.op_type = "unique_with_counts"
         self.init_config()
@@ -36,12 +35,11 @@ class TestUniqueWithCountsOp(OpTest):
         self.outputs = {
             'Out': np.array([2, 3, 1, 5], dtype='int64'),
             'Index': np.array([0, 1, 1, 2, 3, 1], dtype='int32'),
-            'Count': np.array([1, 3, 1, 1], dtype='int32')
+            'Count': np.array([1, 3, 1, 1], dtype='int32'),
         }
 
 
 class TestOne(TestUniqueWithCountsOp):
-
     def init_config(self):
         self.inputs = {
             'X': np.array([2], dtype='int64'),
@@ -50,24 +48,24 @@ class TestOne(TestUniqueWithCountsOp):
         self.outputs = {
             'Out': np.array([2], dtype='int64'),
             'Index': np.array([0], dtype='int32'),
-            'Count': np.array([1], dtype='int32')
+            'Count': np.array([1], dtype='int32'),
         }
 
 
 class TestRandom(TestUniqueWithCountsOp):
-
     def init_config(self):
-        input_data = np.random.randint(0, 100, (2000, ), dtype='int64')
+        input_data = np.random.randint(0, 100, (2000,), dtype='int64')
         self.inputs = {'X': input_data}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
-        np_unique, np_index, reverse_index = np.unique(self.inputs['X'], True,
-                                                       True)
+        np_unique, np_index, reverse_index = np.unique(
+            self.inputs['X'], True, True
+        )
         np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
         np_tuple.sort(key=lambda x: x[1])
         target_out = np.array([i[0] for i in np_tuple], dtype='int64')
         target_index = np.array(
-            [list(target_out).index(i) for i in self.inputs['X']],
-            dtype='int64')
+            [list(target_out).index(i) for i in self.inputs['X']], dtype='int64'
+        )
         count = [0 for i in range(len(np_unique))]
         for i in range(target_index.shape[0]):
             count[target_index[i]] += 1
@@ -75,14 +73,12 @@ class TestRandom(TestUniqueWithCountsOp):
         self.outputs = {
             'Out': target_out,
             'Index': target_index,
-            'Count': target_count
+            'Count': target_count,
         }
 
 
 class TestUniqueWithCountsRaiseError(unittest.TestCase):
-
     def test_errors(self):
-
         def test_type():
             fluid.layers.unique_with_counts([10])
 
@@ -95,10 +91,10 @@ class TestUniqueWithCountsRaiseError(unittest.TestCase):
         self.assertRaises(TypeError, test_dtype)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestOneGPU(TestUniqueWithCountsOp):
-
     def init_config(self):
         self.inputs = {
             'X': np.array([2], dtype='int64'),
@@ -107,7 +103,7 @@ class TestOneGPU(TestUniqueWithCountsOp):
         self.outputs = {
             'Out': np.array([2], dtype='int64'),
             'Index': np.array([0], dtype='int32'),
-            'Count': np.array([1], dtype='int32')
+            'Count': np.array([1], dtype='int32'),
         }
 
     def test_check_output(self):
@@ -116,22 +112,23 @@ class TestOneGPU(TestUniqueWithCountsOp):
             self.check_output_with_place(place, atol=1e-5)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestRandomGPU(TestUniqueWithCountsOp):
-
     def init_config(self):
-        input_data = np.random.randint(0, 100, (2000, ), dtype='int64')
+        input_data = np.random.randint(0, 100, (2000,), dtype='int64')
         self.inputs = {'X': input_data}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
-        np_unique, np_index, reverse_index = np.unique(self.inputs['X'], True,
-                                                       True)
+        np_unique, np_index, reverse_index = np.unique(
+            self.inputs['X'], True, True
+        )
         np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
         np_tuple.sort(key=lambda x: x[1])
         target_out = np.array([i[0] for i in np_tuple], dtype='int64')
         target_index = np.array(
-            [list(target_out).index(i) for i in self.inputs['X']],
-            dtype='int64')
+            [list(target_out).index(i) for i in self.inputs['X']], dtype='int64'
+        )
         count = [0 for i in range(len(np_unique))]
         for i in range(target_index.shape[0]):
             count[target_index[i]] += 1
@@ -139,7 +136,7 @@ class TestRandomGPU(TestUniqueWithCountsOp):
         self.outputs = {
             'Out': target_out,
             'Index': target_index,
-            'Count': target_count
+            'Count': target_count,
         }
 
     def test_check_output(self):
