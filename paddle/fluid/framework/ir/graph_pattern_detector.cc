@@ -958,6 +958,24 @@ PDNode *patterns::OperatorActivation::operator()(
   return activation_out;
 }
 
+PDNode *patterns::OperatorUnsqueeze2::operator()(
+    const std::string &operator_type, const int num_of_operator_outs) {
+  auto *preceding_op =
+      pattern->NewNode(preceding_op_repr())->assert_is_op(operator_type)->assert_has_n_outputs(num_of_operator_outs);
+  auto *preceding_op_out = pattern->NewNode(preceding_op_out_repr())
+                               ->AsIntermediate()
+                               ->assert_is_op_output(operator_type, "Out")
+                               ->assert_is_op_input("unsqueeze2");
+  auto *unsqueeze2_op =
+      pattern->NewNode(unsqueeze2_op_repr())->assert_is_op("unsqueeze2");
+  auto *unsqueeze2_out = pattern->NewNode(unsqueeze2_out_repr())
+                             ->AsOutput()
+                             ->assert_is_op_output("unsqueeze2");
+  preceding_op->LinksTo({preceding_op_out});
+  unsqueeze2_op->LinksFrom({preceding_op_out}).LinksTo({unsqueeze2_out});
+  return unsqueeze2_out;
+}
+
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators

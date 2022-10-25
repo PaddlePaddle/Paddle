@@ -126,7 +126,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     binary_prim->execute(astream, args);
     astream.wait();
 
-    z->set_mem_desc(dst_memory->get_desc());
+    platform::SetOutMemDescWithUnsqueeze2FuseSupport(ctx, z, dst_memory->get_desc());
   }
 };
 
