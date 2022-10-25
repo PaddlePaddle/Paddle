@@ -29,11 +29,11 @@ namespace phi {
 
 constexpr int block_size = 512;
 
-template <typename T, typename MT, int N, int MAXTENSORSIZE, int MAXBLOCKSIZE>
+template <typename T, typename MT, int N, int MaxTensorSize, int MaxBlockSize>
 struct MultiTensorAdamFunctor {
   __device__ __forceinline__ void operator()(
       int chunk_size,
-      TensorAndBlockInfo<N, MAXTENSORSIZE, MAXBLOCKSIZE> t_info,
+      TensorAndBlockInfo<N, MaxTensorSize, MaxBlockSize> t_info,
       MT beta1,
       MT beta2,
       const MT* beta1_pow_,
@@ -221,8 +221,8 @@ void MultiTensorAdamKernel(
   const int max_tensors_size_mp = 24;
   const int max_blocks_size_mp = 320;
 
-  const int MAXTENSORSIZE = 30;
-  const int MAXBLOCKSIZE = 320;
+  const int MaxTensorSize = 30;
+  const int MaxBlockSize = 320;
 
   if (multi_precision) {
     MultiTensorAdamUtilityKernel<5,
@@ -249,13 +249,13 @@ void MultiTensorAdamKernel(
         multi_precision,
         weight_decay_);
   } else {
-    MultiTensorAdamUtilityKernel<4, MAXTENSORSIZE, MAXBLOCKSIZE, MPDType>(
+    MultiTensorAdamUtilityKernel<4, MaxTensorSize, MaxBlockSize, MPDType>(
         dev_ctx,
         block_size,
         chunk_size,
         input_vector,
         grads,
-        MultiTensorAdamFunctor<T, MPDType, 4, MAXTENSORSIZE, MAXBLOCKSIZE>(),
+        MultiTensorAdamFunctor<T, MPDType, 4, MaxTensorSize, MaxBlockSize>(),
         beta1_tmp,
         beta2_tmp,
         beta1_pow.data<MPDType>(),

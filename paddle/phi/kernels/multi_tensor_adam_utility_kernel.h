@@ -21,28 +21,28 @@ namespace phi {
 
 constexpr int max_chunk_size = 65535;
 
-template <int N, int MAXTENSORSIZE, int MAXBLOCKSIZE>
+template <int N, int MaxTensorSize, int MaxBlockSize>
 struct TensorAndBlockInfo {
-  void *tensor_addrs[N - 1][MAXTENSORSIZE];
-  const void *grads[MAXTENSORSIZE];
-  int sizes[MAXTENSORSIZE];
-  uint8_t tenosr_for_this_block[MAXBLOCKSIZE];
+  void *tensor_addrs[N - 1][MaxTensorSize];
+  const void *grads[MaxTensorSize];
+  int sizes[MaxTensorSize];
+  uint8_t tenosr_for_this_block[MaxBlockSize];
   // int16
-  uint16_t chunk_for_this_block[MAXBLOCKSIZE];
+  uint16_t chunk_for_this_block[MaxBlockSize];
   int start_chunk_this_tensor;
 };
 
 template <typename MT, typename T, typename U, typename... ArgTypes>
-__global__ void UtilityKernel(int chunk_size,
-                              T t_info,
-                              U multi_tensor_adam_functor_op,
-                              ArgTypes... args) {
+__global__ void MultiTensorAdamUtilityCudaKernel(int chunk_size,
+                                                 T t_info,
+                                                 U multi_tensor_adam_functor_op,
+                                                 ArgTypes... args) {
   multi_tensor_adam_functor_op(chunk_size, t_info, args...);
 }
 
 template <int InputNum,
-          int MAXTENSORSIZE,
-          int MAXBLOCKSIZE,
+          int MaxTensorSize,
+          int MaxBlockSize,
           typename MT,
           typename T,
           typename Context,
@@ -95,7 +95,7 @@ void MultiTensorAdamUtilityKernel(
 
   size_t tensors_size = input_vector[0].size();
 
-  TensorAndBlockInfo<InputNum, MAXTENSORSIZE, MAXBLOCKSIZE> t_info;
+  TensorAndBlockInfo<InputNum, MaxTensorSize, MaxBlockSize> t_info;
 
   auto stream = dev_ctx.stream();
   int block_id = 0;
@@ -121,12 +121,12 @@ void MultiTensorAdamUtilityKernel(
       local_chunk++;
       block_id++;
       bool reach_tensors_limit =
-          (tensor_id == MAXTENSORSIZE && chunk == chunks_this_tensor - 1);
-      bool reach_blocks_limit = (block_id == MAXBLOCKSIZE);
+          (tensor_id == MaxTensorSize && chunk == chunks_this_tensor - 1);
+      bool reach_blocks_limit = (block_id == MaxBlockSize);
       bool finish_compute =
           (t == tensors_size - 1 && chunk == chunks_this_tensor - 1);
       if (reach_tensors_limit || reach_blocks_limit || finish_compute) {
-        UtilityKernel<MT>
+        MultiTensorAdamUtilityCudaKernel<MT>
             <<<block_id, block_size, 0, stream>>>(chunk_size,  // 2048*32
                                                   t_info,
                                                   multi_tensor_adam_functor_op,

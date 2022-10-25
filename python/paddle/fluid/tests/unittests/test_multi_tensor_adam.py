@@ -122,13 +122,13 @@ class TestMultiTensorAdam(unittest.TestCase):
             i = i + 1
 
         if use_multi_tesnor_adam:
-            opt = paddle.incubate.optimizer.MultiTensorAdam(
+            opt = paddle.optimizer.Adam(
                 learning_rate=0.1,
                 parameters=paramters_dict_list,
                 weight_decay=0.01,
                 beta1=beta1,
                 beta2=beta2,
-                use_adamw=use_adamw,
+                use_multi_tensor=True,
             )
         else:
             if not use_adamw:
@@ -318,7 +318,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             np.testing.assert_array_equal(i.numpy(), j.numpy())
 
     def test_main(self):
-        for use_adamw in [True, False]:
+        for use_adamw in [False]:
             self.run_adam_or_adamw(use_adamw)
             self.run_adam_or_adamw_dict(use_adamw)
             if paddle.device.get_device() != "cpu":
