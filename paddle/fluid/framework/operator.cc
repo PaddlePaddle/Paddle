@@ -57,6 +57,10 @@ class DenseTensor;
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#endif
+
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
@@ -1402,6 +1406,14 @@ bool OperatorWithKernel::SupportsKernelType(
   }
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
+    auto tmp_kernel_type = kernel_type;
+    tmp_kernel_type.library_type_ = framework::LibraryType::kCUDNN;
+    return kernels.find(tmp_kernel_type) != kernels.end();
+  }
+#endif
+
   return kernel_iter != kernels.end();
 }
 
@@ -1577,6 +1589,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::kMKLDNN;
+      }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (paddle::platform::CanCUDNNBeUsed(exe_ctx)) {
+        kernel_type_->library_type_ = framework::LibraryType::kCUDNN;
       }
 #endif
 
@@ -1819,6 +1837,12 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::kMKLDNN;
+  }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (paddle::platform::CanCUDNNBeUsed(ctx)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
   }
 #endif
 
