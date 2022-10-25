@@ -122,11 +122,9 @@ class TestUnaryAPI(unittest.TestCase):
                 if paddle.device.is_compiled_with_cuda():
                     places = [paddle.CUDAPlace(0)]
                     device_num = 1
-                    expect_shape = ()
                 else:
                     places = [paddle.CPUPlace()] * 4
                     device_num = 4
-                    expect_shape = (device_num, )
 
                 compiled_program = fluid.CompiledProgram(
                     main_prog).with_data_parallel(out.name, places=places)
@@ -135,8 +133,8 @@ class TestUnaryAPI(unittest.TestCase):
                                  return_merged=True)
 
                 # Test runtime parallel shape
-                self.assertEqual(result[0].shape, expect_shape)
-                self.assertEqual(result[1].shape, expect_shape)
+                self.assertEqual(result[0].shape, (device_num, ))
+                self.assertEqual(result[1].shape, (device_num, ))
                 self.assertEqual(result[3].shape, (device_num, ))
 
                 compiled_program = fluid.CompiledProgram(
