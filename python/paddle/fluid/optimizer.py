@@ -60,7 +60,6 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
-from .. import compat as cpt
 import warnings
 from paddle import _C_ops, _legacy_C_ops
 from ..fluid.framework import (
@@ -6933,9 +6932,10 @@ class RecomputeOptimizer(Optimizer):
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
-                import paddle.compat as cpt
 
+                paddle.enable_static()
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
                     fc_1 = fluid.layers.fc(input=input_x, size=hid_dim)
                     prediction = fluid.layers.fc(input=[fc_1], size=label_dim, act='softmax')
@@ -6955,7 +6955,7 @@ class RecomputeOptimizer(Optimizer):
                     state_dict = {}
                     sgd.load(state_dict)
                 except NotImplementedError as e:
-                    print(cpt.get_exception_message(e))
+                    print(e)
         """
         raise NotImplementedError(
             "load function is not supported by Recompute Optimizer for now"

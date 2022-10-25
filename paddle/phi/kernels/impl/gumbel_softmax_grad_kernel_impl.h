@@ -18,6 +18,7 @@
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -34,6 +35,12 @@ void GumbelSoftmaxGradKernel(const Context& ctx,
 
   ctx.template Alloc<T>(dx);
   if (dx->numel() == 0) {
+    return;
+  }
+
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(ctx, dx, 0.0);
     return;
   }
 

@@ -1364,6 +1364,54 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     return out
 
 
+def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
+    """
+    Replaces NaN, positive infinity, and negative infinity values in input tensor.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        nan (float, optional): the value to replace NaNs with. Default is 0.
+        posinf (float, optional): if a Number, the value to replace positive infinity values with. If None, positive infinity values are replaced with the greatest finite value representable by input’s dtype. Default is None.
+        neginf (float, optional): if a Number, the value to replace negative infinity values with. If None, negative infinity values are replaced with the lowest finite value representable by input’s dtype. Default is None.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Results of nan_to_num operation input Tensor ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([float('nan'), 0.3, float('+inf'), float('-inf')], dtype='float32')
+            out1 = paddle.nan_to_num(x)  # [0, 0.3, 3.4028235e+38, -3.4028235e+38]
+            out2 = paddle.nan_to_num(x, nan=1)  # [1, 0.3, 3.4028235e+38, -3.4028235e+38]
+            out3 = paddle.nan_to_num(x, posinf=5)  # [0, 0.3, 5, -3.4028235e+38]
+            out4 = paddle.nan_to_num(x, nan=10, neginf=-99)  # [10, 0.3, 3.4028235e+38, -99]
+    """
+    # NOTE(tiancaishaonvjituizi): it seems that paddle handles the dtype of python float number
+    # incorrectly, so we have to explicitly contruct tensors here
+    posinf_value = paddle.full_like(x, float("+inf"))
+    neginf_value = paddle.full_like(x, float("-inf"))
+    nan = paddle.full_like(x, nan)
+    assert x.dtype in [paddle.float32, paddle.float64]
+    is_float32 = x.dtype == paddle.float32
+    if posinf is None:
+        posinf = (
+            np.finfo(np.float32).max if is_float32 else np.finfo(np.float64).max
+        )
+    posinf = paddle.full_like(x, posinf)
+    if neginf is None:
+        neginf = (
+            np.finfo(np.float32).min if is_float32 else np.finfo(np.float64).min
+        )
+    neginf = paddle.full_like(x, neginf)
+    x = paddle.where(paddle.isnan(x), nan, x)
+    x = paddle.where(x == posinf_value, posinf, x)
+    x = paddle.where(x == neginf_value, neginf, x)
+    return x
+
+
 def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
     Computes the sum of tensor elements over the given axis, treating Not a Numbers (NaNs) as zero.

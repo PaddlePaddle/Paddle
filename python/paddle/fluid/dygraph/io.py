@@ -17,7 +17,6 @@ import pickle
 import numpy as np
 
 import paddle
-from paddle import compat as cpt
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid import backward
