@@ -1823,8 +1823,8 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             )
         elif not is_invoke_forward_api:
             next_grad_node_creation_str = f"""  if(trace_backward) {{
-    PADDLE_THROW(phi::errors::Unavailable(\"The Op\"
-    \"{self.backward_api_name} doesn't have any grad\"
+    PADDLE_THROW(phi::errors::Unavailable(
+    \"The Op {self.backward_api_name} doesn't have any grad\"
     \"op. If you don't intend calculating higher order\"
     \"derivatives, please set `create_graph`to False.\"));
   }}"""
