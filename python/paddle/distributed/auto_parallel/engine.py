@@ -52,8 +52,6 @@ from .dist_context import DistributedContext, get_default_distributed_context
 from .interface import CollectionNames, get_collection
 from .cost.estimate_cost import get_cost_from_engine
 
-from ..utils.log_utils import get_logger
-
 
 class Engine:
     """
@@ -179,7 +177,7 @@ class Engine:
         self._nranks = paddle.distributed.get_world_size()
         self._saver = DistributedSaver()
 
-        self._logger = get_logger(logging.INFO)
+        self._logger = auto_utils.get_logger(logging.INFO)
 
         self._orig_main_prog = static.default_main_program()
         self._orig_startup_prog = static.default_startup_program()
@@ -459,7 +457,7 @@ class Engine:
                     if metric_out:
                         metric.update(*metric_out)
                         results = metric.accumulate()
-                        for i, res in enumerate(to_list(results)):
+                        for i, res in enumerate(auto_utils.to_list(results)):
                             logs[metric.name()[i]] = res
                     group_idx += 1
         # logging outputs
